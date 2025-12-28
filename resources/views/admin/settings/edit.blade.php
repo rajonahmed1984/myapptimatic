@@ -19,6 +19,8 @@
                 <button type="button" data-tab-target="invoices" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Invoices</button>
                 <button type="button" data-tab-target="automation" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Automatic module functions</button>
                 <button type="button" data-tab-target="billing" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Billing settings</button>
+                <button type="button" data-tab-target="email-templates" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Email templates</button>
+                <button type="button" data-tab-target="cron" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Cron status</button>
             </div>
 
             <form method="POST" action="{{ route('admin.settings.update') }}" class="mt-8 space-y-8" enctype="multipart/form-data">
@@ -198,6 +200,94 @@
                             Auto bind domains on first check
                         </div>
                     </div>
+                </section>
+
+                <section data-tab-panel="email-templates" class="space-y-6">
+                    <div class="section-label">Email templates</div>
+                    <p class="text-sm text-slate-600">Update subjects and email bodies for client and automation messages.</p>
+
+                    <div class="space-y-4">
+                        @forelse($emailTemplates as $template)
+                            <details class="rounded-2xl border border-slate-200 bg-white p-5">
+                                <summary class="flex cursor-pointer items-center justify-between text-sm font-semibold text-slate-700">
+                                    <span>{{ $template->name }}</span>
+                                    <span class="text-xs font-normal text-slate-400">{{ $template->key }}</span>
+                                </summary>
+                                <div class="mt-5 grid gap-4">
+                                    <div>
+                                        <label class="text-sm text-slate-600">Subject</label>
+                                        <input
+                                            name="templates[{{ $template->id }}][subject]"
+                                            value="{{ old("templates.{$template->id}.subject", $template->subject) }}"
+                                            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="text-sm text-slate-600">Body</label>
+                                        <textarea
+                                            name="templates[{{ $template->id }}][body]"
+                                            rows="6"
+                                            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                        >{{ old("templates.{$template->id}.body", $template->body) }}</textarea>
+                                    </div>
+                                </div>
+                            </details>
+                        @empty
+                            <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                                No templates found. Run the latest migrations to load defaults.
+                            </div>
+                        @endforelse
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="rounded-full bg-teal-500 px-6 py-2 text-sm font-semibold text-white">Save templates</button>
+                    </div>
+                </section>
+
+                <section data-tab-panel="cron" class="space-y-6">
+                    @php
+                        $lastRunAt = $settings['billing_last_run_at'] ?? null;
+                        $lastStatus = $settings['billing_last_status'] ?? null;
+                        $statusLabel = $lastStatus ? ucfirst($lastStatus) : 'Never';
+                        $statusClasses = match ($lastStatus) {
+                            'success' => 'bg-emerald-100 text-emerald-700',
+                            'failed' => 'bg-rose-100 text-rose-700',
+                            'running' => 'bg-amber-100 text-amber-700',
+                            default => 'bg-slate-100 text-slate-600',
+                        };
+                    @endphp
+                    <div class="section-label">Cron status</div>
+                    <div class="grid gap-6 md:grid-cols-2">
+                        <div>
+                            <label class="text-sm text-slate-600">Last billing run</label>
+                            <div class="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700">
+                                {{ $lastRunAt ? \Illuminate\Support\Carbon::parse($lastRunAt)->toDayDateTimeString() : 'Never' }}
+                            </div>
+                            <p class="mt-2 text-xs text-slate-500">Trigger billing every day or hour for best results.</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-600">Last status</label>
+                            <div class="mt-2 inline-flex items-center rounded-full px-4 py-2 text-sm {{ $statusClasses }}">
+                                {{ $statusLabel }}
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-sm text-slate-600">Secure cron URL (use in cPanel)</label>
+                            <input value="{{ $settings['cron_url'] ?? '' }}" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700" />
+                            <p class="mt-2 text-xs text-slate-500">Example cPanel command: <code>curl -fsS "{{ $settings['cron_url'] ?? '' }}" &gt;/dev/null 2&gt;&amp;1</code></p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-sm text-slate-600">CLI command (server cron)</label>
+                            <input value="php /path/to/artisan billing:run" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700" />
+                            <p class="mt-2 text-xs text-slate-500">Run from your project root if you have shell access.</p>
+                        </div>
+                    </div>
+
+                    @if(!empty($settings['billing_last_error']))
+                        <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            {{ $settings['billing_last_error'] }}
+                        </div>
+                    @endif
                 </section>
 
                 <div class="flex justify-end pt-6">

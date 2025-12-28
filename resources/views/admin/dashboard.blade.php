@@ -22,8 +22,20 @@
             <div class="mt-3 text-3xl font-semibold text-slate-900">{{ $licenseCount }}</div>
         </div>
         <div class="card p-6">
+            <div class="section-label">Unpaid Invoices</div>
+            <div class="mt-3 text-3xl font-semibold text-blue-600">{{ $pendingInvoiceCount }}</div>
+        </div>
+        <div class="card p-6">
             <div class="section-label">Overdue Invoices</div>
             <div class="mt-3 text-3xl font-semibold text-amber-600">{{ $overdueCount }}</div>
+        </div>
+        <div class="card p-6">
+            <div class="section-label">Open Tickets</div>
+            <div class="mt-3 text-3xl font-semibold text-amber-600">{{ $openTicketCount }}</div>
+        </div>
+        <div class="card p-6">
+            <div class="section-label">Customer Replies</div>
+            <div class="mt-3 text-3xl font-semibold text-rose-600">{{ $customerReplyTicketCount }}</div>
         </div>
     </div>
 @endsection

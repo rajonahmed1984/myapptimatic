@@ -41,4 +41,9 @@ class Customer extends Model
     {
         return $this->hasManyThrough(License::class, Subscription::class);
     }
+
+    public function supportTickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
+    }
 }

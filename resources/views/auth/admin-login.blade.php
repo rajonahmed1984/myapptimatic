@@ -7,6 +7,12 @@
     <h2 class="mt-3 text-2xl font-semibold text-slate-900">Sign in to the control desk</h2>
     <p class="mt-2 text-sm text-slate-600">Manage products, plans, invoices, and customer access.</p>
 
+    @if(session('status'))
+        <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            {{ session('status') }}
+        </div>
+    @endif
+
     <form class="mt-8 space-y-5" method="POST" action="{{ route('admin.login.attempt') }}">
         @csrf
         <div>

@@ -17,19 +17,37 @@ class RunBillingCycle extends Command
 
     public function handle(): int
     {
-        $today = Carbon::today();
+        $startedAt = Carbon::now();
+        Setting::setValue('billing_last_started_at', $startedAt->toDateTimeString());
+        Setting::setValue('billing_last_status', 'running');
+        Setting::setValue('billing_last_error', '');
 
-        $this->generateInvoices($today);
-        $this->markOverdue($today);
-        $this->applyLateFees($today);
-        $this->applyAutoCancellation($today);
-        $this->applySuspensions($today);
-        $this->applyTerminations($today);
-        $this->applyUnsuspensions();
+        try {
+            $today = Carbon::today();
 
-        $this->info('Billing run completed.');
+            $this->generateInvoices($today);
+            $this->markOverdue($today);
+            $this->applyLateFees($today);
+            $this->applyAutoCancellation($today);
+            $this->applySuspensions($today);
+            $this->applyTerminations($today);
+            $this->applyUnsuspensions();
 
-        return self::SUCCESS;
+            Setting::setValue('billing_last_run_at', Carbon::now()->toDateTimeString());
+            Setting::setValue('billing_last_status', 'success');
+
+            $this->info('Billing run completed.');
+
+            return self::SUCCESS;
+        } catch (\Throwable $e) {
+            Setting::setValue('billing_last_run_at', Carbon::now()->toDateTimeString());
+            Setting::setValue('billing_last_status', 'failed');
+            Setting::setValue('billing_last_error', substr($e->getMessage(), 0, 500));
+
+            $this->error('Billing run failed: ' . $e->getMessage());
+
+            return self::FAILURE;
+        }
     }
 
     private function generateInvoices(Carbon $today): void

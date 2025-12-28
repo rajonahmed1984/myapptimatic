@@ -47,6 +47,10 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Invoices
                 </a>
+                <a class="{{ request()->routeIs('admin.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.support-tickets.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Support
+                </a>
                 <a class="{{ request()->routeIs('admin.settings.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.settings.edit') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Settings
@@ -90,6 +94,7 @@
                             <a href="{{ route('admin.subscriptions.index') }}" class="text-slate-700 hover:text-teal-600">Subscriptions</a>
                             <a href="{{ route('admin.licenses.index') }}" class="text-slate-700 hover:text-teal-600">Licenses</a>
                             <a href="{{ route('admin.invoices.index') }}" class="text-slate-700 hover:text-teal-600">Invoices</a>
+                            <a href="{{ route('admin.support-tickets.index') }}" class="text-slate-700 hover:text-teal-600">Support</a>
                             <a href="{{ route('admin.settings.edit') }}" class="text-slate-700 hover:text-teal-600">Settings</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf

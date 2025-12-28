@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmailTemplate;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SettingController extends Controller
 {
@@ -14,6 +17,19 @@ class SettingController extends Controller
     {
         $logoPath = Setting::getValue('company_logo_path');
         $faviconPath = Setting::getValue('company_favicon_path');
+        $cronToken = (string) Setting::getValue('cron_token');
+
+        if ($cronToken === '') {
+            $cronToken = Str::random(40);
+            Setting::setValue('cron_token', $cronToken);
+        }
+
+        $appUrl = rtrim(config('app.url'), '/');
+        $cronUrl = $cronToken !== '' ? "{$appUrl}/cron/billing?token={$cronToken}" : null;
+
+        $emailTemplates = Schema::hasTable('email_templates')
+            ? EmailTemplate::query()->orderBy('name')->get()
+            : collect();
 
         return view('admin.settings.edit', [
             'settings' => [
@@ -24,6 +40,12 @@ class SettingController extends Controller
                 'company_logo_url' => $logoPath ? Storage::disk('public')->url($logoPath) : null,
                 'company_favicon_path' => $faviconPath,
                 'company_favicon_url' => $faviconPath ? Storage::disk('public')->url($faviconPath) : null,
+                'cron_token' => $cronToken,
+                'cron_url' => $cronUrl,
+                'billing_last_run_at' => Setting::getValue('billing_last_run_at'),
+                'billing_last_started_at' => Setting::getValue('billing_last_started_at'),
+                'billing_last_status' => Setting::getValue('billing_last_status'),
+                'billing_last_error' => Setting::getValue('billing_last_error'),
                 'currency' => Setting::getValue('currency'),
                 'invoice_generation_days' => (int) Setting::getValue('invoice_generation_days'),
                 'invoice_due_days' => (int) Setting::getValue('invoice_due_days'),
@@ -51,6 +73,7 @@ class SettingController extends Controller
                 'auto_bind_domains' => (int) Setting::getValue('auto_bind_domains'),
                 'payment_instructions' => Setting::getValue('payment_instructions'),
             ],
+            'emailTemplates' => $emailTemplates,
         ]);
     }
 
@@ -88,6 +111,9 @@ class SettingController extends Controller
             'auto_cancellation_days' => ['required', 'integer', 'min:0', 'max:365'],
             'auto_bind_domains' => ['nullable', 'boolean'],
             'payment_instructions' => ['nullable', 'string'],
+            'templates' => ['nullable', 'array'],
+            'templates.*.subject' => ['nullable', 'string', 'max:255'],
+            'templates.*.body' => ['nullable', 'string'],
         ]);
 
         Setting::setValue('company_name', $data['company_name']);
@@ -130,6 +156,32 @@ class SettingController extends Controller
         Setting::setValue('auto_cancellation_days', (int) $data['auto_cancellation_days']);
         Setting::setValue('auto_bind_domains', $request->boolean('auto_bind_domains') ? '1' : '0');
         Setting::setValue('payment_instructions', $data['payment_instructions'] ?? '');
+
+        if (Schema::hasTable('email_templates') && ! empty($data['templates']) && is_array($data['templates'])) {
+            $templateUpdates = $data['templates'];
+            $templates = EmailTemplate::query()
+                ->whereIn('id', array_keys($templateUpdates))
+                ->get()
+                ->keyBy('id');
+
+            foreach ($templateUpdates as $templateId => $payload) {
+                $template = $templates->get((int) $templateId);
+
+                if (! $template) {
+                    continue;
+                }
+
+                if (array_key_exists('subject', $payload)) {
+                    $template->subject = $payload['subject'] ?? '';
+                }
+
+                if (array_key_exists('body', $payload)) {
+                    $template->body = $payload['body'] ?? '';
+                }
+
+                $template->save();
+            }
+        }
 
         return redirect()->route('admin.settings.edit')
             ->with('status', 'Settings updated.');

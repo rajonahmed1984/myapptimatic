@@ -7,6 +7,12 @@
     <h2 class="mt-3 text-2xl font-semibold text-slate-900">Sign in to your workspace</h2>
     <p class="mt-2 text-sm text-slate-600">Track invoices, licenses, and subscription status.</p>
 
+    @if(session('status'))
+        <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            {{ session('status') }}
+        </div>
+    @endif
+
     <form class="mt-8 space-y-5" method="POST" action="{{ route('login.attempt') }}">
         @csrf
         <div>
@@ -41,6 +47,7 @@
     </form>
 
     <p class="mt-6 text-xs text-slate-500">
+        Need an account? <a href="{{ route('register') }}" class="font-semibold text-teal-600 hover:text-teal-500">Register</a>.
         Admin access? Use the <a href="{{ route('admin.login') }}" class="font-semibold text-teal-600 hover:text-teal-500">admin login</a>.
     </p>
 @endsection
