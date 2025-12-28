@@ -1,0 +1,73 @@
+@extends('layouts.admin')
+
+@section('title', 'Edit Subscription')
+@section('page-title', 'Edit Subscription')
+
+@section('content')
+    <div class="card p-6">
+        <h1 class="text-2xl font-semibold text-slate-900">Edit Subscription</h1>
+
+        <form method="POST" action="{{ route('admin.subscriptions.update', $subscription) }}" class="mt-6 space-y-6">
+            @csrf
+            @method('PUT')
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="text-sm text-slate-600">Customer</label>
+                    <select name="customer_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                        @foreach($customers as $customer)
+                            <option value="{{ $customer->id }}" @selected($subscription->customer_id === $customer->id)>{{ $customer->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Plan</label>
+                    <select name="plan_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                        @foreach($plans as $plan)
+                            <option value="{{ $plan->id }}" @selected($subscription->plan_id === $plan->id)>{{ $plan->name }} ({{ $plan->product->name }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Status</label>
+                    <select name="status" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                        <option value="active" @selected($subscription->status === 'active')>Active</option>
+                        <option value="suspended" @selected($subscription->status === 'suspended')>Suspended</option>
+                        <option value="cancelled" @selected($subscription->status === 'cancelled')>Cancelled</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Current period start</label>
+                    <input name="current_period_start" type="date" value="{{ old('current_period_start', $subscription->current_period_start->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Current period end</label>
+                    <input name="current_period_end" type="date" value="{{ old('current_period_end', $subscription->current_period_end->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Next invoice at</label>
+                    <input name="next_invoice_at" type="date" value="{{ old('next_invoice_at', $subscription->next_invoice_at->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
+                <div class="flex items-center gap-2 text-sm text-slate-600">
+                    <input type="hidden" name="auto_renew" value="0" />
+                    <input type="checkbox" name="auto_renew" value="1" @checked($subscription->auto_renew) class="rounded border-slate-300 text-teal-500" />
+                    Auto renew
+                </div>
+                <div class="flex items-center gap-2 text-sm text-slate-600">
+                    <input type="hidden" name="cancel_at_period_end" value="0" />
+                    <input type="checkbox" name="cancel_at_period_end" value="1" @checked($subscription->cancel_at_period_end) class="rounded border-slate-300 text-teal-500" />
+                    Cancel at period end
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Cancelled at</label>
+                    <input name="cancelled_at" type="date" value="{{ old('cancelled_at', optional($subscription->cancelled_at)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm text-slate-600">Notes</label>
+                    <textarea name="notes" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $subscription->notes) }}</textarea>
+                </div>
+            </div>
+
+            <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Update subscription</button>
+        </form>
+    </div>
+@endsection

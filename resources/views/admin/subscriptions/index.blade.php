@@ -1,0 +1,42 @@
+@extends('layouts.admin')
+
+@section('title', 'Subscriptions')
+@section('page-title', 'Subscriptions')
+
+@section('content')
+    <div class="mb-6 flex items-center justify-between">
+        <h1 class="text-2xl font-semibold text-slate-900">Subscriptions</h1>
+        <a href="{{ route('admin.subscriptions.create') }}" class="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">New Subscription</a>
+    </div>
+
+    <div class="card overflow-hidden">
+        <table class="w-full text-left text-sm">
+            <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                <tr>
+                    <th class="px-4 py-3">Customer</th>
+                    <th class="px-4 py-3">Plan</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Next invoice</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($subscriptions as $subscription)
+                    <tr class="border-b border-slate-100">
+                        <td class="px-4 py-3 font-medium text-slate-900">{{ $subscription->customer->name }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $subscription->plan->name }}</td>
+                        <td class="px-4 py-3 text-slate-700">{{ ucfirst($subscription->status) }}</td>
+                        <td class="px-4 py-3">{{ $subscription->next_invoice_at->format('Y-m-d') }}</td>
+                        <td class="px-4 py-3 text-right">
+                            <a href="{{ route('admin.subscriptions.edit', $subscription) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5" class="px-4 py-6 text-center text-slate-500">No subscriptions yet.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+@endsection
