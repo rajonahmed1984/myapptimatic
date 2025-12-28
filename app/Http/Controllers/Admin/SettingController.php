@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\EmailTemplate;
 use App\Models\Setting;
+use App\Models\Plan;
+use App\Support\Branding;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SettingController extends Controller
@@ -37,9 +38,9 @@ class SettingController extends Controller
                 'company_email' => Setting::getValue('company_email'),
                 'pay_to_text' => Setting::getValue('pay_to_text'),
                 'company_logo_path' => $logoPath,
-                'company_logo_url' => $logoPath ? Storage::disk('public')->url($logoPath) : null,
+                'company_logo_url' => Branding::url($logoPath),
                 'company_favicon_path' => $faviconPath,
-                'company_favicon_url' => $faviconPath ? Storage::disk('public')->url($faviconPath) : null,
+                'company_favicon_url' => Branding::url($faviconPath),
                 'cron_token' => $cronToken,
                 'cron_url' => $cronUrl,
                 'billing_last_run_at' => Setting::getValue('billing_last_run_at'),
@@ -131,6 +132,7 @@ class SettingController extends Controller
         }
 
         Setting::setValue('currency', strtoupper($data['currency']));
+        Plan::query()->update(['currency' => strtoupper($data['currency'])]);
         Setting::setValue('invoice_generation_days', (int) $data['invoice_generation_days']);
         Setting::setValue('invoice_due_days', (int) $data['invoice_due_days']);
         Setting::setValue('grace_period_days', (int) $data['grace_period_days']);

@@ -34,9 +34,12 @@
                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-200"
             />
         </div>
-        <div class="flex items-center gap-2 text-sm text-slate-500">
-            <input type="checkbox" name="remember" class="rounded border-slate-300 text-teal-500 focus:ring-teal-200" />
-            Remember me
+        <div class="flex items-center justify-between text-sm text-slate-500">
+            <label class="flex items-center gap-2">
+                <input type="checkbox" name="remember" class="rounded border-slate-300 text-teal-500 focus:ring-teal-200" />
+                Remember me
+            </label>
+            <a href="{{ route('password.request') }}" class="text-teal-600 hover:text-teal-500">Forgot password?</a>
         </div>
         <button
             type="submit"

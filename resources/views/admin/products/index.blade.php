@@ -26,7 +26,14 @@
                         <td class="px-4 py-3 text-slate-500">{{ $product->slug }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($product->status) }}</td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.products.edit', $product) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                            <div class="flex items-center justify-end gap-3">
+                                <a href="{{ route('admin.products.edit', $product) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                                <form method="POST" action="{{ route('admin.products.destroy', $product) }}" onsubmit="return confirm('Delete this product? Plans and subscriptions will also be removed.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty

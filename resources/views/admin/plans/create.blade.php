@@ -35,7 +35,10 @@
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Currency</label>
-                    <input name="currency" value="{{ old('currency', 'USD') }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
+                        {{ $defaultCurrency }}
+                    </div>
+                    <p class="mt-2 text-xs text-slate-500">Currency is set globally in Settings.</p>
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Invoice due days</label>

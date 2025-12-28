@@ -35,6 +35,10 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Support
                 </a>
+                <a class="{{ request()->routeIs('client.profile.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.profile.edit') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Profile
+                </a>
             </nav>
 
             <div class="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
@@ -71,6 +75,7 @@
                             <a href="{{ route('client.dashboard') }}#invoices" class="text-slate-700 hover:text-teal-600">Invoices</a>
                             <a href="{{ route('client.dashboard') }}#licenses" class="text-slate-700 hover:text-teal-600">Licenses</a>
                             <a href="{{ route('client.support-tickets.index') }}" class="text-slate-700 hover:text-teal-600">Support</a>
+                            <a href="{{ route('client.profile.edit') }}" class="text-slate-700 hover:text-teal-600">Profile</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit" class="text-left text-slate-700 hover:text-teal-600">Sign out</button>

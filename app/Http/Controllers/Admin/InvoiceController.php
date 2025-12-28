@@ -4,10 +4,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Services\BillingService;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class InvoiceController extends Controller
 {
+    public function __construct(private BillingService $billingService)
+    {
+    }
+
     public function index()
     {
         return view('admin.invoices.index', [
@@ -31,5 +39,60 @@ class InvoiceController extends Controller
 
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice marked as paid.');
+    }
+
+    public function recalculate(Invoice $invoice): RedirectResponse
+    {
+        if (! in_array($invoice->status, ['unpaid', 'overdue'], true)) {
+            return redirect()->route('admin.invoices.show', $invoice)
+                ->with('status', 'Only unpaid or overdue invoices can be recalculated.');
+        }
+
+        $this->billingService->recalculateInvoice($invoice);
+
+        return redirect()->route('admin.invoices.show', $invoice)
+            ->with('status', 'Invoice recalculated.');
+    }
+
+    public function update(Request $request, Invoice $invoice): RedirectResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', Rule::in(['unpaid', 'overdue', 'paid', 'cancelled'])],
+            'issue_date' => ['required', 'date'],
+            'due_date' => ['required', 'date', 'after_or_equal:issue_date'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $updates = [
+            'status' => $data['status'],
+            'issue_date' => $data['issue_date'],
+            'due_date' => $data['due_date'],
+            'notes' => $data['notes'] ?? null,
+        ];
+
+        if ($data['status'] === 'paid') {
+            $updates['paid_at'] = $invoice->paid_at ?? Carbon::now();
+        } else {
+            $updates['paid_at'] = null;
+        }
+
+        if ($data['status'] === 'overdue') {
+            $updates['overdue_at'] = $invoice->overdue_at ?? Carbon::now();
+        } else {
+            $updates['overdue_at'] = null;
+        }
+
+        $invoice->update($updates);
+
+        return redirect()->route('admin.invoices.show', $invoice)
+            ->with('status', 'Invoice updated.');
+    }
+
+    public function destroy(Invoice $invoice): RedirectResponse
+    {
+        $invoice->delete();
+
+        return redirect()->route('admin.invoices.index')
+            ->with('status', 'Invoice deleted.');
     }
 }

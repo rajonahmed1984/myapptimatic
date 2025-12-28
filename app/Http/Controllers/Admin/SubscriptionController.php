@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\BillingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -41,9 +42,9 @@ class SubscriptionController extends Controller
 
         $plan = Plan::findOrFail($data['plan_id']);
         $startDate = Carbon::parse($data['start_date']);
-        $periodEnd = $plan->interval === 'yearly'
-            ? $startDate->copy()->addYear()
-            : $startDate->copy()->addMonth();
+        $periodEnd = $plan->interval === 'monthly'
+            ? $startDate->copy()->endOfMonth()
+            : $startDate->copy()->addYear();
 
         $subscription = Subscription::create([
             'customer_id' => $data['customer_id'],
@@ -57,6 +58,10 @@ class SubscriptionController extends Controller
             'cancel_at_period_end' => $request->boolean('cancel_at_period_end'),
             'notes' => $data['notes'] ?? null,
         ]);
+
+        if ($subscription->status === 'active' && $startDate->lessThanOrEqualTo(Carbon::today())) {
+            app(BillingService::class)->generateInvoiceForSubscription($subscription, Carbon::today());
+        }
 
         return redirect()->route('admin.subscriptions.edit', $subscription)
             ->with('status', 'Subscription created.');
@@ -101,5 +106,13 @@ class SubscriptionController extends Controller
 
         return redirect()->route('admin.subscriptions.edit', $subscription)
             ->with('status', 'Subscription updated.');
+    }
+
+    public function destroy(Subscription $subscription)
+    {
+        $subscription->delete();
+
+        return redirect()->route('admin.subscriptions.index')
+            ->with('status', 'Subscription deleted.');
     }
 }

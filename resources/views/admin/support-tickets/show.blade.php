@@ -21,7 +21,7 @@
                 <div class="section-label">Ticket</div>
                 <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ $ticket->subject }}</h1>
                 <div class="mt-2 text-sm text-slate-500">
-                    TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }} · {{ $ticket->customer->name }} · Priority {{ ucfirst($ticket->priority) }}
+                    TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }} - {{ $ticket->customer->name }} - Priority {{ ucfirst($ticket->priority) }}
                 </div>
             </div>
             <div class="flex flex-col items-end gap-3 text-sm">
@@ -36,6 +36,45 @@
                     </button>
                 </form>
             </div>
+        </div>
+    </div>
+
+    <div class="card mt-6 p-6">
+        <div class="section-label">Ticket details</div>
+        <form method="POST" action="{{ route('admin.support-tickets.update', $ticket) }}" class="mt-4 grid gap-4 md:grid-cols-2">
+            @csrf
+            @method('PATCH')
+            <div class="md:col-span-2">
+                <label class="text-sm text-slate-600">Subject</label>
+                <input name="subject" value="{{ old('subject', $ticket->subject) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+            </div>
+            <div>
+                <label class="text-sm text-slate-600">Priority</label>
+                <select name="priority" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    <option value="low" @selected(old('priority', $ticket->priority) === 'low')>Low</option>
+                    <option value="medium" @selected(old('priority', $ticket->priority) === 'medium')>Medium</option>
+                    <option value="high" @selected(old('priority', $ticket->priority) === 'high')>High</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-sm text-slate-600">Status</label>
+                <select name="status" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    <option value="open" @selected(old('status', $ticket->status) === 'open')>Open</option>
+                    <option value="answered" @selected(old('status', $ticket->status) === 'answered')>Answered</option>
+                    <option value="customer_reply" @selected(old('status', $ticket->status) === 'customer_reply')>Customer Reply</option>
+                    <option value="closed" @selected(old('status', $ticket->status) === 'closed')>Closed</option>
+                </select>
+            </div>
+            <div class="md:col-span-2 flex justify-end">
+                <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Save changes</button>
+            </div>
+        </form>
+        <div class="mt-4 flex justify-end">
+            <form method="POST" action="{{ route('admin.support-tickets.destroy', $ticket) }}" onsubmit="return confirm('Delete this ticket and all replies?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="rounded-full border border-rose-200 px-5 py-2 text-sm font-semibold text-rose-600 hover:border-rose-300 hover:text-rose-500">Delete ticket</button>
+            </form>
         </div>
     </div>
 
@@ -66,3 +105,4 @@
         </form>
     </div>
 @endsection
+

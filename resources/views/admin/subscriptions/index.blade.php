@@ -28,7 +28,14 @@
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($subscription->status) }}</td>
                         <td class="px-4 py-3">{{ $subscription->next_invoice_at->format('Y-m-d') }}</td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.subscriptions.edit', $subscription) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                            <div class="flex items-center justify-end gap-3">
+                                <a href="{{ route('admin.subscriptions.edit', $subscription) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                                <form method="POST" action="{{ route('admin.subscriptions.destroy', $subscription) }}" onsubmit="return confirm('Delete this subscription? Licenses will be revoked and invoices remain.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty

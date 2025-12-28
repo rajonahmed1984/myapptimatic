@@ -67,10 +67,17 @@
                             <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $label }}</span>
                         </td>
                         <td class="px-4 py-3 text-slate-500">
-                            {{ $ticket->last_reply_at?->format('Y-m-d H:i') ?? '—' }}
+                            {{ $ticket->last_reply_at?->format('Y-m-d H:i') ?? '--' }}
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="text-teal-600 hover:text-teal-500">View</a>
+                            <div class="flex items-center justify-end gap-3">
+                                <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                                <form method="POST" action="{{ route('admin.support-tickets.destroy', $ticket) }}" onsubmit="return confirm('Delete this ticket and all replies?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty
@@ -82,3 +89,4 @@
         </table>
     </div>
 @endsection
+

@@ -3,8 +3,8 @@
 namespace App\Providers;
 
 use App\Models\Setting;
+use App\Support\Branding;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,8 +31,8 @@ class AppServiceProvider extends ServiceProvider
                 'company_name' => $companyName ?: 'MyApptimatic',
                 'company_email' => Setting::getValue('company_email'),
                 'pay_to_text' => Setting::getValue('pay_to_text'),
-                'logo_url' => $logoPath ? Storage::disk('public')->url($logoPath) : null,
-                'favicon_url' => $faviconPath ? Storage::disk('public')->url($faviconPath) : null,
+                'logo_url' => Branding::url($logoPath),
+                'favicon_url' => Branding::url($faviconPath),
             ];
 
             View::share('portalBranding', $brand);

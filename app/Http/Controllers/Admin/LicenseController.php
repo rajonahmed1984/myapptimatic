@@ -10,6 +10,7 @@ use App\Models\Subscription;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class LicenseController extends Controller
 {
@@ -37,12 +38,24 @@ class LicenseController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
             'starts_at' => ['required', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'max_domains' => ['required', 'integer', 'min:1', 'max:50'],
             'allowed_domains' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
         ]);
 
         $licenseKey = $data['license_key'] ?: License::generateKey();
+        $allowedDomain = $this->extractSingleDomain($data['allowed_domains'] ?? null);
+
+        if ($allowedDomain === false) {
+            return back()
+                ->withErrors(['allowed_domains' => 'Only one domain is allowed per license.'])
+                ->withInput();
+        }
+
+        if ($allowedDomain && ! $this->normalizeDomain($allowedDomain)) {
+            return back()
+                ->withErrors(['allowed_domains' => 'Invalid domain format. Use only the hostname.'])
+                ->withInput();
+        }
 
         $license = License::create([
             'subscription_id' => $data['subscription_id'],
@@ -51,24 +64,17 @@ class LicenseController extends Controller
             'status' => $data['status'],
             'starts_at' => $data['starts_at'],
             'expires_at' => $data['expires_at'] ?? null,
-            'max_domains' => $data['max_domains'],
+            'max_domains' => 1,
             'notes' => $data['notes'] ?? null,
         ]);
 
-        if (! empty($data['allowed_domains'])) {
-            $domains = collect(preg_split('/\r\n|\r|\n/', $data['allowed_domains']))
-                ->map(fn ($domain) => trim($domain))
-                ->filter()
-                ->unique();
-
-            foreach ($domains as $domain) {
-                LicenseDomain::create([
-                    'license_id' => $license->id,
-                    'domain' => $domain,
-                    'status' => 'active',
-                    'verified_at' => Carbon::now(),
-                ]);
-            }
+        if ($allowedDomain) {
+            LicenseDomain::create([
+                'license_id' => $license->id,
+                'domain' => $this->normalizeDomain($allowedDomain),
+                'status' => 'active',
+                'verified_at' => Carbon::now(),
+            ]);
         }
 
         return redirect()->route('admin.licenses.edit', $license)
@@ -93,13 +99,72 @@ class LicenseController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
             'starts_at' => ['required', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'max_domains' => ['required', 'integer', 'min:1', 'max:50'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        $data['max_domains'] = 1;
 
         $license->update($data);
 
         return redirect()->route('admin.licenses.edit', $license)
             ->with('status', 'License updated.');
+    }
+
+    public function revokeDomain(License $license, LicenseDomain $domain)
+    {
+        if ($domain->license_id !== $license->id) {
+            abort(404);
+        }
+
+        $domain->update([
+            'status' => 'revoked',
+        ]);
+
+        return redirect()->route('admin.licenses.edit', $license)
+            ->with('status', 'Domain revoked.');
+    }
+
+    public function destroy(License $license)
+    {
+        $license->delete();
+
+        return redirect()->route('admin.licenses.index')
+            ->with('status', 'License deleted.');
+    }
+
+    private function extractSingleDomain(?string $input): string|bool|null
+    {
+        if ($input === null) {
+            return null;
+        }
+
+        $domains = collect(preg_split('/\r\n|\r|\n/', $input))
+            ->map(fn ($domain) => trim($domain))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($domains->count() > 1) {
+            return false;
+        }
+
+        return $domains->first();
+    }
+
+    private function normalizeDomain(string $input): ?string
+    {
+        $value = trim(strtolower($input));
+
+        if (Str::startsWith($value, ['http://', 'https://'])) {
+            $value = parse_url($value, PHP_URL_HOST) ?: '';
+        }
+
+        $value = preg_replace('/^www\./', '', $value);
+
+        if ($value === '' || ! preg_match('/^[a-z0-9.-]+$/', $value)) {
+            return null;
+        }
+
+        return $value;
     }
 }

@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\Invoice;
-use App\Models\InvoiceItem;
 use App\Models\Setting;
 use App\Models\Subscription;
+use App\Services\BillingService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -14,6 +14,11 @@ class RunBillingCycle extends Command
     protected $signature = 'billing:run';
 
     protected $description = 'Generate invoices, mark overdue, apply late fees, and run automation.';
+
+    public function __construct(private BillingService $billingService)
+    {
+        parent::__construct();
+    }
 
     public function handle(): int
     {
@@ -74,51 +79,7 @@ class RunBillingCycle extends Command
                 continue;
             }
 
-            $plan = $subscription->plan;
-            $dueDays = (int) ($plan->invoice_due_days ?: Setting::getValue('invoice_due_days'));
-            $invoiceGenerationDays = (int) Setting::getValue('invoice_generation_days');
-            $currency = $plan->currency ?: Setting::getValue('currency');
-            $issueDate = $today->copy();
-
-            $invoice = Invoice::create([
-                'customer_id' => $subscription->customer_id,
-                'subscription_id' => $subscription->id,
-                'number' => $this->nextInvoiceNumber($issueDate->year),
-                'status' => 'unpaid',
-                'issue_date' => $issueDate->toDateString(),
-                'due_date' => $issueDate->copy()->addDays($dueDays)->toDateString(),
-                'subtotal' => $plan->price,
-                'late_fee' => 0,
-                'total' => $plan->price,
-                'currency' => strtoupper($currency),
-            ]);
-
-            InvoiceItem::create([
-                'invoice_id' => $invoice->id,
-                'description' => sprintf('%s (%s)', $plan->name, $plan->interval),
-                'quantity' => 1,
-                'unit_price' => $plan->price,
-                'line_total' => $plan->price,
-            ]);
-
-            $periodStart = $subscription->current_period_end->copy();
-            $periodEnd = $plan->interval === 'yearly'
-                ? $periodStart->copy()->addYear()
-                : $periodStart->copy()->addMonth();
-
-            $nextInvoiceAt = $invoiceGenerationDays > 0
-                ? $periodEnd->copy()->subDays($invoiceGenerationDays)
-                : $periodEnd->copy();
-
-            if ($nextInvoiceAt->lessThan($today)) {
-                $nextInvoiceAt = $periodEnd->copy();
-            }
-
-            $subscription->update([
-                'current_period_start' => $periodStart->toDateString(),
-                'current_period_end' => $periodEnd->toDateString(),
-                'next_invoice_at' => $nextInvoiceAt->toDateString(),
-            ]);
+            $this->billingService->generateInvoiceForSubscription($subscription, $today);
         }
     }
 
@@ -302,10 +263,4 @@ class RunBillingCycle extends Command
         }
     }
 
-    private function nextInvoiceNumber(int $year): string
-    {
-        $sequence = Invoice::query()->whereYear('issue_date', $year)->count() + 1;
-
-        return sprintf('INV-%d-%04d', $year, $sequence);
-    }
 }

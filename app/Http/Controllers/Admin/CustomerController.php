@@ -86,4 +86,13 @@ class CustomerController extends Controller
         return redirect()->route('admin.customers.edit', $customer)
             ->with('status', 'Customer updated.');
     }
+
+    public function destroy(Customer $customer)
+    {
+        User::where('customer_id', $customer->id)->delete();
+        $customer->delete();
+
+        return redirect()->route('admin.customers.index')
+            ->with('status', 'Customer deleted.');
+    }
 }

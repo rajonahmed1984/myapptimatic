@@ -26,7 +26,14 @@
                         <td class="px-4 py-3 text-slate-500">{{ $customer->email }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($customer->status) }}</td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.customers.edit', $customer) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                            <div class="flex items-center justify-end gap-3">
+                                <a href="{{ route('admin.customers.edit', $customer) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                                <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}" onsubmit="return confirm('Delete this customer? This will remove related subscriptions and invoices.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty

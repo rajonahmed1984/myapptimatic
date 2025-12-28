@@ -52,17 +52,51 @@ class LicenseVerificationController extends Controller
             return $this->blockedResponse('invalid_domain');
         }
 
-        $existingDomain = $license->domains->first(
-            fn (LicenseDomain $item) => strtolower($item->domain) === $domain && $item->status === 'active'
-        );
+        $activeDomain = LicenseDomain::query()
+            ->where('license_id', $license->id)
+            ->where('status', 'active')
+            ->orderBy('id')
+            ->first();
 
-        $domainAllowed = (bool) $existingDomain;
+        if ($activeDomain) {
+            $extraIds = LicenseDomain::query()
+                ->where('license_id', $license->id)
+                ->where('status', 'active')
+                ->where('id', '!=', $activeDomain->id)
+                ->pluck('id');
 
-        if (! $domainAllowed) {
+            if ($extraIds->isNotEmpty()) {
+                LicenseDomain::query()
+                    ->whereIn('id', $extraIds)
+                    ->update(['status' => 'revoked']);
+            }
+
+            if (strtolower($activeDomain->domain) !== $domain) {
+                return $this->blockedResponse('domain_not_allowed');
+            }
+
+            $activeDomain->update([
+                'last_seen_at' => Carbon::now(),
+            ]);
+        } else {
             $autoBind = (bool) Setting::getValue('auto_bind_domains');
-            $currentCount = $license->domains->count();
 
-            if ($autoBind && $currentCount < $license->max_domains) {
+            if (! $autoBind) {
+                return $this->blockedResponse('domain_not_allowed');
+            }
+
+            $existingDomain = LicenseDomain::query()
+                ->where('license_id', $license->id)
+                ->where('domain', $domain)
+                ->first();
+
+            if ($existingDomain) {
+                $existingDomain->update([
+                    'status' => 'active',
+                    'verified_at' => Carbon::now(),
+                    'last_seen_at' => Carbon::now(),
+                ]);
+            } else {
                 LicenseDomain::create([
                     'license_id' => $license->id,
                     'domain' => $domain,
@@ -70,18 +104,7 @@ class LicenseVerificationController extends Controller
                     'verified_at' => Carbon::now(),
                     'last_seen_at' => Carbon::now(),
                 ]);
-                $domainAllowed = true;
             }
-        }
-
-        if ($existingDomain) {
-            $existingDomain->update([
-                'last_seen_at' => Carbon::now(),
-            ]);
-        }
-
-        if (! $domainAllowed) {
-            return $this->blockedResponse('domain_not_allowed');
         }
 
         $invoiceBlock = $this->invoiceBlockStatus($customer->id);

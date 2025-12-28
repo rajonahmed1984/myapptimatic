@@ -28,7 +28,14 @@
                         <td class="px-4 py-3 text-slate-500">{{ $license->subscription->customer->name }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($license->status) }}</td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.licenses.edit', $license) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                            <div class="flex items-center justify-end gap-3">
+                                <a href="{{ route('admin.licenses.edit', $license) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                                <form method="POST" action="{{ route('admin.licenses.destroy', $license) }}" onsubmit="return confirm('Delete this license?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty

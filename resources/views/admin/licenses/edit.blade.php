@@ -46,18 +46,19 @@
                         <label class="text-sm text-slate-600">Start date</label>
                         <input name="starts_at" type="date" value="{{ old('starts_at', $license->starts_at->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                     </div>
-                    <div>
-                        <label class="text-sm text-slate-600">Expires at</label>
-                        <input name="expires_at" type="date" value="{{ old('expires_at', optional($license->expires_at)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                    </div>
-                    <div>
-                        <label class="text-sm text-slate-600">Max domains</label>
-                        <input name="max_domains" type="number" value="{{ old('max_domains', $license->max_domains) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="text-sm text-slate-600">Notes</label>
-                        <textarea name="notes" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $license->notes) }}</textarea>
-                    </div>
+                <div>
+                    <label class="text-sm text-slate-600">Expires at</label>
+                    <input name="expires_at" type="date" value="{{ old('expires_at', optional($license->expires_at)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Max domains</label>
+                    <div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">1 (fixed)</div>
+                    <p class="mt-2 text-xs text-slate-500">Only one domain is allowed per license.</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm text-slate-600">Notes</label>
+                    <textarea name="notes" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $license->notes) }}</textarea>
+                </div>
                 </div>
 
                 <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Update license</button>
@@ -69,8 +70,18 @@
             <div class="mt-4 space-y-2 text-sm">
                 @forelse($license->domains as $domain)
                     <div class="card-muted px-3 py-2">
-                        <div class="text-slate-800">{{ $domain->domain }}</div>
-                        <div class="text-xs text-slate-500">{{ ucfirst($domain->status) }}</div>
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <div class="text-slate-800">{{ $domain->domain }}</div>
+                                <div class="text-xs text-slate-500">{{ ucfirst($domain->status) }}</div>
+                            </div>
+                            @if($domain->status === 'active')
+                                <form method="POST" action="{{ route('admin.licenses.domains.revoke', [$license, $domain]) }}">
+                                    @csrf
+                                    <button type="submit" class="text-xs font-semibold text-rose-600 hover:text-rose-500">Revoke</button>
+                                </form>
+                            @endif
+                        </div>
                     </div>
                 @empty
                     <div class="text-sm text-slate-500">No domains assigned yet.</div>

@@ -48,11 +48,13 @@
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Max domains</label>
-                    <input name="max_domains" type="number" value="{{ old('max_domains', 1) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">1 (fixed)</div>
+                    <p class="mt-2 text-xs text-slate-500">Only one domain is allowed per license.</p>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="text-sm text-slate-600">Allowed domains (one per line)</label>
+                    <label class="text-sm text-slate-600">Allowed domain (single)</label>
                     <textarea name="allowed_domains" rows="3" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('allowed_domains') }}</textarea>
+                    <p class="mt-2 text-xs text-slate-500">Use only the hostname, e.g. <code>sectorix-w.local</code> or <code>sectorix-w.com</code>.</p>
                 </div>
                 <div class="md:col-span-2">
                     <label class="text-sm text-slate-600">Notes</label>

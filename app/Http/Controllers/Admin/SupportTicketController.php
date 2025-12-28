@@ -88,4 +88,33 @@ class SupportTicketController extends Controller
             ->route('admin.support-tickets.show', $ticket)
             ->with('status', 'Ticket updated.');
     }
+
+    public function update(Request $request, SupportTicket $ticket)
+    {
+        $data = $request->validate([
+            'subject' => ['required', 'string', 'max:255'],
+            'priority' => ['required', Rule::in(['low', 'medium', 'high'])],
+            'status' => ['required', Rule::in(['open', 'answered', 'customer_reply', 'closed'])],
+        ]);
+
+        $ticket->update([
+            'subject' => $data['subject'],
+            'priority' => $data['priority'],
+            'status' => $data['status'],
+            'closed_at' => $data['status'] === 'closed' ? now() : null,
+        ]);
+
+        return redirect()
+            ->route('admin.support-tickets.show', $ticket)
+            ->with('status', 'Ticket updated.');
+    }
+
+    public function destroy(SupportTicket $ticket)
+    {
+        $ticket->delete();
+
+        return redirect()
+            ->route('admin.support-tickets.index')
+            ->with('status', 'Ticket deleted.');
+    }
 }
