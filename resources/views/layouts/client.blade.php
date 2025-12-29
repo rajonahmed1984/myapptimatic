@@ -23,11 +23,23 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Overview
                 </a>
-                <a class="nav-link" href="{{ route('client.dashboard') }}#invoices">
+                <a class="{{ request()->routeIs('client.orders.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.orders.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Order
+                </a>
+                <a class="{{ request()->routeIs('client.services.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.services.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Services
+                </a>
+                <a class="{{ request()->routeIs('client.domains.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.domains.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Domains
+                </a>
+                <a class="{{ request()->routeIs('client.invoices.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.invoices.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Invoices
                 </a>
-                <a class="nav-link" href="{{ route('client.dashboard') }}#licenses">
+                <a class="{{ request()->routeIs('client.licenses.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.licenses.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Licenses
                 </a>
@@ -72,8 +84,11 @@
                         <summary class="cursor-pointer text-sm font-semibold text-slate-700">Menu</summary>
                         <nav class="mt-3 grid gap-2 text-sm">
                             <a href="{{ route('client.dashboard') }}" class="text-slate-700 hover:text-teal-600">Overview</a>
-                            <a href="{{ route('client.dashboard') }}#invoices" class="text-slate-700 hover:text-teal-600">Invoices</a>
-                            <a href="{{ route('client.dashboard') }}#licenses" class="text-slate-700 hover:text-teal-600">Licenses</a>
+                            <a href="{{ route('client.orders.index') }}" class="text-slate-700 hover:text-teal-600">Order</a>
+                            <a href="{{ route('client.services.index') }}" class="text-slate-700 hover:text-teal-600">Services</a>
+                            <a href="{{ route('client.domains.index') }}" class="text-slate-700 hover:text-teal-600">Domains</a>
+                            <a href="{{ route('client.invoices.index') }}" class="text-slate-700 hover:text-teal-600">Invoices</a>
+                            <a href="{{ route('client.licenses.index') }}" class="text-slate-700 hover:text-teal-600">Licenses</a>
                             <a href="{{ route('client.support-tickets.index') }}" class="text-slate-700 hover:text-teal-600">Support</a>
                             <a href="{{ route('client.profile.edit') }}" class="text-slate-700 hover:text-teal-600">Profile</a>
                             <form method="POST" action="{{ route('logout') }}">

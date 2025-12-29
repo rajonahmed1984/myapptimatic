@@ -31,7 +31,7 @@ class BillingService
         $invoice = Invoice::create([
             'customer_id' => $subscription->customer_id,
             'subscription_id' => $subscription->id,
-            'number' => $this->nextInvoiceNumber($issueDate->year),
+            'number' => $this->nextInvoiceNumber(),
             'status' => 'unpaid',
             'issue_date' => $issueDate->toDateString(),
             'due_date' => $issueDate->copy()->addDays($dueDays)->toDateString(),
@@ -203,10 +203,18 @@ class BillingService
         return $nextInvoiceAt;
     }
 
-    private function nextInvoiceNumber(int $year): string
+    private function nextInvoiceNumber(): string
     {
-        $sequence = Invoice::query()->whereYear('issue_date', $year)->count() + 1;
+        $maxNumber = (int) Invoice::query()
+            ->selectRaw('MAX(CAST(number AS UNSIGNED)) as max_number')
+            ->value('max_number');
 
-        return sprintf('INV-%d-%04d', $year, $sequence);
+        $next = $maxNumber + 1;
+
+        while (Invoice::query()->where('number', (string) $next)->exists()) {
+            $next++;
+        }
+
+        return (string) $next;
     }
 }

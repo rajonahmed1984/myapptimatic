@@ -50,4 +50,24 @@ class Invoice extends Model
     {
         return $this->hasMany(InvoiceItem::class);
     }
+
+    public function accountingEntries(): HasMany
+    {
+        return $this->hasMany(AccountingEntry::class);
+    }
+
+    public function paymentAttempts(): HasMany
+    {
+        return $this->hasMany(PaymentAttempt::class);
+    }
+
+    public function paymentProofs(): HasMany
+    {
+        return $this->hasMany(PaymentProof::class);
+    }
+
+    public function clientRequests(): HasMany
+    {
+        return $this->hasMany(ClientRequest::class);
+    }
 }

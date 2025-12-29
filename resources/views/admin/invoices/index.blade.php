@@ -1,10 +1,10 @@
 @extends('layouts.admin')
 
-@section('title', 'Invoices')
-@section('page-title', 'Invoices')
+@section('title', $title ?? 'Invoices')
+@section('page-title', $title ?? 'Invoices')
 
 @section('content')
-    <h1 class="mb-6 text-2xl font-semibold text-slate-900">Invoices</h1>
+    <h1 class="mb-6 text-2xl font-semibold text-slate-900">{{ $title ?? 'Invoices' }}</h1>
 
     <div class="card overflow-hidden">
         <table class="w-full text-left text-sm">
@@ -25,7 +25,7 @@
                         <td class="px-4 py-3 text-slate-500">{{ $invoice->customer->name }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($invoice->status) }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $invoice->currency }} {{ $invoice->total }}</td>
-                        <td class="px-4 py-3">{{ $invoice->due_date->format('Y-m-d') }}</td>
+                        <td class="px-4 py-3">{{ $invoice->due_date->format('d-m-Y') }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.invoices.show', $invoice) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
@@ -39,7 +39,9 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-6 text-center text-slate-500">No invoices yet.</td>
+                        <td colspan="6" class="px-4 py-6 text-center text-slate-500">
+                            {{ $statusFilter ? 'No '.$title.' found.' : 'No invoices yet.' }}
+                        </td>
                     </tr>
                 @endforelse
             </tbody>

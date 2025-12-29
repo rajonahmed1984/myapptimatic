@@ -18,15 +18,44 @@ class InvoiceController extends Controller
 
     public function index()
     {
-        return view('admin.invoices.index', [
-            'invoices' => Invoice::query()->with('customer')->latest('issue_date')->get(),
-        ]);
+        return $this->listByStatus(null, 'All Invoices');
+    }
+
+    public function paid()
+    {
+        return $this->listByStatus('paid', 'Paid Invoices');
+    }
+
+    public function unpaid()
+    {
+        return $this->listByStatus('unpaid', 'Unpaid Invoices');
+    }
+
+    public function overdue()
+    {
+        return $this->listByStatus('overdue', 'Overdue Invoices');
+    }
+
+    public function cancelled()
+    {
+        return $this->listByStatus('cancelled', 'Cancelled Invoices');
+    }
+
+    public function refunded()
+    {
+        return $this->listByStatus('refunded', 'Refunded Invoices');
     }
 
     public function show(Invoice $invoice)
     {
         return view('admin.invoices.show', [
-            'invoice' => $invoice->load(['customer', 'items']),
+            'invoice' => $invoice->load([
+                'customer',
+                'items',
+                'accountingEntries.paymentGateway',
+                'paymentProofs.paymentGateway',
+                'paymentProofs.reviewer',
+            ]),
         ]);
     }
 
@@ -94,5 +123,20 @@ class InvoiceController extends Controller
 
         return redirect()->route('admin.invoices.index')
             ->with('status', 'Invoice deleted.');
+    }
+
+    private function listByStatus(?string $status, string $title)
+    {
+        $query = Invoice::query()->with('customer')->latest('issue_date');
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        return view('admin.invoices.index', [
+            'invoices' => $query->get(),
+            'title' => $title,
+            'statusFilter' => $status,
+        ]);
     }
 }

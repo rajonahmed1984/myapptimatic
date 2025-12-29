@@ -18,6 +18,7 @@
                 </div>
             </div>
 
+            @php($invoiceMenuActive = request()->routeIs('admin.invoices.*'))
             <nav class="mt-10 space-y-2 text-sm">
                 <a class="{{ request()->routeIs('admin.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.dashboard') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
@@ -47,9 +48,31 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Invoices
                 </a>
+                @if($invoiceMenuActive)
+                    <div class="ml-6 space-y-1 text-xs text-slate-400">
+                        <a href="{{ route('admin.invoices.index') }}" class="block {{ request()->routeIs('admin.invoices.index') ? 'text-teal-300' : 'hover:text-slate-200' }}">All invoices</a>
+                        <a href="{{ route('admin.invoices.paid') }}" class="block {{ request()->routeIs('admin.invoices.paid') ? 'text-teal-300' : 'hover:text-slate-200' }}">Paid</a>
+                        <a href="{{ route('admin.invoices.unpaid') }}" class="block {{ request()->routeIs('admin.invoices.unpaid') ? 'text-teal-300' : 'hover:text-slate-200' }}">Unpaid</a>
+                        <a href="{{ route('admin.invoices.overdue') }}" class="block {{ request()->routeIs('admin.invoices.overdue') ? 'text-teal-300' : 'hover:text-slate-200' }}">Overdue</a>
+                        <a href="{{ route('admin.invoices.cancelled') }}" class="block {{ request()->routeIs('admin.invoices.cancelled') ? 'text-teal-300' : 'hover:text-slate-200' }}">Cancelled</a>
+                        <a href="{{ route('admin.invoices.refunded') }}" class="block {{ request()->routeIs('admin.invoices.refunded') ? 'text-teal-300' : 'hover:text-slate-200' }}">Refunded</a>
+                    </div>
+                @endif
+                <a class="{{ request()->routeIs('admin.payment-gateways.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.payment-gateways.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Payment Gateways
+                </a>
+                <a class="{{ request()->routeIs('admin.accounting.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.accounting.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Accounting
+                </a>
                 <a class="{{ request()->routeIs('admin.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.support-tickets.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Support
+                </a>
+                <a class="{{ request()->routeIs('admin.requests.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.requests.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Requests
                 </a>
                 <a class="{{ request()->routeIs('admin.profile.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.profile.edit') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
@@ -98,7 +121,18 @@
                             <a href="{{ route('admin.subscriptions.index') }}" class="text-slate-700 hover:text-teal-600">Subscriptions</a>
                             <a href="{{ route('admin.licenses.index') }}" class="text-slate-700 hover:text-teal-600">Licenses</a>
                             <a href="{{ route('admin.invoices.index') }}" class="text-slate-700 hover:text-teal-600">Invoices</a>
+                            <div class="grid gap-1 pl-3 text-xs text-slate-500">
+                                <a href="{{ route('admin.invoices.index') }}" class="hover:text-teal-600">All invoices</a>
+                                <a href="{{ route('admin.invoices.paid') }}" class="hover:text-teal-600">Paid</a>
+                                <a href="{{ route('admin.invoices.unpaid') }}" class="hover:text-teal-600">Unpaid</a>
+                                <a href="{{ route('admin.invoices.overdue') }}" class="hover:text-teal-600">Overdue</a>
+                                <a href="{{ route('admin.invoices.cancelled') }}" class="hover:text-teal-600">Cancelled</a>
+                                <a href="{{ route('admin.invoices.refunded') }}" class="hover:text-teal-600">Refunded</a>
+                            </div>
+                            <a href="{{ route('admin.payment-gateways.index') }}" class="text-slate-700 hover:text-teal-600">Payment Gateways</a>
+                            <a href="{{ route('admin.accounting.index') }}" class="text-slate-700 hover:text-teal-600">Accounting</a>
                             <a href="{{ route('admin.support-tickets.index') }}" class="text-slate-700 hover:text-teal-600">Support</a>
+                            <a href="{{ route('admin.requests.index') }}" class="text-slate-700 hover:text-teal-600">Requests</a>
                             <a href="{{ route('admin.profile.edit') }}" class="text-slate-700 hover:text-teal-600">Profile</a>
                             <a href="{{ route('admin.settings.edit') }}" class="text-slate-700 hover:text-teal-600">Settings</a>
                             <form method="POST" action="{{ route('logout') }}">

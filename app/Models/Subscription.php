@@ -51,4 +51,9 @@ class Subscription extends Model
     {
         return $this->hasMany(License::class);
     }
+
+    public function clientRequests(): HasMany
+    {
+        return $this->hasMany(ClientRequest::class);
+    }
 }
