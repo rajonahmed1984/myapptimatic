@@ -223,7 +223,7 @@
                             <div class="rounded-2xl border border-slate-200 bg-white p-4">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <div class="text-sm text-slate-500">Invoice {{ $invoice->number }}</div>
+                                        <div class="text-sm text-slate-500">Invoice {{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
                                         <div class="text-lg font-semibold text-slate-900">{{ $invoice->currency }} {{ $invoice->total }}</div>
                                     </div>
                                     <div class="text-sm text-slate-600">{{ ucfirst($invoice->status) }}</div>

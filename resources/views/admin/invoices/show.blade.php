@@ -8,7 +8,7 @@
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <div class="section-label">Invoice</div>
-                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $invoice->number }}</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
                 <div class="mt-1 text-sm text-slate-500">Customer: {{ $invoice->customer->name }}</div>
             </div>
             <div class="text-sm text-slate-600">

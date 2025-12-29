@@ -16,7 +16,11 @@ class SubscriptionController extends Controller
     public function index()
     {
         return view('admin.subscriptions.index', [
-            'subscriptions' => Subscription::query()->with(['customer', 'plan.product'])->latest()->get(),
+            'subscriptions' => Subscription::query()
+                ->with(['customer', 'plan.product'])
+                ->withMax('orders', 'created_at')
+                ->latest()
+                ->get(),
         ]);
     }
 

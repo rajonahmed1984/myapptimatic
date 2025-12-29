@@ -61,6 +61,26 @@
             </div>
             <div class="text-sm text-slate-600 no-print">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Payment method</div>
+                @php
+                    $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
+                    $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
+                @endphp
+                @if($pendingProof)
+                    <div class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                        Manual payment submitted and pending review.
+                        @if($pendingProof->paymentGateway)
+                            <div class="mt-1">Gateway: {{ $pendingProof->paymentGateway->name }}</div>
+                        @endif
+                        <div class="mt-1">Amount: {{ $invoice->currency }} {{ number_format((float) $pendingProof->amount, 2) }}</div>
+                        @if($pendingProof->reference)
+                            <div class="mt-1">Reference: {{ $pendingProof->reference }}</div>
+                        @endif
+                    </div>
+                @elseif($rejectedProof)
+                    <div class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+                        Manual payment was rejected. Please submit a new transfer.
+                    </div>
+                @endif
                 @if($gateways->isEmpty())
                     <div class="mt-3 text-xs text-slate-500">No active payment gateways configured.</div>
                 @else

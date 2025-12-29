@@ -127,7 +127,9 @@ class InvoiceController extends Controller
 
     private function listByStatus(?string $status, string $title)
     {
-        $query = Invoice::query()->with('customer')->latest('issue_date');
+        $query = Invoice::query()
+            ->with(['customer', 'paymentProofs'])
+            ->latest('issue_date');
 
         if ($status) {
             $query->where('status', $status);

@@ -40,7 +40,18 @@
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3 font-medium text-slate-900">#{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $service }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ ucfirst($invoice->status) }}</td>
+                            <td class="px-4 py-3 text-slate-600">
+                                <div>{{ ucfirst($invoice->status) }}</div>
+                                @php
+                                    $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
+                                    $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
+                                @endphp
+                                @if($pendingProof)
+                                    <div class="mt-1 text-xs text-amber-600">Manual payment pending review</div>
+                                @elseif($rejectedProof)
+                                    <div class="mt-1 text-xs text-rose-600">Manual payment rejected</div>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-slate-700">{{ $invoice->currency }} {{ $invoice->total }}</td>
                             <td class="px-4 py-3 text-slate-500">{{ $invoice->issue_date->format('d-m-Y') }}</td>
                             <td class="px-4 py-3 text-slate-500">{{ $invoice->due_date->format('d-m-Y') }}</td>
@@ -49,6 +60,9 @@
                                     <a href="{{ route('client.invoices.show', $invoice) }}" class="text-slate-500 hover:text-teal-600">View</a>
                                     @if(in_array($invoice->status, ['unpaid', 'overdue'], true))
                                         <a href="{{ route('client.invoices.pay', $invoice) }}" class="text-teal-600 hover:text-teal-500">Pay now</a>
+                                    @endif
+                                    @if($pendingProof && $pendingProof->paymentAttempt)
+                                        <a href="{{ route('client.invoices.manual', [$invoice, $pendingProof->paymentAttempt]) }}" class="text-slate-500 hover:text-teal-600">View submission</a>
                                     @endif
                                     <a href="{{ route('client.invoices.download', $invoice) }}" class="text-slate-500 hover:text-teal-600">Download</a>
                                     <details class="relative">

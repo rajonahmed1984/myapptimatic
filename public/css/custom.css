@@ -99,6 +99,60 @@ body.bg-dashboard {
     animation: fade-in 0.35s ease-out both;
 }
 
+.stats a {
+    color: var(--muted);
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.stats a:hover {
+    color: var(--accent);
+}
+
+.stat {
+    display: inline-flex;
+    min-width: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    background: rgba(15, 23, 42, 0.08);
+    color: var(--ink);
+    font-weight: 700;
+}
+
+.btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(148, 163, 184, 0.15);
+}
+
+.btn-group .btn {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-group .btn:hover {
+    color: var(--ink);
+}
+
+.btn-group .btn.active {
+    background: #ffffff;
+    color: var(--ink);
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
 .stagger > * {
     animation: rise-in 0.45s ease-out both;
 }

@@ -13,8 +13,12 @@
         <table class="w-full text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
+                    <th class="px-4 py-3">Client ID</th>
                     <th class="px-4 py-3">Name</th>
+                    <th class="px-4 py-3">Company Name</th>
                     <th class="px-4 py-3">Email</th>
+                    <th class="px-4 py-3">Services</th>
+                    <th class="px-4 py-3">Created</th>
                     <th class="px-4 py-3">Status</th>
                     <th class="px-4 py-3"></th>
                 </tr>
@@ -22,11 +26,18 @@
             <tbody>
                 @forelse($customers as $customer)
                     <tr class="border-b border-slate-100">
+                        <td class="px-4 py-3 text-slate-500">{{ $customer->id }}</td>
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $customer->name }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $customer->company_name ?: '--' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $customer->email }}</td>
+                        <td class="px-4 py-3 text-slate-500">
+                            {{ $customer->active_subscriptions_count }} ({{ $customer->subscriptions_count }})
+                        </td>
+                        <td class="px-4 py-3 text-slate-500">{{ $customer->created_at?->format('Y-m-d') ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($customer->status) }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
+                                <a href="{{ route('admin.customers.show', $customer) }}" class="text-slate-500 hover:text-teal-600">Customer view</a>
                                 <a href="{{ route('admin.customers.edit', $customer) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
                                 <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}" onsubmit="return confirm('Delete this customer? This will remove related subscriptions and invoices.');">
                                     @csrf
@@ -38,7 +49,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-4 py-6 text-center text-slate-500">No customers yet.</td>
+                        <td colspan="8" class="px-4 py-6 text-center text-slate-500">No customers yet.</td>
                     </tr>
                 @endforelse
             </tbody>

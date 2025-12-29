@@ -203,7 +203,7 @@ class BillingService
         return $nextInvoiceAt;
     }
 
-    private function nextInvoiceNumber(): string
+    public function nextInvoiceNumber(): string
     {
         $maxNumber = (int) Invoice::query()
             ->selectRaw('MAX(CAST(number AS UNSIGNED)) as max_number')

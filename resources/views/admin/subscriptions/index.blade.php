@@ -14,8 +14,10 @@
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
                     <th class="px-4 py-3">Customer</th>
+                    <th class="px-4 py-3">Products</th>
                     <th class="px-4 py-3">Plan</th>
                     <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Order date</th>
                     <th class="px-4 py-3">Next invoice</th>
                     <th class="px-4 py-3"></th>
                 </tr>
@@ -24,8 +26,12 @@
                 @forelse($subscriptions as $subscription)
                     <tr class="border-b border-slate-100">
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $subscription->customer->name }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $subscription->plan->product->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $subscription->plan->name }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($subscription->status) }}</td>
+                        <td class="px-4 py-3 text-slate-500">
+                            {{ $subscription->orders_max_created_at ? \Illuminate\Support\Carbon::parse($subscription->orders_max_created_at)->format('Y-m-d') : '--' }}
+                        </td>
                         <td class="px-4 py-3">{{ $subscription->next_invoice_at->format('Y-m-d') }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
@@ -40,7 +46,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-6 text-center text-slate-500">No subscriptions yet.</td>
+                        <td colspan="6" class="px-4 py-6 text-center text-slate-500">No subscriptions yet.</td>
                     </tr>
                 @endforelse
             </tbody>

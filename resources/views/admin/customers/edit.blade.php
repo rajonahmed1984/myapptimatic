@@ -5,7 +5,12 @@
 
 @section('content')
     <div class="card p-6">
-        <h1 class="text-2xl font-semibold text-slate-900">Edit Customer</h1>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <h1 class="text-2xl font-semibold text-slate-900">Edit Customer</h1>
+                <div class="mt-1 text-sm text-slate-500">Client ID: {{ $customer->id }}</div>
+            </div>
+        </div>
 
         <form method="POST" action="{{ route('admin.customers.update', $customer) }}" class="mt-6 space-y-6">
             @csrf
@@ -14,6 +19,10 @@
                 <div>
                     <label class="text-sm text-slate-600">Name</label>
                     <input name="name" value="{{ old('name', $customer->name) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Company Name</label>
+                    <input name="company_name" value="{{ old('company_name', $customer->company_name) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Email</label>

@@ -66,6 +66,11 @@ class Invoice extends Model
         return $this->hasMany(PaymentProof::class);
     }
 
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
     public function clientRequests(): HasMany
     {
         return $this->hasMany(ClientRequest::class);

@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\Admin\AccountingController as AdminAccountingController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\ClientRequestController as AdminClientRequestController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\InvoiceController as AdminInvoiceController;
 use App\Http\Controllers\Admin\PaymentProofController as AdminPaymentProofController;
 use App\Http\Controllers\Admin\LicenseController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
@@ -84,12 +86,19 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
-    Route::resource('customers', CustomerController::class)->except(['show']);
+    Route::resource('admins', AdminUserController::class)->except(['show']);
+    Route::resource('customers', CustomerController::class);
     Route::resource('products', ProductController::class)->except(['show']);
     Route::resource('plans', PlanController::class)->except(['show']);
     Route::resource('subscriptions', SubscriptionController::class)->except(['show']);
     Route::resource('licenses', LicenseController::class)->except(['show']);
     Route::post('licenses/{license}/domains/{domain}/revoke', [LicenseController::class, 'revokeDomain'])->name('licenses.domains.revoke');
+    Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
+    Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::post('orders/{order}/approve', [AdminOrderController::class, 'approve'])->name('orders.approve');
+    Route::post('orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('orders.cancel');
+    Route::patch('orders/{order}/plan', [AdminOrderController::class, 'updatePlan'])->name('orders.plan');
+    Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])->name('support-tickets.index');
     Route::get('support-tickets/{ticket}', [AdminSupportTicketController::class, 'show'])->name('support-tickets.show');
     Route::post('support-tickets/{ticket}/reply', [AdminSupportTicketController::class, 'reply'])->name('support-tickets.reply');
@@ -111,6 +120,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::delete('invoices/{invoice}', [AdminInvoiceController::class, 'destroy'])->name('invoices.destroy');
     Route::post('payment-proofs/{paymentProof}/approve', [AdminPaymentProofController::class, 'approve'])->name('payment-proofs.approve');
     Route::post('payment-proofs/{paymentProof}/reject', [AdminPaymentProofController::class, 'reject'])->name('payment-proofs.reject');
+    Route::get('payment-proofs', [AdminPaymentProofController::class, 'index'])->name('payment-proofs.index');
     Route::get('payment-gateways', [PaymentGatewayController::class, 'index'])->name('payment-gateways.index');
     Route::get('payment-gateways/{paymentGateway}/edit', [PaymentGatewayController::class, 'edit'])->name('payment-gateways.edit');
     Route::put('payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');

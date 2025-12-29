@@ -169,7 +169,7 @@ class LicenseVerificationController extends Controller
             'grace_ends_at' => $graceEnds->toDateTimeString(),
             'payment_url' => route('client.invoices.pay', $invoice),
             'invoice_id' => $invoice->id,
-            'invoice_number' => $invoice->number,
+            'invoice_number' => is_numeric($invoice->number) ? $invoice->number : (string) $invoice->id,
             'invoice_status' => $invoice->status,
         ];
     }

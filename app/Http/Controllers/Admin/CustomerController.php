@@ -14,7 +14,13 @@ class CustomerController extends Controller
     public function index()
     {
         return view('admin.customers.index', [
-            'customers' => Customer::query()->latest()->get(),
+            'customers' => Customer::query()
+                ->withCount('subscriptions')
+                ->withCount(['subscriptions as active_subscriptions_count' => function ($query) {
+                    $query->where('status', 'active');
+                }])
+                ->latest()
+                ->get(),
         ]);
     }
 
@@ -27,6 +33,7 @@ class CustomerController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
@@ -40,6 +47,7 @@ class CustomerController extends Controller
 
         $customer = Customer::create([
             'name' => $data['name'],
+            'company_name' => $data['company_name'] ?? null,
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
             'address' => $data['address'] ?? null,
@@ -69,10 +77,25 @@ class CustomerController extends Controller
         ]);
     }
 
+    public function show(Customer $customer)
+    {
+        $customer->load([
+            'subscriptions.plan.product',
+            'invoices' => function ($query) {
+                $query->latest('issue_date');
+            },
+        ]);
+
+        return view('admin.customers.show', [
+            'customer' => $customer,
+        ]);
+    }
+
     public function update(Request $request, Customer $customer)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],

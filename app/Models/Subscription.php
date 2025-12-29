@@ -56,4 +56,9 @@ class Subscription extends Model
     {
         return $this->hasMany(ClientRequest::class);
     }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
 }

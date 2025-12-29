@@ -40,6 +40,10 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Subscriptions
                 </a>
+                <a class="{{ request()->routeIs('admin.orders.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.orders.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Orders
+                </a>
                 <a class="{{ request()->routeIs('admin.licenses.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.licenses.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Licenses
@@ -62,6 +66,10 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Payment Gateways
                 </a>
+                <a class="{{ request()->routeIs('admin.payment-proofs.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.payment-proofs.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Manual Payments
+                </a>
                 <a class="{{ request()->routeIs('admin.accounting.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.accounting.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Accounting
@@ -78,6 +86,10 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Profile
                 </a>
+                <a class="{{ request()->routeIs('admin.admins.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.admins.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Admin Users
+                </a>
                 <a class="{{ request()->routeIs('admin.settings.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.settings.edit') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Settings
@@ -91,11 +103,29 @@
 
         <div class="flex-1">
             <header class="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-                <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+                <div class="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
                     <div>
                         <div class="section-label">Admin workspace</div>
                         <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
                     </div>
+                    @if(!empty($adminHeaderStats))
+                        <div class="stats hidden flex-wrap items-center gap-3 text-xs text-slate-500 lg:flex">
+                            <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="flex items-center gap-2">
+                                <span class="stat">{{ $adminHeaderStats['pending_orders'] ?? 0 }}</span>
+                                Pending Orders
+                            </a>
+                            <span class="text-slate-300">|</span>
+                            <a href="{{ route('admin.invoices.overdue') }}" class="flex items-center gap-2">
+                                <span class="stat">{{ $adminHeaderStats['overdue_invoices'] ?? 0 }}</span>
+                                Overdue Invoices
+                            </a>
+                            <span class="text-slate-300">|</span>
+                            <a href="{{ route('admin.support-tickets.index', ['status' => 'open']) }}" class="flex items-center gap-2">
+                                <span class="stat">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>
+                                Ticket(s) Awaiting Reply
+                            </a>
+                        </div>
+                    @endif
                     <div class="hidden items-center gap-4 md:flex">
                         <div class="text-right text-sm">
                             <div class="font-semibold text-slate-900">{{ auth()->user()->name }}</div>
@@ -119,6 +149,7 @@
                             <a href="{{ route('admin.products.index') }}" class="text-slate-700 hover:text-teal-600">Products</a>
                             <a href="{{ route('admin.plans.index') }}" class="text-slate-700 hover:text-teal-600">Plans</a>
                             <a href="{{ route('admin.subscriptions.index') }}" class="text-slate-700 hover:text-teal-600">Subscriptions</a>
+                            <a href="{{ route('admin.orders.index') }}" class="text-slate-700 hover:text-teal-600">Orders</a>
                             <a href="{{ route('admin.licenses.index') }}" class="text-slate-700 hover:text-teal-600">Licenses</a>
                             <a href="{{ route('admin.invoices.index') }}" class="text-slate-700 hover:text-teal-600">Invoices</a>
                             <div class="grid gap-1 pl-3 text-xs text-slate-500">
@@ -130,10 +161,12 @@
                                 <a href="{{ route('admin.invoices.refunded') }}" class="hover:text-teal-600">Refunded</a>
                             </div>
                             <a href="{{ route('admin.payment-gateways.index') }}" class="text-slate-700 hover:text-teal-600">Payment Gateways</a>
+                            <a href="{{ route('admin.payment-proofs.index') }}" class="text-slate-700 hover:text-teal-600">Manual Payments</a>
                             <a href="{{ route('admin.accounting.index') }}" class="text-slate-700 hover:text-teal-600">Accounting</a>
                             <a href="{{ route('admin.support-tickets.index') }}" class="text-slate-700 hover:text-teal-600">Support</a>
                             <a href="{{ route('admin.requests.index') }}" class="text-slate-700 hover:text-teal-600">Requests</a>
                             <a href="{{ route('admin.profile.edit') }}" class="text-slate-700 hover:text-teal-600">Profile</a>
+                            <a href="{{ route('admin.admins.index') }}" class="text-slate-700 hover:text-teal-600">Admin Users</a>
                             <a href="{{ route('admin.settings.edit') }}" class="text-slate-700 hover:text-teal-600">Settings</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf

@@ -10,6 +10,7 @@ class Customer extends Model
 {
     protected $fillable = [
         'name',
+        'company_name',
         'email',
         'phone',
         'address',
@@ -60,6 +61,11 @@ class Customer extends Model
     public function paymentProofs(): HasMany
     {
         return $this->hasMany(PaymentProof::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 
     public function clientRequests(): HasMany

@@ -26,7 +26,7 @@
                         $resource = '--';
 
                         if ($request->invoice) {
-                            $resource = 'Invoice #' . $request->invoice->number;
+                            $resource = 'Invoice #' . (is_numeric($request->invoice->number) ? $request->invoice->number : $request->invoice->id);
                         } elseif ($request->subscription) {
                             $plan = $request->subscription->plan;
                             $product = $plan?->product;

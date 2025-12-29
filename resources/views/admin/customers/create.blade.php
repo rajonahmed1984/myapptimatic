@@ -15,6 +15,10 @@
                     <input name="name" value="{{ old('name') }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
+                    <label class="text-sm text-slate-600">Company Name</label>
+                    <input name="company_name" value="{{ old('company_name') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
+                <div>
                     <label class="text-sm text-slate-600">Email</label>
                     <input name="email" type="email" value="{{ old('email') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>

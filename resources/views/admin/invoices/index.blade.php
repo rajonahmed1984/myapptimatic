@@ -21,9 +21,20 @@
             <tbody>
                 @forelse($invoices as $invoice)
                     <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 font-medium text-slate-900">{{ $invoice->number }}</td>
+                        <td class="px-4 py-3 font-medium text-slate-900">{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $invoice->customer->name }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ ucfirst($invoice->status) }}</td>
+                        <td class="px-4 py-3 text-slate-700">
+                            <div>{{ ucfirst($invoice->status) }}</div>
+                            @php
+                                $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
+                                $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
+                            @endphp
+                            @if($pendingProof)
+                                <div class="mt-1 text-xs text-amber-600">Manual payment pending review</div>
+                            @elseif($rejectedProof)
+                                <div class="mt-1 text-xs text-rose-600">Manual payment rejected</div>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-slate-700">{{ $invoice->currency }} {{ $invoice->total }}</td>
                         <td class="px-4 py-3">{{ $invoice->due_date->format('d-m-Y') }}</td>
                         <td class="px-4 py-3 text-right">

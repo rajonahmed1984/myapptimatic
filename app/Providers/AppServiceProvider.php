@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Invoice;
+use App\Models\Order;
 use App\Models\Setting;
+use App\Models\SupportTicket;
 use App\Support\Branding;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
@@ -37,6 +40,14 @@ class AppServiceProvider extends ServiceProvider
 
             View::share('portalBranding', $brand);
 
+            View::composer('layouts.admin', function ($view) {
+                $view->with('adminHeaderStats', [
+                    'pending_orders' => Order::where('status', 'pending')->count(),
+                    'overdue_invoices' => Invoice::where('status', 'overdue')->count(),
+                    'tickets_waiting' => SupportTicket::where('status', 'open')->count(),
+                ]);
+            });
+
             if (! empty($brand['company_email'])) {
                 config(['mail.from.address' => $brand['company_email']]);
             }
@@ -51,6 +62,12 @@ class AppServiceProvider extends ServiceProvider
                 'pay_to_text' => null,
                 'logo_url' => null,
                 'favicon_url' => null,
+            ]);
+
+            View::share('adminHeaderStats', [
+                'pending_orders' => 0,
+                'overdue_invoices' => 0,
+                'tickets_waiting' => 0,
             ]);
         }
     }

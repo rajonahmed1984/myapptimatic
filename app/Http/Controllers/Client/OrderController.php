@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\License;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Subscription;
@@ -60,28 +63,70 @@ class OrderController extends Controller
             ? $startDate->copy()->endOfMonth()
             : $startDate->copy()->addYear();
 
-        $invoice = DB::transaction(function () use ($customer, $plan, $startDate, $periodEnd, $billingService) {
+        $invoice = DB::transaction(function () use ($customer, $plan, $startDate, $periodEnd, $billingService, $request) {
+            $nextInvoiceAt = $this->nextInvoiceAt($plan->interval, $periodEnd);
             $subscription = Subscription::create([
                 'customer_id' => $customer->id,
                 'plan_id' => $plan->id,
-                'status' => 'active',
+                'status' => 'pending',
                 'start_date' => $startDate->toDateString(),
                 'current_period_start' => $startDate->toDateString(),
                 'current_period_end' => $periodEnd->toDateString(),
-                'next_invoice_at' => $startDate->toDateString(),
+                'next_invoice_at' => $nextInvoiceAt->toDateString(),
                 'auto_renew' => true,
                 'cancel_at_period_end' => false,
             ]);
 
-            $invoice = $billingService->generateInvoiceForSubscription($subscription, Carbon::today());
+            $dueDays = (int) ($plan->invoice_due_days ?: Setting::getValue('invoice_due_days'));
+            $issueDate = Carbon::today();
+            $subtotal = $this->calculateSubtotal($plan->interval, (float) $plan->price, $startDate, $periodEnd);
+            $currency = strtoupper((string) Setting::getValue('currency', 'USD'));
+
+            $invoice = Invoice::create([
+                'customer_id' => $subscription->customer_id,
+                'subscription_id' => $subscription->id,
+                'number' => $billingService->nextInvoiceNumber(),
+                'status' => 'unpaid',
+                'issue_date' => $issueDate->toDateString(),
+                'due_date' => $issueDate->copy()->addDays($dueDays)->toDateString(),
+                'subtotal' => $subtotal,
+                'late_fee' => 0,
+                'total' => $subtotal,
+                'currency' => $currency,
+            ]);
+
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'description' => sprintf(
+                    '%s (%s) %s to %s',
+                    $plan->name,
+                    $plan->interval,
+                    $startDate->format('Y-m-d'),
+                    $periodEnd->format('Y-m-d')
+                ),
+                'quantity' => 1,
+                'unit_price' => $subtotal,
+                'line_total' => $subtotal,
+            ]);
 
             License::create([
                 'subscription_id' => $subscription->id,
                 'product_id' => $plan->product_id,
                 'license_key' => $this->uniqueLicenseKey(),
-                'status' => 'active',
+                'status' => 'pending',
                 'starts_at' => $startDate->toDateString(),
                 'max_domains' => 1,
+            ]);
+
+            Order::create([
+                'order_number' => Order::nextNumber(),
+                'customer_id' => $customer->id,
+                'user_id' => $request->user()?->id,
+                'product_id' => $plan->product_id,
+                'plan_id' => $plan->id,
+                'subscription_id' => $subscription->id,
+                'invoice_id' => $invoice->id,
+                'status' => 'pending',
             ]);
 
             return $invoice;
@@ -89,11 +134,46 @@ class OrderController extends Controller
 
         if ($invoice) {
             return redirect()->route('client.invoices.pay', $invoice)
-                ->with('status', 'Order placed. Please complete payment to activate your service.');
+                ->with('status', 'Order placed. Please complete payment or wait for approval.');
         }
 
         return redirect()->route('client.dashboard')
             ->with('status', 'Order placed. An invoice will be generated shortly.');
+    }
+
+    private function calculateSubtotal(string $interval, float $price, Carbon $periodStart, Carbon $periodEnd): float
+    {
+        if ($interval !== 'monthly') {
+            return round($price, 2);
+        }
+
+        if ($periodStart->isSameMonth($periodEnd) && $periodEnd->isLastOfMonth() && $periodStart->day !== 1) {
+            $daysInPeriod = $periodStart->diffInDays($periodEnd) + 1;
+            $daysInMonth = $periodStart->daysInMonth;
+            $ratio = $daysInMonth > 0 ? ($daysInPeriod / $daysInMonth) : 1;
+
+            return round($price * min(1, $ratio), 2);
+        }
+
+        return round($price, 2);
+    }
+
+    private function nextInvoiceAt(string $interval, Carbon $periodEnd): Carbon
+    {
+        if ($interval === 'monthly') {
+            return $periodEnd->copy()->addDay();
+        }
+
+        $invoiceGenerationDays = (int) Setting::getValue('invoice_generation_days');
+        $nextInvoiceAt = $invoiceGenerationDays > 0
+            ? $periodEnd->copy()->subDays($invoiceGenerationDays)
+            : $periodEnd->copy();
+
+        if ($nextInvoiceAt->lessThan(Carbon::today())) {
+            $nextInvoiceAt = $periodEnd->copy();
+        }
+
+        return $nextInvoiceAt;
     }
 
     private function uniqueLicenseKey(): string

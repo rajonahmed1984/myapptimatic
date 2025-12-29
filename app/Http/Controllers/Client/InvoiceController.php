@@ -49,7 +49,14 @@ class InvoiceController extends Controller
         abort_unless($invoice->customer_id === $customerId, 403);
 
         return view('client.invoices.pay', [
-            'invoice' => $invoice->load(['items', 'customer', 'subscription.plan.product', 'accountingEntries.paymentGateway']),
+            'invoice' => $invoice->load([
+                'items',
+                'customer',
+                'subscription.plan.product',
+                'accountingEntries.paymentGateway',
+                'paymentProofs.paymentGateway',
+                'paymentProofs.paymentAttempt',
+            ]),
             'paymentInstructions' => Setting::getValue('payment_instructions'),
             'gateways' => PaymentGateway::query()->where('is_active', true)->orderBy('sort_order')->get(),
             'payToText' => Setting::getValue('pay_to_text'),
@@ -122,7 +129,7 @@ class InvoiceController extends Controller
 
         $query = $customer
             ? $customer->invoices()
-                ->with(['subscription.plan.product', 'clientRequests'])
+                ->with(['subscription.plan.product', 'clientRequests', 'paymentProofs.paymentAttempt'])
                 ->latest('issue_date')
             : null;
 
