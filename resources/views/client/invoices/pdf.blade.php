@@ -71,7 +71,7 @@
         <div class="right">
             <div class="muted">Status</div>
             <div>{{ ucfirst($invoice->status) }}</div>
-            <div class="muted">Due {{ $invoice->due_date->format('d-m-Y') }}</div>
+            <div class="muted">Due {{ $invoice->due_date->format($globalDateFormat) }}</div>
         </div>
     </div>
 
@@ -93,7 +93,7 @@
     <div class="section row">
         <div>
             <span class="muted">Invoice date:</span>
-            <strong>{{ $invoice->issue_date->format('d-m-Y') }}</strong>
+            <strong>{{ $invoice->issue_date->format($globalDateFormat) }}</strong>
         </div>
         <div>
             <span class="muted">Service:</span>
@@ -140,3 +140,4 @@
     </div>
 </body>
 </html>
+

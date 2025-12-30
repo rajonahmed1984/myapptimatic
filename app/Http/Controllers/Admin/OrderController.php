@@ -8,6 +8,7 @@ use App\Models\Plan;
 use App\Models\License;
 use App\Models\LicenseDomain;
 use App\Services\BillingService;
+use App\Services\AdminNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -133,7 +134,7 @@ class OrderController extends Controller
         return back()->with('status', 'Order accepted.');
     }
 
-    public function cancel(Order $order): RedirectResponse
+    public function cancel(Order $order, AdminNotificationService $adminNotifications): RedirectResponse
     {
         if ($order->status !== 'pending') {
             return back()->with('status', 'Order already processed.');
@@ -162,6 +163,8 @@ class OrderController extends Controller
                 ->whereIn('status', ['active', 'pending', 'suspended'])
                 ->update(['status' => 'revoked']);
         }
+
+        $adminNotifications->sendOrderCancelled($order->fresh(['customer', 'plan.product', 'invoice']));
 
         return back()->with('status', 'Order cancelled.');
     }

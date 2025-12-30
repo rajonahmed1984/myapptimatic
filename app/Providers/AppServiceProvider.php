@@ -8,6 +8,7 @@ use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Models\SupportTicket;
 use App\Support\Branding;
+use DateTimeZone;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 
@@ -30,6 +31,18 @@ class AppServiceProvider extends ServiceProvider
             $companyName = Setting::getValue('company_name') ?: config('app.name');
             $logoPath = Setting::getValue('company_logo_path');
             $faviconPath = Setting::getValue('company_favicon_path');
+            $timeZone = Setting::getValue('time_zone', config('app.timezone'));
+            $dateFormat = Setting::getValue('date_format', 'd-m-Y');
+
+            if (is_string($timeZone) && $timeZone !== '' && in_array($timeZone, DateTimeZone::listIdentifiers(), true)) {
+                config(['app.timezone' => $timeZone]);
+                date_default_timezone_set($timeZone);
+            }
+
+            if (! is_string($dateFormat) || $dateFormat === '') {
+                $dateFormat = 'd-m-Y';
+            }
+            config(['app.date_format' => $dateFormat]);
 
             $brand = [
                 'company_name' => $companyName ?: 'MyApptimatic',
@@ -40,6 +53,8 @@ class AppServiceProvider extends ServiceProvider
             ];
 
             View::share('portalBranding', $brand);
+            View::share('globalDateFormat', $dateFormat);
+            View::share('globalTimeZone', $timeZone);
 
             View::composer('layouts.admin', function ($view) {
                 $view->with('adminHeaderStats', [
@@ -76,6 +91,9 @@ class AppServiceProvider extends ServiceProvider
                 'logo_url' => null,
                 'favicon_url' => null,
             ]);
+
+            View::share('globalDateFormat', 'd-m-Y');
+            View::share('globalTimeZone', config('app.timezone'));
 
             View::share('adminHeaderStats', [
                 'pending_orders' => 0,

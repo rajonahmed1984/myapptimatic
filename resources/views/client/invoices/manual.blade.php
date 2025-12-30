@@ -18,7 +18,7 @@
             <div class="mt-2 text-xl font-semibold text-slate-900">Invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
             <div class="mt-4 space-y-2 text-sm text-slate-600">
                 <div><span class="text-slate-500">Total:</span> {{ $invoice->currency }} {{ number_format((float) $invoice->total, 2) }}</div>
-                <div><span class="text-slate-500">Due date:</span> {{ $invoice->due_date->format('d-m-Y') }}</div>
+                <div><span class="text-slate-500">Due date:</span> {{ $invoice->due_date->format($globalDateFormat) }}</div>
                 <div><span class="text-slate-500">Service:</span> {{ $invoice->subscription?->plan?->product?->name ?? 'Service' }}</div>
             </div>
             @if(!empty($gateway->settings['account_name'] ?? null) || !empty($gateway->settings['account_number'] ?? null) || !empty($gateway->settings['bank_name'] ?? null))
@@ -97,3 +97,4 @@
         </div>
     @endif
 @endsection
+

@@ -53,8 +53,8 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-slate-700">{{ $invoice->currency }} {{ $invoice->total }}</td>
-                            <td class="px-4 py-3 text-slate-500">{{ $invoice->issue_date->format('d-m-Y') }}</td>
-                            <td class="px-4 py-3 text-slate-500">{{ $invoice->due_date->format('d-m-Y') }}</td>
+                            <td class="px-4 py-3 text-slate-500">{{ $invoice->issue_date->format($globalDateFormat) }}</td>
+                            <td class="px-4 py-3 text-slate-500">{{ $invoice->due_date->format($globalDateFormat) }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap items-center justify-end gap-3 text-xs">
                                     <a href="{{ route('client.invoices.show', $invoice) }}" class="text-slate-500 hover:text-teal-600">View</a>
@@ -93,3 +93,4 @@
         </div>
     @endif
 @endsection
+

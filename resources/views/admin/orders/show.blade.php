@@ -20,7 +20,7 @@
             </div>
             <div class="text-sm text-slate-600">
                 <div>Status: {{ ucfirst($order->status) }}</div>
-                <div>Created: {{ $order->created_at?->format('d-m-Y') ?? '--' }}</div>
+                <div>Created: {{ $order->created_at?->format($globalDateFormat) ?? '--' }}</div>
             </div>
         </div>
 
@@ -121,3 +121,4 @@
         </div>
     </div>
 @endsection
+

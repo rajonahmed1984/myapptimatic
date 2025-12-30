@@ -15,7 +15,7 @@
                     <th class="px-4 py-3">Status</th>
                     <th class="px-4 py-3">Total</th>
                     <th class="px-4 py-3">Due</th>
-                    <th class="px-4 py-3"></th>
+                    <th class="px-4 py-3 text-right">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -36,10 +36,10 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-slate-700">{{ $invoice->currency }} {{ $invoice->total }}</td>
-                        <td class="px-4 py-3">{{ $invoice->due_date->format('d-m-Y') }}</td>
+                        <td class="px-4 py-3">{{ $invoice->due_date->format($globalDateFormat) }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
-                                <a href="{{ route('admin.invoices.show', $invoice) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                                <a href="{{ route('admin.invoices.show', $invoice) }}" class="text-teal-600 hover:text-teal-500">View</a>
                                 <form method="POST" action="{{ route('admin.invoices.destroy', $invoice) }}" onsubmit="return confirm('Delete this invoice?');">
                                     @csrf
                                     @method('DELETE')
@@ -59,3 +59,4 @@
         </table>
     </div>
 @endsection
+

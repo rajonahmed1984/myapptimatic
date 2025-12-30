@@ -40,11 +40,11 @@
                 </div>
                 <div class="flex items-center justify-between">
                     <span>Verified</span>
-                    <span class="font-semibold text-slate-900">{{ $domain->verified_at?->format('d-m-Y') ?? '--' }}</span>
+                    <span class="font-semibold text-slate-900">{{ $domain->verified_at?->format($globalDateFormat) ?? '--' }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span>Last seen</span>
-                    <span class="font-semibold text-slate-900">{{ $domain->last_seen_at?->format('d-m-Y') ?? '--' }}</span>
+                    <span class="font-semibold text-slate-900">{{ $domain->last_seen_at?->format($globalDateFormat) ?? '--' }}</span>
                 </div>
             </div>
         </div>
@@ -81,3 +81,4 @@
         </form>
     </div>
 @endsection
+

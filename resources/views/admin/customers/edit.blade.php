@@ -13,7 +13,7 @@
             </div>
             <div class="text-sm text-slate-600">
                 <div>Status: {{ ucfirst($customer->status) }}</div>
-                <div>Created: {{ $customer->created_at?->format('Y-m-d') ?? '--' }}</div>
+                <div>Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</div>
             </div>
         </div>
 
@@ -64,3 +64,4 @@
         </form>
     </div>
 @endsection
+

@@ -24,7 +24,7 @@
                     <tr class="border-b border-slate-100">
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $admin->name }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $admin->email }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ $admin->created_at?->format('d-m-Y') ?? '--' }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $admin->created_at?->format($globalDateFormat) ?? '--' }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.admins.edit', $admin) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
@@ -45,3 +45,4 @@
         </table>
     </div>
 @endsection
+

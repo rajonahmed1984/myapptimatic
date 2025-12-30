@@ -37,7 +37,7 @@
                         <td class="px-4 py-3 text-slate-500">
                             {{ $customer->active_subscriptions_count }} ({{ $customer->subscriptions_count }})
                         </td>
-                        <td class="px-4 py-3 text-slate-500">{{ $customer->created_at?->format('Y-m-d') ?? '--' }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($customer->status) }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
@@ -58,3 +58,4 @@
         </table>
     </div>
 @endsection
+

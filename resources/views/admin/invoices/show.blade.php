@@ -22,7 +22,7 @@
             </div>
             <div class="text-sm text-slate-600">
                 <div>Status: {{ ucfirst($invoice->status) }}</div>
-                <div>Due: {{ $invoice->due_date->format('d-m-Y') }}</div>
+                <div>Due: {{ $invoice->due_date->format($globalDateFormat) }}</div>
             </div>
         </div>
 
@@ -78,7 +78,7 @@
                             <div>
                                 <div class="font-semibold text-slate-900">{{ ucfirst($entry->type) }}</div>
                                 <div class="text-xs text-slate-500">
-                                    {{ $entry->entry_date->format('d-m-Y') }}
+                                    {{ $entry->entry_date->format($globalDateFormat) }}
                                     @if($entry->paymentGateway)
                                         · {{ $entry->paymentGateway->name }}
                                     @endif
@@ -108,7 +108,7 @@
                                         • Status: {{ ucfirst($proof->status) }}
                                     </div>
                                     @if($proof->paid_at)
-                                        <div class="text-xs text-slate-500">Paid at: {{ $proof->paid_at->format('d-m-Y') }}</div>
+                                        <div class="text-xs text-slate-500">Paid at: {{ $proof->paid_at->format($globalDateFormat) }}</div>
                                     @endif
                                     @if($proof->notes)
                                         <div class="mt-2 text-xs text-slate-500">{{ $proof->notes }}</div>
@@ -152,3 +152,4 @@
         </div>
     </div>
 @endsection
+

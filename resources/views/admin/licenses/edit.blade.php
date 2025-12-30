@@ -18,7 +18,7 @@
                     <select name="subscription_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
                         @foreach($subscriptions as $subscription)
                             <option value="{{ $subscription->id }}" @selected($license->subscription_id === $subscription->id)>
-                                #{{ $subscription->id }} - {{ $subscription->customer->name }}
+                                #{{ $subscription->id }} - {{ $subscription->customer->name }} - {{ $subscription->plan?->product?->name ?? '--' }} / {{ $subscription->plan?->name ?? '--' }}
                             </option>
                         @endforeach
                     </select>

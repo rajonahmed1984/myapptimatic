@@ -50,8 +50,8 @@
                             <td class="px-4 py-3 text-slate-600">{{ $product?->name ?? '--' }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $plan?->name ?? '--' }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ ucfirst($domain->status) }}</td>
-                            <td class="px-4 py-3 text-slate-500">{{ $domain->verified_at?->format('d-m-Y') ?? '--' }}</td>
-                            <td class="px-4 py-3 text-slate-500">{{ $domain->last_seen_at?->format('d-m-Y') ?? '--' }}</td>
+                            <td class="px-4 py-3 text-slate-500">{{ $domain->verified_at?->format($globalDateFormat) ?? '--' }}</td>
+                            <td class="px-4 py-3 text-slate-500">{{ $domain->last_seen_at?->format($globalDateFormat) ?? '--' }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3 text-xs">
                                     <a href="{{ route('client.domains.show', $domain) }}" class="text-teal-600 hover:text-teal-500">View</a>
@@ -82,3 +82,4 @@
         </div>
     @endif
 @endsection
+

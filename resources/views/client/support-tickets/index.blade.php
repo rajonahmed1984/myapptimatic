@@ -42,7 +42,7 @@
                             <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $label }}</span>
                         </td>
                         <td class="px-4 py-3 text-slate-500">
-                            {{ $ticket->last_reply_at?->format('Y-m-d H:i') ?? '—' }}
+                            {{ $ticket->last_reply_at?->format($globalDateFormat . ' H:i') ?? '—' }}
                         </td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('client.support-tickets.show', $ticket) }}" class="text-teal-600 hover:text-teal-500">View</a>
@@ -57,3 +57,4 @@
         </table>
     </div>
 @endsection
+

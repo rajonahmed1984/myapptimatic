@@ -30,7 +30,7 @@
                 </div>
                 <div class="flex items-center justify-between">
                     <span>Billing period</span>
-                    <span class="font-semibold text-slate-900">{{ $startDate->format('Y-m-d') }} → {{ $periodEnd->format('Y-m-d') }}</span>
+                    <span class="font-semibold text-slate-900">{{ $startDate->format($globalDateFormat) }} → {{ $periodEnd->format($globalDateFormat) }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span>Invoice due</span>
@@ -60,3 +60,4 @@
         </div>
     </div>
 @endsection
+

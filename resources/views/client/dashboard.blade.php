@@ -122,7 +122,7 @@
                                     <div>
                                         <div class="text-sm text-slate-500">{{ $subscription->plan->product->name }}</div>
                                         <div class="text-lg font-semibold text-slate-900">{{ $subscription->plan->name }}</div>
-                                        <div class="mt-2 text-xs text-slate-500">Next invoice {{ $subscription->next_invoice_at->format('d-m-Y') }}</div>
+                                        <div class="mt-2 text-xs text-slate-500">Next invoice {{ $subscription->next_invoice_at->format($globalDateFormat) }}</div>
                                     </div>
                                     <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
                                         {{ ucfirst($subscription->status) }}
@@ -168,7 +168,7 @@
                             <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
                                 <div>
                                     <div class="font-semibold text-slate-900">{{ $ticket->subject }}</div>
-                                    <div class="text-xs text-slate-500">Updated {{ $ticket->updated_at->format('d-m-Y') }}</div>
+                                    <div class="text-xs text-slate-500">Updated {{ $ticket->updated_at->format($globalDateFormat) }}</div>
                                 </div>
                                 <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                                     {{ str_replace('_', ' ', ucfirst($ticket->status)) }}
@@ -194,7 +194,7 @@
                                 @foreach($expiringLicenses as $license)
                                     <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2">
                                         <span>{{ $license->product?->name ?? 'Service' }}</span>
-                                        <span>Expires {{ $license->expires_at->format('d-m-Y') }}</span>
+                                        <span>Expires {{ $license->expires_at->format($globalDateFormat) }}</span>
                                     </div>
                                 @endforeach
                             </div>
@@ -227,7 +227,7 @@
                                     <div>
                                         <div class="text-sm text-slate-500">Invoice {{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
                                         <div class="text-lg font-semibold text-slate-900">{{ $invoice->currency }} {{ $invoice->total }}</div>
-                                        <div class="mt-2 text-xs text-slate-500">Due {{ $invoice->due_date->format('d-m-Y') }}</div>
+                                        <div class="mt-2 text-xs text-slate-500">Due {{ $invoice->due_date->format($globalDateFormat) }}</div>
                                     </div>
                                     <div class="text-right text-sm text-slate-600">
                                         <div>{{ ucfirst($invoice->status) }}</div>
@@ -248,3 +248,4 @@
         </div>
     </div>
 @endsection
+

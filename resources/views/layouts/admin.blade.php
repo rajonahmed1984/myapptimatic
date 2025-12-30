@@ -88,6 +88,10 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Requests
                 </a>
+                <a class="{{ request()->routeIs('admin.affiliates.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.affiliates.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Affiliates
+                </a>
                 <a class="{{ request()->routeIs('admin.profile.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.profile.edit') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Profile

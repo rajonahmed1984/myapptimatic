@@ -40,7 +40,7 @@
                         <td class="px-4 py-3 text-slate-600">{{ $request->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $resource }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ ucfirst($request->status) }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ $request->created_at?->format('d-m-Y') ?? '--' }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $request->created_at?->format($globalDateFormat) ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $request->message ?: '--' }}</td>
                         <td class="px-4 py-3 text-right">
                             <form method="POST" action="{{ route('admin.requests.update', $request) }}" class="flex items-center justify-end gap-2">
@@ -65,3 +65,4 @@
         </table>
     </div>
 @endsection
+

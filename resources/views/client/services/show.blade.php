@@ -37,14 +37,14 @@
                 </div>
                 <div class="flex items-center justify-between">
                     <span>Start date</span>
-                    <span class="font-semibold text-slate-900">{{ $subscription->start_date?->format('d-m-Y') ?? '--' }}</span>
+                    <span class="font-semibold text-slate-900">{{ $subscription->start_date?->format($globalDateFormat) ?? '--' }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span>Current period</span>
                     <span class="font-semibold text-slate-900">
-                        {{ $subscription->current_period_start?->format('d-m-Y') ?? '--' }}
+                        {{ $subscription->current_period_start?->format($globalDateFormat) ?? '--' }}
                         -
-                        {{ $subscription->current_period_end?->format('d-m-Y') ?? '--' }}
+                        {{ $subscription->current_period_end?->format($globalDateFormat) ?? '--' }}
                     </span>
                 </div>
                 <div class="flex items-center justify-between">
@@ -113,3 +113,4 @@
         </form>
     </div>
 @endsection
+

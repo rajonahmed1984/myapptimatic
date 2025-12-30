@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Customer extends Model
 {
@@ -16,6 +18,7 @@ class Customer extends Model
         'address',
         'status',
         'access_override_until',
+        'referred_by_affiliate_id',
         'notes',
     ];
 
@@ -71,5 +74,15 @@ class Customer extends Model
     public function clientRequests(): HasMany
     {
         return $this->hasMany(ClientRequest::class);
+    }
+
+    public function affiliate(): HasOne
+    {
+        return $this->hasOne(Affiliate::class);
+    }
+
+    public function referredByAffiliate(): BelongsTo
+    {
+        return $this->belongsTo(Affiliate::class, 'referred_by_affiliate_id');
     }
 }

@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\Subscription;
 use App\Models\Setting;
 use App\Services\BillingService;
+use App\Services\AdminNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -75,7 +76,7 @@ class OrderController extends Controller
         ]);
     }
 
-    public function store(Request $request, BillingService $billingService): RedirectResponse
+    public function store(Request $request, BillingService $billingService, AdminNotificationService $adminNotifications): RedirectResponse
     {
         $data = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
@@ -100,7 +101,7 @@ class OrderController extends Controller
             ? $startDate->copy()->endOfMonth()
             : $startDate->copy()->addYear();
 
-        $invoice = DB::transaction(function () use ($customer, $plan, $startDate, $periodEnd, $billingService, $request) {
+        $result = DB::transaction(function () use ($customer, $plan, $startDate, $periodEnd, $billingService, $request) {
             $nextInvoiceAt = $this->nextInvoiceAt($plan->interval, $periodEnd);
             $subscription = Subscription::create([
                 'customer_id' => $customer->id,
@@ -155,7 +156,7 @@ class OrderController extends Controller
                 'max_domains' => 1,
             ]);
 
-            Order::create([
+            $order = Order::create([
                 'order_number' => Order::nextNumber(),
                 'customer_id' => $customer->id,
                 'user_id' => $request->user()?->id,
@@ -166,8 +167,22 @@ class OrderController extends Controller
                 'status' => 'pending',
             ]);
 
-            return $invoice;
+            return [
+                'invoice' => $invoice,
+                'order' => $order,
+            ];
         });
+
+        $invoice = $result['invoice'] ?? null;
+        $order = $result['order'] ?? null;
+
+        if ($order) {
+            $adminNotifications->sendNewOrder($order, $request->ip());
+        }
+
+        if ($invoice) {
+            $adminNotifications->sendInvoiceCreated($invoice);
+        }
 
         if ($invoice) {
             return redirect()->route('client.invoices.pay', $invoice)
@@ -221,4 +236,5 @@ class OrderController extends Controller
 
         return $key;
     }
+
 }

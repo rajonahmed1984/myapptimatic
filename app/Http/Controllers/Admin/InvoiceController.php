@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Services\BillingService;
+use App\Services\AdminNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,12 +60,17 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function markPaid(Request $request, Invoice $invoice)
+    public function markPaid(Request $request, Invoice $invoice, AdminNotificationService $adminNotifications)
     {
+        $wasPaid = $invoice->status === 'paid';
         $invoice->update([
             'status' => 'paid',
             'paid_at' => Carbon::now(),
         ]);
+
+        if (! $wasPaid) {
+            $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
+        }
 
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice marked as paid.');
@@ -83,8 +89,9 @@ class InvoiceController extends Controller
             ->with('status', 'Invoice recalculated.');
     }
 
-    public function update(Request $request, Invoice $invoice): RedirectResponse
+    public function update(Request $request, Invoice $invoice, AdminNotificationService $adminNotifications): RedirectResponse
     {
+        $wasPaid = $invoice->status === 'paid';
         $data = $request->validate([
             'status' => ['required', Rule::in(['unpaid', 'overdue', 'paid', 'cancelled'])],
             'issue_date' => ['required', 'date'],
@@ -112,6 +119,10 @@ class InvoiceController extends Controller
         }
 
         $invoice->update($updates);
+
+        if (! $wasPaid && $data['status'] === 'paid') {
+            $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
+        }
 
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice updated.');

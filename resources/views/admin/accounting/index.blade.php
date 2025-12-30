@@ -43,7 +43,7 @@
                 @forelse($entries as $entry)
                     @php($isOutflow = $entry->isOutflow())
                     <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 text-slate-600">{{ $entry->entry_date->format('d-m-Y') }}</td>
+                        <td class="px-4 py-3 text-slate-600">{{ $entry->entry_date->format($globalDateFormat) }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($entry->type) }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $entry->customer?->name ?? '-' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $entry->invoice?->number ?? '-' }}</td>
@@ -72,3 +72,4 @@
         </table>
     </div>
 @endsection
+

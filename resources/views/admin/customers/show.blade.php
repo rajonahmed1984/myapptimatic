@@ -13,7 +13,7 @@
             </div>
             <div class="text-sm text-slate-600">
                 <div>Status: {{ ucfirst($customer->status) }}</div>
-                <div>Created: {{ $customer->created_at?->format('Y-m-d') ?? '--' }}</div>
+                <div>Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</div>
                 <div class="mt-3 flex flex-wrap items-center gap-3">
                     <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Customers</a>
                     <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}">
@@ -62,7 +62,7 @@
                                     <div class="font-semibold text-slate-900">
                                         Invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}
                                     </div>
-                                    <div class="text-xs text-slate-500">{{ $invoice->issue_date?->format('Y-m-d') ?? '--' }}</div>
+                                    <div class="text-xs text-slate-500">{{ $invoice->issue_date?->format($globalDateFormat) ?? '--' }}</div>
                                 </div>
                                 <div class="text-sm text-slate-600">{{ ucfirst($invoice->status) }}</div>
                             </div>
@@ -82,7 +82,7 @@
                                     <div class="text-xs text-slate-500">
                                         TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}
                                         <span class="mx-1">•</span>
-                                        {{ $ticket->created_at?->format('Y-m-d') ?? '--' }}
+                                        {{ $ticket->created_at?->format($globalDateFormat) ?? '--' }}
                                     </div>
                                 </div>
                                 <div class="text-sm text-slate-600">{{ ucfirst(str_replace('_', ' ', $ticket->status)) }}</div>
@@ -116,8 +116,8 @@
                                 <td class="px-4 py-3 text-slate-600">{{ $subscription->plan?->name ?? '--' }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ ucfirst($subscription->status) }}</td>
                                 <td class="px-4 py-3 text-slate-500">{{ $subscription->latestOrder?->order_number ?? '--' }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $subscription->next_invoice_at?->format('Y-m-d') ?? '--' }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $subscription->current_period_end?->format('Y-m-d') ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ $subscription->next_invoice_at?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ $subscription->current_period_end?->format($globalDateFormat) ?? '--' }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <a href="{{ route('admin.subscriptions.edit', $subscription) }}" class="text-teal-600 hover:text-teal-500">Manage</a>
                                 </td>
@@ -149,8 +149,8 @@
                                 <td class="px-4 py-3 font-medium text-slate-900">{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ ucfirst($invoice->status) }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $invoice->currency }} {{ $invoice->total }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $invoice->issue_date?->format('Y-m-d') ?? '--' }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $invoice->due_date?->format('Y-m-d') ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ $invoice->issue_date?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ $invoice->due_date?->format($globalDateFormat) ?? '--' }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <a href="{{ route('admin.invoices.show', $invoice) }}" class="text-slate-500 hover:text-teal-600">View</a>
                                 </td>
@@ -193,7 +193,7 @@
                                 <td class="px-4 py-3">
                                     <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $label }}</span>
                                 </td>
-                                <td class="px-4 py-3 text-slate-500">{{ $ticket->last_reply_at?->format('Y-m-d H:i') ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ $ticket->last_reply_at?->format($globalDateFormat . ' H:i') ?? '--' }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="text-slate-500 hover:text-teal-600">View</a>
                                 </td>
@@ -217,3 +217,4 @@
         @endif
     </div>
 @endsection
+

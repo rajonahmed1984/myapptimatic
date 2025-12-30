@@ -28,8 +28,8 @@
                 <div class="mt-2 inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] {{ $invoice->status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
                     {{ ucfirst($invoice->status) }}
                 </div>
-                <div class="mt-2 text-xs text-slate-500">Invoice date: {{ $invoice->issue_date->format('d-m-Y') }}</div>
-                <div class="mt-2 text-xs text-slate-500">Due date: {{ $invoice->due_date->format('d-m-Y') }}</div>
+                <div class="mt-2 text-xs text-slate-500">Invoice date: {{ $invoice->issue_date->format($globalDateFormat) }}</div>
+                <div class="mt-2 text-xs text-slate-500">Due date: {{ $invoice->due_date->format($globalDateFormat) }}</div>
             </div>
         </div>
 
@@ -214,7 +214,7 @@
                     <tbody>
                         @forelse($invoice->accountingEntries as $entry)
                             <tr class="border-t border-slate-200">
-                                <td class="px-4 py-3 text-slate-500">{{ $entry->entry_date->format('d-m-Y') }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ $entry->entry_date->format($globalDateFormat) }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $entry->paymentGateway?->name ?? '-' }}</td>
                                 <td class="px-4 py-3 text-slate-500">{{ $entry->reference ?? '-' }}</td>
                                 <td class="px-4 py-3 text-right text-slate-700">{{ $entry->currency }} {{ number_format((float) $entry->amount, 2) }}</td>
@@ -242,3 +242,4 @@
         </div>
     </div>
 @endsection
+

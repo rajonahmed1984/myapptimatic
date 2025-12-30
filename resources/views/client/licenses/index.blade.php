@@ -56,7 +56,7 @@
                             </td>
                             <td class="px-4 py-3 text-slate-600">{{ $license->product?->name ?? '-' }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $plan?->name ?? '-' }}</td>
-                            <td class="px-4 py-3 text-slate-500">{{ $license->starts_at?->format('d-m-Y') ?? '-' }}</td>
+                            <td class="px-4 py-3 text-slate-500">{{ $license->starts_at?->format($globalDateFormat) ?? '-' }}</td>
                             <td class="px-4 py-3 text-slate-400">-</td>
                             <td class="px-4 py-3 font-mono text-xs text-slate-700">{{ $maskedKey ?: '-' }}</td>
                             <td class="px-4 py-3">
@@ -76,3 +76,4 @@
         </div>
     @endif
 @endsection
+

@@ -7,11 +7,14 @@ use App\Models\Customer;
 use App\Models\EmailTemplate;
 use App\Models\User;
 use App\Models\Setting;
+use App\Support\Branding;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
@@ -116,9 +119,21 @@ class CustomerController extends Controller
 
         $subject = str_replace(array_keys($replacements), array_values($replacements), $subject);
         $body = str_replace(array_keys($replacements), array_values($replacements), $body);
+        $bodyHtml = $this->formatEmailBody($body);
+        $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
+        $portalUrl = rtrim(config('app.url'), '/');
+        $portalLoginUrl = route('login');
 
         try {
-            Mail::raw($body, function ($message) use ($customer, $subject, $fromEmail, $companyName) {
+            Mail::send('emails.generic', [
+                'subject' => $subject,
+                'companyName' => $companyName,
+                'logoUrl' => $logoUrl,
+                'portalUrl' => $portalUrl,
+                'portalLoginUrl' => $portalLoginUrl,
+                'portalLoginLabel' => 'log in to the client area',
+                'bodyHtml' => new HtmlString($bodyHtml),
+            ], function ($message) use ($customer, $subject, $fromEmail, $companyName) {
                 $message->to($customer->email)
                     ->subject($subject);
                 if ($fromEmail !== '') {
@@ -131,6 +146,22 @@ class CustomerController extends Controller
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function formatEmailBody(string $body): string
+    {
+        $trimmed = trim($body);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $looksLikeHtml = Str::contains($trimmed, ['<p', '<br', '<div', '<table', '<a ', '<strong', '<em', '<ul', '<ol', '<li']);
+
+        if ($looksLikeHtml) {
+            return $trimmed;
+        }
+
+        return nl2br(e($trimmed));
     }
 
     public function edit(Customer $customer)

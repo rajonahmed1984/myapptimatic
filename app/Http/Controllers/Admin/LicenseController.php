@@ -87,9 +87,9 @@ class LicenseController extends Controller
     public function edit(License $license)
     {
         return view('admin.licenses.edit', [
-            'license' => $license->load(['product', 'subscription.customer', 'domains']),
+            'license' => $license->load(['product', 'subscription.customer', 'subscription.plan.product', 'domains']),
             'products' => Product::query()->orderBy('name')->get(),
-            'subscriptions' => Subscription::query()->with('customer')->orderBy('id', 'desc')->get(),
+            'subscriptions' => Subscription::query()->with(['customer', 'plan.product'])->orderBy('id', 'desc')->get(),
         ]);
     }
 

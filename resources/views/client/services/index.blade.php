@@ -40,7 +40,7 @@
                             $serviceName = $product ? $product->name : 'Service';
                             $planName = $plan?->name ?? '--';
                             $cycle = $plan?->interval ? ucfirst($plan->interval) : '--';
-                            $nextDue = $subscription->current_period_end?->format('d-m-Y') ?? '--';
+                            $nextDue = $subscription->current_period_end?->format($globalDateFormat) ?? '--';
                         @endphp
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3 font-medium text-slate-900">{{ $serviceName }}</td>
@@ -80,3 +80,4 @@
         </div>
     @endif
 @endsection
+

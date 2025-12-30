@@ -67,7 +67,7 @@
                             <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $label }}</span>
                         </td>
                         <td class="px-4 py-3 text-slate-500">
-                            {{ $ticket->last_reply_at?->format('Y-m-d H:i') ?? '--' }}
+                            {{ $ticket->last_reply_at?->format($globalDateFormat . ' H:i') ?? '--' }}
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
@@ -89,4 +89,5 @@
         </table>
     </div>
 @endsection
+
 

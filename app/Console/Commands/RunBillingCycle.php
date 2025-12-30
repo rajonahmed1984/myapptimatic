@@ -6,8 +6,12 @@ use App\Models\Invoice;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\BillingService;
+use App\Services\AdminNotificationService;
+use App\Support\Branding;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class RunBillingCycle extends Command
 {
@@ -15,7 +19,10 @@ class RunBillingCycle extends Command
 
     protected $description = 'Generate invoices, mark overdue, apply late fees, and run automation.';
 
-    public function __construct(private BillingService $billingService)
+    public function __construct(
+        private BillingService $billingService,
+        private AdminNotificationService $adminNotifications
+    )
     {
         parent::__construct();
     }
@@ -26,22 +33,25 @@ class RunBillingCycle extends Command
         Setting::setValue('billing_last_started_at', $startedAt->toDateTimeString());
         Setting::setValue('billing_last_status', 'running');
         Setting::setValue('billing_last_error', '');
+        $metrics = $this->emptyMetrics();
 
         try {
             $today = Carbon::today();
 
-            $this->generateInvoices($today);
-            $this->markOverdue($today);
-            $this->applyLateFees($today);
-            $this->applyAutoCancellation($today);
-            $this->applySuspensions($today);
-            $this->applyTerminations($today);
-            $this->applyUnsuspensions();
+            $metrics['invoices_generated'] = $this->generateInvoices($today);
+            $metrics['invoices_overdue'] = $this->markOverdue($today);
+            $metrics['late_fees_added'] = $this->applyLateFees($today);
+            $metrics['auto_cancellations'] = $this->applyAutoCancellation($today);
+            $metrics['suspensions'] = $this->applySuspensions($today);
+            $metrics['terminations'] = $this->applyTerminations($today);
+            $metrics['unsuspensions'] = $this->applyUnsuspensions();
+            $this->sendInvoiceReminders($today);
 
             Setting::setValue('billing_last_run_at', Carbon::now()->toDateTimeString());
             Setting::setValue('billing_last_status', 'success');
 
             $this->info('Billing run completed.');
+            $this->sendCronSummary('success', $metrics, $startedAt, Carbon::now(), null);
 
             return self::SUCCESS;
         } catch (\Throwable $e) {
@@ -50,13 +60,15 @@ class RunBillingCycle extends Command
             Setting::setValue('billing_last_error', substr($e->getMessage(), 0, 500));
 
             $this->error('Billing run failed: ' . $e->getMessage());
+            $this->sendCronSummary('failed', $metrics, $startedAt, Carbon::now(), $e->getMessage());
 
             return self::FAILURE;
         }
     }
 
-    private function generateInvoices(Carbon $today): void
+    private function generateInvoices(Carbon $today): int
     {
+        $count = 0;
         $subscriptions = Subscription::query()
             ->with('plan')
             ->where('status', 'active')
@@ -79,12 +91,19 @@ class RunBillingCycle extends Command
                 continue;
             }
 
-            $this->billingService->generateInvoiceForSubscription($subscription, $today);
+            $invoice = $this->billingService->generateInvoiceForSubscription($subscription, $today);
+            if ($invoice) {
+                $count++;
+                $this->adminNotifications->sendInvoiceCreated($invoice);
+            }
         }
+
+        return $count;
     }
 
-    private function markOverdue(Carbon $today): void
+    private function markOverdue(Carbon $today): int
     {
+        $count = 0;
         $invoices = Invoice::query()
             ->where('status', 'unpaid')
             ->whereDate('due_date', '<', $today)
@@ -95,17 +114,21 @@ class RunBillingCycle extends Command
                 'status' => 'overdue',
                 'overdue_at' => $invoice->overdue_at ?? Carbon::now(),
             ]);
+            $count++;
         }
+
+        return $count;
     }
 
-    private function applyLateFees(Carbon $today): void
+    private function applyLateFees(Carbon $today): int
     {
+        $count = 0;
         $lateFeeDays = (int) Setting::getValue('late_fee_days');
         $lateFeeAmount = (float) Setting::getValue('late_fee_amount');
         $lateFeeType = Setting::getValue('late_fee_type');
 
         if ($lateFeeDays <= 0 || $lateFeeAmount <= 0) {
-            return;
+            return $count;
         }
 
         $targetDate = $today->copy()->subDays($lateFeeDays);
@@ -130,15 +153,19 @@ class RunBillingCycle extends Command
                 'total' => $invoice->subtotal + $invoice->late_fee + $lateFee,
                 'late_fee_applied_at' => Carbon::now(),
             ]);
+            $count++;
         }
+
+        return $count;
     }
 
-    private function applyAutoCancellation(Carbon $today): void
+    private function applyAutoCancellation(Carbon $today): int
     {
         if (! Setting::getValue('enable_auto_cancellation')) {
-            return;
+            return 0;
         }
 
+        $count = 0;
         $days = (int) Setting::getValue('auto_cancellation_days');
         $targetDate = $today->copy()->subDays($days);
 
@@ -151,15 +178,19 @@ class RunBillingCycle extends Command
             $invoice->update([
                 'status' => 'cancelled',
             ]);
+            $count++;
         }
+
+        return $count;
     }
 
-    private function applySuspensions(Carbon $today): void
+    private function applySuspensions(Carbon $today): int
     {
         if (! Setting::getValue('enable_suspension')) {
-            return;
+            return 0;
         }
 
+        $count = 0;
         $suspendDays = (int) Setting::getValue('suspend_days');
         $targetDate = $today->copy()->subDays($suspendDays);
 
@@ -183,20 +214,24 @@ class RunBillingCycle extends Command
 
             if ($subscription->status !== 'suspended') {
                 $subscription->update(['status' => 'suspended']);
+                $count++;
             }
 
             $subscription->licenses()
                 ->where('status', 'active')
                 ->update(['status' => 'suspended']);
         }
+
+        return $count;
     }
 
-    private function applyTerminations(Carbon $today): void
+    private function applyTerminations(Carbon $today): int
     {
         if (! Setting::getValue('enable_termination')) {
-            return;
+            return 0;
         }
 
+        $count = 0;
         $terminationDays = (int) Setting::getValue('termination_days');
         $targetDate = $today->copy()->subDays($terminationDays);
 
@@ -219,19 +254,23 @@ class RunBillingCycle extends Command
                 'auto_renew' => false,
                 'cancelled_at' => Carbon::now(),
             ]);
+            $count++;
 
             $subscription->licenses()
                 ->whereIn('status', ['active', 'suspended'])
                 ->update(['status' => 'revoked']);
         }
+
+        return $count;
     }
 
-    private function applyUnsuspensions(): void
+    private function applyUnsuspensions(): int
     {
         if (! Setting::getValue('enable_unsuspension')) {
-            return;
+            return 0;
         }
 
+        $count = 0;
         $subscriptions = Subscription::query()
             ->with(['licenses'])
             ->where('status', 'suspended')
@@ -260,7 +299,163 @@ class RunBillingCycle extends Command
             $subscription->licenses()
                 ->where('status', 'suspended')
                 ->update(['status' => 'active']);
+            $count++;
         }
+
+        return $count;
     }
 
+    private function sendInvoiceReminders(Carbon $today): int
+    {
+        if (! Setting::getValue('payment_reminder_emails')) {
+            return 0;
+        }
+
+        $sent = 0;
+
+        $unpaidDays = (int) Setting::getValue('invoice_unpaid_reminder_days');
+        if ($unpaidDays > 0) {
+            $targetDate = $today->copy()->addDays($unpaidDays);
+            $sent += $this->sendReminderBatch(
+                $targetDate,
+                'invoice_payment_reminder',
+                'reminder_sent_at',
+                ['unpaid']
+            );
+        }
+
+        $firstDays = (int) Setting::getValue('first_overdue_reminder_days');
+        if ($firstDays > 0) {
+            $targetDate = $today->copy()->subDays($firstDays);
+            $sent += $this->sendReminderBatch(
+                $targetDate,
+                'invoice_overdue_first_notice',
+                'first_overdue_reminder_sent_at',
+                ['unpaid', 'overdue']
+            );
+        }
+
+        $secondDays = (int) Setting::getValue('second_overdue_reminder_days');
+        if ($secondDays > 0) {
+            $targetDate = $today->copy()->subDays($secondDays);
+            $sent += $this->sendReminderBatch(
+                $targetDate,
+                'invoice_overdue_second_notice',
+                'second_overdue_reminder_sent_at',
+                ['unpaid', 'overdue']
+            );
+        }
+
+        $thirdDays = (int) Setting::getValue('third_overdue_reminder_days');
+        if ($thirdDays > 0) {
+            $targetDate = $today->copy()->subDays($thirdDays);
+            $sent += $this->sendReminderBatch(
+                $targetDate,
+                'invoice_overdue_third_notice',
+                'third_overdue_reminder_sent_at',
+                ['unpaid', 'overdue']
+            );
+        }
+
+        return $sent;
+    }
+
+    private function sendReminderBatch(
+        Carbon $targetDate,
+        string $templateKey,
+        string $sentColumn,
+        array $statuses
+    ): int {
+        $count = 0;
+
+        $invoices = Invoice::query()
+            ->with('customer')
+            ->whereIn('status', $statuses)
+            ->whereDate('due_date', $targetDate->toDateString())
+            ->whereNull($sentColumn)
+            ->get();
+
+        foreach ($invoices as $invoice) {
+            $this->adminNotifications->sendInvoiceReminder($invoice, $templateKey);
+            $invoice->update([$sentColumn => Carbon::now()]);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    private function emptyMetrics(): array
+    {
+        return [
+            'invoices_generated' => 0,
+            'invoices_overdue' => 0,
+            'late_fees_added' => 0,
+            'auto_cancellations' => 0,
+            'suspensions' => 0,
+            'terminations' => 0,
+            'unsuspensions' => 0,
+        ];
+    }
+
+    private function sendCronSummary(
+        string $status,
+        array $metrics,
+        Carbon $startedAt,
+        Carbon $finishedAt,
+        ?string $errorMessage
+    ): void {
+        $to = Setting::getValue('company_email') ?: config('mail.from.address');
+        if (! $to) {
+            return;
+        }
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
+        $portalUrl = rtrim(config('app.url'), '/');
+        $portalLoginUrl = $portalUrl . '/admin';
+        $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
+        $timeZone = Setting::getValue('time_zone', config('app.timezone'));
+        $subject = $status === 'success'
+            ? "{$companyName} Cron Job Activity"
+            : "{$companyName} Cron Job Failed";
+
+        $metricCards = [
+            ['label' => 'Invoices', 'value' => $metrics['invoices_generated'], 'subtitle' => 'Generated'],
+            ['label' => 'Invoices', 'value' => $metrics['invoices_overdue'], 'subtitle' => 'Marked Overdue'],
+            ['label' => 'Late Fees', 'value' => $metrics['late_fees_added'], 'subtitle' => 'Added'],
+            ['label' => 'Suspensions', 'value' => $metrics['suspensions'], 'subtitle' => 'Applied'],
+            ['label' => 'Terminations', 'value' => $metrics['terminations'], 'subtitle' => 'Applied'],
+            ['label' => 'Unsuspensions', 'value' => $metrics['unsuspensions'], 'subtitle' => 'Processed'],
+            ['label' => 'Auto Cancel', 'value' => $metrics['auto_cancellations'], 'subtitle' => 'Invoices'],
+        ];
+
+        try {
+            Mail::send('emails.cron-activity', [
+                'subject' => $subject,
+                'companyName' => $companyName,
+                'logoUrl' => $logoUrl,
+                'portalUrl' => $portalUrl,
+                'portalLoginUrl' => $portalLoginUrl,
+                'portalLoginLabel' => 'log in to the admin area',
+                'status' => $status,
+                'metrics' => $metricCards,
+                'startedAt' => $startedAt,
+                'finishedAt' => $finishedAt,
+                'dateFormat' => $dateFormat,
+                'timeZone' => $timeZone,
+                'errorMessage' => $errorMessage,
+            ], function ($message) use ($to, $subject, $companyName) {
+                $message->to($to)->subject($subject);
+
+                $fromEmail = Setting::getValue('company_email');
+                if ($fromEmail) {
+                    $message->from($fromEmail, $companyName);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send cron activity email.', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 }

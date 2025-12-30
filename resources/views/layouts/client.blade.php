@@ -50,6 +50,10 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Support
                 </a>
+                <a class="{{ request()->routeIs('client.affiliates.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.affiliates.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Affiliates
+                </a>
                 <a class="{{ request()->routeIs('client.profile.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.profile.edit') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Profile

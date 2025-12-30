@@ -29,7 +29,7 @@
                     <tr class="border-b border-slate-100">
                         <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>                       
                         <td class="px-4 py-3 text-slate-500">
-                            {{ $subscription->latestOrder?->created_at?->format('Y-m-d') ?? '--' }}
+                            {{ $subscription->latestOrder?->created_at?->format($globalDateFormat) ?? '--' }}
                         </td>
                         <td class="px-4 py-3 text-slate-500">
                             {{ $subscription->latestOrder?->order_number ?? '--' }}
@@ -38,7 +38,7 @@
                         <td class="px-4 py-3 text-slate-500">{{ $subscription->plan->product->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $subscription->plan->name }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($subscription->status) }}</td> 
-                        <td class="px-4 py-3">{{ $subscription->next_invoice_at->format('Y-m-d') }}</td>
+                        <td class="px-4 py-3">{{ $subscription->next_invoice_at->format($globalDateFormat) }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.subscriptions.edit', $subscription) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
@@ -59,3 +59,4 @@
         </table>
     </div>
 @endsection
+

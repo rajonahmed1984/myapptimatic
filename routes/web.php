@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Admin\AccountingController as AdminAccountingController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\AffiliateCommissionController;
+use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
+use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\ClientRequestController as AdminClientRequestController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -17,6 +20,7 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Client\AffiliateController as ClientAffiliateController;
 use App\Http\Controllers\Client\ClientRequestController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\DomainController as ClientDomainController;
@@ -132,6 +136,19 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::delete('accounting/{entry}', [AdminAccountingController::class, 'destroy'])->name('accounting.destroy');
     Route::get('settings', [SettingController::class, 'edit'])->name('settings.edit');
     Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
+    
+    // Affiliate routes
+    Route::resource('affiliates', AdminAffiliateController::class);
+    Route::get('affiliates/commissions', [AffiliateCommissionController::class, 'index'])->name('affiliates.commissions.index');
+    Route::post('affiliates/commissions/{commission}/approve', [AffiliateCommissionController::class, 'approve'])->name('affiliates.commissions.approve');
+    Route::post('affiliates/commissions/{commission}/reject', [AffiliateCommissionController::class, 'reject'])->name('affiliates.commissions.reject');
+    Route::post('affiliates/commissions/bulk-approve', [AffiliateCommissionController::class, 'bulkApprove'])->name('affiliates.commissions.bulk-approve');
+    Route::get('affiliates/payouts', [AffiliatePayoutController::class, 'index'])->name('affiliates.payouts.index');
+    Route::get('affiliates/payouts/create', [AffiliatePayoutController::class, 'create'])->name('affiliates.payouts.create');
+    Route::post('affiliates/payouts', [AffiliatePayoutController::class, 'store'])->name('affiliates.payouts.store');
+    Route::get('affiliates/payouts/{payout}', [AffiliatePayoutController::class, 'show'])->name('affiliates.payouts.show');
+    Route::post('affiliates/payouts/{payout}/complete', [AffiliatePayoutController::class, 'markAsCompleted'])->name('affiliates.payouts.complete');
+    Route::delete('affiliates/payouts/{payout}', [AffiliatePayoutController::class, 'destroy'])->name('affiliates.payouts.destroy');
 });
 
 Route::middleware(['auth', 'client', 'client.notice'])
@@ -168,6 +185,16 @@ Route::middleware(['auth', 'client', 'client.notice'])
         Route::get('/support-tickets/{ticket}', [ClientSupportTicketController::class, 'show'])->name('support-tickets.show');
         Route::post('/support-tickets/{ticket}/reply', [ClientSupportTicketController::class, 'reply'])->name('support-tickets.reply');
         Route::patch('/support-tickets/{ticket}/status', [ClientSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
+        
+        // Affiliate routes
+        Route::get('/affiliates', [ClientAffiliateController::class, 'index'])->name('affiliates.index');
+        Route::get('/affiliates/apply', [ClientAffiliateController::class, 'apply'])->name('affiliates.apply');
+        Route::post('/affiliates/apply', [ClientAffiliateController::class, 'storeApplication'])->name('affiliates.apply.store');
+        Route::get('/affiliates/referrals', [ClientAffiliateController::class, 'referrals'])->name('affiliates.referrals');
+        Route::get('/affiliates/commissions', [ClientAffiliateController::class, 'commissions'])->name('affiliates.commissions');
+        Route::get('/affiliates/payouts', [ClientAffiliateController::class, 'payouts'])->name('affiliates.payouts');
+        Route::get('/affiliates/settings', [ClientAffiliateController::class, 'settings'])->name('affiliates.settings');
+        Route::put('/affiliates/settings', [ClientAffiliateController::class, 'updateSettings'])->name('affiliates.settings.update');
     });
 
 Route::get('/products', [PublicProductController::class, 'index'])

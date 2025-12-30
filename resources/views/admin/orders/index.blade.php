@@ -40,7 +40,7 @@
                         <td class="px-4 py-3 text-slate-600">{{ $service }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ ucfirst($order->status) }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $invoiceNumber }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ $order->created_at?->format('d-m-Y') ?? '--' }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $order->created_at?->format($globalDateFormat) ?? '--' }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.orders.show', $order) }}" class="text-slate-500 hover:text-teal-600">View</a>
@@ -68,3 +68,4 @@
         </table>
     </div>
 @endsection
+

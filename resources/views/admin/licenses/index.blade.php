@@ -26,6 +26,10 @@
             <tbody>
                 @forelse($licenses as $license)
                     @php($primaryDomain = $license->domains->first()?->domain)
+                    @php($lastCheck = $license->last_check_at)
+                    @php($hoursSinceCheck = $lastCheck ? $lastCheck->diffInHours(now()) : null)
+                    @php($syncLabel = $lastCheck ? ($hoursSinceCheck <= 24 ? 'Synced' : 'Stale') : 'Never')
+                    @php($syncClass = $lastCheck ? ($hoursSinceCheck <= 24 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700') : 'bg-slate-100 text-slate-600')
                     <tr class="border-b border-slate-100">
                         <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 font-mono text-xs text-teal-700">
@@ -33,25 +37,10 @@
                             <br>
                             {{ $primaryDomain ?? '--' }}
                         </td>
-                        @php
-                            $lastCheck = $license->last_check_at;
-                            $syncLabel = 'Never';
-                            $syncClass = 'bg-slate-100 text-slate-600';
-                            if ($lastCheck) {
-                                $hours = $lastCheck->diffInHours(now());
-                                if ($hours <= 24) {
-                                    $syncLabel = 'Synced';
-                                    $syncClass = 'bg-emerald-100 text-emerald-700';
-                                } else {
-                                    $syncLabel = 'Stale';
-                                    $syncClass = 'bg-amber-100 text-amber-700';
-                                }
-                            }
-                        @endphp
                         <td class="px-4 py-3">
                             <div class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $syncClass }}">{{ $syncLabel }}</div>
                             <div class="mt-1 text-xs text-slate-500">
-                                {{ $lastCheck ? $lastCheck->format('d-m-Y H:i') : 'No sync yet' }}
+                                {{ $lastCheck ? $lastCheck->format($globalDateFormat . ' H:i') : 'No sync yet' }}
                             </div>
                         </td>
                         <td class="px-4 py-3 text-slate-900">
@@ -82,3 +71,4 @@
         </table>
     </div>
 @endsection
+

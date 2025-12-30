@@ -44,6 +44,32 @@
                             <input name="company_email" type="email" value="{{ old('company_email', $settings['company_email']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                         </div>
                         <div>
+                            <label class="text-sm text-slate-600">Country</label>
+                            <select name="company_country" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                                <option value="">Select country</option>
+                                @foreach($countries as $country)
+                                    <option value="{{ $country }}" @selected(old('company_country', $settings['company_country']) === $country)>{{ $country }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-600">Global date format</label>
+                            <select name="date_format" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                                @foreach($dateFormats as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('date_format', $settings['date_format']) === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-600">Time zone</label>
+                            <select name="time_zone" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                                @foreach($timeZones as $zone)
+                                    <option value="{{ $zone }}" @selected(old('time_zone', $settings['time_zone']) === $zone)>{{ $zone }}</option>
+                                @endforeach
+                            </select>
+                            <p class="mt-2 text-xs text-slate-500">Cron uses this time zone.</p>
+                        </div>
+                        <div>
                             <label class="text-sm text-slate-600">Company logo</label>
                             <input name="company_logo" type="file" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                             @if(!empty($settings['company_logo_url']))
@@ -330,7 +356,7 @@
                         <div>
                             <label class="text-sm text-slate-600">Last billing run</label>
                             <div class="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700">
-                                {{ $lastRunAt ? \Illuminate\Support\Carbon::parse($lastRunAt)->toDayDateTimeString() : 'Never' }}
+                                {{ $lastRunAt ? \Illuminate\Support\Carbon::parse($lastRunAt)->format($globalDateFormat . ' H:i') : 'Never' }}
                             </div>
                             <p class="mt-2 text-xs text-slate-500">Trigger billing every day or hour for best results.</p>
                         </div>
@@ -417,3 +443,4 @@
         })();
     </script>
 @endsection
+

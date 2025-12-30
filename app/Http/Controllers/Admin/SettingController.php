@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use DateTimeZone;
 
 class SettingController extends Controller
 {
@@ -38,11 +39,21 @@ class SettingController extends Controller
             ? EmailTemplate::query()->orderBy('category')->orderBy('name')->get()
             : collect();
 
+        $countries = config('countries', []);
+        $dateFormats = [
+            'd-m-Y' => 'DD-MM-YYYY (31-12-2025)',
+            'm-d-Y' => 'MM-DD-YYYY (12-31-2025)',
+            'Y-m-d' => 'YYYY-MM-DD (2025-12-31)',
+            'd/m/Y' => 'DD/MM/YYYY (31/12/2025)',
+        ];
+        $timeZones = DateTimeZone::listIdentifiers();
+
         return view('admin.settings.edit', [
             'settings' => [
                 'company_name' => Setting::getValue('company_name'),
                 'company_email' => Setting::getValue('company_email'),
                 'pay_to_text' => Setting::getValue('pay_to_text'),
+                'company_country' => Setting::getValue('company_country'),
                 'company_logo_path' => $logoPath,
                 'company_logo_url' => Branding::url($logoPath),
                 'company_favicon_path' => $faviconPath,
@@ -85,18 +96,29 @@ class SettingController extends Controller
                 'recaptcha_project_id' => Setting::getValue('recaptcha_project_id', config('recaptcha.project_id')),
                 'recaptcha_api_key' => Setting::getValue('recaptcha_api_key', config('recaptcha.api_key')),
                 'recaptcha_score_threshold' => Setting::getValue('recaptcha_score_threshold', config('recaptcha.score_threshold')),
+                'date_format' => Setting::getValue('date_format'),
+                'time_zone' => Setting::getValue('time_zone', config('app.timezone')),
             ],
             'emailTemplates' => $emailTemplates,
             'activeTab' => $activeTab,
+            'countries' => $countries,
+            'dateFormats' => $dateFormats,
+            'timeZones' => $timeZones,
         ]);
     }
 
     public function update(Request $request)
     {
+        $countries = config('countries', []);
+        $countryOptions = array_merge([''], $countries);
+        $dateFormatKeys = ['d-m-Y', 'm-d-Y', 'Y-m-d', 'd/m/Y'];
+        $timeZones = DateTimeZone::listIdentifiers();
+
         $data = $request->validate([
             'company_name' => ['required', 'string', 'max:255'],
             'company_email' => ['nullable', 'email', 'max:255'],
             'pay_to_text' => ['nullable', 'string', 'max:255'],
+            'company_country' => ['nullable', 'string', 'max:255', Rule::in($countryOptions)],
             'company_logo' => ['nullable', 'mimes:jpg,jpeg,png,svg', 'max:2048'],
             'company_favicon' => ['nullable', 'mimes:jpg,jpeg,png,svg,ico', 'max:1024'],
             'currency' => ['required', Rule::in(['BDT', 'USD'])],
@@ -131,6 +153,8 @@ class SettingController extends Controller
             'recaptcha_project_id' => ['nullable', 'string', 'max:255'],
             'recaptcha_api_key' => ['nullable', 'string', 'max:255'],
             'recaptcha_score_threshold' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'date_format' => ['required', Rule::in($dateFormatKeys)],
+            'time_zone' => ['required', Rule::in($timeZones)],
             'templates' => ['nullable', 'array'],
             'templates.*.from_email' => ['nullable', 'email', 'max:255'],
             'templates.*.subject' => ['nullable', 'string', 'max:255'],
@@ -140,6 +164,7 @@ class SettingController extends Controller
         Setting::setValue('company_name', $data['company_name']);
         Setting::setValue('company_email', $data['company_email'] ?? '');
         Setting::setValue('pay_to_text', $data['pay_to_text'] ?? '');
+        Setting::setValue('company_country', $data['company_country'] ?? '');
 
         if ($request->hasFile('company_logo')) {
             $logoPath = $request->file('company_logo')->store('branding', 'public');
@@ -184,6 +209,8 @@ class SettingController extends Controller
         Setting::setValue('recaptcha_project_id', $data['recaptcha_project_id'] ?? '');
         Setting::setValue('recaptcha_api_key', $data['recaptcha_api_key'] ?? '');
         Setting::setValue('recaptcha_score_threshold', $data['recaptcha_score_threshold'] ?? '');
+        Setting::setValue('date_format', $data['date_format']);
+        Setting::setValue('time_zone', $data['time_zone']);
 
         if (Schema::hasTable('email_templates') && ! empty($data['templates']) && is_array($data['templates'])) {
             $templateUpdates = $data['templates'];

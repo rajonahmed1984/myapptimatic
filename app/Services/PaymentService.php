@@ -76,6 +76,11 @@ class PaymentService
                 'status' => 'paid',
                 'paid_at' => $invoice->paid_at ?? Carbon::now(),
             ]);
+            try {
+                app(\App\Services\AdminNotificationService::class)->sendInvoicePaid($invoice);
+            } catch (\Throwable) {
+                // Notification errors should not break payment flow.
+            }
         }
     }
 
