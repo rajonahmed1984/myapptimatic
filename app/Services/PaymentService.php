@@ -295,6 +295,7 @@ class PaymentService
         $settings = $gateway->settings ?? [];
         $clientId = $settings['client_id'] ?? null;
         $clientSecret = $settings['client_secret'] ?? null;
+        $currency = strtoupper((string) ($settings['processing_currency'] ?? $attempt->currency));
 
         if (! $clientId || ! $clientSecret) {
             $email = $settings['paypal_email'] ?? null;
@@ -325,7 +326,7 @@ class PaymentService
                 'reference_id' => $attempt->gateway_reference,
                 'description' => 'Invoice '.$attempt->invoice->number,
                 'amount' => [
-                    'currency_code' => strtoupper($attempt->currency),
+                    'currency_code' => $currency,
                     'value' => number_format((float) $attempt->amount, 2, '.', ''),
                 ],
             ]],
@@ -371,11 +372,12 @@ class PaymentService
 
         $customer = $attempt->customer;
         $baseUrl = $this->sslcommerzBaseUrl($settings);
+        $currency = strtoupper((string) ($settings['processing_currency'] ?? $attempt->currency));
         $payload = [
             'store_id' => $storeId,
             'store_passwd' => $storePassword,
             'total_amount' => number_format((float) $attempt->amount, 2, '.', ''),
-            'currency' => strtoupper($attempt->currency),
+            'currency' => $currency,
             'tran_id' => $attempt->gateway_reference,
             'success_url' => route('payments.sslcommerz.success', $attempt),
             'fail_url' => route('payments.sslcommerz.fail', $attempt),
@@ -479,6 +481,7 @@ class PaymentService
             ? 'https://www.sandbox.paypal.com/cgi-bin/webscr'
             : 'https://www.paypal.com/cgi-bin/webscr';
 
+        $currency = strtoupper((string) ($settings['processing_currency'] ?? $attempt->currency));
         $amount = number_format((float) $attempt->amount, 2, '.', '');
         $itemName = 'Invoice '.$attempt->invoice->number;
 
@@ -487,7 +490,7 @@ class PaymentService
             'business' => $email,
             'item_name' => $itemName,
             'amount' => $amount,
-            'currency_code' => strtoupper($attempt->currency),
+            'currency_code' => $currency,
             'custom' => (string) $attempt->id,
             'return' => route('payments.paypal.return', $attempt),
             'cancel_return' => route('payments.paypal.cancel', $attempt),

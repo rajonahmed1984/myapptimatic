@@ -8,6 +8,7 @@ use App\Models\EmailTemplate;
 use App\Models\User;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -104,6 +105,7 @@ class CustomerController extends Controller
 
         $subject = $template?->subject ?: "Welcome to {$companyName}";
         $body = $template?->body ?: "Hi {{client_name}},\n\nYour account for {{company_name}} is ready. You can sign in here: {{login_url}}.\n\nThank you,\n{{company_name}}";
+        $fromEmail = trim((string) ($template?->from_email ?? ''));
 
         $replacements = [
             '{{client_name}}' => $customer->name,
@@ -116,9 +118,12 @@ class CustomerController extends Controller
         $body = str_replace(array_keys($replacements), array_values($replacements), $body);
 
         try {
-            Mail::raw($body, function ($message) use ($customer, $subject) {
+            Mail::raw($body, function ($message) use ($customer, $subject, $fromEmail, $companyName) {
                 $message->to($customer->email)
                     ->subject($subject);
+                if ($fromEmail !== '') {
+                    $message->from($fromEmail, $companyName);
+                }
             });
         } catch (\Throwable $e) {
             Log::warning('Failed to send account info email.', [
@@ -159,6 +164,24 @@ class CustomerController extends Controller
             'customer' => $customer,
             'tab' => $tab,
         ]);
+    }
+
+    public function impersonate(Request $request, Customer $customer)
+    {
+        $user = $customer->users()
+            ->where('role', 'client')
+            ->orderBy('id')
+            ->first();
+
+        if (! $user) {
+            return back()->withErrors(['impersonate' => 'No client login exists for this customer.']);
+        }
+
+        $request->session()->put('impersonator_id', $request->user()->id);
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('client.dashboard');
     }
 
     public function update(Request $request, Customer $customer)

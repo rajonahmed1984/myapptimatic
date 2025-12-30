@@ -8,7 +8,7 @@ use App\Models\PaymentGateway;
 use App\Models\Setting;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Http\Response;
 
 class InvoiceController extends Controller
 {
@@ -104,7 +104,7 @@ class InvoiceController extends Controller
             ->withErrors(['payment_gateway_id' => $result['message'] ?? 'Unable to start payment.']);
     }
 
-    public function download(Request $request, Invoice $invoice): StreamedResponse
+    public function download(Request $request, Invoice $invoice): Response
     {
         $customerId = $request->user()->customer_id;
 

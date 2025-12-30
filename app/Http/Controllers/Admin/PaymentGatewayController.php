@@ -44,6 +44,7 @@ class PaymentGatewayController extends Controller
             'password' => ['nullable', 'string', 'max:255'],
             'app_key' => ['nullable', 'string', 'max:255'],
             'app_secret' => ['nullable', 'string', 'max:255'],
+            'button_label' => ['nullable', 'string', 'max:255'],
             'store_id' => ['nullable', 'string', 'max:255'],
             'store_password' => ['nullable', 'string', 'max:255'],
             'easy_checkout' => ['nullable', 'boolean'],
@@ -74,6 +75,7 @@ class PaymentGatewayController extends Controller
                     'bank_name' => $data['bank_name'] ?? '',
                     'branch' => $data['branch'] ?? '',
                     'routing_number' => $data['routing_number'] ?? '',
+                    'button_label' => $data['button_label'] ?? '',
                 ]);
                 break;
             case 'bkash':
@@ -85,6 +87,7 @@ class PaymentGatewayController extends Controller
                     'password' => $data['password'] ?? '',
                     'app_key' => $data['app_key'] ?? '',
                     'app_secret' => $data['app_secret'] ?? '',
+                    'button_label' => $data['button_label'] ?? '',
                     'processing_currency' => $data['processing_currency'] ?? '',
                     'sandbox' => $request->boolean('sandbox'),
                 ]);
@@ -95,7 +98,9 @@ class PaymentGatewayController extends Controller
                     'payment_url' => $data['payment_url'] ?? '',
                     'store_id' => $data['store_id'] ?? '',
                     'store_password' => $data['store_password'] ?? '',
+                    'button_label' => $data['button_label'] ?? '',
                     'easy_checkout' => $request->boolean('easy_checkout'),
+                    'processing_currency' => $data['processing_currency'] ?? '',
                     'sandbox' => $request->boolean('sandbox'),
                 ]);
                 break;
@@ -113,6 +118,8 @@ class PaymentGatewayController extends Controller
                     'client_address_matching' => $request->boolean('client_address_matching'),
                     'client_id' => $data['client_id'] ?? '',
                     'client_secret' => $data['client_secret'] ?? '',
+                    'button_label' => $data['button_label'] ?? '',
+                    'processing_currency' => $data['processing_currency'] ?? '',
                     'sandbox' => $request->boolean('sandbox'),
                 ]);
                 break;

@@ -23,9 +23,10 @@
                 <button type="button" data-tab-target="cron" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Cron status</button>
             </div>
 
-            <form method="POST" action="{{ route('admin.settings.update') }}" class="mt-8 space-y-8" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('admin.settings.update') }}" class="mt-8 space-y-8" enctype="multipart/form-data" data-tab-default="{{ $activeTab }}">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="active_tab" value="{{ $activeTab }}" />
 
                 <section data-tab-panel="general" class="space-y-6">
                     <div class="section-label">General</div>
@@ -274,6 +275,16 @@
                                             </summary>
                                             <div class="mt-5 grid gap-4">
                                                 <div>
+                                                    <label class="text-sm text-slate-600">From email</label>
+                                                    <input
+                                                        name="templates[{{ $template->id }}][from_email]"
+                                                        value="{{ old("templates.{$template->id}.from_email", $template->from_email) }}"
+                                                        placeholder="hello@apptimatic.com"
+                                                        class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                                    />
+                                                    <p class="mt-2 text-xs text-slate-500">Leave blank to use the default sender.</p>
+                                                </div>
+                                                <div>
                                                     <label class="text-sm text-slate-600">Subject</label>
                                                     <input
                                                         name="templates[{{ $template->id }}][subject]"
@@ -359,6 +370,8 @@
         (function () {
             const tabs = Array.from(document.querySelectorAll('[data-tab-target]'));
             const panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+            const form = document.querySelector('form[data-tab-default]');
+            const activeTabInput = form?.querySelector('input[name="active_tab"]');
 
             function setActive(target) {
                 tabs.forEach((tab) => {
@@ -374,18 +387,31 @@
                 });
             }
 
-            const hash = window.location.hash.replace('#', '');
-            const defaultTab = tabs.some((tab) => tab.dataset.tabTarget === hash) ? hash : tabs[0]?.dataset.tabTarget;
+            const url = new URL(window.location.href);
+            const queryTab = url.searchParams.get('tab');
+            const defaultTab = form?.dataset.tabDefault;
+            const startTab = tabs.some((tab) => tab.dataset.tabTarget === queryTab)
+                ? queryTab
+                : (tabs.some((tab) => tab.dataset.tabTarget === defaultTab) ? defaultTab : tabs[0]?.dataset.tabTarget);
 
-            if (defaultTab) {
-                setActive(defaultTab);
+            if (startTab) {
+                setActive(startTab);
+                if (activeTabInput) {
+                    activeTabInput.value = startTab;
+                }
             }
 
             tabs.forEach((tab) => {
                 tab.addEventListener('click', () => {
                     const target = tab.dataset.tabTarget;
                     setActive(target);
-                    window.history.replaceState(null, '', `#${target}`);
+                    const nextUrl = new URL(window.location.href);
+                    nextUrl.searchParams.set('tab', target);
+                    nextUrl.hash = '';
+                    window.history.replaceState(null, '', nextUrl.toString());
+                    if (activeTabInput) {
+                        activeTabInput.value = target;
+                    }
                 });
             });
         })();

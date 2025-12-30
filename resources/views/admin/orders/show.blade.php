@@ -76,10 +76,35 @@
             </div>
         </div>
 
-        <div class="mt-6 flex flex-wrap gap-3">
+        @php
+            $primaryLicense = $order->subscription?->licenses->first();
+            $primaryDomain = $primaryLicense?->domains->first()?->domain;
+        @endphp
+
+        <div class="mt-6 flex flex-wrap items-start gap-3">
             @if($order->status === 'pending')
-                <form method="POST" action="{{ route('admin.orders.approve', $order) }}">
+                <form method="POST" action="{{ route('admin.orders.approve', $order) }}" class="w-full max-w-xl space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-4">
                     @csrf
+                    <div>
+                        <label class="text-xs uppercase tracking-[0.2em] text-slate-400">License number</label>
+                        <input
+                            name="license_key"
+                            value="{{ old('license_key', $primaryLicense?->license_key) }}"
+                            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            placeholder="Enter license key"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase tracking-[0.2em] text-slate-400">License URL</label>
+                        <input
+                            name="license_url"
+                            value="{{ old('license_url', $primaryDomain) }}"
+                            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            placeholder="https://example.com"
+                            required
+                        />
+                    </div>
                     <button type="submit" class="rounded-full bg-emerald-500 px-5 py-2 text-sm font-semibold text-white">Accept Order</button>
                 </form>
                 <form method="POST" action="{{ route('admin.orders.cancel', $order) }}">

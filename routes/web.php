@@ -73,6 +73,9 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout')
     ->middleware('auth');
+Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
+    ->name('impersonate.stop')
+    ->middleware('auth');
 
 Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
@@ -80,6 +83,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
     Route::resource('admins', AdminUserController::class)->except(['show']);
     Route::resource('customers', CustomerController::class);
+    Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])->name('customers.impersonate');
     Route::resource('products', ProductController::class)->except(['show']);
     Route::resource('plans', PlanController::class)->except(['show']);
     Route::resource('subscriptions', SubscriptionController::class)->except(['show']);

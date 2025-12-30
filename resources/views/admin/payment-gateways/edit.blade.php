@@ -98,6 +98,15 @@
                 <input name="paypal_email" type="email" value="{{ old('paypal_email', $settings['paypal_email'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
             </div>
             <div>
+                <label class="text-sm text-slate-600">Convert To For Processing</label>
+                @php($processingCurrency = old('processing_currency', $settings['processing_currency'] ?? $defaultCurrency ?? 'USD'))
+                <select name="processing_currency" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    @foreach($currencyOptions as $currency)
+                        <option value="{{ $currency }}" @selected(strtoupper($processingCurrency) === $currency)>{{ $currency }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
                 <label class="text-sm text-slate-600">API Username</label>
                 <input name="api_username" value="{{ old('api_username', $settings['api_username'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
             </div>
@@ -133,12 +142,25 @@
             </div>
         @elseif($gateway->driver === 'sslcommerz')
             <div>
+                <label class="text-sm text-slate-600">Payment button label</label>
+                <input name="button_label" value="{{ old('button_label', $settings['button_label'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" placeholder="Pay Now" />
+            </div>
+            <div>
                 <label class="text-sm text-slate-600">Store ID</label>
                 <input name="store_id" value="{{ old('store_id', $settings['store_id'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
             </div>
             <div>
                 <label class="text-sm text-slate-600">Store password</label>
                 <input name="store_password" type="password" value="{{ old('store_password', $settings['store_password'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+            </div>
+            <div>
+                <label class="text-sm text-slate-600">Convert To For Processing</label>
+                @php($processingCurrency = old('processing_currency', $settings['processing_currency'] ?? $defaultCurrency ?? 'BDT'))
+                <select name="processing_currency" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    @foreach($currencyOptions as $currency)
+                        <option value="{{ $currency }}" @selected(strtoupper($processingCurrency) === $currency)>{{ $currency }}</option>
+                    @endforeach
+                </select>
             </div>
             <div class="md:col-span-2">
                 <label class="inline-flex items-center gap-2 text-sm text-slate-600">

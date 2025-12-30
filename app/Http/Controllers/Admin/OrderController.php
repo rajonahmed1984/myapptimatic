@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Plan;
+use App\Models\License;
+use App\Models\LicenseDomain;
 use App\Services\BillingService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
@@ -38,7 +41,7 @@ class OrderController extends Controller
             'customer',
             'plan.product.plans',
             'invoice',
-            'subscription.licenses',
+            'subscription.licenses.domains',
             'approver',
             'canceller',
         ]);
@@ -57,10 +60,32 @@ class OrderController extends Controller
         ]);
     }
 
-    public function approve(Order $order): RedirectResponse
+    public function approve(Request $request, Order $order): RedirectResponse
     {
         if ($order->status !== 'pending') {
             return back()->with('status', 'Order already processed.');
+        }
+
+        $subscription = $order->subscription;
+        if (! $subscription) {
+            return back()->withErrors(['license_key' => 'No subscription found for this order.']);
+        }
+
+        $license = $subscription->licenses()->first();
+
+        $data = $request->validate([
+            'license_key' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('licenses', 'license_key')->ignore($license?->id),
+            ],
+            'license_url' => ['required', 'string', 'max:255'],
+        ]);
+
+        $domain = $this->normalizeDomain($data['license_url']);
+        if (! $domain) {
+            return back()->withErrors(['license_url' => 'Invalid URL format. Use a valid domain or URL.']);
         }
 
         $order->update([
@@ -69,15 +94,41 @@ class OrderController extends Controller
             'approved_at' => Carbon::now(),
         ]);
 
-        if ($order->subscription) {
-            $order->subscription->update([
+        $subscription->update([
+            'status' => 'active',
+        ]);
+
+        if (! $license) {
+            $license = License::create([
+                'subscription_id' => $subscription->id,
+                'product_id' => $order->product_id ?? $subscription->plan?->product_id,
+                'license_key' => $data['license_key'],
+                'status' => 'active',
+                'starts_at' => $subscription->start_date ?? Carbon::today()->toDateString(),
+                'expires_at' => $subscription->current_period_end,
+                'max_domains' => 1,
+            ]);
+        } else {
+            $license->update([
+                'license_key' => $data['license_key'],
                 'status' => 'active',
             ]);
-
-            $order->subscription->licenses()
-                ->whereIn('status', ['pending', 'suspended'])
-                ->update(['status' => 'active']);
         }
+
+        LicenseDomain::updateOrCreate(
+            [
+                'license_id' => $license->id,
+                'domain' => $domain,
+            ],
+            [
+                'status' => 'active',
+                'verified_at' => Carbon::now(),
+            ]
+        );
+
+        $license->domains()
+            ->where('domain', '!=', $domain)
+            ->update(['status' => 'revoked']);
 
         return back()->with('status', 'Order accepted.');
     }
@@ -193,5 +244,22 @@ class OrderController extends Controller
 
         return redirect()->route('admin.orders.index')
             ->with('status', 'Order deleted.');
+    }
+
+    private function normalizeDomain(string $input): ?string
+    {
+        $value = trim(strtolower($input));
+
+        if (Str::startsWith($value, ['http://', 'https://'])) {
+            $value = parse_url($value, PHP_URL_HOST) ?: '';
+        }
+
+        $value = preg_replace('/^www\./', '', $value);
+
+        if ($value === '' || ! preg_match('/^[a-z0-9.-]+$/', $value)) {
+            return null;
+        }
+
+        return $value;
     }
 }

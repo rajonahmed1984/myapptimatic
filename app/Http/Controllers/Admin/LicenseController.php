@@ -18,7 +18,7 @@ class LicenseController extends Controller
     {
         return view('admin.licenses.index', [
             'licenses' => License::query()
-                ->with(['product', 'subscription.customer', 'subscription.plan', 'subscription.latestOrder'])
+                ->with(['product', 'subscription.customer', 'subscription.plan', 'subscription.latestOrder', 'domains'])
                 ->latest()
                 ->get(),
         ]);
@@ -102,12 +102,40 @@ class LicenseController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
             'starts_at' => ['required', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'domain_url' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ]);
 
         $data['max_domains'] = 1;
 
         $license->update($data);
+
+        $domainInput = trim((string) ($data['domain_url'] ?? ''));
+
+        if ($domainInput !== '') {
+            $domain = $this->normalizeDomain($domainInput);
+
+            if (! $domain) {
+                return back()
+                    ->withErrors(['domain_url' => 'Invalid domain format. Use only the hostname or full URL.'])
+                    ->withInput();
+            }
+
+            LicenseDomain::updateOrCreate(
+                [
+                    'license_id' => $license->id,
+                    'domain' => $domain,
+                ],
+                [
+                    'status' => 'active',
+                    'verified_at' => Carbon::now(),
+                ]
+            );
+
+            $license->domains()
+                ->where('domain', '!=', $domain)
+                ->update(['status' => 'revoked']);
+        }
 
         return redirect()->route('admin.licenses.edit', $license)
             ->with('status', 'License updated.');

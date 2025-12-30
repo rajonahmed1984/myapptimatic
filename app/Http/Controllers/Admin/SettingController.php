@@ -14,8 +14,14 @@ use Illuminate\Support\Str;
 
 class SettingController extends Controller
 {
-    public function edit()
+    public function edit(Request $request)
     {
+        $tabs = ['general', 'invoices', 'automation', 'billing', 'email-templates', 'cron'];
+        $activeTab = $request->query('tab', 'general');
+        if (! in_array($activeTab, $tabs, true)) {
+            $activeTab = 'general';
+        }
+
         $logoPath = Setting::getValue('company_logo_path');
         $faviconPath = Setting::getValue('company_favicon_path');
         $cronToken = (string) Setting::getValue('cron_token');
@@ -81,6 +87,7 @@ class SettingController extends Controller
                 'recaptcha_score_threshold' => Setting::getValue('recaptcha_score_threshold', config('recaptcha.score_threshold')),
             ],
             'emailTemplates' => $emailTemplates,
+            'activeTab' => $activeTab,
         ]);
     }
 
@@ -125,6 +132,7 @@ class SettingController extends Controller
             'recaptcha_api_key' => ['nullable', 'string', 'max:255'],
             'recaptcha_score_threshold' => ['nullable', 'numeric', 'min:0', 'max:1'],
             'templates' => ['nullable', 'array'],
+            'templates.*.from_email' => ['nullable', 'email', 'max:255'],
             'templates.*.subject' => ['nullable', 'string', 'max:255'],
             'templates.*.body' => ['nullable', 'string'],
         ]);
@@ -195,6 +203,10 @@ class SettingController extends Controller
                     $template->subject = $payload['subject'] ?? '';
                 }
 
+                if (array_key_exists('from_email', $payload)) {
+                    $template->from_email = $payload['from_email'] ?? '';
+                }
+
                 if (array_key_exists('body', $payload)) {
                     $template->body = $payload['body'] ?? '';
                 }
@@ -203,7 +215,13 @@ class SettingController extends Controller
             }
         }
 
-        return redirect()->route('admin.settings.edit')
+        $tabs = ['general', 'invoices', 'automation', 'billing', 'email-templates', 'cron'];
+        $activeTab = $request->input('active_tab', 'general');
+        if (! in_array($activeTab, $tabs, true)) {
+            $activeTab = 'general';
+        }
+
+        return redirect()->route('admin.settings.edit', ['tab' => $activeTab])
             ->with('status', 'Settings updated.');
     }
 }

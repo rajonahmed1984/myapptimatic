@@ -9,6 +9,9 @@
         .muted { color: #64748b; }
         .section { margin-top: 16px; }
         .row { display: flex; justify-content: space-between; }
+        .logo-block { display: flex; flex-direction: column; gap: 6px; }
+        .logo { width: 56px; height: 56px; object-fit: contain; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; padding: 6px; }
+        .logo-fallback { width: 56px; height: 56px; border-radius: 12px; background: #0f172a; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #e2e8f0; padding: 8px; }
         th { background: #f8fafc; text-align: left; }
@@ -21,12 +24,49 @@
         $creditTotal = $invoice->accountingEntries->where('type', 'credit')->sum('amount');
         $paidTotal = $invoice->accountingEntries->where('type', 'payment')->sum('amount');
         $balance = max(0, (float) $invoice->total - $paidTotal - $creditTotal);
+        $logoSrc = null;
+        $logoUrl = $portalBranding['logo_url'] ?? null;
+
+        if (is_string($logoUrl) && $logoUrl !== '') {
+            if (str_starts_with($logoUrl, 'data:')) {
+                $logoSrc = $logoUrl;
+            } else {
+                $path = parse_url($logoUrl, PHP_URL_PATH);
+                if (is_string($path)) {
+                    $path = ltrim($path, '/');
+                    $filePath = null;
+
+                    if (str_starts_with($path, 'storage/')) {
+                        $filePath = public_path($path);
+                    } elseif (str_starts_with($path, 'branding/')) {
+                        $relativePath = substr($path, strlen('branding/'));
+                        $filePath = storage_path('app/public/' . $relativePath);
+                    }
+
+                    if ($filePath && is_file($filePath)) {
+                        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                        $mime = match ($ext) {
+                            'jpg', 'jpeg' => 'image/jpeg',
+                            'gif' => 'image/gif',
+                            'svg' => 'image/svg+xml',
+                            default => 'image/png',
+                        };
+                        $logoSrc = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($filePath));
+                    }
+                }
+            }
+        }
     @endphp
 
     <div class="row">
-        <div>
+        <div class="logo-block">
+            @if(!empty($logoSrc))
+                <img src="{{ $logoSrc }}" alt="Logo" class="logo">
+            @else
+                <div class="logo-fallback">Apptimatic</div>
+            @endif
+            <div class="muted">Invoice #{{ $displayNumber }}</div>
             <div class="muted">{{ $portalBranding['company_name'] ?? 'License Portal' }}</div>
-            <h1>Invoice #{{ $displayNumber }}</h1>
         </div>
         <div class="right">
             <div class="muted">Status</div>

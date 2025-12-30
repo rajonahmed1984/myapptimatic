@@ -14,14 +14,13 @@
     <div class="card p-6 md:p-8">
         <div class="flex flex-wrap items-start justify-between gap-6">
             <div class="flex items-center gap-4">
-                @if(!empty($portalBranding['logo_url']))
-                    <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-14 w-14 rounded-2xl bg-white p-2">
-                @else
-                    <div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-900 text-lg font-semibold text-white">LM</div>
-                @endif
-                <div>
-                    <div class="text-sm text-slate-500">{{ $portalBranding['company_name'] ?? 'License Portal' }}</div>
-                    <div class="text-2xl font-semibold text-slate-900">Invoice #{{ $displayNumber }}</div>
+                <div class="flex flex-col">
+                    @if(!empty($portalBranding['logo_url']))
+                        <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-14 w-max rounded-2xl bg-white p-2">
+                    @else
+                        <div class="grid h-14 w-max place-items-center rounded-2xl bg-slate-900 text-lg font-semibold text-white p-2">Apptimatic</div>
+                    @endif
+                    <div class="text-2xl font-semibold text-slate-900 p-2">Invoice #{{ $displayNumber }}</div>
                 </div>
             </div>
             <div class="text-right">
@@ -111,6 +110,7 @@
                                 'driver' => $gateway->driver,
                                 'payment_url' => $gateway->settings['payment_url'] ?? '',
                                 'instructions' => $gateway->settings['instructions'] ?? '',
+                                'button_label' => $gateway->settings['button_label'] ?? '',
                             ];
                         })->values();
                     @endphp
@@ -139,7 +139,8 @@
                                 : 'No additional instructions for this gateway.';
 
                             if (gatewaySubmit) {
-                                gatewaySubmit.textContent = `${selected.name} Pay`;
+                                const label = (selected.button_label || '').trim();
+                                gatewaySubmit.textContent = label ? label : `${selected.name} Pay`;
                             }
 
                             if (gatewayForm) {

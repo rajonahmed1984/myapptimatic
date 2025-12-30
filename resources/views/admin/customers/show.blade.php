@@ -14,8 +14,19 @@
             <div class="text-sm text-slate-600">
                 <div>Status: {{ ucfirst($customer->status) }}</div>
                 <div>Created: {{ $customer->created_at?->format('Y-m-d') ?? '--' }}</div>
-                <div class="mt-3 flex flex-wrap gap-3">
+                <div class="mt-3 flex flex-wrap items-center gap-3">
                     <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Customers</a>
+                    <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" title="Login as client">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                <path d="M15 3h4a2 2 0 0 1 2 2v4"></path>
+                                <path d="M10 14L21 3"></path>
+                                <path d="M21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"></path>
+                            </svg>
+                            Login as client
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

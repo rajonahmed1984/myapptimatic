@@ -152,6 +152,30 @@ class AuthController extends Controller
         return redirect($redirectTo);
     }
 
+    public function stopImpersonate(Request $request): RedirectResponse
+    {
+        $impersonatorId = $request->session()->pull('impersonator_id');
+
+        if (! $impersonatorId) {
+            return redirect()->route('client.dashboard');
+        }
+
+        $admin = User::find($impersonatorId);
+
+        if (! $admin || ! $admin->isAdmin()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('admin.login');
+        }
+
+        Auth::login($admin);
+        $request->session()->regenerate();
+
+        return redirect()->route('admin.dashboard');
+    }
+
     private function redirectTarget(Request $request): ?string
     {
         $redirect = $request->input('redirect');

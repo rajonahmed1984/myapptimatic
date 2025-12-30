@@ -6,10 +6,19 @@
 @section('content')
     <div class="card p-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <div class="section-label">Invoice</div>
-                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
-                <div class="mt-1 text-sm text-slate-500">Customer: {{ $invoice->customer->name }}</div>
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col items-center text-center">
+                    @if(!empty($portalBranding['logo_url']))
+                        <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-12 w-12 rounded-2xl bg-white p-2">
+                    @else
+                        <div class="grid h-12 w-12 place-items-center rounded-2xl bg-slate-900 text-sm font-semibold text-white">LM</div>
+                    @endif
+                    <div class="mt-2 text-xs font-semibold text-slate-600">Invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
+                </div>
+                <div>
+                    <div class="section-label">Invoice</div>
+                    <div class="mt-2 text-sm text-slate-500">Customer: {{ $invoice->customer->name }}</div>
+                </div>
             </div>
             <div class="text-sm text-slate-600">
                 <div>Status: {{ ucfirst($invoice->status) }}</div>

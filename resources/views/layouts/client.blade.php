@@ -73,6 +73,22 @@
                             <div class="font-semibold text-slate-900">{{ auth()->user()->name }}</div>
                             <div class="text-xs text-slate-500">Client account</div>
                         </div>
+                        @if(session()->has('impersonator_id'))
+                            <form method="POST" action="{{ route('impersonate.stop') }}">
+                                @csrf
+                                <button
+                                    type="submit"
+                                    class="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:border-amber-300"
+                                    title="You are currently masquerading as a client. Click to return to Admin Area"
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                        <path d="M10 17l5-5-5-5"></path>
+                                        <path d="M4 12h11"></path>
+                                        <path d="M20 4v16"></path>
+                                    </svg>
+                                </button>
+                            </form>
+                        @endif
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button type="submit" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
@@ -94,6 +110,12 @@
                             <a href="{{ route('client.licenses.index') }}" class="text-slate-700 hover:text-teal-600">Licenses</a>
                             <a href="{{ route('client.support-tickets.index') }}" class="text-slate-700 hover:text-teal-600">Support</a>
                             <a href="{{ route('client.profile.edit') }}" class="text-slate-700 hover:text-teal-600">Profile</a>
+                            @if(session()->has('impersonator_id'))
+                                <form method="POST" action="{{ route('impersonate.stop') }}">
+                                    @csrf
+                                    <button type="submit" class="text-left text-amber-700 hover:text-amber-600">Return to Admin</button>
+                                </form>
+                            @endif
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit" class="text-left text-slate-700 hover:text-teal-600">Sign out</button>

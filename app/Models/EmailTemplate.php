@@ -10,6 +10,7 @@ class EmailTemplate extends Model
         'key',
         'name',
         'category',
+        'from_email',
         'subject',
         'body',
     ];
