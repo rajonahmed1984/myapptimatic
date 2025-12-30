@@ -41,7 +41,7 @@
             </label>
             <a href="{{ route('password.request') }}" class="text-teal-600 hover:text-teal-500">Forgot password?</a>
         </div>
-        @if(config('recaptcha.site_key'))
+        @if(config('recaptcha.enabled') && config('recaptcha.site_key'))
             <div class="flex justify-center">
                 <div class="g-recaptcha" data-sitekey="{{ config('recaptcha.site_key') }}" data-action="ADMIN_LOGIN"></div>
             </div>
@@ -58,7 +58,7 @@
         Client account? Use the <a href="{{ route('login') }}" class="font-semibold text-teal-600 hover:text-teal-500">client login</a>.
     </p>
 
-    @if(config('recaptcha.site_key'))
+    @if(config('recaptcha.enabled') && config('recaptcha.site_key'))
         <script src="https://www.google.com/recaptcha/enterprise.js" async defer></script>
     @endif
 @endsection

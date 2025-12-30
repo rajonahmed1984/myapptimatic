@@ -169,9 +169,10 @@ class AuthController extends Controller
 
     private function ensureRecaptcha(Request $request, string $action): void
     {
+        $enabled = (bool) config('recaptcha.enabled');
         $siteKey = config('recaptcha.site_key');
 
-        if (! is_string($siteKey) || $siteKey === '') {
+        if (! $enabled || ! is_string($siteKey) || $siteKey === '') {
             return;
         }
 

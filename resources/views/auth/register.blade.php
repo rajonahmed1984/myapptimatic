@@ -78,7 +78,7 @@
                 >{{ old('address') }}</textarea>
             </div>
         </div>
-        @if(config('recaptcha.site_key'))
+        @if(config('recaptcha.enabled') && config('recaptcha.site_key'))
             <div class="flex justify-center">
                 <div class="g-recaptcha" data-sitekey="{{ config('recaptcha.site_key') }}" data-action="REGISTER"></div>
             </div>
@@ -95,7 +95,7 @@
         Already have an account? <a href="{{ route('login', request('redirect') ? ['redirect' => request('redirect')] : []) }}" class="font-semibold text-teal-600 hover:text-teal-500">Sign in</a>.
     </p>
 
-    @if(config('recaptcha.site_key'))
+    @if(config('recaptcha.enabled') && config('recaptcha.site_key'))
         <script src="https://www.google.com/recaptcha/enterprise.js" async defer></script>
     @endif
 @endsection
