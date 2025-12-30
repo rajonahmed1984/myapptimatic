@@ -20,6 +20,9 @@ class License extends Model
         'last_check_at',
         'last_check_ip',
         'notes',
+        'expiry_first_notice_sent_at',
+        'expiry_second_notice_sent_at',
+        'expiry_expired_notice_sent_at',
     ];
 
     protected $casts = [
@@ -27,6 +30,9 @@ class License extends Model
         'expires_at' => 'date',
         'max_domains' => 'integer',
         'last_check_at' => 'datetime',
+        'expiry_first_notice_sent_at' => 'datetime',
+        'expiry_second_notice_sent_at' => 'datetime',
+        'expiry_expired_notice_sent_at' => 'datetime',
     ];
 
     public static function generateKey(): string

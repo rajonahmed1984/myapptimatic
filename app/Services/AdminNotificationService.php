@@ -6,6 +6,7 @@ use App\Models\EmailTemplate;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Setting;
+use App\Models\SupportTicket;
 use App\Models\User;
 use App\Support\Branding;
 use Illuminate\Support\Facades\Log;
@@ -148,6 +149,39 @@ class AdminNotificationService
     public function sendInvoiceReminder(Invoice $invoice, string $templateKey): void
     {
         $this->sendInvoiceTemplate($invoice, $templateKey, "Reminder: invoice {{invoice_number}}");
+    }
+
+    public function sendTicketReminder(SupportTicket $ticket): void
+    {
+        $recipients = $this->adminRecipients();
+        if (empty($recipients)) {
+            return;
+        }
+
+        $ticket->loadMissing(['customer']);
+
+        $template = EmailTemplate::query()
+            ->where('key', 'support_ticket_change_notification')
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $subject = $template?->subject ?: 'Support ticket updated #{{ticket_id}}';
+        $body = $template?->body ?: "Support ticket updated.\nTicket: {{ticket_id}}\nSubject: {{ticket_subject}}\nStatus: {{ticket_status}}";
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $replacements = [
+            '{{ticket_id}}' => $ticket->id,
+            '{{ticket_subject}}' => $ticket->subject,
+            '{{ticket_status}}' => $ticket->status,
+            '{{client_name}}' => $ticket->customer?->name ?? '--',
+            '{{client_email}}' => $ticket->customer?->email ?? '--',
+            '{{company_name}}' => $companyName,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName);
     }
 
     private function sendInvoiceTemplate(Invoice $invoice, string $templateKey, string $fallbackSubject): void

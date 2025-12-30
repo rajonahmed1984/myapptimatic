@@ -17,7 +17,7 @@ class SettingController extends Controller
 {
     public function edit(Request $request)
     {
-        $tabs = ['general', 'invoices', 'automation', 'billing', 'email-templates', 'cron'];
+        $tabs = ['general', 'invoices', 'automation', 'billing', 'email-templates'];
         $activeTab = $request->query('tab', 'general');
         if (! in_array($activeTab, $tabs, true)) {
             $activeTab = 'general';
@@ -32,8 +32,8 @@ class SettingController extends Controller
             Setting::setValue('cron_token', $cronToken);
         }
 
-        $appUrl = rtrim(config('app.url'), '/');
-        $cronUrl = $cronToken !== '' ? "{$appUrl}/cron/billing?token={$cronToken}" : null;
+        $baseUrl = rtrim($request->root() ?: config('app.url'), '/');
+        $cronUrl = $cronToken !== '' ? "{$baseUrl}/cron/billing?token={$cronToken}" : null;
 
         $emailTemplates = Schema::hasTable('email_templates')
             ? EmailTemplate::query()->orderBy('category')->orderBy('name')->get()
@@ -90,6 +90,12 @@ class SettingController extends Controller
                 'auto_cancellation_days' => (int) Setting::getValue('auto_cancellation_days'),
                 'auto_bind_domains' => (int) Setting::getValue('auto_bind_domains'),
                 'payment_instructions' => Setting::getValue('payment_instructions'),
+                'ticket_auto_close_days' => (int) Setting::getValue('ticket_auto_close_days'),
+                'ticket_admin_reminder_days' => (int) Setting::getValue('ticket_admin_reminder_days'),
+                'ticket_feedback_days' => (int) Setting::getValue('ticket_feedback_days'),
+                'ticket_cleanup_days' => (int) Setting::getValue('ticket_cleanup_days'),
+                'license_expiry_first_notice_days' => (int) Setting::getValue('license_expiry_first_notice_days'),
+                'license_expiry_second_notice_days' => (int) Setting::getValue('license_expiry_second_notice_days'),
                 'recaptcha_enabled' => (bool) Setting::getValue('recaptcha_enabled', config('recaptcha.enabled')),
                 'recaptcha_site_key' => Setting::getValue('recaptcha_site_key', config('recaptcha.site_key')),
                 'recaptcha_secret_key' => Setting::getValue('recaptcha_secret_key', config('recaptcha.secret_key')),
@@ -147,6 +153,12 @@ class SettingController extends Controller
             'auto_cancellation_days' => ['required', 'integer', 'min:0', 'max:365'],
             'auto_bind_domains' => ['nullable', 'boolean'],
             'payment_instructions' => ['nullable', 'string'],
+            'ticket_auto_close_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'ticket_admin_reminder_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'ticket_feedback_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'ticket_cleanup_days' => ['required', 'integer', 'min:0', 'max:3650'],
+            'license_expiry_first_notice_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'license_expiry_second_notice_days' => ['required', 'integer', 'min:0', 'max:365'],
             'enable_recaptcha' => ['nullable', 'boolean'],
             'recaptcha_site_key' => ['nullable', 'string', 'max:255', 'required_if:enable_recaptcha,1'],
             'recaptcha_secret_key' => ['nullable', 'string', 'max:255', 'required_if:enable_recaptcha,1'],
@@ -203,6 +215,12 @@ class SettingController extends Controller
         Setting::setValue('auto_cancellation_days', (int) $data['auto_cancellation_days']);
         Setting::setValue('auto_bind_domains', $request->boolean('auto_bind_domains') ? '1' : '0');
         Setting::setValue('payment_instructions', $data['payment_instructions'] ?? '');
+        Setting::setValue('ticket_auto_close_days', (int) $data['ticket_auto_close_days']);
+        Setting::setValue('ticket_admin_reminder_days', (int) $data['ticket_admin_reminder_days']);
+        Setting::setValue('ticket_feedback_days', (int) $data['ticket_feedback_days']);
+        Setting::setValue('ticket_cleanup_days', (int) $data['ticket_cleanup_days']);
+        Setting::setValue('license_expiry_first_notice_days', (int) $data['license_expiry_first_notice_days']);
+        Setting::setValue('license_expiry_second_notice_days', (int) $data['license_expiry_second_notice_days']);
         Setting::setValue('recaptcha_enabled', $request->boolean('enable_recaptcha') ? '1' : '0');
         Setting::setValue('recaptcha_site_key', $data['recaptcha_site_key'] ?? '');
         Setting::setValue('recaptcha_secret_key', $data['recaptcha_secret_key'] ?? '');
@@ -242,7 +260,7 @@ class SettingController extends Controller
             }
         }
 
-        $tabs = ['general', 'invoices', 'automation', 'billing', 'email-templates', 'cron'];
+        $tabs = ['general', 'invoices', 'automation', 'billing', 'email-templates'];
         $activeTab = $request->input('active_tab', 'general');
         if (! in_array($activeTab, $tabs, true)) {
             $activeTab = 'general';

@@ -41,5 +41,11 @@ return [
         'auto_cancellation_days' => 0,
         'auto_bind_domains' => true,
         'payment_instructions' => 'Contact support to arrange payment.',
+        'ticket_auto_close_days' => 7,
+        'ticket_admin_reminder_days' => 1,
+        'ticket_feedback_days' => 1,
+        'ticket_cleanup_days' => 0,
+        'license_expiry_first_notice_days' => 30,
+        'license_expiry_second_notice_days' => 7,
     ],
 ];

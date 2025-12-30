@@ -19,8 +19,8 @@ class CronController extends Controller
 
         Artisan::call('billing:run');
 
-        return response()->json([
-            'message' => 'Billing job executed.',
+        return view('cron.billing', [
+            'message' => 'Cron job executed successfully.',
             'ran_at' => now()->toDateTimeString(),
         ]);
     }

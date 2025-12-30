@@ -104,6 +104,10 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Settings
                 </a>
+                <a class="{{ request()->routeIs('admin.automation-status') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.automation-status') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Automation Status
+                </a>
             </nav>
 
             <div class="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
@@ -155,6 +159,7 @@
                         <summary class="cursor-pointer text-sm font-semibold text-slate-700">Menu</summary>
                         <nav class="mt-3 grid gap-2 text-sm">
                             <a href="{{ route('admin.dashboard') }}" class="text-slate-700 hover:text-teal-600">Dashboard</a>
+                            <a href="{{ route('admin.automation-status') }}" class="text-slate-700 hover:text-teal-600">Automation Status</a>
                             <a href="{{ route('admin.customers.index') }}" class="text-slate-700 hover:text-teal-600">Customers</a>
                             <a href="{{ route('admin.products.index') }}" class="text-slate-700 hover:text-teal-600">Products</a>
                             <a href="{{ route('admin.plans.index') }}" class="text-slate-700 hover:text-teal-600">Plans</a>

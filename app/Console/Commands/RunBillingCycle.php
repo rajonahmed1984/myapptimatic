@@ -3,10 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Models\Invoice;
+use App\Models\License;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
+use App\Services\ClientNotificationService;
+use App\Models\SupportTicket;
 use App\Support\Branding;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -21,7 +24,8 @@ class RunBillingCycle extends Command
 
     public function __construct(
         private BillingService $billingService,
-        private AdminNotificationService $adminNotifications
+        private AdminNotificationService $adminNotifications,
+        private ClientNotificationService $clientNotifications
     )
     {
         parent::__construct();
@@ -38,17 +42,25 @@ class RunBillingCycle extends Command
         try {
             $today = Carbon::today();
 
-            $metrics['invoices_generated'] = $this->generateInvoices($today);
+            $invoiceMetrics = $this->generateInvoices($today);
+            $metrics['invoices_generated'] = $invoiceMetrics['generated'];
+            $metrics['fixed_term_terminations'] = $invoiceMetrics['fixed_term_terminations'];
             $metrics['invoices_overdue'] = $this->markOverdue($today);
             $metrics['late_fees_added'] = $this->applyLateFees($today);
             $metrics['auto_cancellations'] = $this->applyAutoCancellation($today);
             $metrics['suspensions'] = $this->applySuspensions($today);
             $metrics['terminations'] = $this->applyTerminations($today);
             $metrics['unsuspensions'] = $this->applyUnsuspensions();
-            $this->sendInvoiceReminders($today);
+            $metrics['invoice_reminders_sent'] = $this->sendInvoiceReminders($today);
+            $metrics['ticket_auto_closed'] = $this->applyTicketAutomation($today);
+            $metrics['ticket_admin_reminders'] = $this->sendTicketAdminReminders($today);
+            $metrics['ticket_feedback_requests'] = $this->sendTicketFeedbackRequests($today);
+            $metrics['license_expiry_notices'] = $this->sendLicenseExpiryNotices($today);
+            $metrics['tickets_deleted'] = $this->cleanupClosedTickets($today);
 
             Setting::setValue('billing_last_run_at', Carbon::now()->toDateTimeString());
             Setting::setValue('billing_last_status', 'success');
+            Setting::setValue('billing_last_metrics', json_encode($metrics));
 
             $this->info('Billing run completed.');
             $this->sendCronSummary('success', $metrics, $startedAt, Carbon::now(), null);
@@ -58,6 +70,7 @@ class RunBillingCycle extends Command
             Setting::setValue('billing_last_run_at', Carbon::now()->toDateTimeString());
             Setting::setValue('billing_last_status', 'failed');
             Setting::setValue('billing_last_error', substr($e->getMessage(), 0, 500));
+            Setting::setValue('billing_last_metrics', json_encode($metrics));
 
             $this->error('Billing run failed: ' . $e->getMessage());
             $this->sendCronSummary('failed', $metrics, $startedAt, Carbon::now(), $e->getMessage());
@@ -66,9 +79,10 @@ class RunBillingCycle extends Command
         }
     }
 
-    private function generateInvoices(Carbon $today): int
+    private function generateInvoices(Carbon $today): array
     {
         $count = 0;
+        $fixedTermTerminations = 0;
         $subscriptions = Subscription::query()
             ->with('plan')
             ->where('status', 'active')
@@ -81,6 +95,7 @@ class RunBillingCycle extends Command
                     'status' => 'cancelled',
                     'auto_renew' => false,
                 ]);
+                $fixedTermTerminations++;
                 continue;
             }
 
@@ -98,7 +113,10 @@ class RunBillingCycle extends Command
             }
         }
 
-        return $count;
+        return [
+            'generated' => $count,
+            'fixed_term_terminations' => $fixedTermTerminations,
+        ];
     }
 
     private function markOverdue(Carbon $today): int
@@ -360,6 +378,156 @@ class RunBillingCycle extends Command
         return $sent;
     }
 
+    private function applyTicketAutomation(Carbon $today): int
+    {
+        $days = (int) Setting::getValue('ticket_auto_close_days');
+        if ($days <= 0) {
+            return 0;
+        }
+
+        $threshold = $today->copy()->subDays($days)->endOfDay();
+        $count = 0;
+
+        $tickets = SupportTicket::query()
+            ->whereIn('status', ['open', 'answered', 'customer_reply'])
+            ->whereNotNull('last_reply_at')
+            ->where('last_reply_at', '<=', $threshold)
+            ->whereNull('closed_at')
+            ->get();
+
+        foreach ($tickets as $ticket) {
+            $ticket->update([
+                'status' => 'closed',
+                'closed_at' => Carbon::now(),
+                'auto_closed_at' => Carbon::now(),
+            ]);
+            $this->clientNotifications->sendTicketAutoClose($ticket->fresh('customer'));
+            $count++;
+        }
+
+        return $count;
+    }
+
+    private function sendTicketAdminReminders(Carbon $today): int
+    {
+        $days = (int) Setting::getValue('ticket_admin_reminder_days');
+        if ($days <= 0) {
+            return 0;
+        }
+
+        $threshold = $today->copy()->subDays($days)->endOfDay();
+        $count = 0;
+
+        $tickets = SupportTicket::query()
+            ->where('status', 'customer_reply')
+            ->whereNotNull('last_reply_at')
+            ->where('last_reply_at', '<=', $threshold)
+            ->whereNull('admin_reminder_sent_at')
+            ->get();
+
+        foreach ($tickets as $ticket) {
+            $this->adminNotifications->sendTicketReminder($ticket->fresh('customer'));
+            $ticket->update(['admin_reminder_sent_at' => Carbon::now()]);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    private function sendTicketFeedbackRequests(Carbon $today): int
+    {
+        $days = (int) Setting::getValue('ticket_feedback_days');
+        if ($days <= 0) {
+            return 0;
+        }
+
+        $threshold = $today->copy()->subDays($days)->endOfDay();
+        $count = 0;
+
+        $tickets = SupportTicket::query()
+            ->where('status', 'closed')
+            ->whereNotNull('closed_at')
+            ->where('closed_at', '<=', $threshold)
+            ->whereNull('feedback_sent_at')
+            ->get();
+
+        foreach ($tickets as $ticket) {
+            $this->clientNotifications->sendTicketFeedback($ticket->fresh('customer'));
+            $ticket->update(['feedback_sent_at' => Carbon::now()]);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    private function sendLicenseExpiryNotices(Carbon $today): int
+    {
+        $count = 0;
+        $firstDays = (int) Setting::getValue('license_expiry_first_notice_days');
+        $secondDays = (int) Setting::getValue('license_expiry_second_notice_days');
+
+        if ($firstDays > 0) {
+            $targetDate = $today->copy()->addDays($firstDays)->toDateString();
+            $licenses = License::query()
+                ->where('status', 'active')
+                ->whereDate('expires_at', $targetDate)
+                ->whereNull('expiry_first_notice_sent_at')
+                ->get();
+
+            foreach ($licenses as $license) {
+                $this->clientNotifications->sendLicenseExpiryNotice($license, 'license_expiry_notice');
+                $license->update(['expiry_first_notice_sent_at' => Carbon::now()]);
+                $count++;
+            }
+        }
+
+        if ($secondDays > 0) {
+            $targetDate = $today->copy()->addDays($secondDays)->toDateString();
+            $licenses = License::query()
+                ->where('status', 'active')
+                ->whereDate('expires_at', $targetDate)
+                ->whereNull('expiry_second_notice_sent_at')
+                ->get();
+
+            foreach ($licenses as $license) {
+                $this->clientNotifications->sendLicenseExpiryNotice($license, 'license_expiry_notice');
+                $license->update(['expiry_second_notice_sent_at' => Carbon::now()]);
+                $count++;
+            }
+        }
+
+        $expired = License::query()
+            ->where('status', 'active')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', $today->toDateString())
+            ->whereNull('expiry_expired_notice_sent_at')
+            ->get();
+
+        foreach ($expired as $license) {
+            $this->clientNotifications->sendLicenseExpiryNotice($license, 'license_expired_notice');
+            $license->update(['expiry_expired_notice_sent_at' => Carbon::now()]);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    private function cleanupClosedTickets(Carbon $today): int
+    {
+        $days = (int) Setting::getValue('ticket_cleanup_days');
+        if ($days <= 0) {
+            return 0;
+        }
+
+        $threshold = $today->copy()->subDays($days)->toDateTimeString();
+
+        return SupportTicket::query()
+            ->where('status', 'closed')
+            ->whereNotNull('closed_at')
+            ->where('closed_at', '<=', $threshold)
+            ->delete();
+    }
+
     private function sendReminderBatch(
         Carbon $targetDate,
         string $templateKey,
@@ -394,6 +562,13 @@ class RunBillingCycle extends Command
             'suspensions' => 0,
             'terminations' => 0,
             'unsuspensions' => 0,
+            'invoice_reminders_sent' => 0,
+            'ticket_auto_closed' => 0,
+            'ticket_admin_reminders' => 0,
+            'ticket_feedback_requests' => 0,
+            'license_expiry_notices' => 0,
+            'tickets_deleted' => 0,
+            'fixed_term_terminations' => 0,
         ];
     }
 

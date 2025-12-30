@@ -17,11 +17,17 @@ class SupportTicket extends Model
         'last_reply_at',
         'last_reply_by',
         'closed_at',
+        'auto_closed_at',
+        'admin_reminder_sent_at',
+        'feedback_sent_at',
     ];
 
     protected $casts = [
         'last_reply_at' => 'datetime',
         'closed_at' => 'datetime',
+        'auto_closed_at' => 'datetime',
+        'admin_reminder_sent_at' => 'datetime',
+        'feedback_sent_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo

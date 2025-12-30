@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AffiliateCommissionController;
 use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
 use App\Http\Controllers\Admin\AffiliatePayoutController;
+use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\ClientRequestController as AdminClientRequestController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -83,6 +84,7 @@ Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
 
 Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/automation-status', [AutomationStatusController::class, 'index'])->name('automation-status');
     Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
     Route::resource('admins', AdminUserController::class)->except(['show']);

@@ -20,7 +20,6 @@
                 <button type="button" data-tab-target="automation" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Automatic module functions</button>
                 <button type="button" data-tab-target="billing" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Billing settings</button>
                 <button type="button" data-tab-target="email-templates" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Email templates</button>
-                <button type="button" data-tab-target="cron" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Cron status</button>
             </div>
 
             <form method="POST" action="{{ route('admin.settings.update') }}" class="mt-8 space-y-8" enctype="multipart/form-data" data-tab-default="{{ $activeTab }}">
@@ -183,6 +182,29 @@
                             <label class="text-sm text-slate-600">Termination days</label>
                             <input name="termination_days" type="number" value="{{ old('termination_days', $settings['termination_days']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                         </div>
+                        <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-5">
+                            <div class="text-sm font-semibold text-slate-800">Support ticket automation</div>
+                            <p class="mt-1 text-xs text-slate-500">Auto-close inactive tickets and send reminders.</p>
+                            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="text-sm text-slate-600">Auto-close after (days)</label>
+                                    <input name="ticket_auto_close_days" type="number" value="{{ old('ticket_auto_close_days', $settings['ticket_auto_close_days']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-sm text-slate-600">Admin reminder after (days)</label>
+                                    <input name="ticket_admin_reminder_days" type="number" value="{{ old('ticket_admin_reminder_days', $settings['ticket_admin_reminder_days']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-sm text-slate-600">Feedback request after close (days)</label>
+                                    <input name="ticket_feedback_days" type="number" value="{{ old('ticket_feedback_days', $settings['ticket_feedback_days']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-sm text-slate-600">Delete closed tickets after (days)</label>
+                                    <input name="ticket_cleanup_days" type="number" value="{{ old('ticket_cleanup_days', $settings['ticket_cleanup_days']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                    <p class="mt-2 text-xs text-slate-500">Set 0 to keep tickets.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -265,6 +287,20 @@
                             <input type="checkbox" name="auto_bind_domains" value="1" @checked($settings['auto_bind_domains']) class="rounded border-slate-300 text-teal-500" />
                             Auto bind domains on first check
                         </div>
+                        <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-5">
+                            <div class="text-sm font-semibold text-slate-800">License expiry notices</div>
+                            <p class="mt-1 text-xs text-slate-500">Send reminders before licenses expire.</p>
+                            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="text-sm text-slate-600">First reminder (days before expiry)</label>
+                                    <input name="license_expiry_first_notice_days" type="number" value="{{ old('license_expiry_first_notice_days', $settings['license_expiry_first_notice_days']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-sm text-slate-600">Second reminder (days before expiry)</label>
+                                    <input name="license_expiry_second_notice_days" type="number" value="{{ old('license_expiry_second_notice_days', $settings['license_expiry_second_notice_days']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -339,52 +375,6 @@
                     </div>
                 </section>
 
-                <section data-tab-panel="cron" class="space-y-6">
-                    @php
-                        $lastRunAt = $settings['billing_last_run_at'] ?? null;
-                        $lastStatus = $settings['billing_last_status'] ?? null;
-                        $statusLabel = $lastStatus ? ucfirst($lastStatus) : 'Never';
-                        $statusClasses = match ($lastStatus) {
-                            'success' => 'bg-emerald-100 text-emerald-700',
-                            'failed' => 'bg-rose-100 text-rose-700',
-                            'running' => 'bg-amber-100 text-amber-700',
-                            default => 'bg-slate-100 text-slate-600',
-                        };
-                    @endphp
-                    <div class="section-label">Cron status</div>
-                    <div class="grid gap-6 md:grid-cols-2">
-                        <div>
-                            <label class="text-sm text-slate-600">Last billing run</label>
-                            <div class="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700">
-                                {{ $lastRunAt ? \Illuminate\Support\Carbon::parse($lastRunAt)->format($globalDateFormat . ' H:i') : 'Never' }}
-                            </div>
-                            <p class="mt-2 text-xs text-slate-500">Trigger billing every day or hour for best results.</p>
-                        </div>
-                        <div>
-                            <label class="text-sm text-slate-600">Last status</label>
-                            <div class="mt-2 inline-flex items-center rounded-full px-4 py-2 text-sm {{ $statusClasses }}">
-                                {{ $statusLabel }}
-                            </div>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="text-sm text-slate-600">Secure cron URL (use in cPanel)</label>
-                            <input value="{{ $settings['cron_url'] ?? '' }}" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700" />
-                            <p class="mt-2 text-xs text-slate-500">Example cPanel command: <code>curl -fsS "{{ $settings['cron_url'] ?? '' }}" &gt;/dev/null 2&gt;&amp;1</code></p>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="text-sm text-slate-600">CLI command (server cron)</label>
-                            <input value="php /path/to/artisan billing:run" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700" />
-                            <p class="mt-2 text-xs text-slate-500">Run from your project root if you have shell access.</p>
-                        </div>
-                    </div>
-
-                    @if(!empty($settings['billing_last_error']))
-                        <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            {{ $settings['billing_last_error'] }}
-                        </div>
-                    @endif
-                </section>
-
                 <div class="flex justify-end pt-6">
                     <button type="submit" class="rounded-full bg-teal-500 px-6 py-2 text-sm font-semibold text-white">Save settings</button>
                 </div>
@@ -443,4 +433,3 @@
         })();
     </script>
 @endsection
-
