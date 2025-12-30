@@ -17,7 +17,10 @@ class LicenseController extends Controller
     public function index()
     {
         return view('admin.licenses.index', [
-            'licenses' => License::query()->with(['product', 'subscription.customer'])->latest()->get(),
+            'licenses' => License::query()
+                ->with(['product', 'subscription.customer', 'subscription.plan', 'subscription.latestOrder'])
+                ->latest()
+                ->get(),
         ]);
     }
 

@@ -36,13 +36,13 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Plans
                 </a>
-                <a class="{{ request()->routeIs('admin.subscriptions.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.subscriptions.index') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Subscriptions
-                </a>
                 <a class="{{ request()->routeIs('admin.orders.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.orders.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Orders
+                </a>
+                <a class="{{ request()->routeIs('admin.subscriptions.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.subscriptions.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Subscriptions
                 </a>
                 <a class="{{ request()->routeIs('admin.licenses.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.licenses.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
@@ -68,7 +68,10 @@
                 </a>
                 <a class="{{ request()->routeIs('admin.payment-proofs.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.payment-proofs.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Manual Payments
+                    <span>Manual Payments</span>
+                    @if(($adminHeaderStats['pending_manual_payments'] ?? 0) > 0)
+                        <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{{ $adminHeaderStats['pending_manual_payments'] }}</span>
+                    @endif
                 </a>
                 <a class="{{ request()->routeIs('admin.accounting.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.accounting.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
@@ -161,7 +164,12 @@
                                 <a href="{{ route('admin.invoices.refunded') }}" class="hover:text-teal-600">Refunded</a>
                             </div>
                             <a href="{{ route('admin.payment-gateways.index') }}" class="text-slate-700 hover:text-teal-600">Payment Gateways</a>
-                            <a href="{{ route('admin.payment-proofs.index') }}" class="text-slate-700 hover:text-teal-600">Manual Payments</a>
+                            <a href="{{ route('admin.payment-proofs.index') }}" class="flex items-center justify-between text-slate-700 hover:text-teal-600">
+                                <span>Manual Payments</span>
+                                @if(($adminHeaderStats['pending_manual_payments'] ?? 0) > 0)
+                                    <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{{ $adminHeaderStats['pending_manual_payments'] }}</span>
+                                @endif
+                            </a>
                             <a href="{{ route('admin.accounting.index') }}" class="text-slate-700 hover:text-teal-600">Accounting</a>
                             <a href="{{ route('admin.support-tickets.index') }}" class="text-slate-700 hover:text-teal-600">Support</a>
                             <a href="{{ route('admin.requests.index') }}" class="text-slate-700 hover:text-teal-600">Requests</a>

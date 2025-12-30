@@ -7,6 +7,7 @@ use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class PlanController extends Controller
@@ -32,12 +33,14 @@ class PlanController extends Controller
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', Rule::unique('plans', 'slug')],
             'interval' => ['required', Rule::in(['monthly', 'yearly'])],
             'price' => ['required', 'numeric', 'min:0'],
             'invoice_due_days' => ['required', 'integer', 'min:0', 'max:365'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
+        $data['slug'] = $this->resolveSlug($data['name'], $data['slug'] ?? null);
         $data['is_active'] = $request->boolean('is_active');
         $data['currency'] = strtoupper((string) Setting::getValue('currency'));
 
@@ -61,12 +64,14 @@ class PlanController extends Controller
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', Rule::unique('plans', 'slug')->ignore($plan->id)],
             'interval' => ['required', Rule::in(['monthly', 'yearly'])],
             'price' => ['required', 'numeric', 'min:0'],
             'invoice_due_days' => ['required', 'integer', 'min:0', 'max:365'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
+        $data['slug'] = $this->resolveSlug($data['name'], $data['slug'] ?? null, $plan->id);
         $data['is_active'] = $request->boolean('is_active');
         $data['currency'] = strtoupper((string) Setting::getValue('currency'));
 
@@ -82,5 +87,28 @@ class PlanController extends Controller
 
         return redirect()->route('admin.plans.index')
             ->with('status', 'Plan deleted.');
+    }
+
+    private function resolveSlug(string $name, ?string $input = null, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($input ?: $name);
+        if ($base === '') {
+            $base = 'plan';
+        }
+
+        $slug = $base;
+        $counter = 1;
+
+        while (
+            Plan::query()
+                ->where('slug', $slug)
+                ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+                ->exists()
+        ) {
+            $slug = $base.'-'.$counter;
+            $counter++;
+        }
+
+        return $slug;
     }
 }

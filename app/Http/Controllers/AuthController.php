@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -28,6 +29,8 @@ class AuthController extends Controller
 
     public function login(Request $request): RedirectResponse
     {
+        $this->ensureRecaptcha($request, 'LOGIN');
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
@@ -49,11 +52,17 @@ class AuthController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        return redirect()->route('client.dashboard');
+        $redirect = $this->redirectTarget($request);
+
+        return $redirect
+            ? redirect($redirect)
+            : redirect()->route('client.dashboard');
     }
 
     public function adminLogin(Request $request): RedirectResponse
     {
+        $this->ensureRecaptcha($request, 'ADMIN_LOGIN');
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
@@ -86,15 +95,23 @@ class AuthController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
+        $this->ensureRecaptcha($request, 'REGISTER');
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'address' => ['nullable', 'string'],
         ]);
 
         $customer = Customer::create([
             'name' => $data['name'],
+            'company_name' => $data['company_name'] ?? null,
             'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'address' => $data['address'] ?? null,
             'status' => 'active',
         ]);
 
@@ -108,6 +125,13 @@ class AuthController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+
+        $redirect = $this->redirectTarget($request);
+
+        if ($redirect) {
+            return redirect($redirect)
+                ->with('status', 'Welcome! Your account is ready.');
+        }
 
         return redirect()
             ->route('client.dashboard')
@@ -126,5 +150,94 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect($redirectTo);
+    }
+
+    private function redirectTarget(Request $request): ?string
+    {
+        $redirect = $request->input('redirect');
+
+        if (! is_string($redirect) || $redirect === '') {
+            return null;
+        }
+
+        if (str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
+            return $redirect;
+        }
+
+        return null;
+    }
+
+    private function ensureRecaptcha(Request $request, string $action): void
+    {
+        $siteKey = config('recaptcha.site_key');
+
+        if (! is_string($siteKey) || $siteKey === '') {
+            return;
+        }
+
+        $token = $request->input('g-recaptcha-response');
+        $secret = config('recaptcha.secret_key');
+        $projectId = config('recaptcha.project_id');
+        $apiKey = config('recaptcha.api_key');
+        $scoreThreshold = (float) config('recaptcha.score_threshold', 0.5);
+
+        if (! is_string($token) || $token === '') {
+            throw ValidationException::withMessages([
+                'recaptcha' => 'Please complete the reCAPTCHA.',
+            ]);
+        }
+
+        $isValid = false;
+
+        if (! empty($projectId) && ! empty($apiKey)) {
+            $response = Http::timeout(8)->post(
+                'https://recaptchaenterprise.googleapis.com/v1/projects/' . rawurlencode($projectId)
+                    . '/assessments?key=' . rawurlencode($apiKey),
+                [
+                    'event' => [
+                        'token' => $token,
+                        'siteKey' => $siteKey,
+                        'expectedAction' => $action,
+                    ],
+                ]
+            );
+
+            $data = $response->json();
+            $tokenProps = data_get($data, 'tokenProperties', []);
+            $risk = data_get($data, 'riskAnalysis', []);
+
+            $valid = (bool) data_get($tokenProps, 'valid', false);
+            $actionValue = data_get($tokenProps, 'action');
+            $actionOk = empty($actionValue) || $actionValue === $action;
+            $score = data_get($risk, 'score');
+            $scoreOk = $score === null || $score >= $scoreThreshold;
+
+            $isValid = $valid && $actionOk && $scoreOk;
+        } elseif (! empty($secret)) {
+            $response = Http::asForm()->timeout(8)->post('https://www.google.com/recaptcha/api/siteverify', [
+                'secret' => $secret,
+                'response' => $token,
+                'remoteip' => $request->ip(),
+            ]);
+
+            $data = $response->json();
+            $success = (bool) data_get($data, 'success', false);
+            $actionValue = data_get($data, 'action');
+            $actionOk = empty($actionValue) || $actionValue === $action;
+            $score = data_get($data, 'score');
+            $scoreOk = $score === null || $score >= $scoreThreshold;
+
+            $isValid = $success && $actionOk && $scoreOk;
+        } else {
+            throw ValidationException::withMessages([
+                'recaptcha' => 'reCAPTCHA is not configured.',
+            ]);
+        }
+
+        if (! $isValid) {
+            throw ValidationException::withMessages([
+                'recaptcha' => 'reCAPTCHA verification failed. Please try again.',
+            ]);
+        }
     }
 }

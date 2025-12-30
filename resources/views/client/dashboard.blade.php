@@ -142,14 +142,16 @@
                 <div class="card p-6">
                     <div class="flex items-center justify-between">
                         <div class="section-label">Overdue invoices</div>
-                        @if($nextOverdueInvoice)
-                            <a href="{{ route('client.invoices.pay', $nextOverdueInvoice) }}" class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white">Pay now</a>
-                        @endif
                     </div>
                     <div class="mt-4 text-sm text-slate-600">
                         @if($overdueInvoiceCount > 0)
                             You have {{ $overdueInvoiceCount }} overdue invoice(s) with a total balance due of
                             {{ $currency }} {{ number_format((float) $overdueInvoiceBalance, 2) }}. Pay now to avoid interruptions.
+                            @if($nextOverdueInvoice)
+                                <div class="mt-3">
+                                    <a href="{{ route('client.invoices.pay', $nextOverdueInvoice) }}" class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white">Pay now</a>
+                                </div>
+                            @endif
                         @else
                             No overdue invoices. You are all caught up.
                         @endif
@@ -221,19 +223,21 @@
                     <div class="mt-4 space-y-3">
                         @forelse($invoices as $invoice)
                             <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                <div class="flex items-center justify-between">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <div class="text-sm text-slate-500">Invoice {{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
                                         <div class="text-lg font-semibold text-slate-900">{{ $invoice->currency }} {{ $invoice->total }}</div>
+                                        <div class="mt-2 text-xs text-slate-500">Due {{ $invoice->due_date->format('d-m-Y') }}</div>
                                     </div>
-                                    <div class="text-sm text-slate-600">{{ ucfirst($invoice->status) }}</div>
+                                    <div class="text-right text-sm text-slate-600">
+                                        <div>{{ ucfirst($invoice->status) }}</div>
+                                        @if(in_array($invoice->status, ['unpaid', 'overdue'], true))
+                                            <div class="mt-2">
+                                                <a href="{{ route('client.invoices.pay', $invoice) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Pay now</a>
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
-                                <div class="mt-2 text-xs text-slate-500">Due {{ $invoice->due_date->format('d-m-Y') }}</div>
-                                @if(in_array($invoice->status, ['unpaid', 'overdue'], true))
-                                    <div class="mt-3">
-                                        <a href="{{ route('client.invoices.pay', $invoice) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Pay now</a>
-                                    </div>
-                                @endif
                             </div>
                         @empty
                             <div class="text-sm text-slate-500">No invoices yet.</div>

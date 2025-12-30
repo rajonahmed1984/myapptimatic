@@ -17,8 +17,7 @@ class SubscriptionController extends Controller
     {
         return view('admin.subscriptions.index', [
             'subscriptions' => Subscription::query()
-                ->with(['customer', 'plan.product'])
-                ->withMax('orders', 'created_at')
+                ->with(['customer', 'plan.product', 'latestOrder'])
                 ->latest()
                 ->get(),
         ]);
@@ -89,6 +88,7 @@ class SubscriptionController extends Controller
             'current_period_start' => ['required', 'date'],
             'current_period_end' => ['required', 'date', 'after:current_period_start'],
             'next_invoice_at' => ['required', 'date'],
+            'access_override_until' => ['nullable', 'date'],
             'auto_renew' => ['nullable', 'boolean'],
             'cancel_at_period_end' => ['nullable', 'boolean'],
             'cancelled_at' => ['nullable', 'date'],
@@ -107,6 +107,12 @@ class SubscriptionController extends Controller
             'cancelled_at' => $data['cancelled_at'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
+
+        if (array_key_exists('access_override_until', $data)) {
+            Customer::query()
+                ->whereKey($data['customer_id'])
+                ->update(['access_override_until' => $data['access_override_until'] ?? null]);
+        }
 
         return redirect()->route('admin.subscriptions.edit', $subscription)
             ->with('status', 'Subscription updated.');

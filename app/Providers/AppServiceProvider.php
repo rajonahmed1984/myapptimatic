@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Models\SupportTicket;
 use App\Support\Branding;
@@ -45,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
                     'pending_orders' => Order::where('status', 'pending')->count(),
                     'overdue_invoices' => Invoice::where('status', 'overdue')->count(),
                     'tickets_waiting' => SupportTicket::where('status', 'open')->count(),
+                    'pending_manual_payments' => PaymentProof::where('status', 'pending')->count(),
                 ]);
             });
 
@@ -68,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
                 'pending_orders' => 0,
                 'overdue_invoices' => 0,
                 'tickets_waiting' => 0,
+                'pending_manual_payments' => 0,
             ]);
         }
     }

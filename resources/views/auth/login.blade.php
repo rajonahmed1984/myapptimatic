@@ -15,6 +15,9 @@
 
     <form class="mt-8 space-y-5" method="POST" action="{{ route('login.attempt') }}">
         @csrf
+        @if(request('redirect'))
+            <input type="hidden" name="redirect" value="{{ request('redirect') }}" />
+        @endif
         <div>
             <label class="text-sm text-slate-600">Email</label>
             <input
@@ -41,6 +44,11 @@
             </label>
             <a href="{{ route('password.request') }}" class="text-teal-600 hover:text-teal-500">Forgot password?</a>
         </div>
+        @if(config('recaptcha.site_key'))
+            <div class="flex justify-center">
+                <div class="g-recaptcha" data-sitekey="{{ config('recaptcha.site_key') }}" data-action="LOGIN"></div>
+            </div>
+        @endif
         <button
             type="submit"
             class="w-full rounded-xl bg-teal-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-400"
@@ -50,7 +58,10 @@
     </form>
 
     <p class="mt-6 text-xs text-slate-500">
-        Need an account? <a href="{{ route('register') }}" class="font-semibold text-teal-600 hover:text-teal-500">Register</a>.
-        Admin access? Use the <a href="{{ route('admin.login') }}" class="font-semibold text-teal-600 hover:text-teal-500">admin login</a>.
+        Need an account? <a href="{{ route('register', request('redirect') ? ['redirect' => request('redirect')] : []) }}" class="font-semibold text-teal-600 hover:text-teal-500">Register</a>.
     </p>
+
+    @if(config('recaptcha.site_key'))
+        <script src="https://www.google.com/recaptcha/enterprise.js" async defer></script>
+    @endif
 @endsection

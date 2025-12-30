@@ -5,26 +5,29 @@
 </head>
 <body class="bg-guest">
     <main class="min-h-screen px-6 py-12">
-        <div class="mx-auto flex min-h-[70vh] max-w-5xl flex-col items-center justify-center gap-10 md:flex-row">
-            <div class="max-w-md">
-                <div class="flex items-center gap-3">
-                    @if(!empty($portalBranding['logo_url']))
-                        <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-10 w-10 rounded-xl bg-white p-1">
-                    @endif
-                    <div class="section-label">{{ $portalBranding['company_name'] ?? 'MyApptimatic' }}</div>
+        <div class="mx-auto flex min-h-[70vh] max-w-6xl flex-col gap-10">
+            @php
+                $wideForm = request()->routeIs('register');
+            @endphp
+            <div class="w-full">
+                <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+                    <a href="{{ url('/') }}" class="flex items-center gap-3">
+                        @if(!empty($portalBranding['logo_url']))
+                            <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-10 w-10 rounded-xl bg-white p-1">
+                        @endif
+                        <div>
+                            <div class="section-label">{{ $portalBranding['company_name'] ?? 'Apptimatic' }}</div>
+                            <div class="text-sm text-slate-500">Product ordering</div>
+                        </div>
+                    </a>
+                    <div class="text-sm text-slate-600">
+                        <a href="{{ route('login') }}" class="text-teal-600 hover:text-teal-500">Sign in</a>
+                        <span class="mx-2 text-slate-300">|</span>
+                        <a href="{{ route('register') }}" class="text-teal-600 hover:text-teal-500">Register</a>
+                    </div>
                 </div>
-                <h1 class="mt-3 text-4xl font-semibold">License and billing control center.</h1>
-                <p class="mt-4 text-sm text-slate-600">
-                    Manage subscriptions, invoices, and domain verification from one modern portal.
-                </p>
-                <div class="mt-6 flex flex-wrap gap-2 text-xs text-slate-500">
-                    <span class="pill">Secure</span>
-                    <span class="pill">Automated billing</span>
-                    <span class="pill">Domain checks</span>
-                </div>
-            </div>
-            <div class="w-full max-w-md">
-                <div class="card p-8">
+                <div class="mx-auto w-full max-w-md {{ $wideForm ? 'md:max-w-[50rem]' : '' }}">
+                    <div class="card p-8">
                     @if ($errors->any())
                         <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                             <ul class="space-y-1">
@@ -42,6 +45,10 @@
                     @endif
 
                     @yield('content')
+                    </div>
+                    <div class="mt-6 text-center text-xs text-slate-500">
+                        Copyright © {{ now()->year }} <a href="https://apptimatic.com" class="font-semibold text-teal-600 hover:text-teal-500">Apptimatic</a>. All Rights Reserved.
+                    </div>
                 </div>
             </div>
         </div>

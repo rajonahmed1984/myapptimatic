@@ -31,20 +31,12 @@ use App\Http\Controllers\BrandingAssetController;
 use App\Http\Controllers\CronController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PaymentCallbackController;
+use App\Http\Controllers\PublicProductController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    $user = Auth::user();
-
-    if (! $user) {
-        return redirect()->route('login');
-    }
-
-    return $user->isAdmin()
-        ? redirect()->route('admin.dashboard')
-        : redirect()->route('client.dashboard');
-});
+Route::get('/', [PublicProductController::class, 'index'])
+    ->name('products.public.home');
 
 Route::get('/branding/{path}', [BrandingAssetController::class, 'show'])
     ->where('path', '.*')
@@ -144,6 +136,7 @@ Route::middleware(['auth', 'client', 'client.notice'])
     ->group(function () {
         Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
         Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/review', [ClientOrderController::class, 'review'])->name('orders.review');
         Route::post('/orders', [ClientOrderController::class, 'store'])->name('orders.store');
         Route::get('/services', [ClientServiceController::class, 'index'])->name('services.index');
         Route::get('/services/{subscription}', [ClientServiceController::class, 'show'])->name('services.show');
@@ -172,3 +165,12 @@ Route::middleware(['auth', 'client', 'client.notice'])
         Route::post('/support-tickets/{ticket}/reply', [ClientSupportTicketController::class, 'reply'])->name('support-tickets.reply');
         Route::patch('/support-tickets/{ticket}/status', [ClientSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
     });
+
+Route::get('/products', [PublicProductController::class, 'index'])
+    ->name('products.public.index');
+
+Route::get('/{product:slug}/plans/{plan:slug}', [PublicProductController::class, 'showPlan'])
+    ->name('products.public.plan');
+
+Route::get('/{product:slug}', [PublicProductController::class, 'show'])
+    ->name('products.public.show');

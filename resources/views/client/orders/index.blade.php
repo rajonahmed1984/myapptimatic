@@ -39,10 +39,9 @@
                                         <div class="mt-1 text-lg font-semibold text-slate-900">{{ $plan->name }}</div>
                                         <div class="mt-2 text-sm text-slate-600">{{ $currency }} {{ number_format((float) $plan->price, 2) }}</div>
                                     </div>
-                                    <form method="POST" action="{{ route('client.orders.store') }}">
-                                        @csrf
+                                    <form method="GET" action="{{ route('client.orders.review') }}">
                                         <input type="hidden" name="plan_id" value="{{ $plan->id }}" />
-                                        <button type="submit" class="rounded-full bg-teal-500 px-4 py-2 text-xs font-semibold text-white">Order now</button>
+                                        <button type="submit" class="rounded-full bg-teal-500 px-4 py-2 text-xs font-semibold text-white">Review & checkout</button>
                                     </form>
                                 </div>
                             </div>

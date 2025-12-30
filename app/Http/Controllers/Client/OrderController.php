@@ -38,6 +38,43 @@ class OrderController extends Controller
         ]);
     }
 
+    public function review(Request $request)
+    {
+        $data = $request->validate([
+            'plan_id' => ['required', 'exists:plans,id'],
+        ]);
+
+        $customer = $request->user()->customer;
+
+        if (! $customer) {
+            return redirect()->route('client.orders.index')
+                ->withErrors(['plan_id' => 'Your account is not linked to a customer profile.']);
+        }
+
+        $plan = Plan::query()->with('product')->findOrFail($data['plan_id']);
+
+        if (! $plan->is_active || ! $plan->product || $plan->product->status !== 'active') {
+            return redirect()->route('client.orders.index')
+                ->withErrors(['plan_id' => 'This plan is not available for ordering.']);
+        }
+
+        $currency = strtoupper((string) Setting::getValue('currency', 'USD'));
+        $startDate = Carbon::today();
+        $periodEnd = $plan->interval === 'monthly'
+            ? $startDate->copy()->endOfMonth()
+            : $startDate->copy()->addYear();
+        $dueDays = (int) ($plan->invoice_due_days ?: Setting::getValue('invoice_due_days'));
+
+        return view('client.orders.review', [
+            'customer' => $customer,
+            'plan' => $plan,
+            'currency' => $currency,
+            'startDate' => $startDate,
+            'periodEnd' => $periodEnd,
+            'dueDays' => $dueDays,
+        ]);
+    }
+
     public function store(Request $request, BillingService $billingService): RedirectResponse
     {
         $data = $request->validate([

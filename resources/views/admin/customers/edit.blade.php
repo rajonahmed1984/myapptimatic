@@ -7,10 +7,17 @@
     <div class="card p-6">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">Edit Customer</h1>
+                <div class="section-label">Customer</div>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ $customer->name }}</h1>
                 <div class="mt-1 text-sm text-slate-500">Client ID: {{ $customer->id }}</div>
             </div>
+            <div class="text-sm text-slate-600">
+                <div>Status: {{ ucfirst($customer->status) }}</div>
+                <div>Created: {{ $customer->created_at?->format('Y-m-d') ?? '--' }}</div>
+            </div>
         </div>
+
+        @include('admin.customers.partials.tabs', ['customer' => $customer, 'activeTab' => 'profile'])
 
         <form method="POST" action="{{ route('admin.customers.update', $customer) }}" class="mt-6 space-y-6">
             @csrf

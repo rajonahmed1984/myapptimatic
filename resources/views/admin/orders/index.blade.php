@@ -15,7 +15,8 @@
         <table class="w-full min-w-[900px] text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                     <tr>
-                        <th class="px-4 py-3">Order</th>
+                        <th class="px-4 py-3">Order ID</th>
+                        <th class="px-4 py-3">Order number</th>
                         <th class="px-4 py-3">Customer</th>
                         <th class="px-4 py-3">Service</th>
                         <th class="px-4 py-3">Status</th>
@@ -33,6 +34,7 @@
                         $invoiceNumber = $order->invoice ? (is_numeric($order->invoice->number) ? $order->invoice->number : $order->invoice->id) : '--';
                     @endphp
                     <tr class="border-b border-slate-100">
+                        <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 font-medium text-slate-900">#{{ $order->order_number ?? $order->id }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $order->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $service }}</td>
@@ -59,7 +61,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-6 text-center text-slate-500">No orders yet.</td>
+                        <td colspan="8" class="px-4 py-6 text-center text-slate-500">No orders yet.</td>
                     </tr>
                 @endforelse
             </tbody>

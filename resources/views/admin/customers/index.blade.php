@@ -20,14 +20,18 @@
                     <th class="px-4 py-3">Services</th>
                     <th class="px-4 py-3">Created</th>
                     <th class="px-4 py-3">Status</th>
-                    <th class="px-4 py-3"></th>
+                    <th class="px-4 py-3">Action</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($customers as $customer)
                     <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 text-slate-500">{{ $customer->id }}</td>
-                        <td class="px-4 py-3 font-medium text-slate-900">{{ $customer->name }}</td>
+                        <td class="px-4 py-3 text-slate-500">
+                            <a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->id }}</a>
+                        </td>
+                        <td class="px-4 py-3 font-medium text-slate-900">
+                            <a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->name }}</a>
+                        </td>
                         <td class="px-4 py-3 text-slate-500">{{ $customer->company_name ?: '--' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $customer->email }}</td>
                         <td class="px-4 py-3 text-slate-500">
@@ -37,8 +41,6 @@
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($customer->status) }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
-                                <a href="{{ route('admin.customers.show', $customer) }}" class="text-slate-500 hover:text-teal-600">Customer view</a>
-                                <a href="{{ route('admin.customers.edit', $customer) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
                                 <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}" onsubmit="return confirm('Delete this customer? This will remove related subscriptions and invoices.');">
                                     @csrf
                                     @method('DELETE')

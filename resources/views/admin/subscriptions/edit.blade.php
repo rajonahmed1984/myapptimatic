@@ -47,6 +47,10 @@
                     <label class="text-sm text-slate-600">Next invoice at</label>
                     <input name="next_invoice_at" type="date" value="{{ old('next_invoice_at', $subscription->next_invoice_at->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>
+                <div>
+                    <label class="text-sm text-slate-600">Override access until</label>
+                    <input name="access_override_until" type="date" value="{{ old('access_override_until', optional($subscription->customer?->access_override_until)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
                 <div class="flex items-center gap-2 text-sm text-slate-600">
                     <input type="hidden" name="auto_renew" value="0" />
                     <input type="checkbox" name="auto_renew" value="1" @checked($subscription->auto_renew) class="rounded border-slate-300 text-teal-500" />

@@ -24,6 +24,11 @@
                     <input name="name" value="{{ old('name', $plan->name) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
+                    <label class="text-sm text-slate-600">Slug</label>
+                    <input name="slug" value="{{ old('slug', $plan->slug) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <p class="mt-2 text-xs text-slate-500">Leave blank to auto-generate.</p>
+                </div>
+                <div>
                     <label class="text-sm text-slate-600">Interval</label>
                     <select name="interval" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
                         <option value="monthly" @selected($plan->interval === 'monthly')>Monthly</option>

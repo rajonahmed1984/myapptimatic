@@ -13,18 +13,28 @@
         <table class="w-full text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
+                    <th class="px-4 py-3">SL</th>
                     <th class="px-4 py-3">Plan</th>
+                    <th class="px-4 py-3">Slug</th>
                     <th class="px-4 py-3">Product</th>
                     <th class="px-4 py-3">Price</th>
                     <th class="px-4 py-3">Interval</th>
                     <th class="px-4 py-3">Status</th>
-                    <th class="px-4 py-3"></th>
+                    <th class="px-4 py-3 text-right">Action</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($plans as $plan)
                     <tr class="border-b border-slate-100">
+                        <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $plan->name }}</td>
+                        <td class="px-4 py-3 text-slate-500">
+                            @if($plan->slug && $plan->product?->slug)
+                                {{ $plan->product->slug }}/plans/{{ $plan->slug }}
+                            @else
+                                --
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-slate-500">{{ $plan->product->name }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $defaultCurrency }} {{ $plan->price }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($plan->interval) }}</td>
@@ -42,7 +52,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-6 text-center text-slate-500">No plans yet.</td>
+                        <td colspan="8" class="px-4 py-6 text-center text-slate-500">No plans yet.</td>
                     </tr>
                 @endforelse
             </tbody>

@@ -13,15 +13,17 @@
         <table class="w-full text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
+                    <th class="px-4 py-3">SL</th>
                     <th class="px-4 py-3">Name</th>
                     <th class="px-4 py-3">Slug</th>
                     <th class="px-4 py-3">Status</th>
-                    <th class="px-4 py-3"></th>
+                    <th class="px-4 py-3 text-right">Action</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($products as $product)
                     <tr class="border-b border-slate-100">
+                        <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $product->name }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $product->slug }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($product->status) }}</td>
@@ -38,7 +40,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-4 py-6 text-center text-slate-500">No products yet.</td>
+                        <td colspan="5" class="px-4 py-6 text-center text-slate-500">No products yet.</td>
                     </tr>
                 @endforelse
             </tbody>
