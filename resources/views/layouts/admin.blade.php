@@ -7,8 +7,11 @@
     <div class="min-h-screen md:flex">
         <aside class="sidebar hidden w-64 flex-col px-6 py-7 md:flex">
             <div class="flex items-center gap-3">
-                @if(!empty($portalBranding['logo_url']))
-                    <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-11 w-11 rounded-2xl bg-white p-1">
+                @php
+                    $sidebarImage = $portalBranding['favicon_url'] ?? ($portalBranding['logo_url'] ?? null);
+                @endphp
+                @if(!empty($sidebarImage))
+                    <img src="{{ $sidebarImage }}" alt="Brand mark" class="h-11 w-11 rounded-2xl bg-white p-1">
                 @else
                     <div class="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-lg font-semibold text-white">LM</div>
                 @endif

@@ -29,7 +29,7 @@ class SettingController extends Controller
         $cronUrl = $cronToken !== '' ? "{$appUrl}/cron/billing?token={$cronToken}" : null;
 
         $emailTemplates = Schema::hasTable('email_templates')
-            ? EmailTemplate::query()->orderBy('name')->get()
+            ? EmailTemplate::query()->orderBy('category')->orderBy('name')->get()
             : collect();
 
         return view('admin.settings.edit', [
@@ -73,6 +73,12 @@ class SettingController extends Controller
                 'auto_cancellation_days' => (int) Setting::getValue('auto_cancellation_days'),
                 'auto_bind_domains' => (int) Setting::getValue('auto_bind_domains'),
                 'payment_instructions' => Setting::getValue('payment_instructions'),
+                'recaptcha_enabled' => (bool) Setting::getValue('recaptcha_enabled', config('recaptcha.enabled')),
+                'recaptcha_site_key' => Setting::getValue('recaptcha_site_key', config('recaptcha.site_key')),
+                'recaptcha_secret_key' => Setting::getValue('recaptcha_secret_key', config('recaptcha.secret_key')),
+                'recaptcha_project_id' => Setting::getValue('recaptcha_project_id', config('recaptcha.project_id')),
+                'recaptcha_api_key' => Setting::getValue('recaptcha_api_key', config('recaptcha.api_key')),
+                'recaptcha_score_threshold' => Setting::getValue('recaptcha_score_threshold', config('recaptcha.score_threshold')),
             ],
             'emailTemplates' => $emailTemplates,
         ]);
@@ -112,6 +118,12 @@ class SettingController extends Controller
             'auto_cancellation_days' => ['required', 'integer', 'min:0', 'max:365'],
             'auto_bind_domains' => ['nullable', 'boolean'],
             'payment_instructions' => ['nullable', 'string'],
+            'enable_recaptcha' => ['nullable', 'boolean'],
+            'recaptcha_site_key' => ['nullable', 'string', 'max:255', 'required_if:enable_recaptcha,1'],
+            'recaptcha_secret_key' => ['nullable', 'string', 'max:255', 'required_if:enable_recaptcha,1'],
+            'recaptcha_project_id' => ['nullable', 'string', 'max:255'],
+            'recaptcha_api_key' => ['nullable', 'string', 'max:255'],
+            'recaptcha_score_threshold' => ['nullable', 'numeric', 'min:0', 'max:1'],
             'templates' => ['nullable', 'array'],
             'templates.*.subject' => ['nullable', 'string', 'max:255'],
             'templates.*.body' => ['nullable', 'string'],
@@ -158,6 +170,12 @@ class SettingController extends Controller
         Setting::setValue('auto_cancellation_days', (int) $data['auto_cancellation_days']);
         Setting::setValue('auto_bind_domains', $request->boolean('auto_bind_domains') ? '1' : '0');
         Setting::setValue('payment_instructions', $data['payment_instructions'] ?? '');
+        Setting::setValue('recaptcha_enabled', $request->boolean('enable_recaptcha') ? '1' : '0');
+        Setting::setValue('recaptcha_site_key', $data['recaptcha_site_key'] ?? '');
+        Setting::setValue('recaptcha_secret_key', $data['recaptcha_secret_key'] ?? '');
+        Setting::setValue('recaptcha_project_id', $data['recaptcha_project_id'] ?? '');
+        Setting::setValue('recaptcha_api_key', $data['recaptcha_api_key'] ?? '');
+        Setting::setValue('recaptcha_score_threshold', $data['recaptcha_score_threshold'] ?? '');
 
         if (Schema::hasTable('email_templates') && ! empty($data['templates']) && is_array($data['templates'])) {
             $templateUpdates = $data['templates'];

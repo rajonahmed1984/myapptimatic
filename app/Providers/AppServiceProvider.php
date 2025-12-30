@@ -57,6 +57,17 @@ class AppServiceProvider extends ServiceProvider
             if (! empty($brand['company_name'])) {
                 config(['mail.from.name' => $brand['company_name']]);
             }
+
+            $recaptchaConfig = [
+                'recaptcha.enabled' => (bool) Setting::getValue('recaptcha_enabled', config('recaptcha.enabled')),
+                'recaptcha.site_key' => Setting::getValue('recaptcha_site_key', config('recaptcha.site_key')),
+                'recaptcha.secret_key' => Setting::getValue('recaptcha_secret_key', config('recaptcha.secret_key')),
+                'recaptcha.project_id' => Setting::getValue('recaptcha_project_id', config('recaptcha.project_id')),
+                'recaptcha.api_key' => Setting::getValue('recaptcha_api_key', config('recaptcha.api_key')),
+                'recaptcha.score_threshold' => (float) Setting::getValue('recaptcha_score_threshold', config('recaptcha.score_threshold')),
+            ];
+
+            config($recaptchaConfig);
         } catch (\Throwable $e) {
             View::share('portalBranding', [
                 'company_name' => config('app.name'),

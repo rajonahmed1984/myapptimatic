@@ -9,12 +9,10 @@
             <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
                 <a href="{{ url('/') }}" class="flex items-center gap-3">
                     @if(!empty($portalBranding['logo_url']))
-                        <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-10 w-10 rounded-xl bg-white p-1">
+                        <img src="{{ $portalBranding['logo_url'] }}" alt="Company logo" class="h-12 rounded-xl bg-white p-1">
+                    @else
+                        <div class="grid h-12 w-12 place-items-center rounded-xl bg-white/20 text-lg font-semibold text-white">LM</div>
                     @endif
-                    <div>
-                        <div class="section-label">{{ $portalBranding['company_name'] ?? 'MyApptimatic' }}</div>
-                        <div class="text-sm text-slate-500">Product ordering</div>
-                    </div>
                 </a>
                 <div class="text-sm text-slate-600">
                     @auth

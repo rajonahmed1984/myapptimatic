@@ -56,6 +56,45 @@
                                 <img src="{{ $settings['company_favicon_url'] }}" alt="Favicon" class="mt-3 h-10 w-10 rounded-xl border border-slate-200 bg-white p-1">
                             @endif
                         </div>
+
+                        <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-5">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-sm font-semibold text-slate-800">reCAPTCHA</div>
+                                    <p class="text-xs text-slate-500">Protect login and registration forms with Google reCAPTCHA.</p>
+                                </div>
+                                <div class="flex items-center gap-2 text-sm text-slate-700">
+                                    <input type="hidden" name="enable_recaptcha" value="0" />
+                                    <input type="checkbox" name="enable_recaptcha" value="1" @checked(old('enable_recaptcha', $settings['recaptcha_enabled'])) class="rounded border-slate-300 text-teal-500" />
+                                    Enable
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="text-sm text-slate-600">Site key</label>
+                                    <input name="recaptcha_site_key" value="{{ old('recaptcha_site_key', $settings['recaptcha_site_key']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                    <p class="mt-2 text-xs text-slate-500">From Google reCAPTCHA console.</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-slate-600">Secret key</label>
+                                    <input name="recaptcha_secret_key" type="password" value="{{ old('recaptcha_secret_key', $settings['recaptcha_secret_key']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-sm text-slate-600">Project ID (Enterprise)</label>
+                                    <input name="recaptcha_project_id" value="{{ old('recaptcha_project_id', $settings['recaptcha_project_id']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-sm text-slate-600">API key (Enterprise)</label>
+                                    <input name="recaptcha_api_key" type="password" value="{{ old('recaptcha_api_key', $settings['recaptcha_api_key']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-sm text-slate-600">Score threshold</label>
+                                    <input name="recaptcha_score_threshold" type="number" step="0.01" min="0" max="1" value="{{ old('recaptcha_score_threshold', $settings['recaptcha_score_threshold']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                    <p class="mt-2 text-xs text-slate-500">Higher values require stronger confidence (0.0 - 1.0).</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -206,37 +245,56 @@
                     <div class="section-label">Email templates</div>
                     <p class="text-sm text-slate-600">Update subjects and email bodies for client and automation messages.</p>
 
-                    <div class="space-y-4">
-                        @forelse($emailTemplates as $template)
-                            <details class="rounded-2xl border border-slate-200 bg-white p-5">
-                                <summary class="flex cursor-pointer items-center justify-between text-sm font-semibold text-slate-700">
-                                    <span>{{ $template->name }}</span>
-                                    <span class="text-xs font-normal text-slate-400">{{ $template->key }}</span>
-                                </summary>
-                                <div class="mt-5 grid gap-4">
-                                    <div>
-                                        <label class="text-sm text-slate-600">Subject</label>
-                                        <input
-                                            name="templates[{{ $template->id }}][subject]"
-                                            value="{{ old("templates.{$template->id}.subject", $template->subject) }}"
-                                            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="text-sm text-slate-600">Body</label>
-                                        <textarea
-                                            name="templates[{{ $template->id }}][body]"
-                                            rows="6"
-                                            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                                        >{{ old("templates.{$template->id}.body", $template->body) }}</textarea>
-                                    </div>
-                                </div>
-                            </details>
-                        @empty
+                    @php
+                        $fromEmail = $settings['company_email'] ?: 'email@demoemail.com';
+                        $templatesByCategory = $emailTemplates->groupBy(function ($template) {
+                            return $template->category ?: 'Other Messages';
+                        });
+                    @endphp
+
+                    <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                        From Email: <span class="font-semibold text-slate-900">{{ $fromEmail }}</span>
+                        <div class="mt-1 text-xs text-slate-500">Change this in the General tab to use a different sender.</div>
+                    </div>
+
+                    <div class="space-y-6">
+                        @if($templatesByCategory->isEmpty())
                             <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
                                 No templates found. Run the latest migrations to load defaults.
                             </div>
-                        @endforelse
+                        @else
+                            @foreach($templatesByCategory as $category => $templates)
+                                <div class="space-y-4">
+                                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">{{ $category }}</div>
+                                    @foreach($templates as $template)
+                                        <details class="rounded-2xl border border-slate-200 bg-white p-5">
+                                            <summary class="flex cursor-pointer items-center justify-between text-sm font-semibold text-slate-700">
+                                                <span>{{ $template->name }}</span>
+                                                <span class="text-xs font-normal text-slate-400">{{ $template->key }}</span>
+                                            </summary>
+                                            <div class="mt-5 grid gap-4">
+                                                <div>
+                                                    <label class="text-sm text-slate-600">Subject</label>
+                                                    <input
+                                                        name="templates[{{ $template->id }}][subject]"
+                                                        value="{{ old("templates.{$template->id}.subject", $template->subject) }}"
+                                                        class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label class="text-sm text-slate-600">Body</label>
+                                                    <textarea
+                                                        name="templates[{{ $template->id }}][body]"
+                                                        rows="6"
+                                                        class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                                    >{{ old("templates.{$template->id}.body", $template->body) }}</textarea>
+                                                </div>
+                                            </div>
+                                        </details>
+                                    @endforeach
+                                </div>
+                            @endforeach
+                        @endif
                     </div>
 
                     <div class="flex justify-end">

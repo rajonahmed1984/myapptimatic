@@ -3,7 +3,7 @@
 return [
     'defaults' => [
         'company_name' => env('APP_NAME', 'MyApptimatic'),
-        'company_email' => 'hello@example.com',
+        'company_email' => 'email@demoemail.com',
         'pay_to_text' => 'MyApptimatic',
         'company_logo_path' => null,
         'company_favicon_path' => null,
