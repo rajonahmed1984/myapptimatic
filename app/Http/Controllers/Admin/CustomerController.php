@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Setting;
 use App\Support\Branding;
 use App\Support\SystemLogger;
+use App\Support\UrlResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -112,7 +113,7 @@ class CustomerController extends Controller
             ->first();
 
         $companyName = Setting::getValue('company_name', config('app.name'));
-        $loginUrl = route('login');
+        $loginUrl = UrlResolver::portalUrl().'/login';
 
         $subject = $template?->subject ?: "Welcome to {$companyName}";
         $body = $template?->body ?: "Hi {{client_name}},\n\nYour account for {{company_name}} is ready. You can sign in here: {{login_url}}.\n\nThank you,\n{{company_name}}";
@@ -129,8 +130,8 @@ class CustomerController extends Controller
         $body = str_replace(array_keys($replacements), array_values($replacements), $body);
         $bodyHtml = $this->formatEmailBody($body);
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
-        $portalUrl = rtrim(config('app.url'), '/');
-        $portalLoginUrl = route('login');
+        $portalUrl = UrlResolver::portalUrl();
+        $portalLoginUrl = UrlResolver::portalUrl().'/login';
 
         try {
             Mail::send('emails.generic', [

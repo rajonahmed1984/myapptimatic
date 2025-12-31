@@ -43,6 +43,11 @@
                             <input name="company_email" type="email" value="{{ old('company_email', $settings['company_email']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                         </div>
                         <div>
+                            <label class="text-sm text-slate-600">App URL (APP_URL)</label>
+                            <input name="app_url" type="url" value="{{ old('app_url', $settings['app_url']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" placeholder="https://my.apptimatic.com" />
+                            <p class="mt-2 text-xs text-slate-500">Used for links in emails and automation notices.</p>
+                        </div>
+                        <div>
                             <label class="text-sm text-slate-600">Country</label>
                             <select name="company_country" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
                                 <option value="">Select country</option>

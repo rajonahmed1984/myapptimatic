@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\SupportTicket;
 use App\Models\User;
 use App\Support\Branding;
+use App\Support\UrlResolver;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
@@ -59,7 +60,7 @@ class AdminNotificationService
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
-        $portalUrl = rtrim(config('app.url'), '/');
+        $portalUrl = UrlResolver::portalUrl();
         $portalLoginUrl = $portalUrl.'/admin';
         $orderUrl = route('admin.orders.show', $order);
         $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
@@ -260,7 +261,7 @@ class AdminNotificationService
     private function sendGeneric(array $recipients, string $subject, string $bodyHtml, ?string $fromEmail, string $companyName): void
     {
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
-        $portalUrl = rtrim(config('app.url'), '/');
+        $portalUrl = UrlResolver::portalUrl();
         $portalLoginUrl = $portalUrl.'/admin';
 
         $this->sendView(

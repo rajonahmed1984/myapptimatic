@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Support\UrlResolver;
 use Carbon\Carbon;
 
 class AutomationStatusController extends Controller
@@ -11,7 +12,7 @@ class AutomationStatusController extends Controller
     public function index()
     {
         $cronToken = (string) Setting::getValue('cron_token');
-        $baseUrl = rtrim(config('app.url'), '/');
+        $baseUrl = UrlResolver::portalUrl();
         $cronUrl = $cronToken !== '' ? "{$baseUrl}/cron/billing?token={$cronToken}" : null;
 
         $lastRunAt = Setting::getValue('billing_last_run_at');

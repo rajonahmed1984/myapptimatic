@@ -12,6 +12,7 @@ use App\Services\AdminNotificationService;
 use App\Services\ClientNotificationService;
 use App\Models\SupportTicket;
 use App\Support\Branding;
+use App\Support\UrlResolver;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -608,7 +609,7 @@ class RunBillingCycle extends Command
 
         $companyName = Setting::getValue('company_name', config('app.name'));
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
-        $portalUrl = rtrim(config('app.url'), '/');
+        $portalUrl = UrlResolver::portalUrl();
         $portalLoginUrl = $portalUrl . '/admin';
         $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
         $timeZone = Setting::getValue('time_zone', config('app.timezone'));

@@ -7,6 +7,7 @@ use App\Models\License;
 use App\Models\Setting;
 use App\Models\SupportTicket;
 use App\Support\Branding;
+use App\Support\UrlResolver;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
@@ -95,8 +96,8 @@ class ClientNotificationService
     private function sendGeneric(string $to, string $subject, string $bodyHtml, ?string $fromEmail, string $companyName): void
     {
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
-        $portalUrl = rtrim(config('app.url'), '/');
-        $portalLoginUrl = route('login');
+        $portalUrl = UrlResolver::portalUrl();
+        $portalLoginUrl = $portalUrl.'/login';
 
         try {
             Mail::send('emails.generic', [

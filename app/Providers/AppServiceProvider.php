@@ -9,10 +9,12 @@ use App\Models\Setting;
 use App\Models\SupportTicket;
 use App\Support\Branding;
 use App\Support\SystemLogger;
+use App\Support\UrlResolver;
 use DateTimeZone;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 
 class AppServiceProvider extends ServiceProvider
@@ -30,7 +32,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->registerEmailLogListener();
+
         try {
+            $portalUrl = UrlResolver::portalUrl();
+            if ($portalUrl !== '') {
+                config(['app.url' => $portalUrl]);
+                URL::forceRootUrl($portalUrl);
+                $scheme = parse_url($portalUrl, PHP_URL_SCHEME);
+                if (is_string($scheme) && $scheme !== '') {
+                    URL::forceScheme($scheme);
+                }
+                config(['filesystems.disks.public.url' => $portalUrl . '/storage']);
+            }
+
             $companyName = Setting::getValue('company_name') ?: config('app.name');
             $logoPath = Setting::getValue('company_logo_path');
             $faviconPath = Setting::getValue('company_favicon_path');
@@ -87,36 +102,6 @@ class AppServiceProvider extends ServiceProvider
 
             config($recaptchaConfig);
 
-            Event::listen(MessageSent::class, function (MessageSent $event) {
-                $message = $event->message;
-                $to = [];
-                $from = [];
-
-                if (method_exists($message, 'getTo') && is_array($message->getTo())) {
-                    foreach ($message->getTo() as $address) {
-                        $to[] = strtolower($address->getAddress());
-                    }
-                }
-
-                if (method_exists($message, 'getFrom') && is_array($message->getFrom())) {
-                    foreach ($message->getFrom() as $address) {
-                        $from[] = strtolower($address->getAddress());
-                    }
-                }
-
-                $subject = method_exists($message, 'getSubject') ? (string) $message->getSubject() : '';
-                $html = method_exists($message, 'getHtmlBody') ? (string) $message->getHtmlBody() : '';
-                $text = method_exists($message, 'getTextBody') ? (string) $message->getTextBody() : '';
-
-                SystemLogger::write('email', 'Email sent.', [
-                    'subject' => $subject,
-                    'to' => $to,
-                    'from' => $from,
-                    'html' => $html,
-                    'text' => $text,
-                    'mailer' => $event->mailer ?? null,
-                ]);
-            });
         } catch (\Throwable $e) {
             View::share('portalBranding', [
                 'company_name' => config('app.name'),
@@ -136,5 +121,39 @@ class AppServiceProvider extends ServiceProvider
                 'pending_manual_payments' => 0,
             ]);
         }
+    }
+
+    private function registerEmailLogListener(): void
+    {
+        Event::listen(MessageSent::class, function (MessageSent $event) {
+            $message = $event->message;
+            $to = [];
+            $from = [];
+
+            if (method_exists($message, 'getTo') && is_array($message->getTo())) {
+                foreach ($message->getTo() as $address) {
+                    $to[] = strtolower($address->getAddress());
+                }
+            }
+
+            if (method_exists($message, 'getFrom') && is_array($message->getFrom())) {
+                foreach ($message->getFrom() as $address) {
+                    $from[] = strtolower($address->getAddress());
+                }
+            }
+
+            $subject = method_exists($message, 'getSubject') ? (string) $message->getSubject() : '';
+            $html = method_exists($message, 'getHtmlBody') ? (string) $message->getHtmlBody() : '';
+            $text = method_exists($message, 'getTextBody') ? (string) $message->getTextBody() : '';
+
+            SystemLogger::write('email', 'Email sent.', [
+                'subject' => $subject,
+                'to' => $to,
+                'from' => $from,
+                'html' => $html,
+                'text' => $text,
+                'mailer' => $event->mailer ?? null,
+            ]);
+        });
     }
 }

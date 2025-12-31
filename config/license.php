@@ -6,6 +6,7 @@ return [
         'company_email' => 'email@demoemail.com',
         'pay_to_text' => 'MyApptimatic',
         'company_country' => '',
+        'app_url' => env('APP_URL', 'http://localhost'),
         'company_logo_path' => null,
         'company_favicon_path' => null,
         'date_format' => 'd-m-Y',

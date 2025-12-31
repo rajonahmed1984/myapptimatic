@@ -7,6 +7,7 @@ use App\Models\EmailTemplate;
 use App\Models\Setting;
 use App\Models\Plan;
 use App\Support\Branding;
+use App\Support\UrlResolver;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
@@ -32,7 +33,7 @@ class SettingController extends Controller
             Setting::setValue('cron_token', $cronToken);
         }
 
-        $baseUrl = rtrim($request->root() ?: config('app.url'), '/');
+        $baseUrl = UrlResolver::portalUrl();
         $cronUrl = $cronToken !== '' ? "{$baseUrl}/cron/billing?token={$cronToken}" : null;
 
         $emailTemplates = Schema::hasTable('email_templates')
@@ -54,6 +55,7 @@ class SettingController extends Controller
                 'company_email' => Setting::getValue('company_email'),
                 'pay_to_text' => Setting::getValue('pay_to_text'),
                 'company_country' => Setting::getValue('company_country'),
+                'app_url' => Setting::getValue('app_url', config('app.url')),
                 'company_logo_path' => $logoPath,
                 'company_logo_url' => Branding::url($logoPath),
                 'company_favicon_path' => $faviconPath,
@@ -125,6 +127,7 @@ class SettingController extends Controller
             'company_email' => ['nullable', 'email', 'max:255'],
             'pay_to_text' => ['nullable', 'string', 'max:255'],
             'company_country' => ['nullable', 'string', 'max:255', Rule::in($countryOptions)],
+            'app_url' => ['nullable', 'url', 'max:255'],
             'company_logo' => ['nullable', 'mimes:jpg,jpeg,png,svg', 'max:2048'],
             'company_favicon' => ['nullable', 'mimes:jpg,jpeg,png,svg,ico', 'max:1024'],
             'currency' => ['required', Rule::in(['BDT', 'USD'])],
@@ -177,6 +180,9 @@ class SettingController extends Controller
         Setting::setValue('company_email', $data['company_email'] ?? '');
         Setting::setValue('pay_to_text', $data['pay_to_text'] ?? '');
         Setting::setValue('company_country', $data['company_country'] ?? '');
+        $appUrl = $data['app_url'] ?? '';
+        $appUrl = is_string($appUrl) ? rtrim($appUrl, '/') : '';
+        Setting::setValue('app_url', $appUrl);
 
         if ($request->hasFile('company_logo')) {
             $logoPath = $request->file('company_logo')->store('branding', 'public');
