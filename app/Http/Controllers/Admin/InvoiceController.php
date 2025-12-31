@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Support\SystemLogger;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
 use Carbon\Carbon;
@@ -72,6 +73,11 @@ class InvoiceController extends Controller
             $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
         }
 
+        SystemLogger::write('activity', 'Invoice marked as paid.', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+        ], $request->user()?->id, $request->ip());
+
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice marked as paid.');
     }
@@ -85,6 +91,11 @@ class InvoiceController extends Controller
 
         $this->billingService->recalculateInvoice($invoice);
 
+        SystemLogger::write('activity', 'Invoice recalculated.', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+        ]);
+
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice recalculated.');
     }
@@ -92,6 +103,7 @@ class InvoiceController extends Controller
     public function update(Request $request, Invoice $invoice, AdminNotificationService $adminNotifications): RedirectResponse
     {
         $wasPaid = $invoice->status === 'paid';
+        $previousStatus = $invoice->status;
         $data = $request->validate([
             'status' => ['required', Rule::in(['unpaid', 'overdue', 'paid', 'cancelled'])],
             'issue_date' => ['required', 'date'],
@@ -124,12 +136,25 @@ class InvoiceController extends Controller
             $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
         }
 
+        SystemLogger::write('activity', 'Invoice updated.', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+            'from_status' => $previousStatus,
+            'to_status' => $data['status'],
+        ], $request->user()?->id, $request->ip());
+
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice updated.');
     }
 
     public function destroy(Invoice $invoice): RedirectResponse
     {
+        SystemLogger::write('activity', 'Invoice deleted.', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+            'status' => $invoice->status,
+        ]);
+
         $invoice->delete();
 
         return redirect()->route('admin.invoices.index')

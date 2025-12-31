@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\EmailTemplate;
+use App\Models\SystemLog;
 use App\Models\User;
 use App\Models\Setting;
 use App\Support\Branding;
+use App\Support\SystemLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -88,6 +90,12 @@ class CustomerController extends Controller
                 $this->sendAccountMessage($customer);
             }
         }
+
+        SystemLogger::write('activity', 'Customer created.', [
+            'customer_id' => $customer->id,
+            'name' => $customer->name,
+            'email' => $customer->email,
+        ], $request->user()?->id, $request->ip());
 
         return redirect()->route('admin.customers.index')
             ->with('status', 'Customer created.');
@@ -191,9 +199,35 @@ class CustomerController extends Controller
             },
         ]);
 
+        $activityLogs = collect();
+        $emailLogs = collect();
+        if ($tab === 'log') {
+            $userIds = $customer->users()->pluck('id');
+            $activityLogs = SystemLog::query()
+                ->where(function ($query) use ($customer, $userIds) {
+                    $query->where('context->customer_id', $customer->id);
+                    if ($userIds->isNotEmpty()) {
+                        $query->orWhereIn('user_id', $userIds);
+                    }
+                })
+                ->latest()
+                ->take(200)
+                ->get();
+        }
+        if ($tab === 'emails' && $customer->email) {
+            $emailLogs = SystemLog::query()
+                ->where('category', 'email')
+                ->whereJsonContains('context->to', strtolower($customer->email))
+                ->latest()
+                ->take(200)
+                ->get();
+        }
+
         return view('admin.customers.show', [
             'customer' => $customer,
             'tab' => $tab,
+            'activityLogs' => $activityLogs,
+            'emailLogs' => $emailLogs,
         ]);
     }
 
@@ -230,12 +264,24 @@ class CustomerController extends Controller
 
         $customer->update($data);
 
+        SystemLogger::write('activity', 'Customer updated.', [
+            'customer_id' => $customer->id,
+            'name' => $customer->name,
+            'email' => $customer->email,
+        ], $request->user()?->id, $request->ip());
+
         return redirect()->route('admin.customers.edit', $customer)
             ->with('status', 'Customer updated.');
     }
 
     public function destroy(Customer $customer)
     {
+        SystemLogger::write('activity', 'Customer deleted.', [
+            'customer_id' => $customer->id,
+            'name' => $customer->name,
+            'email' => $customer->email,
+        ], auth()->id(), request()->ip());
+
         User::where('customer_id', $customer->id)->delete();
         $customer->delete();
 

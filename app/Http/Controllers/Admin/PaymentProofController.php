@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentProof;
 use App\Services\PaymentService;
+use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -50,6 +51,12 @@ class PaymentProofController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        SystemLogger::write('activity', 'Manual payment approved.', [
+            'payment_proof_id' => $paymentProof->id,
+            'invoice_id' => $paymentProof->invoice_id,
+            'gateway_id' => $paymentProof->payment_gateway_id,
+        ], $request->user()?->id, $request->ip());
+
         return back()->with('status', 'Manual payment approved.');
     }
 
@@ -67,6 +74,12 @@ class PaymentProofController extends Controller
                 'status' => 'failed',
             ]);
         }
+
+        SystemLogger::write('activity', 'Manual payment rejected.', [
+            'payment_proof_id' => $paymentProof->id,
+            'invoice_id' => $paymentProof->invoice_id,
+            'gateway_id' => $paymentProof->payment_gateway_id,
+        ], $request->user()?->id, $request->ip());
 
         return back()->with('status', 'Manual payment rejected.');
     }

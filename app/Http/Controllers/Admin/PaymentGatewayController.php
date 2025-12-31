@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentGateway;
 use App\Models\Setting;
+use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -28,6 +29,7 @@ class PaymentGatewayController extends Controller
 
     public function update(Request $request, PaymentGateway $paymentGateway): RedirectResponse
     {
+        $wasActive = (bool) $paymentGateway->is_active;
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
@@ -139,6 +141,14 @@ class PaymentGatewayController extends Controller
             'is_active' => $isActive,
             'settings' => $settings,
         ]);
+
+        SystemLogger::write('activity', 'Payment gateway updated.', [
+            'gateway_id' => $paymentGateway->id,
+            'name' => $paymentGateway->name,
+            'driver' => $paymentGateway->driver,
+            'was_active' => $wasActive,
+            'is_active' => $isActive,
+        ], $request->user()?->id, $request->ip());
 
         return redirect()->route('admin.payment-gateways.index')
             ->with('status', 'Payment gateway updated.');

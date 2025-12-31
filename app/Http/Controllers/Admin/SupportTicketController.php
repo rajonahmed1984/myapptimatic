@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SupportTicket;
+use App\Support\SystemLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -68,6 +69,12 @@ class SupportTicketController extends Controller
             'closed_at' => null,
         ]);
 
+        SystemLogger::write('activity', 'Ticket replied.', [
+            'ticket_id' => $ticket->id,
+            'customer_id' => $ticket->customer_id,
+            'status' => $ticket->status,
+        ], $request->user()?->id, $request->ip());
+
         return redirect()
             ->route('admin.support-tickets.show', $ticket)
             ->with('status', 'Reply sent.');
@@ -79,10 +86,18 @@ class SupportTicketController extends Controller
             'status' => ['required', Rule::in(['open', 'answered', 'customer_reply', 'closed'])],
         ]);
 
+        $previousStatus = $ticket->status;
         $ticket->update([
             'status' => $data['status'],
             'closed_at' => $data['status'] === 'closed' ? now() : null,
         ]);
+
+        SystemLogger::write('activity', 'Ticket status updated.', [
+            'ticket_id' => $ticket->id,
+            'customer_id' => $ticket->customer_id,
+            'from_status' => $previousStatus,
+            'to_status' => $data['status'],
+        ], $request->user()?->id, $request->ip());
 
         return redirect()
             ->route('admin.support-tickets.show', $ticket)
@@ -97,12 +112,21 @@ class SupportTicketController extends Controller
             'status' => ['required', Rule::in(['open', 'answered', 'customer_reply', 'closed'])],
         ]);
 
+        $previousStatus = $ticket->status;
         $ticket->update([
             'subject' => $data['subject'],
             'priority' => $data['priority'],
             'status' => $data['status'],
             'closed_at' => $data['status'] === 'closed' ? now() : null,
         ]);
+
+        SystemLogger::write('activity', 'Ticket updated.', [
+            'ticket_id' => $ticket->id,
+            'customer_id' => $ticket->customer_id,
+            'from_status' => $previousStatus,
+            'to_status' => $data['status'],
+            'priority' => $data['priority'],
+        ], $request->user()?->id, $request->ip());
 
         return redirect()
             ->route('admin.support-tickets.show', $ticket)
@@ -111,6 +135,12 @@ class SupportTicketController extends Controller
 
     public function destroy(SupportTicket $ticket)
     {
+        SystemLogger::write('activity', 'Ticket deleted.', [
+            'ticket_id' => $ticket->id,
+            'customer_id' => $ticket->customer_id,
+            'status' => $ticket->status,
+        ]);
+
         $ticket->delete();
 
         return redirect()

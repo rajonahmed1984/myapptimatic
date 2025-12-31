@@ -40,6 +40,11 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         if (! Auth::attempt($credentials, $remember)) {
+            SystemLogger::write('admin', 'Login failed.', [
+                'login_type' => 'client',
+                'email' => $credentials['email'],
+            ], null, $request->ip(), 'warning');
+
             throw ValidationException::withMessages([
                 'email' => 'The provided credentials are incorrect.',
             ]);
@@ -48,6 +53,12 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         $user = $request->user();
+
+        SystemLogger::write('admin', 'Login successful.', [
+            'login_type' => $user && $user->isAdmin() ? 'admin' : 'client',
+            'email' => $user?->email,
+            'user_id' => $user?->id,
+        ], $user?->id, $request->ip());
 
         if ($user && $user->isAdmin()) {
             return redirect()->route('admin.dashboard');
@@ -72,6 +83,11 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         if (! Auth::attempt($credentials, $remember)) {
+            SystemLogger::write('admin', 'Admin login failed.', [
+                'login_type' => 'admin',
+                'email' => $credentials['email'],
+            ], null, $request->ip(), 'warning');
+
             throw ValidationException::withMessages([
                 'email' => 'The provided credentials are incorrect.',
             ]);
@@ -82,6 +98,12 @@ class AuthController extends Controller
         $user = $request->user();
 
         if (! $user || ! $user->isAdmin()) {
+            SystemLogger::write('admin', 'Admin login denied.', [
+                'login_type' => 'admin',
+                'email' => $user?->email,
+                'user_id' => $user?->id,
+            ], $user?->id, $request->ip(), 'warning');
+
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

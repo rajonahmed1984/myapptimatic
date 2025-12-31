@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Plan;
 use App\Models\License;
 use App\Models\LicenseDomain;
+use App\Support\SystemLogger;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
 use Carbon\Carbon;
@@ -131,6 +132,13 @@ class OrderController extends Controller
             ->where('domain', '!=', $domain)
             ->update(['status' => 'revoked']);
 
+        SystemLogger::write('activity', 'Order approved.', [
+            'order_id' => $order->id,
+            'customer_id' => $order->customer_id,
+            'subscription_id' => $subscription->id,
+            'invoice_id' => $order->invoice_id,
+        ], $request->user()?->id, $request->ip());
+
         return back()->with('status', 'Order accepted.');
     }
 
@@ -165,6 +173,13 @@ class OrderController extends Controller
         }
 
         $adminNotifications->sendOrderCancelled($order->fresh(['customer', 'plan.product', 'invoice']));
+
+        SystemLogger::write('activity', 'Order cancelled.', [
+            'order_id' => $order->id,
+            'customer_id' => $order->customer_id,
+            'subscription_id' => $order->subscription_id,
+            'invoice_id' => $order->invoice_id,
+        ]);
 
         return back()->with('status', 'Order cancelled.');
     }
@@ -238,11 +253,24 @@ class OrderController extends Controller
             $billingService->recalculateInvoice($order->invoice->fresh('subscription.plan', 'items'));
         }
 
+        SystemLogger::write('activity', 'Order updated.', [
+            'order_id' => $order->id,
+            'customer_id' => $order->customer_id,
+            'plan_id' => $plan->id,
+            'interval' => $plan->interval,
+        ], $request->user()?->id, $request->ip());
+
         return back()->with('status', 'Order interval updated.');
     }
 
     public function destroy(Order $order): RedirectResponse
     {
+        SystemLogger::write('activity', 'Order deleted.', [
+            'order_id' => $order->id,
+            'customer_id' => $order->customer_id,
+            'status' => $order->status,
+        ]);
+
         $order->delete();
 
         return redirect()->route('admin.orders.index')

@@ -208,11 +208,89 @@
             </div>
         @elseif($tab === 'emails')
             <div class="mt-6 rounded-2xl border border-slate-200 bg-white/70 p-5 text-sm text-slate-600">
-                Email history is not available yet for this customer.
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Client Email Log</div>
+                <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    @if($emailLogs->isEmpty())
+                        <div class="px-4 py-6 text-sm text-slate-500">No emails sent to this client yet.</div>
+                    @else
+                        <table class="w-full min-w-[700px] text-left text-sm">
+                            <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                                <tr>
+                                    <th class="px-4 py-3">Date</th>
+                                    <th class="px-4 py-3">Subject</th>
+                                    <th class="px-4 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($emailLogs as $log)
+                                    <tr class="border-b border-slate-100">
+                                        <td class="px-4 py-3 text-slate-500">{{ $log->created_at?->format($globalDateFormat.' H:i') ?? '--' }}</td>
+                                        <td class="px-4 py-3 text-slate-700">{{ $log->context['subject'] ?? $log->message }}</td>
+                                        <td class="px-4 py-3 text-right">
+                                            <div class="flex flex-wrap items-center justify-end gap-2">
+                                                <form method="POST" action="{{ route('admin.logs.email.resend', $log) }}">
+                                                    @csrf
+                                                    <button type="submit" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Resend Email</button>
+                                                </form>
+                                                <form method="POST" action="{{ route('admin.logs.email.delete', $log) }}" onsubmit="return confirm('Delete this email log?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300 hover:text-rose-700">Delete</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </div>
             </div>
         @elseif($tab === 'log')
             <div class="mt-6 rounded-2xl border border-slate-200 bg-white/70 p-5 text-sm text-slate-600">
-                Activity log tracking is not enabled for this customer.
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Client Activity Log</div>
+                <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    @if($activityLogs->isEmpty())
+                        <div class="px-4 py-6 text-sm text-slate-500">No activity recorded yet.</div>
+                    @else
+                        <table class="w-full min-w-[700px] text-left text-sm">
+                            <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                                <tr>
+                                    <th class="px-4 py-3">Date</th>
+                                    <th class="px-4 py-3">Category</th>
+                                    <th class="px-4 py-3">Level</th>
+                                    <th class="px-4 py-3">Message</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($activityLogs as $log)
+                                    @php
+                                        $level = strtolower((string) $log->level);
+                                        $levelClasses = match ($level) {
+                                            'error' => 'bg-rose-100 text-rose-700',
+                                            'warning' => 'bg-amber-100 text-amber-700',
+                                            'info' => 'bg-blue-100 text-blue-700',
+                                            default => 'bg-slate-100 text-slate-600',
+                                        };
+                                    @endphp
+                                    <tr class="border-b border-slate-100">
+                                        <td class="px-4 py-3 text-slate-500">{{ $log->created_at?->format($globalDateFormat.' H:i') ?? '--' }}</td>
+                                        <td class="px-4 py-3 text-slate-600">{{ ucfirst($log->category) }}</td>
+                                        <td class="px-4 py-3">
+                                            <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $levelClasses }}">{{ strtoupper($level) }}</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-600">
+                                            <div class="font-semibold text-slate-800">{{ $log->message }}</div>
+                                            @if(!empty($log->context))
+                                                <div class="mt-1 text-xs text-slate-500">{{ json_encode($log->context) }}</div>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </div>
             </div>
         @endif
     </div>

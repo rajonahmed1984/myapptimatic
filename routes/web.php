@@ -144,6 +144,8 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('logs/module', [SystemLogController::class, 'index'])->name('logs.module')->defaults('type', 'module');
     Route::get('logs/email', [SystemLogController::class, 'index'])->name('logs.email')->defaults('type', 'email');
     Route::get('logs/ticket-mail-import', [SystemLogController::class, 'index'])->name('logs.ticket-mail-import')->defaults('type', 'ticket-mail-import');
+    Route::post('logs/email/{systemLog}/resend', [SystemLogController::class, 'resend'])->name('logs.email.resend');
+    Route::delete('logs/email/{systemLog}', [SystemLogController::class, 'destroy'])->name('logs.email.delete');
     
     // Affiliate routes
     Route::resource('affiliates', AdminAffiliateController::class);

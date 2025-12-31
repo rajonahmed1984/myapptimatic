@@ -13,6 +13,7 @@ use App\Models\Subscription;
 use App\Models\Setting;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
+use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -178,6 +179,14 @@ class OrderController extends Controller
 
         if ($order) {
             $adminNotifications->sendNewOrder($order, $request->ip());
+        }
+
+        if ($order) {
+            SystemLogger::write('activity', 'Order placed.', [
+                'order_id' => $order->id,
+                'customer_id' => $order->customer_id,
+                'invoice_id' => $order->invoice_id,
+            ], $request->user()?->id, $request->ip());
         }
 
         if ($invoice) {

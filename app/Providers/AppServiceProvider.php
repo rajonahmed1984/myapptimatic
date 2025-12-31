@@ -90,18 +90,30 @@ class AppServiceProvider extends ServiceProvider
             Event::listen(MessageSent::class, function (MessageSent $event) {
                 $message = $event->message;
                 $to = [];
+                $from = [];
 
                 if (method_exists($message, 'getTo') && is_array($message->getTo())) {
                     foreach ($message->getTo() as $address) {
-                        $to[] = $address->getAddress();
+                        $to[] = strtolower($address->getAddress());
+                    }
+                }
+
+                if (method_exists($message, 'getFrom') && is_array($message->getFrom())) {
+                    foreach ($message->getFrom() as $address) {
+                        $from[] = strtolower($address->getAddress());
                     }
                 }
 
                 $subject = method_exists($message, 'getSubject') ? (string) $message->getSubject() : '';
+                $html = method_exists($message, 'getHtmlBody') ? (string) $message->getHtmlBody() : '';
+                $text = method_exists($message, 'getTextBody') ? (string) $message->getTextBody() : '';
 
                 SystemLogger::write('email', 'Email sent.', [
                     'subject' => $subject,
                     'to' => $to,
+                    'from' => $from,
+                    'html' => $html,
+                    'text' => $text,
                     'mailer' => $event->mailer ?? null,
                 ]);
             });

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Support\SystemLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -30,7 +31,14 @@ class ProductController extends Controller
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ]);
 
-        Product::create($data);
+        $product = Product::create($data);
+
+        SystemLogger::write('activity', 'Product created.', [
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'status' => $product->status,
+        ], $request->user()?->id, $request->ip());
 
         return redirect()->route('admin.products.index')
             ->with('status', 'Product created.');
@@ -54,12 +62,26 @@ class ProductController extends Controller
 
         $product->update($data);
 
+        SystemLogger::write('activity', 'Product updated.', [
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'status' => $product->status,
+        ], $request->user()?->id, $request->ip());
+
         return redirect()->route('admin.products.edit', $product)
             ->with('status', 'Product updated.');
     }
 
     public function destroy(Product $product)
     {
+        SystemLogger::write('activity', 'Product deleted.', [
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'status' => $product->status,
+        ], auth()->id(), request()->ip());
+
         $product->delete();
 
         return redirect()->route('admin.products.index')

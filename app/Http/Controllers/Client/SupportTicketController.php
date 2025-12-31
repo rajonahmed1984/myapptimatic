@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\SupportTicket;
+use App\Support\SystemLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -69,6 +70,12 @@ class SupportTicketController extends Controller
             'is_admin' => false,
         ]);
 
+        SystemLogger::write('activity', 'Ticket created.', [
+            'ticket_id' => $ticket->id,
+            'customer_id' => $customer->id,
+            'priority' => $ticket->priority,
+        ], $request->user()?->id, $request->ip());
+
         return redirect()
             ->route('client.support-tickets.show', $ticket)
             ->with('status', 'Ticket created.');
@@ -106,6 +113,12 @@ class SupportTicketController extends Controller
             'closed_at' => null,
         ]);
 
+        SystemLogger::write('activity', 'Ticket replied by client.', [
+            'ticket_id' => $ticket->id,
+            'customer_id' => $ticket->customer_id,
+            'status' => $ticket->status,
+        ], $request->user()?->id, $request->ip());
+
         return redirect()
             ->route('client.support-tickets.show', $ticket)
             ->with('status', 'Reply sent.');
@@ -123,6 +136,12 @@ class SupportTicketController extends Controller
             'status' => $data['status'],
             'closed_at' => $data['status'] === 'closed' ? now() : null,
         ]);
+
+        SystemLogger::write('activity', 'Ticket status updated by client.', [
+            'ticket_id' => $ticket->id,
+            'customer_id' => $ticket->customer_id,
+            'status' => $ticket->status,
+        ], $request->user()?->id, $request->ip());
 
         return redirect()
             ->route('client.support-tickets.show', $ticket)

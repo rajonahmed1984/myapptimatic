@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Support\SystemLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -43,7 +44,16 @@ class PlanController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         $data['currency'] = strtoupper((string) Setting::getValue('currency'));
 
-        Plan::create($data);
+        $plan = Plan::create($data);
+
+        SystemLogger::write('activity', 'Plan created.', [
+            'plan_id' => $plan->id,
+            'product_id' => $plan->product_id,
+            'name' => $plan->name,
+            'interval' => $plan->interval,
+            'price' => $plan->price,
+            'is_active' => $plan->is_active,
+        ], $request->user()?->id, $request->ip());
 
         return redirect()->route('admin.plans.index')
             ->with('status', 'Plan created.');
@@ -75,12 +85,30 @@ class PlanController extends Controller
 
         $plan->update($data);
 
+        SystemLogger::write('activity', 'Plan updated.', [
+            'plan_id' => $plan->id,
+            'product_id' => $plan->product_id,
+            'name' => $plan->name,
+            'interval' => $plan->interval,
+            'price' => $plan->price,
+            'is_active' => $plan->is_active,
+        ], $request->user()?->id, $request->ip());
+
         return redirect()->route('admin.plans.edit', $plan)
             ->with('status', 'Plan updated.');
     }
 
     public function destroy(Plan $plan)
     {
+        SystemLogger::write('activity', 'Plan deleted.', [
+            'plan_id' => $plan->id,
+            'product_id' => $plan->product_id,
+            'name' => $plan->name,
+            'interval' => $plan->interval,
+            'price' => $plan->price,
+            'is_active' => $plan->is_active,
+        ], auth()->id(), request()->ip());
+
         $plan->delete();
 
         return redirect()->route('admin.plans.index')
