@@ -6,6 +6,7 @@ use App\Models\AccountingEntry;
 use App\Models\Invoice;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentGateway;
+use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
@@ -83,6 +84,13 @@ class PaymentService
                 // Notification errors should not break payment flow.
             }
         }
+
+        SystemLogger::write('activity', 'Invoice marked as paid.', [
+            'invoice_id' => $attempt->invoice_id,
+            'payment_attempt_id' => $attempt->id,
+            'gateway' => $attempt->paymentGateway?->driver,
+            'reference' => $reference,
+        ]);
     }
 
     public function markFailed(PaymentAttempt $attempt, string $message, array $meta = []): void
@@ -94,6 +102,13 @@ class PaymentService
                 'message' => $message,
             ])),
         ]);
+
+        SystemLogger::write('module', 'Payment failed.', [
+            'payment_attempt_id' => $attempt->id,
+            'invoice_id' => $attempt->invoice_id,
+            'gateway' => $attempt->paymentGateway?->driver,
+            'message' => $message,
+        ], level: 'error');
     }
 
     public function markCancelled(PaymentAttempt $attempt, string $message, array $meta = []): void

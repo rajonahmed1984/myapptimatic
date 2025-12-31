@@ -13,7 +13,7 @@
                 @if(!empty($sidebarImage))
                     <img src="{{ $sidebarImage }}" alt="Brand mark" class="h-11 w-11 rounded-2xl bg-white p-1">
                 @else
-                    <div class="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-lg font-semibold text-white">LM</div>
+                    <div class="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-lg font-semibold text-white">Apptimatic</div>
                 @endif
                 <div>
                     <div class="text-xs uppercase tracking-[0.35em] text-slate-400">Client</div>

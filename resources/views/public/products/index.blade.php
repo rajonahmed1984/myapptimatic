@@ -16,21 +16,21 @@
             @foreach($products as $product)
                 @php($minPrice = $product->plans->min('price'))
                 <div class="card p-6">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <div class="text-xl font-semibold text-slate-900">{{ $product->name }}</div>
-                            @if($product->description)
-                                <p class="mt-2 text-sm text-slate-500">{{ $product->description }}</p>
-                            @endif
-                            <div class="mt-3 text-sm text-slate-600">
+                    <div>
+                        <div class="text-xl font-semibold text-slate-900">{{ $product->name }}</div>
+                        @if($product->description)
+                            <p class="mt-2 text-sm text-slate-500">{{ $product->description }}</p>
+                        @endif
+                        <div class="mt-3 flex items-center justify-between gap-4">
+                            <div class="text-sm text-slate-600">
                                 {{ $product->plans->count() }} plan(s)
                                 @if($minPrice !== null)
                                     <span class="mx-2 text-slate-300">|</span>
                                     Starts at {{ $currency }} {{ number_format((float) $minPrice, 2) }}
                                 @endif
                             </div>
+                            <a href="{{ route('products.public.show', $product) }}" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View plans</a>
                         </div>
-                        <a href="{{ route('products.public.show', $product) }}" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View plans</a>
                     </div>
                 </div>
             @endforeach

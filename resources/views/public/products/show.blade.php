@@ -31,7 +31,6 @@
                                 <div class="text-sm text-slate-500">{{ ucfirst($plan->interval) }} plan</div>
                                 <div class="mt-1 text-lg font-semibold text-slate-900">{{ $plan->name }}</div>
                                 <div class="mt-2 text-sm text-slate-600">{{ $currency }} {{ number_format((float) $plan->price, 2) }}</div>
-                                <a href="{{ route('products.public.plan', ['product' => $product, 'plan' => $plan]) }}" class="mt-3 inline-block text-xs font-semibold text-teal-600 hover:text-teal-500">View plan</a>
                             </div>
                             @auth
                                 @if(auth()->user()->isClient())
@@ -47,6 +46,7 @@
                                 <div class="flex flex-col gap-2 text-xs">
                                     <a href="{{ route('login', ['redirect' => $redirectUrl]) }}" class="rounded-full border border-slate-200 px-3 py-2 text-center text-slate-600 hover:border-teal-300 hover:text-teal-600">Sign in to order</a>
                                     <a href="{{ route('register', ['redirect' => $redirectUrl]) }}" class="rounded-full bg-teal-500 px-3 py-2 text-center font-semibold text-white">Create account</a>
+                                    <a href="{{ route('products.public.plan', ['product' => $product, 'plan' => $plan]) }}" class="text-center text-xs font-semibold text-teal-600 hover:text-teal-500">View plan</a>
                                 </div>
                             @endauth
                         </div>

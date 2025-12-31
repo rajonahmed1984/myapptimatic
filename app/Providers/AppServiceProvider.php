@@ -8,8 +8,11 @@ use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Models\SupportTicket;
 use App\Support\Branding;
+use App\Support\SystemLogger;
 use DateTimeZone;
+use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 
 class AppServiceProvider extends ServiceProvider
@@ -83,6 +86,25 @@ class AppServiceProvider extends ServiceProvider
             ];
 
             config($recaptchaConfig);
+
+            Event::listen(MessageSent::class, function (MessageSent $event) {
+                $message = $event->message;
+                $to = [];
+
+                if (method_exists($message, 'getTo') && is_array($message->getTo())) {
+                    foreach ($message->getTo() as $address) {
+                        $to[] = $address->getAddress();
+                    }
+                }
+
+                $subject = method_exists($message, 'getSubject') ? (string) $message->getSubject() : '';
+
+                SystemLogger::write('email', 'Email sent.', [
+                    'subject' => $subject,
+                    'to' => $to,
+                    'mailer' => $event->mailer ?? null,
+                ]);
+            });
         } catch (\Throwable $e) {
             View::share('portalBranding', [
                 'company_name' => config('app.name'),

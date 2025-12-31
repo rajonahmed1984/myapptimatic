@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Setting;
 use App\Models\Subscription;
+use App\Support\SystemLogger;
 use Carbon\Carbon;
 
 class BillingService
@@ -40,6 +41,14 @@ class BillingService
             'late_fee' => 0,
             'total' => $subtotal,
             'currency' => strtoupper($currency),
+        ]);
+
+        SystemLogger::write('activity', 'Invoice created.', [
+            'invoice_id' => $invoice->id,
+            'subscription_id' => $subscription->id,
+            'customer_id' => $subscription->customer_id,
+            'total' => $invoice->total,
+            'currency' => $invoice->currency,
         ]);
 
         InvoiceItem::create([

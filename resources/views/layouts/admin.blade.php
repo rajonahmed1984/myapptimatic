@@ -22,6 +22,7 @@
             </div>
 
             @php($invoiceMenuActive = request()->routeIs('admin.invoices.*'))
+            @php($logMenuActive = request()->routeIs('admin.logs.*'))
             <nav class="mt-10 space-y-2 text-sm">
                 <a class="{{ request()->routeIs('admin.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.dashboard') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
@@ -108,6 +109,19 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Automation Status
                 </a>
+                <a class="{{ $logMenuActive ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.logs.activity') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Logs
+                </a>
+                @if($logMenuActive)
+                    <div class="ml-6 space-y-1 text-xs text-slate-400">
+                        <a href="{{ route('admin.logs.activity') }}" class="block {{ request()->routeIs('admin.logs.activity') ? 'text-teal-300' : 'hover:text-slate-200' }}">Activity</a>
+                        <a href="{{ route('admin.logs.admin') }}" class="block {{ request()->routeIs('admin.logs.admin') ? 'text-teal-300' : 'hover:text-slate-200' }}">Admin</a>
+                        <a href="{{ route('admin.logs.module') }}" class="block {{ request()->routeIs('admin.logs.module') ? 'text-teal-300' : 'hover:text-slate-200' }}">Module</a>
+                        <a href="{{ route('admin.logs.email') }}" class="block {{ request()->routeIs('admin.logs.email') ? 'text-teal-300' : 'hover:text-slate-200' }}">Email</a>
+                        <a href="{{ route('admin.logs.ticket-mail-import') }}" class="block {{ request()->routeIs('admin.logs.ticket-mail-import') ? 'text-teal-300' : 'hover:text-slate-200' }}">Ticket Mail Import</a>
+                    </div>
+                @endif
             </nav>
 
             <div class="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
@@ -188,6 +202,11 @@
                             <a href="{{ route('admin.profile.edit') }}" class="text-slate-700 hover:text-teal-600">Profile</a>
                             <a href="{{ route('admin.admins.index') }}" class="text-slate-700 hover:text-teal-600">Admin Users</a>
                             <a href="{{ route('admin.settings.edit') }}" class="text-slate-700 hover:text-teal-600">Settings</a>
+                            <a href="{{ route('admin.logs.activity') }}" class="text-slate-700 hover:text-teal-600">Activity Log</a>
+                            <a href="{{ route('admin.logs.admin') }}" class="text-slate-700 hover:text-teal-600">Admin Log</a>
+                            <a href="{{ route('admin.logs.module') }}" class="text-slate-700 hover:text-teal-600">Module Log</a>
+                            <a href="{{ route('admin.logs.email') }}" class="text-slate-700 hover:text-teal-600">Email Message Log</a>
+                            <a href="{{ route('admin.logs.ticket-mail-import') }}" class="text-slate-700 hover:text-teal-600">Ticket Mail Import Log</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit" class="text-left text-slate-700 hover:text-teal-600">Sign out</button>

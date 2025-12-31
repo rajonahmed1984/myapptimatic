@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\User;
+use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -89,6 +90,10 @@ class AuthController extends Controller
                 'email' => 'This account does not have admin access.',
             ]);
         }
+
+        SystemLogger::write('admin', 'Admin login.', [
+            'email' => $user->email,
+        ], $user->id, $request->ip());
 
         return redirect()->route('admin.dashboard');
     }
