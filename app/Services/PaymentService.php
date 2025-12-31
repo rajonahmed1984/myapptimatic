@@ -38,6 +38,7 @@ class PaymentService
             'paypal' => $this->startPayPal($attempt),
             'sslcommerz' => $this->startSslcommerz($attempt),
             'bkash' => $this->startBkash($attempt),
+            'bkash_api' => $this->startBkashApi($attempt),
             default => [
                 'status' => 'manual',
                 'message' => 'Manual payment instructions provided.',
@@ -471,6 +472,20 @@ class PaymentService
         ]);
 
         return ['status' => 'redirect', 'url' => $redirectUrl];
+    }
+
+    private function startBkashApi(PaymentAttempt $attempt): array
+    {
+        $settings = $attempt->paymentGateway->settings ?? [];
+
+        if (empty($settings['api_key']) || empty($settings['merchant_short_code']) || empty($settings['service_id'])) {
+            return ['status' => 'error', 'message' => 'bKash API credentials are missing.'];
+        }
+
+        return [
+            'status' => 'manual',
+            'message' => 'bKash API payments require manual confirmation.',
+        ];
     }
 
     private function paypalBaseUrl(array $settings): string

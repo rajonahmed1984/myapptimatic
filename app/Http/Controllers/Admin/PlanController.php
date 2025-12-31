@@ -36,7 +36,6 @@ class PlanController extends Controller
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('plans', 'slug')],
             'interval' => ['required', Rule::in(['monthly', 'yearly'])],
             'price' => ['required', 'numeric', 'min:0'],
-            'invoice_due_days' => ['required', 'integer', 'min:0', 'max:365'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -67,7 +66,6 @@ class PlanController extends Controller
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('plans', 'slug')->ignore($plan->id)],
             'interval' => ['required', Rule::in(['monthly', 'yearly'])],
             'price' => ['required', 'numeric', 'min:0'],
-            'invoice_due_days' => ['required', 'integer', 'min:0', 'max:365'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 

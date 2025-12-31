@@ -64,7 +64,7 @@ class OrderController extends Controller
         $periodEnd = $plan->interval === 'monthly'
             ? $startDate->copy()->endOfMonth()
             : $startDate->copy()->addYear();
-        $dueDays = (int) ($plan->invoice_due_days ?: Setting::getValue('invoice_due_days'));
+        $dueDays = 0;
 
         return view('client.orders.review', [
             'customer' => $customer,
@@ -115,10 +115,10 @@ class OrderController extends Controller
                 'cancel_at_period_end' => false,
             ]);
 
-            $dueDays = (int) ($plan->invoice_due_days ?: Setting::getValue('invoice_due_days'));
             $issueDate = Carbon::today();
             $subtotal = $this->calculateSubtotal($plan->interval, (float) $plan->price, $startDate, $periodEnd);
             $currency = strtoupper((string) Setting::getValue('currency', 'USD'));
+            $dueDate = $issueDate->copy();
 
             $invoice = Invoice::create([
                 'customer_id' => $subscription->customer_id,
@@ -126,7 +126,7 @@ class OrderController extends Controller
                 'number' => $billingService->nextInvoiceNumber(),
                 'status' => 'unpaid',
                 'issue_date' => $issueDate->toDateString(),
-                'due_date' => $issueDate->copy()->addDays($dueDays)->toDateString(),
+                'due_date' => $dueDate->toDateString(),
                 'subtotal' => $subtotal,
                 'late_fee' => 0,
                 'total' => $subtotal,

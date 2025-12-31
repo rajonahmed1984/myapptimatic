@@ -45,10 +45,6 @@
                     </div>
                     <p class="mt-2 text-xs text-slate-500">Currency is set globally in Settings.</p>
                 </div>
-                <div>
-                    <label class="text-sm text-slate-600">Invoice due days</label>
-                    <input name="invoice_due_days" type="number" value="{{ old('invoice_due_days', 7) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                </div>
                 <div class="flex items-center gap-2 text-sm text-slate-600">
                     <input type="hidden" name="is_active" value="0" />
                     <input type="checkbox" name="is_active" value="1" checked class="rounded border-slate-300 text-teal-500" />

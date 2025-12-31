@@ -40,6 +40,9 @@ class PaymentGatewayController extends Controller
             'branch' => ['nullable', 'string', 'max:255'],
             'routing_number' => ['nullable', 'string', 'max:255'],
             'merchant_number' => ['nullable', 'string', 'max:255'],
+            'api_key' => ['nullable', 'string', 'max:255'],
+            'merchant_short_code' => ['nullable', 'string', 'max:255'],
+            'service_id' => ['nullable', 'string', 'max:255'],
             'username' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'max:255'],
             'app_key' => ['nullable', 'string', 'max:255'],
@@ -80,15 +83,15 @@ class PaymentGatewayController extends Controller
                 break;
             case 'bkash':
                 $settings = array_merge($settings, [
-                    'instructions' => $data['instructions'] ?? '',
-                    'payment_url' => $data['payment_url'] ?? '',
                     'merchant_number' => $data['merchant_number'] ?? '',
-                    'username' => $data['username'] ?? '',
-                    'password' => $data['password'] ?? '',
-                    'app_key' => $data['app_key'] ?? '',
-                    'app_secret' => $data['app_secret'] ?? '',
-                    'button_label' => $data['button_label'] ?? '',
-                    'processing_currency' => $data['processing_currency'] ?? '',
+                    'payment_url' => $data['payment_url'] ?? '',
+                ]);
+                break;
+            case 'bkash_api':
+                $settings = array_merge($settings, [
+                    'api_key' => $data['api_key'] ?? '',
+                    'merchant_short_code' => $data['merchant_short_code'] ?? '',
+                    'service_id' => $data['service_id'] ?? '',
                     'sandbox' => $request->boolean('sandbox'),
                 ]);
                 break;
@@ -119,7 +122,7 @@ class PaymentGatewayController extends Controller
                     'client_id' => $data['client_id'] ?? '',
                     'client_secret' => $data['client_secret'] ?? '',
                     'button_label' => $data['button_label'] ?? '',
-                    'processing_currency' => $data['processing_currency'] ?? '',
+                    'processing_currency' => 'USD',
                     'sandbox' => $request->boolean('sandbox'),
                 ]);
                 break;

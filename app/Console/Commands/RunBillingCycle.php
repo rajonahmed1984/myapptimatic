@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\License;
 use App\Models\Setting;
@@ -51,6 +52,7 @@ class RunBillingCycle extends Command
             $metrics['suspensions'] = $this->applySuspensions($today);
             $metrics['terminations'] = $this->applyTerminations($today);
             $metrics['unsuspensions'] = $this->applyUnsuspensions();
+            $metrics['client_status_updates'] = $this->updateClientStatuses();
             $metrics['invoice_reminders_sent'] = $this->sendInvoiceReminders($today);
             $metrics['ticket_auto_closed'] = $this->applyTicketAutomation($today);
             $metrics['ticket_admin_reminders'] = $this->sendTicketAdminReminders($today);
@@ -323,6 +325,25 @@ class RunBillingCycle extends Command
         return $count;
     }
 
+    private function updateClientStatuses(): int
+    {
+        $activated = Customer::query()
+            ->where('status', 'inactive')
+            ->whereHas('subscriptions', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->update(['status' => 'active']);
+
+        $deactivated = Customer::query()
+            ->where('status', 'active')
+            ->whereDoesntHave('subscriptions', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->update(['status' => 'inactive']);
+
+        return $activated + $deactivated;
+    }
+
     private function sendInvoiceReminders(Carbon $today): int
     {
         if (! Setting::getValue('payment_reminder_emails')) {
@@ -562,6 +583,7 @@ class RunBillingCycle extends Command
             'suspensions' => 0,
             'terminations' => 0,
             'unsuspensions' => 0,
+            'client_status_updates' => 0,
             'invoice_reminders_sent' => 0,
             'ticket_auto_closed' => 0,
             'ticket_admin_reminders' => 0,

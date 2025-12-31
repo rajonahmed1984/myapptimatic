@@ -370,9 +370,6 @@
                         @endif
                     </div>
 
-                    <div class="flex justify-end">
-                        <button type="submit" class="rounded-full bg-teal-500 px-6 py-2 text-sm font-semibold text-white">Save templates</button>
-                    </div>
                 </section>
 
                 <div class="flex justify-end pt-6">

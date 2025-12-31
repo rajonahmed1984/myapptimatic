@@ -16,10 +16,11 @@
         @method('PUT')
 
         <div class="md:col-span-2">
+            @php($visibilityLabel = in_array($gateway->driver, ['bkash', 'bkash_api'], true) ? 'Shown to customers on the invoice.' : 'Enable gateway')
             <label class="inline-flex items-center gap-2 text-sm text-slate-600">
                 <input type="hidden" name="is_active" value="0" />
                 <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $gateway->is_active)) class="rounded border-slate-300 text-teal-500" />
-                {{ $gateway->driver === 'bkash' ? 'Show on Order Form' : 'Enable gateway' }}
+                {{ $visibilityLabel }}
             </label>
         </div>
 
@@ -60,30 +61,21 @@
                 <input name="payment_url" value="{{ old('payment_url', $settings['payment_url'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" placeholder="https://shop.bkash.com/your-link" />
                 <p class="mt-2 text-xs text-slate-500">Enter your bKash payment url.</p>
             </div>
+        @elseif($gateway->driver === 'bkash_api')
+            <div class="md:col-span-2 text-sm text-slate-600">bKash API</div>
             <div>
-                <label class="text-sm text-slate-600">Convert To For Processing</label>
-                @php($processingCurrency = old('processing_currency', $settings['processing_currency'] ?? $defaultCurrency ?? 'BDT'))
-                <select name="processing_currency" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                    @foreach($currencyOptions as $currency)
-                        <option value="{{ $currency }}" @selected(strtoupper($processingCurrency) === $currency)>{{ $currency }}</option>
-                    @endforeach
-                </select>
+                <label class="text-sm text-slate-600">API Key</label>
+                <input name="api_key" value="{{ old('api_key', $settings['api_key'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                <p class="mt-2 text-xs text-slate-500">Enter your bKash API Key.</p>
             </div>
             <div>
-                <label class="text-sm text-slate-600">Username (optional)</label>
-                <input name="username" value="{{ old('username', $settings['username'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                <label class="text-sm text-slate-600">Merchant Short Code</label>
+                <input name="merchant_short_code" value="{{ old('merchant_short_code', $settings['merchant_short_code'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" placeholder="e.g. 0170XXXXXXX" />
             </div>
             <div>
-                <label class="text-sm text-slate-600">Password (optional)</label>
-                <input name="password" type="password" value="{{ old('password', $settings['password'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-            </div>
-            <div>
-                <label class="text-sm text-slate-600">App key (optional)</label>
-                <input name="app_key" value="{{ old('app_key', $settings['app_key'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-            </div>
-            <div>
-                <label class="text-sm text-slate-600">App secret (optional)</label>
-                <input name="app_secret" type="password" value="{{ old('app_secret', $settings['app_secret'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                <label class="text-sm text-slate-600">Service ID</label>
+                <input name="service_id" value="{{ old('service_id', $settings['service_id'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                <p class="mt-2 text-xs text-slate-500">Provided by bKash (e.g. 100001).</p>
             </div>
             <div class="md:col-span-2">
                 <label class="inline-flex items-center gap-2 text-sm text-slate-600">
@@ -99,12 +91,9 @@
             </div>
             <div>
                 <label class="text-sm text-slate-600">Convert To For Processing</label>
-                @php($processingCurrency = old('processing_currency', $settings['processing_currency'] ?? $defaultCurrency ?? 'USD'))
-                <select name="processing_currency" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                    @foreach($currencyOptions as $currency)
-                        <option value="{{ $currency }}" @selected(strtoupper($processingCurrency) === $currency)>{{ $currency }}</option>
-                    @endforeach
-                </select>
+                <input type="hidden" name="processing_currency" value="USD" />
+                <input value="USD" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-500" />
+                <p class="mt-2 text-xs text-slate-500">PayPal only processes USD.</p>
             </div>
             <div>
                 <label class="text-sm text-slate-600">API Username</label>
@@ -180,11 +169,6 @@
             <div class="md:col-span-2">
                 <label class="text-sm text-slate-600">Payment instructions (shown to clients)</label>
                 <textarea name="instructions" rows="3" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('instructions', $settings['instructions'] ?? '') }}</textarea>
-            </div>
-            <div class="md:col-span-2">
-                <label class="text-sm text-slate-600">Payment URL (optional)</label>
-                <input name="payment_url" value="{{ old('payment_url', $settings['payment_url'] ?? '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" placeholder="https://pay.example.com/checkout" />
-                <p class="mt-2 text-xs text-slate-500">Shown as a "Pay now" button to clients. Leave blank to hide the button.</p>
             </div>
             <div>
                 <label class="text-sm text-slate-600">Account name</label>

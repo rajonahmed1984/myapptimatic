@@ -25,8 +25,9 @@ class BillingService
         $periodEnd = Carbon::parse($subscription->current_period_end);
 
         $subtotal = $this->calculateSubtotal($plan->interval, (float) $plan->price, $periodStart, $periodEnd);
-        $dueDays = (int) ($plan->invoice_due_days ?: Setting::getValue('invoice_due_days'));
+        $dueDays = (int) Setting::getValue('invoice_due_days');
         $currency = (string) Setting::getValue('currency');
+        $dueDate = $this->resolveDueDate($subscription, $issueDate, $plan->interval, $dueDays);
 
         $invoice = Invoice::create([
             'customer_id' => $subscription->customer_id,
@@ -34,7 +35,7 @@ class BillingService
             'number' => $this->nextInvoiceNumber(),
             'status' => 'unpaid',
             'issue_date' => $issueDate->toDateString(),
-            'due_date' => $issueDate->copy()->addDays($dueDays)->toDateString(),
+            'due_date' => $dueDate->toDateString(),
             'subtotal' => $subtotal,
             'late_fee' => 0,
             'total' => $subtotal,
@@ -201,6 +202,19 @@ class BillingService
         }
 
         return $nextInvoiceAt;
+    }
+
+    private function resolveDueDate(Subscription $subscription, Carbon $issueDate, string $interval, int $dueDays): Carbon
+    {
+        $hasInvoice = Invoice::query()
+            ->where('subscription_id', $subscription->id)
+            ->exists();
+
+        if (! $hasInvoice) {
+            return $issueDate->copy();
+        }
+
+        return $issueDate->copy()->addDays($dueDays);
     }
 
     public function nextInvoiceNumber(): string

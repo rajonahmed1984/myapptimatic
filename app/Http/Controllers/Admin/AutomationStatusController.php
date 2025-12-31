@@ -184,10 +184,10 @@ class AutomationStatusController extends Controller
             ],
             [
                 'label' => 'Client Status Update',
-                'enabled' => false,
-                'disabled_label' => 'Not available',
+                'enabled' => true,
+                'disabled_label' => null,
                 'stats' => [
-                    ['value' => 0, 'label' => 'Completed'],
+                    ['value' => $metrics['client_status_updates'], 'label' => 'Updated'],
                 ],
             ],
         ];
@@ -224,6 +224,7 @@ class AutomationStatusController extends Controller
             'suspensions' => 0,
             'terminations' => 0,
             'unsuspensions' => 0,
+            'client_status_updates' => 0,
             'invoice_reminders_sent' => 0,
             'ticket_auto_closed' => 0,
             'ticket_admin_reminders' => 0,

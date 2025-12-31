@@ -15,13 +15,11 @@ class Plan extends Model
         'interval',
         'price',
         'currency',
-        'invoice_due_days',
         'is_active',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
-        'invoice_due_days' => 'integer',
         'is_active' => 'boolean',
     ];
 
