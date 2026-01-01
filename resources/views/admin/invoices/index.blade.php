@@ -23,8 +23,8 @@
                     <tr class="border-b border-slate-100">
                         <td class="px-4 py-3 font-medium text-slate-900">{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $invoice->customer->name }}</td>
-                        <td class="px-4 py-3 text-slate-700">
-                            <div>{{ ucfirst($invoice->status) }}</div>
+                        <td class="px-4 py-3">
+                            <x-status-badge :status="$invoice->status" />
                             @php
                                 $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
                                 $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');

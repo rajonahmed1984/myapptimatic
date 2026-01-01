@@ -69,13 +69,7 @@
                                     <code class="rounded bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">{{ $affiliate->affiliate_code }}</code>
                                 </td>
                                 <td class="py-4">
-                                    @if($affiliate->status === 'active')
-                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Active</span>
-                                    @elseif($affiliate->status === 'suspended')
-                                        <span class="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">Suspended</span>
-                                    @else
-                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">Inactive</span>
-                                    @endif
+                                    <x-status-badge :status="$affiliate->status" />
                                 </td>
                                 <td class="py-4">
                                     @if($affiliate->commission_type === 'percentage')

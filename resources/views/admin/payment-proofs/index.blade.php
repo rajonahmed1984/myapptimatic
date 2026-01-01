@@ -45,7 +45,9 @@
                             <td class="px-4 py-3 text-slate-600">{{ $proof->paymentGateway?->name ?? 'Manual' }}</td>
                             <td class="px-4 py-3 text-slate-700">{{ $proof->invoice?->currency ?? 'BDT' }} {{ number_format((float) $proof->amount, 2) }}</td>
                             <td class="px-4 py-3 text-slate-500">{{ $proof->reference ?: '--' }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ ucfirst($proof->status) }}</td>
+                            <td class="px-4 py-3">
+                                <x-status-badge :status="$proof->status" />
+                            </td>
                             <td class="px-4 py-3 text-slate-500">{{ $proof->created_at->format($globalDateFormat) }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap items-center justify-end gap-2 text-xs">

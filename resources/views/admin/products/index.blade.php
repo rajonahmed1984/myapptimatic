@@ -26,7 +26,9 @@
                         <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $product->name }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $product->slug }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ ucfirst($product->status) }}</td>
+                        <td class="px-4 py-3">
+                            <x-status-badge :status="$product->status" />
+                        </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.products.edit', $product) }}" class="text-teal-600 hover:text-teal-500">Edit</a>

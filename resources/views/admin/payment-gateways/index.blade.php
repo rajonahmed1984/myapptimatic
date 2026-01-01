@@ -27,11 +27,7 @@
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $gateway->name }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ ucfirst($gateway->driver) }}</td>
                         <td class="px-4 py-3">
-                            @if($gateway->is_active)
-                                <span class="pill">Active</span>
-                            @else
-                                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Inactive</span>
-                            @endif
+                            <x-status-badge :status="$gateway->is_active ? 'active' : 'inactive'" />
                         </td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('admin.payment-gateways.edit', $gateway) }}" class="text-teal-600 hover:text-teal-500">Edit</a>

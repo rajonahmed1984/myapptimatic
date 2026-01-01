@@ -40,15 +40,10 @@
                         @php
                             $customerId = $subscription->customer?->id;
                             $isBlocked = $customerId ? ($accessBlockedCustomers[$customerId] ?? false) : false;
+                            $subStatus = $subscription->status === 'active' && $isBlocked ? 'blocked' : $subscription->status;
                         @endphp
-                        <td class="px-4 py-3 text-slate-700">
-                            @if($subscription->status === 'suspended')
-                                Suspended
-                            @elseif($subscription->status === 'active' && $isBlocked)
-                                Access blocked
-                            @else
-                                {{ ucfirst($subscription->status) }}
-                            @endif
+                        <td class="px-4 py-3">
+                            <x-status-badge :status="$subStatus" />
                         </td>
                         <td class="px-4 py-3">{{ $subscription->next_invoice_at->format($globalDateFormat) }}</td>
                         <td class="px-4 py-3 text-right">

@@ -38,7 +38,9 @@
                         <td class="px-4 py-3 font-medium text-slate-900">#{{ $order->order_number ?? $order->id }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $order->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $service }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ ucfirst($order->status) }}</td>
+                        <td class="px-4 py-3">
+                            <x-status-badge :status="$order->status" />
+                        </td>
                         <td class="px-4 py-3 text-slate-500">{{ $invoiceNumber }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $order->created_at?->format($globalDateFormat) ?? '--' }}</td>
                         <td class="px-4 py-3 text-right">

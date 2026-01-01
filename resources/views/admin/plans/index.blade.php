@@ -38,7 +38,9 @@
                         <td class="px-4 py-3 text-slate-500">{{ $plan->product->name }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $defaultCurrency }} {{ $plan->price }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ ucfirst($plan->interval) }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ $plan->is_active ? 'Active' : 'Inactive' }}</td>
+                        <td class="px-4 py-3">
+                            <x-status-badge :status="$plan->is_active ? 'active' : 'inactive'" />
+                        </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.plans.edit', $plan) }}" class="text-teal-600 hover:text-teal-500">Edit</a>

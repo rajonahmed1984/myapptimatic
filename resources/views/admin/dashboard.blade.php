@@ -202,13 +202,13 @@
         @endphp
 
         @php
+            use App\Support\StatusColorHelper;
             $billingLastRunAt = \App\Models\Setting::getValue('billing_last_run_at');
             $billingLastStatus = \App\Models\Setting::getValue('billing_last_status');
             $billingLastError = \App\Models\Setting::getValue('billing_last_error');
             
             $lastRunText = 'Never run';
-            $statusBadgeClass = 'bg-slate-100 text-slate-600';
-            $statusLabel = 'Pending';
+            $statusToDisplay = 'pending';
             
             if ($billingLastRunAt) {
                 $lastRun = \Carbon\Carbon::parse($billingLastRunAt);
@@ -229,16 +229,21 @@
                 }
                 
                 if ($billingLastStatus === 'success') {
-                    $statusBadgeClass = 'bg-emerald-100 text-emerald-700';
-                    $statusLabel = '✓ Success';
+                    $statusToDisplay = 'success';
                 } elseif ($billingLastStatus === 'running') {
-                    $statusBadgeClass = 'bg-blue-100 text-blue-700';
-                    $statusLabel = '⟳ Running';
+                    $statusToDisplay = 'running';
                 } elseif ($billingLastStatus === 'failed') {
-                    $statusBadgeClass = 'bg-rose-100 text-rose-700';
-                    $statusLabel = '✕ Failed';
+                    $statusToDisplay = 'failed';
                 }
             }
+            $statusColors = StatusColorHelper::getStatusColors($statusToDisplay);
+            $statusBadgeClass = "{$statusColors['bg']} {$statusColors['text']}";
+            $statusLabel = match($statusToDisplay) {
+                'success' => '✓ Success',
+                'running' => '⟳ Running',
+                'failed' => '✕ Failed',
+                default => 'Pending',
+            };
         @endphp
 
         <div class="card p-6">

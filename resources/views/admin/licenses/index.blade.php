@@ -28,17 +28,26 @@
                     @php($primaryDomain = $license->domains->first()?->domain)
                     @php($lastCheck = $license->last_check_at)
                     @php($hoursSinceCheck = $lastCheck ? $lastCheck->diffInHours(now()) : null)
-                    @php($syncLabel = $lastCheck ? ($hoursSinceCheck <= 24 ? 'Synced' : 'Stale') : 'Never')
-                    @php($syncClass = $lastCheck ? ($hoursSinceCheck <= 24 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700') : 'bg-slate-100 text-slate-600')
+                    @php($syncStatus = $lastCheck ? ($hoursSinceCheck <= 24 ? 'synced' : 'stale') : 'never')
+                    @php($customerId = $license->subscription?->customer?->id)
+                    @php($isBlocked = $customerId ? ($accessBlockedCustomers[$customerId] ?? false) : false)
+                    @php($licenseStatus = $license->status === 'active' && $isBlocked ? 'blocked' : $license->status)
                     <tr class="border-b border-slate-100">
                         <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 font-mono text-xs text-teal-700">
-                            {{ $license->license_key }}
+                            <div class="flex items-center gap-2">
+                                <span class="license-key-text">{{ $license->license_key }}</span>
+                                <button type="button" class="copy-license-btn text-slate-400 hover:text-teal-600 transition-colors" data-license-key="{{ $license->license_key }}" title="Copy license key">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                </button>
+                            </div>
                             <br>
                             {{ $primaryDomain ?? '--' }}
                         </td>
                         <td class="px-4 py-3">
-                            <div class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $syncClass }}">{{ $syncLabel }}</div>
+                            <x-status-badge :status="$syncStatus" />
                             <div class="mt-1 text-xs text-slate-500">
                                 {{ $lastCheck ? $lastCheck->format($globalDateFormat . ' H:i') : 'No sync yet' }}
                             </div>
@@ -50,16 +59,8 @@
                         </td>                        
                         <td class="px-4 py-3 text-slate-500">{{ $license->subscription?->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $license->subscription?->latestOrder?->order_number ?? '--' }}</td>
-                        @php($customerId = $license->subscription?->customer?->id)
-                        @php($isBlocked = $customerId ? ($accessBlockedCustomers[$customerId] ?? false) : false)
-                        <td class="px-4 py-3 text-slate-700">
-                            @if($license->status === 'suspended')
-                                Suspended
-                            @elseif($license->status === 'active' && $isBlocked)
-                                Access blocked
-                            @else
-                                {{ ucfirst($license->status) }}
-                            @endif
+                        <td class="px-4 py-3">
+                            <x-status-badge :status="$licenseStatus" />
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
@@ -84,5 +85,38 @@
             </tbody>
         </table>
     </div>
+
+    <script>
+        document.querySelectorAll('.copy-license-btn').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                const licenseKey = this.dataset.licenseKey;
+                const btn = this;
+                const originalSvg = btn.innerHTML;
+
+                try {
+                    await navigator.clipboard.writeText(licenseKey);
+                    
+                    // Show success feedback
+                    btn.classList.remove('text-slate-400', 'hover:text-teal-600');
+                    btn.classList.add('text-emerald-600');
+                    btn.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+                    
+                    // Reset after 2 seconds
+                    setTimeout(() => {
+                        btn.classList.remove('text-emerald-600');
+                        btn.classList.add('text-slate-400', 'hover:text-teal-600');
+                        btn.innerHTML = originalSvg;
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                    btn.classList.add('text-rose-600');
+                    setTimeout(() => {
+                        btn.classList.remove('text-rose-600');
+                    }, 2000);
+                }
+            });
+        });
+    </script>
 @endsection
 
