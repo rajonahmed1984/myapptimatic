@@ -8,6 +8,7 @@ use App\Models\License;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\BillingService;
+use App\Services\StatusUpdateService;
 use App\Services\AdminNotificationService;
 use App\Services\ClientNotificationService;
 use App\Models\SupportTicket;
@@ -26,6 +27,7 @@ class RunBillingCycle extends Command
 
     public function __construct(
         private BillingService $billingService,
+        private StatusUpdateService $statusUpdateService,
         private AdminNotificationService $adminNotifications,
         private ClientNotificationService $clientNotifications
     )
@@ -47,15 +49,19 @@ class RunBillingCycle extends Command
             $invoiceMetrics = $this->generateInvoices($today);
             $metrics['invoices_generated'] = $invoiceMetrics['generated'];
             $metrics['fixed_term_terminations'] = $invoiceMetrics['fixed_term_terminations'];
-            $metrics['invoices_overdue'] = $this->markOverdue($today);
+            
+            // Use StatusUpdateService for status updates
+            $metrics['invoices_overdue'] = $this->statusUpdateService->updateInvoiceOverdueStatus($today);
             $metrics['late_fees_added'] = $this->applyLateFees($today);
             $metrics['auto_cancellations'] = $this->applyAutoCancellation($today);
-            $metrics['suspensions'] = $this->applySuspensions($today);
-            $metrics['terminations'] = $this->applyTerminations($today);
-            $metrics['unsuspensions'] = $this->applyUnsuspensions();
-            $metrics['client_status_updates'] = $this->updateClientStatuses();
+            $metrics['suspensions'] = $this->statusUpdateService->updateSubscriptionSuspensionStatus($today);
+            $metrics['terminations'] = $this->statusUpdateService->updateSubscriptionTerminationStatus($today);
+            $metrics['unsuspensions'] = $this->statusUpdateService->updateSubscriptionUnsuspensionStatus();
+            $metrics['client_status_updates'] = $this->statusUpdateService->updateCustomerStatus();
+            $metrics['licenses_expired'] = $this->statusUpdateService->updateLicenseExpiryStatus($today);
+            
             $metrics['invoice_reminders_sent'] = $this->sendInvoiceReminders($today);
-            $metrics['ticket_auto_closed'] = $this->applyTicketAutomation($today);
+            $metrics['ticket_auto_closed'] = $this->statusUpdateService->updateSupportTicketAutoCloseStatus($today);
             $metrics['ticket_admin_reminders'] = $this->sendTicketAdminReminders($today);
             $metrics['ticket_feedback_requests'] = $this->sendTicketFeedbackRequests($today);
             $metrics['license_expiry_notices'] = $this->sendLicenseExpiryNotices($today);
