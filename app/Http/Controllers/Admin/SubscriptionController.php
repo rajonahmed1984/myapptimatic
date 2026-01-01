@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\AccessBlockService;
 use App\Services\BillingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -15,11 +16,27 @@ class SubscriptionController extends Controller
 {
     public function index()
     {
+        $subscriptions = Subscription::query()
+            ->with(['customer', 'plan.product', 'latestOrder'])
+            ->latest()
+            ->get();
+
+        $accessBlockService = app(AccessBlockService::class);
+        $accessBlockedCustomers = [];
+
+        foreach ($subscriptions as $subscription) {
+            $customer = $subscription->customer;
+            $customerId = $customer?->id;
+            if (! $customerId || array_key_exists($customerId, $accessBlockedCustomers)) {
+                continue;
+            }
+
+            $accessBlockedCustomers[$customerId] = $accessBlockService->isCustomerBlocked($customer);
+        }
+
         return view('admin.subscriptions.index', [
-            'subscriptions' => Subscription::query()
-                ->with(['customer', 'plan.product', 'latestOrder'])
-                ->latest()
-                ->get(),
+            'subscriptions' => $subscriptions,
+            'accessBlockedCustomers' => $accessBlockedCustomers,
         ]);
     }
 

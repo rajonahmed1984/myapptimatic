@@ -50,7 +50,19 @@
                         </td>                        
                         <td class="px-4 py-3 text-slate-500">{{ $license->subscription?->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $license->subscription?->latestOrder?->order_number ?? '--' }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ ucfirst($license->status) }}</td>
+                        @php
+                            $customerId = $license->subscription?->customer?->id;
+                            $isBlocked = $customerId ? ($accessBlockedCustomers[$customerId] ?? false) : false;
+                        @endphp
+                        <td class="px-4 py-3 text-slate-700">
+                            @if($license->status === 'suspended')
+                                Suspended
+                            @elseif($license->status === 'active' && $isBlocked)
+                                Access blocked
+                            @else
+                                {{ ucfirst($license->status) }}
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.licenses.edit', $license) }}" class="text-teal-600 hover:text-teal-500">Edit</a>

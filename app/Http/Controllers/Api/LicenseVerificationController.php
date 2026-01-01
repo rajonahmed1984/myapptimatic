@@ -10,9 +10,15 @@ use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Services\AccessBlockService;
 
 class LicenseVerificationController extends Controller
 {
+    public function __construct(
+        private AccessBlockService $accessBlockService
+    ) {
+    }
+
     public function verify(Request $request)
     {
         $data = $request->validate([
@@ -107,7 +113,7 @@ class LicenseVerificationController extends Controller
             }
         }
 
-        $invoiceBlock = $this->invoiceBlockStatus($customer->id);
+        $invoiceBlock = $this->accessBlockService->invoiceBlockStatus($customer);
 
         $license->update([
             'last_check_at' => Carbon::now(),
@@ -132,46 +138,6 @@ class LicenseVerificationController extends Controller
             'invoice_number' => $invoiceBlock['invoice_number'],
             'invoice_status' => $invoiceBlock['invoice_status'],
         ]);
-    }
-
-    private function invoiceBlockStatus(int $customerId): array
-    {
-        $graceDays = (int) Setting::getValue('grace_period_days');
-        $invoice = Invoice::query()
-            ->with('customer')
-            ->where('customer_id', $customerId)
-            ->whereIn('status', ['unpaid', 'overdue'])
-            ->orderBy('due_date')
-            ->first();
-
-        if (! $invoice) {
-            return [
-                'blocked' => false,
-                'reason' => null,
-                'grace_ends_at' => null,
-                'payment_url' => null,
-                'invoice_id' => null,
-                'invoice_number' => null,
-                'invoice_status' => null,
-            ];
-        }
-
-        $graceEnds = Carbon::parse($invoice->due_date)->addDays($graceDays)->endOfDay();
-        $blocked = Carbon::now()->greaterThan($graceEnds);
-
-        if ($invoice->customer && $invoice->customer->access_override_until && $invoice->customer->access_override_until->isFuture()) {
-            $blocked = false;
-        }
-
-        return [
-            'blocked' => $blocked,
-            'reason' => $blocked ? 'invoice_overdue' : 'invoice_due',
-            'grace_ends_at' => $graceEnds->toDateTimeString(),
-            'payment_url' => route('client.invoices.pay', $invoice),
-            'invoice_id' => $invoice->id,
-            'invoice_number' => is_numeric($invoice->number) ? $invoice->number : (string) $invoice->id,
-            'invoice_status' => $invoice->status,
-        ];
     }
 
     private function normalizeDomain(string $input): ?string

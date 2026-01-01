@@ -7,6 +7,7 @@ use App\Models\License;
 use App\Models\LicenseDomain;
 use App\Models\Product;
 use App\Models\Subscription;
+use App\Services\AccessBlockService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,11 +17,28 @@ class LicenseController extends Controller
 {
     public function index()
     {
+        $licenses = License::query()
+            ->with(['product', 'subscription.customer', 'subscription.plan', 'subscription.latestOrder', 'domains'])
+            ->latest()
+            ->get();
+
+        $accessBlockService = app(AccessBlockService::class);
+        $accessBlockedCustomers = [];
+
+        foreach ($licenses as $license) {
+            $customer = $license->subscription?->customer;
+            $customerId = $customer?->id;
+
+            if (! $customerId || array_key_exists($customerId, $accessBlockedCustomers)) {
+                continue;
+            }
+
+            $accessBlockedCustomers[$customerId] = $accessBlockService->isCustomerBlocked($customer);
+        }
+
         return view('admin.licenses.index', [
-            'licenses' => License::query()
-                ->with(['product', 'subscription.customer', 'subscription.plan', 'subscription.latestOrder', 'domains'])
-                ->latest()
-                ->get(),
+            'licenses' => $licenses,
+            'accessBlockedCustomers' => $accessBlockedCustomers,
         ]);
     }
 

@@ -37,7 +37,19 @@
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $subscription->customer->name }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $subscription->plan->product->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $subscription->plan->name }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ ucfirst($subscription->status) }}</td> 
+                        @php
+                            $customerId = $subscription->customer?->id;
+                            $isBlocked = $customerId ? ($accessBlockedCustomers[$customerId] ?? false) : false;
+                        @endphp
+                        <td class="px-4 py-3 text-slate-700">
+                            @if($subscription->status === 'suspended')
+                                Suspended
+                            @elseif($subscription->status === 'active' && $isBlocked)
+                                Access blocked
+                            @else
+                                {{ ucfirst($subscription->status) }}
+                            @endif
+                        </td>
                         <td class="px-4 py-3">{{ $subscription->next_invoice_at->format($globalDateFormat) }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
