@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('status_audit_logs')) {
+            return;
+        }
+
         Schema::create('status_audit_logs', function (Blueprint $table) {
             $table->id();
             // limit length to keep composite index within MySQL key size limits

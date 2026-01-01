@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\Setting;
+use Carbon\Carbon;
+use DateTimeZone;
+
 define('LARAVEL_START', microtime(true));
 
 chdir(__DIR__ . '/..');
@@ -10,8 +14,33 @@ $app = require __DIR__ . '/../bootstrap/app.php';
 
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 
-$status = $kernel->call('billing:run');
+$shouldRun = true;
+$timeZone = (string) Setting::getValue('time_zone', 'UTC');
+if ($timeZone === '' || ! in_array($timeZone, DateTimeZone::listIdentifiers(), true)) {
+    $timeZone = 'UTC';
+}
+$today = Carbon::now($timeZone);
 
-echo $kernel->output();
+try {
+    $lastStatus = (string) Setting::getValue('billing_last_status');
+    $lastRunAt = Setting::getValue('billing_last_run_at');
+
+    if ($lastStatus === 'success' && $lastRunAt) {
+        $lastRun = Carbon::parse($lastRunAt, $timeZone);
+        if ($lastRun->isSameDay($today)) {
+            $shouldRun = false;
+        }
+    }
+} catch (\Throwable $e) {
+    $shouldRun = true;
+}
+
+if ($shouldRun) {
+    $status = $kernel->call('billing:run');
+    echo $kernel->output();
+} else {
+    $status = 0;
+    echo "billing:run already executed for {$today->toDateString()}\n";
+}
 
 exit($status);

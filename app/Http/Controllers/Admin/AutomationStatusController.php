@@ -57,6 +57,8 @@ class AutomationStatusController extends Controller
         $licenseNoticesEnabled = (int) Setting::getValue('license_expiry_first_notice_days') > 0
             || (int) Setting::getValue('license_expiry_second_notice_days') > 0;
 
+        $automationConfig = $this->automationConfig();
+
         $dailyActions = [
             [
                 'label' => 'Invoices',
@@ -212,6 +214,7 @@ class AutomationStatusController extends Controller
             'cronStatusLabel' => $cronStatusLabel,
             'cronStatusClasses' => $cronStatusClasses,
             'cronUrl' => $cronUrl,
+            'automationConfig' => $automationConfig,
         ]);
     }
 
@@ -246,6 +249,47 @@ class AutomationStatusController extends Controller
         }
 
         return array_merge($defaults, $decoded);
+    }
+
+    private function automationConfig(): array
+    {
+        $timeOfDay = (string) Setting::getValue('automation_time_of_day', '00:00');
+
+        return [
+            'time_of_day' => $this->formatAutomationTime($timeOfDay),
+            'enable_suspension' => (bool) Setting::getValue('enable_suspension'),
+            'suspend_days' => (int) Setting::getValue('suspend_days'),
+            'send_suspension_email' => (bool) Setting::getValue('send_suspension_email'),
+            'enable_unsuspension' => (bool) Setting::getValue('enable_unsuspension'),
+            'send_unsuspension_email' => (bool) Setting::getValue('send_unsuspension_email'),
+            'enable_termination' => (bool) Setting::getValue('enable_termination'),
+            'termination_days' => (int) Setting::getValue('termination_days'),
+            'invoice_generation_days' => (int) Setting::getValue('invoice_generation_days'),
+            'payment_reminder_emails' => (bool) Setting::getValue('payment_reminder_emails'),
+            'invoice_unpaid_reminder_days' => (int) Setting::getValue('invoice_unpaid_reminder_days'),
+            'first_overdue_reminder_days' => (int) Setting::getValue('first_overdue_reminder_days'),
+            'second_overdue_reminder_days' => (int) Setting::getValue('second_overdue_reminder_days'),
+            'third_overdue_reminder_days' => (int) Setting::getValue('third_overdue_reminder_days'),
+            'late_fee_days' => (int) Setting::getValue('late_fee_days'),
+            'overage_billing_mode' => Setting::getValue('overage_billing_mode'),
+            'change_invoice_status_on_reversal' => (bool) Setting::getValue('change_invoice_status_on_reversal'),
+            'change_due_dates_on_reversal' => (bool) Setting::getValue('change_due_dates_on_reversal'),
+            'enable_auto_cancellation' => (bool) Setting::getValue('enable_auto_cancellation'),
+            'auto_cancellation_days' => (int) Setting::getValue('auto_cancellation_days'),
+            'ticket_auto_close_days' => (int) Setting::getValue('ticket_auto_close_days'),
+            'ticket_admin_reminder_days' => (int) Setting::getValue('ticket_admin_reminder_days'),
+            'ticket_feedback_days' => (int) Setting::getValue('ticket_feedback_days'),
+            'ticket_cleanup_days' => (int) Setting::getValue('ticket_cleanup_days'),
+        ];
+    }
+
+    private function formatAutomationTime(string $value): string
+    {
+        try {
+            return Carbon::createFromFormat('H:i', $value)->format('g:ia');
+        } catch (\Throwable) {
+            return '12:00am';
+        }
     }
 
     private function statusBadge(?string $status): array

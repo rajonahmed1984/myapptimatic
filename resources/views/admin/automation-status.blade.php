@@ -221,4 +221,165 @@
             @endforeach
         </div>
     </div>
+
+    <div class="mt-8 card p-6">
+        <div>
+            <div class="section-label">Automation Configuration</div>
+            <p class="mt-1 text-sm text-slate-500">Mirror of <a href="{{ route('admin.settings.edit', ['tab' => 'general']) }}" class="text-teal-600 hover:text-teal-500">automation settings</a> for quick reference when tuning your cron.</p>
+        </div>
+
+        <div class="mt-6 grid gap-6 xl:grid-cols-2">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5">
+                <div class="text-sm font-semibold text-slate-800">Scheduling</div>
+                <div class="mt-4 space-y-3 text-sm text-slate-700">
+                    <div class="flex items-center justify-between">
+                        <span>Time of Day</span>
+                        <span class="font-semibold text-slate-900">{{ $automationConfig['time_of_day'] }}</span>
+                    </div>
+                    <p class="text-xs text-slate-500">The hour of the day we prefer the cron to run; make sure your OS scheduler aligns with this value.</p>
+                    <p class="text-xs font-semibold text-amber-600">Important Note: Keeping the cron time in sync prevents duplicate runs in a single day.</p>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-5">
+                <div class="text-sm font-semibold text-slate-800">Automatic Module Functions</div>
+                <div class="mt-4 space-y-3 text-sm text-slate-700">
+                    <div class="flex items-center justify-between">
+                        <span>Enable Suspension</span>
+                        <span>{{ $automationConfig['enable_suspension'] ? 'Enabled' : 'Disabled' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Suspend Days</span>
+                        <span>{{ $automationConfig['suspend_days'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Send Suspension Email</span>
+                        <span>{{ $automationConfig['send_suspension_email'] ? 'Yes' : 'No' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Enable Unsuspension</span>
+                        <span>{{ $automationConfig['enable_unsuspension'] ? 'Enabled' : 'Disabled' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Send Unsuspension Email</span>
+                        <span>{{ $automationConfig['send_unsuspension_email'] ? 'Yes' : 'No' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Enable Termination</span>
+                        <span>{{ $automationConfig['enable_termination'] ? 'Enabled' : 'Disabled' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Termination Days</span>
+                        <span>{{ $automationConfig['termination_days'] }}</span>
+                    </div>
+                    <div class="text-xs text-slate-500">These rules drive how subscriptions and licenses are suspended, unsuspended, or terminated when invoices remain unpaid.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 grid gap-6 xl:grid-cols-2">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5">
+                <div class="text-sm font-semibold text-slate-800">Billing Settings</div>
+                <div class="mt-4 space-y-3 text-sm text-slate-700">
+                    <div class="flex items-center justify-between">
+                        <span>Invoice Generation</span>
+                        <span>{{ $automationConfig['invoice_generation_days'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Payment Reminder Emails</span>
+                        <span>{{ $automationConfig['payment_reminder_emails'] ? 'Enabled' : 'Disabled' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Invoice Unpaid Reminder</span>
+                        <span>{{ $automationConfig['invoice_unpaid_reminder_days'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>First Overdue Reminder</span>
+                        <span>{{ $automationConfig['first_overdue_reminder_days'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Second Overdue Reminder</span>
+                        <span>{{ $automationConfig['second_overdue_reminder_days'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Third Overdue Reminder</span>
+                        <span>{{ $automationConfig['third_overdue_reminder_days'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Add Late Fee Days</span>
+                        <span>{{ $automationConfig['late_fee_days'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Overage Billing Charges</span>
+                        <span class="text-xs font-semibold text-slate-900">
+                            {{ $automationConfig['overage_billing_mode'] === 'last_day_next_invoice' ? 'Calculate on the last day of the month but include on next invoice' : 'Calculate & invoice on the last day of the month independently' }}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Change Invoice Status</span>
+                        <span>{{ $automationConfig['change_invoice_status_on_reversal'] ? 'Allowed' : 'Disabled' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Change Due Dates</span>
+                        <span>{{ $automationConfig['change_due_dates_on_reversal'] ? 'Allowed' : 'Disabled' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Enable Auto Cancellation</span>
+                        <span>{{ $automationConfig['enable_auto_cancellation'] ? 'Enabled' : 'Disabled' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Days Overdue</span>
+                        <span>{{ $automationConfig['auto_cancellation_days'] }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-5">
+                <div class="text-sm font-semibold text-slate-800">Support Ticket Settings</div>
+                <div class="mt-4 space-y-3 text-sm text-slate-700">
+                    <div class="flex items-center justify-between">
+                        <span>Close Inactive Tickets (days)</span>
+                        <span>{{ $automationConfig['ticket_auto_close_days'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Ticket Attachments Retention</span>
+                        <span>{{ $automationConfig['ticket_cleanup_days'] }} days</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Admin Reminders (days)</span>
+                        <span>{{ $automationConfig['ticket_admin_reminder_days'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Feedback Requests (days)</span>
+                        <span>{{ $automationConfig['ticket_feedback_days'] }}</span>
+                    </div>
+                    <p class="text-xs text-slate-500">Inactive tickets auto-close after the configured waiting period; attachments are pruned after the specified time.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 grid gap-6 xl:grid-cols-2">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5">
+                <div class="text-sm font-semibold text-slate-800">Miscellaneous</div>
+                <div class="mt-4 space-y-3 text-sm text-slate-700">
+                    <div class="flex items-center justify-between">
+                        <span>Cancellation Requests</span>
+                        <span>Manual only</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Update Usage Statistics</span>
+                        <span>Runs on every cron</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-400">
+                        <span>Client Status Update</span>
+                        <span>Automatic</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-400">
+                        <span>Module Log Pruning</span>
+                        <span>Never</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection

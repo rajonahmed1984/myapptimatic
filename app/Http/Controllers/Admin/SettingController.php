@@ -106,6 +106,7 @@ class SettingController extends Controller
                 'recaptcha_score_threshold' => Setting::getValue('recaptcha_score_threshold', config('recaptcha.score_threshold')),
                 'date_format' => Setting::getValue('date_format'),
                 'time_zone' => Setting::getValue('time_zone', config('app.timezone')),
+                'automation_time_of_day' => Setting::getValue('automation_time_of_day', '00:00'),
             ],
             'emailTemplates' => $emailTemplates,
             'activeTab' => $activeTab,
@@ -170,6 +171,7 @@ class SettingController extends Controller
             'recaptcha_score_threshold' => ['nullable', 'numeric', 'min:0', 'max:1'],
             'date_format' => ['required', Rule::in($dateFormatKeys)],
             'time_zone' => ['required', Rule::in($timeZones)],
+            'automation_time_of_day' => ['required', 'date_format:H:i'],
             'templates' => ['nullable', 'array'],
             'templates.*.from_email' => ['nullable', 'email', 'max:255'],
             'templates.*.subject' => ['nullable', 'string', 'max:255'],
@@ -235,6 +237,7 @@ class SettingController extends Controller
         Setting::setValue('recaptcha_score_threshold', $data['recaptcha_score_threshold'] ?? '');
         Setting::setValue('date_format', $data['date_format']);
         Setting::setValue('time_zone', $data['time_zone']);
+        Setting::setValue('automation_time_of_day', $data['automation_time_of_day']);
 
         if (Schema::hasTable('email_templates') && ! empty($data['templates']) && is_array($data['templates'])) {
             $templateUpdates = $data['templates'];

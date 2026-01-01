@@ -74,6 +74,16 @@
                             <p class="mt-2 text-xs text-slate-500">Cron uses this time zone.</p>
                         </div>
                         <div>
+                            <label class="text-sm text-slate-600">Daily automation time</label>
+                            <input
+                                name="automation_time_of_day"
+                                type="time"
+                                value="{{ old('automation_time_of_day', $settings['automation_time_of_day']) }}"
+                                class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            />
+                            <p class="mt-2 text-xs text-slate-500">The hour of day we aim to run the billing automation. Update your cron to match if needed.</p>
+                        </div>
+                        <div>
                             <label class="text-sm text-slate-600">Company logo</label>
                             <input name="company_logo" type="file" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                             @if(!empty($settings['company_logo_url']))

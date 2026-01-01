@@ -52,46 +52,90 @@
                 </div>
                 <div class="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">Live</div>
             </div>
-            <div class="mt-4">
-                <svg viewBox="0 0 240 80" class="h-28 w-full" id="system-overview-graph">
-                    <g id="system-overview-grid" stroke="#e2e8f0" stroke-width="0.6">
-                        <line x1="0" y1="10" x2="240" y2="10"></line>
-                        <line x1="0" y1="25" x2="240" y2="25"></line>
-                        <line x1="0" y1="40" x2="240" y2="40"></line>
-                        <line x1="0" y1="55" x2="240" y2="55"></line>
-                        <line x1="0" y1="70" x2="240" y2="70"></line>
-                    </g>
-                    <g id="system-overview-areas"></g>
-                    <g id="system-overview-lines"></g>
-                    <g id="system-overview-bars"></g>
-                    <defs>
-                        <linearGradient id="ordersGradient" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stop-color="#cbd5e1" />
-                            <stop offset="100%" stop-color="#94a3b8" />
-                        </linearGradient>
-                        <linearGradient id="activeGradient" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stop-color="#2563eb" />
-                            <stop offset="100%" stop-color="#60a5fa" />
-                        </linearGradient>
-                        <linearGradient id="incomeGradient" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stop-color="#22c55e" />
-                            <stop offset="100%" stop-color="#86efac" />
-                        </linearGradient>
-                    </defs>
-                </svg>
+
+            <!-- Full width with sidebars -->
+            <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+                <!-- Left Sidebar: Orders Amount -->
+                <div class="lg:col-span-2 flex flex-col justify-center">
+                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+                        <div class="text-xs font-semibold uppercase tracking-widest text-slate-600">Orders Amount</div>
+                        <div class="mt-4 space-y-3">
+                            <div class="rounded-xl bg-white p-3 shadow-sm">
+                                <div class="text-xs text-slate-500">New Orders</div>
+                                <div class="mt-1 text-xl font-bold text-slate-900" id="left-sidebar-new-orders">0</div>
+                            </div>
+                            <div class="rounded-xl bg-white p-3 shadow-sm">
+                                <div class="text-xs text-slate-500">Active Orders</div>
+                                <div class="mt-1 text-xl font-bold text-blue-600" id="left-sidebar-active-orders">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center: Graph -->
+                <div class="lg:col-span-8">
+                    <div class="mt-2">
+                        <svg viewBox="0 0 400 200" class="h-64 w-full" id="system-overview-graph">
+                            <g id="system-overview-grid" stroke="#e2e8f0" stroke-width="0.6">
+                                <line x1="0" y1="20" x2="400" y2="20"></line>
+                                <line x1="0" y1="50" x2="400" y2="50"></line>
+                                <line x1="0" y1="80" x2="400" y2="80"></line>
+                                <line x1="0" y1="110" x2="400" y2="110"></line>
+                                <line x1="0" y1="140" x2="400" y2="140"></line>
+                                <line x1="0" y1="170" x2="400" y2="170"></line>
+                            </g>
+                            <g id="system-overview-areas"></g>
+                            <g id="system-overview-lines"></g>
+                            <g id="system-overview-bars"></g>
+                            <defs>
+                                <linearGradient id="ordersGradient" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stop-color="#cbd5e1" />
+                                    <stop offset="100%" stop-color="#94a3b8" />
+                                </linearGradient>
+                                <linearGradient id="activeGradient" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stop-color="#2563eb" />
+                                    <stop offset="100%" stop-color="#60a5fa" />
+                                </linearGradient>
+                                <linearGradient id="incomeGradient" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stop-color="#22c55e" />
+                                    <stop offset="100%" stop-color="#86efac" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-slate-500" id="system-overview-axis">
+                        @foreach($graphLabels as $label)
+                            <span>{{ $label }}</span>
+                        @endforeach
+                    </div>
+                    <div class="mt-4 flex flex-wrap items-center gap-6 text-xs text-slate-600">
+                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-slate-400"></span><span class="font-medium">New Orders</span></span>
+                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-blue-500"></span><span class="font-medium">Active Orders</span></span>
+                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-emerald-500"></span><span class="font-medium">Income</span></span>
+                    </div>
+                </div>
+
+                <!-- Right Sidebar: Income Breakdown -->
+                <div class="lg:col-span-2 flex flex-col justify-center">
+                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-4">
+                        <div class="text-xs font-semibold uppercase tracking-widest text-emerald-700">Income Breakdown</div>
+                        <div class="mt-4 space-y-3">
+                            <div class="rounded-xl bg-white p-3 shadow-sm">
+                                <div class="text-xs text-slate-500">Total Income</div>
+                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-income">{{ $currencySymbol }}0</div>
+                            </div>
+                            <div class="rounded-xl bg-white p-3 shadow-sm">
+                                <div class="text-xs text-slate-500">Avg Per Order</div>
+                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-avg-income">{{ $currencySymbol }}0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-slate-400" id="system-overview-axis">
-                @foreach($graphLabels as $label)
-                    <span>{{ $label }}</span>
-                @endforeach
-            </div>
-            <div class="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                <span class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-slate-400"></span>New Orders</span>
-                <span class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-blue-500"></span>Active Orders</span>
-                <span class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Income</span>
-            </div>
-            <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-                <div class="section-label">Order & Income Snapshot</div>
+
+            <!-- Period Controls -->
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-6">
+                <div class="section-label">Period Controls</div>
                 <div class="btn-group btn-group-sm btn-period-chooser" role="group" aria-label="Period chooser">
                     <button type="button" class="btn btn-default" data-period="today">Today</button>
                     <button type="button" class="btn btn-default active" data-period="month">Last 30 Days</button>
@@ -255,9 +299,9 @@
                     return;
                 }
 
-                const width = 240;
-                const height = 80;
-                const maxHeight = 70;
+                const width = 400;
+                const height = 200;
+                const maxHeight = 160;
                 const newOrders = Array.isArray(data.new_orders) ? data.new_orders : [];
                 const activeOrders = Array.isArray(data.active_orders) ? data.active_orders : [];
                 const income = Array.isArray(data.income) ? data.income : [];
@@ -360,6 +404,32 @@
                 });
             };
 
+            const updateSidebars = (period) => {
+                const data = seriesData[period] || { new_orders: [], active_orders: [], income: [] };
+                
+                // Left Sidebar - Orders Amount
+                const totalNewOrders = Array.isArray(data.new_orders) 
+                    ? data.new_orders.reduce((sum, val) => sum + Number(val || 0), 0)
+                    : 0;
+                const totalActiveOrders = Array.isArray(data.active_orders)
+                    ? data.active_orders.reduce((sum, val) => sum + Number(val || 0), 0)
+                    : 0;
+                const newOrdersEl = document.getElementById('left-sidebar-new-orders');
+                const activeOrdersEl = document.getElementById('left-sidebar-active-orders');
+                if (newOrdersEl) newOrdersEl.textContent = totalNewOrders;
+                if (activeOrdersEl) activeOrdersEl.textContent = totalActiveOrders;
+
+                // Right Sidebar - Income Breakdown
+                const totalIncome = Array.isArray(data.income)
+                    ? data.income.reduce((sum, val) => sum + Number(val || 0), 0)
+                    : 0;
+                const avgIncome = totalNewOrders > 0 ? totalIncome / totalNewOrders : 0;
+                const incomeEl = document.getElementById('right-sidebar-income');
+                const avgIncomeEl = document.getElementById('right-sidebar-avg-income');
+                if (incomeEl) incomeEl.textContent = `${currency}${formatter.format(totalIncome)}`;
+                if (avgIncomeEl) avgIncomeEl.textContent = `${currency}${formatter.format(avgIncome)}`;
+            };
+
             const update = (period) => {
                 const data = metrics[period] || { new_orders: 0, active_orders: 0, income: 0 };
                 container.querySelectorAll('[data-metric]').forEach((el) => {
@@ -372,6 +442,7 @@
                     }
                 });
                 updateGraph(period);
+                updateSidebars(period);
             };
 
             buttons.forEach((btn) => {

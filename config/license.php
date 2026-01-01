@@ -11,6 +11,7 @@ return [
         'company_favicon_path' => null,
         'date_format' => 'd-m-Y',
         'time_zone' => env('APP_TIMEZONE', 'UTC'),
+        'automation_time_of_day' => '00:00',
         'cron_token' => env('CRON_TOKEN'),
         'billing_last_run_at' => null,
         'billing_last_started_at' => null,
