@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Setting;
 use Carbon\Carbon;
+use function route;
 
 class AccessBlockService
 {

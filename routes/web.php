@@ -96,6 +96,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::resource('subscriptions', SubscriptionController::class)->except(['show']);
     Route::resource('licenses', LicenseController::class)->except(['show']);
     Route::post('licenses/{license}/domains/{domain}/revoke', [LicenseController::class, 'revokeDomain'])->name('licenses.domains.revoke');
+    Route::post('licenses/{license}/sync', [LicenseController::class, 'sync'])->name('licenses.sync');
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     Route::post('orders/{order}/approve', [AdminOrderController::class, 'approve'])->name('orders.approve');

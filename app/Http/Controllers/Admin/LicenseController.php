@@ -181,6 +181,17 @@ class LicenseController extends Controller
             ->with('status', 'License deleted.');
     }
 
+    public function sync(License $license)
+    {
+        $license->update([
+            'last_check_at' => Carbon::now(),
+            'last_check_ip' => request()->ip(),
+        ]);
+
+        return redirect()->route('admin.licenses.index')
+            ->with('status', 'License sync initiated. Status updated.');
+    }
+
     private function extractSingleDomain(?string $input): string|bool|null
     {
         if ($input === null) {

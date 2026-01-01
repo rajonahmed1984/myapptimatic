@@ -65,8 +65,12 @@
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
+                                <form method="POST" action="{{ route('admin.licenses.sync', $license) }}" style="display: inline;">
+                                    @csrf
+                                    <button type="submit" class="text-blue-600 hover:text-blue-500 text-sm font-medium">Sync</button>
+                                </form>
                                 <a href="{{ route('admin.licenses.edit', $license) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
-                                <form method="POST" action="{{ route('admin.licenses.destroy', $license) }}" onsubmit="return confirm('Delete this license?');">
+                                <form method="POST" action="{{ route('admin.licenses.destroy', $license) }}" onsubmit="return confirm('Delete this license?');" style="display: inline;">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
