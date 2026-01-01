@@ -71,6 +71,20 @@ class InvoiceController extends Controller
 
         if (! $wasPaid) {
             $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
+
+            // Check if customer has any remaining unpaid/overdue invoices
+            // If not, clear the billing block
+            $hasUnpaidInvoices = Invoice::query()
+                ->where('customer_id', $invoice->customer_id)
+                ->whereIn('status', ['unpaid', 'overdue'])
+                ->exists();
+
+            if (! $hasUnpaidInvoices) {
+                // Customer has no more unpaid invoices, restore access immediately
+                \App\Models\Customer::query()
+                    ->where('id', $invoice->customer_id)
+                    ->update(['access_override_until' => null]);
+            }
         }
 
         SystemLogger::write('activity', 'Invoice marked as paid.', [
@@ -134,6 +148,20 @@ class InvoiceController extends Controller
 
         if (! $wasPaid && $data['status'] === 'paid') {
             $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
+
+            // Check if customer has any remaining unpaid/overdue invoices
+            // If not, clear the billing block
+            $hasUnpaidInvoices = Invoice::query()
+                ->where('customer_id', $invoice->customer_id)
+                ->whereIn('status', ['unpaid', 'overdue'])
+                ->exists();
+
+            if (! $hasUnpaidInvoices) {
+                // Customer has no more unpaid invoices, restore access immediately
+                \App\Models\Customer::query()
+                    ->where('id', $invoice->customer_id)
+                    ->update(['access_override_until' => null]);
+            }
         }
 
         SystemLogger::write('activity', 'Invoice updated.', [

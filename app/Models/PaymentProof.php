@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentProof extends Model
 {
@@ -51,5 +52,18 @@ class PaymentProof extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        $disk = Storage::disk('public');
+
+        return $disk->exists($this->attachment_path)
+            ? $disk->url($this->attachment_path)
+            : null;
     }
 }

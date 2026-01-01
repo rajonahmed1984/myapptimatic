@@ -118,8 +118,10 @@
                                     @endif
                                 </div>
                                 <div class="flex flex-wrap items-center gap-2">
-                                    @if($proof->attachment_path)
-                                        <a href="{{ asset('storage/'.$proof->attachment_path) }}" target="_blank" rel="noopener" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View receipt</a>
+                                    @if($proof->attachment_url)
+                                        <a href="{{ $proof->attachment_url }}" target="_blank" rel="noopener" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View receipt</a>
+                                    @elseif($proof->attachment_path)
+                                        <span class="text-xs font-semibold text-slate-400">Receipt unavailable</span>
                                     @endif
                                     @if($proof->status === 'pending')
                                         <form method="POST" action="{{ route('admin.payment-proofs.approve', $proof) }}">

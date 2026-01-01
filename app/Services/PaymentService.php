@@ -83,6 +83,21 @@ class PaymentService
             } catch (\Throwable) {
                 // Notification errors should not break payment flow.
             }
+
+            // Check if customer has any remaining unpaid/overdue invoices
+            // If not, clear the billing block
+            $customerId = $attempt->customer_id;
+            $hasUnpaidInvoices = \App\Models\Invoice::query()
+                ->where('customer_id', $customerId)
+                ->whereIn('status', ['unpaid', 'overdue'])
+                ->exists();
+
+            if (! $hasUnpaidInvoices) {
+                // Customer has no more unpaid invoices, restore access immediately
+                \App\Models\Customer::query()
+                    ->where('id', $customerId)
+                    ->update(['access_override_until' => null]);
+            }
         }
 
         SystemLogger::write('activity', 'Invoice marked as paid.', [

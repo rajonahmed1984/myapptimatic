@@ -84,8 +84,10 @@
                                 <div class="text-xs text-slate-500">Amount: {{ $invoice->currency }} {{ number_format((float) $proof->amount, 2) }}</div>
                                 <div class="text-xs text-slate-500">Reference: {{ $proof->reference ?: '--' }}</div>
                             </div>
-                            @if($proof->attachment_path)
-                                <a href="{{ asset('storage/'.$proof->attachment_path) }}" target="_blank" rel="noopener" class="text-xs font-semibold text-teal-600 hover:text-teal-500">View receipt</a>
+                            @if($proof->attachment_url)
+                                <a href="{{ $proof->attachment_url }}" target="_blank" rel="noopener" class="text-xs font-semibold text-teal-600 hover:text-teal-500">View receipt</a>
+                            @elseif($proof->attachment_path)
+                                <span class="text-xs font-semibold text-slate-400">Receipt unavailable</span>
                             @endif
                         </div>
                         @if($proof->notes)
