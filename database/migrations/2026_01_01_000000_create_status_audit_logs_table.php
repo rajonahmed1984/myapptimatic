@@ -10,10 +10,11 @@ return new class extends Migration
     {
         Schema::create('status_audit_logs', function (Blueprint $table) {
             $table->id();
-            $table->string('model_type'); // e.g., 'Invoice', 'Subscription', 'License', 'Customer'
+            // limit length to keep composite index within MySQL key size limits
+            $table->string('model_type', 191); // e.g., 'Invoice', 'Subscription', 'License', 'Customer'
             $table->unsignedBigInteger('model_id');
             $table->string('old_status')->nullable();
-            $table->string('new_status');
+            $table->string('new_status', 64);
             $table->string('reason')->nullable(); // e.g., 'auto_overdue', 'manual_approval', 'payment_received'
             $table->unsignedBigInteger('triggered_by')->nullable(); // Admin user ID if manual
             $table->json('metadata')->nullable(); // Additional context

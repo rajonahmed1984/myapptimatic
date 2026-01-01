@@ -50,10 +50,8 @@
                         </td>                        
                         <td class="px-4 py-3 text-slate-500">{{ $license->subscription?->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $license->subscription?->latestOrder?->order_number ?? '--' }}</td>
-                        @php
-                            $customerId = $license->subscription?->customer?->id;
-                            $isBlocked = $customerId ? ($accessBlockedCustomers[$customerId] ?? false) : false;
-                        @endphp
+                        @php($customerId = $license->subscription?->customer?->id)
+                        @php($isBlocked = $customerId ? ($accessBlockedCustomers[$customerId] ?? false) : false)
                         <td class="px-4 py-3 text-slate-700">
                             @if($license->status === 'suspended')
                                 Suspended
