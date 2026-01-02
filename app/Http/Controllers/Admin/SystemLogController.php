@@ -100,7 +100,7 @@ class SystemLogController extends Controller
                 'route' => 'admin.logs.admin',
             ],
             'module' => [
-                'label' => 'Module Log',
+                'label' => 'Payment Gateways Log',
                 'category' => 'module',
                 'route' => 'admin.logs.module',
             ],

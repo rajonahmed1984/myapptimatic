@@ -81,6 +81,16 @@ class SupportTicketController extends Controller
             'priority' => $ticket->priority,
         ], $request->user()?->id, $request->ip());
 
+        SystemLogger::write('ticket_mail_import', 'Client opened support ticket.', [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => 'TKT-' . str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+            'subject' => $ticket->subject,
+            'priority' => $ticket->priority,
+            'message' => substr($data['message'], 0, 100),
+        ]);
+
         $clientNotifications->sendTicketOpened($ticket);
         $adminNotifications->sendTicketCreated($ticket);
 
@@ -126,6 +136,15 @@ class SupportTicketController extends Controller
             'customer_id' => $ticket->customer_id,
             'status' => $ticket->status,
         ], $request->user()?->id, $request->ip());
+
+        SystemLogger::write('ticket_mail_import', 'Client replied to support ticket.', [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => 'TKT-' . str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
+            'customer_id' => $ticket->customer_id,
+            'customer_name' => $ticket->customer->name,
+            'subject' => $ticket->subject,
+            'message' => substr($data['message'], 0, 100),
+        ]);
 
         return redirect()
             ->route('client.support-tickets.show', $ticket)

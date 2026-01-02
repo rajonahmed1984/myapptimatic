@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
+use App\Support\SystemLogger;
 
 class AdminNotificationService
 {
@@ -266,8 +267,16 @@ class AdminNotificationService
         $body = $template?->body ?: '';
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
         $fromEmail = $this->resolveFromEmail($template);
+        $attachment = $this->invoiceAttachment($invoice);
 
-        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric(
+            $recipients,
+            $subject,
+            $bodyHtml,
+            $fromEmail,
+            $companyName,
+            $attachment ? [$attachment] : []
+        );
     }
 
     private function adminRecipients(): array
@@ -306,7 +315,7 @@ class AdminNotificationService
         return $fromEmail ?: null;
     }
 
-    private function sendGeneric(array $recipients, string $subject, string $bodyHtml, ?string $fromEmail, string $companyName): void
+    private function sendGeneric(array $recipients, string $subject, string $bodyHtml, ?string $fromEmail, string $companyName, array $attachments = []): void
     {
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
         $portalUrl = UrlResolver::portalUrl();
@@ -326,7 +335,8 @@ class AdminNotificationService
             ],
             $subject,
             $fromEmail,
-            $companyName
+            $companyName,
+            $attachments
         );
     }
 
@@ -336,21 +346,75 @@ class AdminNotificationService
         array $data,
         string $subject,
         ?string $fromEmail,
-        string $companyName
+        string $companyName,
+        array $attachments = []
     ): void {
         try {
-            Mail::send($view, $data, function ($message) use ($recipients, $subject, $fromEmail, $companyName) {
+            Mail::send($view, $data, function ($message) use ($recipients, $subject, $fromEmail, $companyName, $attachments) {
                 $message->to($recipients)->subject($subject);
                 if ($fromEmail) {
                     $message->from($fromEmail, $companyName);
                 }
+                foreach ($attachments as $attachment) {
+                    if (is_array($attachment) && isset($attachment['data'], $attachment['filename'])) {
+                        $message->attachData(
+                            $attachment['data'],
+                            $attachment['filename'],
+                            ['mime' => $attachment['mimetype'] ?? 'application/pdf']
+                        );
+                    }
+                }
             });
+
+            // Log the email explicitly
+            SystemLogger::write('email', 'Admin notification email sent.', [
+                'subject' => $subject,
+                'to' => $recipients,
+                'from' => $fromEmail ?? config('mail.from.address'),
+                'view' => $view,
+            ]);
         } catch (\Throwable $e) {
             Log::warning('Failed to send admin notification.', [
                 'subject' => $subject,
                 'error' => $e->getMessage(),
             ]);
+            
+            // Log the failure
+            SystemLogger::write('email', 'Admin notification email failed.', [
+                'subject' => $subject,
+                'to' => $recipients,
+                'error' => $e->getMessage(),
+            ], level: 'error');
         }
+    }
+
+    private function invoiceAttachment(Invoice $invoice): ?array
+    {
+        if (! $invoice) {
+            return null;
+        }
+
+        $invoice->loadMissing([
+            'items',
+            'customer',
+            'subscription.plan.product',
+            'accountingEntries.paymentGateway',
+        ]);
+
+        $html = view('client.invoices.pdf', [
+            'invoice' => $invoice,
+            'payToText' => Setting::getValue('pay_to_text'),
+            'companyEmail' => Setting::getValue('company_email'),
+        ])->render();
+
+        $pdf = app('dompdf.wrapper')->loadHTML($html);
+        $number = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
+
+        return [
+            'data' => $pdf->output(),
+            'filename' => 'invoice-'.$number.'.pdf',
+            'mimetype' => 'application/pdf',
+        ];
     }
 
     private function applyReplacements(string $text, array $replacements): string

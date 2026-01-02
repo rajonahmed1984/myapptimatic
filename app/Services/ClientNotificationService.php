@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
+use App\Support\SystemLogger;
 
 class ClientNotificationService
 {
@@ -45,7 +46,17 @@ class ClientNotificationService
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
-        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+        $attachments = [];
+        $invoice = $order->invoice;
+
+        if ($invoice) {
+            $invoiceAttachment = $this->invoiceAttachment($invoice);
+            if ($invoiceAttachment) {
+                $attachments[] = $invoiceAttachment;
+            }
+        }
+
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, $attachments);
     }
 
     public function sendOrderConfirmation(Order $order): void
@@ -83,8 +94,16 @@ class ClientNotificationService
 
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $attachment = $this->invoiceAttachment($invoice);
 
-        $this->sendGeneric($recipient, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric(
+            $recipient,
+            $subject,
+            $bodyHtml,
+            $fromEmail,
+            $companyName,
+            $attachment ? [$attachment] : []
+        );
     }
 
     public function sendOrderAccepted(Order $order): void
@@ -175,8 +194,16 @@ class ClientNotificationService
 
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $attachment = $this->invoiceAttachment($invoice);
 
-        $this->sendGeneric($recipient, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric(
+            $recipient,
+            $subject,
+            $bodyHtml,
+            $fromEmail,
+            $companyName,
+            $attachment ? [$attachment] : []
+        );
     }
 
     public function sendManualPaymentSubmission(PaymentProof $paymentProof): void
@@ -339,7 +366,7 @@ class ClientNotificationService
         $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
     }
 
-    private function sendGeneric(string $to, string $subject, string $bodyHtml, ?string $fromEmail, string $companyName): void
+    private function sendGeneric(string $to, string $subject, string $bodyHtml, ?string $fromEmail, string $companyName, array $attachments = []): void
     {
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
         $portalUrl = UrlResolver::portalUrl();
@@ -354,17 +381,41 @@ class ClientNotificationService
                 'portalLoginUrl' => $portalLoginUrl,
                 'portalLoginLabel' => 'log in to the client area',
                 'bodyHtml' => new HtmlString($bodyHtml),
-            ], function ($message) use ($to, $subject, $fromEmail, $companyName) {
+            ], function ($message) use ($to, $subject, $fromEmail, $companyName, $attachments) {
                 $message->to($to)->subject($subject);
                 if ($fromEmail) {
                     $message->from($fromEmail, $companyName);
                 }
+                foreach ($attachments as $attachment) {
+                    if (is_array($attachment) && isset($attachment['data'], $attachment['filename'])) {
+                        $message->attachData(
+                            $attachment['data'],
+                            $attachment['filename'],
+                            ['mime' => $attachment['mimetype'] ?? 'application/pdf']
+                        );
+                    }
+                }
             });
+
+            // Log the email explicitly
+            SystemLogger::write('email', 'Client notification email sent.', [
+                'subject' => $subject,
+                'to' => $to,
+                'from' => $fromEmail ?? config('mail.from.address'),
+                'email_type' => 'client_notification',
+            ]);
         } catch (\Throwable $e) {
             Log::warning('Failed to send client notification.', [
                 'subject' => $subject,
                 'error' => $e->getMessage(),
             ]);
+
+            // Log the failure
+            SystemLogger::write('email', 'Client notification email failed.', [
+                'subject' => $subject,
+                'to' => $to,
+                'error' => $e->getMessage(),
+            ], level: 'error');
         }
     }
 
@@ -402,5 +453,34 @@ class ClientNotificationService
         }
 
         return nl2br(e($trimmed));
+    }
+
+    private function invoiceAttachment(Invoice $invoice): ?array
+    {
+        if (! $invoice) {
+            return null;
+        }
+
+        $invoice->loadMissing([
+            'items',
+            'customer',
+            'subscription.plan.product',
+            'accountingEntries.paymentGateway',
+        ]);
+
+        $html = view('client.invoices.pdf', [
+            'invoice' => $invoice,
+            'payToText' => Setting::getValue('pay_to_text'),
+            'companyEmail' => Setting::getValue('company_email'),
+        ])->render();
+
+        $pdf = app('dompdf.wrapper')->loadHTML($html);
+        $number = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
+
+        return [
+            'data' => $pdf->output(),
+            'filename' => 'invoice-'.$number.'.pdf',
+            'mimetype' => 'application/pdf',
+        ];
     }
 }

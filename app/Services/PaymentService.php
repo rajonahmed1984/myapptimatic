@@ -35,6 +35,15 @@ class PaymentService
     {
         $gateway = $attempt->paymentGateway;
 
+        SystemLogger::write('module', 'Payment initiation started via gateway.', [
+            'payment_attempt_id' => $attempt->id,
+            'invoice_id' => $attempt->invoice_id,
+            'gateway' => $gateway?->name,
+            'driver' => $gateway?->driver,
+            'amount' => $attempt->amount,
+            'currency' => $attempt->currency,
+        ]);
+
         return match ($gateway->driver) {
             'paypal' => $this->startPayPal($attempt),
             'sslcommerz' => $this->startSslcommerz($attempt),
@@ -57,6 +66,16 @@ class PaymentService
             'status' => 'paid',
             'processed_at' => Carbon::now(),
             'response' => $this->mergeMeta($attempt->response, $meta),
+        ]);
+
+        SystemLogger::write('module', 'Payment successful via gateway.', [
+            'payment_attempt_id' => $attempt->id,
+            'invoice_id' => $attempt->invoice_id,
+            'gateway' => $attempt->paymentGateway?->name,
+            'driver' => $attempt->paymentGateway?->driver,
+            'amount' => $attempt->amount,
+            'currency' => $attempt->currency,
+            'reference' => $reference,
         ]);
 
         AccountingEntry::create([
@@ -140,6 +159,14 @@ class PaymentService
             'response' => $this->mergeMeta($attempt->response, array_merge($meta, [
                 'message' => $message,
             ])),
+        ]);
+
+        SystemLogger::write('module', 'Payment cancelled via gateway.', [
+            'payment_attempt_id' => $attempt->id,
+            'invoice_id' => $attempt->invoice_id,
+            'gateway' => $attempt->paymentGateway?->name,
+            'driver' => $attempt->paymentGateway?->driver,
+            'message' => $message,
         ]);
     }
 
