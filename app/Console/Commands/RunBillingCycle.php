@@ -119,6 +119,7 @@ class RunBillingCycle extends Command
             if ($invoice) {
                 $count++;
                 $this->adminNotifications->sendInvoiceCreated($invoice);
+                $this->clientNotifications->sendInvoiceCreated($invoice);
             }
         }
 

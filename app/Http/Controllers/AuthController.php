@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\ClientNotificationService;
 use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -120,7 +121,7 @@ class AuthController extends Controller
         return redirect()->route('admin.dashboard');
     }
 
-    public function register(Request $request): RedirectResponse
+    public function register(Request $request, ClientNotificationService $clientNotifications): RedirectResponse
     {
         $this->ensureRecaptcha($request, 'REGISTER');
 
@@ -152,6 +153,8 @@ class AuthController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+
+        $clientNotifications->sendClientSignup($customer);
 
         $redirect = $this->redirectTarget($request);
 

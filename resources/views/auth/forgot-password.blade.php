@@ -6,13 +6,10 @@
     <div class="section-label">Password reset</div>
     <h2 class="mt-3 text-2xl font-semibold text-slate-900">Forgot your password?</h2>
     <p class="mt-2 text-sm text-slate-600">Enter your email and we will send a reset link.</p>
-    <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-        Please wait before retrying.
-    </div>
-
     @php
         $emailAction = $emailRoute ?? route('password.email');
         $loginUrl = $loginRoute ?? route('login');
+        $emailError = $errors->first('email');
     @endphp
 
     @if (session('status'))
@@ -23,13 +20,17 @@
         </div>
     @endif
 
-    @error('email')
+    @if ($emailError === __('passwords.throttled'))
+        <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+            {{ $emailError }}
+        </div>
+    @elseif ($emailError)
         <div class="mt-5 rounded-lg bg-red-50 border border-red-200 p-4">
             <p class="text-sm font-medium text-red-800">
-                {{ $message }}
+                {{ $emailError }}
             </p>
         </div>
-    @enderror
+    @endif
 
     <form class="mt-8 space-y-5" method="POST" action="{{ $emailAction }}">
         @csrf

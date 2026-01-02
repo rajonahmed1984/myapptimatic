@@ -2,8 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\EmailTemplate;
+use App\Models\Invoice;
 use App\Models\License;
+use App\Models\Order;
+use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Models\SupportTicket;
 use App\Support\Branding;
@@ -15,6 +19,190 @@ use Illuminate\Support\Str;
 
 class ClientNotificationService
 {
+    public function sendClientSignup(Customer $customer): void
+    {
+        if (! $customer->email) {
+            return;
+        }
+
+        $template = EmailTemplate::query()
+            ->where('key', 'client_signup_email')
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $subject = $template?->subject ?: "Welcome to {$companyName}";
+        $body = $template?->body ?: "Hi {{client_name}},\n\nYour account for {{company_name}} is ready.\nLogin: {{login_url}}\nEmail: {{client_email}}\n\nThank you,\n{{company_name}}";
+        $loginUrl = UrlResolver::portalUrl() . '/login';
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $replacements = [
+            '{{client_name}}' => $customer->name,
+            '{{client_email}}' => $customer->email,
+            '{{company_name}}' => $companyName,
+            '{{login_url}}' => $loginUrl,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+    }
+
+    public function sendOrderConfirmation(Order $order): void
+    {
+        $order->loadMissing(['customer', 'plan.product', 'invoice']);
+
+        $recipient = $order->customer?->email;
+        if (! $recipient) {
+            return;
+        }
+
+        $template = EmailTemplate::query()
+            ->where('key', 'order_confirmation')
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $orderNumber = $order->order_number ?? $order->id;
+        $orderTotal = $order->invoice ? ($order->invoice->currency . ' ' . $order->invoice->total) : '--';
+        $serviceName = $order->plan?->product
+            ? $order->plan->product->name . ' - ' . $order->plan->name
+            : ($order->plan?->name ?? '--');
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $subject = $template?->subject ?: "Order {$orderNumber} confirmed - {$companyName}";
+        $body = $template?->body ?: "Hi {{client_name}},\n\nWe received your order for {{service_name}}.\nOrder number: {{order_number}}\nOrder total: {{order_total}}\n\nThank you,\n{{company_name}}";
+
+        $replacements = [
+            '{{client_name}}' => $order->customer?->name ?? '--',
+            '{{client_email}}' => $order->customer?->email ?? '--',
+            '{{company_name}}' => $companyName,
+            '{{service_name}}' => $serviceName,
+            '{{order_number}}' => $orderNumber,
+            '{{order_total}}' => $orderTotal,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+
+        $this->sendGeneric($recipient, $subject, $bodyHtml, $fromEmail, $companyName);
+    }
+
+    public function sendInvoiceCreated(Invoice $invoice): void
+    {
+        $invoice->loadMissing(['customer']);
+
+        $recipient = $invoice->customer?->email;
+        if (! $recipient) {
+            return;
+        }
+
+        $template = EmailTemplate::query()
+            ->where('key', 'invoice_created')
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $invoiceNumber = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
+        $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
+        $dueDate = $invoice->due_date?->format($dateFormat) ?? '--';
+        $paymentUrl = route('client.invoices.pay', $invoice);
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $subject = $template?->subject ?: "Invoice {$invoiceNumber} created - {$companyName}";
+        $body = $template?->body ?: "Hi {{client_name}},\n\nA new invoice has been created.\nInvoice: {{invoice_number}}\nTotal: {{invoice_total}}\nDue date: {{invoice_due_date}}\n\nPay here: {{payment_url}}";
+
+        $replacements = [
+            '{{client_name}}' => $invoice->customer?->name ?? '--',
+            '{{client_email}}' => $invoice->customer?->email ?? '--',
+            '{{company_name}}' => $companyName,
+            '{{invoice_number}}' => $invoiceNumber,
+            '{{invoice_total}}' => $invoice->currency.' '.$invoice->total,
+            '{{invoice_due_date}}' => $dueDate,
+            '{{payment_url}}' => $paymentUrl,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+
+        $this->sendGeneric($recipient, $subject, $bodyHtml, $fromEmail, $companyName);
+    }
+
+    public function sendManualPaymentSubmission(PaymentProof $paymentProof): void
+    {
+        $paymentProof->loadMissing(['customer', 'invoice.paymentAttempt']);
+        $customer = $paymentProof->customer ?? $paymentProof->invoice?->customer;
+        $invoice = $paymentProof->invoice;
+
+        if (! $customer || ! $customer->email || ! $invoice) {
+            return;
+        }
+
+        $template = EmailTemplate::query()
+            ->where('key', 'manual_payment_submission')
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $invoiceNumber = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
+        $paymentAmount = $paymentProof->amount;
+        $paymentReference = $paymentProof->reference ?? $paymentProof->id;
+        $paymentUrl = route('client.invoices.show', $invoice);
+        $gatewayName = $paymentProof->paymentGateway->name ?? 'Manual';
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $subject = $template?->subject ?: "Payment submitted for invoice {$invoiceNumber}";
+        $body = $template?->body ?: "Hi {{client_name}},\n\nWe received your manual payment submission for invoice {{invoice_number}} ({{payment_amount}}). We'll review it and update the invoice soon.\n\nReference: {{payment_reference}}\nPayment method: {{payment_gateway}}\n\nThanks,\n{{company_name}}";
+
+        $replacements = [
+            '{{client_name}}' => $customer->name,
+            '{{invoice_number}}' => $invoiceNumber,
+            '{{payment_amount}}' => $paymentAmount,
+            '{{payment_reference}}' => $paymentReference,
+            '{{payment_gateway}}' => $gatewayName,
+            '{{payment_url}}' => $paymentUrl,
+            '{{company_name}}' => $companyName,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+    }
+
+    public function sendInvoicePaymentConfirmation(Invoice $invoice, ?string $reference = null): void
+    {
+        $invoice->loadMissing(['customer']);
+        $customer = $invoice->customer;
+
+        if (! $customer || ! $customer->email) {
+            return;
+        }
+
+        $template = EmailTemplate::query()
+            ->where('key', 'client_invoice_payment_confirmation')
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $invoiceNumber = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
+        $paymentUrl = route('client.invoices.show', $invoice);
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $subject = $template?->subject ?: "Payment received for invoice {$invoiceNumber}";
+        $body = $template?->body ?: "Hi {{client_name}},\n\nThank you for your payment. Invoice {{invoice_number}} is now marked as paid.\n\nReference: {{payment_reference}}\nView invoice: {{payment_url}}\n\nWarm regards,\n{{company_name}}";
+
+        $replacements = [
+            '{{client_name}}' => $customer->name,
+            '{{invoice_number}}' => $invoiceNumber,
+            '{{invoice_total}}' => $invoice->currency.' '.$invoice->total,
+            '{{payment_reference}}' => $reference ?? '--',
+            '{{payment_url}}' => $paymentUrl,
+            '{{company_name}}' => $companyName,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+    }
+
     public function sendTicketAutoClose(SupportTicket $ticket): void
     {
         $this->sendTicketTemplate($ticket, 'support_ticket_auto_close_notification');

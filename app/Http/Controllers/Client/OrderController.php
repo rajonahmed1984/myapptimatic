@@ -13,6 +13,7 @@ use App\Models\Subscription;
 use App\Models\Setting;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
+use App\Services\ClientNotificationService;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -77,7 +78,12 @@ class OrderController extends Controller
         ]);
     }
 
-    public function store(Request $request, BillingService $billingService, AdminNotificationService $adminNotifications): RedirectResponse
+    public function store(
+        Request $request,
+        BillingService $billingService,
+        AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications
+    ): RedirectResponse
     {
         $data = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
@@ -179,6 +185,7 @@ class OrderController extends Controller
 
         if ($order) {
             $adminNotifications->sendNewOrder($order, $request->ip());
+            $clientNotifications->sendOrderConfirmation($order);
         }
 
         if ($order) {
@@ -191,6 +198,7 @@ class OrderController extends Controller
 
         if ($invoice) {
             $adminNotifications->sendInvoiceCreated($invoice);
+            $clientNotifications->sendInvoiceCreated($invoice);
         }
 
         if ($invoice) {

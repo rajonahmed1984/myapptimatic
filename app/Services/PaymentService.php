@@ -84,6 +84,12 @@ class PaymentService
                 // Notification errors should not break payment flow.
             }
 
+            try {
+                app(\App\Services\ClientNotificationService::class)->sendInvoicePaymentConfirmation($invoice, $reference);
+            } catch (\Throwable) {
+                // Client notification failures should not interfere with payment.
+            }
+
             // Check if customer has any remaining unpaid/overdue invoices
             // If not, clear the billing block
             $customerId = $attempt->customer_id;

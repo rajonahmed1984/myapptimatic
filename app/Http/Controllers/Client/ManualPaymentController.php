@@ -8,6 +8,7 @@ use App\Models\PaymentAttempt;
 use App\Models\PaymentProof;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
+use App\Services\ClientNotificationService;
 use Illuminate\Http\Request;
 
 class ManualPaymentController extends Controller
@@ -39,7 +40,7 @@ class ManualPaymentController extends Controller
         ]);
     }
 
-    public function store(Request $request, Invoice $invoice, PaymentAttempt $attempt): RedirectResponse
+    public function store(Request $request, Invoice $invoice, PaymentAttempt $attempt, ClientNotificationService $clientNotifications): RedirectResponse
     {
         $customerId = $request->user()->customer_id;
 
@@ -81,7 +82,7 @@ class ManualPaymentController extends Controller
             $path = $request->file('receipt')->store('payment-proofs', 'public');
         }
 
-        PaymentProof::create([
+        $paymentProof = PaymentProof::create([
             'payment_attempt_id' => $attempt->id,
             'invoice_id' => $invoice->id,
             'customer_id' => $customerId,
@@ -97,6 +98,8 @@ class ManualPaymentController extends Controller
         $attempt->update([
             'status' => 'submitted',
         ]);
+
+        $clientNotifications->sendManualPaymentSubmission($paymentProof);
 
         return redirect()->route('client.invoices.pay', $invoice)
             ->with('status', 'Payment submitted. Our team will verify it shortly.');
