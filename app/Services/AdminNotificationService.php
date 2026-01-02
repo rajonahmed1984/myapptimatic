@@ -237,6 +237,7 @@ class AdminNotificationService
         $replacements = array_merge([
             '{{ticket_id}}' => $ticket->id,
             '{{ticket_subject}}' => $ticket->subject,
+            '{{ticket_message}}' => $ticket->message ?? '--',
             '{{ticket_status}}' => $ticket->status,
             '{{client_name}}' => $ticket->customer?->name ?? '--',
             '{{client_email}}' => $ticket->customer?->email ?? '--',

@@ -362,6 +362,7 @@ class ClientNotificationService
         $replacements = array_merge([
             '{{ticket_id}}' => $ticket->id,
             '{{ticket_subject}}' => $ticket->subject,
+            '{{ticket_message}}' => $ticket->message ?? '--',
             '{{ticket_status}}' => $ticket->status,
             '{{ticket_url}}' => route('client.support-tickets.show', $ticket),
             '{{client_name}}' => $customer->name ?? '--',

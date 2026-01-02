@@ -58,6 +58,7 @@ class SupportTicketController extends Controller
             'subject' => ['required', 'string', 'max:255'],
             'priority' => ['required', Rule::in(['low', 'medium', 'high'])],
             'message' => ['required', 'string'],
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
         ]);
 
         $ticket = SupportTicket::create([
@@ -74,6 +75,7 @@ class SupportTicketController extends Controller
             'user_id' => $request->user()->id,
             'message' => $data['message'],
             'is_admin' => false,
+            'attachment_path' => $this->storeReplyAttachment($request),
         ]);
 
         SystemLogger::write('activity', 'Ticket created.', [
@@ -123,20 +125,11 @@ class SupportTicketController extends Controller
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
         ]);
 
-        $attachmentPath = null;
-        if ($request->hasFile('attachment')) {
-            $file = $request->file('attachment');
-            $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
-            $name = $name === '' ? 'attachment' : $name;
-            $fileName = $name.'-'.time().'.'.$file->getClientOriginalExtension();
-            $attachmentPath = $file->storeAs('support-ticket-replies', $fileName, 'public');
-        }
-
         $reply = $ticket->replies()->create([
             'user_id' => $request->user()->id,
             'message' => $data['message'],
             'is_admin' => false,
-            'attachment_path' => $attachmentPath,
+            'attachment_path' => $this->storeReplyAttachment($request),
         ]);
 
         $ticket->update([
@@ -199,5 +192,21 @@ class SupportTicketController extends Controller
         if (! $customer || $ticket->customer_id !== $customer->id) {
             abort(404);
         }
+    }
+
+    private function storeReplyAttachment(Request $request): ?string
+    {
+        if (! $request->hasFile('attachment')) {
+            return null;
+        }
+
+        $file = $request->file('attachment');
+        $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
+        if ($name === '') {
+            $name = 'attachment';
+        }
+        $fileName = $name.'-'.time().'.'.$file->getClientOriginalExtension();
+
+        return $file->storeAs('support-ticket-replies', $fileName, 'public');
     }
 }
