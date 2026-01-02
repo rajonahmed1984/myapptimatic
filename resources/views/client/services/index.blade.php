@@ -23,6 +23,7 @@
             <table class="w-full min-w-[820px] text-left text-sm">
                 <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                     <tr>
+                        <th class="px-4 py-3">SL</th>
                         <th class="px-4 py-3">Service</th>
                         <th class="px-4 py-3">Plan</th>
                         <th class="px-4 py-3">Status</th>
@@ -40,9 +41,10 @@
                             $serviceName = $product ? $product->name : 'Service';
                             $planName = $plan?->name ?? '--';
                             $cycle = $plan?->interval ? ucfirst($plan->interval) : '--';
-                            $nextDue = $subscription->current_period_end?->format($globalDateFormat) ?? '--';
+                            $nextDue = $subscription->next_invoice_at?->format($globalDateFormat) ?? '--';
                         @endphp
                         <tr class="border-b border-slate-100">
+                            <td class="px-4 py-3 text-slate-600">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3 font-medium text-slate-900">{{ $serviceName }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $planName }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ ucfirst($subscription->status) }}</td>

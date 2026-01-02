@@ -17,7 +17,7 @@
             {{ $statusFilter ? 'No '.$title.' found.' : 'No invoices found.' }}
         </div>
     @else
-        <div class="card overflow-hidden">
+        <div class="card overflow-visible">
             <table class="w-full min-w-[860px] text-left text-sm">
                 <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                     <tr>

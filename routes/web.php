@@ -167,7 +167,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::delete('affiliates/payouts/{payout}', [AffiliatePayoutController::class, 'destroy'])->name('affiliates.payouts.destroy');
 });
 
-Route::middleware(['auth', 'client', 'client.notice'])
+Route::middleware(['auth', 'client', 'client.block', 'client.notice'])
     ->prefix('client')
     ->name('client.')
     ->group(function () {

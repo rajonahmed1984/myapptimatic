@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
             'client' => \App\Http\Middleware\EnsureClient::class,
+            'client.block' => \App\Http\Middleware\PreventBlockedClientAccess::class,
             'client.notice' => \App\Http\Middleware\ShareClientInvoiceStatus::class,
         ]);
     })
