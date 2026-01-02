@@ -47,17 +47,7 @@ class ClientNotificationService
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
-        $attachments = [];
-        $invoice = $order->invoice;
-
-        if ($invoice) {
-            $invoiceAttachment = $this->invoiceAttachment($invoice);
-            if ($invoiceAttachment) {
-                $attachments[] = $invoiceAttachment;
-            }
-        }
-
-        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, $attachments);
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
     }
 
     public function sendOrderConfirmation(Order $order): void
@@ -296,9 +286,12 @@ class ClientNotificationService
 
     public function sendTicketReplyFromAdmin(SupportTicket $ticket, SupportTicketReply $reply): void
     {
+        $attachmentUrl = $reply->attachmentUrl();
         $extra = [
             '{{reply_message}}' => $reply->message,
             '{{admin_name}}' => $reply->user?->name ?? 'Admin',
+            '{{reply_attachment_url}}' => $attachmentUrl ?? '',
+            '{{reply_attachment_name}}' => $reply->attachmentName() ?? '',
         ];
 
         $this->sendTicketTemplate(
@@ -412,26 +405,11 @@ class ClientNotificationService
                     }
                 }
             });
-
-            // Log the email explicitly
-            SystemLogger::write('email', 'Client notification email sent.', [
-                'subject' => $subject,
-                'to' => $to,
-                'from' => $fromEmail ?? config('mail.from.address'),
-                'email_type' => 'client_notification',
-            ]);
         } catch (\Throwable $e) {
             Log::warning('Failed to send client notification.', [
                 'subject' => $subject,
                 'error' => $e->getMessage(),
             ]);
-
-            // Log the failure
-            SystemLogger::write('email', 'Client notification email failed.', [
-                'subject' => $subject,
-                'to' => $to,
-                'error' => $e->getMessage(),
-            ], level: 'error');
         }
     }
 

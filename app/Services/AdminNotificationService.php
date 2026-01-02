@@ -156,11 +156,16 @@ class AdminNotificationService
 
     public function sendTicketReplyFromClient(SupportTicket $ticket, SupportTicketReply $reply): void
     {
+        $attachmentUrl = $reply->attachmentUrl();
         $this->sendTicketNotification(
             $ticket,
             'support_ticket_change_notification',
             'Customer replied to ticket #{{ticket_id}}',
-            ['{{reply_message}}' => $reply->message]
+            [
+                '{{reply_message}}' => $reply->message,
+                '{{reply_attachment_url}}' => $attachmentUrl ?? '',
+                '{{reply_attachment_name}}' => $reply->attachmentName() ?? '',
+            ]
         );
     }
 
@@ -376,26 +381,11 @@ class AdminNotificationService
                     }
                 }
             });
-
-            // Log the email explicitly
-            SystemLogger::write('email', 'Admin notification email sent.', [
-                'subject' => $subject,
-                'to' => $recipients,
-                'from' => $fromEmail ?? config('mail.from.address'),
-                'view' => $view,
-            ]);
         } catch (\Throwable $e) {
             Log::warning('Failed to send admin notification.', [
                 'subject' => $subject,
                 'error' => $e->getMessage(),
             ]);
-            
-            // Log the failure
-            SystemLogger::write('email', 'Admin notification email failed.', [
-                'subject' => $subject,
-                'to' => $recipients,
-                'error' => $e->getMessage(),
-            ], level: 'error');
         }
     }
 

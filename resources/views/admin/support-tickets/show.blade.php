@@ -87,6 +87,14 @@
                         <span>{{ $reply->created_at->format($globalDateFormat . ' H:i') }}</span>
                     </div>
                     <div class="mt-3 whitespace-pre-line text-slate-700">{{ $reply->message }}</div>
+                    @if($reply->attachment_path)
+                        <div class="mt-3 text-xs text-slate-500">
+                            Attachment:
+                            <a href="{{ $reply->attachmentUrl() }}" target="_blank" class="font-semibold text-teal-600 hover:text-teal-500">
+                                {{ $reply->attachmentName() }}
+                            </a>
+                        </div>
+                    @endif
                 </div>
             </div>
         @empty
@@ -96,9 +104,16 @@
 
     <div class="card mt-8 p-6">
         <div class="section-label">Post reply</div>
-        <form method="POST" action="{{ route('admin.support-tickets.reply', $ticket) }}" class="mt-4 space-y-4">
+        <form method="POST" action="{{ route('admin.support-tickets.reply', $ticket) }}" class="mt-4 space-y-4" enctype="multipart/form-data">
             @csrf
             <textarea name="message" rows="5" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{{ old('message') }}</textarea>
+            <div>
+                <label class="text-sm text-slate-600">Attachment (image/PDF)</label>
+                <input name="attachment" type="file" accept="image/*,.pdf" class="mt-2 block w-full text-sm text-slate-600" />
+                @error('attachment')
+                    <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                @enderror
+            </div>
             <div class="flex justify-end">
                 <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Send reply</button>
             </div>

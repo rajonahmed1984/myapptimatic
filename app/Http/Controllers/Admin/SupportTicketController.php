@@ -8,6 +8,7 @@ use App\Services\ClientNotificationService;
 use App\Support\SystemLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class SupportTicketController extends Controller
 {
@@ -55,12 +56,23 @@ class SupportTicketController extends Controller
     {
         $data = $request->validate([
             'message' => ['required', 'string'],
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
         ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
+            $name = $name === '' ? 'attachment' : $name;
+            $fileName = $name.'-'.time().'.'.$file->getClientOriginalExtension();
+            $attachmentPath = $file->storeAs('support-ticket-replies', $fileName, 'public');
+        }
 
         $reply = $ticket->replies()->create([
             'user_id' => $request->user()->id,
             'message' => $data['message'],
             'is_admin' => true,
+            'attachment_path' => $attachmentPath,
         ]);
 
         $ticket->update([

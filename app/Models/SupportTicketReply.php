@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class SupportTicketReply extends Model
 {
@@ -11,6 +12,7 @@ class SupportTicketReply extends Model
         'support_ticket_id',
         'user_id',
         'message',
+        'attachment_path',
         'is_admin',
     ];
 
@@ -26,5 +28,23 @@ class SupportTicketReply extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function attachmentUrl(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->attachment_path);
+    }
+
+    public function attachmentName(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        return pathinfo($this->attachment_path, PATHINFO_BASENAME);
     }
 }
