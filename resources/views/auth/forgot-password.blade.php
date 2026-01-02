@@ -6,6 +6,14 @@
     <div class="section-label">Password reset</div>
     <h2 class="mt-3 text-2xl font-semibold text-slate-900">Forgot your password?</h2>
     <p class="mt-2 text-sm text-slate-600">Enter your email and we will send a reset link.</p>
+    <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+        Please wait before retrying.
+    </div>
+
+    @php
+        $emailAction = $emailRoute ?? route('password.email');
+        $loginUrl = $loginRoute ?? route('login');
+    @endphp
 
     @if (session('status'))
         <div class="mt-5 rounded-lg bg-emerald-50 border border-emerald-200 p-4">
@@ -23,7 +31,7 @@
         </div>
     @enderror
 
-    <form class="mt-8 space-y-5" method="POST" action="{{ route('password.email') }}">
+    <form class="mt-8 space-y-5" method="POST" action="{{ $emailAction }}">
         @csrf
         <div>
             <label class="text-sm text-slate-600">Email</label>
@@ -49,7 +57,7 @@
     </form>
 
     <p class="mt-6 text-xs text-slate-500">
-        Remember your password? <a href="{{ route('login') }}" class="font-semibold text-teal-600 hover:text-teal-500">Sign in</a>.
+        Remember your password? <a href="{{ $loginUrl }}" class="font-semibold text-teal-600 hover:text-teal-500">Sign in</a>.
     </p>
 
     @if(config('recaptcha.enabled') && config('recaptcha.site_key'))

@@ -44,6 +44,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicProductController::class, 'index'])
     ->name('products.public.home');
 
+Route::redirect('/admin', '/admin/login');
+
 Route::get('/branding/{path}', [BrandingAssetController::class, 'show'])
     ->where('path', '.*')
     ->name('branding.asset');
@@ -70,6 +72,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
     Route::get('/admin/login', [AuthController::class, 'showAdminLogin'])->name('admin.login');
     Route::post('/admin/login', [AuthController::class, 'adminLogin'])->name('admin.login.attempt');
+    Route::get('/admin/forgot-password', [PasswordResetController::class, 'requestAdmin'])->name('admin.password.request');
+    Route::post('/admin/forgot-password', [PasswordResetController::class, 'emailAdmin'])->name('admin.password.email');
     Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetController::class, 'email'])->name('password.email');
     Route::get('/reset-password/{token}', [PasswordResetController::class, 'resetForm'])->name('password.reset');

@@ -39,7 +39,7 @@
                 <input type="checkbox" name="remember" class="rounded border-slate-300 text-teal-500 focus:ring-teal-200" />
                 Remember me
             </label>
-            <a href="{{ route('password.request') }}" class="text-teal-600 hover:text-teal-500">Forgot password?</a>
+            <a href="{{ route('admin.password.request') }}" class="text-teal-600 hover:text-teal-500">Forgot password?</a>
         </div>
         @if(config('recaptcha.enabled') && config('recaptcha.site_key'))
             <div class="flex justify-center">

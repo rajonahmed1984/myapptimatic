@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 
@@ -11,6 +12,14 @@ class PasswordResetController extends Controller
     public function request()
     {
         return view('auth.forgot-password');
+    }
+
+    public function requestAdmin()
+    {
+        return view('auth.forgot-password', [
+            'emailRoute' => route('admin.password.email'),
+            'loginRoute' => route('admin.login'),
+        ]);
     }
 
     public function email(Request $request)
@@ -36,11 +45,22 @@ class PasswordResetController extends Controller
 
         // If we found a user (either directly or via customer), send reset link
         if ($user) {
-            $status = \Illuminate\Support\Facades\Password::sendResetLink([
-                'email' => $user->email
-            ]);
+            try {
+                $status = Password::sendResetLink([
+                    'email' => $user->email,
+                ]);
+            } catch (\Throwable $exception) {
+                Log::error('Failed to send password reset link', [
+                    'email' => $user->email,
+                    'exception' => $exception->getMessage(),
+                ]);
+
+                return back()
+                    ->withInput($request->only('email'))
+                    ->withErrors(['email' => 'Unable to send the reset link right now. Please try again later.']);
+            }
         } else {
-            $status = \Illuminate\Support\Facades\Password::INVALID_USER;
+            $status = Password::INVALID_USER;
         }
 
         if ($status === \Illuminate\Support\Facades\Password::RESET_LINK_SENT) {
@@ -48,6 +68,11 @@ class PasswordResetController extends Controller
         }
 
         return back()->withInput($request->only('email'))->withErrors(['email' => __($status)]);
+    }
+
+    public function emailAdmin(Request $request)
+    {
+        return $this->email($request);
     }
 
     public function resetForm(string $token)
