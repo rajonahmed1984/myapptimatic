@@ -85,7 +85,7 @@ class ClientNotificationService
 
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
-        $attachment = $this->invoiceAttachment($invoice);
+        $attachment = $this->invoiceAttachment($order->invoice);
 
         $this->sendGeneric(
             $recipient,
