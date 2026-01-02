@@ -10,6 +10,7 @@ use App\Models\LicenseDomain;
 use App\Support\SystemLogger;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
+use App\Services\ClientNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,7 +63,12 @@ class OrderController extends Controller
         ]);
     }
 
-    public function approve(Request $request, Order $order): RedirectResponse
+    public function approve(
+        Request $request,
+        Order $order,
+        AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications
+    ): RedirectResponse
     {
         if ($order->status !== 'pending') {
             return back()->with('status', 'Order already processed.');
@@ -131,6 +137,9 @@ class OrderController extends Controller
         $license->domains()
             ->where('domain', '!=', $domain)
             ->update(['status' => 'revoked']);
+
+        $clientNotifications->sendOrderAccepted($order);
+        $adminNotifications->sendOrderAccepted($order);
 
         SystemLogger::write('activity', 'Order approved.', [
             'order_id' => $order->id,

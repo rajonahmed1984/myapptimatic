@@ -152,7 +152,54 @@ class AdminNotificationService
         $this->sendInvoiceTemplate($invoice, $templateKey, "Reminder: invoice {{invoice_number}}");
     }
 
+    public function sendOrderAccepted(Order $order): void
+    {
+        $recipients = $this->adminRecipients();
+        if (empty($recipients)) {
+            return;
+        }
+
+        $order->loadMissing(['customer', 'plan.product', 'approver']);
+
+        $template = EmailTemplate::query()
+            ->where('key', 'order_accepted_notification')
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $orderNumber = $order->order_number ?? $order->id;
+        $subject = $template?->subject ?: "Order accepted #{{order_number}}";
+        $body = $template?->body ?: "Order {{order_number}} was accepted.\n"
+            . "Client: {{client_name}} ({{client_email}})\n"
+            . "Order link: {{order_url}}";
+        $fromEmail = $this->resolveFromEmail($template);
+        $approver = $order->approver;
+
+        $replacements = [
+            '{{order_number}}' => $orderNumber,
+            '{{client_name}}' => $order->customer?->name ?? '--',
+            '{{client_email}}' => $order->customer?->email ?? '--',
+            '{{company_name}}' => $companyName,
+            '{{order_url}}' => route('admin.orders.show', $order),
+            '{{approved_by}}' => $approver?->name ?? 'Admin',
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName);
+    }
+
+    public function sendTicketCreated(SupportTicket $ticket): void
+    {
+        $this->sendTicketNotification($ticket, 'support_ticket_change_notification', 'New support ticket #{{ticket_id}}');
+    }
+
     public function sendTicketReminder(SupportTicket $ticket): void
+    {
+        $this->sendTicketNotification($ticket, 'support_ticket_change_notification', 'Support ticket updated #{{ticket_id}}');
+    }
+
+    private function sendTicketNotification(SupportTicket $ticket, string $templateKey, string $fallbackSubject): void
     {
         $recipients = $this->adminRecipients();
         if (empty($recipients)) {
@@ -162,12 +209,12 @@ class AdminNotificationService
         $ticket->loadMissing(['customer']);
 
         $template = EmailTemplate::query()
-            ->where('key', 'support_ticket_change_notification')
+            ->where('key', $templateKey)
             ->first();
 
         $companyName = Setting::getValue('company_name', config('app.name'));
-        $subject = $template?->subject ?: 'Support ticket updated #{{ticket_id}}';
-        $body = $template?->body ?: "Support ticket updated.\nTicket: {{ticket_id}}\nSubject: {{ticket_subject}}\nStatus: {{ticket_status}}";
+        $subject = $template?->subject ?: $fallbackSubject;
+        $body = $template?->body ?: "Support ticket #{{ticket_id}} update.\nTicket: {{ticket_id}}\nSubject: {{ticket_subject}}\nStatus: {{ticket_status}}";
         $fromEmail = $this->resolveFromEmail($template);
 
         $replacements = [
@@ -177,6 +224,7 @@ class AdminNotificationService
             '{{client_name}}' => $ticket->customer?->name ?? '--',
             '{{client_email}}' => $ticket->customer?->email ?? '--',
             '{{company_name}}' => $companyName,
+            '{{ticket_url}}' => route('admin.support-tickets.show', $ticket),
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);

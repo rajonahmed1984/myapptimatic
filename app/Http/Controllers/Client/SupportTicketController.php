@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\SupportTicket;
+use App\Services\AdminNotificationService;
+use App\Services\ClientNotificationService;
 use App\Support\SystemLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -40,8 +42,11 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    public function store(Request $request)
-    {
+    public function store(
+        Request $request,
+        AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications
+    ) {
         $customer = $request->user()?->customer;
 
         if (! $customer) {
@@ -75,6 +80,9 @@ class SupportTicketController extends Controller
             'customer_id' => $customer->id,
             'priority' => $ticket->priority,
         ], $request->user()?->id, $request->ip());
+
+        $clientNotifications->sendTicketOpened($ticket);
+        $adminNotifications->sendTicketCreated($ticket);
 
         return redirect()
             ->route('client.support-tickets.show', $ticket)

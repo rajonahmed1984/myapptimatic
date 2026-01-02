@@ -87,6 +87,59 @@ class ClientNotificationService
         $this->sendGeneric($recipient, $subject, $bodyHtml, $fromEmail, $companyName);
     }
 
+    public function sendOrderAccepted(Order $order): void
+    {
+        $order->loadMissing(['customer', 'plan.product', 'invoice', 'subscription.licenses.domains']);
+
+        $customer = $order->customer;
+        if (! $customer || ! $customer->email) {
+            return;
+        }
+
+        $template = EmailTemplate::query()
+            ->where('key', 'order_accepted_confirmation')
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $orderNumber = $order->order_number ?? $order->id;
+        $serviceName = $order->plan?->product
+            ? ($order->plan->product->name . ' - ' . ($order->plan->name ?? '--'))
+            : ($order->plan?->name ?? '--');
+        $invoiceNumber = $order->invoice
+            ? (is_numeric($order->invoice->number) ? $order->invoice->number : $order->invoice->id)
+            : '--';
+        $invoiceUrl = $order->invoice ? route('client.invoices.show', $order->invoice) : '--';
+        $license = $order->subscription?->licenses->sortByDesc('id')->first();
+        $licenseKey = $license?->license_key ?: '--';
+        $licenseDomain = $license?->domains->first()?->domain ?? '--';
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $subject = $template?->subject ?: "Your order {$orderNumber} has been accepted";
+        $body = $template?->body ?: "Hi {{client_name}},\n\n"
+            . "Your order {{order_number}} for {{service_name}} has been accepted.\n"
+            . "License key: {{license_key}}\n"
+            . "Domain: {{license_domain}}\n"
+            . "Invoice: {{invoice_number}}\n"
+            . "View invoice: {{invoice_url}}\n\n"
+            . "Thank you,\n{{company_name}}";
+
+        $replacements = [
+            '{{client_name}}' => $customer->name ?? '--',
+            '{{order_number}}' => $orderNumber,
+            '{{service_name}}' => $serviceName,
+            '{{license_key}}' => $licenseKey,
+            '{{license_domain}}' => $licenseDomain,
+            '{{invoice_number}}' => $invoiceNumber,
+            '{{invoice_url}}' => $invoiceUrl,
+            '{{company_name}}' => $companyName,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+    }
+
     public function sendInvoiceCreated(Invoice $invoice): void
     {
         $invoice->loadMissing(['customer']);
@@ -205,12 +258,17 @@ class ClientNotificationService
 
     public function sendTicketAutoClose(SupportTicket $ticket): void
     {
-        $this->sendTicketTemplate($ticket, 'support_ticket_auto_close_notification');
+        $this->sendTicketTemplate($ticket, 'support_ticket_auto_close_notification', 'Support ticket auto-closed - {{company_name}}');
     }
 
     public function sendTicketFeedback(SupportTicket $ticket): void
     {
-        $this->sendTicketTemplate($ticket, 'support_ticket_feedback_request');
+        $this->sendTicketTemplate($ticket, 'support_ticket_feedback_request', 'Support ticket feedback requested - {{company_name}}');
+    }
+
+    public function sendTicketOpened(SupportTicket $ticket): void
+    {
+        $this->sendTicketTemplate($ticket, 'support_ticket_opened', 'Support ticket opened - {{company_name}}');
     }
 
     public function sendLicenseExpiryNotice(License $license, string $templateKey): void
@@ -248,7 +306,7 @@ class ClientNotificationService
         $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
     }
 
-    private function sendTicketTemplate(SupportTicket $ticket, string $templateKey): void
+    private function sendTicketTemplate(SupportTicket $ticket, string $templateKey, string $fallbackSubject): void
     {
         $ticket->loadMissing(['customer']);
         $customer = $ticket->customer;
@@ -262,7 +320,7 @@ class ClientNotificationService
             ->first();
 
         $companyName = Setting::getValue('company_name', config('app.name'));
-        $subject = $template?->subject ?: 'Support ticket update - {{company_name}}';
+        $subject = $template?->subject ?: $fallbackSubject;
         $body = $template?->body ?: '';
 
         $replacements = [

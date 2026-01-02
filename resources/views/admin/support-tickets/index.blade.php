@@ -44,7 +44,7 @@
                     <th class="px-4 py-3">Customer</th>
                     <th class="px-4 py-3">Status</th>
                     <th class="px-4 py-3">Last Reply</th>
-                    <th class="px-4 py-3"></th>
+                    <th class="px-4 py-3">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -61,7 +61,8 @@
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
-                                <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                                <a href="{{ route('admin.support-tickets.show', $ticket) }}#replies" class="text-teal-600 hover:text-teal-500">Reply</a>
+                                <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="text-slate-600 hover:text-slate-500">View</a>
                                 <form method="POST" action="{{ route('admin.support-tickets.destroy', $ticket) }}" onsubmit="return confirm('Delete this ticket and all replies?');">
                                     @csrf
                                     @method('DELETE')
