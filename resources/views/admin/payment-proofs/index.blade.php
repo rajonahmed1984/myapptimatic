@@ -52,7 +52,7 @@
                             <td class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap items-center justify-end gap-2 text-xs">
                                     @if($proof->attachment_url)
-                                        <a href="{{ $proof->attachment_url }}" target="_blank" rel="noopener" class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View receipt</a>
+                                        <a href="{{ route('admin.payment-proofs.receipt', $proof) }}" target="_blank" rel="noopener" class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View receipt</a>
                                     @elseif($proof->attachment_path)
                                         <span class="text-xs font-semibold text-slate-400">Receipt unavailable</span>
                                     @endif
@@ -77,4 +77,3 @@
         </div>
     @endif
 @endsection
-

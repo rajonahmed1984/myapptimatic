@@ -58,7 +58,8 @@
                     </span>
                 </div>
             </div>
-            <div class="text-sm text-slate-600 no-print">
+            @if($invoice->status !== 'paid')
+                <div class="text-sm text-slate-600 no-print">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Payment method</div>
                 @php
                     $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
@@ -159,6 +160,7 @@
                     </div>
                 @endif
             </div>
+            @endif
         </div>
 
         <div class="mt-8">

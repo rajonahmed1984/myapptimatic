@@ -128,6 +128,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::delete('invoices/{invoice}', [AdminInvoiceController::class, 'destroy'])->name('invoices.destroy');
     Route::post('payment-proofs/{paymentProof}/approve', [AdminPaymentProofController::class, 'approve'])->name('payment-proofs.approve');
     Route::post('payment-proofs/{paymentProof}/reject', [AdminPaymentProofController::class, 'reject'])->name('payment-proofs.reject');
+    Route::get('payment-proofs/{paymentProof}/receipt', [AdminPaymentProofController::class, 'receipt'])->name('payment-proofs.receipt');
     Route::get('payment-proofs', [AdminPaymentProofController::class, 'index'])->name('payment-proofs.index');
     Route::get('payment-gateways', [PaymentGatewayController::class, 'index'])->name('payment-gateways.index');
     Route::get('payment-gateways/{paymentGateway}/edit', [PaymentGatewayController::class, 'edit'])->name('payment-gateways.edit');

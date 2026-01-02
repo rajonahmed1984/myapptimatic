@@ -8,6 +8,8 @@ use App\Services\PaymentService;
 use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PaymentProofController extends Controller
 {
@@ -82,5 +84,16 @@ class PaymentProofController extends Controller
         ], $request->user()?->id, $request->ip());
 
         return back()->with('status', 'Manual payment rejected.');
+    }
+
+    public function receipt(PaymentProof $paymentProof): StreamedResponse
+    {
+        $path = (string) $paymentProof->attachment_path;
+
+        if ($path === '' || ! Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        return Storage::disk('public')->response($path);
     }
 }

@@ -22,7 +22,8 @@
     @php
         $displayNumber = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
         $creditTotal = $invoice->accountingEntries->where('type', 'credit')->sum('amount');
-        $paidTotal = $invoice->accountingEntries->where('type', 'payment')->sum('amount');
+        $paymentEntries = $invoice->accountingEntries->where('type', 'payment');
+        $paidTotal = $paymentEntries->sum('amount');
         $balance = max(0, (float) $invoice->total - $paidTotal - $creditTotal);
         $logoSrc = null;
         $logoUrl = $portalBranding['logo_url'] ?? null;
@@ -138,6 +139,36 @@
             </tbody>
         </table>
     </div>
+
+    @if($invoice->status === 'paid')
+        <div class="section">
+            <div class="muted section-label">Transactions</div>
+            @if($paymentEntries->isEmpty())
+                <div class="muted text-sm">No payment transactions recorded.</div>
+            @else
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Gateway</th>
+                            <th>Reference</th>
+                            <th class="right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($paymentEntries as $entry)
+                            <tr>
+                                <td>{{ $entry->entry_date ? $entry->entry_date->format($globalDateFormat) : ($entry->created_at ? $entry->created_at->format($globalDateFormat) : '-') }}</td>
+                                <td>{{ $entry->paymentGateway?->name ?? 'Manual' }}</td>
+                                <td>{{ $entry->reference ?: '-' }}</td>
+                                <td class="right">{{ $entry->currency }} {{ number_format((float) $entry->amount, 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </div>
+    @endif
 </body>
 </html>
 
