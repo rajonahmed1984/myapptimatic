@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Models\SupportTicket;
+use App\Models\SupportTicketReply;
 use App\Support\Branding;
 use App\Support\UrlResolver;
 use Illuminate\Support\Facades\Log;
@@ -293,6 +294,21 @@ class ClientNotificationService
         $this->sendTicketTemplate($ticket, 'support_ticket_feedback_request', 'Support ticket feedback requested - {{company_name}}');
     }
 
+    public function sendTicketReplyFromAdmin(SupportTicket $ticket, SupportTicketReply $reply): void
+    {
+        $extra = [
+            '{{reply_message}}' => $reply->message,
+            '{{admin_name}}' => $reply->user?->name ?? 'Admin',
+        ];
+
+        $this->sendTicketTemplate(
+            $ticket,
+            'support_ticket_reply',
+            'Reply on ticket #{{ticket_id}}',
+            $extra
+        );
+    }
+
     public function sendTicketOpened(SupportTicket $ticket): void
     {
         $this->sendTicketTemplate($ticket, 'support_ticket_opened', 'Support ticket opened - {{company_name}}');
@@ -333,7 +349,7 @@ class ClientNotificationService
         $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
     }
 
-    private function sendTicketTemplate(SupportTicket $ticket, string $templateKey, string $fallbackSubject): void
+    private function sendTicketTemplate(SupportTicket $ticket, string $templateKey, string $fallbackSubject, array $extraReplacements = []): void
     {
         $ticket->loadMissing(['customer']);
         $customer = $ticket->customer;
@@ -350,14 +366,14 @@ class ClientNotificationService
         $subject = $template?->subject ?: $fallbackSubject;
         $body = $template?->body ?: '';
 
-        $replacements = [
+        $replacements = array_merge([
             '{{ticket_id}}' => $ticket->id,
             '{{ticket_subject}}' => $ticket->subject,
             '{{ticket_status}}' => $ticket->status,
             '{{ticket_url}}' => route('client.support-tickets.show', $ticket),
             '{{client_name}}' => $customer->name ?? '--',
             '{{company_name}}' => $companyName,
-        ];
+        ], $extraReplacements);
 
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));

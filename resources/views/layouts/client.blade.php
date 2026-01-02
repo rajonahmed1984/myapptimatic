@@ -48,7 +48,10 @@
                 </a>
                 <a class="{{ request()->routeIs('client.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.support-tickets.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Support
+                    <span>Support</span>
+                    @if(($clientHeaderStats['pending_admin_replies'] ?? 0) > 0)
+                        <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $clientHeaderStats['pending_admin_replies'] }}</span>
+                    @endif
                 </a>
                 <a class="{{ request()->routeIs('client.affiliates.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.affiliates.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>

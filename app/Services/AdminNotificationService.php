@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Models\SupportTicket;
+use App\Models\SupportTicketReply;
 use App\Models\User;
 use App\Support\Branding;
 use App\Support\UrlResolver;
@@ -153,6 +154,16 @@ class AdminNotificationService
         $this->sendInvoiceTemplate($invoice, $templateKey, "Reminder: invoice {{invoice_number}}");
     }
 
+    public function sendTicketReplyFromClient(SupportTicket $ticket, SupportTicketReply $reply): void
+    {
+        $this->sendTicketNotification(
+            $ticket,
+            'support_ticket_change_notification',
+            'Customer replied to ticket #{{ticket_id}}',
+            ['{{reply_message}}' => $reply->message]
+        );
+    }
+
     public function sendOrderAccepted(Order $order): void
     {
         $recipients = $this->adminRecipients();
@@ -200,7 +211,7 @@ class AdminNotificationService
         $this->sendTicketNotification($ticket, 'support_ticket_change_notification', 'Support ticket updated #{{ticket_id}}');
     }
 
-    private function sendTicketNotification(SupportTicket $ticket, string $templateKey, string $fallbackSubject): void
+    private function sendTicketNotification(SupportTicket $ticket, string $templateKey, string $fallbackSubject, array $extraReplacements = []): void
     {
         $recipients = $this->adminRecipients();
         if (empty($recipients)) {
@@ -218,7 +229,7 @@ class AdminNotificationService
         $body = $template?->body ?: "Support ticket #{{ticket_id}} update.\nTicket: {{ticket_id}}\nSubject: {{ticket_subject}}\nStatus: {{ticket_status}}";
         $fromEmail = $this->resolveFromEmail($template);
 
-        $replacements = [
+        $replacements = array_merge([
             '{{ticket_id}}' => $ticket->id,
             '{{ticket_subject}}' => $ticket->subject,
             '{{ticket_status}}' => $ticket->status,
@@ -226,7 +237,7 @@ class AdminNotificationService
             '{{client_email}}' => $ticket->customer?->email ?? '--',
             '{{company_name}}' => $companyName,
             '{{ticket_url}}' => route('admin.support-tickets.show', $ticket),
-        ];
+        ], $extraReplacements);
 
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SupportTicket;
+use App\Services\ClientNotificationService;
 use App\Support\SystemLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -50,13 +51,13 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    public function reply(Request $request, SupportTicket $ticket)
+    public function reply(Request $request, SupportTicket $ticket, ClientNotificationService $clientNotifications)
     {
         $data = $request->validate([
             'message' => ['required', 'string'],
         ]);
 
-        $ticket->replies()->create([
+        $reply = $ticket->replies()->create([
             'user_id' => $request->user()->id,
             'message' => $data['message'],
             'is_admin' => true,
@@ -84,6 +85,8 @@ class SupportTicketController extends Controller
             'subject' => $ticket->subject,
             'message' => substr($data['message'], 0, 100),
         ]);
+
+        $clientNotifications->sendTicketReplyFromAdmin($ticket, $reply);
 
         return redirect()
             ->route('admin.support-tickets.show', $ticket)

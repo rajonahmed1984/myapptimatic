@@ -4,6 +4,7 @@
     $selectedInvoiceId = old('invoice_id', $entry?->invoice_id ?? optional($selectedInvoice)->id);
     $selectedCustomerId = old('customer_id', $entry?->customer_id ?? optional($selectedInvoice)->customer_id);
     $selectedGatewayId = old('payment_gateway_id', $entry?->payment_gateway_id ?? null);
+    $dueAmount = $dueAmount ?? null;
 @endphp
 
 <div class="grid gap-4 md:grid-cols-2">
@@ -23,8 +24,12 @@
     </div>
 
     <div>
-        <label class="text-sm text-slate-600">Amount</label>
-        <input name="amount" type="number" step="0.01" min="0" value="{{ old('amount', $entry?->amount ?? '') }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+        <label class="text-sm text-slate-600">Amount
+            @if($dueAmount !== null)
+                <span class="text-xs font-normal text-amber-600">(Due: {{ $currency }} {{ number_format($dueAmount, 2) }})</span>
+            @endif
+        </label>
+        <input name="amount" type="number" step="0.01" min="0" value="{{ old('amount', $entry?->amount ?? $dueAmount ?? '') }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
     </div>
 
     <div>
@@ -46,7 +51,7 @@
 
     <div>
         <label class="text-sm text-slate-600">Invoice</label>
-        <select name="invoice_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+        <select name="invoice_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" onchange="updateDueAmount(this)">
             <option value="">Select invoice</option>
             @foreach($invoices as $invoiceOption)
                 <option value="{{ $invoiceOption->id }}" @selected((string) $selectedInvoiceId === (string) $invoiceOption->id)>
@@ -80,3 +85,25 @@
         <p class="mt-2 text-xs text-slate-500">Payments require a customer and invoice. Credits require a customer.</p>
     </div>
 </div>
+
+<script>
+function updateDueAmount(selectElement) {
+    const invoiceId = selectElement.value;
+    const amountInput = document.querySelector('input[name="amount"]');
+    const amountLabel = document.querySelector('label:has(+ input[name="amount"])');
+    
+    if (!invoiceId) {
+        amountLabel.innerHTML = 'Amount';
+        return;
+    }
+    
+    // Fetch invoice data to get due amount
+    fetch(`{{ route('admin.invoices.index') }}?invoice_id=${invoiceId}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .catch(error => console.log('Could not fetch invoice data'));
+}
+</script>

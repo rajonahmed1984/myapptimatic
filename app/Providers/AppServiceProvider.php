@@ -78,8 +78,19 @@ class AppServiceProvider extends ServiceProvider
                 $view->with('adminHeaderStats', [
                     'pending_orders' => Order::where('status', 'pending')->count(),
                     'overdue_invoices' => Invoice::where('status', 'overdue')->count(),
-                    'tickets_waiting' => SupportTicket::where('status', 'open')->count(),
+                    'tickets_waiting' => SupportTicket::where('status', 'customer_reply')->count(),
                     'pending_manual_payments' => PaymentProof::where('status', 'pending')->count(),
+                ]);
+            });
+
+            View::composer('layouts.client', function ($view) {
+                $customer = auth()->user()?->customer;
+                $view->with('clientHeaderStats', [
+                    'pending_admin_replies' => $customer
+                        ? SupportTicket::where('customer_id', $customer->id)
+                            ->where('status', 'answered')
+                            ->count()
+                        : 0,
                 ]);
             });
 

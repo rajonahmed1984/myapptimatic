@@ -83,7 +83,10 @@
                 </a>
                 <a class="{{ request()->routeIs('admin.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.support-tickets.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Support
+                    <span>Support</span>
+                    @if(($adminHeaderStats['tickets_waiting'] ?? 0) > 0)
+                        <span class="ml-auto rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">{{ $adminHeaderStats['tickets_waiting'] }}</span>
+                    @endif
                 </a>
                 <a class="{{ request()->routeIs('admin.requests.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.requests.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
@@ -148,9 +151,9 @@
                                 Overdue Invoices
                             </a>
                             <span class="text-slate-300">|</span>
-                            <a href="{{ route('admin.support-tickets.index', ['status' => 'open']) }}" class="flex items-center gap-2">
+                            <a href="{{ route('admin.support-tickets.index', ['status' => 'customer_reply']) }}" class="flex items-center gap-2">
                                 <span class="stat">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>
-                                Ticket(s) Awaiting Reply
+                                Customer Reply(ies) Pending
                             </a>
                         </div>
                     @endif

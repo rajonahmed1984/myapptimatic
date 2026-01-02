@@ -125,10 +125,20 @@ class AccountingController extends Controller
 
     private function formData(string $type, ?Invoice $selectedInvoice = null, ?AccountingEntry $entry = null): array
     {
+        $dueAmount = null;
+        if ($selectedInvoice) {
+            $paidAmount = AccountingEntry::query()
+                ->where('invoice_id', $selectedInvoice->id)
+                ->where('type', 'payment')
+                ->sum('amount');
+            $dueAmount = max(0, $selectedInvoice->total - $paidAmount);
+        }
+
         return [
             'entry' => $entry,
             'type' => $type,
             'selectedInvoice' => $selectedInvoice,
+            'dueAmount' => $dueAmount,
             'customers' => Customer::query()->orderBy('name')->get(),
             'invoices' => Invoice::query()->with('customer')->orderByDesc('issue_date')->get(),
             'gateways' => PaymentGateway::query()->orderBy('sort_order')->get(),

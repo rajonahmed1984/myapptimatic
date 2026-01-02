@@ -110,15 +110,18 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    public function reply(Request $request, SupportTicket $ticket)
-    {
+    public function reply(
+        Request $request,
+        SupportTicket $ticket,
+        AdminNotificationService $adminNotifications
+    ) {
         $this->ensureOwnership($request, $ticket);
 
         $data = $request->validate([
             'message' => ['required', 'string'],
         ]);
 
-        $ticket->replies()->create([
+        $reply = $ticket->replies()->create([
             'user_id' => $request->user()->id,
             'message' => $data['message'],
             'is_admin' => false,
@@ -145,6 +148,8 @@ class SupportTicketController extends Controller
             'subject' => $ticket->subject,
             'message' => substr($data['message'], 0, 100),
         ]);
+
+        $adminNotifications->sendTicketReplyFromClient($ticket, $reply);
 
         return redirect()
             ->route('client.support-tickets.show', $ticket)
