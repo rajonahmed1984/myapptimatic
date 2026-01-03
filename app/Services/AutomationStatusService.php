@@ -25,6 +25,8 @@ class AutomationStatusService
         $nextDailyRun = $this->calculateNextDailyRun($lastStarted);
         $status = $this->statusBadge($lastStatus);
         $metrics = $this->metrics();
+        $timeZone = Setting::getValue('time_zone', config('app.timezone', 'UTC')) ?: 'UTC';
+        $portalTime = Carbon::now($timeZone);
 
         $cronStatusLabel = $lastStatus ? ucfirst($lastStatus) : 'Never';
         $cronStatusClasses = match ($lastStatus) {
@@ -35,8 +37,10 @@ class AutomationStatusService
         };
 
         $cronSetup = $cronToken !== '';
-        $cronInvoked = $lastRun && $lastRun->diffInHours(Carbon::now()) <= 48;
-        $dailyCronRun = $lastRun && $lastRun->diffInHours(Carbon::now()) <= 36;
+        $cronInvocationWindowHours = 24;
+        $dailyCronWindowHours = 24;
+        $cronInvoked = $lastRun && $lastRun->diffInHours(Carbon::now()) <= $cronInvocationWindowHours;
+        $dailyCronRun = $lastRun && $lastRun->diffInHours(Carbon::now()) <= $dailyCronWindowHours;
         $dailyCronCompleting = $lastStatus === 'success';
 
         $dailyActions = [
@@ -194,6 +198,10 @@ class AutomationStatusService
             'cronStatusLabel' => $cronStatusLabel,
             'cronStatusClasses' => $cronStatusClasses,
             'cronUrl' => $cronUrl,
+            'cronInvocationWindowHours' => $cronInvocationWindowHours,
+            'dailyCronWindowHours' => $dailyCronWindowHours,
+            'portalTimeZone' => $timeZone,
+            'portalTimeLabel' => $portalTime->format('g:i:s A'),
             'automationConfig' => $this->automationConfig(),
         ];
     }

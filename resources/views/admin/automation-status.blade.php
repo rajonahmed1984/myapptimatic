@@ -78,13 +78,13 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <div>
-                        <div class="text-sm font-semibold text-slate-900">Cron Invocation Frequency</div>
-                        <div class="text-xs text-slate-500">Cron executed within last 48 hours</div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        @if($cronInvoked)
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div>
+                <div class="text-sm font-semibold text-slate-900">Cron Invocation Frequency</div>
+                <div class="text-xs text-slate-500">Cron executed within last {{ $cronInvocationWindowHours ?? 48 }} hours</div>
+            </div>
+            <div class="flex items-center gap-2">
+                @if($cronInvoked)
                             <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
                                 <svg class="mr-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -102,12 +102,12 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <div>
-                        <div class="text-sm font-semibold text-slate-900">Daily Cron Run</div>
-                        <div class="text-xs text-slate-500">Billing cron executed within last 36 hours</div>
-                    </div>
-                    <div class="flex items-center gap-2">
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div>
+                <div class="text-sm font-semibold text-slate-900">Daily Cron Run</div>
+                <div class="text-xs text-slate-500">Billing cron executed within last {{ $dailyCronWindowHours ?? 24 }} hours</div>
+            </div>
+            <div class="flex items-center gap-2">
                         @if($dailyCronRun)
                             <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
                                 <svg class="mr-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -238,6 +238,14 @@
                     </div>
                     <p class="text-xs text-slate-500">The hour of the day we prefer the cron to run; make sure your OS scheduler aligns with this value.</p>
                     <p class="text-xs font-semibold text-amber-600">Important Note: Keeping the cron time in sync prevents duplicate runs in a single day.</p>
+                </div>
+                <div class="mt-6 rounded-2xl border border-white/10 bg-white/5 text-xs text-slate-700">
+                    <div class="flex flex-col gap-1">
+                        <p>Billing cycle runs daily via scheduler. Verify task setup for production.</p>
+                        <div>
+                            Portal time: <span id="portal-time" data-timezone="{{ $portalTimeZone ?? config('app.timezone', 'UTC') }}">{{ $portalTimeLabel ?? '' }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -382,4 +390,26 @@
             </div>
         </div>
     </div>
+
+    
+    <script>
+        const portalTimeEl = document.getElementById('portal-time');
+        if (portalTimeEl) {
+            const tz = portalTimeEl.dataset.timezone || '{{ config('app.timezone', 'UTC') }}';
+            const formatter = new Intl.DateTimeFormat(undefined, {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                timeZone: tz,
+            });
+
+            const updateTime = () => {
+                portalTimeEl.textContent = formatter.format(new Date());
+            };
+
+            updateTime();
+            setInterval(updateTime, 1000);
+        }
+    </script>
 @endsection
