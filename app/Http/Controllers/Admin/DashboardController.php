@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
 use App\Models\AccountingEntry;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\License;
 use App\Models\Order;
@@ -12,11 +12,27 @@ use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\SupportTicket;
+use App\Models\User;
+use App\Services\AutomationStatusService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public function __construct(private AutomationStatusService $automationStatusService)
+    {
+    }
+
     public function index()
     {
+        $automationStatusPayload = $this->automationStatusService->getStatusPayload();
+        $automationSummary = [
+            'lastCompletionText' => $automationStatusPayload['lastCompletionText'] ?? 'Never',
+            'statusLabel' => $automationStatusPayload['statusLabel'] ?? 'Pending',
+            'statusClasses' => $automationStatusPayload['statusClasses'] ?? 'bg-slate-100 text-slate-600',
+            'statusUrl' => route('admin.automation-status'),
+        ];
+
         $startDate = now()->subDays(7)->startOfDay();
         $endDate = now()->endOfDay();
         $dailyInvoiceCounts = Invoice::selectRaw('DATE(created_at) as day, COUNT(*) as total')
@@ -43,6 +59,11 @@ class DashboardController extends Controller
             ['label' => 'Inactive Tickets Closed', 'value' => $automation['tickets_closed'], 'color' => 'sky', 'stroke' => '#0ea5e9'],
             ['label' => 'Overdue Reminders', 'value' => $automation['overdue_reminders'], 'color' => 'rose', 'stroke' => '#f43f5e'],
         ];
+        $seriesCount = max(1, count($automationRuns));
+        foreach ($automationMetrics as &$metric) {
+            $metric['series'] = array_fill(0, $seriesCount, $metric['value']);
+        }
+        unset($metric);
 
         $periods = [
             'today' => [now()->startOfDay(), now()->endOfDay()],
@@ -200,6 +221,48 @@ class DashboardController extends Controller
 
         $currency = strtoupper((string) Setting::getValue('currency', 'USD'));
 
+        $activeCustomerCount = Customer::where('status', 'active')->count();
+        $onlineThreshold = Carbon::now()->subHour()->timestamp;
+        $onlineUsersCount = (int) DB::table('sessions')
+            ->whereNotNull('user_id')
+            ->where('last_activity', '>=', $onlineThreshold)
+            ->distinct('user_id')
+            ->count('user_id');
+
+        $sessionRows = DB::table('sessions')
+            ->whereNotNull('user_id')
+            ->orderByDesc('last_activity')
+            ->get();
+        $seen = [];
+        $recentSessions = [];
+        foreach ($sessionRows as $sessionRow) {
+            if (! $sessionRow->user_id || isset($seen[$sessionRow->user_id])) {
+                continue;
+            }
+            $seen[$sessionRow->user_id] = true;
+            $recentSessions[] = $sessionRow;
+            if (count($recentSessions) >= 12) {
+                break;
+            }
+        }
+
+        $userIds = array_filter(array_map(fn ($row) => $row->user_id, $recentSessions));
+        $users = User::with('customer')->whereIn('id', $userIds)->get()->keyBy('id');
+        $recentClients = collect($recentSessions)->map(function ($sessionRow) use ($users) {
+            $user = $users[$sessionRow->user_id] ?? null;
+            $customerName = $user?->customer?->name;
+            $displayName = $customerName ?: ($user->name ?? 'Unknown User');
+
+            return [
+                'name' => $displayName,
+                'customer_id' => $user?->customer?->id,
+                'last_login' => $sessionRow->last_activity
+                    ? Carbon::createFromTimestamp($sessionRow->last_activity)->diffForHumans()
+                    : 'Unknown',
+                'ip' => $sessionRow->ip_address,
+            ];
+        });
+
         return view('admin.dashboard', [
             'customerCount' => Customer::count(),
             'productCount' => Product::count(),
@@ -213,10 +276,16 @@ class DashboardController extends Controller
             'automation' => $automation,
             'automationRuns' => $automationRuns,
             'automationMetrics' => $automationMetrics,
+            'automationSummary' => $automationSummary,
             'periodMetrics' => $periodMetrics,
             'periodSeries' => $periodSeries,
             'billingAmounts' => $billingAmounts,
             'currency' => $currency,
+            'clientActivity' => [
+                'activeCount' => $activeCustomerCount,
+                'onlineCount' => $onlineUsersCount,
+                'recentClients' => $recentClients,
+            ],
         ]);
     }
 }

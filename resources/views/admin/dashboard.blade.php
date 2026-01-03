@@ -202,48 +202,11 @@
         @endphp
 
         @php
-            use App\Support\StatusColorHelper;
-            $billingLastRunAt = \App\Models\Setting::getValue('billing_last_run_at');
-            $billingLastStatus = \App\Models\Setting::getValue('billing_last_status');
-            $billingLastError = \App\Models\Setting::getValue('billing_last_error');
-            
-            $lastRunText = 'Never run';
-            $statusToDisplay = 'pending';
-            
-            if ($billingLastRunAt) {
-                $lastRun = \Carbon\Carbon::parse($billingLastRunAt);
-                $now = \Carbon\Carbon::now();
-                $diff = $lastRun->diffInSeconds($now);
-                
-                if ($diff < 60) {
-                    $lastRunText = 'Just now';
-                } elseif ($diff < 3600) {
-                    $mins = ceil($diff / 60);
-                    $lastRunText = $mins === 1 ? '1 minute ago' : $mins . ' minutes ago';
-                } elseif ($diff < 86400) {
-                    $hours = ceil($diff / 3600);
-                    $lastRunText = $hours === 1 ? '1 hour ago' : $hours . ' hours ago';
-                } else {
-                    $days = ceil($diff / 86400);
-                    $lastRunText = $days === 1 ? 'Yesterday' : $days . ' days ago';
-                }
-                
-                if ($billingLastStatus === 'success') {
-                    $statusToDisplay = 'success';
-                } elseif ($billingLastStatus === 'running') {
-                    $statusToDisplay = 'running';
-                } elseif ($billingLastStatus === 'failed') {
-                    $statusToDisplay = 'failed';
-                }
-            }
-            $statusColors = StatusColorHelper::getStatusColors($statusToDisplay);
-            $statusBadgeClass = "{$statusColors['bg']} {$statusColors['text']}";
-            $statusLabel = match($statusToDisplay) {
-                'success' => '✓ Success',
-                'running' => '⟳ Running',
-                'failed' => '✕ Failed',
-                default => 'Pending',
-            };
+            $automationSummary = $automationSummary ?? [];
+            $lastRunText = $automationSummary['lastCompletionText'] ?? 'Never';
+            $statusBadgeClass = $automationSummary['statusClasses'] ?? 'bg-slate-100 text-slate-600';
+            $statusLabel = $automationSummary['statusLabel'] ?? 'Pending';
+            $automationStatusUrl = $automationSummary['statusUrl'] ?? route('admin.automation-status');
         @endphp
 
         <div class="card p-6">
@@ -251,33 +214,92 @@
                 <div>
                     <div class="section-label">Automation Overview</div>
                     <div class="mt-1 text-sm text-slate-500">Last Automation Run: {{ $lastRunText }}</div>
-                    @if($billingLastStatus === 'failed' && $billingLastError)
-                        <div class="mt-1 text-xs text-rose-600">Error: {{ substr($billingLastError, 0, 80) }}{{ strlen($billingLastError) > 80 ? '...' : '' }}</div>
-                    @endif
+                    <a href="{{ $automationStatusUrl }}" class="mt-1 inline-flex items-center text-xs font-semibold text-teal-600 hover:text-teal-500">
+                        View automation status
+                    </a>
                 </div>
                 <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusBadgeClass }}">{{ $statusLabel }}</span>
             </div>
 
             <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
                 @foreach($automationMetrics as $metric)
+                    @php
+                        $series = $metric['series'] ?? [];
+                        $seriesCount = max(1, count($series));
+                        $seriesStep = $seriesCount === 1 ? 120 : 120 / ($seriesCount - 1);
+                        $seriesMax = !empty($series) ? max($series) : 0;
+                    @endphp
                     <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">{{ $metric['label'] }}</div>
                         <div class="mt-2 flex items-center justify-between">
                             <div class="text-2xl font-semibold text-slate-900">{{ $metric['value'] }}</div>
                             <svg viewBox="0 0 120 32" class="h-8 w-28">
-                                <polygon fill="{{ $metric['stroke'] }}22" points="@foreach($automationRuns as $i => $point){{ $i * (120 / (count($automationRuns) - 1)) }} {{ 31 }} @endforeach 120 31"></polygon>
+                                <polygon fill="{{ $metric['stroke'] }}22" points="@foreach($series as $i => $point){{ $seriesCount === 1 ? 0 : $i * $seriesStep }} 31 @endforeach 120 31"></polygon>
                                 <polyline
                                     fill="none"
                                     stroke="{{ $metric['stroke'] }}"
                                     stroke-width="2"
                                     stroke-linecap="square"
-                                    points="@foreach($automationRuns as $i => $point){{ $i * (120 / (count($automationRuns) - 1)) }},{{ 31 - ($point / $automationMax * 30) }} @endforeach"
+                                    points="@foreach($series as $i => $point){{ $seriesCount === 1 ? 0 : $i * $seriesStep }},{{ 31 - ($seriesMax ? ($point / $seriesMax * 30) : 0) }} @endforeach"
                                 ></polyline>
                             </svg>
                         </div>
                     </div>
                 @endforeach
             </div>
+        </div>
+    </div>
+
+    @php
+        $clientActivity = $clientActivity ?? ['activeCount' => 0, 'onlineCount' => 0, 'recentClients' => collect()];
+        $recentClients = $clientActivity['recentClients'] ?? collect();
+    @endphp
+
+    <div class="mt-8 card p-6 shadow-sm">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="section-label">Client Activity</div>
+                <div class="mt-1 text-xs text-slate-500">Sessions from the last logins</div>
+            </div>
+            <div class="flex gap-2 text-xs text-slate-500">
+                <span class="rounded-full border border-slate-200 px-3 py-1">Refresh</span>
+            </div>
+        </div>
+
+        <div class="mt-6 grid gap-4 sm:grid-cols-2">
+            <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                    <i class="pe-7s-user text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-xs uppercase tracking-[0.3em] text-slate-400">Active Clients</div>
+                    <div class="text-2xl font-semibold text-slate-900">{{ number_format($clientActivity['activeCount'] ?? 0) }}</div>
+                </div>
+            </div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                    <i class="pe-7s-smile text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-xs uppercase tracking-[0.3em] text-slate-400">Users Online</div>
+                    <div class="text-2xl font-semibold text-slate-900">{{ number_format($clientActivity['onlineCount'] ?? 0) }}</div>
+                    <div class="text-xs text-slate-500">Last hour</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 space-y-2">
+            @foreach($recentClients as $client)
+                <div class="flex flex-col rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700">
+                    <div class="flex items-center justify-between text-xs text-slate-500">
+                        <span>{{ $client['last_login'] }}</span>
+                        <span>{{ $client['ip'] ?? '—' }}</span>
+                    </div>
+                    <a href="{{ $client['customer_id'] ? route('admin.customers.show', $client['customer_id']) : '#' }}" class="mt-1 block text-sm font-semibold text-slate-900 hover:text-teal-600">
+                        {{ $client['name'] }}
+                    </a>
+                </div>
+            @endforeach
         </div>
     </div>
 

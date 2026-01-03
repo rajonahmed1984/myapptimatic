@@ -153,7 +153,7 @@
                             <span class="text-slate-300">|</span>
                             <a href="{{ route('admin.support-tickets.index', ['status' => 'customer_reply']) }}" class="flex items-center gap-2">
                                 <span class="stat">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>
-                                Customer Reply(ies) Pending
+                                Ticket(s) Awaiting Reply
                             </a>
                         </div>
                     @endif
