@@ -35,6 +35,7 @@ use App\Http\Controllers\Client\ServiceController as ClientServiceController;
 use App\Http\Controllers\Client\SupportTicketController as ClientSupportTicketController;
 use App\Http\Controllers\BrandingAssetController;
 use App\Http\Controllers\CronController;
+use App\Http\Controllers\SupportTicketAttachmentController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\PublicProductController;
@@ -51,6 +52,10 @@ Route::get('/branding/{path}', [BrandingAssetController::class, 'show'])
     ->name('branding.asset');
 
 Route::get('/cron/billing', [CronController::class, 'billing'])->name('cron.billing');
+
+Route::get('/support-ticket-replies/{reply}/attachment', [SupportTicketAttachmentController::class, 'show'])
+    ->whereNumber('reply')
+    ->name('support-ticket-replies.attachment');
 
 Route::match(['GET', 'POST'], '/payments/sslcommerz/{attempt}/success', [PaymentCallbackController::class, 'sslcommerzSuccess'])
     ->name('payments.sslcommerz.success');
