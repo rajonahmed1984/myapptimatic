@@ -38,6 +38,18 @@
                 <div>
                     <label class="text-sm text-slate-600">Phone</label>
                     <input name="phone" value="{{ old('phone', $customer->phone) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>                
+                <div>
+                    <label class="text-sm text-slate-600">Address</label>
+                    <textarea name="address" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('address', $customer->address) }}</textarea>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Notes</label>
+                    <textarea name="notes" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $customer->notes) }}</textarea>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Override access until</label>
+                    <input name="access_override_until" type="date" value="{{ old('access_override_until', optional($customer->access_override_until)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Status</label>
@@ -45,18 +57,6 @@
                         <option value="active" @selected($customer->status === 'active')>Active</option>
                         <option value="inactive" @selected($customer->status === 'inactive')>Inactive</option>
                     </select>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="text-sm text-slate-600">Address</label>
-                    <textarea name="address" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('address', $customer->address) }}</textarea>
-                </div>
-                <div>
-                    <label class="text-sm text-slate-600">Override access until</label>
-                    <input name="access_override_until" type="date" value="{{ old('access_override_until', optional($customer->access_override_until)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                </div>
-                <div class="md:col-span-2">
-                    <label class="text-sm text-slate-600">Notes</label>
-                    <textarea name="notes" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $customer->notes) }}</textarea>
                 </div>
             </div>
 
