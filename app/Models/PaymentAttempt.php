@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class PaymentAttempt extends Model
 {
     protected $fillable = [
+        'uuid',
         'invoice_id',
         'customer_id',
         'payment_gateway_id',
@@ -28,6 +29,22 @@ class PaymentAttempt extends Model
         'response' => 'array',
         'processed_at' => 'datetime',
     ];
+
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function (self $attempt) {
+            if (empty($attempt->uuid)) {
+                $attempt->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+    }
 
     public function invoice(): BelongsTo
     {

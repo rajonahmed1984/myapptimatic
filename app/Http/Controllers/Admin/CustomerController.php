@@ -31,7 +31,7 @@ class CustomerController extends Controller
                     $query->where('status', 'active');
                 }])
                 ->latest()
-                ->get(),
+                ->paginate(25),
         ]);
     }
 

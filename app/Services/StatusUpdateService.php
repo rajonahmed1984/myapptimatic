@@ -8,8 +8,11 @@ use App\Models\License;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\SupportTicket;
+use App\Models\StatusAuditLog;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
+use App\Events\InvoiceOverdue;
+use App\Events\SubscriptionSuspended;
 
 class StatusUpdateService
 {
@@ -27,10 +30,21 @@ class StatusUpdateService
             ->get();
 
         foreach ($invoices as $invoice) {
+            $previousStatus = $invoice->status;
             $invoice->update([
                 'status' => 'overdue',
                 'overdue_at' => $invoice->overdue_at ?? Carbon::now(),
             ]);
+
+            StatusAuditLog::logChange(
+                Invoice::class,
+                $invoice->id,
+                $previousStatus,
+                'overdue',
+                'auto_overdue'
+            );
+
+            InvoiceOverdue::dispatch($invoice);
 
             SystemLogger::write('activity', 'Invoice marked as overdue automatically.', [
                 'invoice_id' => $invoice->id,
@@ -77,7 +91,22 @@ class StatusUpdateService
             }
 
             if ($subscription->status !== 'suspended') {
+                $previousStatus = $subscription->status;
+                $licenseIds = $subscription->licenses()
+                    ->where('status', 'active')
+                    ->pluck('id');
+
                 $subscription->update(['status' => 'suspended']);
+
+                StatusAuditLog::logChange(
+                    Subscription::class,
+                    $subscription->id,
+                    $previousStatus,
+                    'suspended',
+                    'auto_suspend'
+                );
+
+                SubscriptionSuspended::dispatch($subscription);
 
                 SystemLogger::write('activity', 'Subscription suspended automatically due to overdue invoice.', [
                     'subscription_id' => $subscription->id,
@@ -89,9 +118,23 @@ class StatusUpdateService
             }
 
             // Also suspend associated licenses
+            $affected = $subscription->licenses()
+                ->where('status', 'active')
+                ->get(['id', 'status']);
+
             $subscription->licenses()
                 ->where('status', 'active')
                 ->update(['status' => 'suspended']);
+
+            foreach ($affected as $license) {
+                StatusAuditLog::logChange(
+                    License::class,
+                    $license->id,
+                    $license->status,
+                    'suspended',
+                    'auto_suspend'
+                );
+            }
         }
 
         return $count;
@@ -138,6 +181,14 @@ class StatusUpdateService
                 'subscription_id' => $subscription->id,
             ]);
 
+            StatusAuditLog::logChange(
+                Subscription::class,
+                $subscription->id,
+                'suspended',
+                'active',
+                'auto_unsuspend'
+            );
+
             // Also unsuspend associated licenses
             $subscription->licenses()
                 ->where('status', 'suspended')
@@ -178,11 +229,20 @@ class StatusUpdateService
                 continue;
             }
 
+            $previousStatus = $subscription->status;
             $subscription->update([
                 'status' => 'cancelled',
                 'auto_renew' => false,
                 'cancelled_at' => Carbon::now(),
             ]);
+
+            StatusAuditLog::logChange(
+                Subscription::class,
+                $subscription->id,
+                $previousStatus,
+                'cancelled',
+                'auto_termination'
+            );
 
             SystemLogger::write('activity', 'Subscription terminated automatically due to old overdue invoice.', [
                 'subscription_id' => $subscription->id,
@@ -191,9 +251,23 @@ class StatusUpdateService
             ]);
 
             // Also revoke associated licenses
+            $licenseStatuses = $subscription->licenses()
+                ->whereIn('status', ['active', 'suspended'])
+                ->pluck('status', 'id');
+
             $subscription->licenses()
                 ->whereIn('status', ['active', 'suspended'])
                 ->update(['status' => 'revoked']);
+
+            foreach ($licenseStatuses as $id => $oldStatus) {
+                StatusAuditLog::logChange(
+                    License::class,
+                    $id,
+                    $oldStatus,
+                    'revoked',
+                    'auto_termination'
+                );
+            }
 
             $count++;
         }
@@ -249,7 +323,16 @@ class StatusUpdateService
             ->get();
 
         foreach ($licenses as $license) {
+            $previousStatus = $license->status;
             $license->update(['status' => 'revoked']);
+
+            StatusAuditLog::logChange(
+                License::class,
+                $license->id,
+                $previousStatus,
+                'revoked',
+                'auto_expired'
+            );
 
             SystemLogger::write('activity', 'License revoked due to expiration.', [
                 'license_id' => $license->id,

@@ -35,6 +35,31 @@
                 <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $nextDailyRunText }}</div>
                 <div class="mt-1 text-xs text-slate-500">{{ $nextDailyRunAt }}</div>
             </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">AI / Queue Health</div>
+                <div class="mt-2 flex items-center gap-2">
+                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $aiHealth['status_classes'] }}">{{ $aiHealth['status_label'] }}</span>
+                    <span class="text-xs text-slate-500">Queue: {{ $aiHealth['queue_connection'] }}</span>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-700">
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">AI Enabled</div>
+                        <div class="font-semibold">{{ $aiHealth['enabled'] ? 'Yes' : 'No' }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Risk Module</div>
+                        <div class="font-semibold">{{ $aiHealth['risk_enabled'] ? 'On' : 'Off' }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Pending Jobs</div>
+                        <div class="font-semibold">{{ $aiHealth['queue_pending'] }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Failed Jobs</div>
+                        <div class="font-semibold {{ $aiHealth['queue_failed'] > 0 ? 'text-rose-600' : '' }}">{{ $aiHealth['queue_failed'] }}</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         @if($lastStatus === 'failed' && $lastError)

@@ -33,6 +33,7 @@ use App\Http\Controllers\Client\OrderController as ClientOrderController;
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\Client\ServiceController as ClientServiceController;
 use App\Http\Controllers\Client\SupportTicketController as ClientSupportTicketController;
+use App\Models\PaymentAttempt;
 use App\Http\Controllers\BrandingAssetController;
 use App\Http\Controllers\CronController;
 use App\Http\Controllers\SupportTicketAttachmentController;
@@ -47,27 +48,44 @@ Route::get('/', [PublicProductController::class, 'index'])
 
 Route::redirect('/admin', '/admin/login');
 
+// PaymentAttempt route binding supports UUID (preferred) and falls back to numeric ID for legacy links.
+Route::bind('attempt', function ($value) {
+    return PaymentAttempt::query()
+        ->where('uuid', $value)
+        ->orWhere('id', $value)
+        ->firstOrFail();
+});
+
 Route::get('/branding/{path}', [BrandingAssetController::class, 'show'])
     ->where('path', '.*')
     ->name('branding.asset');
 
-Route::get('/cron/billing', [CronController::class, 'billing'])->name('cron.billing');
+Route::get('/cron/billing', [CronController::class, 'billing'])
+    ->middleware(['restrict.cron', 'throttle:cron-endpoint'])
+    ->name('cron.billing');
 
 Route::get('/support-ticket-replies/{reply}/attachment', [SupportTicketAttachmentController::class, 'show'])
     ->whereNumber('reply')
+    ->middleware('auth')
     ->name('support-ticket-replies.attachment');
 
 Route::match(['GET', 'POST'], '/payments/sslcommerz/{attempt}/success', [PaymentCallbackController::class, 'sslcommerzSuccess'])
+    ->middleware('throttle:payment-callbacks')
     ->name('payments.sslcommerz.success');
 Route::match(['GET', 'POST'], '/payments/sslcommerz/{attempt}/fail', [PaymentCallbackController::class, 'sslcommerzFail'])
+    ->middleware('throttle:payment-callbacks')
     ->name('payments.sslcommerz.fail');
 Route::match(['GET', 'POST'], '/payments/sslcommerz/{attempt}/cancel', [PaymentCallbackController::class, 'sslcommerzCancel'])
+    ->middleware('throttle:payment-callbacks')
     ->name('payments.sslcommerz.cancel');
 Route::get('/payments/paypal/{attempt}/return', [PaymentCallbackController::class, 'paypalReturn'])
+    ->middleware('throttle:payment-callbacks')
     ->name('payments.paypal.return');
 Route::get('/payments/paypal/{attempt}/cancel', [PaymentCallbackController::class, 'paypalCancel'])
+    ->middleware('throttle:payment-callbacks')
     ->name('payments.paypal.cancel');
 Route::match(['GET', 'POST'], '/payments/bkash/{attempt}/callback', [PaymentCallbackController::class, 'bkashCallback'])
+    ->middleware('throttle:payment-callbacks')
     ->name('payments.bkash.callback');
 
 Route::middleware('guest')->group(function () {

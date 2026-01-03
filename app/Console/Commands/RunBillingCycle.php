@@ -13,6 +13,7 @@ use App\Services\AdminNotificationService;
 use App\Services\ClientNotificationService;
 use App\Models\SupportTicket;
 use App\Support\Branding;
+use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -42,37 +43,68 @@ class RunBillingCycle extends Command
         Setting::setValue('billing_last_status', 'running');
         Setting::setValue('billing_last_error', '');
         $metrics = $this->emptyMetrics();
+        $stepErrors = [];
+
+        SystemLogger::write('module', 'Billing run started.', [
+            'started_at' => $startedAt->toDateTimeString(),
+        ]);
 
         try {
             $today = Carbon::today();
 
-            $invoiceMetrics = $this->generateInvoices($today);
-            $metrics['invoices_generated'] = $invoiceMetrics['generated'];
-            $metrics['fixed_term_terminations'] = $invoiceMetrics['fixed_term_terminations'];
-            
-            // Use StatusUpdateService for status updates
-            $metrics['invoices_overdue'] = $this->statusUpdateService->updateInvoiceOverdueStatus($today);
-            $metrics['late_fees_added'] = $this->applyLateFees($today);
-            $metrics['auto_cancellations'] = $this->applyAutoCancellation($today);
-            $metrics['suspensions'] = $this->statusUpdateService->updateSubscriptionSuspensionStatus($today);
-            $metrics['terminations'] = $this->statusUpdateService->updateSubscriptionTerminationStatus($today);
-            $metrics['unsuspensions'] = $this->statusUpdateService->updateSubscriptionUnsuspensionStatus();
-            $metrics['client_status_updates'] = $this->statusUpdateService->updateCustomerStatus();
-            $metrics['licenses_expired'] = $this->statusUpdateService->updateLicenseExpiryStatus($today);
-            
-            $metrics['invoice_reminders_sent'] = $this->sendInvoiceReminders($today);
-            $metrics['ticket_auto_closed'] = $this->statusUpdateService->updateSupportTicketAutoCloseStatus($today);
-            $metrics['ticket_admin_reminders'] = $this->sendTicketAdminReminders($today);
-            $metrics['ticket_feedback_requests'] = $this->sendTicketFeedbackRequests($today);
-            $metrics['license_expiry_notices'] = $this->sendLicenseExpiryNotices($today);
-            $metrics['tickets_deleted'] = $this->cleanupClosedTickets($today);
+            $runStep = function (string $step, callable $fn) use (&$metrics, &$stepErrors) {
+                try {
+                    return $fn();
+                } catch (\Throwable $e) {
+                    $stepErrors[$step] = $e->getMessage();
+                    SystemLogger::write('module', 'Billing step failed.', [
+                        'step' => $step,
+                        'error' => $e->getMessage(),
+                    ], level: 'error');
+
+                    return null;
+                }
+            };
+
+            $invoiceMetrics = $runStep('generate_invoices', fn () => $this->generateInvoices($today));
+            if ($invoiceMetrics) {
+                $metrics['invoices_generated'] = $invoiceMetrics['generated'];
+                $metrics['fixed_term_terminations'] = $invoiceMetrics['fixed_term_terminations'];
+            }
+
+            $metrics['invoices_overdue'] = $runStep('invoices_overdue', fn () => $this->statusUpdateService->updateInvoiceOverdueStatus($today)) ?? 0;
+            $metrics['late_fees_added'] = $runStep('late_fees', fn () => $this->applyLateFees($today)) ?? 0;
+            $metrics['auto_cancellations'] = $runStep('auto_cancellations', fn () => $this->applyAutoCancellation($today)) ?? 0;
+            $metrics['suspensions'] = $runStep('suspensions', fn () => $this->statusUpdateService->updateSubscriptionSuspensionStatus($today)) ?? 0;
+            $metrics['terminations'] = $runStep('terminations', fn () => $this->statusUpdateService->updateSubscriptionTerminationStatus($today)) ?? 0;
+            $metrics['unsuspensions'] = $runStep('unsuspensions', fn () => $this->statusUpdateService->updateSubscriptionUnsuspensionStatus()) ?? 0;
+            $metrics['client_status_updates'] = $runStep('client_status_updates', fn () => $this->statusUpdateService->updateCustomerStatus()) ?? 0;
+            $metrics['licenses_expired'] = $runStep('licenses_expired', fn () => $this->statusUpdateService->updateLicenseExpiryStatus($today)) ?? 0;
+            $metrics['invoice_reminders_sent'] = $runStep('invoice_reminders', fn () => $this->sendInvoiceReminders($today)) ?? 0;
+            $metrics['ticket_auto_closed'] = $runStep('ticket_auto_close', fn () => $this->statusUpdateService->updateSupportTicketAutoCloseStatus($today)) ?? 0;
+            $metrics['ticket_admin_reminders'] = $runStep('ticket_admin_reminders', fn () => $this->sendTicketAdminReminders($today)) ?? 0;
+            $metrics['ticket_feedback_requests'] = $runStep('ticket_feedback', fn () => $this->sendTicketFeedbackRequests($today)) ?? 0;
+            $metrics['license_expiry_notices'] = $runStep('license_expiry_notices', fn () => $this->sendLicenseExpiryNotices($today)) ?? 0;
+            $metrics['tickets_deleted'] = $runStep('ticket_cleanup', fn () => $this->cleanupClosedTickets($today)) ?? 0;
 
             Setting::setValue('billing_last_run_at', Carbon::now()->toDateTimeString());
             Setting::setValue('billing_last_status', 'success');
             Setting::setValue('billing_last_metrics', json_encode($metrics));
+            Setting::setValue('billing_last_error', $stepErrors ? json_encode($stepErrors) : '');
 
             $this->info('Billing run completed.');
             $this->sendCronSummary('success', $metrics, $startedAt, Carbon::now(), null);
+
+            SystemLogger::write('module', 'Billing run completed.', [
+                'started_at' => $startedAt->toDateTimeString(),
+                'finished_at' => Carbon::now()->toDateTimeString(),
+                'metrics' => [
+                    'invoices_generated' => $metrics['invoices_generated'] ?? 0,
+                    'invoices_overdue' => $metrics['invoices_overdue'] ?? 0,
+                    'suspensions' => $metrics['suspensions'] ?? 0,
+                    'terminations' => $metrics['terminations'] ?? 0,
+                ],
+            ]);
 
             return self::SUCCESS;
         } catch (\Throwable $e) {
@@ -83,6 +115,11 @@ class RunBillingCycle extends Command
 
             $this->error('Billing run failed: ' . $e->getMessage());
             $this->sendCronSummary('failed', $metrics, $startedAt, Carbon::now(), $e->getMessage());
+
+            SystemLogger::write('module', 'Billing run failed.', [
+                'started_at' => $startedAt->toDateTimeString(),
+                'error' => $e->getMessage(),
+            ], level: 'error');
 
             return self::FAILURE;
         }

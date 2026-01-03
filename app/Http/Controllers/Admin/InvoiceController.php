@@ -64,10 +64,20 @@ class InvoiceController extends Controller
     public function markPaid(Request $request, Invoice $invoice, AdminNotificationService $adminNotifications)
     {
         $wasPaid = $invoice->status === 'paid';
+        $previousStatus = $invoice->status;
         $invoice->update([
             'status' => 'paid',
             'paid_at' => Carbon::now(),
         ]);
+
+        \App\Models\StatusAuditLog::logChange(
+            Invoice::class,
+            $invoice->id,
+            $previousStatus,
+            'paid',
+            'manual_mark_paid',
+            $request->user()?->id
+        );
 
         if (! $wasPaid) {
             $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
@@ -171,6 +181,15 @@ class InvoiceController extends Controller
             'to_status' => $data['status'],
         ], $request->user()?->id, $request->ip());
 
+        \App\Models\StatusAuditLog::logChange(
+            Invoice::class,
+            $invoice->id,
+            $previousStatus,
+            $data['status'],
+            'admin_update',
+            $request->user()?->id
+        );
+
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice updated.');
     }
@@ -200,7 +219,7 @@ class InvoiceController extends Controller
         }
 
         return view('admin.invoices.index', [
-            'invoices' => $query->get(),
+            'invoices' => $query->paginate(25),
             'title' => $title,
             'statusFilter' => $status,
         ]);

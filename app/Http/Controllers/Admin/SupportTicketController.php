@@ -26,7 +26,7 @@ class SupportTicketController extends Controller
             $ticketsQuery->where('status', $status);
         }
 
-        $tickets = $ticketsQuery->get();
+        $tickets = $ticketsQuery->paginate(25);
 
         $statusCounts = [
             'all' => SupportTicket::count(),

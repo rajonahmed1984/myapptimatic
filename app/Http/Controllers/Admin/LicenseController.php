@@ -7,6 +7,7 @@ use App\Models\License;
 use App\Models\LicenseDomain;
 use App\Models\Product;
 use App\Models\Subscription;
+use App\Models\AnomalyFlag;
 use App\Services\AccessBlockService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class LicenseController extends Controller
         $licenses = License::query()
             ->with(['product', 'subscription.customer', 'subscription.plan', 'subscription.latestOrder', 'domains'])
             ->latest()
-            ->get();
+            ->paginate(25);
 
         $accessBlockService = app(AccessBlockService::class);
         $accessBlockedCustomers = [];
@@ -36,9 +37,17 @@ class LicenseController extends Controller
             $accessBlockedCustomers[$customerId] = $accessBlockService->isCustomerBlocked($customer);
         }
 
+        $anomalyCounts = AnomalyFlag::query()
+            ->selectRaw('model_id, COUNT(*) as total')
+            ->where('model_type', License::class)
+            ->where('state', 'open')
+            ->groupBy('model_id')
+            ->pluck('total', 'model_id');
+
         return view('admin.licenses.index', [
             'licenses' => $licenses,
             'accessBlockedCustomers' => $accessBlockedCustomers,
+            'anomalyCounts' => $anomalyCounts,
         ]);
     }
 

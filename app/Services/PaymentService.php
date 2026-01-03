@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentGateway;
 use App\Support\SystemLogger;
+use App\Models\StatusAuditLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
@@ -93,10 +94,19 @@ class PaymentService
 
         $invoice = $attempt->invoice;
         if ($invoice && $invoice->status !== 'paid') {
+            $previousStatus = $invoice->status;
             $invoice->update([
                 'status' => 'paid',
                 'paid_at' => $invoice->paid_at ?? Carbon::now(),
             ]);
+
+            StatusAuditLog::logChange(
+                Invoice::class,
+                $invoice->id,
+                $previousStatus,
+                'paid',
+                'payment_received'
+            );
             try {
                 app(\App\Services\AdminNotificationService::class)->sendInvoicePaid($invoice);
             } catch (\Throwable) {

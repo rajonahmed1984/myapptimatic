@@ -39,6 +39,7 @@
         <table class="w-full text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
+                    <th class="px-4 py-3">SL</th>
                     <th class="px-4 py-3">Ticket</th>
                     <th class="px-4 py-3">Subject</th>
                     <th class="px-4 py-3">Customer</th>
@@ -50,6 +51,7 @@
             <tbody>
                 @forelse($tickets as $ticket)
                     <tr class="border-b border-slate-100">
+                        <td class="px-4 py-3 text-slate-500">{{ $tickets->firstItem() ? $tickets->firstItem() + $loop->index : $ticket->id }}</td>
                         <td class="px-4 py-3 font-medium text-slate-900">TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $ticket->subject }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $ticket->customer->name }}</td>
@@ -79,6 +81,8 @@
             </tbody>
         </table>
     </div>
+
+    <div class="mt-4">
+        {{ $tickets->links() }}
+    </div>
 @endsection
-
-

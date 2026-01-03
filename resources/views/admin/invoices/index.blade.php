@@ -58,5 +58,8 @@
             </tbody>
         </table>
     </div>
-@endsection
 
+    <div class="mt-4">
+        {{ $invoices->links() }}
+    </div>
+@endsection

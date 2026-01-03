@@ -32,8 +32,11 @@
                     @php($customerId = $license->subscription?->customer?->id)
                     @php($isBlocked = $customerId ? ($accessBlockedCustomers[$customerId] ?? false) : false)
                     @php($licenseStatus = $license->status === 'active' && $isBlocked ? 'blocked' : $license->status)
+                    @php($riskScore = $license->last_risk_score)
+                    @php($riskClass = $riskScore === null ? 'bg-slate-100 text-slate-700' : ($riskScore >= 0.7 ? 'bg-rose-100 text-rose-700' : ($riskScore >= 0.4 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700')))
+                    @php($anomalyCount = $anomalyCounts[$license->id] ?? 0)
                     <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $licenses->firstItem() ? $licenses->firstItem() + $loop->index : $loop->iteration }}</td>
                         <td class="px-4 py-3 font-mono text-xs text-teal-700">
                             <div class="flex items-center gap-2">
                                 <span class="license-key-text">{{ $license->license_key }}</span>
@@ -60,7 +63,19 @@
                         <td class="px-4 py-3 text-slate-500">{{ $license->subscription?->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $license->subscription?->latestOrder?->order_number ?? '--' }}</td>
                         <td class="px-4 py-3">
-                            <x-status-badge :status="$licenseStatus" />
+                            <div class="flex flex-wrap items-center gap-2">
+                                <x-status-badge :status="$licenseStatus" />
+                                @if($riskScore !== null)
+                                    <span class="inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold {{ $riskClass }}">
+                                        Risk {{ number_format($riskScore, 2) }}
+                                    </span>
+                                @endif
+                                @if($anomalyCount > 0)
+                                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700">
+                                        {{ $anomalyCount }} alert{{ $anomalyCount > 1 ? 's' : '' }}
+                                    </span>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
@@ -84,6 +99,10 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+
+    <div class="mt-4">
+        {{ $licenses->links() }}
     </div>
 
     <script>
@@ -119,4 +138,3 @@
         });
     </script>
 @endsection
-

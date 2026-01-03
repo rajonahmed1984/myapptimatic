@@ -11,9 +11,14 @@ use App\Support\Branding;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use DateTimeZone;
+use Illuminate\Cache\RateLimiting\Limit;
+use App\Events\InvoiceOverdue;
+use App\Events\LicenseBlocked;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 
@@ -32,7 +37,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->registerRateLimiters();
         $this->registerEmailLogListener();
+        $this->registerAutomationEventListeners();
 
         try {
             $portalUrl = UrlResolver::portalUrl();
@@ -134,6 +141,27 @@ class AppServiceProvider extends ServiceProvider
         }
     }
 
+    private function registerRateLimiters(): void
+    {
+        RateLimiter::for('license-verify', function ($request) {
+            $ip = $request->ip() ?? 'unknown';
+            $key = (string) $request->input('license_key', 'none');
+
+            return [
+                Limit::perMinute(30)->by($ip),
+                Limit::perMinute(60)->by($ip.'|'.$key),
+            ];
+        });
+
+        RateLimiter::for('cron-endpoint', function ($request) {
+            return Limit::perMinute(10)->by($request->ip() ?? 'unknown');
+        });
+
+        RateLimiter::for('payment-callbacks', function ($request) {
+            return Limit::perMinute(10)->by($request->ip() ?? 'unknown');
+        });
+    }
+
     private function registerEmailLogListener(): void
     {
         Event::listen(MessageSent::class, function (MessageSent $event) {
@@ -165,6 +193,55 @@ class AppServiceProvider extends ServiceProvider
                 'text' => $text,
                 'mailer' => $event->mailer ?? null,
             ]);
+        });
+    }
+
+    private function registerAutomationEventListeners(): void
+    {
+        Event::listen(InvoiceOverdue::class, function (InvoiceOverdue $event) {
+            $invoice = $event->invoice;
+
+            SystemLogger::write('module', 'Invoice overdue event received.', [
+                'invoice_id' => $invoice->id,
+                'customer_id' => $invoice->customer_id,
+                'status' => $invoice->status,
+            ]);
+
+            $to = Setting::getValue('company_email') ?: config('mail.from.address');
+            if ($to) {
+                try {
+                    Mail::raw("Invoice #{$invoice->id} is overdue. Status: {$invoice->status}", function ($message) use ($to) {
+                        $message->to($to)->subject('Invoice overdue alert');
+                    });
+                } catch (\Throwable) {
+                    // Do not break on mail failure.
+                }
+            }
+        });
+
+        Event::listen(LicenseBlocked::class, function (LicenseBlocked $event) {
+            $license = $event->license;
+
+            SystemLogger::write('module', 'License blocked during verification.', [
+                'license_id' => $license->id,
+                'subscription_id' => $license->subscription_id,
+                'customer_id' => $license->subscription?->customer_id,
+                'reason' => $event->reason,
+                'context' => $event->context,
+            ]);
+
+            $to = Setting::getValue('company_email') ?: config('mail.from.address');
+            if ($to) {
+                try {
+                    $requestId = $event->context['request_id'] ?? '';
+                    $reason = $event->reason;
+                    Mail::raw("License {$license->id} blocked during verification. Reason: {$reason}. Request ID: {$requestId}", function ($message) use ($to) {
+                        $message->to($to)->subject('License blocked alert');
+                    });
+                } catch (\Throwable) {
+                    // swallow mail errors
+                }
+            }
         });
     }
 }

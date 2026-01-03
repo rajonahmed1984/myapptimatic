@@ -19,7 +19,7 @@ class SubscriptionController extends Controller
         $subscriptions = Subscription::query()
             ->with(['customer', 'plan.product', 'latestOrder'])
             ->latest()
-            ->get();
+            ->paginate(25);
 
         $accessBlockService = app(AccessBlockService::class);
         $accessBlockedCustomers = [];

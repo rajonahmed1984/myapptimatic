@@ -27,7 +27,7 @@
             <tbody>
                 @forelse($subscriptions as $subscription)
                     <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>                       
+                        <td class="px-4 py-3 text-slate-500">{{ $subscriptions->firstItem() ? $subscriptions->firstItem() + $loop->index : $loop->iteration }}</td>                       
                         <td class="px-4 py-3 text-slate-500">
                             {{ $subscription->latestOrder?->created_at?->format($globalDateFormat) ?? '--' }}
                         </td>
@@ -65,5 +65,8 @@
             </tbody>
         </table>
     </div>
-@endsection
 
+    <div class="mt-4">
+        {{ $subscriptions->links() }}
+    </div>
+@endsection

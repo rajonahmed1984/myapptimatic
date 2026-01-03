@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Setting;
 use App\Support\UrlResolver;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AutomationStatusService
 {
@@ -42,6 +43,12 @@ class AutomationStatusService
         $cronInvoked = $lastRun && $lastRun->diffInHours(Carbon::now()) <= $cronInvocationWindowHours;
         $dailyCronRun = $lastRun && $lastRun->diffInHours(Carbon::now()) <= $dailyCronWindowHours;
         $dailyCronCompleting = $lastStatus === 'success';
+
+        $aiEnabled = (bool) config('ai.enabled');
+        $aiRiskEnabled = (bool) config('ai.license_risk_enabled');
+        $aiQueuePending = $this->queueCount('jobs', 'ai');
+        $aiQueueFailed = $this->queueCount('failed_jobs', 'ai');
+        $aiStatus = $this->aiStatusBadge($aiEnabled, $aiRiskEnabled, $aiQueueFailed);
 
         $dailyActions = [
             [
@@ -203,6 +210,15 @@ class AutomationStatusService
             'portalTimeZone' => $timeZone,
             'portalTimeLabel' => $portalTime->format('g:i:s A'),
             'automationConfig' => $this->automationConfig(),
+            'aiHealth' => [
+                'enabled' => $aiEnabled,
+                'risk_enabled' => $aiRiskEnabled,
+                'queue_pending' => $aiQueuePending,
+                'queue_failed' => $aiQueueFailed,
+                'status_label' => $aiStatus['label'],
+                'status_classes' => $aiStatus['classes'],
+                'queue_connection' => config('queue.default'),
+            ],
         ];
     }
 
@@ -302,5 +318,27 @@ class AutomationStatusService
             'failed' => ['label' => 'Failed', 'classes' => 'bg-rose-100 text-rose-700'],
             default => ['label' => 'Pending', 'classes' => 'bg-slate-100 text-slate-600'],
         };
+    }
+
+    private function aiStatusBadge(bool $enabled, bool $riskEnabled, int $failed): array
+    {
+        if (! $enabled || ! $riskEnabled) {
+            return ['label' => 'Disabled', 'classes' => 'bg-slate-100 text-slate-600'];
+        }
+
+        if ($failed > 0) {
+            return ['label' => 'Attention', 'classes' => 'bg-amber-100 text-amber-700'];
+        }
+
+        return ['label' => 'Healthy', 'classes' => 'bg-emerald-100 text-emerald-700'];
+    }
+
+    private function queueCount(string $table, string $queue): int
+    {
+        try {
+            return (int) DB::table($table)->where('queue', $queue)->count();
+        } catch (\Throwable) {
+            return 0;
+        }
     }
 }

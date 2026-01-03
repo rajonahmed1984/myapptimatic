@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'client' => \App\Http\Middleware\EnsureClient::class,
             'client.block' => \App\Http\Middleware\PreventBlockedClientAccess::class,
             'client.notice' => \App\Http\Middleware\ShareClientInvoiceStatus::class,
+            'verify.api.signature' => \App\Http\Middleware\VerifyApiSignature::class,
+            'restrict.cron' => \App\Http\Middleware\RestrictCronAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -34,7 +34,7 @@
                         $invoiceNumber = $order->invoice ? (is_numeric($order->invoice->number) ? $order->invoice->number : $order->invoice->id) : '--';
                     @endphp
                     <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $orders->firstItem() ? $orders->firstItem() + $loop->index : $loop->iteration }}</td>
                         <td class="px-4 py-3 font-medium text-slate-900">#{{ $order->order_number ?? $order->id }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $order->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $service }}</td>
@@ -69,5 +69,8 @@
             </tbody>
         </table>
     </div>
-@endsection
 
+    <div class="mt-4">
+        {{ $orders->links() }}
+    </div>
+@endsection
