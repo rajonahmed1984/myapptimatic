@@ -661,14 +661,27 @@ class RunBillingCycle extends Command
             ? "{$companyName} Cron Job Activity"
             : "{$companyName} Cron Job Failed";
 
+        // Structured metrics to mirror WHMCS-style cron summary rows.
         $metricCards = [
             ['label' => 'Invoices', 'value' => $metrics['invoices_generated'], 'subtitle' => 'Generated'],
-            ['label' => 'Invoices', 'value' => $metrics['invoices_overdue'], 'subtitle' => 'Marked Overdue'],
             ['label' => 'Late Fees', 'value' => $metrics['late_fees_added'], 'subtitle' => 'Added'],
-            ['label' => 'Suspensions', 'value' => $metrics['suspensions'], 'subtitle' => 'Applied'],
-            ['label' => 'Terminations', 'value' => $metrics['terminations'], 'subtitle' => 'Applied'],
-            ['label' => 'Unsuspensions', 'value' => $metrics['unsuspensions'], 'subtitle' => 'Processed'],
-            ['label' => 'Auto Cancel', 'value' => $metrics['auto_cancellations'], 'subtitle' => 'Invoices'],
+            ['label' => 'Credit Card Charges', 'value' => 0, 'subtitle' => 'Captured'],
+            ['label' => 'Invoice & Overdue Reminders', 'value' => $metrics['invoice_reminders_sent'], 'subtitle' => 'Sent'],
+            ['label' => 'Domain Renewal Notices', 'value' => $metrics['license_expiry_notices'], 'subtitle' => 'Sent'],
+            ['label' => 'Cancellation Requests', 'value' => 0, 'subtitle' => 'Processed'],
+            ['label' => 'Overdue Suspensions', 'value' => $metrics['suspensions'], 'subtitle' => 'Suspended'],
+            ['label' => 'Overdue Terminations', 'value' => $metrics['terminations'], 'subtitle' => 'Terminated'],
+            ['label' => 'Fixed Term Terminations', 'value' => $metrics['fixed_term_terminations'], 'subtitle' => 'Terminated'],
+            ['label' => 'Auto Cancellations', 'value' => $metrics['auto_cancellations'], 'subtitle' => 'Invoices'],
+            ['label' => 'Client Status Update', 'value' => $metrics['client_status_updates'], 'subtitle' => 'Completed'],
+            ['label' => 'Inactive Tickets', 'value' => $metrics['ticket_auto_closed'], 'subtitle' => 'Closed'],
+            ['label' => 'Process Email Campaigns', 'value' => 0, 'subtitle' => 'Emails Queued'],
+            ['label' => 'Process Email Queue', 'value' => 0, 'subtitle' => 'Emails Sent'],
+            ['label' => 'Email Marketer Rules', 'value' => 0, 'subtitle' => 'Emails Sent'],
+            ['label' => 'SSL Sync', 'value' => 0, 'subtitle' => 'Synced'],
+            ['label' => 'Domain Expiry', 'value' => 0, 'subtitle' => 'Expired'],
+            ['label' => 'Data Retention Pruning', 'value' => 0, 'subtitle' => 'Deleted'],
+            ['label' => 'Run Jobs Queue', 'value' => 0, 'subtitle' => 'Executed'],
         ];
 
         try {

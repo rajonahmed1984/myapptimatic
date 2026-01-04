@@ -6,7 +6,6 @@
         : 'Cron automation failed. Review the details below.';
     $statusBg = $status === 'success' ? '#d4f1ce' : '#fee2e2';
     $statusColor = $status === 'success' ? '#3d841a' : '#b91c1c';
-    $chunks = array_chunk($metrics, 3);
 @endphp
 
 @section('content')
@@ -28,43 +27,16 @@
         </div>
     @endif
 
-    <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:18px;">
+    <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:18px;font-family:Arial, sans-serif;color:#475569;font-size:13px;">
         <tbody>
-        @foreach($chunks as $row)
+        @foreach($metrics as $metric)
             <tr>
-                <td style="padding-top:10px;">
-                    <table cellpadding="0" cellspacing="0" width="100%">
-                        <tbody>
-                        <tr>
-                            @foreach($row as $index => $metric)
-                                <td width="180" height="124" align="center" valign="middle" style="font-family:Arial, sans-serif;color:#555;background:#efefef;">
-                                    <table width="90%" cellpadding="0" cellspacing="0">
-                                        <tbody>
-                                        <tr>
-                                            <td align="center" style="text-align:center;font-size:16px;font-weight:600;color:#555;">
-                                                {{ $metric['label'] }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td align="center" style="text-align:center;font-size:42px;color:#111;height:50px;">
-                                                {{ $metric['value'] }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td align="center" style="text-align:center;font-size:13px;font-weight:400;color:#555;">
-                                                {{ $metric['subtitle'] }}
-                                            </td>
-                                        </tr>
-                                        </tbody>
-                                    </table>
-                                </td>
-                                @if($index < count($row) - 1)
-                                    <td width="9" style="font-size:1px">&nbsp;</td>
-                                @endif
-                            @endforeach
-                        </tr>
-                        </tbody>
-                    </table>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;width:60%;">{{ $metric['label'] }}</td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;color:#0f172a;">
+                    {{ $metric['value'] }}
+                </td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:left;color:#64748b;">
+                    {{ $metric['subtitle'] }}
                 </td>
             </tr>
         @endforeach
