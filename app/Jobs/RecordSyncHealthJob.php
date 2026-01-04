@@ -13,13 +13,12 @@ class RecordSyncHealthJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $queue = 'ai';
-
     public function __construct(
         public int $licenseId,
         public ?int $licenseDomainId = null,
         public array $payload = []
     ) {
+        $this->onQueue('ai');
     }
 
     public function handle(): void

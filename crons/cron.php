@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Daily Billing Cron Job (12:00 AM)
+ * 
+ * Handles daily batch operations:
+ * - Invoice generation
+ * - Overdue processing
+ * - Late fees
+ * - Suspensions/Terminations
+ * - Reminders and notifications
+ * 
+ * cPanel Schedule: 0 0 * * *
+ * Command: /usr/local/bin/ea-php82 /home/apptimatic/my.apptimatic.com/crons/cron.php
+ */
+
 use App\Models\Setting;
 use Carbon\Carbon;
 use DateTimeZone;
@@ -13,6 +27,7 @@ require __DIR__ . '/../vendor/autoload.php';
 $app = require __DIR__ . '/../bootstrap/app.php';
 
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
 
 $shouldRun = true;
 $timeZone = (string) Setting::getValue('time_zone', 'UTC');
