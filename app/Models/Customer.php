@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\SalesRepresentative;
 
 class Customer extends Model
 {
@@ -17,6 +18,7 @@ class Customer extends Model
         'phone',
         'address',
         'status',
+        'default_sales_rep_id',
         'access_override_until',
         'referred_by_affiliate_id',
         'notes',
@@ -49,6 +51,11 @@ class Customer extends Model
     public function supportTickets(): HasMany
     {
         return $this->hasMany(SupportTicket::class);
+    }
+
+    public function defaultSalesRep(): BelongsTo
+    {
+        return $this->belongsTo(SalesRepresentative::class, 'default_sales_rep_id');
     }
 
     public function accountingEntries(): HasMany

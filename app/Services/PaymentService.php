@@ -130,6 +130,17 @@ class PaymentService
                 // Client notification failures should not interfere with payment.
             }
 
+            // Commission: create or update earning for this invoice payment (idempotent).
+            try {
+                app(\App\Services\CommissionService::class)->createOrUpdateEarningOnInvoicePaid($invoice->fresh('subscription.customer'));
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Commission earning creation failed after payment.', [
+                    'invoice_id' => $invoice->id,
+                    'payment_attempt_id' => $attempt->id,
+                    'error' => $e->getMessage(),
+                ], level: 'error');
+            }
+
             // Check if customer has any remaining unpaid/overdue invoices
             // If not, clear the billing block
             $customerId = $attempt->customer_id;

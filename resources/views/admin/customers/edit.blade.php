@@ -58,10 +58,20 @@
                         <option value="inactive" @selected($customer->status === 'inactive')>Inactive</option>
                     </select>
                 </div>
+                <div>
+                    <label class="text-sm text-slate-600">Default sales rep</label>
+                    <select name="default_sales_rep_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                        <option value="">None</option>
+                        @foreach($salesReps as $rep)
+                            <option value="{{ $rep->id }}" @selected(old('default_sales_rep_id', $customer->default_sales_rep_id) == $rep->id)>
+                                {{ $rep->name }} @if($rep->status !== 'active') ({{ ucfirst($rep->status) }}) @endif
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
 
             <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Update customer</button>
         </form>
     </div>
 @endsection
-

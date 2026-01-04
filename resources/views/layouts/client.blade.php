@@ -21,46 +21,69 @@
                 </div>
             </div>
 
-            <nav class="mt-10 space-y-2 text-sm">
-                <a class="{{ request()->routeIs('client.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.dashboard') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Overview
-                </a>
-                <a class="{{ request()->routeIs('client.orders.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.orders.index') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Order
-                </a>
-                <a class="{{ request()->routeIs('client.services.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.services.index') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Services
-                </a>
-                <a class="{{ request()->routeIs('client.domains.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.domains.index') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Domains
-                </a>
-                <a class="{{ request()->routeIs('client.invoices.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.invoices.index') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Invoices
-                </a>
-                <a class="{{ request()->routeIs('client.licenses.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.licenses.index') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Licenses
-                </a>
-                <a class="{{ request()->routeIs('client.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.support-tickets.index') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    <span>Support</span>
-                    @if(($clientHeaderStats['pending_admin_replies'] ?? 0) > 0)
-                        <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $clientHeaderStats['pending_admin_replies'] }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->routeIs('client.affiliates.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.affiliates.index') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Affiliates
-                </a>
-                <a class="{{ request()->routeIs('client.profile.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.profile.edit') }}">
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    Profile
-                </a>
+            <nav class="mt-10 space-y-4 text-sm">
+                <div>
+                    <a class="{{ request()->routeIs('client.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.dashboard') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Overview
+                    </a>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Projects & Services</div>
+                    {{-- Client-facing: services list mixes projects and recurring maintenance/subscriptions --}}
+                    <a class="{{ request()->routeIs('client.services.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.services.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Projects & Services
+                    </a>
+                    <a class="{{ request()->routeIs('client.domains.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.domains.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Domains
+                    </a>
+                    <a class="{{ request()->routeIs('client.licenses.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.licenses.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Licenses
+                    </a>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Orders & Requests</div>
+                    <a class="{{ request()->routeIs('client.orders.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.orders.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        My Orders
+                    </a>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Billing & Payments</div>
+                    <a class="{{ request()->routeIs('client.invoices.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.invoices.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Invoices
+                    </a>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Support & Growth</div>
+                    <a class="{{ request()->routeIs('client.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.support-tickets.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        <span>Support</span>
+                        @if(($clientHeaderStats['pending_admin_replies'] ?? 0) > 0)
+                            <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $clientHeaderStats['pending_admin_replies'] }}</span>
+                        @endif
+                    </a>
+                    <a class="{{ request()->routeIs('client.affiliates.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.affiliates.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Affiliates
+                    </a>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Account</div>
+                    <a class="{{ request()->routeIs('client.profile.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.profile.edit') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Profile
+                    </a>
+                </div>
             </nav>
 
             <div class="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
@@ -109,13 +132,26 @@
                     <details class="w-full rounded-2xl border border-slate-200 bg-white/90 p-4">
                         <summary class="cursor-pointer text-sm font-semibold text-slate-700">Menu</summary>
                         <nav class="mt-3 grid gap-2 text-sm">
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Main</div>
                             <a href="{{ route('client.dashboard') }}" class="text-slate-700 hover:text-teal-600">Overview</a>
-                            <a href="{{ route('client.orders.index') }}" class="text-slate-700 hover:text-teal-600">Order</a>
-                            <a href="{{ route('client.services.index') }}" class="text-slate-700 hover:text-teal-600">Services</a>
+
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400 pt-2">Projects & Services</div>
+                            {{-- Client-facing: services list mixes projects and recurring maintenance/subscriptions --}}
+                            <a href="{{ route('client.services.index') }}" class="text-slate-700 hover:text-teal-600">Projects & Services</a>
                             <a href="{{ route('client.domains.index') }}" class="text-slate-700 hover:text-teal-600">Domains</a>
-                            <a href="{{ route('client.invoices.index') }}" class="text-slate-700 hover:text-teal-600">Invoices</a>
                             <a href="{{ route('client.licenses.index') }}" class="text-slate-700 hover:text-teal-600">Licenses</a>
+
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400 pt-2">Orders & Requests</div>
+                            <a href="{{ route('client.orders.index') }}" class="text-slate-700 hover:text-teal-600">My Orders</a>
+
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400 pt-2">Billing & Payments</div>
+                            <a href="{{ route('client.invoices.index') }}" class="text-slate-700 hover:text-teal-600">Invoices</a>
+
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400 pt-2">Support & Growth</div>
                             <a href="{{ route('client.support-tickets.index') }}" class="text-slate-700 hover:text-teal-600">Support</a>
+                            <a href="{{ route('client.affiliates.index') }}" class="text-slate-700 hover:text-teal-600">Affiliates</a>
+
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400 pt-2">Account</div>
                             <a href="{{ route('client.profile.edit') }}" class="text-slate-700 hover:text-teal-600">Profile</a>
                             @if(session()->has('impersonator_id'))
                                 <form method="POST" action="{{ route('impersonate.stop') }}">

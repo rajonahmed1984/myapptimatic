@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'verify.api.signature' => \App\Http\Middleware\VerifyApiSignature::class,
             'restrict.cron' => \App\Http\Middleware\RestrictCronAccess::class,
             'employee' => \App\Http\Middleware\EnsureEmployee::class,
+            'salesrep' => \App\Http\Middleware\EnsureSalesRep::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -37,6 +37,17 @@
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
+                <div>
+                    <label class="text-sm text-slate-600">Default sales rep</label>
+                    <select name="default_sales_rep_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                        <option value="">None</option>
+                        @foreach($salesReps as $rep)
+                            <option value="{{ $rep->id }}" @selected(old('default_sales_rep_id') == $rep->id)>
+                                {{ $rep->name }} @if($rep->status !== 'active') ({{ ucfirst($rep->status) }}) @endif
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="md:col-span-2 flex items-center gap-2 text-sm text-slate-600">
                     <input type="hidden" name="send_account_message" value="0" />
                     <input type="checkbox" name="send_account_message" value="1" @checked(old('send_account_message')) class="rounded border-slate-300 text-teal-500" />

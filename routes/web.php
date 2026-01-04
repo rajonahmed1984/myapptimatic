@@ -19,6 +19,8 @@ use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ProjectController;
+use App\Http\Controllers\Admin\CommissionPayoutController;
+use App\Http\Controllers\Admin\CommissionExportController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\Admin\SystemLogController;
@@ -42,6 +44,9 @@ use App\Http\Controllers\Client\OrderController as ClientOrderController;
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\Client\ServiceController as ClientServiceController;
 use App\Http\Controllers\Client\SupportTicketController as ClientSupportTicketController;
+use App\Http\Controllers\SalesRep\DashboardController as SalesRepDashboardController;
+use App\Http\Controllers\SalesRep\EarningController as SalesRepEarningController;
+use App\Http\Controllers\SalesRep\PayoutController as SalesRepPayoutController;
 use App\Models\PaymentAttempt;
 use App\Http\Controllers\BrandingAssetController;
 use App\Http\Controllers\CronController;
@@ -208,6 +213,14 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('payment-gateways', [PaymentGatewayController::class, 'index'])->name('payment-gateways.index');
     Route::get('payment-gateways/{paymentGateway}/edit', [PaymentGatewayController::class, 'edit'])->name('payment-gateways.edit');
     Route::put('payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');
+    Route::get('commission-payouts', [CommissionPayoutController::class, 'index'])->name('commission-payouts.index');
+    Route::get('commission-payouts/create', [CommissionPayoutController::class, 'create'])->name('commission-payouts.create');
+    Route::post('commission-payouts', [CommissionPayoutController::class, 'store'])->name('commission-payouts.store');
+    Route::get('commission-payouts/{commissionPayout}', [CommissionPayoutController::class, 'show'])->name('commission-payouts.show');
+    Route::post('commission-payouts/{commissionPayout}/pay', [CommissionPayoutController::class, 'markPaid'])->name('commission-payouts.pay');
+    Route::post('commission-payouts/{commissionPayout}/reverse', [CommissionPayoutController::class, 'reverse'])->name('commission-payouts.reverse');
+    Route::get('commission-earnings/export', [CommissionExportController::class, 'exportEarnings'])->name('commission-earnings.export');
+    Route::get('commission-payouts/export', [CommissionExportController::class, 'exportPayouts'])->name('commission-payouts.export');
     Route::get('accounting', [AdminAccountingController::class, 'index'])->name('accounting.index');
     Route::get('accounting/transactions', [AdminAccountingController::class, 'transactions'])->name('accounting.transactions');
     Route::get('accounting/refunds', [AdminAccountingController::class, 'refunds'])->name('accounting.refunds');
@@ -286,6 +299,15 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice'])
         Route::get('/affiliates/payouts', [ClientAffiliateController::class, 'payouts'])->name('affiliates.payouts');
         Route::get('/affiliates/settings', [ClientAffiliateController::class, 'settings'])->name('affiliates.settings');
         Route::put('/affiliates/settings', [ClientAffiliateController::class, 'updateSettings'])->name('affiliates.settings.update');
+    });
+
+Route::middleware(['auth', 'salesrep'])
+    ->prefix('rep')
+    ->name('rep.')
+    ->group(function () {
+        Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
+        Route::get('/earnings', [SalesRepEarningController::class, 'index'])->name('earnings.index');
+        Route::get('/payouts', [SalesRepPayoutController::class, 'index'])->name('payouts.index');
     });
 
 Route::get('/products', [PublicProductController::class, 'index'])

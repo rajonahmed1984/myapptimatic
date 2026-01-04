@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\SalesRepresentative;
 use App\Services\AccessBlockService;
 use App\Services\BillingService;
 use Carbon\Carbon;
@@ -45,6 +46,7 @@ class SubscriptionController extends Controller
         return view('admin.subscriptions.create', [
             'customers' => Customer::query()->orderBy('name')->get(),
             'plans' => Plan::query()->with('product')->orderBy('name')->get(),
+            'salesReps' => SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']),
         ]);
     }
 
@@ -58,6 +60,7 @@ class SubscriptionController extends Controller
             'auto_renew' => ['nullable', 'boolean'],
             'cancel_at_period_end' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
+            'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
         ]);
 
         $plan = Plan::findOrFail($data['plan_id']);
@@ -69,6 +72,7 @@ class SubscriptionController extends Controller
         $subscription = Subscription::create([
             'customer_id' => $data['customer_id'],
             'plan_id' => $data['plan_id'],
+            'sales_rep_id' => $data['sales_rep_id'] ?? null,
             'status' => $data['status'],
             'start_date' => $startDate->toDateString(),
             'current_period_start' => $startDate->toDateString(),
@@ -93,6 +97,7 @@ class SubscriptionController extends Controller
             'subscription' => $subscription->load(['customer', 'plan.product']),
             'customers' => Customer::query()->orderBy('name')->get(),
             'plans' => Plan::query()->with('product')->orderBy('name')->get(),
+            'salesReps' => SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']),
         ]);
     }
 
@@ -110,11 +115,13 @@ class SubscriptionController extends Controller
             'cancel_at_period_end' => ['nullable', 'boolean'],
             'cancelled_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
+            'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
         ]);
 
         $subscription->update([
             'customer_id' => $data['customer_id'],
             'plan_id' => $data['plan_id'],
+            'sales_rep_id' => $data['sales_rep_id'] ?? null,
             'status' => $data['status'],
             'current_period_start' => $data['current_period_start'],
             'current_period_end' => $data['current_period_end'],

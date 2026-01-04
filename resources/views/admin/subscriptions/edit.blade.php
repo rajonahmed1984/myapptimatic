@@ -28,6 +28,17 @@
                     </select>
                 </div>
                 <div>
+                    <label class="text-sm text-slate-600">Sales rep</label>
+                    <select name="sales_rep_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                        <option value="">None</option>
+                        @foreach($salesReps as $rep)
+                            <option value="{{ $rep->id }}" @selected(old('sales_rep_id', $subscription->sales_rep_id) == $rep->id)>
+                                {{ $rep->name }} @if($rep->status !== 'active') ({{ ucfirst($rep->status) }}) @endif
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
                     <label class="text-sm text-slate-600">Status</label>
                     <select name="status" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
                         <option value="active" @selected($subscription->status === 'active')>Active</option>

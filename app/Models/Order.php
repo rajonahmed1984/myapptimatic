@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
+use App\Models\SalesRepresentative;
 
 class Order extends Model
 {
@@ -16,6 +17,7 @@ class Order extends Model
         'plan_id',
         'subscription_id',
         'invoice_id',
+        'sales_rep_id',
         'status',
         'notes',
         'approved_by',
@@ -62,6 +64,11 @@ class Order extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function salesRep(): BelongsTo
+    {
+        return $this->belongsTo(SalesRepresentative::class, 'sales_rep_id');
     }
 
     public function canceller(): BelongsTo

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Support\SystemLogger;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
+use App\Services\CommissionService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,7 +63,12 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function markPaid(Request $request, Invoice $invoice, AdminNotificationService $adminNotifications)
+    public function markPaid(
+        Request $request,
+        Invoice $invoice,
+        AdminNotificationService $adminNotifications,
+        CommissionService $commissionService
+    )
     {
         $wasPaid = $invoice->status === 'paid';
         $previousStatus = $invoice->status;
@@ -103,6 +109,16 @@ class InvoiceController extends Controller
             'customer_id' => $invoice->customer_id,
         ], $request->user()?->id, $request->ip());
 
+        // Commission earning creation (idempotent).
+        try {
+            $commissionService->createOrUpdateEarningOnInvoicePaid($invoice->fresh('subscription.customer'));
+        } catch (\Throwable $e) {
+            SystemLogger::write('module', 'Commission earning failed on manual mark paid.', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ], level: 'error');
+        }
+
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice marked as paid.');
     }
@@ -125,12 +141,17 @@ class InvoiceController extends Controller
             ->with('status', 'Invoice recalculated.');
     }
 
-    public function update(Request $request, Invoice $invoice, AdminNotificationService $adminNotifications): RedirectResponse
+    public function update(
+        Request $request,
+        Invoice $invoice,
+        AdminNotificationService $adminNotifications,
+        CommissionService $commissionService
+    ): RedirectResponse
     {
         $wasPaid = $invoice->status === 'paid';
         $previousStatus = $invoice->status;
         $data = $request->validate([
-            'status' => ['required', Rule::in(['unpaid', 'overdue', 'paid', 'cancelled'])],
+            'status' => ['required', Rule::in(['unpaid', 'overdue', 'paid', 'cancelled', 'refunded'])],
             'issue_date' => ['required', 'date'],
             'due_date' => ['required', 'date', 'after_or_equal:issue_date'],
             'notes' => ['nullable', 'string'],
@@ -190,6 +211,24 @@ class InvoiceController extends Controller
             'admin_update',
             $request->user()?->id
         );
+
+        // Commission creation or reversal based on status transitions.
+        try {
+            if (! $wasPaid && $data['status'] === 'paid') {
+                $commissionService->createOrUpdateEarningOnInvoicePaid($invoice->fresh('subscription.customer'));
+            }
+
+            if (in_array($data['status'], ['cancelled', 'refunded'], true)) {
+                $commissionService->reverseEarningsOnRefund($invoice);
+            }
+        } catch (\Throwable $e) {
+            SystemLogger::write('module', 'Commission update failed on invoice admin update.', [
+                'invoice_id' => $invoice->id,
+                'from_status' => $previousStatus,
+                'to_status' => $data['status'],
+                'error' => $e->getMessage(),
+            ], level: 'error');
+        }
 
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice updated.');

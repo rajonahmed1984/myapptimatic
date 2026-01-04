@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\EmailTemplate;
 use App\Models\SystemLog;
+use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Models\Setting;
 use App\Support\Branding;
@@ -37,7 +38,9 @@ class CustomerController extends Controller
 
     public function create()
     {
-        return view('admin.customers.create');
+        return view('admin.customers.create', [
+            'salesReps' => SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']),
+        ]);
     }
 
     public function store(Request $request)
@@ -53,6 +56,7 @@ class CustomerController extends Controller
             'notes' => ['nullable', 'string'],
             'user_password' => ['nullable', 'string', 'min:8'],
             'send_account_message' => ['nullable', 'boolean'],
+            'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
         ];
 
         if ($request->filled('user_password')) {
@@ -70,6 +74,7 @@ class CustomerController extends Controller
             'status' => $data['status'],
             'access_override_until' => $data['access_override_until'] ?? null,
             'notes' => $data['notes'] ?? null,
+            'default_sales_rep_id' => $data['default_sales_rep_id'] ?? null,
         ]);
 
         if (! empty($data['user_password'])) {
@@ -177,6 +182,7 @@ class CustomerController extends Controller
     {
         return view('admin.customers.edit', [
             'customer' => $customer,
+            'salesReps' => SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']),
         ]);
     }
 
@@ -261,6 +267,7 @@ class CustomerController extends Controller
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'access_override_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
+            'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
         ]);
 
         $customer->update($data);

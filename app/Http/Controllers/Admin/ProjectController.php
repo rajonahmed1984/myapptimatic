@@ -12,6 +12,7 @@ use App\Models\ProjectTask;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Support\SystemLogger;
+use App\Services\CommissionService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -115,7 +116,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function update(Request $request, Project $project): RedirectResponse
+    public function update(Request $request, Project $project, CommissionService $commissionService): RedirectResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:190'],
@@ -131,12 +132,24 @@ class ProjectController extends Controller
             'actual_hours' => ['nullable', 'numeric', 'min:0'],
         ]);
 
+        $previousStatus = $project->status;
         $project->update($data);
 
         SystemLogger::write('activity', 'Project updated.', [
             'project_id' => $project->id,
             'status' => $project->status,
         ], $request->user()?->id, $request->ip());
+
+        if ($previousStatus !== 'completed' && $project->status === 'completed') {
+            try {
+                $commissionService->markEarningPayableOnProjectCompleted($project);
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Commission payable transition failed on project completion.', [
+                    'project_id' => $project->id,
+                    'error' => $e->getMessage(),
+                ], level: 'error');
+            }
+        }
 
         return back()->with('status', 'Project updated.');
     }
