@@ -15,6 +15,9 @@ Schedule::command('billing:run')->daily();
 Schedule::command('queue:work --stop-when-empty')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('horizon:snapshot')->everyFiveMinutes(); // If using Horizon
 
+// Cron health monitor: alert if billing cron missed/failed.
+Schedule::command('cron:monitor')->hourly();
+
 // Payment processing checks
 Schedule::call(function () {
     // Process pending payment attempts
