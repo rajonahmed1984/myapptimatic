@@ -16,6 +16,8 @@ use App\Events\InvoiceOverdue;
 use App\Events\LicenseBlocked;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Mail\Events\MessageFailed;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\RateLimiter;
@@ -164,36 +166,51 @@ class AppServiceProvider extends ServiceProvider
 
     private function registerEmailLogListener(): void
     {
+        // Capture all outgoing mail lifecycle events so /admin/logs/email shows every message.
+        Event::listen(MessageSending::class, function (MessageSending $event) {
+            $this->logEmailEvent('Email sending.', $event->message, $event->mailer ?? null, 'info');
+        });
+
         Event::listen(MessageSent::class, function (MessageSent $event) {
-            $message = $event->message;
-            $to = [];
-            $from = [];
+            $this->logEmailEvent('Email sent.', $event->message, $event->mailer ?? null, 'info');
+        });
 
-            if (method_exists($message, 'getTo') && is_array($message->getTo())) {
-                foreach ($message->getTo() as $address) {
-                    $to[] = strtolower($address->getAddress());
-                }
-            }
-
-            if (method_exists($message, 'getFrom') && is_array($message->getFrom())) {
-                foreach ($message->getFrom() as $address) {
-                    $from[] = strtolower($address->getAddress());
-                }
-            }
-
-            $subject = method_exists($message, 'getSubject') ? (string) $message->getSubject() : '';
-            $html = method_exists($message, 'getHtmlBody') ? (string) $message->getHtmlBody() : '';
-            $text = method_exists($message, 'getTextBody') ? (string) $message->getTextBody() : '';
-
-            SystemLogger::write('email', 'Email sent.', [
-                'subject' => $subject,
-                'to' => $to,
-                'from' => $from,
-                'html' => $html,
-                'text' => $text,
-                'mailer' => $event->mailer ?? null,
+        Event::listen(MessageFailed::class, function (MessageFailed $event) {
+            $this->logEmailEvent('Email failed to send.', $event->message, $event->mailer ?? null, 'error', [
+                'failure' => $event->exception?->getMessage(),
             ]);
         });
+    }
+
+    private function logEmailEvent(string $messageLabel, object $message, ?string $mailer, string $level = 'info', array $extra = []): void
+    {
+        $to = [];
+        $from = [];
+
+        if (method_exists($message, 'getTo') && is_array($message->getTo())) {
+            foreach ($message->getTo() as $address) {
+                $to[] = strtolower($address->getAddress());
+            }
+        }
+
+        if (method_exists($message, 'getFrom') && is_array($message->getFrom())) {
+            foreach ($message->getFrom() as $address) {
+                $from[] = strtolower($address->getAddress());
+            }
+        }
+
+        $subject = method_exists($message, 'getSubject') ? (string) $message->getSubject() : '';
+        $html = method_exists($message, 'getHtmlBody') ? (string) $message->getHtmlBody() : '';
+        $text = method_exists($message, 'getTextBody') ? (string) $message->getTextBody() : '';
+
+        SystemLogger::write('email', $messageLabel, array_merge([
+            'subject' => $subject,
+            'to' => $to,
+            'from' => $from,
+            'html' => $html,
+            'text' => $text,
+            'mailer' => $mailer,
+        ], $extra), level: $level);
     }
 
     private function registerAutomationEventListeners(): void
