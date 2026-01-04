@@ -29,6 +29,17 @@ class PaymentService
             'gateway_reference' => sprintf('%s-%06d', $invoice->number, $attempt->id),
         ]);
 
+        SystemLogger::write('module', 'Payment attempt created.', [
+            'payment_attempt_id' => $attempt->id,
+            'invoice_id' => $attempt->invoice_id,
+            'invoice_number' => $invoice->number,
+            'customer_id' => $invoice->customer_id,
+            'gateway' => $gateway->name,
+            'driver' => $gateway->driver,
+            'amount' => $attempt->amount,
+            'currency' => $attempt->currency,
+        ]);
+
         return $attempt;
     }
 
@@ -288,6 +299,16 @@ class PaymentService
             'response' => $validation,
         ]);
 
+        SystemLogger::write('module', 'SSLCommerz payment validated.', [
+            'payment_attempt_id' => $attempt->id,
+            'invoice_id' => $attempt->invoice_id,
+            'gateway' => $attempt->paymentGateway?->name,
+            'driver' => $attempt->paymentGateway?->driver,
+            'reference' => $reference,
+            'payload' => $payload,
+            'validation' => $validationStatus,
+        ]);
+
         return true;
     }
 
@@ -363,6 +384,16 @@ class PaymentService
         $this->markPaid($attempt, $reference, [
             'payload' => $payload,
             'response' => $response,
+        ]);
+
+        SystemLogger::write('module', 'bKash payment executed.', [
+            'payment_attempt_id' => $attempt->id,
+            'invoice_id' => $attempt->invoice_id,
+            'gateway' => $attempt->paymentGateway?->name,
+            'driver' => $attempt->paymentGateway?->driver,
+            'reference' => $reference,
+            'payload' => $payload,
+            'response_status' => $transactionStatus ?: $statusCode,
         ]);
 
         return true;
