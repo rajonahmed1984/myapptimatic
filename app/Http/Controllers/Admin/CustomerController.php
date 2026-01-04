@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\EmailTemplate;
 use App\Models\SystemLog;
 use App\Models\SalesRepresentative;
+use App\Models\Employee;
 use App\Models\User;
 use App\Models\Setting;
 use App\Support\Branding;
@@ -240,6 +241,11 @@ class CustomerController extends Controller
 
     public function impersonate(Request $request, Customer $customer)
     {
+        // Prevent chaining impersonations
+        if ($request->session()->has('impersonator_id')) {
+            return back()->withErrors(['impersonate' => 'You are already impersonating another account. Stop impersonation first.']);
+        }
+
         $user = $customer->users()
             ->where('role', 'client')
             ->orderBy('id')
@@ -251,9 +257,15 @@ class CustomerController extends Controller
 
         $request->session()->put('impersonator_id', $request->user()->id);
         Auth::login($user);
+        // Enable employee-guard access when impersonating an employee account (same provider).
+        if (Employee::where('user_id', $user->id)->exists()) {
+            Auth::guard('employee')->login($user);
+        } else {
+            Auth::guard('employee')->logout();
+        }
         $request->session()->regenerate();
 
-        return redirect()->route('client.dashboard');
+        return redirect()->to($this->impersonationRedirectPath($user));
     }
 
     public function update(Request $request, Customer $customer)
@@ -295,5 +307,29 @@ class CustomerController extends Controller
 
         return redirect()->route('admin.customers.index')
             ->with('status', 'Customer deleted.');
+    }
+
+    /**
+     * Decide where to send an impersonated session based on the target user's roles.
+     * Priority: active sales rep -> employee -> client dashboard.
+     */
+    private function impersonationRedirectPath(User $user): string
+    {
+        $rep = SalesRepresentative::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->first();
+
+        if ($rep) {
+            return route('rep.dashboard');
+        }
+
+        $isEmployee = Employee::query()->where('user_id', $user->id)->exists();
+
+        if ($isEmployee) {
+            return route('employee.dashboard');
+        }
+
+        return route('client.dashboard');
     }
 }

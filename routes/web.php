@@ -187,6 +187,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('projects/{project}/tasks', [ProjectController::class, 'storeTask'])->name('projects.tasks.store');
     Route::patch('projects/{project}/tasks/{task}', [ProjectController::class, 'updateTask'])->name('projects.tasks.update');
     Route::delete('projects/{project}/tasks/{task}', [ProjectController::class, 'destroyTask'])->name('projects.tasks.destroy');
+    Route::resource('sales-reps', \App\Http\Controllers\Admin\SalesRepresentativeController::class)->except(['show', 'destroy']);
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])->name('support-tickets.index');
     Route::get('support-tickets/{ticket}', [AdminSupportTicketController::class, 'show'])->name('support-tickets.show');
     Route::post('support-tickets/{ticket}/reply', [AdminSupportTicketController::class, 'reply'])->name('support-tickets.reply');

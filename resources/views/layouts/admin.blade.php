@@ -47,6 +47,10 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Orders
                         </a>
+                        <a class="{{ request()->routeIs('admin.sales-reps.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.sales-reps.index') }}">
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Sales Representatives
+                        </a>
                         <a class="{{ request()->routeIs('admin.affiliates.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.affiliates.index') }}">
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Affiliates
@@ -287,6 +291,23 @@
                     </div>
                 </div>
 
+                @if(session()->has('impersonator_id') && !auth()->user()?->isAdmin())
+                    <div class="mx-auto max-w-6xl px-6 pb-3">
+                        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                            <div class="text-[11px] uppercase tracking-[0.28em] text-amber-600">Impersonation</div>
+                            <div class="text-sm text-amber-800">
+                                You are logged in as <span class="font-semibold">{{ auth()->user()->name ?? 'client' }}</span>. Access is limited to their workspace.
+                            </div>
+                            <form method="POST" action="{{ route('impersonate.stop') }}" class="ml-auto">
+                                @csrf
+                                <button type="submit" class="rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-700 transition hover:border-amber-400 hover:bg-amber-100">
+                                    Return to Admin
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="mx-auto flex max-w-6xl px-6 pb-4 md:hidden">
                     <details class="w-full rounded-2xl border border-slate-200 bg-white/90 p-4">
                         <summary class="cursor-pointer text-sm font-semibold text-slate-700">Menu</summary>
@@ -298,6 +319,7 @@
                                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400 pt-2">Sales & Customers</div>
                                 <a href="{{ route('admin.customers.index') }}" class="text-slate-700 hover:text-teal-600">Customers</a>
                                 <a href="{{ route('admin.orders.index') }}" class="text-slate-700 hover:text-teal-600">Orders</a>
+                                <a href="{{ route('admin.sales-reps.index') }}" class="text-slate-700 hover:text-teal-600">Sales Representatives</a>
                                 <a href="{{ route('admin.affiliates.index') }}" class="text-slate-700 hover:text-teal-600">Affiliates</a>
                                 <a href="{{ route('admin.requests.index') }}" class="text-slate-700 hover:text-teal-600">Requests</a>
 

@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.rep')
 
 @section('title', 'My Payouts')
 @section('page-title', 'My Payouts')

@@ -128,6 +128,23 @@
                     </div>
                 </div>
 
+                @if(session()->has('impersonator_id'))
+                    <div class="mx-auto max-w-6xl px-6 pb-3">
+                        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                            <div class="text-[11px] uppercase tracking-[0.28em] text-amber-600">Impersonation</div>
+                            <div class="text-sm text-amber-800">
+                                You are logged in as <span class="font-semibold">{{ auth()->user()->name ?? 'Client' }}</span>. Actions are on behalf of this client.
+                            </div>
+                            <form method="POST" action="{{ route('impersonate.stop') }}" class="ml-auto">
+                                @csrf
+                                <button type="submit" class="rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-700 transition hover:border-amber-400 hover:bg-amber-100">
+                                    Return to Admin
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="mx-auto flex max-w-6xl px-6 pb-4 md:hidden">
                     <details class="w-full rounded-2xl border border-slate-200 bg-white/90 p-4">
                         <summary class="cursor-pointer text-sm font-semibold text-slate-700">Menu</summary>

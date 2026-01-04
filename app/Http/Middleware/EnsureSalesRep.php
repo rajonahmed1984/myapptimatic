@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\SalesRepresentative;
+use Illuminate\Support\Facades\View;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +24,10 @@ class EnsureSalesRep
             ->first();
 
         if (! $rep) {
+            if (View::exists('rep.access-revoked')) {
+                return response()->view('rep.access-revoked', [], 403);
+            }
+
             abort(403, 'Sales representative access required.');
         }
 

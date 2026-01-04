@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\User;
+use App\Models\SalesRepresentative;
 use App\Services\ClientNotificationService;
 use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
@@ -63,6 +64,17 @@ class AuthController extends Controller
 
         if ($user && $user->isAdmin()) {
             return redirect()->route('admin.dashboard');
+        }
+
+        $activeRep = $user
+            ? SalesRepresentative::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->first()
+            : null;
+
+        if ($activeRep) {
+            return redirect()->route('rep.dashboard');
         }
 
         $redirect = $this->redirectTarget($request);

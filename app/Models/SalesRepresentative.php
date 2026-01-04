@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\CommissionEarning;
+use App\Models\CommissionPayout;
 
 class SalesRepresentative extends Model
 {
@@ -32,5 +35,15 @@ class SalesRepresentative extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function earnings(): HasMany
+    {
+        return $this->hasMany(CommissionEarning::class, 'sales_representative_id');
+    }
+
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(CommissionPayout::class, 'sales_representative_id');
     }
 }
