@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\LicenseDomain;
+use App\Models\Project;
 use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -64,6 +65,21 @@ class DashboardController extends Controller
                 ->limit(4)
                 ->get()
             : collect();
+        $projects = $customer
+            ? Project::where('customer_id', $customer->id)
+                ->withCount([
+                    'tasks as open_tasks_count' => fn ($q) => $q->whereIn('status', ['todo', 'in_progress', 'blocked']),
+                    'tasks as done_tasks_count' => fn ($q) => $q->where('status', 'done'),
+                ])
+                ->latest()
+                ->limit(5)
+                ->get()
+            : collect();
+        $maintenanceRenewal = $subscriptions
+            ->where('status', 'active')
+            ->filter(fn ($s) => $s->next_invoice_at)
+            ->sortBy('next_invoice_at')
+            ->first();
 
         return view('client.dashboard', [
             'customer' => $customer,
@@ -82,6 +98,8 @@ class DashboardController extends Controller
             'recentTickets' => $recentTickets,
             'expiringLicenses' => $expiringLicenses,
             'currency' => strtoupper((string) Setting::getValue('currency', 'USD')),
+            'projects' => $projects,
+            'maintenanceRenewal' => $maintenanceRenewal,
         ]);
     }
 }

@@ -8,6 +8,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Employee;
 
 class User extends Authenticatable
 {
@@ -77,5 +79,15 @@ class User extends Authenticatable
     public function isClient(): bool
     {
         return $this->role === 'client';
+    }
+
+    public function employee(): HasOne
+    {
+        return $this->hasOne(Employee::class);
+    }
+
+    public function isEmployee(): bool
+    {
+        return $this->employee()->exists();
     }
 }

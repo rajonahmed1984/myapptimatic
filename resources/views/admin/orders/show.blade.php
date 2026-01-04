@@ -74,6 +74,34 @@
                     @endif
                 @endif
             </div>
+            <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Milestone invoices</div>
+                <div class="mt-2 text-xs text-slate-500">Generate advance/final invoices that sum to 100%.</div>
+                <form method="POST" action="{{ route('admin.orders.milestones.store', $order) }}" class="mt-3 grid gap-3">
+                    @csrf
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs text-slate-500">Advance %</label>
+                            <input name="advance_percent" type="number" min="1" max="99" value="{{ old('advance_percent', 50) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">Final %</label>
+                            <input name="final_percent" type="number" min="1" max="99" value="{{ old('final_percent', 50) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs text-slate-500">Advance due</label>
+                            <input name="advance_due_date" type="date" value="{{ old('advance_due_date', now()->toDateString()) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">Final due</label>
+                            <input name="final_due_date" type="date" value="{{ old('final_due_date', now()->addDays(14)->toDateString()) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white">Create milestone invoices</button>
+                </form>
+            </div>
         </div>
 
         @php

@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use App\Providers\AuthServiceProvider;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withProviders([
+        AuthServiceProvider::class,
+    ])
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->validateCsrfTokens(except: [
             'payments/sslcommerz/*',
@@ -27,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'client.notice' => \App\Http\Middleware\ShareClientInvoiceStatus::class,
             'verify.api.signature' => \App\Http\Middleware\VerifyApiSignature::class,
             'restrict.cron' => \App\Http\Middleware\RestrictCronAccess::class,
+            'employee' => \App\Http\Middleware\EnsureEmployee::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

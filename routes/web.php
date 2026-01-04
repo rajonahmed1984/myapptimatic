@@ -18,10 +18,19 @@ use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\Admin\SystemLogController;
+use App\Http\Controllers\Admin\MilestoneController;
+use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
+use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Employee\AuthController as EmployeeAuthController;
+use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
+use App\Http\Controllers\Employee\TimesheetController as EmployeeTimesheetController;
+use App\Http\Controllers\Employee\LeaveRequestController as EmployeeLeaveRequestController;
+use App\Http\Controllers\Employee\PayrollController as EmployeePayrollController;
 use App\Http\Controllers\Client\AffiliateController as ClientAffiliateController;
 use App\Http\Controllers\Client\ClientRequestController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
@@ -103,6 +112,14 @@ Route::middleware('guest')->group(function () {
     Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
 });
 
+Route::middleware('guest:employee')
+    ->prefix('employee')
+    ->name('employee.')
+    ->group(function () {
+        Route::get('/login', [EmployeeAuthController::class, 'showLogin'])->name('login');
+        Route::post('/login', [EmployeeAuthController::class, 'login'])->name('login.attempt');
+    });
+
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout')
     ->middleware('auth');
@@ -110,8 +127,38 @@ Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
     ->name('impersonate.stop')
     ->middleware('auth');
 
+Route::middleware(['auth:employee', 'employee'])
+    ->prefix('employee')
+    ->name('employee.')
+    ->group(function () {
+        Route::post('/logout', [EmployeeAuthController::class, 'logout'])->name('logout');
+        Route::get('/dashboard', EmployeeDashboardController::class)->name('dashboard');
+        Route::get('/timesheets', [EmployeeTimesheetController::class, 'index'])->name('timesheets.index');
+        Route::post('/timesheets', [EmployeeTimesheetController::class, 'store'])->name('timesheets.store');
+        Route::get('/leave-requests', [EmployeeLeaveRequestController::class, 'index'])->name('leave-requests.index');
+        Route::post('/leave-requests', [EmployeeLeaveRequestController::class, 'store'])->name('leave-requests.store');
+        Route::get('/payroll', [EmployeePayrollController::class, 'index'])->name('payroll.index');
+    });
+
 Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::prefix('hr')->name('hr.')->group(function () {
+        Route::get('/dashboard', HrDashboardController::class)->name('dashboard');
+        Route::resource('employees', \App\Http\Controllers\Admin\Hr\EmployeeController::class);
+        Route::get('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'index'])->name('leave-types.index');
+        Route::post('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'store'])->name('leave-types.store');
+        Route::delete('leave-types/{leaveType}', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'destroy'])->name('leave-types.destroy');
+        Route::get('leave-requests', [\App\Http\Controllers\Admin\Hr\LeaveRequestController::class, 'index'])->name('leave-requests.index');
+        Route::post('leave-requests/{leaveRequest}/approve', [\App\Http\Controllers\Admin\Hr\LeaveRequestController::class, 'approve'])->name('leave-requests.approve');
+        Route::post('leave-requests/{leaveRequest}/reject', [\App\Http\Controllers\Admin\Hr\LeaveRequestController::class, 'reject'])->name('leave-requests.reject');
+        Route::get('timesheets', [\App\Http\Controllers\Admin\Hr\TimesheetController::class, 'index'])->name('timesheets.index');
+        Route::post('timesheets/{timesheet}/approve', [\App\Http\Controllers\Admin\Hr\TimesheetController::class, 'approve'])->name('timesheets.approve');
+        Route::post('timesheets/{timesheet}/lock', [\App\Http\Controllers\Admin\Hr\TimesheetController::class, 'lock'])->name('timesheets.lock');
+        Route::get('payroll', [HrPayrollController::class, 'index'])->name('payroll.index');
+        Route::post('payroll/generate', [HrPayrollController::class, 'generate'])->name('payroll.generate');
+        Route::post('payroll/{payrollPeriod}/finalize', [HrPayrollController::class, 'finalize'])->name('payroll.finalize');
+        Route::get('payroll/{payrollPeriod}/export', [HrPayrollController::class, 'export'])->name('payroll.export');
+    });
     Route::get('/automation-status', [AutomationStatusController::class, 'index'])->name('automation-status');
     Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
@@ -129,7 +176,12 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('orders/{order}/approve', [AdminOrderController::class, 'approve'])->name('orders.approve');
     Route::post('orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('orders.cancel');
     Route::patch('orders/{order}/plan', [AdminOrderController::class, 'updatePlan'])->name('orders.plan');
+    Route::post('orders/{order}/milestones', [MilestoneController::class, 'store'])->name('orders.milestones.store');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
+    Route::resource('projects', ProjectController::class);
+    Route::post('projects/{project}/tasks', [ProjectController::class, 'storeTask'])->name('projects.tasks.store');
+    Route::patch('projects/{project}/tasks/{task}', [ProjectController::class, 'updateTask'])->name('projects.tasks.update');
+    Route::delete('projects/{project}/tasks/{task}', [ProjectController::class, 'destroyTask'])->name('projects.tasks.destroy');
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])->name('support-tickets.index');
     Route::get('support-tickets/{ticket}', [AdminSupportTicketController::class, 'show'])->name('support-tickets.show');
     Route::post('support-tickets/{ticket}/reply', [AdminSupportTicketController::class, 'reply'])->name('support-tickets.reply');

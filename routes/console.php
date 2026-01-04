@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use App\Console\Commands\RunPayroll;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -14,6 +15,7 @@ Schedule::command('billing:run')->daily();
 // Frequent tasks (every 5 minutes via cron-frequent.php)
 Schedule::command('queue:work --stop-when-empty')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('horizon:snapshot')->everyFiveMinutes(); // If using Horizon
+Schedule::command('payroll:run')->monthlyOn(1, '03:00'); // Monthly payroll draft
 
 // Cron health monitor: alert if billing cron missed/failed.
 Schedule::command('cron:monitor')->hourly();

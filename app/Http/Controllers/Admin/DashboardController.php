@@ -5,13 +5,18 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AccountingEntry;
 use App\Models\Customer;
+use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\License;
 use App\Models\Order;
+use App\Models\PayrollItem;
+use App\Models\PayrollPeriod;
+use App\Models\Project;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\SupportTicket;
+use App\Models\Timesheet;
 use App\Models\User;
 use App\Services\AutomationStatusService;
 use Carbon\Carbon;
@@ -263,6 +268,31 @@ class DashboardController extends Controller
             ];
         });
 
+        $projectMaintenance = [
+            'projects_active' => Project::where('status', 'active')->count(),
+            'projects_on_hold' => Project::where('status', 'on_hold')->count(),
+            'subscriptions_blocked' => Subscription::where('status', 'suspended')->count(),
+            'renewals_30d' => Subscription::where('status', 'active')
+                ->whereNotNull('next_invoice_at')
+                ->whereBetween('next_invoice_at', [now(), now()->addDays(30)])
+                ->count(),
+            'projects_profitable' => Project::whereNotNull('budget_amount')
+                ->whereRaw('(budget_amount - COALESCE(hourly_cost * COALESCE(actual_hours, planned_hours, 0), 0)) >= 0')
+                ->count(),
+            'projects_loss' => Project::whereNotNull('budget_amount')
+                ->whereRaw('(budget_amount - COALESCE(hourly_cost * COALESCE(actual_hours, planned_hours, 0), 0)) < 0')
+                ->count(),
+        ];
+
+        $hrStats = [
+            'active_employees' => Employee::where('status', 'active')->count(),
+            'pending_timesheets' => Timesheet::where('status', 'submitted')->count(),
+            'approved_timesheets' => Timesheet::where('status', 'approved')->count(),
+            'draft_payroll_periods' => PayrollPeriod::where('status', 'draft')->count(),
+            'finalized_payroll_periods' => PayrollPeriod::where('status', 'finalized')->count(),
+            'payroll_items_to_pay' => PayrollItem::where('status', 'approved')->count(),
+        ];
+
         return view('admin.dashboard', [
             'customerCount' => Customer::count(),
             'productCount' => Product::count(),
@@ -286,6 +316,8 @@ class DashboardController extends Controller
                 'onlineCount' => $onlineUsersCount,
                 'recentClients' => $recentClients,
             ],
+            'projectMaintenance' => $projectMaintenance,
+            'hrStats' => $hrStats,
         ]);
     }
 }

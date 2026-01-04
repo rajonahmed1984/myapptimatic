@@ -44,6 +44,10 @@
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Orders
                 </a>
+                <a class="{{ request()->routeIs('admin.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.projects.index') }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Projects
+                </a>
                 <a class="{{ request()->routeIs('admin.subscriptions.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.subscriptions.index') }}">
                     <span class="h-2 w-2 rounded-full bg-current"></span>
                     Subscriptions
@@ -182,6 +186,7 @@
                             <a href="{{ route('admin.plans.index') }}" class="text-slate-700 hover:text-teal-600">Plans</a>
                             <a href="{{ route('admin.subscriptions.index') }}" class="text-slate-700 hover:text-teal-600">Subscriptions</a>
                             <a href="{{ route('admin.orders.index') }}" class="text-slate-700 hover:text-teal-600">Orders</a>
+                            <a href="{{ route('admin.projects.index') }}" class="text-slate-700 hover:text-teal-600">Projects</a>
                             <a href="{{ route('admin.licenses.index') }}" class="text-slate-700 hover:text-teal-600">Licenses</a>
                             <a href="{{ route('admin.invoices.index') }}" class="text-slate-700 hover:text-teal-600">Invoices</a>
                             <div class="grid gap-1 pl-3 text-xs text-slate-500">

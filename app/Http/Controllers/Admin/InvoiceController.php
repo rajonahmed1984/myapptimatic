@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Models\Product;
 use App\Support\SystemLogger;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
@@ -210,18 +211,28 @@ class InvoiceController extends Controller
 
     private function listByStatus(?string $status, string $title)
     {
+        $productId = request()->query('product_id');
+
         $query = Invoice::query()
-            ->with(['customer', 'paymentProofs'])
+            ->with(['customer', 'paymentProofs', 'subscription.plan.product'])
             ->latest('issue_date');
 
         if ($status) {
             $query->where('status', $status);
         }
 
+        if ($productId) {
+            $query->whereHas('subscription.plan', function ($q) use ($productId) {
+                $q->where('product_id', $productId);
+            });
+        }
+
         return view('admin.invoices.index', [
-            'invoices' => $query->paginate(25),
+            'invoices' => $query->paginate(25)->withQueryString(),
             'title' => $title,
             'statusFilter' => $status,
+            'products' => Product::orderBy('name')->get(),
+            'productFilter' => $productId,
         ]);
     }
 }

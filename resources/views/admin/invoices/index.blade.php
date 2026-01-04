@@ -4,7 +4,27 @@
 @section('page-title', $title ?? 'Invoices')
 
 @section('content')
-    <h1 class="mb-6 text-2xl font-semibold text-slate-900">{{ $title ?? 'Invoices' }}</h1>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-2xl font-semibold text-slate-900">{{ $title ?? 'Invoices' }}</h1>
+
+        <form method="GET" action="" class="flex flex-wrap items-end gap-3 text-sm">
+            <div>
+                <label class="text-xs uppercase tracking-[0.2em] text-slate-400">Product</label>
+                <select name="product_id" class="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <option value="">All</option>
+                    @foreach($products ?? [] as $product)
+                        <option value="{{ $product->id }}" @selected((string)$productFilter === (string)$product->id)>
+                            {{ $product->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Filter</button>
+            @if($productFilter)
+                <a href="{{ url()->current() }}" class="text-xs font-semibold text-slate-600 hover:text-teal-600">Clear</a>
+            @endif
+        </form>
+    </div>
 
     <div class="card overflow-hidden">
         <table class="w-full text-left text-sm">

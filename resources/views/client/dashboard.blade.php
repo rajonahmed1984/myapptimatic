@@ -92,6 +92,59 @@
             </div>
         </div>
 
+        @php
+            $maintenanceRenewal = $maintenanceRenewal ?? null;
+        @endphp
+
+        <div class="grid gap-4 md:grid-cols-3">
+            <div class="card p-4 md:col-span-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="section-label">Projects</div>
+                        <div class="text-sm text-slate-500">Software & website work in progress</div>
+                    </div>
+                    <a href="{{ route('client.support-tickets.create') }}" class="text-xs font-semibold text-slate-600 hover:text-teal-600">Request update</a>
+                </div>
+                <div class="mt-4 space-y-3">
+                    @forelse($projects as $project)
+                        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <div class="text-sm text-slate-500">Project</div>
+                                    <div class="text-lg font-semibold text-slate-900">{{ $project->name }}</div>
+                                    @php
+                                        $done = (int) ($project->done_tasks_count ?? 0);
+                                        $open = (int) ($project->open_tasks_count ?? 0);
+                                        $totalTasks = max(0, $done + $open);
+                                    @endphp
+                                    <div class="mt-1 text-xs text-slate-500">Tasks: {{ $done }}/{{ $totalTasks }} done</div>
+                                </div>
+                                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
+                                    {{ ucfirst(str_replace('_',' ', $project->status)) }}
+                                </span>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-sm text-slate-500">No active projects right now.</div>
+                    @endforelse
+                </div>
+            </div>
+            <div class="card p-4">
+                <div class="section-label">Maintenance</div>
+                <div class="mt-2 text-sm text-slate-600">
+                    @if($maintenanceRenewal)
+                        Next renewal: {{ $maintenanceRenewal->next_invoice_at->format($globalDateFormat) }}<br>
+                        Service: {{ $maintenanceRenewal->plan->product->name ?? 'Service' }} — {{ $maintenanceRenewal->plan->name ?? '' }}
+                    @else
+                        No upcoming maintenance renewals in the next cycle.
+                    @endif
+                </div>
+                <div class="mt-4">
+                    <a href="{{ route('client.invoices.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View invoices</a>
+                </div>
+            </div>
+        </div>
+
         <div class="card p-4">
             <div class="flex items-center gap-3">
                 <div class="text-slate-400">
