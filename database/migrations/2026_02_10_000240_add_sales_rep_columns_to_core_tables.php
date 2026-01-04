@@ -9,18 +9,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->unsignedBigInteger('sales_rep_id')->nullable()->after('invoice_id');
-            $table->index('sales_rep_id');
+            if (!Schema::hasColumn('orders', 'sales_rep_id')) {
+                $table->unsignedBigInteger('sales_rep_id')->nullable()->after('invoice_id');
+                $table->index('sales_rep_id');
+            }
         });
 
         Schema::table('subscriptions', function (Blueprint $table) {
-            $table->unsignedBigInteger('sales_rep_id')->nullable()->after('plan_id');
-            $table->index('sales_rep_id');
+            if (!Schema::hasColumn('subscriptions', 'sales_rep_id')) {
+                $table->unsignedBigInteger('sales_rep_id')->nullable()->after('plan_id');
+                $table->index('sales_rep_id');
+            }
         });
 
         Schema::table('customers', function (Blueprint $table) {
-            $table->unsignedBigInteger('default_sales_rep_id')->nullable()->after('status');
-            $table->index('default_sales_rep_id');
+            if (!Schema::hasColumn('customers', 'default_sales_rep_id')) {
+                $table->unsignedBigInteger('default_sales_rep_id')->nullable()->after('status');
+                $table->index('default_sales_rep_id');
+            }
         });
     }
 
