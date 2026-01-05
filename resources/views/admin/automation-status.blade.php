@@ -4,22 +4,22 @@
 @section('page-title', 'Automation Status')
 
 @section('content')
-    <div class="card p-6">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <div class="section-label">Automation Status</div>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Automation Status</h1>
-                <p class="mt-2 text-sm text-slate-600">Monitor daily billing and support automation tasks.</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $statusLabel }}</span>
-                <a href="{{ route('admin.settings.edit', ['tab' => 'cron']) }}" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
-                    Cron settings
-                </a>
-            </div>
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <div class="section-label">Automation Status</div>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Automation Status</h1>
+            <p class="mt-2 text-sm text-slate-600">Monitor daily billing and support automation tasks.</p>
         </div>
+        <div class="flex items-center gap-3">
+            <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $statusLabel }}</span>
+            <a href="{{ route('admin.settings.edit', ['tab' => 'cron']) }}" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
+                Cron settings
+            </a>
+        </div>
+    </div>
 
-        <div class="mt-6 grid gap-4 md:grid-cols-3">
+    <div class="card p-6">
+        <div class="grid gap-4 md:grid-cols-3">
             <div class="rounded-2xl border border-slate-200 bg-white p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Last Cron Invocation</div>
                 <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $lastInvocationText }}</div>

@@ -4,15 +4,15 @@
 @section('page-title', 'Settings')
 
 @section('content')
-    <div class="card p-6">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <div class="section-label">WHMCS style settings</div>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Portal configuration</h1>
-                <p class="mt-2 text-sm text-slate-600">Control billing automation, reminders, and branding.</p>
-            </div>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">WHMCS style settings</div>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Portal configuration</h1>
+            <p class="mt-2 text-sm text-slate-600">Control billing automation, reminders, and branding.</p>
         </div>
+    </div>
 
+    <div class="card p-6">
         <div class="mt-8">
             <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-4 text-sm" role="tablist">
                 <button type="button" data-tab-target="general" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">General</button>

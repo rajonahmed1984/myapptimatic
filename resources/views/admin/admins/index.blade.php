@@ -4,13 +4,13 @@
 @section('page-title', 'Admin Users')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex items-center justify-between gap-4">
         <h1 class="text-2xl font-semibold text-slate-900">Admin Users</h1>
         <a href="{{ route('admin.admins.create') }}" class="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">New Admin</a>
     </div>
 
-    <div class="card overflow-hidden">
-        <table class="w-full text-left text-sm">
+    <div class="card overflow-x-auto">
+        <table class="w-full min-w-[700px] text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
                     <th class="px-4 py-3">Name</th>

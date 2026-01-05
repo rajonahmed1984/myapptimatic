@@ -4,16 +4,16 @@
 @section('page-title', $pageTitle)
 
 @section('content')
-    <div class="card p-6">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <div class="section-label">System Logs</div>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ $pageTitle }}</h1>
-                <p class="mt-1 text-sm text-slate-500">Track recent events and notifications.</p>
-            </div>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">System Logs</div>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ $pageTitle }}</h1>
+            <p class="mt-1 text-sm text-slate-500">Track recent events and notifications.</p>
         </div>
+    </div>
 
-        <div class="mt-6 flex flex-wrap gap-2 text-sm">
+    <div class="card p-6">
+        <div class="flex flex-wrap gap-2 text-sm">
             @foreach($logTypes as $slug => $type)
                 <a href="{{ route($type['route']) }}"
                    class="{{ $slug === $activeType ? 'rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-white' : 'rounded-full border border-slate-200 px-4 py-2 text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">
@@ -23,7 +23,7 @@
         </div>
     </div>
 
-    <div class="mt-6 card overflow-hidden">
+    <div class="mt-6 card overflow-x-auto">
         @if($logs->isEmpty())
             <div class="px-6 py-8 text-sm text-slate-500">No log entries yet.</div>
         @else

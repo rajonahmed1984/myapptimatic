@@ -10,6 +10,8 @@ class EmployeeCompensation extends Model
 {
     use HasFactory;
 
+    protected $table = 'employee_compensations';
+
     protected $fillable = [
         'employee_id',
         'salary_type',

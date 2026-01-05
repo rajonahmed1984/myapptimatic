@@ -13,7 +13,6 @@
         <table class="w-full text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
-                    <th class="px-4 py-3">SL</th>
                     <th class="px-4 py-3">Client ID</th>
                     <th class="px-4 py-3">Name</th>
                     <th class="px-4 py-3">Company Name</th>
@@ -27,7 +26,6 @@
             <tbody>
                 @forelse($customers as $customer)
                     <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 text-slate-500">{{ $customers->firstItem() ? $customers->firstItem() + $loop->index : $customer->id }}</td>
                         <td class="px-4 py-3 text-slate-500"><a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->id }}</a></td>
                         <td class="px-4 py-3 font-medium text-slate-900">
                             <a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->name }}</a>

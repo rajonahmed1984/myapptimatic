@@ -73,7 +73,27 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return in_array($this->role, ['admin', 'master_admin', 'sub_admin']);
+    }
+
+    public function isMasterAdmin(): bool
+    {
+        return $this->role === 'master_admin';
+    }
+
+    public function isSubAdmin(): bool
+    {
+        return $this->role === 'sub_admin';
+    }
+
+    public function isSales(): bool
+    {
+        return $this->role === 'sales';
+    }
+
+    public function isSupport(): bool
+    {
+        return $this->role === 'support';
     }
 
     public function isClient(): bool

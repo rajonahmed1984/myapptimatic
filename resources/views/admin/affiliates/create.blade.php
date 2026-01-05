@@ -4,13 +4,16 @@
 @section('page-title', 'Create Affiliate')
 
 @section('content')
-    <div class="mb-6">
-        <a href="{{ route('admin.affiliates.index') }}" class="text-sm text-teal-600 hover:text-teal-500">← Back to affiliates</a>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Affiliates</div>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Create affiliate account</h1>
+        </div>
+        <a href="{{ route('admin.affiliates.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to affiliates</a>
     </div>
 
     <div class="card p-8">
         <div class="section-label">New Affiliate</div>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Create affiliate account</h1>
 
         <form method="POST" action="{{ route('admin.affiliates.store') }}" class="mt-8 space-y-6">
             @csrf

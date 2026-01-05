@@ -5,7 +5,8 @@
 </head>
 <body class="bg-dashboard">
     <div class="min-h-screen flex flex-col md:flex-row">
-        <aside class="sidebar w-full md:w-64 flex-col px-6 py-7 flex overflow-y-auto md:overflow-y-auto max-h-screen md:max-h-screen md:sticky md:top-0">
+        <div id="sidebarOverlay" class="fixed inset-0 z-20 bg-slate-900/60 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
+        <aside id="adminSidebar" class="sidebar fixed inset-y-0 left-0 z-30 flex w-72 max-w-[90vw] flex-col px-6 py-7 overflow-y-auto max-h-screen transform transition-transform duration-200 ease-in-out -translate-x-full md:w-64 md:max-w-none md:translate-x-0 md:overflow-y-auto md:max-h-screen md:sticky md:top-0">
             <div class="flex items-center gap-3">
                 @php
                     $sidebarImage = $portalBranding['favicon_url'] ?? ($portalBranding['logo_url'] ?? null);
@@ -20,6 +21,11 @@
                     <div class="text-lg font-semibold text-white">{{ $portalBranding['company_name'] ?? 'License Portal' }}</div>
                 </div>
             </div>
+            <button type="button" id="sidebarClose" class="absolute right-4 top-4 rounded-full border border-white/10 bg-white/10 p-2 text-slate-200 transition hover:bg-white/20 md:hidden" aria-label="Close menu">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
 
             @php
                 $isAdminNav = request()->routeIs('admin.*');
@@ -167,10 +173,30 @@
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Administration</div>
-                        <a class="{{ request()->routeIs('admin.admins.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.admins.index') }}">
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Admin Users
-                        </a>
+                        @php
+                            $usersNavRole = request()->route('role') ?? optional(request()->route('user'))->role;
+                            $isUsersRoute = request()->routeIs('admin.users.*') || request()->routeIs('admin.admins.*');
+                        @endphp
+                        @if(auth()->user()?->isMasterAdmin())
+                            <div class="space-y-1">
+                                <a class="{{ $isUsersRoute && $usersNavRole === 'master_admin' ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.users.index', 'master_admin') }}">
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    Master Admins
+                                </a>
+                                <a class="{{ $isUsersRoute && $usersNavRole === 'sub_admin' ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.users.index', 'sub_admin') }}">
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    Sub Admins
+                                </a>
+                                <a class="{{ $isUsersRoute && $usersNavRole === 'sales' ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.users.index', 'sales') }}">
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    Sales Users
+                                </a>
+                                <a class="{{ $isUsersRoute && $usersNavRole === 'support' ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.users.index', 'support') }}">
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    Support Users
+                                </a>
+                            </div>
+                        @endif
                         <a class="{{ request()->routeIs('admin.profile.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.profile.edit') }}">
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Profile
@@ -255,9 +281,16 @@
         <div class="flex-1 flex flex-col w-full">
             <header class="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
                 <div class="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
-                    <div>
-                        <div class="section-label">Admin workspace</div>
-                        <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
+                    <div class="flex items-center gap-3">
+                        <button type="button" id="sidebarToggle" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-teal-300 hover:text-teal-600 md:hidden" aria-label="Open menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <div>
+                            <div class="section-label">Admin workspace</div>
+                            <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
+                        </div>
                     </div>
                     @if(!empty($adminHeaderStats))
                         <div class="stats hidden flex-wrap items-center gap-3 text-xs text-slate-500 lg:flex">
@@ -330,5 +363,36 @@
             </main>
         </div>
     </div>
+    {{-- Admin layout standard (from /admin/customers):
+         - Content wrapper: main.mx-auto.max-w-6xl.px-6.py-10
+         - Page header: .mb-6 .flex .items-center .justify-between .gap-4 with title on the left and actions on the right
+         - Primary sections: cards with consistent padding (p-6/8), tables using w-full text-left text-sm, and overflow-x-auto if a table needs extra width --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('adminSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const openBtn = document.getElementById('sidebarToggle');
+            const closeBtn = document.getElementById('sidebarClose');
+
+            const openSidebar = () => {
+                sidebar?.classList.remove('-translate-x-full');
+                overlay?.classList.remove('opacity-0', 'pointer-events-none');
+            };
+
+            const closeSidebar = () => {
+                sidebar?.classList.add('-translate-x-full');
+                overlay?.classList.add('opacity-0', 'pointer-events-none');
+            };
+
+            openBtn?.addEventListener('click', openSidebar);
+            closeBtn?.addEventListener('click', closeSidebar);
+            overlay?.addEventListener('click', closeSidebar);
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeSidebar();
+                }
+            });
+        });
+    </script>
 </body>
 </html>

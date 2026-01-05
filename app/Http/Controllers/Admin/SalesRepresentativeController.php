@@ -7,6 +7,7 @@ use App\Models\CommissionEarning;
 use App\Models\Employee;
 use App\Models\SalesRepresentative;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -102,5 +103,58 @@ class SalesRepresentativeController extends Controller
         return redirect()
             ->route('admin.sales-reps.index')
             ->with('status', 'Sales representative updated.');
+    }
+
+    public function show(SalesRepresentative $salesRep)
+    {
+        $salesRep->load(['user:id,name,email', 'employee:id,name']);
+
+        $earningsQuery = $salesRep->earnings();
+        $payoutsQuery = $salesRep->payouts();
+
+        $summary = [
+            'total_earned' => (float) $earningsQuery->sum('commission_amount'),
+            'payable' => (float) $earningsQuery->where('status', 'payable')->sum('commission_amount'),
+            'paid' => (float) $earningsQuery->where('status', 'paid')->sum('commission_amount'),
+        ];
+
+        $recentEarnings = $salesRep->earnings()
+            ->latest()
+            ->take(10)
+            ->get();
+
+        $recentPayouts = $salesRep->payouts()
+            ->latest()
+            ->take(10)
+            ->get();
+
+        return view('admin.sales-reps.show', [
+            'rep' => $salesRep,
+            'summary' => $summary,
+            'recentEarnings' => $recentEarnings,
+            'recentPayouts' => $recentPayouts,
+        ]);
+    }
+
+    public function impersonate(Request $request, SalesRepresentative $salesRep)
+    {
+        if ($request->session()->has('impersonator_id')) {
+            return back()->withErrors(['impersonate' => 'You are already impersonating another account. Stop impersonation first.']);
+        }
+
+        if ($salesRep->status !== 'active') {
+            return back()->withErrors(['impersonate' => 'Sales rep access is inactive.']);
+        }
+
+        $user = $salesRep->user;
+        if (! $user) {
+            return back()->withErrors(['impersonate' => 'No linked user found for this sales rep.']);
+        }
+
+        $request->session()->put('impersonator_id', $request->user()->id);
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('rep.dashboard');
     }
 }

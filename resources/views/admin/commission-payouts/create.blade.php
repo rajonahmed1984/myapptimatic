@@ -4,14 +4,16 @@
 @section('page-title', 'New Commission Payout')
 
 @section('content')
-    <div class="card p-6 space-y-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <div class="section-label">Commissions</div>
-                <h1 class="text-2xl font-semibold text-slate-900">Create payout</h1>
-                <div class="text-sm text-slate-500">Select a sales rep and payable earnings to include.</div>
-            </div>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Commissions</div>
+            <h1 class="text-2xl font-semibold text-slate-900">Create payout</h1>
+            <div class="text-sm text-slate-500">Select a sales rep and payable earnings to include.</div>
         </div>
+        <a href="{{ route('admin.commission-payouts.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">Back to payouts</a>
+    </div>
+
+    <div class="card p-6 space-y-6">
 
         <form method="GET" action="{{ route('admin.commission-payouts.create') }}" class="grid gap-3 md:grid-cols-3">
             <div>

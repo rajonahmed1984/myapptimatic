@@ -4,33 +4,33 @@
 @section('page-title', 'Customer Details')
 
 @section('content')
-    <div class="card p-6">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <div class="section-label">Customer</div>
-                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $customer->name }}</div>
-                <div class="mt-1 text-sm text-slate-500">Client ID: {{ $customer->id }}</div>
-            </div>
-            <div class="text-sm text-slate-600">
-                <div>Status: {{ ucfirst($customer->status) }}</div>
-                <div>Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</div>
-                <div class="mt-3 flex flex-wrap items-center gap-3">
-                    <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Customers</a>
-                    <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}">
-                        @csrf
-                        <button type="submit" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" title="Login as client">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                                <path d="M15 3h4a2 2 0 0 1 2 2v4"></path>
-                                <path d="M10 14L21 3"></path>
-                                <path d="M21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"></path>
-                            </svg>
-                            Login as client
-                        </button>
-                    </form>
-                </div>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Customer</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $customer->name }}</div>
+            <div class="mt-1 text-sm text-slate-500">Client ID: {{ $customer->id }}</div>
+        </div>
+        <div class="text-sm text-slate-600">
+            <div>Status: {{ ucfirst($customer->status) }}</div>
+            <div>Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</div>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+                <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Customers</a>
+                <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" title="Login as client">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v4"></path>
+                            <path d="M10 14L21 3"></path>
+                            <path d="M21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"></path>
+                        </svg>
+                        Login as client
+                    </button>
+                </form>
             </div>
         </div>
-        
+    </div>
+
+    <div class="card p-6">
 
         @include('admin.customers.partials.tabs', ['customer' => $customer, 'activeTab' => $tab])
 
@@ -94,7 +94,7 @@
                 </div>
             </div>
         @elseif($tab === 'services')
-            <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
                 <table class="w-full min-w-[800px] text-left text-sm">
                     <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
@@ -131,7 +131,7 @@
                 </table>
             </div>
         @elseif($tab === 'invoices')
-            <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
                 <table class="w-full min-w-[800px] text-left text-sm">
                     <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
@@ -164,7 +164,7 @@
                 </table>
             </div>
         @elseif($tab === 'tickets')
-            <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
                 <table class="w-full min-w-[800px] text-left text-sm">
                     <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
@@ -209,7 +209,7 @@
         @elseif($tab === 'emails')
             <div class="mt-6 rounded-2xl border border-slate-200 bg-white/70 p-5 text-sm text-slate-600">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Client Email Log</div>
-                <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
                     @if($emailLogs->isEmpty())
                         <div class="px-4 py-6 text-sm text-slate-500">No emails sent to this client yet.</div>
                     @else

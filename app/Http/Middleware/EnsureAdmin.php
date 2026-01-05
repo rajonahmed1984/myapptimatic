@@ -16,7 +16,7 @@ class EnsureAdmin
             return redirect()->route('admin.login');
         }
 
-        if (! $user->isAdmin()) {
+        if (! $user->isMasterAdmin() && ! $user->isSubAdmin() && ! $user->isSales() && ! $user->isSupport()) {
             abort(403);
         }
 

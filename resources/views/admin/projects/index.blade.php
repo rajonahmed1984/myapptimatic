@@ -4,17 +4,17 @@
 @section('page-title', 'Projects')
 
 @section('content')
-    <div class="card p-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <div class="section-label">Delivery</div>
-                <div class="text-2xl font-semibold text-slate-900">Projects</div>
-                <div class="text-sm text-slate-500">Track software/website projects and their tasks.</div>
-            </div>
-            <a href="{{ route('admin.projects.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">New project</a>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Delivery</div>
+            <div class="text-2xl font-semibold text-slate-900">Projects</div>
+            <div class="text-sm text-slate-500">Track software/website projects and their tasks.</div>
         </div>
+        <a href="{{ route('admin.projects.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">New project</a>
+    </div>
 
-        <form method="GET" class="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 md:grid-cols-4">
+    <div class="card p-6 space-y-4">
+        <form method="GET" class="grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 md:grid-cols-4">
             <div>
                 <label class="text-xs text-slate-500">Status</label>
                 <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
@@ -38,7 +38,7 @@
             </div>
         </form>
 
-        <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
             <table class="w-full text-left text-sm text-slate-700">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
@@ -82,7 +82,7 @@
             </table>
         </div>
 
-        <div class="mt-4">
+        <div class="mt-2">
             {{ $projects->links() }}
         </div>
     </div>

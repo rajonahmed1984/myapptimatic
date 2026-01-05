@@ -4,14 +4,14 @@
 @section('page-title', 'Orders')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-semibold text-slate-900">Orders</h1>
             <p class="mt-1 text-sm text-slate-500">Review pending orders and approve or cancel them.</p>
         </div>
     </div>
 
-    <div class="card overflow-hidden">
+    <div class="card overflow-x-auto">
         <table class="w-full min-w-[900px] text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                     <tr>

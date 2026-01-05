@@ -22,6 +22,7 @@ class Employee extends Authenticatable
         'name',
         'email',
         'phone',
+        'address',
         'designation',
         'department',
         'employment_type',
@@ -29,6 +30,9 @@ class Employee extends Authenticatable
         'join_date',
         'exit_date',
         'status',
+        'nid_path',
+        'photo_path',
+        'cv_path',
     ];
 
     protected $casts = [

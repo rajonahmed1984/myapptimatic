@@ -25,8 +25,8 @@
         <a href="{{ route('admin.accounting.expenses') }}" class="{{ $scope === 'expenses' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Expenses</a>
     </div>
 
-    <div class="card overflow-hidden">
-        <table class="w-full text-left text-sm">
+    <div class="card overflow-x-auto">
+        <table class="w-full min-w-[900px] text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
                     <th class="px-4 py-3">Date</th>

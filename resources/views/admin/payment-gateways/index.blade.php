@@ -4,15 +4,15 @@
 @section('page-title', 'Payment Gateways')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-semibold text-slate-900">Payment Gateways</h1>
             <p class="mt-1 text-sm text-slate-500">Enable gateways and store credentials for manual and online payments.</p>
         </div>
     </div>
 
-    <div class="card overflow-hidden">
-        <table class="w-full text-left text-sm">
+    <div class="card overflow-x-auto">
+        <table class="w-full min-w-[720px] text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
                     <th class="px-4 py-3">Gateway</th>

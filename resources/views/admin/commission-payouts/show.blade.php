@@ -4,16 +4,16 @@
 @section('page-title', 'Payout #'.$payout->id)
 
 @section('content')
-    <div class="card p-6 space-y-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <div class="section-label">Commission Payout</div>
-                <h1 class="text-2xl font-semibold text-slate-900">Payout #{{ $payout->id }}</h1>
-                <div class="text-sm text-slate-500">Sales rep: {{ $payout->salesRep?->name ?? '—' }}</div>
-            </div>
-            <a href="{{ route('admin.commission-payouts.index') }}" class="text-sm text-slate-600 hover:text-slate-800">Back to payouts</a>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Commission Payout</div>
+            <h1 class="text-2xl font-semibold text-slate-900">Payout #{{ $payout->id }}</h1>
+            <div class="text-sm text-slate-500">Sales rep: {{ $payout->salesRep?->name ?? '--' }}</div>
         </div>
+        <a href="{{ route('admin.commission-payouts.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">Back to payouts</a>
+    </div>
 
+    <div class="card p-6 space-y-6">
         <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Amount</div>
@@ -22,15 +22,15 @@
             </div>
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Details</div>
-                <div class="mt-2 text-sm text-slate-700">Method: {{ $payout->payout_method ?? '—' }}</div>
-                <div class="text-sm text-slate-700">Reference: {{ $payout->reference ?? '—' }}</div>
-                <div class="text-sm text-slate-700">Note: {{ $payout->note ?? '—' }}</div>
+                <div class="mt-2 text-sm text-slate-700">Method: {{ $payout->payout_method ?? '--' }}</div>
+                <div class="text-sm text-slate-700">Reference: {{ $payout->reference ?? '--' }}</div>
+                <div class="text-sm text-slate-700">Note: {{ $payout->note ?? '--' }}</div>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Timeline</div>
                 <div class="mt-2 text-sm text-slate-700">Created: {{ $payout->created_at?->format($globalDateFormat.' H:i') }}</div>
-                <div class="text-sm text-slate-700">Paid: {{ $payout->paid_at?->format($globalDateFormat.' H:i') ?? '—' }}</div>
-                <div class="text-sm text-slate-700">Reversed: {{ $payout->reversed_at?->format($globalDateFormat.' H:i') ?? '—' }}</div>
+                <div class="text-sm text-slate-700">Paid: {{ $payout->paid_at?->format($globalDateFormat.' H:i') ?? '--' }}</div>
+                <div class="text-sm text-slate-700">Reversed: {{ $payout->reversed_at?->format($globalDateFormat.' H:i') ?? '--' }}</div>
             </div>
         </div>
 
@@ -60,10 +60,10 @@
                                         (Project #{{ $earning->project->id }})
                                     @endif
                                 </td>
-                                <td class="px-2 py-2">{{ $earning->customer?->name ?? '—' }}</td>
+                                <td class="px-2 py-2">{{ $earning->customer?->name ?? '--' }}</td>
                                 <td class="px-2 py-2">{{ number_format($earning->commission_amount, 2) }} {{ $earning->currency }}</td>
                                 <td class="px-2 py-2">{{ ucfirst($earning->status) }}</td>
-                                <td class="px-2 py-2">{{ $earning->earned_at?->format($globalDateFormat.' H:i') ?? '—' }}</td>
+                                <td class="px-2 py-2">{{ $earning->earned_at?->format($globalDateFormat.' H:i') ?? '--' }}</td>
                             </tr>
                         @endforeach
                     </tbody>

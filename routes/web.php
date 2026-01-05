@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AccountingController as AdminAccountingController;
-use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AffiliateCommissionController;
 use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
 use App\Http\Controllers\Admin\AffiliatePayoutController;
@@ -149,6 +149,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::prefix('hr')->name('hr.')->group(function () {
         Route::get('/dashboard', HrDashboardController::class)->name('dashboard');
+        Route::post('employees/{employee}/impersonate', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'impersonate'])->name('employees.impersonate');
         Route::resource('employees', \App\Http\Controllers\Admin\Hr\EmployeeController::class);
         Route::get('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'index'])->name('leave-types.index');
         Route::post('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'store'])->name('leave-types.store');
@@ -167,7 +168,39 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/automation-status', [AutomationStatusController::class, 'index'])->name('automation-status');
     Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
-    Route::resource('admins', AdminUserController::class)->except(['show']);
+    Route::prefix('user')
+        ->name('users.')
+        ->middleware('admin.role:master_admin')
+        ->group(function () {
+            Route::get('{role}', [UserController::class, 'index'])
+                ->whereIn('role', ['master_admin', 'sub_admin', 'sales', 'support'])
+                ->name('index');
+            Route::get('{role}/create', [UserController::class, 'create'])
+                ->whereIn('role', ['master_admin', 'sub_admin', 'sales', 'support'])
+                ->name('create');
+            Route::post('{role}', [UserController::class, 'store'])
+                ->whereIn('role', ['master_admin', 'sub_admin', 'sales', 'support'])
+                ->name('store');
+            Route::get('{user}/edit', [UserController::class, 'edit'])
+                ->whereNumber('user')
+                ->name('edit');
+            Route::put('{user}', [UserController::class, 'update'])
+                ->whereNumber('user')
+                ->name('update');
+            Route::delete('{user}', [UserController::class, 'destroy'])
+                ->whereNumber('user')
+                ->name('destroy');
+        });
+
+    // Legacy route names for backward compatibility with old /admin/admins URLs.
+    Route::middleware('admin.role:master_admin')->group(function () {
+        Route::get('admins', [UserController::class, 'index'])->defaults('role', 'master_admin')->name('admins.index');
+        Route::get('admins/create', [UserController::class, 'create'])->defaults('role', 'master_admin')->name('admins.create');
+        Route::post('admins', [UserController::class, 'store'])->defaults('role', 'master_admin')->name('admins.store');
+        Route::get('admins/{user}/edit', [UserController::class, 'edit'])->whereNumber('user')->name('admins.edit');
+        Route::put('admins/{user}', [UserController::class, 'update'])->whereNumber('user')->name('admins.update');
+        Route::delete('admins/{user}', [UserController::class, 'destroy'])->whereNumber('user')->name('admins.destroy');
+    });
     Route::resource('customers', CustomerController::class);
     Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])->name('customers.impersonate');
     Route::resource('products', ProductController::class)->except(['show']);
@@ -187,7 +220,8 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('projects/{project}/tasks', [ProjectController::class, 'storeTask'])->name('projects.tasks.store');
     Route::patch('projects/{project}/tasks/{task}', [ProjectController::class, 'updateTask'])->name('projects.tasks.update');
     Route::delete('projects/{project}/tasks/{task}', [ProjectController::class, 'destroyTask'])->name('projects.tasks.destroy');
-    Route::resource('sales-reps', \App\Http\Controllers\Admin\SalesRepresentativeController::class)->except(['show', 'destroy']);
+    Route::resource('sales-reps', \App\Http\Controllers\Admin\SalesRepresentativeController::class)->except(['destroy']);
+    Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])->name('support-tickets.index');
     Route::get('support-tickets/{ticket}', [AdminSupportTicketController::class, 'show'])->name('support-tickets.show');
     Route::post('support-tickets/{ticket}/reply', [AdminSupportTicketController::class, 'reply'])->name('support-tickets.reply');

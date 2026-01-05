@@ -1,16 +1,20 @@
 @extends('layouts.admin')
 
-@section('title', 'New Admin')
-@section('page-title', 'New Admin')
+@section('title', 'New User')
+@section('page-title', 'New User')
+
+@php
+    $roleLabels = $roles ?? [];
+@endphp
 
 @section('content')
     <div class="mb-6 flex items-center justify-between gap-4">
-        <h1 class="text-2xl font-semibold text-slate-900">Create Admin User</h1>
-        <a href="{{ route('admin.admins.index') }}" class="text-sm text-slate-500 hover:text-teal-600">Back to admin users</a>
+        <h1 class="text-2xl font-semibold text-slate-900">Create User</h1>
+        <a href="{{ route('admin.users.index', $selectedRole) }}" class="text-sm text-slate-500 hover:text-teal-600">Back to users</a>
     </div>
 
     <div class="card p-6">
-        <form method="POST" action="{{ route('admin.admins.store') }}" class="grid gap-6 md:grid-cols-2">
+        <form method="POST" action="{{ route('admin.users.store', $selectedRole) }}" class="grid gap-6 md:grid-cols-2">
             @csrf
             <div>
                 <label class="text-sm text-slate-600">Name</label>
@@ -28,8 +32,16 @@
                 <label class="text-sm text-slate-600">Confirm Password</label>
                 <input name="password_confirmation" type="password" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
             </div>
+            <div>
+                <label class="text-sm text-slate-600">Role</label>
+                <select name="role" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    @foreach($roleLabels as $value => $label)
+                        <option value="{{ $value }}" @selected(old('role', $selectedRole) === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="md:col-span-2 flex justify-end">
-                <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Create Admin</button>
+                <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Create User</button>
             </div>
         </form>
     </div>

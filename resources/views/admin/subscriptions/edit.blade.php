@@ -4,9 +4,15 @@
 @section('page-title', 'Edit Subscription')
 
 @section('content')
-    <div class="card p-6">
-        <h1 class="text-2xl font-semibold text-slate-900">Edit Subscription</h1>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Subscriptions</div>
+            <h1 class="text-2xl font-semibold text-slate-900">Edit Subscription</h1>
+        </div>
+        <a href="{{ route('admin.subscriptions.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to subscriptions</a>
+    </div>
 
+    <div class="card p-6">
         <form method="POST" action="{{ route('admin.subscriptions.update', $subscription) }}" class="mt-6 space-y-6">
             @csrf
             @method('PUT')
@@ -39,28 +45,16 @@
                     </select>
                 </div>
                 <div>
+                    <label class="text-sm text-slate-600">Start date</label>
+                    <input name="start_date" type="date" value="{{ old('start_date', optional($subscription->start_date)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
+                <div>
                     <label class="text-sm text-slate-600">Status</label>
                     <select name="status" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
                         <option value="active" @selected($subscription->status === 'active')>Active</option>
                         <option value="suspended" @selected($subscription->status === 'suspended')>Suspended</option>
                         <option value="cancelled" @selected($subscription->status === 'cancelled')>Cancelled</option>
                     </select>
-                </div>
-                <div>
-                    <label class="text-sm text-slate-600">Current period start</label>
-                    <input name="current_period_start" type="date" value="{{ old('current_period_start', $subscription->current_period_start->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                </div>
-                <div>
-                    <label class="text-sm text-slate-600">Current period end</label>
-                    <input name="current_period_end" type="date" value="{{ old('current_period_end', $subscription->current_period_end->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                </div>
-                <div>
-                    <label class="text-sm text-slate-600">Next invoice at</label>
-                    <input name="next_invoice_at" type="date" value="{{ old('next_invoice_at', $subscription->next_invoice_at->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                </div>
-                <div>
-                    <label class="text-sm text-slate-600">Override access until</label>
-                    <input name="access_override_until" type="date" value="{{ old('access_override_until', optional($subscription->customer?->access_override_until)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div class="flex items-center gap-2 text-sm text-slate-600">
                     <input type="hidden" name="auto_renew" value="0" />
@@ -72,17 +66,13 @@
                     <input type="checkbox" name="cancel_at_period_end" value="1" @checked($subscription->cancel_at_period_end) class="rounded border-slate-300 text-teal-500" />
                     Cancel at period end
                 </div>
-                <div>
-                    <label class="text-sm text-slate-600">Cancelled at</label>
-                    <input name="cancelled_at" type="date" value="{{ old('cancelled_at', optional($subscription->cancelled_at)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                </div>
                 <div class="md:col-span-2">
                     <label class="text-sm text-slate-600">Notes</label>
                     <textarea name="notes" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $subscription->notes) }}</textarea>
                 </div>
             </div>
 
-            <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Update subscription</button>
+            <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Save subscription</button>
         </form>
     </div>
 @endsection

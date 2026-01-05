@@ -4,17 +4,17 @@
 @section('page-title', 'Add Sales Representative')
 
 @section('content')
-    <div class="card p-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <div class="section-label">Sales</div>
-                <div class="text-2xl font-semibold text-slate-900">Add sales representative</div>
-                <div class="text-sm text-slate-500">Link to an existing user to grant sales access.</div>
-            </div>
-            <a href="{{ route('admin.sales-reps.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Sales</div>
+            <div class="text-2xl font-semibold text-slate-900">Add sales representative</div>
+            <div class="text-sm text-slate-500">Link to an existing user to grant sales access.</div>
         </div>
+        <a href="{{ route('admin.sales-reps.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
+    </div>
 
-        <form action="{{ route('admin.sales-reps.store') }}" method="POST" class="mt-6 grid gap-4 lg:grid-cols-2 text-sm text-slate-700">
+    <div class="card p-6">
+        <form action="{{ route('admin.sales-reps.store') }}" method="POST" autocomplete="off" class="grid gap-4 text-sm text-slate-700 lg:grid-cols-2">
             @csrf
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 space-y-3">
                 <div>
@@ -22,7 +22,13 @@
                     <select name="user_id" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                         <option value="">Select user</option>
                         @foreach($users as $user)
-                            <option value="{{ $user->id }}" @selected(old('user_id') == $user->id)>{{ $user->name }} — {{ $user->email }}</option>
+                            <option value="{{ $user->id }}"
+                                    data-name="{{ $user->name }}"
+                                    data-email="{{ $user->email }}"
+                                    data-phone="{{ $user->phone ?? '' }}"
+                                    @selected(old('user_id') == $user->id)>
+                                {{ $user->name }} - {{ $user->email }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
@@ -47,15 +53,15 @@
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 space-y-3">
                 <div>
                     <label class="text-xs text-slate-500">Name</label>
-                    <input name="name" value="{{ old('name') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Defaults to user name">
+                    <input name="name" value="{{ old('name') }}" autocomplete="off" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Defaults to user name">
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Email</label>
-                    <input name="email" type="email" value="{{ old('email') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Defaults to user email">
+                    <input name="email" type="email" value="{{ old('email') }}" autocomplete="off" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Defaults to user email">
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Phone</label>
-                    <input name="phone" value="{{ old('phone') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <input name="phone" value="{{ old('phone') }}" autocomplete="off" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                 </div>
             </div>
 
@@ -66,3 +72,30 @@
         </form>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const userSelect = document.querySelector('select[name="user_id"]');
+        const nameInput = document.querySelector('input[name="name"]');
+        const emailInput = document.querySelector('input[name="email"]');
+        const phoneInput = document.querySelector('input[name="phone"]');
+
+        const fillFromSelectedUser = () => {
+            const option = userSelect?.selectedOptions?.[0];
+            if (!option) return;
+
+            const selectedName = option.dataset.name || '';
+            const selectedEmail = option.dataset.email || '';
+            const selectedPhone = option.dataset.phone || '';
+
+            if (nameInput) nameInput.value = selectedName;
+            if (emailInput) emailInput.value = selectedEmail;
+            if (phoneInput) phoneInput.value = selectedPhone;
+        };
+
+        userSelect?.addEventListener('change', fillFromSelectedUser);
+        fillFromSelectedUser(); // prefill if old value selected
+    });
+</script>
+@endpush

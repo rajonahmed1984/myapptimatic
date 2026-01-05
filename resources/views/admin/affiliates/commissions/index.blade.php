@@ -4,9 +4,12 @@
 @section('page-title', 'Affiliate Commissions')
 
 @section('content')
-    <div class="mb-6">
-        <div class="section-label">Commission Management</div>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Affiliate commissions</h1>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Commission Management</div>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Affiliate commissions</h1>
+        </div>
+        <a href="{{ route('admin.affiliates.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to affiliates</a>
     </div>
 
     <div class="card p-6">

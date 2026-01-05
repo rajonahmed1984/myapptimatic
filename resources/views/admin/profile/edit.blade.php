@@ -4,10 +4,15 @@
 @section('page-title', 'Profile')
 
 @section('content')
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Admin profile</div>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Account details</h1>
+            <p class="mt-2 text-sm text-slate-500">Update your name, email, and password.</p>
+        </div>
+    </div>
+
     <div class="card p-6">
-        <div class="section-label">Admin profile</div>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Account details</h1>
-        <p class="mt-2 text-sm text-slate-500">Update your name, email, and password.</p>
 
         <form method="POST" action="{{ route('admin.profile.update') }}" class="mt-6 space-y-6">
             @csrf

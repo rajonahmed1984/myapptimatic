@@ -4,10 +4,14 @@
 @section('page-title', 'Requests')
 
 @section('content')
-    <h1 class="mb-6 text-2xl font-semibold text-slate-900">Client Requests</h1>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">Client Requests</h1>
+        </div>
+    </div>
 
-    <div class="card overflow-hidden">
-        <table class="w-full min-w-[980px] text-left text-sm">
+    <div class="card overflow-x-auto">
+        <table class="w-full min-w-[900px] text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
                     <th class="px-4 py-3">Type</th>
@@ -67,4 +71,3 @@
         </table>
     </div>
 @endsection
-

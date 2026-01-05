@@ -11,18 +11,19 @@
         $invoiceNumber = $order->invoice ? (is_numeric($order->invoice->number) ? $order->invoice->number : $order->invoice->id) : '--';
     @endphp
 
-    <div class="card p-6">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <div class="section-label">Order</div>
-                <div class="mt-2 text-2xl font-semibold text-slate-900">#{{ $order->order_number ?? $order->id }}</div>
-                <div class="mt-1 text-sm text-slate-500">Customer: {{ $order->customer?->name ?? '--' }}</div>
-            </div>
-            <div class="text-sm text-slate-600">
-                <div>Status: {{ ucfirst($order->status) }}</div>
-                <div>Created: {{ $order->created_at?->format($globalDateFormat) ?? '--' }}</div>
-            </div>
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <div class="section-label">Order</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900">#{{ $order->order_number ?? $order->id }}</div>
+            <div class="mt-1 text-sm text-slate-500">Customer: {{ $order->customer?->name ?? '--' }}</div>
         </div>
+        <div class="text-sm text-slate-600">
+            <div>Status: {{ ucfirst($order->status) }}</div>
+            <div>Created: {{ $order->created_at?->format($globalDateFormat) ?? '--' }}</div>
+        </div>
+    </div>
+
+    <div class="card p-6">
 
         <div class="mt-6 grid gap-4 md:grid-cols-2 text-sm text-slate-600">
             <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">

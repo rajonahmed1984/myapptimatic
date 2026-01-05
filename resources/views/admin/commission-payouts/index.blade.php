@@ -4,20 +4,20 @@
 @section('page-title', 'Commission Payouts')
 
 @section('content')
-    <div class="card p-6 space-y-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <div class="section-label">Commissions</div>
-                <h1 class="text-2xl font-semibold text-slate-900">Payouts</h1>
-                <div class="text-sm text-slate-500">Review payouts and create new ones from payable earnings.</div>
-            </div>
-            <div class="flex items-center gap-3">
-                <a href="{{ route('admin.commission-payouts.export') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">Export payouts CSV</a>
-                <a href="{{ route('admin.commission-earnings.export') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">Export earnings CSV</a>
-                <a href="{{ route('admin.commission-payouts.create') }}" class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">New payout</a>
-            </div>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <div class="section-label">Commissions</div>
+            <h1 class="text-2xl font-semibold text-slate-900">Payouts</h1>
+            <div class="text-sm text-slate-500">Review payouts and create new ones from payable earnings.</div>
         </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <a href="{{ route('admin.commission-payouts.export') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">Export payouts CSV</a>
+            <a href="{{ route('admin.commission-earnings.export') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">Export earnings CSV</a>
+            <a href="{{ route('admin.commission-payouts.create') }}" class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">New payout</a>
+        </div>
+    </div>
 
+    <div class="card p-6 space-y-6">
         <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
             <div class="text-sm font-semibold text-slate-800 mb-2">Payable by sales rep</div>
             <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
