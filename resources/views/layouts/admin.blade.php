@@ -236,6 +236,10 @@
                     </div>
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">My Work</div>
+                        <a class="{{ request()->routeIs('employee.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('employee.projects.index') }}">
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Projects
+                        </a>
                         <a class="{{ request()->routeIs('employee.timesheets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('employee.timesheets.index') }}">
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Timesheets

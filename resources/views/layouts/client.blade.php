@@ -31,10 +31,14 @@
 
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Projects & Services</div>
+                    <a class="{{ request()->routeIs('client.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.projects.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Projects
+                    </a>
                     {{-- Client-facing: services list mixes projects and recurring maintenance/subscriptions --}}
                     <a class="{{ request()->routeIs('client.services.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.services.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
-                        Projects & Services
+                        Services
                     </a>
                     <a class="{{ request()->routeIs('client.domains.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.domains.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>

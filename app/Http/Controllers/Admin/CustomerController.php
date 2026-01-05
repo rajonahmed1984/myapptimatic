@@ -190,7 +190,7 @@ class CustomerController extends Controller
     public function show(Request $request, Customer $customer)
     {
         $tab = $request->query('tab', 'summary');
-        $allowedTabs = ['summary', 'services', 'invoices', 'tickets', 'emails', 'log'];
+        $allowedTabs = ['summary', 'services', 'projects', 'invoices', 'tickets', 'emails', 'log'];
 
         if (! in_array($tab, $allowedTabs, true)) {
             $tab = 'summary';
@@ -199,6 +199,7 @@ class CustomerController extends Controller
         $customer->load([
             'subscriptions.plan.product',
             'subscriptions.latestOrder',
+            'projects',
             'invoices' => function ($query) {
                 $query->latest('issue_date');
             },

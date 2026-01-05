@@ -29,6 +29,13 @@
                     </a>
                 </div>
                 <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Work & Delivery</div>
+                    <a class="{{ request()->routeIs('rep.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('rep.projects.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Projects
+                    </a>
+                </div>
+                <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
                     <a class="{{ request()->routeIs('rep.earnings.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('rep.earnings.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>

@@ -143,6 +143,11 @@ Route::middleware(['auth:employee', 'employee'])
         Route::get('/leave-requests', [EmployeeLeaveRequestController::class, 'index'])->name('leave-requests.index');
         Route::post('/leave-requests', [EmployeeLeaveRequestController::class, 'store'])->name('leave-requests.store');
         Route::get('/payroll', [EmployeePayrollController::class, 'index'])->name('payroll.index');
+        Route::get('/projects', [\App\Http\Controllers\Employee\ProjectController::class, 'index'])->name('projects.index');
+        Route::get('/projects/{project}', [\App\Http\Controllers\Employee\ProjectController::class, 'show'])->name('projects.show');
+        Route::post('/projects/{project}/tasks', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
+        Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
+        Route::delete('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
     });
 
 Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -217,9 +222,10 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('orders/{order}/milestones', [MilestoneController::class, 'store'])->name('orders.milestones.store');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::resource('projects', ProjectController::class);
-    Route::post('projects/{project}/tasks', [ProjectController::class, 'storeTask'])->name('projects.tasks.store');
-    Route::patch('projects/{project}/tasks/{task}', [ProjectController::class, 'updateTask'])->name('projects.tasks.update');
-    Route::delete('projects/{project}/tasks/{task}', [ProjectController::class, 'destroyTask'])->name('projects.tasks.destroy');
+    Route::post('projects/{project}/tasks', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
+    Route::patch('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
+    Route::patch('projects/{project}/tasks/{task}/status', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'changeStatus'])->name('projects.tasks.changeStatus');
+    Route::delete('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
     Route::resource('sales-reps', \App\Http\Controllers\Admin\SalesRepresentativeController::class)->except(['destroy']);
     Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])->name('support-tickets.index');
@@ -318,6 +324,10 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice'])
         Route::get('/domains/{domain}', [ClientDomainController::class, 'show'])->name('domains.show');
         Route::get('/licenses', [ClientLicenseController::class, 'index'])->name('licenses.index');
         Route::post('/requests', [ClientRequestController::class, 'store'])->name('requests.store');
+        Route::get('/projects', [\App\Http\Controllers\Client\ProjectController::class, 'index'])->name('projects.index');
+        Route::get('/projects/{project}', [\App\Http\Controllers\Client\ProjectController::class, 'show'])->name('projects.show');
+        Route::post('/projects/{project}/tasks', [\App\Http\Controllers\Client\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
+        Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Client\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
         Route::get('/support-tickets', [ClientSupportTicketController::class, 'index'])->name('support-tickets.index');
         Route::get('/support-tickets/create', [ClientSupportTicketController::class, 'create'])->name('support-tickets.create');
         Route::post('/support-tickets', [ClientSupportTicketController::class, 'store'])->name('support-tickets.store');
@@ -343,6 +353,11 @@ Route::middleware(['auth', 'salesrep'])
         Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
         Route::get('/earnings', [SalesRepEarningController::class, 'index'])->name('earnings.index');
         Route::get('/payouts', [SalesRepPayoutController::class, 'index'])->name('payouts.index');
+        Route::get('/projects', [\App\Http\Controllers\SalesRep\ProjectController::class, 'index'])->name('projects.index');
+        Route::get('/projects/{project}', [\App\Http\Controllers\SalesRep\ProjectController::class, 'show'])->name('projects.show');
+        Route::post('/projects/{project}/tasks', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
+        Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
+        Route::delete('/projects/{project}/tasks/{task}', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
     });
 
 Route::get('/products', [PublicProductController::class, 'index'])

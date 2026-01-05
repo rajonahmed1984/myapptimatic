@@ -47,6 +47,7 @@
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Summary</div>
                     <div class="mt-2">Services: {{ $customer->subscriptions->count() }}</div>
                     <div class="mt-1">Active services: {{ $customer->subscriptions->where('status', 'active')->count() }}</div>
+                    <div class="mt-1">Projects: {{ $customer->projects->count() }}</div>
                     <div class="mt-1">Invoices: {{ $customer->invoices->count() }}</div>
                     <div class="mt-1">Tickets: {{ $customer->supportTickets->count() }}</div>
                 </div>
@@ -125,6 +126,54 @@
                         @empty
                             <tr>
                                 <td colspan="8" class="px-4 py-6 text-center text-slate-500">No services yet.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        @elseif($tab === 'projects')
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
+                <table class="w-full min-w-[900px] text-left text-sm">
+                    <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                        <tr>
+                            <th class="px-4 py-3">SL</th>
+                            <th class="px-4 py-3">Project name</th>
+                            <th class="px-4 py-3">Type</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Start date</th>
+                            <th class="px-4 py-3">Due date</th>
+                            <th class="px-4 py-3">Budget</th>
+                            <th class="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($customer->projects as $project)
+                            @php
+                                $statusClasses = match ($project->status) {
+                                    'active' => 'bg-emerald-100 text-emerald-700',
+                                    'completed' => 'bg-blue-100 text-blue-700',
+                                    'on_hold' => 'bg-amber-100 text-amber-700',
+                                    'cancelled' => 'bg-rose-100 text-rose-700',
+                                    default => 'bg-slate-100 text-slate-600',
+                                };
+                            @endphp
+                            <tr class="border-b border-slate-100">
+                                <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
+                                <td class="px-4 py-3 font-medium text-slate-900">{{ $project->name }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ ucfirst($project->type) }}</td>
+                                <td class="px-4 py-3">
+                                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ ucfirst(str_replace('_', ' ', $project->status)) }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-slate-500">{{ $project->start_date?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ $project->due_date?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $project->currency }} {{ number_format($project->total_budget, 2) }}</td>
+                                <td class="px-4 py-3 text-right">
+                                    <a href="{{ route('admin.projects.show', $project) }}" class="text-teal-600 hover:text-teal-500">View</a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="px-4 py-6 text-center text-slate-500">No projects yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

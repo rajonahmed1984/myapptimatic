@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Project;
 
 class Invoice extends Model
 {
     protected $fillable = [
         'customer_id',
         'subscription_id',
+        'project_id',
         'number',
         'status',
         'issue_date',
@@ -27,6 +29,7 @@ class Invoice extends Model
         'currency',
         'late_fee_applied_at',
         'notes',
+        'type',
     ];
 
     protected $casts = [
@@ -52,6 +55,11 @@ class Invoice extends Model
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     public function items(): HasMany

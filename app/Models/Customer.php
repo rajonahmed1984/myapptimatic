@@ -78,6 +78,11 @@ class Customer extends Model
         return $this->hasMany(Order::class);
     }
 
+    public function projects(): HasMany
+    {
+        return $this->hasMany(Project::class);
+    }
+
     public function clientRequests(): HasMany
     {
         return $this->hasMany(ClientRequest::class);
