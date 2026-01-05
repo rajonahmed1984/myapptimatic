@@ -80,12 +80,15 @@ class AffiliateController extends Controller
 
     public function edit(Affiliate $affiliate)
     {
-        return view('admin.affiliates.edit', compact('affiliate'));
+        $customers = Customer::orderBy('name')->get();
+
+        return view('admin.affiliates.edit', compact('affiliate', 'customers'));
     }
 
     public function update(Request $request, Affiliate $affiliate)
     {
         $data = $request->validate([
+            'customer_id' => ['required', 'exists:customers,id', 'unique:affiliates,customer_id,'.$affiliate->id],
             'commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'commission_type' => ['required', 'in:percentage,fixed'],
             'fixed_commission_amount' => ['nullable', 'numeric', 'min:0'],

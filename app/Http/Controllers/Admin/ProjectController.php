@@ -64,6 +64,22 @@ class ProjectController extends Controller
         ]);
     }
 
+    public function edit(Project $project)
+    {
+        return view('admin.projects.edit', [
+            'project' => $project,
+            'statuses' => self::STATUSES,
+            'types' => self::TYPES,
+            'customers' => Customer::orderBy('name')->get(['id', 'name']),
+            'orders' => Order::latest()->limit(50)->get(['id', 'order_number']),
+            'subscriptions' => Subscription::latest()->limit(50)->get(['id']),
+            'invoices' => Invoice::latest('issue_date')->limit(50)->get(['id', 'number', 'total']),
+            'employees' => Employee::where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'designation']),
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
@@ -120,6 +136,9 @@ class ProjectController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:190'],
+            'customer_id' => ['required', 'exists:customers,id'],
+            'order_id' => ['nullable', 'exists:orders,id'],
+            'subscription_id' => ['nullable', 'exists:subscriptions,id'],
             'type' => ['required', 'in:software,website,other'],
             'status' => ['required', 'in:active,on_hold,completed,cancelled'],
             'due_date' => ['nullable', 'date'],

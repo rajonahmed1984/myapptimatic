@@ -42,22 +42,24 @@
             <table class="w-full text-left text-sm text-slate-700">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
+                        <th class="px-4 py-3 w-16">ID</th>
                         <th class="px-4 py-3">Project</th>
                         <th class="px-4 py-3">Customer</th>
                         <th class="px-4 py-3">Type</th>
                         <th class="px-4 py-3">Status</th>
                         <th class="px-4 py-3">Due</th>
                         <th class="px-4 py-3 text-right">Tasks</th>
+                        <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                 @forelse($projects as $project)
                     <tr class="border-t border-slate-100 hover:bg-slate-50/80">
+                        <td class="px-4 py-3 font-semibold text-slate-900">#{{ $project->id }}</td>
                         <td class="px-4 py-3">
                             <a href="{{ route('admin.projects.show', $project) }}" class="font-semibold text-slate-900 hover:text-teal-700">
                                 {{ $project->name }}
                             </a>
-                            <div class="text-xs text-slate-500">#{{ $project->id }}</div>
                         </td>
                         <td class="px-4 py-3">
                             <div class="font-medium text-slate-800">{{ $project->customer?->name ?? '--' }}</div>
@@ -67,15 +69,26 @@
                             <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ ucfirst(str_replace('_', ' ', $project->status)) }}</span>
                         </td>
                         <td class="px-4 py-3 text-sm text-slate-600">
-                            {{ $project->due_date ? $project->due_date->format($globalDateFormat) : '—' }}
+                            {{ $project->due_date ? $project->due_date->format($globalDateFormat) : '--' }}
                         </td>
                         <td class="px-4 py-3 text-right text-sm text-slate-600">
                             {{ $project->done_tasks_count ?? 0 }}/{{ ($project->open_tasks_count ?? 0) + ($project->done_tasks_count ?? 0) }} done
                         </td>
+                        <td class="px-4 py-3 text-right text-sm">
+                            <div class="inline-flex items-center gap-2">
+                                <a href="{{ route('admin.projects.show', $project) }}" class="text-slate-700 hover:text-teal-700 font-semibold">View</a>
+                                <a href="{{ route('admin.projects.edit', $project) }}" class="text-slate-700 hover:text-teal-700 font-semibold">Edit</a>
+                                <form method="POST" action="{{ route('admin.projects.destroy', $project) }}" onsubmit="return confirm('Delete this project?');" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-rose-600 hover:text-rose-700 font-semibold">Delete</button>
+                                </form>
+                            </div>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">No projects found.</td>
+                        <td colspan="8" class="px-4 py-6 text-center text-sm text-slate-500">No projects found.</td>
                     </tr>
                 @endforelse
                 </tbody>

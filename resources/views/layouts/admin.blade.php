@@ -280,7 +280,7 @@
 
         <div class="flex-1 flex flex-col w-full">
             <header class="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-                <div class="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
+                <div class="flex w-full items-center justify-between gap-6 px-6 py-4">
                     <div class="flex items-center gap-3">
                         <button type="button" id="sidebarToggle" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-teal-300 hover:text-teal-600 md:hidden" aria-label="Open menu">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -325,7 +325,7 @@
                 </div>
 
                 @if(session()->has('impersonator_id') && !auth()->user()?->isAdmin())
-                    <div class="mx-auto max-w-6xl px-6 pb-3">
+                    <div class="w-full px-6 pb-3">
                         <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
                             <div class="text-[11px] uppercase tracking-[0.28em] text-amber-600">Impersonation</div>
                             <div class="text-sm text-amber-800">
@@ -342,7 +342,7 @@
                 @endif
             </header>
 
-            <main class="mx-auto max-w-6xl px-6 py-10 fade-in">
+            <main class="w-full px-6 py-10 fade-in">
                 @if ($errors->any())
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                         <ul class="space-y-1">

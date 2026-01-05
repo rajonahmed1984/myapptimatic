@@ -45,7 +45,7 @@
                     <th class="px-4 py-3">Customer</th>
                     <th class="px-4 py-3">Status</th>
                     <th class="px-4 py-3">Last Reply</th>
-                    <th class="px-4 py-3">Action</th>
+                    <th class="px-4 py-3 text-right">Action</th>
                 </tr>
             </thead>
             <tbody>

@@ -6,7 +6,7 @@
 @section('content')
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-            <div class="section-label">Automation Status</div>
+            <div class="section-label">Automation</div>
             <h1 class="mt-2 text-2xl font-semibold text-slate-900">Automation Status</h1>
             <p class="mt-2 text-sm text-slate-600">Monitor daily billing and support automation tasks.</p>
         </div>
@@ -19,49 +19,57 @@
     </div>
 
     <div class="card p-6">
-        <div class="grid gap-4 md:grid-cols-3">
+        <div class="grid gap-4 md:grid-cols-4">
             <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Last Cron Invocation</div>
-                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $lastInvocationText }}</div>
-                <div class="mt-1 text-xs text-slate-500">{{ $lastInvocationAt }}</div>
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Last Invocation</div>
+                <div class="mt-2 text-xl font-semibold text-slate-900">{{ $lastInvocationText }}</div>
+                <div class="text-xs text-slate-500">{{ $lastInvocationAt }}</div>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Last Run Completed</div>
-                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $lastCompletionText }}</div>
-                <div class="mt-1 text-xs text-slate-500">{{ $lastCompletionAt }}</div>
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Last Completion</div>
+                <div class="mt-2 text-xl font-semibold text-slate-900">{{ $lastCompletionText }}</div>
+                <div class="text-xs text-slate-500">{{ $lastCompletionAt }}</div>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Next Daily Task Run</div>
-                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $nextDailyRunText }}</div>
-                <div class="mt-1 text-xs text-slate-500">{{ $nextDailyRunAt }}</div>
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Next Daily Run</div>
+                <div class="mt-2 text-xl font-semibold text-slate-900">{{ $nextDailyRunText }}</div>
+                <div class="text-xs text-slate-500">{{ $nextDailyRunAt }}</div>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">AI / Queue Health</div>
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">AI / Queue</div>
                 <div class="mt-2 flex items-center gap-2">
                     <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $aiHealth['status_classes'] }}">{{ $aiHealth['status_label'] }}</span>
                     <span class="text-xs text-slate-500">Queue: {{ $aiHealth['queue_connection'] }}</span>
                 </div>
-                <div class="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-700">
-                    <div>
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">AI Enabled</div>
-                        <div class="font-semibold">{{ $aiHealth['enabled'] ? 'Yes' : 'No' }}</div>
-                    </div>
-                    <div>
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Risk Module</div>
-                        <div class="font-semibold">{{ $aiHealth['risk_enabled'] ? 'On' : 'Off' }}</div>
-                    </div>
-                    <div>
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Pending Jobs</div>
-                        <div class="font-semibold">{{ $aiHealth['queue_pending'] }}</div>
-                    </div>
-                    <div>
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Failed Jobs</div>
-                        <div class="font-semibold {{ $aiHealth['queue_failed'] > 0 ? 'text-rose-600' : '' }}">{{ $aiHealth['queue_failed'] }}</div>
-                    </div>
+            </div>
+        </div>
+        <div class="mt-4 grid gap-4 md:grid-cols-4">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">AI Enabled</div>
+                <div class="mt-2 flex items-center gap-2">
+                    <div class="font-semibold">{{ $aiHealth['enabled'] ? 'Yes' : 'No' }}</div>
+                </div>
+            </div>            
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Risk Module</div>
+                <div class="mt-2 flex items-center gap-2">
+                    <div class="font-semibold">{{ $aiHealth['risk_enabled'] ? 'On' : 'Off' }}</div>
+                </div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Pending Jobs</div>
+                <div class="mt-2 flex items-center gap-2">
+                    <div class="font-semibold">{{ $aiHealth['queue_pending'] }}</div>
+                </div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Failed Jobs</div>
+                <div class="mt-2 flex items-center gap-2">
+                    <div class="font-semibold {{ $aiHealth['queue_failed'] > 0 ? 'text-rose-600' : '' }}">{{ $aiHealth['queue_failed'] }}</div>
                 </div>
             </div>
         </div>
-
+        
         @if($lastStatus === 'failed' && $lastError)
             <div class="mt-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 <div class="font-semibold">Last Error</div>
@@ -78,7 +86,7 @@
 
         <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
             <h3 class="text-lg font-semibold text-slate-900">System Health Checks</h3>
-            <div class="mt-4 space-y-3">
+            <div class="mt-4 grid gap-3 md:grid-cols-2">
                 <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                     <div>
                         <div class="text-sm font-semibold text-slate-900">Cron Setup</div>
@@ -103,13 +111,13 @@
                     </div>
                 </div>
 
-        <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div>
-                <div class="text-sm font-semibold text-slate-900">Cron Invocation Frequency</div>
-                <div class="text-xs text-slate-500">Cron executed within last {{ $cronInvocationWindowHours ?? 48 }} hours</div>
-            </div>
-            <div class="flex items-center gap-2">
-                @if($cronInvoked)
+                <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-900">Cron Invocation Frequency</div>
+                        <div class="text-xs text-slate-500">Cron executed within last {{ $cronInvocationWindowHours ?? 48 }} hours</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if($cronInvoked)
                             <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
                                 <svg class="mr-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -127,12 +135,12 @@
                     </div>
                 </div>
 
-        <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div>
-                <div class="text-sm font-semibold text-slate-900">Daily Cron Run</div>
-                <div class="text-xs text-slate-500">Billing cron executed within last {{ $dailyCronWindowHours ?? 24 }} hours</div>
-            </div>
-            <div class="flex items-center gap-2">
+                <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-900">Daily Cron Run</div>
+                        <div class="text-xs text-slate-500">Billing cron executed within last {{ $dailyCronWindowHours ?? 24 }} hours</div>
+                    </div>
+                    <div class="flex items-center gap-2">
                         @if($dailyCronRun)
                             <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
                                 <svg class="mr-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -198,15 +206,17 @@
                     {{ $cronStatusLabel }}
                 </div>
             </div>
-            <div class="md:col-span-2">
-                <label class="text-sm text-slate-600">Secure cron URL (use in cPanel)</label>
-                <input value="{{ $cronUrl ?? '' }}" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700" />
-                <p class="mt-2 text-xs text-slate-500">Example cPanel command: <code>curl -fsS "{{ $cronUrl ?? '' }}" &gt;/dev/null 2&gt;&amp;1</code></p>
-            </div>
-            <div class="md:col-span-2">
-                <label class="text-sm text-slate-600">CLI command (server cron)</label>
-                <input value="php /path/to/artisan billing:run" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700" />
-                <p class="mt-2 text-xs text-slate-500">Run from your project root if you have shell access.</p>
+            <div class="md:col-span-2 grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="text-sm text-slate-600">Secure cron URL (use in cPanel)</label>
+                    <input value="{{ $cronUrl ?? '' }}" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700" />
+                    <p class="mt-2 text-xs text-slate-500">Example cPanel command: <code>curl -fsS "{{ $cronUrl ?? '' }}" &gt;/dev/null 2&gt;&amp;1</code></p>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">CLI command (server cron)</label>
+                    <input value="php /path/to/artisan billing:run" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700" />
+                    <p class="mt-2 text-xs text-slate-500">Run from your project root if you have shell access.</p>
+                </div>
             </div>
         </div>
     </div>
