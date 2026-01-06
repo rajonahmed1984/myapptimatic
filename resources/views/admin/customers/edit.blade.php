@@ -44,6 +44,23 @@
                     <label class="text-sm text-slate-600">Address</label>
                     <textarea name="address" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('address', $customer->address) }}</textarea>
                 </div>
+                <div>
+                    <label class="text-sm text-slate-600">Status</label>
+                    <select name="status" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                        <option value="active" {{ old('status', $customer->status) === 'active' ? 'selected' : '' }}>Active</option>
+                        <option value="inactive" {{ old('status', $customer->status) === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Access Override Until</label>
+                    <input name="access_override_until" type="date" value="{{ old('access_override_until', $customer->access_override_until?->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <p class="mt-1 text-xs text-slate-500">Grant temporary access even if status is inactive</p>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-sm text-slate-600">Notes</label>
+                <textarea name="notes" rows="3" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $customer->notes) }}</textarea>
             </div>
 
             <div class="flex items-center gap-3">
