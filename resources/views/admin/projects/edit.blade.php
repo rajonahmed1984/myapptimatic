@@ -14,152 +14,186 @@
     </div>
 
     <div class="card p-6">
-        <form method="POST" action="{{ route('admin.projects.update', $project) }}" class="mt-2 grid gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5">
+        <form method="POST" action="{{ route('admin.projects.update', $project) }}" class="mt-2 space-y-6 rounded-2xl border border-slate-200 bg-white/80 p-5">
             @csrf
             @method('PUT')
 
-            <div class="grid gap-4 md:grid-cols-2">
-                <div>
-                    <label class="text-xs text-slate-500">Project name</label>
-                    <input name="name" value="{{ old('name', $project->name) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Customer</label>
-                    <select name="customer_id" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <option value="">Select customer</option>
-                        @foreach($customers as $customer)
-                            <option value="{{ $customer->id }}" @selected(old('customer_id', $project->customer_id) == $customer->id)>{{ $customer->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
+            <fieldset class="space-y-4">
+                <legend class="text-xs uppercase tracking-[0.2em] text-slate-400">Project Info</legend>
 
-            <div class="grid gap-4 md:grid-cols-3">
-                <div>
-                    <label class="text-xs text-slate-500">Order (optional)</label>
-                    <select name="order_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <option value="">-- none --</option>
-                        @foreach($orders as $order)
-                            <option value="{{ $order->id }}" @selected(old('order_id', $project->order_id) == $order->id)>{{ $order->order_number ?? $order->id }}</option>
-                        @endforeach
-                    </select>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label class="text-xs text-slate-500">Project name</label>
+                        <input name="name" value="{{ old('name', $project->name) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Customer</label>
+                        <select name="customer_id" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <option value="">Select customer</option>
+                            @foreach($customers as $customer)
+                                <option value="{{ $customer->id }}" @selected(old('customer_id', $project->customer_id) == $customer->id)>{{ $customer->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="text-xs text-slate-500">Invoice (optional)</label>
-                    <select name="invoice_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <option value="">-- none --</option>
-                        @foreach($invoices as $invoice)
-                            <option value="{{ $invoice->id }}" @selected(old('invoice_id', $project->advance_invoice_id) == $invoice->id)>{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Subscription (optional)</label>
-                    <select name="subscription_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <option value="">-- none --</option>
-                        @foreach($subscriptions as $subscription)
-                            <option value="{{ $subscription->id }}" @selected(old('subscription_id', $project->subscription_id) == $subscription->id)>Subscription #{{ $subscription->id }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
 
-            <div class="grid gap-4 md:grid-cols-3">
-                <div>
-                    <label class="text-xs text-slate-500">Type</label>
-                    <select name="type" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        @foreach($types as $type)
-                            <option value="{{ $type }}" @selected(old('type', $project->type) === $type)>{{ ucfirst($type) }}</option>
-                        @endforeach
-                    </select>
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                        <label class="text-xs text-slate-500">Order (optional)</label>
+                        <select name="order_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <option value="">-- none --</option>
+                            @foreach($orders as $order)
+                                <option value="{{ $order->id }}" @selected(old('order_id', $project->order_id) == $order->id)>{{ $order->order_number ?? $order->id }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Invoice (optional)</label>
+                        <select name="invoice_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <option value="">-- none --</option>
+                            @foreach($invoices as $invoice)
+                                <option value="{{ $invoice->id }}" @selected(old('invoice_id', $project->advance_invoice_id) == $invoice->id)>{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Subscription (optional)</label>
+                        <select name="subscription_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <option value="">-- none --</option>
+                            @foreach($subscriptions as $subscription)
+                                <option value="{{ $subscription->id }}" @selected(old('subscription_id', $project->subscription_id) == $subscription->id)>Subscription #{{ $subscription->id }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="text-xs text-slate-500">Status</label>
-                    <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        @foreach($statuses as $status)
-                            <option value="{{ $status }}" @selected(old('status', $project->status) === $status)>{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Sales representatives</label>
-                    <select name="sales_rep_ids[]" multiple class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        @foreach($salesReps as $rep)
-                            <option value="{{ $rep->id }}" @selected(collect(old('sales_rep_ids', $project->salesRepresentatives->pluck('id')->toArray()))->contains($rep->id))>{{ $rep->name }} ({{ $rep->email }})</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
 
-            <div class="grid gap-4 md:grid-cols-2">
-                <div>
-                    <label class="text-xs text-slate-500">Start date</label>
-                    <input name="start_date" type="date" value="{{ old('start_date', optional($project->start_date)->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                        <label class="text-xs text-slate-500">Type</label>
+                        <select name="type" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            @foreach($types as $type)
+                                <option value="{{ $type }}" @selected(old('type', $project->type) === $type)>{{ ucfirst($type) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Status</label>
+                        <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            @foreach($statuses as $status)
+                                <option value="{{ $status }}" @selected(old('status', $project->status) === $status)>{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="text-xs text-slate-500">Expected end date</label>
-                    <input name="expected_end_date" type="date" value="{{ old('expected_end_date', optional($project->expected_end_date)->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-            </div>
 
-            <div class="grid gap-4 md:grid-cols-2">
-                <div>
-                    <label class="text-xs text-slate-500">Due date (internal)</label>
-                    <input name="due_date" type="date" value="{{ old('due_date', optional($project->due_date)->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label class="text-xs text-slate-500">Start date</label>
+                        <input name="start_date" type="date" value="{{ old('start_date', optional($project->start_date)->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Expected end date</label>
+                        <input name="expected_end_date" type="date" value="{{ old('expected_end_date', optional($project->expected_end_date)->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
                 </div>
-                <div>
-                    <label class="text-xs text-slate-500">Assign employees</label>
-                    <select name="employee_ids[]" multiple class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        @foreach($employees as $employee)
-                            <option value="{{ $employee->id }}" @selected(collect(old('employee_ids', $project->employees->pluck('id')->toArray()))->contains($employee->id))>{{ $employee->name }} {{ $employee->designation ? "({$employee->designation})" : '' }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
 
-            <div>
-                <label class="text-xs text-slate-500">Description</label>
-                <textarea name="description" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('description', $project->description ?? '') }}</textarea>
-            </div>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label class="text-xs text-slate-500">Due date (internal)</label>
+                        <input name="due_date" type="date" value="{{ old('due_date', optional($project->due_date)->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                </div>
 
-            <div>
-                <label class="text-xs text-slate-500">Notes</label>
-                <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('notes', $project->notes) }}</textarea>
-            </div>
+                <div>
+                    <label class="text-xs text-slate-500">Description</label>
+                    <textarea name="description" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('description', $project->description ?? '') }}</textarea>
+                </div>
 
-            <div class="grid gap-4 md:grid-cols-4">
                 <div>
-                    <label class="text-xs text-slate-500">Total budget</label>
-                    <input name="total_budget" type="number" step="0.01" value="{{ old('total_budget', $project->total_budget) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    <label class="text-xs text-slate-500">Notes</label>
+                    <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('notes', $project->notes) }}</textarea>
                 </div>
-                <div>
-                    <label class="text-xs text-slate-500">Initial payment</label>
-                    <input name="initial_payment_amount" type="number" step="0.01" value="{{ old('initial_payment_amount', $project->initial_payment_amount) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Currency</label>
-                    <input name="currency" value="{{ old('currency', $project->currency) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Budget (legacy)</label>
-                    <input name="budget_amount" type="number" step="0.01" value="{{ old('budget_amount', $project->budget_amount) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-            </div>
+            </fieldset>
 
-            <div class="grid gap-4 md:grid-cols-3">
-                <div>
-                    <label class="text-xs text-slate-500">Planned hours</label>
-                    <input name="planned_hours" type="number" step="0.01" value="{{ old('planned_hours', $project->planned_hours) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+            <fieldset class="space-y-4">
+                <legend class="text-xs uppercase tracking-[0.2em] text-slate-400">People</legend>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label class="text-xs text-slate-500">Sales representatives</label>
+                        <div class="mt-2 space-y-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
+                            @foreach($salesReps as $rep)
+                                @php
+                                    $selectedSalesReps = collect(old('sales_rep_ids', $project->salesRepresentatives->pluck('id')->toArray()));
+                                    $assignedRep = $project->salesRepresentatives->firstWhere('id', $rep->id);
+                                    $repAmount = old('sales_rep_amounts.'.$rep->id, $assignedRep?->pivot?->amount ?? 0);
+                                @endphp
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <label class="flex items-center gap-2 text-xs text-slate-600">
+                                        <input type="checkbox" name="sales_rep_ids[]" value="{{ $rep->id }}" @checked($selectedSalesReps->contains($rep->id))>
+                                        <span>{{ $rep->name }} ({{ $rep->email }})</span>
+                                    </label>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs text-slate-500">Amount</span>
+                                        <input type="number" min="0" step="0.01" name="sales_rep_amounts[{{ $rep->id }}]" value="{{ $repAmount }}" class="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">Amounts apply only to selected sales reps.</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Assign employees</label>
+                        <select name="employee_ids[]" multiple class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            @foreach($employees as $employee)
+                                <option value="{{ $employee->id }}" @selected(collect(old('employee_ids', $project->employees->pluck('id')->toArray()))->contains($employee->id))>{{ $employee->name }} {{ $employee->designation ? "({$employee->designation})" : '' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="text-xs text-slate-500">Hourly cost</label>
-                    <input name="hourly_cost" type="number" step="0.01" value="{{ old('hourly_cost', $project->hourly_cost) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+            </fieldset>
+
+            <fieldset class="space-y-4">
+                <legend class="text-xs uppercase tracking-[0.2em] text-slate-400">Budget & Currency</legend>
+
+                <div class="grid gap-4 md:grid-cols-4">
+                    <div>
+                        <label class="text-xs text-slate-500">Total budget</label>
+                        <input name="total_budget" type="number" step="0.01" value="{{ old('total_budget', $project->total_budget) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Initial payment</label>
+                        <input name="initial_payment_amount" type="number" step="0.01" value="{{ old('initial_payment_amount', $project->initial_payment_amount) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Currency</label>
+                        <select name="currency" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            @foreach($currencyOptions as $currency)
+                                <option value="{{ $currency }}" @selected(old('currency', $project->currency) === $currency)>{{ $currency }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Budget (legacy)</label>
+                        <input name="budget_amount" type="number" step="0.01" value="{{ old('budget_amount', $project->budget_amount) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
                 </div>
-                <div>
-                    <label class="text-xs text-slate-500">Actual hours</label>
-                    <input name="actual_hours" type="number" step="0.01" value="{{ old('actual_hours', $project->actual_hours) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                        <label class="text-xs text-slate-500">Planned hours</label>
+                        <input name="planned_hours" type="number" step="0.01" value="{{ old('planned_hours', $project->planned_hours) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Hourly cost</label>
+                        <input name="hourly_cost" type="number" step="0.01" value="{{ old('hourly_cost', $project->hourly_cost) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Actual hours</label>
+                        <input name="actual_hours" type="number" step="0.01" value="{{ old('actual_hours', $project->actual_hours) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
                 </div>
-            </div>
+            </fieldset>
 
             <div class="flex justify-end gap-3 pt-2">
                 <a href="{{ route('admin.projects.show', $project) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Cancel</a>

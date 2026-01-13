@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProjectTask extends Model
 {
@@ -11,7 +12,9 @@ class ProjectTask extends Model
         'project_id',
         'title',
         'description',
+        'task_type',
         'status',
+        'priority',
         'assignee_id',
         'assigned_type',
         'assigned_id',
@@ -22,6 +25,9 @@ class ProjectTask extends Model
         'customer_visible',
         'progress',
         'created_by',
+        'time_estimate_minutes',
+        'tags',
+        'relationship_ids',
     ];
 
     protected $casts = [
@@ -29,6 +35,8 @@ class ProjectTask extends Model
         'due_date' => 'date',
         'completed_at' => 'datetime',
         'customer_visible' => 'boolean',
+        'tags' => 'array',
+        'relationship_ids' => 'array',
     ];
 
     protected static function booted(): void
@@ -51,5 +59,20 @@ class ProjectTask extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assignee_id');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ProjectTaskMessage::class, 'project_task_id');
+    }
+
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(ProjectTaskAssignment::class, 'project_task_id');
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(ProjectTaskActivity::class, 'project_task_id');
     }
 }

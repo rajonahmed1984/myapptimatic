@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SalesRep;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\SalesRepresentative;
+use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
@@ -30,11 +31,6 @@ class ProjectController extends Controller
         $project->load(['customer']);
 
         $tasks = $project->tasks()
-            ->where(function ($q) use ($repId) {
-                $q->where(function ($qq) use ($repId) {
-                    $qq->where('assigned_type', 'sales_rep')->where('assigned_id', $repId);
-                })->orWhere('customer_visible', true);
-            })
             ->orderBy('id')
             ->get();
 
@@ -47,6 +43,8 @@ class ProjectController extends Controller
             'project' => $project,
             'tasks' => $tasks,
             'initialInvoice' => $initialInvoice,
+            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+            'priorityOptions' => TaskSettings::priorityOptions(),
         ]);
     }
 }

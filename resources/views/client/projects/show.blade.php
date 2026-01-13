@@ -48,7 +48,7 @@
                     <div class="text-xs text-slate-500">Dates and assignment are managed internally and locked after creation.</div>
                 </div>
             </div>
-            <form method="POST" action="{{ route('client.projects.tasks.store', $project) }}" class="mt-4 grid gap-3 md:grid-cols-3">
+            <form method="POST" action="{{ route('client.projects.tasks.store', $project) }}" class="mt-4 grid gap-3 md:grid-cols-3" enctype="multipart/form-data">
                 @csrf
                 <div class="md:col-span-1">
                     <label class="text-xs text-slate-500">Title</label>
@@ -57,6 +57,26 @@
                 <div class="md:col-span-2">
                     <label class="text-xs text-slate-500">Description</label>
                     <input name="description" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                </div>
+                <div class="md:col-span-1">
+                    <label class="text-xs text-slate-500">Task type</label>
+                    <select name="task_type" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        @foreach($taskTypeOptions as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="md:col-span-1">
+                    <label class="text-xs text-slate-500">Priority</label>
+                    <select name="priority" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        @foreach($priorityOptions as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="md:col-span-1">
+                    <label class="text-xs text-slate-500">Attachment (required for Upload type)</label>
+                    <input type="file" name="attachment" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" class="mt-1 w-full text-xs text-slate-600">
                 </div>
                 <div class="md:col-span-3 flex justify-end">
                     <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Add task</button>
@@ -82,6 +102,9 @@
                             <tr class="border-t border-slate-100 align-top">
                                 <td class="px-3 py-2">
                                     <div class="font-semibold text-slate-900">{{ $task->title }}</div>
+                                    <div class="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                                        {{ $taskTypeOptions[$task->task_type] ?? ucfirst($task->task_type ?? 'Task') }}
+                                    </div>
                                     @if($task->description)
                                         <div class="text-xs text-slate-500">{{ $task->description }}</div>
                                     @endif
@@ -106,7 +129,8 @@
                 </form>
             </td>
             <td class="px-3 py-2 text-right align-top text-xs text-slate-500">
-                Status updates only; dates/assignees are fixed.
+                <div>Status updates only; dates/assignees are fixed.</div>
+                <a href="{{ route('client.projects.tasks.show', [$project, $task]) }}" class="mt-2 inline-flex text-xs font-semibold text-teal-600 hover:text-teal-500">Open Task</a>
             </td>
         </tr>
         @endforeach

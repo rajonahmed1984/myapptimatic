@@ -19,6 +19,7 @@
                 <button type="button" data-tab-target="invoices" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Invoices</button>
                 <button type="button" data-tab-target="automation" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Automatic module functions</button>
                 <button type="button" data-tab-target="billing" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Billing settings</button>
+                <button type="button" data-tab-target="tasks" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Tasks</button>
                 <button type="button" data-tab-target="email-templates" class="rounded-full border border-slate-200 px-4 py-2 text-slate-600">Email templates</button>
             </div>
 
@@ -315,6 +316,38 @@
                                     <input name="license_expiry_second_notice_days" type="number" value="{{ old('license_expiry_second_notice_days', $settings['license_expiry_second_notice_days']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section data-tab-panel="tasks" class="space-y-6">
+                    <div class="section-label">Task management</div>
+                    <div class="grid gap-6 md:grid-cols-2">
+                        <div class="md:col-span-2">
+                            <label class="text-sm text-slate-600">Enabled task types</label>
+                            <div class="mt-3 grid gap-2 md:grid-cols-3">
+                                @foreach($taskTypeLabels as $value => $label)
+                                    <label class="flex items-center gap-2 text-sm text-slate-600">
+                                        <input type="checkbox" name="task_types_enabled[]" value="{{ $value }}" @checked(in_array($value, $settings['task_types_enabled'], true)) class="rounded border-slate-300 text-teal-500" />
+                                        <span>{{ $label }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-600">Custom task label</label>
+                            <input name="task_custom_type_label" value="{{ old('task_custom_type_label', $settings['task_custom_type_label']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" placeholder="e.g. Discovery" />
+                            <p class="mt-2 text-xs text-slate-500">Shown when task type is set to Custom.</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-600">Upload size limit (MB)</label>
+                            <input name="task_upload_max_mb" type="number" min="1" max="100" value="{{ old('task_upload_max_mb', $settings['task_upload_max_mb']) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <p class="mt-2 text-xs text-slate-500">Applies to task comments and uploads.</p>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-slate-600">
+                            <input type="hidden" name="task_customer_visible_default" value="0" />
+                            <input type="checkbox" name="task_customer_visible_default" value="1" @checked($settings['task_customer_visible_default']) class="rounded border-slate-300 text-teal-500" />
+                            Default new tasks as customer visible
                         </div>
                     </div>
                 </section>

@@ -66,4 +66,14 @@ class ProjectTaskPolicy
 
         return $this->view($actor, $task);
     }
+
+    public function comment($actor, ProjectTask $task): bool
+    {
+        return $this->view($actor, $task);
+    }
+
+    public function upload($actor, ProjectTask $task): bool
+    {
+        return $this->comment($actor, $task);
+    }
 }

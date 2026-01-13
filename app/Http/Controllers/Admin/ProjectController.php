@@ -14,6 +14,10 @@ use App\Models\SalesRepresentative;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Support\SystemLogger;
+use App\Support\TaskActivityLogger;
+use App\Support\TaskAssignmentManager;
+use App\Support\TaskAssignees;
+use App\Support\TaskSettings;
 use App\Services\CommissionService;
 use App\Services\BillingService;
 use App\Models\Setting;
@@ -21,12 +25,15 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ProjectController extends Controller
 {
-    private const STATUSES = ['draft', 'active', 'on_hold', 'completed', 'cancelled'];
+    private const STATUSES = ['ongoing', 'hold', 'complete', 'cancel'];
     private const TYPES = ['software', 'website', 'other'];
     private const TASK_STATUSES = ['pending', 'in_progress', 'blocked', 'completed'];
+    private const CURRENCY_OPTIONS = ['BDT', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'JPY', 'INR', 'SGD', 'AED'];
 
     public function index(Request $request)
     {
@@ -77,6 +84,9 @@ class ProjectController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']),
             'defaultCurrency' => strtoupper((string) Setting::getValue('currency')),
+            'currencyOptions' => self::CURRENCY_OPTIONS,
+            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+            'priorityOptions' => TaskSettings::priorityOptions(),
         ]);
     }
 
@@ -96,11 +106,16 @@ class ProjectController extends Controller
             'salesReps' => SalesRepresentative::where('status', 'active')
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']),
+            'currencyOptions' => self::CURRENCY_OPTIONS,
         ]);
     }
 
     public function store(Request $request, BillingService $billingService): RedirectResponse
     {
+        $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
+        $priorityOptions = array_keys(TaskSettings::priorityOptions());
+        $maxMb = TaskSettings::uploadMaxMb();
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:190'],
             'customer_id' => ['required', 'exists:customers,id'],
@@ -109,33 +124,41 @@ class ProjectController extends Controller
             'advance_invoice_id' => ['nullable', 'exists:invoices,id'],
             'final_invoice_id' => ['nullable', 'exists:invoices,id'],
             'type' => ['required', 'in:software,website,other'],
-            'status' => ['required', 'in:draft,active,on_hold,completed,cancelled'],
+            'status' => ['required', 'in:ongoing,hold,complete,cancel'],
             'start_date' => ['nullable', 'date'],
             'expected_end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'due_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'total_budget' => ['required', 'numeric', 'min:0'],
             'initial_payment_amount' => ['required', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'max:10'],
+            'currency' => ['required', 'string', 'size:3', Rule::in(self::CURRENCY_OPTIONS)],
             'budget_amount' => ['nullable', 'numeric', 'min:0'],
             'planned_hours' => ['nullable', 'numeric', 'min:0'],
             'hourly_cost' => ['nullable', 'numeric', 'min:0'],
             'actual_hours' => ['nullable', 'numeric', 'min:0'],
             'sales_rep_ids' => ['array'],
             'sales_rep_ids.*' => ['exists:sales_representatives,id'],
+            'sales_rep_amounts' => ['array'],
+            'sales_rep_amounts.*' => ['nullable', 'numeric', 'min:0'],
             'employee_ids' => ['array'],
             'employee_ids.*' => ['exists:employees,id'],
             'tasks' => ['required', 'array', 'min:1'],
             'tasks.*.title' => ['required', 'string', 'max:255'],
             'tasks.*.descriptions' => ['nullable', 'array'],
             'tasks.*.descriptions.*' => ['nullable', 'string'],
+            'tasks.*.task_type' => ['required', Rule::in($taskTypeOptions)],
+            'tasks.*.priority' => ['nullable', Rule::in($priorityOptions)],
+            'tasks.*.time_estimate_minutes' => ['nullable', 'integer', 'min:0'],
+            'tasks.*.tags' => ['nullable', 'string'],
+            'tasks.*.relationship_ids' => ['nullable', 'string'],
             'tasks.*.start_date' => ['required', 'date'],
             'tasks.*.due_date' => ['required', 'date'],
             'tasks.*.assignee' => ['required', 'string'], // format: type:id
+            'tasks.*.attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:' . ($maxMb * 1024)],
             'tasks.*.customer_visible' => ['nullable', 'boolean'],
         ]);
 
-        foreach ($data['tasks'] as $task) {
+        foreach ($data['tasks'] as $index => $task) {
             if (isset($task['start_date'], $task['due_date'])) {
                 $start = Carbon::parse($task['start_date']);
                 $due = Carbon::parse($task['due_date']);
@@ -145,9 +168,26 @@ class ProjectController extends Controller
                         ->withInput();
                 }
             }
+
+            if (($task['task_type'] ?? null) === 'upload' && ! $request->file("tasks.{$index}.attachment")) {
+                return back()
+                    ->withErrors(['tasks' => 'Upload tasks require at least one file.'])
+                    ->withInput();
+            }
         }
 
-        $project = DB::transaction(function () use ($data, $request, $billingService) {
+        $salesRepSync = [];
+        if (! empty($data['sales_rep_ids'])) {
+            $salesRepSync = $this->buildSalesRepSyncData($request, $data['sales_rep_ids']);
+            $totalSalesRepAmount = array_sum(array_column($salesRepSync, 'amount'));
+            if ($totalSalesRepAmount > (float) $data['total_budget']) {
+                return back()
+                    ->withErrors(['sales_rep_amounts' => 'Total sales rep amounts cannot exceed total budget.'])
+                    ->withInput();
+            }
+        }
+
+        $project = DB::transaction(function () use ($data, $request, $billingService, $salesRepSync) {
             $project = Project::create([
                 'name' => $data['name'],
                 'customer_id' => $data['customer_id'],
@@ -176,28 +216,49 @@ class ProjectController extends Controller
             }
 
             if (! empty($data['sales_rep_ids'])) {
-                $project->salesRepresentatives()->sync($data['sales_rep_ids']);
+                $project->salesRepresentatives()->sync($salesRepSync);
             }
 
-            foreach ($data['tasks'] as $task) {
-                [$assignedType, $assignedId] = $this->parseAssignee($task['assignee']);
+            foreach ($data['tasks'] as $index => $task) {
+                $assignees = TaskAssignees::parse([$task['assignee']]);
+                if (empty($assignees)) {
+                    [$assignedType, $assignedId] = $this->parseAssignee($task['assignee']);
+                    $assignees = [['type' => $assignedType, 'id' => $assignedId]];
+                } else {
+                    $assignedType = $assignees[0]['type'];
+                    $assignedId = $assignees[0]['id'];
+                }
 
                 // Combine multiple descriptions with newlines
                 $descriptions = $task['descriptions'] ?? [];
                 $description = implode("\n", array_filter($descriptions));
 
-                ProjectTask::create([
+                $projectTask = ProjectTask::create([
                     'project_id' => $project->id,
                     'title' => $task['title'],
                     'description' => $description ?: null,
+                    'task_type' => $task['task_type'],
                     'status' => 'pending',
+                    'priority' => $task['priority'] ?? 'medium',
                     'start_date' => $task['start_date'],
                     'due_date' => $task['due_date'],
                     'assigned_type' => $assignedType,
                     'assigned_id' => $assignedId,
                     'customer_visible' => (bool) ($task['customer_visible'] ?? false),
                     'created_by' => $request->user()?->id,
+                    'time_estimate_minutes' => $task['time_estimate_minutes'] ?? null,
+                    'tags' => $this->parseTags($task['tags'] ?? null),
+                    'relationship_ids' => $this->parseRelationships($task['relationship_ids'] ?? null),
                 ]);
+
+                TaskAssignmentManager::sync($projectTask, $assignees);
+                TaskActivityLogger::record($projectTask, $request, 'system', 'Task created.');
+
+                $attachment = $request->file("tasks.{$index}.attachment");
+                if ($attachment) {
+                    $path = $this->storeTaskAttachment($attachment, $projectTask);
+                    TaskActivityLogger::record($projectTask, $request, 'upload', null, [], $path);
+                }
             }
 
             $issueDate = Carbon::today();
@@ -251,25 +312,19 @@ class ProjectController extends Controller
             'advanceInvoice',
             'finalInvoice',
             'tasks.assignee',
+            'employees',
+            'salesRepresentatives',
         ]);
 
         $user = $request->user();
         $employeeId = $user?->employee?->id;
         $salesRepId = SalesRepresentative::where('user_id', $user?->id)->value('id');
 
-        $tasksQuery = $project->tasks()->orderBy('id');
+        $tasksQuery = $project->tasks()
+            ->with(['assignments.employee', 'assignments.salesRep'])
+            ->orderBy('id');
 
-        $tasksQuery->when($user?->isClient(), fn ($q) => $q->where('customer_visible', true))
-            ->when($user?->isEmployee() && $employeeId, fn ($q) => $q->where(function ($sub) use ($employeeId) {
-                $sub->where(function ($qq) use ($employeeId) {
-                    $qq->where('assigned_type', 'employee')->where('assigned_id', $employeeId);
-                })->orWhere('customer_visible', true);
-            }))
-            ->when($user?->isSales() && $salesRepId, fn ($q) => $q->where(function ($sub) use ($salesRepId) {
-                $sub->where(function ($qq) use ($salesRepId) {
-                    $qq->where('assigned_type', 'sales_rep')->where('assigned_id', $salesRepId);
-                })->orWhere('customer_visible', true);
-            }));
+        $tasksQuery->when($user?->isClient(), fn ($q) => $q->where('customer_visible', true));
 
         $tasks = $tasksQuery->get();
 
@@ -283,6 +338,8 @@ class ProjectController extends Controller
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
             'taskStatuses' => self::TASK_STATUSES,
+            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+            'priorityOptions' => TaskSettings::priorityOptions(),
             'employees' => Employee::where('status', 'active')->orderBy('name')->get(['id', 'name', 'designation']),
             'salesReps' => SalesRepresentative::where('status', 'active')->orderBy('name')->get(['id', 'name', 'email']),
             'financials' => $this->financials($project),
@@ -299,26 +356,54 @@ class ProjectController extends Controller
             'order_id' => ['nullable', 'exists:orders,id'],
             'subscription_id' => ['nullable', 'exists:subscriptions,id'],
             'type' => ['required', 'in:software,website,other'],
-            'status' => ['required', 'in:draft,active,on_hold,completed,cancelled'],
+            'status' => ['required', 'in:ongoing,hold,complete,cancel'],
+            'start_date' => ['nullable', 'date'],
+            'expected_end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'due_date' => ['nullable', 'date'],
+            'description' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'advance_invoice_id' => ['nullable', 'exists:invoices,id'],
             'final_invoice_id' => ['nullable', 'exists:invoices,id'],
+            'total_budget' => ['required', 'numeric', 'min:0'],
+            'initial_payment_amount' => ['required', 'numeric', 'min:0'],
+            'currency' => ['required', 'string', 'size:3', Rule::in(self::CURRENCY_OPTIONS)],
             'budget_amount' => ['nullable', 'numeric', 'min:0'],
             'planned_hours' => ['nullable', 'numeric', 'min:0'],
             'hourly_cost' => ['nullable', 'numeric', 'min:0'],
             'actual_hours' => ['nullable', 'numeric', 'min:0'],
+            'sales_rep_ids' => ['array'],
+            'sales_rep_ids.*' => ['exists:sales_representatives,id'],
+            'sales_rep_amounts' => ['array'],
+            'sales_rep_amounts.*' => ['nullable', 'numeric', 'min:0'],
+            'employee_ids' => ['array'],
+            'employee_ids.*' => ['exists:employees,id'],
         ]);
 
+        $salesRepSync = $this->buildSalesRepSyncData($request, $data['sales_rep_ids'] ?? []);
+        $totalSalesRepAmount = array_sum(array_column($salesRepSync, 'amount'));
+        if ($totalSalesRepAmount > (float) $data['total_budget']) {
+            return back()
+                ->withErrors(['sales_rep_amounts' => 'Total sales rep amounts cannot exceed total budget.'])
+                ->withInput();
+        }
+
         $previousStatus = $project->status;
+        $data['currency'] = strtoupper($data['currency']);
         $project->update($data);
+
+        $project->employees()->sync($data['employee_ids'] ?? []);
+
+        $project->salesRepresentatives()->sync($salesRepSync);
+        $project->update([
+            'sales_rep_ids' => $data['sales_rep_ids'] ?? [],
+        ]);
 
         SystemLogger::write('activity', 'Project updated.', [
             'project_id' => $project->id,
             'status' => $project->status,
         ], $request->user()?->id, $request->ip());
 
-        if ($previousStatus !== 'completed' && $project->status === 'completed') {
+        if ($previousStatus !== 'complete' && $project->status === 'complete') {
             try {
                 $commissionService->markEarningPayableOnProjectCompleted($project);
             } catch (\Throwable $e) {
@@ -464,5 +549,51 @@ class ProjectController extends Controller
             'profit' => $profit,
             'profitable' => $profit >= 0,
         ];
+    }
+
+    private function buildSalesRepSyncData(Request $request, array $repIds): array
+    {
+        $amounts = $request->input('sales_rep_amounts', []);
+        $syncData = [];
+
+        foreach ($repIds as $repId) {
+            $amount = isset($amounts[$repId]) && $amounts[$repId] !== ''
+                ? (float) $amounts[$repId]
+                : 0.0;
+            $syncData[$repId] = ['amount' => $amount];
+        }
+
+        return $syncData;
+    }
+
+    private function parseTags(?string $tags, array $fallback = []): array
+    {
+        if ($tags === null) {
+            return $fallback;
+        }
+
+        $parsed = array_filter(array_map('trim', explode(',', $tags)));
+        return array_values(array_unique($parsed));
+    }
+
+    private function parseRelationships(?string $relationships, array $fallback = []): array
+    {
+        if ($relationships === null) {
+            return $fallback;
+        }
+
+        $ids = array_filter(array_map('trim', explode(',', $relationships)));
+        $ids = array_values(array_unique(array_filter($ids, fn ($id) => is_numeric($id))));
+        return array_map('intval', $ids);
+    }
+
+    private function storeTaskAttachment($attachment, ProjectTask $task): string
+    {
+        $name = pathinfo((string) $attachment->getClientOriginalName(), PATHINFO_FILENAME);
+        $name = $name !== '' ? Str::slug($name) : 'attachment';
+        $extension = $attachment->getClientOriginalExtension();
+        $fileName = $name . '-' . Str::random(8) . '.' . $extension;
+
+        return $attachment->storeAs('project-task-activities/' . $task->id, $fileName, 'public');
     }
 }

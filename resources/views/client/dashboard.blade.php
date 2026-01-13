@@ -125,7 +125,7 @@
                             </div>
                         </div>
                     @empty
-                        <div class="text-sm text-slate-500">No active projects right now.</div>
+                        <div class="text-sm text-slate-500">No ongoing projects right now.</div>
                     @endforelse
                 </div>
             </div>

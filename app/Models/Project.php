@@ -89,6 +89,23 @@ class Project extends Model
 
     public function salesRepresentatives()
     {
-        return $this->belongsToMany(SalesRepresentative::class, 'project_sales_representative')->withTimestamps();
+        return $this->belongsToMany(SalesRepresentative::class, 'project_sales_representative')
+            ->withPivot('amount')
+            ->withTimestamps();
+    }
+
+    public function getSalesRepTotalAttribute(): float
+    {
+        return (float) $this->salesRepresentatives
+            ->sum(fn ($rep) => (float) ($rep->pivot?->amount ?? 0));
+    }
+
+    public function getRemainingBudgetAttribute(): ?float
+    {
+        if ($this->total_budget === null) {
+            return null;
+        }
+
+        return (float) $this->total_budget - $this->sales_rep_total;
     }
 }

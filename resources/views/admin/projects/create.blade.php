@@ -14,7 +14,7 @@
     </div>
 
     <div class="card p-6">
-        <form method="POST" action="{{ route('admin.projects.store') }}" class="mt-2 grid gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5">
+        <form method="POST" action="{{ route('admin.projects.store') }}" class="mt-2 grid gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5" enctype="multipart/form-data">
             @csrf
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
@@ -81,11 +81,25 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Sales representatives</label>
-                    <select name="sales_rep_ids[]" multiple class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <div class="mt-2 space-y-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
                         @foreach($salesReps as $rep)
-                            <option value="{{ $rep->id }}" @selected(collect(old('sales_rep_ids', []))->contains($rep->id))>{{ $rep->name }} ({{ $rep->email }})</option>
+                            @php
+                                $selectedSalesReps = collect(old('sales_rep_ids', []));
+                                $repAmount = old('sales_rep_amounts.'.$rep->id, 0);
+                            @endphp
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <label class="flex items-center gap-2 text-xs text-slate-600">
+                                    <input type="checkbox" name="sales_rep_ids[]" value="{{ $rep->id }}" @checked($selectedSalesReps->contains($rep->id))>
+                                    <span>{{ $rep->name }} ({{ $rep->email }})</span>
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-slate-500">Amount</span>
+                                    <input type="number" min="0" step="0.01" name="sales_rep_amounts[{{ $rep->id }}]" value="{{ $repAmount }}" class="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
+                                </div>
+                            </div>
                         @endforeach
-                    </select>
+                    </div>
+                    <p class="mt-1 text-xs text-slate-500">Amounts apply only to selected sales reps.</p>
                 </div>
             </div>
 
@@ -136,7 +150,11 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Currency</label>
-                    <input name="currency" value="{{ old('currency', $defaultCurrency) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    <select name="currency" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        @foreach($currencyOptions as $currency)
+                            <option value="{{ $currency }}" @selected(old('currency', $defaultCurrency) === $currency)>{{ $currency }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Budget (legacy)</label>
@@ -168,7 +186,7 @@
                     <button type="button" id="addTaskRow" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add task</button>
                 </div>
                 <div id="taskRows" class="mt-4 space-y-3">
-                    @php $taskOld = old('tasks', [ ['title' => '', 'descriptions' => [''], 'start_date' => '', 'due_date' => '', 'assignee' => '', 'customer_visible' => false] ]); @endphp
+                    @php $taskOld = old('tasks', [ ['title' => '', 'task_type' => 'feature', 'priority' => 'medium', 'descriptions' => [''], 'start_date' => '', 'due_date' => '', 'assignee' => '', 'customer_visible' => false] ]); @endphp
                     @foreach($taskOld as $index => $task)
                         <div class="rounded-xl border border-slate-100 bg-white p-3 task-row" data-index="{{ $index }}">
                             <div class="grid gap-3 md:grid-cols-4 mb-3">
@@ -183,6 +201,29 @@
                                 <div>
                                     <label class="text-xs text-slate-500">Due date</label>
                                     <input type="date" name="tasks[{{ $index }}][due_date]" value="{{ $task['due_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-3 md:grid-cols-4 mb-3">
+                                <div>
+                                    <label class="text-xs text-slate-500">Task type</label>
+                                    <select name="tasks[{{ $index }}][task_type]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                        @foreach($taskTypeOptions as $value => $label)
+                                            <option value="{{ $value }}" @selected(($task['task_type'] ?? '') === $value)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-500">Priority</label>
+                                    <select name="tasks[{{ $index }}][priority]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                        @foreach($priorityOptions as $value => $label)
+                                            <option value="{{ $value }}" @selected(($task['priority'] ?? '') === $value)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="text-xs text-slate-500">Attachment (required for Upload type)</label>
+                                    <input type="file" name="tasks[{{ $index }}][attachment]" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" class="mt-1 w-full text-xs text-slate-600">
                                 </div>
                             </div>
 
@@ -301,6 +342,29 @@
                         <div>
                             <label class="text-xs text-slate-500">Due date</label>
                             <input type="date" name="tasks[${index}][due_date]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-3 md:grid-cols-4 mb-3">
+                        <div>
+                            <label class="text-xs text-slate-500">Task type</label>
+                            <select name="tasks[${index}][task_type]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                @foreach($taskTypeOptions as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">Priority</label>
+                            <select name="tasks[${index}][priority]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                @foreach($priorityOptions as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs text-slate-500">Attachment (required for Upload type)</label>
+                            <input type="file" name="tasks[${index}][attachment]" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" class="mt-1 w-full text-xs text-slate-600">
                         </div>
                     </div>
 

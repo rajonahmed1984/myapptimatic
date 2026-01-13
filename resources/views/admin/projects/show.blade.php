@@ -21,50 +21,98 @@
         </div>
     </div>
 
-    <div class="card p-6">
-        <div class="mt-6 grid gap-4 md:grid-cols-3 text-sm text-slate-700">
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Customer</div>
-                <div class="mt-2 font-semibold text-slate-900">{{ $project->customer?->name ?? '--' }}</div>
-                <div class="text-xs text-slate-500">Project ID: {{ $project->id }}</div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Type & Dates</div>
-                <div class="mt-2 font-semibold text-slate-900">{{ ucfirst($project->type) }}</div>
-                <div class="text-xs text-slate-500">
-                    Start: {{ $project->start_date?->format($globalDateFormat) ?? '--' }}<br>
-                    Expected end: {{ $project->expected_end_date?->format($globalDateFormat) ?? '--' }}<br>
-                    Due: {{ $project->due_date?->format($globalDateFormat) ?? '--' }}
-                </div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Financials</div>
-                <div class="mt-2 text-sm text-slate-700">
-                    Budget: {{ $project->total_budget ? $project->currency.' '.$project->total_budget : '--' }}<br>
-                    Initial payment: {{ $project->initial_payment_amount ? $project->currency.' '.$project->initial_payment_amount : '--' }}
-                </div>
-                @if(!empty($initialInvoice))
-                    <div class="mt-3 rounded-xl border border-slate-200 bg-white/70 p-3 text-xs text-slate-600">
-                        <div class="font-semibold text-slate-800">Initial Invoice</div>
-                        <div>Number:
-                            <a class="text-teal-700 hover:text-teal-600" href="{{ route('admin.invoices.show', $initialInvoice) }}">#{{ $initialInvoice->number ?? $initialInvoice->id }}</a>
-                        </div>
-                        <div>Amount: {{ $initialInvoice->currency ?? $project->currency }} {{ $initialInvoice->total }}</div>
-                        <div>Status: {{ ucfirst($initialInvoice->status) }}</div>
+    <div class="card p-6 space-y-6">
+        <div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Project Info</div>
+            <div class="mt-3 grid gap-4 md:grid-cols-3 text-sm text-slate-700">
+                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overview</div>
+                    <div class="mt-2 font-semibold text-slate-900">{{ ucfirst($project->type) }}</div>
+                    <div class="text-xs text-slate-500">
+                        Project ID: {{ $project->id }}<br>
+                        Status: {{ ucfirst(str_replace('_', ' ', $project->status)) }}
                     </div>
-                @endif
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Dates</div>
+                    <div class="mt-2 text-xs text-slate-500">
+                        Start: {{ $project->start_date?->format($globalDateFormat) ?? '--' }}<br>
+                        Expected end: {{ $project->expected_end_date?->format($globalDateFormat) ?? '--' }}<br>
+                        Due: {{ $project->due_date?->format($globalDateFormat) ?? '--' }}
+                    </div>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Description</div>
+                    <div class="mt-2 text-xs text-slate-600 whitespace-pre-wrap">
+                        {{ $project->description ?? 'No description provided.' }}
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Description</div>
-            <div class="mt-2">{{ $project->description ?? 'No description provided.' }}</div>
+        <div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">People</div>
+            <div class="mt-3 grid gap-4 md:grid-cols-2 text-sm text-slate-700">
+                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Customer</div>
+                    <div class="mt-2 font-semibold text-slate-900">{{ $project->customer?->name ?? '--' }}</div>
+                    <div class="text-xs text-slate-500">Client ID: {{ $project->customer_id ?? '--' }}</div>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Team</div>
+                    @php
+                        $employeeNames = $project->employees->pluck('name')->filter()->implode(', ');
+                        $salesRepNames = $project->salesRepresentatives
+                            ->map(function ($rep) use ($project) {
+                                $amount = $rep->pivot?->amount ?? 0;
+                                $amountText = $amount > 0 ? ' ('.$project->currency.' '.number_format($amount, 2).')' : '';
+                                return trim($rep->name . $amountText);
+                            })
+                            ->filter()
+                            ->implode(', ');
+                    @endphp
+                    <div class="mt-2 text-xs text-slate-600">
+                        Employees: {{ $employeeNames ?: '--' }}<br>
+                        Sales reps: {{ $salesRepNames ?: '--' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Budget & Currency</div>
+            <div class="mt-3 grid gap-4 md:grid-cols-2 text-sm text-slate-700">
+                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Budget Summary</div>
+                    <div class="mt-2 text-xs text-slate-600">
+                        Total budget: {{ $project->total_budget !== null ? $project->currency.' '.number_format($project->total_budget, 2) : '--' }}<br>
+                        Sales rep total: {{ $project->sales_rep_total !== null ? $project->currency.' '.number_format($project->sales_rep_total, 2) : '--' }}<br>
+                        Remaining budget: {{ $project->remaining_budget !== null ? $project->currency.' '.number_format($project->remaining_budget, 2) : '--' }}<br>
+                        Initial payment: {{ $project->initial_payment_amount !== null ? $project->currency.' '.number_format($project->initial_payment_amount, 2) : '--' }}<br>
+                        Budget (legacy): {{ $project->budget_amount !== null ? $project->currency.' '.number_format($project->budget_amount, 2) : '--' }}<br>
+                        Currency: {{ $project->currency ?? '--' }}
+                    </div>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Initial Invoice</div>
+                    @if(!empty($initialInvoice))
+                        <div class="mt-2 text-xs text-slate-600">
+                            Number:
+                            <a class="text-teal-700 hover:text-teal-600" href="{{ route('admin.invoices.show', $initialInvoice) }}">#{{ $initialInvoice->number ?? $initialInvoice->id }}</a><br>
+                            Amount: {{ $initialInvoice->currency ?? $project->currency }} {{ $initialInvoice->total }}<br>
+                            Status: {{ ucfirst($initialInvoice->status) }}
+                        </div>
+                    @else
+                        <div class="mt-2 text-xs text-slate-500">No initial invoice linked.</div>
+                    @endif
+                </div>
+            </div>
         </div>
 
         @if($project->notes)
-            <div class="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Notes</div>
-                <div class="mt-2">{{ $project->notes }}</div>
+                <div class="mt-2 whitespace-pre-wrap">{{ $project->notes }}</div>
             </div>
         @endif
 
@@ -76,7 +124,7 @@
                         <div class="text-xs text-slate-500">Dates are locked after creation.</div>
                     </div>
                 </div>
-                <form method="POST" action="{{ route('admin.projects.tasks.store', $project) }}" class="mt-4 grid gap-3" id="addTaskForm">
+                <form method="POST" action="{{ route('admin.projects.tasks.store', $project) }}" class="mt-4 grid gap-3" id="addTaskForm" enctype="multipart/form-data">
                     @csrf
                     <div class="grid gap-3 md:grid-cols-4">
                         <div class="md:col-span-2">
@@ -90,6 +138,29 @@
                         <div>
                             <label class="text-xs text-slate-500">Due date</label>
                             <input type="date" name="due_date" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid gap-3 md:grid-cols-4">
+                        <div>
+                            <label class="text-xs text-slate-500">Task type</label>
+                            <select name="task_type" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                @foreach($taskTypeOptions as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">Priority</label>
+                            <select name="priority" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                @foreach($priorityOptions as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs text-slate-500">Attachment (required for Upload type)</label>
+                            <input type="file" name="attachment" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" class="mt-1 w-full text-xs text-slate-600">
                         </div>
                     </div>
 
@@ -201,6 +272,9 @@
                             <tr class="border-t border-slate-100 align-top">
                                 <td class="px-3 py-2">
                                     <div class="font-semibold text-slate-900">{{ $task->title }}</div>
+                                    <div class="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                                        {{ $taskTypeOptions[$task->task_type] ?? ucfirst($task->task_type ?? 'Task') }}
+                                    </div>
                                     @if($task->description)
                                         <div class="text-xs text-slate-500">{{ $task->description }}</div>
                                     @endif
@@ -213,13 +287,13 @@
                                     Due: {{ $task->due_date?->format($globalDateFormat) ?? '--' }}
                                 </td>
                                 <td class="px-3 py-2 text-sm text-slate-700">
-                                    @if($task->assigned_type === 'employee')
-                                        Employee #{{ $task->assigned_id }}
-                                    @elseif($task->assigned_type === 'sales_rep')
-                                        Sales Rep #{{ $task->assigned_id }}
-                                    @else
-                                        --
-                                    @endif
+                                    @php
+                                        $assigneeNames = $task->assignments->map(fn ($assignment) => $assignment->assigneeName())->filter()->implode(', ');
+                                        if ($assigneeNames === '' && $task->assigned_type && $task->assigned_id) {
+                                            $assigneeNames = ucfirst(str_replace('_', ' ', $task->assigned_type)) . ' #' . $task->assigned_id;
+                                        }
+                                    @endphp
+                                    {{ $assigneeNames ?: '--' }}
                                 </td>
                                 <td class="px-3 py-2">
                                     @can('update', $task)
@@ -269,7 +343,9 @@
                                         Completed at {{ $task->completed_at->format($globalDateFormat) }}
                                     @endif
                                 </td>
-                                <td class="px-3 py-2 text-right align-top"></td>
+                                <td class="px-3 py-2 text-right align-top">
+                                    <a href="{{ route('admin.projects.tasks.show', [$project, $task]) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Open Task</a>
+                                </td>
                             </tr>
                         @endforeach
                         </tbody>

@@ -269,8 +269,8 @@ class DashboardController extends Controller
         });
 
         $projectMaintenance = [
-            'projects_active' => Project::where('status', 'active')->count(),
-            'projects_on_hold' => Project::where('status', 'on_hold')->count(),
+            'projects_active' => Project::where('status', 'ongoing')->count(),
+            'projects_on_hold' => Project::where('status', 'hold')->count(),
             'subscriptions_blocked' => Subscription::where('status', 'suspended')->count(),
             'renewals_30d' => Subscription::where('status', 'active')
                 ->whereNotNull('next_invoice_at')

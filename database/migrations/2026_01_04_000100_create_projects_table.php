@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('final_invoice_id')->nullable()->constrained('invoices')->nullOnDelete();
             $table->string('name');
             $table->string('type', 50)->default('software'); // software, website, other
-            $table->string('status', 50)->default('active'); // active, on_hold, completed, cancelled
+            $table->string('status', 50)->default('ongoing'); // ongoing, hold, complete, cancel
             $table->date('due_date')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();

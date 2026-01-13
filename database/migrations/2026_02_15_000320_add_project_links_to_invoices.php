@@ -29,7 +29,15 @@ return new class extends Migration
     {
         Schema::table('invoices', function (Blueprint $table) {
             if (Schema::hasColumn('invoices', 'project_id')) {
-                $table->dropForeign(['project_id']);
+                // Check if foreign key exists before dropping
+                $connection = DB::getDoctrineSchemaManager();
+                $indexes = $connection->listTableForeignKeys('invoices');
+                foreach ($indexes as $fk) {
+                    if ($fk->getLocalColumns() === ['project_id']) {
+                        $table->dropForeign(['project_id']);
+                        break;
+                    }
+                }
                 $table->dropColumn('project_id');
             }
             if (Schema::hasColumn('invoices', 'type')) {

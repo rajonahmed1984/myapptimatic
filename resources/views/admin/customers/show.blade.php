@@ -150,10 +150,10 @@
                         @forelse($customer->projects as $project)
                             @php
                                 $statusClasses = match ($project->status) {
-                                    'active' => 'bg-emerald-100 text-emerald-700',
-                                    'completed' => 'bg-blue-100 text-blue-700',
-                                    'on_hold' => 'bg-amber-100 text-amber-700',
-                                    'cancelled' => 'bg-rose-100 text-rose-700',
+                                    'ongoing' => 'bg-emerald-100 text-emerald-700',
+                                    'complete' => 'bg-blue-100 text-blue-700',
+                                    'hold' => 'bg-amber-100 text-amber-700',
+                                    'cancel' => 'bg-rose-100 text-rose-700',
                                     default => 'bg-slate-100 text-slate-600',
                                 };
                             @endphp
@@ -344,4 +344,3 @@
         @endif
     </div>
 @endsection
-

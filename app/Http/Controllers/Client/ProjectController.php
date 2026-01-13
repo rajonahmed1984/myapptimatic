@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
@@ -39,6 +40,8 @@ class ProjectController extends Controller
             'project' => $project,
             'tasks' => $tasks,
             'initialInvoice' => $initialInvoice,
+            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+            'priorityOptions' => TaskSettings::priorityOptions(),
         ]);
     }
 }

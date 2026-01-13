@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Support\SystemLogger;
+use App\Support\TaskActivityLogger;
+use App\Support\TaskSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ProjectTaskController extends Controller
 {
@@ -15,16 +19,29 @@ class ProjectTaskController extends Controller
     {
         $this->authorize('createTask', $project);
 
+        $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
+        $priorityOptions = array_keys(TaskSettings::priorityOptions());
+        $maxMb = TaskSettings::uploadMaxMb();
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'task_type' => ['required', Rule::in($taskTypeOptions)],
+            'priority' => ['nullable', Rule::in($priorityOptions)],
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:' . ($maxMb * 1024)],
         ]);
+
+        if ($data['task_type'] === 'upload' && ! $request->hasFile('attachment')) {
+            return back()->withErrors(['attachment' => 'Upload tasks require at least one file.'])->withInput();
+        }
 
         $task = ProjectTask::create([
             'project_id' => $project->id,
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
+            'task_type' => $data['task_type'],
             'status' => 'pending',
+            'priority' => $data['priority'] ?? 'medium',
             'start_date' => now()->toDateString(),
             'due_date' => now()->toDateString(),
             'assigned_type' => null,
@@ -33,6 +50,13 @@ class ProjectTaskController extends Controller
             'progress' => 0,
             'created_by' => $request->user()->id,
         ]);
+
+        TaskActivityLogger::record($task, $request, 'system', 'Task created.');
+
+        if ($request->hasFile('attachment')) {
+            $path = $this->storeAttachment($request, $task);
+            TaskActivityLogger::record($task, $request, 'upload', null, [], $path);
+        }
 
         SystemLogger::write('activity', 'Project task created (client).', [
             'project_id' => $project->id,
@@ -59,7 +83,14 @@ class ProjectTaskController extends Controller
             'description' => $data['description'] ?? $task->description,
         ];
 
+        $previousStatus = $task->status;
         $task->update($payload);
+
+        if ($previousStatus !== $task->status) {
+            TaskActivityLogger::record($task, $request, 'status', 'Status changed to ' . ucfirst(str_replace('_', ' ', $task->status)) . '.');
+        } else {
+            TaskActivityLogger::record($task, $request, 'system', 'Task updated.');
+        }
 
         SystemLogger::write('activity', 'Project task updated (client).', [
             'project_id' => $project->id,
@@ -76,5 +107,20 @@ class ProjectTaskController extends Controller
         if ($task->project_id !== $project->id) {
             abort(404);
         }
+    }
+
+    private function storeAttachment(Request $request, ProjectTask $task): ?string
+    {
+        if (! $request->hasFile('attachment')) {
+            return null;
+        }
+
+        $file = $request->file('attachment');
+        $name = pathinfo((string) $file->getClientOriginalName(), PATHINFO_FILENAME);
+        $name = $name !== '' ? Str::slug($name) : 'attachment';
+        $extension = $file->getClientOriginalExtension();
+        $fileName = $name . '-' . Str::random(8) . '.' . $extension;
+
+        return $file->storeAs('project-task-activities/' . $task->id, $fileName, 'public');
     }
 }

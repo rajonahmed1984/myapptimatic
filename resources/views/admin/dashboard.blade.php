@@ -66,9 +66,9 @@
 
     <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div class="card p-4">
-            <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Active projects</div>
+            <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Ongoing projects</div>
             <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $projectMaintenance['projects_active'] }}</div>
-            <div class="mt-1 text-xs text-slate-500">On hold: {{ $projectMaintenance['projects_on_hold'] }}</div>
+            <div class="mt-1 text-xs text-slate-500">Hold: {{ $projectMaintenance['projects_on_hold'] }}</div>
         </div>
         <div class="card p-4">
             <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Blocked services</div>

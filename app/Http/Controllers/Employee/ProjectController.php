@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\SalesRepresentative;
 use App\Models\Employee;
+use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
@@ -32,11 +33,6 @@ class ProjectController extends Controller
         $project->load(['customer']);
 
         $tasks = $project->tasks()
-            ->where(function ($q) use ($employee) {
-                $q->where(function ($qq) use ($employee) {
-                    $qq->where('assigned_type', 'employee')->where('assigned_id', $employee->id);
-                })->orWhere('customer_visible', true);
-            })
             ->orderBy('id')
             ->get();
 
@@ -54,6 +50,8 @@ class ProjectController extends Controller
             'employees' => $employees,
             'salesReps' => $salesReps,
             'initialInvoice' => $initialInvoice,
+            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+            'priorityOptions' => TaskSettings::priorityOptions(),
         ]);
     }
 }

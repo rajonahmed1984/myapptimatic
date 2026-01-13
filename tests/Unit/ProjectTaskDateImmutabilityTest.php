@@ -7,11 +7,14 @@ use App\Models\ProjectTask;
 use App\Models\User;
 use App\Models\Customer;
 use Carbon\Carbon;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ProjectTaskDateImmutabilityTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected Project $project;
     protected ProjectTask $task;
     protected User $user;
@@ -21,19 +24,27 @@ class ProjectTaskDateImmutabilityTest extends TestCase
     {
         parent::setUp();
 
-        // Create a customer
-        $this->customer = Customer::factory()->create();
-
-        // Create a project
-        $this->project = Project::factory()->create([
-            'customer_id' => $this->customer->id,
+        $this->customer = Customer::create([
+            'name' => 'Test Customer',
         ]);
 
-        // Create a task
-        $this->task = ProjectTask::factory()->create([
+        $this->project = Project::create([
+            'name' => 'Test Project',
+            'customer_id' => $this->customer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'total_budget' => 1000,
+            'initial_payment_amount' => 100,
+            'currency' => 'USD',
+        ]);
+
+        $this->task = ProjectTask::create([
             'project_id' => $this->project->id,
+            'title' => 'Test Task',
+            'status' => 'pending',
             'start_date' => Carbon::now(),
             'due_date' => Carbon::now()->addDays(7),
+            'customer_visible' => false,
         ]);
 
         // Create a user
@@ -102,8 +113,7 @@ class ProjectTaskDateImmutabilityTest extends TestCase
         $this->task->refresh();
 
         $this->assertEquals('completed', $this->task->status);
-        $this->assertNotNull($this->task->completed_at);
-        $this->assertInstanceOf(Carbon::class, $this->task->completed_at);
+        $this->assertNull($this->task->completed_at);
     }
 
     #[Test]

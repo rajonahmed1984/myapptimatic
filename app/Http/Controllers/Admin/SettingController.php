@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\Plan;
 use App\Support\Branding;
 use App\Support\UrlResolver;
+use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
@@ -18,7 +19,7 @@ class SettingController extends Controller
 {
     public function edit(Request $request)
     {
-        $tabs = ['general', 'invoices', 'automation', 'billing', 'email-templates'];
+        $tabs = ['general', 'invoices', 'automation', 'billing', 'tasks', 'email-templates'];
         $activeTab = $request->query('tab', 'general');
         if (! in_array($activeTab, $tabs, true)) {
             $activeTab = 'general';
@@ -48,6 +49,12 @@ class SettingController extends Controller
             'd/m/Y' => 'DD/MM/YYYY (31/12/2025)',
         ];
         $timeZones = DateTimeZone::listIdentifiers();
+
+        $taskTypeSetting = Setting::getValue('task_types_enabled');
+        $taskTypesEnabled = is_string($taskTypeSetting) ? json_decode($taskTypeSetting, true) : $taskTypeSetting;
+        if (! is_array($taskTypesEnabled)) {
+            $taskTypesEnabled = array_keys(TaskSettings::TYPE_LABELS);
+        }
 
         return view('admin.settings.edit', [
             'settings' => [
@@ -107,12 +114,17 @@ class SettingController extends Controller
                 'date_format' => Setting::getValue('date_format'),
                 'time_zone' => Setting::getValue('time_zone', config('app.timezone')),
                 'automation_time_of_day' => Setting::getValue('automation_time_of_day', '00:00'),
+                'task_types_enabled' => $taskTypesEnabled,
+                'task_custom_type_label' => Setting::getValue('task_custom_type_label'),
+                'task_upload_max_mb' => (int) Setting::getValue('task_upload_max_mb', 10),
+                'task_customer_visible_default' => (int) Setting::getValue('task_customer_visible_default', 0),
             ],
             'emailTemplates' => $emailTemplates,
             'activeTab' => $activeTab,
             'countries' => $countries,
             'dateFormats' => $dateFormats,
             'timeZones' => $timeZones,
+            'taskTypeLabels' => TaskSettings::TYPE_LABELS,
         ]);
     }
 
@@ -172,6 +184,11 @@ class SettingController extends Controller
             'date_format' => ['required', Rule::in($dateFormatKeys)],
             'time_zone' => ['required', Rule::in($timeZones)],
             'automation_time_of_day' => ['required', 'date_format:H:i'],
+            'task_types_enabled' => ['nullable', 'array'],
+            'task_types_enabled.*' => ['in:' . implode(',', array_keys(TaskSettings::TYPE_LABELS))],
+            'task_custom_type_label' => ['nullable', 'string', 'max:50'],
+            'task_upload_max_mb' => ['required', 'integer', 'min:1', 'max:100'],
+            'task_customer_visible_default' => ['nullable', 'boolean'],
             'templates' => ['nullable', 'array'],
             'templates.*.from_email' => ['nullable', 'email', 'max:255'],
             'templates.*.subject' => ['nullable', 'string', 'max:255'],
@@ -238,6 +255,11 @@ class SettingController extends Controller
         Setting::setValue('date_format', $data['date_format']);
         Setting::setValue('time_zone', $data['time_zone']);
         Setting::setValue('automation_time_of_day', $data['automation_time_of_day']);
+        $taskTypesEnabled = $data['task_types_enabled'] ?? array_keys(TaskSettings::TYPE_LABELS);
+        Setting::setValue('task_types_enabled', json_encode(array_values($taskTypesEnabled)));
+        Setting::setValue('task_custom_type_label', $data['task_custom_type_label'] ?? '');
+        Setting::setValue('task_upload_max_mb', (int) $data['task_upload_max_mb']);
+        Setting::setValue('task_customer_visible_default', $request->boolean('task_customer_visible_default') ? '1' : '0');
 
         if (Schema::hasTable('email_templates') && ! empty($data['templates']) && is_array($data['templates'])) {
             $templateUpdates = $data['templates'];
@@ -269,7 +291,7 @@ class SettingController extends Controller
             }
         }
 
-        $tabs = ['general', 'invoices', 'automation', 'billing', 'email-templates'];
+        $tabs = ['general', 'invoices', 'automation', 'billing', 'tasks', 'email-templates'];
         $activeTab = $request->input('active_tab', 'general');
         if (! in_array($activeTab, $tabs, true)) {
             $activeTab = 'general';
