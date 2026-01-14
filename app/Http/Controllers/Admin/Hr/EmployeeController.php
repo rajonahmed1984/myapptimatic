@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -45,6 +46,28 @@ class EmployeeController extends Controller
         $data = $request->validated();
         $data['currency'] = strtoupper($data['currency']);
 
+        $userId = $data['user_id'] ?? null;
+        $passwordInput = $data['user_password'] ?? null;
+
+        if (! $userId && $passwordInput) {
+            $existingUser = User::query()->where('email', $data['email'])->first();
+
+            if ($existingUser) {
+                return back()
+                    ->withErrors(['email' => 'This email already belongs to another user. Link that user instead.'])
+                    ->withInput();
+            }
+
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($passwordInput),
+                'role' => Role::EMPLOYEE,
+            ]);
+
+            $userId = $user->id;
+        }
+
         $employeeData = collect($data)->only([
             'user_id',
             'manager_id',
@@ -60,10 +83,16 @@ class EmployeeController extends Controller
             'status',
         ])->toArray();
 
+        $employeeData['user_id'] = $userId;
+
         $employee = Employee::create($employeeData);
 
-        if (! empty($data['user_id'])) {
-            User::whereKey($data['user_id'])->update(['role' => Role::EMPLOYEE]);
+        if (! empty($userId)) {
+            $updates = ['role' => Role::EMPLOYEE];
+            if ($passwordInput) {
+                $updates['password'] = Hash::make($passwordInput);
+            }
+            User::whereKey($userId)->update($updates);
         }
 
         $uploadPaths = $this->handleUploads($request);
@@ -111,12 +140,63 @@ class EmployeeController extends Controller
             'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:4096'],
             'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:4096'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
+            'user_password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
         $employee->update($data);
 
-        if (! empty($data['user_id'])) {
-            User::whereKey($data['user_id'])->update(['role' => Role::EMPLOYEE]);
+        $userId = $data['user_id'] ?? $employee->user_id;
+        $passwordInput = $data['user_password'] ?? null;
+
+        if ($userId) {
+            $user = User::query()->find($userId);
+            if ($user) {
+                $updates = [
+                    'role' => Role::EMPLOYEE,
+                ];
+
+                if ($user->email !== $employee->email) {
+                    $emailExists = User::query()
+                        ->where('email', $employee->email)
+                        ->where('id', '!=', $user->id)
+                        ->exists();
+
+                    if ($emailExists) {
+                        return back()
+                            ->withErrors(['email' => 'This email already belongs to another user.'])
+                            ->withInput();
+                    }
+
+                    $updates['email'] = $employee->email;
+                }
+
+                if ($user->name !== $employee->name) {
+                    $updates['name'] = $employee->name;
+                }
+
+                if ($passwordInput) {
+                    $updates['password'] = Hash::make($passwordInput);
+                }
+
+                $user->update($updates);
+            }
+        } elseif ($passwordInput) {
+            $existingUser = User::query()->where('email', $employee->email)->first();
+
+            if ($existingUser) {
+                return back()
+                    ->withErrors(['email' => 'This email already belongs to another user.'])
+                    ->withInput();
+            }
+
+            $user = User::create([
+                'name' => $employee->name,
+                'email' => $employee->email,
+                'password' => Hash::make($passwordInput),
+                'role' => Role::EMPLOYEE,
+            ]);
+
+            $employee->update(['user_id' => $user->id]);
         }
 
         $uploadPaths = $this->handleUploads($request);

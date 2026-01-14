@@ -61,6 +61,15 @@
                     </select>
                 </div>
                 <div>
+                    <label class="text-xs text-slate-500">Login password (optional)</label>
+                    <input name="user_password" type="password" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Confirm password</label>
+                    <input name="user_password_confirmation" type="password" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                    <p class="mt-1 text-xs text-slate-400">Set a password to allow employee login.</p>
+                </div>
+                <div>
                     <label class="text-xs text-slate-500">Join date</label>
                     <input name="join_date" type="date" value="{{ old('join_date', now()->toDateString()) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                 </div>

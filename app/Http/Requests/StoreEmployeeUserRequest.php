@@ -37,6 +37,7 @@ class StoreEmployeeUserRequest extends FormRequest
             'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:4096'],
             'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:4096'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
+            'user_password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ];
     }
 }

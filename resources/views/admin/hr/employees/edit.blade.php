@@ -29,6 +29,15 @@
                     </select>
                 </div>
                 <div>
+                    <label class="text-xs text-slate-500">Login password (optional)</label>
+                    <input name="user_password" type="password" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                    <p class="mt-1 text-xs text-slate-400">Set to create or reset the employee login.</p>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Confirm password</label>
+                    <input name="user_password_confirmation" type="password" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </div>
+                <div>
                     <label class="text-xs text-slate-500">Designation</label>
                     <input name="designation" value="{{ old('designation', $employee->designation) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                 </div>
