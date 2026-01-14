@@ -14,8 +14,13 @@ class StatusColorHelper
      * - Slate (slate): Inactive, Neutral, Never synced
      */
     
-    public static function getStatusColors(string $status): array
+    public static function getStatusColors(?string $status): array
     {
+        $status = strtolower(trim((string) $status));
+        if ($status === '') {
+            $status = 'inactive';
+        }
+
         $statuses = [
             // Invoice statuses
             'paid' => [
@@ -209,7 +214,7 @@ class StatusColorHelper
             ],
         ];
 
-        return $statuses[strtolower($status)] ?? [
+        return $statuses[$status] ?? [
             'bg' => 'bg-slate-100',
             'text' => 'text-slate-600',
             'color' => 'slate',
@@ -221,7 +226,7 @@ class StatusColorHelper
     /**
      * Get just the background class
      */
-    public static function getBgClass(string $status): string
+    public static function getBgClass(?string $status): string
     {
         return self::getStatusColors($status)['bg'];
     }
@@ -229,7 +234,7 @@ class StatusColorHelper
     /**
      * Get just the text color class
      */
-    public static function getTextClass(string $status): string
+    public static function getTextClass(?string $status): string
     {
         return self::getStatusColors($status)['text'];
     }
@@ -237,7 +242,7 @@ class StatusColorHelper
     /**
      * Get just the dot/indicator color class
      */
-    public static function getDotClass(string $status): string
+    public static function getDotClass(?string $status): string
     {
         return self::getStatusColors($status)['dot'];
     }
@@ -245,7 +250,7 @@ class StatusColorHelper
     /**
      * Get badge classes (combined bg + text)
      */
-    public static function getBadgeClasses(string $status): string
+    public static function getBadgeClasses(?string $status): string
     {
         $colors = self::getStatusColors($status);
         return "{$colors['bg']} {$colors['text']}";
@@ -254,10 +259,10 @@ class StatusColorHelper
     /**
      * Format status with badge
      */
-    public static function badge(string $status, ?string $label = null): string
+    public static function badge(?string $status, ?string $label = null): string
     {
         $colors = self::getStatusColors($status);
-        $displayLabel = $label ?? ucfirst(str_replace('_', ' ', $status));
+        $displayLabel = $label ?? ucfirst(str_replace('_', ' ', (string) $status));
         
         return <<<HTML
         <div class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {$colors['bg']} {$colors['text']}">
