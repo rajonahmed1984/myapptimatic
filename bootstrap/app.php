@@ -43,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'salesrep' => \App\Http\Middleware\EnsureSalesRep::class,
             'support' => \App\Http\Middleware\EnsureSupport::class,
             'user.activity' => \App\Http\Middleware\TrackAuthenticatedUserActivity::class,
+            'nocache' => \App\Http\Middleware\NoCacheHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\SalesRepresentative;
+use App\Services\RecaptchaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,8 +18,10 @@ class RoleLoginController extends Controller
         return view('sales.auth.login');
     }
 
-    public function loginSales(Request $request): RedirectResponse
+    public function loginSales(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
+        $recaptcha->assertValid($request, 'SALES_LOGIN');
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
@@ -66,8 +69,10 @@ class RoleLoginController extends Controller
         return view('support.auth.login');
     }
 
-    public function loginSupport(Request $request): RedirectResponse
+    public function loginSupport(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
+        $recaptcha->assertValid($request, 'SUPPORT_LOGIN');
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],

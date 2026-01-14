@@ -37,6 +37,12 @@
             <a href="{{ route('sales.password.request') }}" class="text-emerald-600 hover:text-emerald-500">Forgot password?</a>
         </div>
 
+        @if(config('recaptcha.enabled') && config('recaptcha.site_key'))
+            <div class="flex justify-center">
+                <div class="g-recaptcha" data-sitekey="{{ config('recaptcha.site_key') }}" data-action="SALES_LOGIN"></div>
+            </div>
+        @endif
+
         @if($errors->any())
             <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 {{ $errors->first() }}
@@ -54,4 +60,8 @@
     <p class="mt-6 text-xs text-slate-500">
         Back to <a href="{{ route('login') }}" class="font-semibold text-emerald-600 hover:text-emerald-500">main login</a>.
     </p>
+
+    @if(config('recaptcha.enabled') && config('recaptcha.site_key'))
+        <script src="https://www.google.com/recaptcha/enterprise.js" async defer></script>
+    @endif
 @endsection

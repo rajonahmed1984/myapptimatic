@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use DateTimeZone;
 
@@ -254,6 +255,12 @@ class SettingController extends Controller
         Setting::setValue('recaptcha_project_id', $data['recaptcha_project_id'] ?? '');
         Setting::setValue('recaptcha_api_key', $data['recaptcha_api_key'] ?? '');
         Setting::setValue('recaptcha_score_threshold', $data['recaptcha_score_threshold'] ?? '');
+        Cache::forget('settings.recaptcha_enabled');
+        Cache::forget('settings.recaptcha_site_key');
+        Cache::forget('settings.recaptcha_secret_key');
+        Cache::forget('settings.recaptcha_project_id');
+        Cache::forget('settings.recaptcha_api_key');
+        Cache::forget('settings.recaptcha_score_threshold');
         Setting::setValue('date_format', $data['date_format']);
         Setting::setValue('time_zone', $data['time_zone']);
         Setting::setValue('automation_time_of_day', $data['automation_time_of_day']);

@@ -13,77 +13,79 @@
     </div>
 
     <div class="card p-6">
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm text-slate-700">
-                <thead>
-                <tr class="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                    <th class="py-2 px-3">ID</th>
-                    <th class="py-2 px-3">Name</th>
-                    <th class="py-2 px-3">Designation</th>
-                    <th class="py-2 px-3">Employment</th>
-                    <th class="py-2 px-3">Manager</th>
-                    <th class="py-2 px-3">Status</th>
-                    <th class="py-2 px-3">Login status</th>
-                    <th class="py-2 px-3 text-right">Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                @forelse($employees as $employee)
-                    <tr class="border-b border-slate-100">
-                        <td class="py-2 px-3 font-semibold text-slate-900">#{{ $employee->id }}</td>
-                        <td class="py-2 px-3">
-                            <div class="flex items-center gap-3">
-                                <x-avatar :path="$employee->photo_path" :name="$employee->name" size="h-8 w-8" textSize="text-xs" />
-                                <div>
-                                    <div class="font-semibold text-slate-900">
-                                        <a href="{{ route('admin.hr.employees.show', $employee) }}" class="hover:text-teal-600">
-                                            {{ $employee->name }}
-                                        </a>
-                                    </div>
-                                    <div class="text-xs text-slate-500">{{ $employee->email }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="py-2 px-3">{{ $employee->designation ?? '--' }}</td>
-                        <td class="py-2 px-3">{{ ucfirst($employee->employment_type ?? '--') }}</td>
-                        <td class="py-2 px-3">{{ $employee->manager?->name ?? '--' }}</td>
-                        <td class="py-2 px-3">
-                            <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $employee->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-600 bg-slate-50' }}">
-                                {{ ucfirst($employee->status) }}
-                            </span>
-                        </td>
-                        <td class="py-2 px-3">
-                            @php
-                                $loginStatus = $loginStatuses[$employee->id] ?? 'logout';
-                                $loginLabel = match ($loginStatus) {
-                                    'login' => 'Login',
-                                    'idle' => 'Idle',
-                                    default => 'Logout',
-                                };
-                                $loginClasses = match ($loginStatus) {
-                                    'login' => 'border-emerald-200 text-emerald-700 bg-emerald-50',
-                                    'idle' => 'border-amber-200 text-amber-700 bg-amber-50',
-                                    default => 'border-rose-200 text-rose-700 bg-rose-50',
-                                };
-                            @endphp
-                            <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $loginClasses }}">
-                                {{ $loginLabel }}
-                            </span>
-                        </td>
-                        <td class="py-2 px-3 text-right space-x-2">
-                            <a href="{{ route('admin.hr.employees.edit', $employee) }}" class="text-xs text-emerald-700 hover:underline">Edit</a>
-                            <form method="POST" action="{{ route('admin.hr.employees.destroy', $employee) }}" class="inline" onsubmit="return confirm('Delete this employee?');">
-                                @csrf
-                                @method('DELETE')
-                                <button class="text-xs text-rose-600 hover:underline">Delete</button>
-                            </form>
-                        </td>
+        <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-slate-700">
+                    <thead>
+                    <tr class="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
+                        <th class="py-2 px-3">ID</th>
+                        <th class="py-2 px-3">Name</th>
+                        <th class="py-2 px-3">Designation</th>
+                        <th class="py-2 px-3">Employment</th>
+                        <th class="py-2 px-3">Manager</th>
+                        <th class="py-2 px-3">Status</th>
+                        <th class="py-2 px-3">Login status</th>
+                        <th class="py-2 px-3 text-right">Actions</th>
                     </tr>
-                @empty
-                    <tr><td colspan="8" class="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
-                @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                    @forelse($employees as $employee)
+                        <tr class="border-b border-slate-100">
+                            <td class="py-2 px-3 font-semibold text-slate-900">#{{ $employee->id }}</td>
+                            <td class="py-2 px-3">
+                                <div class="flex items-center gap-3">
+                                    <x-avatar :path="$employee->photo_path" :name="$employee->name" size="h-8 w-8" textSize="text-xs" />
+                                    <div>
+                                        <div class="font-semibold text-slate-900">
+                                            <a href="{{ route('admin.hr.employees.show', $employee) }}" class="hover:text-teal-600">
+                                                {{ $employee->name }}
+                                            </a>
+                                        </div>
+                                        <div class="text-xs text-slate-500">{{ $employee->email }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-2 px-3">{{ $employee->designation ?? '--' }}</td>
+                            <td class="py-2 px-3">{{ ucfirst($employee->employment_type ?? '--') }}</td>
+                            <td class="py-2 px-3">{{ $employee->manager?->name ?? '--' }}</td>
+                            <td class="py-2 px-3">
+                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $employee->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-600 bg-slate-50' }}">
+                                    {{ ucfirst($employee->status) }}
+                                </span>
+                            </td>
+                            <td class="py-2 px-3">
+                                @php
+                                    $loginStatus = $loginStatuses[$employee->id] ?? 'logout';
+                                    $loginLabel = match ($loginStatus) {
+                                        'login' => 'Login',
+                                        'idle' => 'Idle',
+                                        default => 'Logout',
+                                    };
+                                    $loginClasses = match ($loginStatus) {
+                                        'login' => 'border-emerald-200 text-emerald-700 bg-emerald-50',
+                                        'idle' => 'border-amber-200 text-amber-700 bg-amber-50',
+                                        default => 'border-rose-200 text-rose-700 bg-rose-50',
+                                    };
+                                @endphp
+                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $loginClasses }}">
+                                    {{ $loginLabel }}
+                                </span>
+                            </td>
+                            <td class="py-2 px-3 text-right space-x-2">
+                                <a href="{{ route('admin.hr.employees.edit', $employee) }}" class="text-xs text-emerald-700 hover:underline">Edit</a>
+                                <form method="POST" action="{{ route('admin.hr.employees.destroy', $employee) }}" class="inline" onsubmit="return confirm('Delete this employee?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="text-xs text-rose-600 hover:underline">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="8" class="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="mt-4">{{ $employees->links() }}</div>

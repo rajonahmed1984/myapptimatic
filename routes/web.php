@@ -185,15 +185,15 @@ Route::middleware('guest:support')
 
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout')
-    ->middleware('auth');
-Route::match(['GET', 'POST'], '/admin/logout', [AuthController::class, 'logout'])
+    ->middleware('auth:web');
+Route::post('/admin/logout', [AuthController::class, 'logoutAdmin'])
     ->name('admin.logout')
-    ->middleware('auth');
+    ->middleware('auth:web');
 Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
     ->name('impersonate.stop')
     ->middleware('auth');
 
-Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activity:employee'])
+Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activity:employee', 'nocache'])
     ->prefix('employee')
     ->name('employee.')
     ->group(function () {
@@ -236,7 +236,7 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::get('/projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
     });
 
-Route::middleware(['admin', 'user.activity:web'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::prefix('hr')->name('hr.')->group(function () {
         Route::get('/dashboard', HrDashboardController::class)->name('dashboard');
@@ -413,7 +413,7 @@ Route::middleware(['admin', 'user.activity:web'])->prefix('admin')->name('admin.
     Route::delete('affiliates/payouts/{payout}', [AffiliatePayoutController::class, 'destroy'])->name('affiliates.payouts.destroy');
 });
 
-Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.activity:web'])
+Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.activity:web', 'nocache'])
     ->prefix('client')
     ->name('client.')
     ->group(function () {
@@ -488,7 +488,7 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::put('/affiliates/settings', [ClientAffiliateController::class, 'updateSettings'])->name('affiliates.settings.update');
     });
 
-Route::middleware(['salesrep', 'user.activity:sales'])
+Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
     ->prefix('sales')
     ->name('rep.')
     ->group(function () {
@@ -525,7 +525,7 @@ Route::middleware(['salesrep', 'user.activity:sales'])
         Route::get('/projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
     });
 
-Route::middleware(['support', 'user.activity:support'])
+Route::middleware(['support', 'user.activity:support', 'nocache'])
     ->prefix('support')
     ->name('support.')
     ->group(function () {

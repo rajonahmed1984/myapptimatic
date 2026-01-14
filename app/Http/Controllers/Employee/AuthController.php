@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Services\RecaptchaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,8 +17,10 @@ class AuthController extends Controller
         return view('employee.auth.login');
     }
 
-    public function login(Request $request): RedirectResponse
+    public function login(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
+        $recaptcha->assertValid($request, 'EMPLOYEE_LOGIN');
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
