@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('plans', function (Blueprint $table) {
-            $table->dropColumn('invoice_due_days');
+            if (Schema::hasColumn('plans', 'invoice_due_days')) {
+                $table->dropColumn('invoice_due_days');
+            }
         });
     }
 

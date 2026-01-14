@@ -20,7 +20,7 @@ class TaskActivityLogger
 
         $salesRep = $request->attributes->get('salesRep');
         if ($salesRep instanceof SalesRepresentative) {
-            return ['type' => 'salesrep', 'id' => $salesRep->id];
+            return ['type' => 'sales_rep', 'id' => $salesRep->id];
         }
 
         $user = $request->user();
@@ -33,7 +33,7 @@ class TaskActivityLogger
             }
             if ($user->isSales()) {
                 $repId = SalesRepresentative::where('user_id', $user->id)->value('id');
-                return ['type' => 'salesrep', 'id' => $repId ?? $user->id];
+                return ['type' => 'sales_rep', 'id' => $repId ?? $user->id];
             }
         }
 

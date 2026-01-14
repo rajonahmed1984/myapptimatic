@@ -6,11 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Employee;
 use App\Models\SalesRepresentative;
 
 class Project extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'customer_id',
         'order_id',
@@ -23,6 +26,7 @@ class Project extends Model
         'start_date',
         'expected_end_date',
         'due_date',
+        'description',
         'notes',
         'total_budget',
         'initial_payment_amount',
@@ -46,6 +50,17 @@ class Project extends Model
         'actual_hours' => 'decimal:2',
         'sales_rep_ids' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Project $project): void {
+            if ($project->isForceDeleting()) {
+                $project->maintenances()->forceDelete();
+            } else {
+                $project->maintenances()->delete();
+            }
+        });
+    }
 
     public function customer(): BelongsTo
     {
@@ -75,6 +90,11 @@ class Project extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(ProjectTask::class);
+    }
+
+    public function maintenances(): HasMany
+    {
+        return $this->hasMany(ProjectMaintenance::class);
     }
 
     public function invoices(): HasMany

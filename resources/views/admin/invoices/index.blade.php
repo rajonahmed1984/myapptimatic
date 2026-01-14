@@ -19,8 +19,19 @@
                     @endforeach
                 </select>
             </div>
+            <div>
+                <label class="text-xs uppercase tracking-[0.2em] text-slate-400">Maintenance</label>
+                <select name="maintenance_id" class="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <option value="">All</option>
+                    @foreach($maintenances ?? [] as $maintenance)
+                        <option value="{{ $maintenance->id }}" @selected((string)$maintenanceFilter === (string)$maintenance->id)>
+                            {{ $maintenance->title }} @if($maintenance->project) — {{ $maintenance->project->name }} @endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
             <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Filter</button>
-            @if($productFilter)
+            @if($productFilter || $maintenanceFilter)
                 <a href="{{ url()->current() }}" class="text-xs font-semibold text-slate-600 hover:text-teal-600">Clear</a>
             @endif
         </form>

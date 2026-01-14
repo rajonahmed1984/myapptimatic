@@ -12,7 +12,7 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         $projects = Project::query()
-            ->with('customer')
+            ->with(['customer', 'maintenances'])
             ->where('customer_id', $request->user()->customer_id)
             ->latest()
             ->paginate(20);
@@ -31,6 +31,11 @@ class ProjectController extends Controller
             ->orderBy('id')
             ->get();
 
+        $maintenances = $project->maintenances()
+            ->with(['invoices' => fn ($query) => $query->latest('issue_date')])
+            ->orderBy('next_billing_date')
+            ->get();
+
         $initialInvoice = $project->invoices()
             ->where('type', 'project_initial_payment')
             ->latest('issue_date')
@@ -39,6 +44,7 @@ class ProjectController extends Controller
         return view('client.projects.show', [
             'project' => $project,
             'tasks' => $tasks,
+            'maintenances' => $maintenances,
             'initialInvoice' => $initialInvoice,
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),

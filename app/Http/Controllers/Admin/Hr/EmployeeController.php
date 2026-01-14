@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Admin\Hr;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
+use App\Models\Project;
+use App\Models\ProjectTask;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
@@ -150,15 +154,52 @@ class EmployeeController extends Controller
         ];
 
         $tab = request()->query('tab', 'summary');
-        $allowedTabs = ['summary', 'profile', 'compensation', 'timesheets', 'leave', 'payroll'];
+        $allowedTabs = ['summary', 'profile', 'compensation', 'timesheets', 'leave', 'payroll', 'projects'];
         if (! in_array($tab, $allowedTabs, true)) {
             $tab = 'summary';
+        }
+
+        $projects = collect();
+        $projectStatusCounts = collect();
+        $projectTaskStatusCounts = collect();
+
+        if ($tab === 'projects') {
+            $projects = Project::query()
+                ->with('customer:id,name')
+                ->whereHas('employees', fn ($query) => $query->whereKey($employee->id))
+                ->orderByDesc('id')
+                ->get();
+
+            $projectStatusCounts = $projects->countBy('status');
+            $projectIds = $projects->pluck('id');
+
+            if ($projectIds->isNotEmpty()) {
+                $projectTaskStatusCounts = ProjectTask::query()
+                    ->select('project_id', 'status', DB::raw('COUNT(*) as total'))
+                    ->whereIn('project_id', $projectIds)
+                    ->where(function ($query) use ($employee) {
+                        $query->where(function ($inner) use ($employee) {
+                            $inner->where('assigned_type', 'employee')
+                                ->where('assigned_id', $employee->id);
+                        })->orWhereHas('assignments', function ($inner) use ($employee) {
+                            $inner->where('assignee_type', 'employee')
+                                ->where('assignee_id', $employee->id);
+                        });
+                    })
+                    ->groupBy('project_id', 'status')
+                    ->get()
+                    ->groupBy('project_id')
+                    ->map(fn ($rows) => $rows->pluck('total', 'status'));
+            }
         }
 
         return view('admin.hr.employees.show', [
             'employee' => $employee,
             'tab' => $tab,
             'summary' => $summary,
+            'projects' => $projects,
+            'projectStatusCounts' => $projectStatusCounts,
+            'projectTaskStatusCounts' => $projectTaskStatusCounts,
         ]);
     }
 
@@ -174,7 +215,23 @@ class EmployeeController extends Controller
 
         $user = $employee->user;
         if (! $user) {
-            return back()->withErrors(['impersonate' => 'No linked user found for this employee.']);
+            $user = User::where('email', $employee->email)->first();
+
+            if ($user && $user->employee) {
+                return back()->withErrors(['impersonate' => 'This email is already linked to another employee user.']);
+            }
+
+            if (! $user) {
+                $user = User::create([
+                    'name' => $employee->name,
+                    'email' => $employee->email,
+                    'password' => Str::random(32),
+                    'role' => 'client',
+                    'customer_id' => null,
+                ]);
+            }
+
+            $employee->update(['user_id' => $user->id]);
         }
 
         $request->session()->put('impersonator_id', $request->user()->id);

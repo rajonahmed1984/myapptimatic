@@ -12,6 +12,10 @@ class ProjectTaskPolicy
     public function view($actor, ProjectTask $task): bool
     {
         $project = $task->project;
+        
+        if (!$project) {
+            return false;
+        }
 
         if ($actor instanceof User) {
             if ($actor->isAdmin()) {

@@ -8,6 +8,7 @@ use App\Models\License;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\BillingService;
+use App\Services\MaintenanceBillingService;
 use App\Services\StatusUpdateService;
 use App\Services\AdminNotificationService;
 use App\Services\ClientNotificationService;
@@ -28,6 +29,7 @@ class RunBillingCycle extends Command
 
     public function __construct(
         private BillingService $billingService,
+        private MaintenanceBillingService $maintenanceBillingService,
         private StatusUpdateService $statusUpdateService,
         private AdminNotificationService $adminNotifications,
         private ClientNotificationService $clientNotifications
@@ -70,6 +72,12 @@ class RunBillingCycle extends Command
             if ($invoiceMetrics) {
                 $metrics['invoices_generated'] = $invoiceMetrics['generated'];
                 $metrics['fixed_term_terminations'] = $invoiceMetrics['fixed_term_terminations'];
+            }
+
+            $maintenanceMetrics = $runStep('maintenance_invoices', fn () => $this->maintenanceBillingService->generateInvoicesForDueMaintenances($today));
+            if ($maintenanceMetrics) {
+                $metrics['maintenance_invoices_generated'] = $maintenanceMetrics['generated'];
+                $metrics['maintenance_invoices_skipped'] = $maintenanceMetrics['skipped'];
             }
 
             $metrics['invoices_overdue'] = $runStep('invoices_overdue', fn () => $this->statusUpdateService->updateInvoiceOverdueStatus($today)) ?? 0;
@@ -622,6 +630,8 @@ class RunBillingCycle extends Command
     {
         return [
             'invoices_generated' => 0,
+            'maintenance_invoices_generated' => 0,
+            'maintenance_invoices_skipped' => 0,
             'invoices_overdue' => 0,
             'late_fees_added' => 0,
             'auto_cancellations' => 0,
@@ -664,6 +674,7 @@ class RunBillingCycle extends Command
         // Structured metrics to mirror WHMCS-style cron summary rows.
         $metricCards = [
             ['label' => 'Invoices', 'value' => $metrics['invoices_generated'], 'subtitle' => 'Generated'],
+            ['label' => 'Maintenance Invoices', 'value' => $metrics['maintenance_invoices_generated'], 'subtitle' => 'Generated'],
             ['label' => 'Late Fees', 'value' => $metrics['late_fees_added'], 'subtitle' => 'Added'],
             ['label' => 'Credit Card Charges', 'value' => 0, 'subtitle' => 'Captured'],
             ['label' => 'Invoice & Overdue Reminders', 'value' => $metrics['invoice_reminders_sent'], 'subtitle' => 'Sent'],

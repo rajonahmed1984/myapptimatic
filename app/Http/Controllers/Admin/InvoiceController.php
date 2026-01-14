@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Product;
+use App\Models\ProjectMaintenance;
 use App\Support\SystemLogger;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
@@ -251,9 +252,10 @@ class InvoiceController extends Controller
     private function listByStatus(?string $status, string $title)
     {
         $productId = request()->query('product_id');
+        $maintenanceId = request()->query('maintenance_id');
 
         $query = Invoice::query()
-            ->with(['customer', 'paymentProofs', 'subscription.plan.product'])
+            ->with(['customer', 'paymentProofs', 'subscription.plan.product', 'maintenance.project'])
             ->latest('issue_date');
 
         if ($status) {
@@ -266,12 +268,22 @@ class InvoiceController extends Controller
             });
         }
 
+        if ($maintenanceId) {
+            $query->where('maintenance_id', $maintenanceId);
+        }
+
         return view('admin.invoices.index', [
             'invoices' => $query->paginate(25)->withQueryString(),
             'title' => $title,
             'statusFilter' => $status,
             'products' => Product::orderBy('name')->get(),
             'productFilter' => $productId,
+            'maintenances' => ProjectMaintenance::query()
+                ->with('project:id,name')
+                ->orderByDesc('id')
+                ->take(200)
+                ->get(['id', 'title', 'project_id']),
+            'maintenanceFilter' => $maintenanceId,
         ]);
     }
 }

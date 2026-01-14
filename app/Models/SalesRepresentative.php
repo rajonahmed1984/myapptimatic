@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
 
@@ -45,5 +46,12 @@ class SalesRepresentative extends Model
     public function payouts(): HasMany
     {
         return $this->hasMany(CommissionPayout::class, 'sales_representative_id');
+    }
+
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_sales_representative')
+            ->withPivot('amount')
+            ->withTimestamps();
     }
 }

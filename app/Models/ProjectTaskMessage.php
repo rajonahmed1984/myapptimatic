@@ -22,24 +22,27 @@ class ProjectTaskMessage extends Model
 
     public function userAuthor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'author_id');
+        return $this->belongsTo(User::class, 'author_id')
+            ->whereIn('author_type', ['admin', 'client', 'user']);
     }
 
     public function employeeAuthor(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'author_id');
+        return $this->belongsTo(Employee::class, 'author_id')
+            ->where('author_type', 'employee');
     }
 
     public function salesRepAuthor(): BelongsTo
     {
-        return $this->belongsTo(SalesRepresentative::class, 'author_id');
+        return $this->belongsTo(SalesRepresentative::class, 'author_id')
+            ->whereIn('author_type', ['sales_rep', 'salesrep']);
     }
 
     public function authorName(): string
     {
         return match ($this->author_type) {
             'employee' => $this->employeeAuthor?->name ?? 'Employee',
-            'salesrep' => $this->salesRepAuthor?->name ?? 'Sales Rep',
+            'sales_rep', 'salesrep' => $this->salesRepAuthor?->name ?? 'Sales Rep',
             default => $this->userAuthor?->name ?? 'User',
         };
     }
@@ -48,7 +51,7 @@ class ProjectTaskMessage extends Model
     {
         return match ($this->author_type) {
             'employee' => 'Employee',
-            'salesrep' => 'Sales Rep',
+            'sales_rep', 'salesrep' => 'Sales Rep',
             default => 'User',
         };
     }

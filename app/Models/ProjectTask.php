@@ -75,4 +75,21 @@ class ProjectTask extends Model
     {
         return $this->hasMany(ProjectTaskActivity::class, 'project_task_id');
     }
+
+    public function subtasks(): HasMany
+    {
+        return $this->hasMany(ProjectTaskSubtask::class, 'project_task_id');
+    }
+
+    public function getProgressAttribute($value): int
+    {
+        $subtasks = $this->relationLoaded('subtasks')
+            ? $this->subtasks
+            : $this->subtasks()->get();
+        if ($subtasks->isEmpty()) {
+            return (int) ($value ?? 0);
+        }
+        $completed = $subtasks->where('is_completed', true)->count();
+        return (int) (($completed / $subtasks->count()) * 100);
+    }
 }

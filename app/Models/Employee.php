@@ -82,6 +82,11 @@ class Employee extends Authenticatable
             ->latestOfMany('effective_from');
     }
 
+    public function projects()
+    {
+        return $this->belongsToMany(Project::class, 'employee_project')->withTimestamps();
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';

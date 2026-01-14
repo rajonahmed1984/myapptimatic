@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Project;
+use App\Models\ProjectMaintenance;
 
 class Invoice extends Model
 {
@@ -13,6 +14,7 @@ class Invoice extends Model
         'customer_id',
         'subscription_id',
         'project_id',
+        'maintenance_id',
         'number',
         'status',
         'issue_date',
@@ -60,6 +62,11 @@ class Invoice extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function maintenance(): BelongsTo
+    {
+        return $this->belongsTo(ProjectMaintenance::class, 'maintenance_id');
     }
 
     public function items(): HasMany

@@ -60,6 +60,22 @@
                             <a href="{{ route('admin.projects.show', $project) }}" class="font-semibold text-slate-900 hover:text-teal-700">
                                 {{ $project->name }}
                             </a>
+                            @if($project->employees->isNotEmpty() || $project->salesRepresentatives->isNotEmpty())
+                                <div class="mt-1 text-xs text-slate-500">
+                                    @if($project->employees->isNotEmpty())
+                                        <div class="flex items-center gap-1">
+                                            <span class="font-medium">Employees:</span>
+                                            <span>{{ $project->employees->pluck('name')->join(', ') }}</span>
+                                        </div>
+                                    @endif
+                                    @if($project->salesRepresentatives->isNotEmpty())
+                                        <div class="flex items-center gap-1">
+                                            <span class="font-medium">Sales:</span>
+                                            <span>{{ $project->salesRepresentatives->pluck('name')->join(', ') }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <div class="font-medium text-slate-800">{{ $project->customer?->name ?? '--' }}</div>

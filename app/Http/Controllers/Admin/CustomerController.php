@@ -32,6 +32,7 @@ class CustomerController extends Controller
                 ->withCount(['subscriptions as active_subscriptions_count' => function ($query) {
                     $query->where('status', 'active');
                 }])
+                ->withCount('projects')
                 ->latest()
                 ->paginate(25),
         ]);

@@ -76,25 +76,29 @@
                         </div>
 
                         <div>
-                            <label class="text-xs text-slate-500">Assignees</label>
-                            <select name="assignees[]" multiple class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <label class="text-xs text-slate-500 block mb-2">Assignees</label>
+                            <div class="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
                                 @if($employees->isNotEmpty())
-                                    <optgroup label="Employees">
-                                        @foreach($employees as $employee)
-                                            @php $value = 'employee:'.$employee->id; @endphp
-                                            <option value="{{ $value }}" @selected(in_array($value, $assignees, true))>{{ $employee->name }}</option>
-                                        @endforeach
-                                    </optgroup>
+                                    <div class="text-xs font-semibold text-slate-600 mb-2">Employees</div>
+                                    @foreach($employees as $employee)
+                                        @php $value = 'employee:'.$employee->id; @endphp
+                                        <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                                            <input type="checkbox" name="assignees[]" value="{{ $value }}" @checked(in_array($value, $assignees, true)) class="rounded border-slate-200" />
+                                            <span>{{ $employee->name }}</span>
+                                        </label>
+                                    @endforeach
                                 @endif
                                 @if($salesReps->isNotEmpty())
-                                    <optgroup label="Sales Reps">
-                                        @foreach($salesReps as $rep)
-                                            @php $value = 'sales_rep:'.$rep->id; @endphp
-                                            <option value="{{ $value }}" @selected(in_array($value, $assignees, true))>{{ $rep->name }}</option>
-                                        @endforeach
-                                    </optgroup>
+                                    <div class="text-xs font-semibold text-slate-600 mb-2 mt-3">Sales Representatives</div>
+                                    @foreach($salesReps as $rep)
+                                        @php $value = 'sales_rep:'.$rep->id; @endphp
+                                        <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                                            <input type="checkbox" name="assignees[]" value="{{ $value }}" @checked(in_array($value, $assignees, true)) class="rounded border-slate-200" />
+                                            <span>{{ $rep->name }}</span>
+                                        </label>
+                                    @endforeach
                                 @endif
-                            </select>
+                            </div>
                         </div>
 
                         <div class="grid gap-4 md:grid-cols-2">
@@ -119,9 +123,56 @@
                             <p class="mt-1 text-xs text-slate-500">Future-ready field for linking related tasks.</p>
                         </div>
 
-                        <div>
-                            <label class="text-xs text-slate-500">Description</label>
-                            <textarea name="description" rows="4" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('description', $task->description) }}</textarea>
+                        <div class="mt-6 pt-6 border-t border-slate-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <label class="text-xs uppercase tracking-[0.2em] text-slate-400">Subtasks</label>
+                                <button type="button" id="addSubtaskBtn" class="text-xs text-teal-600 hover:text-teal-700 font-semibold">+ Add subtask</button>
+                            </div>
+                            
+                            @if($task->subtasks->isNotEmpty())
+                                <div class="space-y-2 mb-4">
+                                    @foreach($task->subtasks as $subtask)
+                                        <div class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white/50">
+                                            <input type="checkbox" data-subtask-id="{{ $subtask->id }}" @checked($subtask->is_completed) class="subtask-checkbox rounded" />
+                                            <div class="flex-1">
+                                                <div class="text-sm font-medium text-slate-900">{{ $subtask->title }}</div>
+                                                <div class="text-xs text-slate-500 space-y-1">
+                                                    @if($subtask->due_date)
+                                                        <div>
+                                                            Due: {{ $subtask->due_date->format($globalDateFormat) }}
+                                                            @if($subtask->due_time)
+                                                                at {{ $subtask->due_time }}
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                    <div>Created: {{ $subtask->created_at->format($globalDateFormat . ' H:i') }} @if($subtask->is_completed)| Completed: {{ $subtask->completed_at->format($globalDateFormat . ' H:i') }}@endif</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            <div id="subtaskForm" style="display: none;" class="mt-4 p-4 rounded-lg border border-slate-200 bg-slate-50 space-y-3">
+                                <div>
+                                    <label class="text-xs text-slate-500">Subtask title</label>
+                                    <input type="text" id="subtaskTitle" placeholder="Enter subtask..." class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                </div>
+                                <div class="grid gap-3 md:grid-cols-2">
+                                    <div>
+                                        <label class="text-xs text-slate-500">Due date</label>
+                                        <input type="date" id="subtaskDate" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-slate-500">Due time</label>
+                                        <input type="time" id="subtaskTime" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 justify-end">
+                                    <button type="button" id="cancelSubtaskBtn" class="px-3 py-2 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100">Cancel</button>
+                                    <button type="button" id="saveSubtaskBtn" class="px-3 py-2 text-xs rounded-lg bg-slate-900 text-white hover:bg-slate-800">Add subtask</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="flex items-center gap-3">
@@ -175,9 +226,42 @@
                             <div class="mt-1 text-slate-700">{{ $task->relationship_ids ? implode(', ', $task->relationship_ids) : '--' }}</div>
                         </div>
                         <div>
-                            <span class="text-xs uppercase tracking-[0.2em] text-slate-400">Description</span>
-                            <div class="mt-1 whitespace-pre-wrap text-slate-700">{{ $task->description ?? 'No description.' }}</div>
+                            <span class="text-xs uppercase tracking-[0.2em] text-slate-400">Created & Completed</span>
+                            <div class="mt-1 text-slate-700">Created: {{ $task->created_at->format($globalDateFormat . ' H:i') }} @if($task->status === 'completed')| Completed: {{ $task->updated_at->format($globalDateFormat . ' H:i') }}@endif</div>
                         </div>
+                        
+                        @if($task->subtasks->isNotEmpty())
+                            <div class="mt-6 pt-6 border-t border-slate-200">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs uppercase tracking-[0.2em] text-slate-400">Subtasks</span>
+                                    <span class="text-xs text-slate-600">{{ $task->subtasks->where('is_completed', true)->count() }}/{{ $task->subtasks->count() }} completed</span>
+                                </div>
+                                <div class="w-full bg-slate-200 rounded-full h-2 mb-4">
+                                    <div class="bg-teal-500 h-2 rounded-full transition-all" style="width: {{ $task->progress }}%"></div>
+                                </div>
+                                <div class="space-y-2">
+                                    @foreach($task->subtasks as $subtask)
+                                        <div class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white/50">
+                                            <input type="checkbox" data-subtask-id="{{ $subtask->id }}" @checked($subtask->is_completed) class="subtask-checkbox rounded" />
+                                            <div class="flex-1">
+                                                <div class="text-sm font-medium {{ $subtask->is_completed ? 'line-through text-slate-400' : 'text-slate-900' }}">{{ $subtask->title }}</div>
+                                                <div class="text-xs text-slate-500 space-y-1">
+                                                    @if($subtask->due_date)
+                                                        <div>
+                                                            Due: {{ $subtask->due_date->format($globalDateFormat) }}
+                                                            @if($subtask->due_time)
+                                                                at {{ $subtask->due_time }}
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                    <div>Created: {{ $subtask->created_at->format($globalDateFormat . ' H:i') }} @if($subtask->is_completed)| Completed: {{ $subtask->completed_at->format($globalDateFormat . ' H:i') }}@endif</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -266,7 +350,80 @@
     </div>
 
     <script>
+        // Subtask management
         document.addEventListener('DOMContentLoaded', () => {
+            const addSubtaskBtn = document.getElementById('addSubtaskBtn');
+            const subtaskForm = document.getElementById('subtaskForm');
+            const cancelSubtaskBtn = document.getElementById('cancelSubtaskBtn');
+            const saveSubtaskBtn = document.getElementById('saveSubtaskBtn');
+            const subtaskCheckboxes = document.querySelectorAll('.subtask-checkbox');
+
+            if (addSubtaskBtn && subtaskForm) {
+                addSubtaskBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    subtaskForm.style.display = 'block';
+                    document.getElementById('subtaskTitle').focus();
+                });
+
+                cancelSubtaskBtn.addEventListener('click', () => {
+                    subtaskForm.style.display = 'none';
+                    document.getElementById('subtaskTitle').value = '';
+                    document.getElementById('subtaskDate').value = '';
+                    document.getElementById('subtaskTime').value = '';
+                });
+
+                saveSubtaskBtn.addEventListener('click', () => {
+                    const title = document.getElementById('subtaskTitle').value.trim();
+                    const date = document.getElementById('subtaskDate').value;
+                    const time = document.getElementById('subtaskTime').value;
+
+                    if (!title) {
+                        alert('Please enter a subtask title');
+                        return;
+                    }
+
+                    // Send to server - you'll need to create an endpoint for this
+                    const formData = new FormData();
+                    formData.append('title', title);
+                    formData.append('due_date', date || null);
+                    formData.append('due_time', time || null);
+                    formData.append('_token', document.querySelector('[name="_token"]').value);
+
+                    fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.store', [$project, $task]) }}`, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            location.reload();
+                        }
+                    })
+                    .catch(() => alert('Error adding subtask'));
+                });
+            }
+
+            // Handle subtask completion
+            subtaskCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    const subtaskId = checkbox.getAttribute('data-subtask-id');
+                    const isCompleted = checkbox.checked;
+
+                    const formData = new FormData();
+                    formData.append('is_completed', isCompleted ? 1 : 0);
+                    formData.append('_token', document.querySelector('[name="_token"]').value);
+
+                    fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.update', [$project, $task, ':id']) }}`.replace(':id', subtaskId), {
+                        method: 'PATCH',
+                        body: formData
+                    })
+                    .then(() => {
+                        location.reload();
+                    })
+                    .catch(() => alert('Error updating subtask'));
+                });
+            });
+
+            // Activity feed polling
             const container = document.getElementById('task-activity-feed');
             const pollUrl = @json($pollUrl);
 

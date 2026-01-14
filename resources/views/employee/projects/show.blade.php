@@ -28,16 +28,10 @@
                 </div>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Financials</div>
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Status</div>
                 <div class="mt-2 text-sm text-slate-700">
-                    Budget: {{ $project->total_budget ? $project->currency.' '.$project->total_budget : '--' }}<br>
-                    Initial payment: {{ $project->initial_payment_amount ? $project->currency.' '.$project->initial_payment_amount : '--' }}
+                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ ucfirst(str_replace('_', ' ', $project->status)) }}</span>
                 </div>
-                @if(!empty($initialInvoice))
-                    <div class="mt-2 text-xs text-slate-500">
-                        Initial invoice: #{{ $initialInvoice->number ?? $initialInvoice->id }} ({{ ucfirst($initialInvoice->status) }})
-                    </div>
-                @endif
             </div>
         </div>
 

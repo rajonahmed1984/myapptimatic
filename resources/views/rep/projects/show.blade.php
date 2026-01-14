@@ -40,6 +40,42 @@
             </div>
         </div>
 
+        @if(!empty($maintenances) && $maintenances->isNotEmpty())
+            <div class="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Maintenance</div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead>
+                        <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <th class="px-3 py-2">Title</th>
+                            <th class="px-3 py-2">Cycle</th>
+                            <th class="px-3 py-2">Next Billing</th>
+                            <th class="px-3 py-2">Status</th>
+                            <th class="px-3 py-2 text-right">Amount</th>
+                            <th class="px-3 py-2 text-right">Invoices</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach($maintenances as $maintenance)
+                            <tr class="border-t border-slate-100">
+                                <td class="px-3 py-2">{{ $maintenance->title }}</td>
+                                <td class="px-3 py-2">{{ ucfirst($maintenance->billing_cycle) }}</td>
+                                <td class="px-3 py-2 text-xs text-slate-600">{{ $maintenance->next_billing_date?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-3 py-2">
+                                    <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $maintenance->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : ($maintenance->status === 'paused' ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-slate-200 text-slate-600 bg-slate-50') }}">
+                                        {{ ucfirst($maintenance->status) }}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-right">{{ $maintenance->currency }} {{ number_format((float) $maintenance->amount, 2) }}</td>
+                                <td class="px-3 py-2 text-right">{{ $maintenance->invoices?->count() ?? 0 }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
         <div class="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
             <div class="flex items-center justify-between">
                 <div>

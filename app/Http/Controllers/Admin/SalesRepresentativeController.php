@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CommissionEarning;
 use App\Models\Employee;
+use App\Models\Project;
+use App\Models\ProjectTask;
 use App\Models\SalesRepresentative;
+use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class SalesRepresentativeController extends Controller
@@ -17,6 +21,7 @@ class SalesRepresentativeController extends Controller
     {
         $reps = SalesRepresentative::query()
             ->with(['user:id,name,email', 'employee:id,name'])
+            ->withCount('projects')
             ->orderBy('name')
             ->get();
 
@@ -105,9 +110,14 @@ class SalesRepresentativeController extends Controller
             ->with('status', 'Sales representative updated.');
     }
 
-    public function show(SalesRepresentative $salesRep)
+    public function show(Request $request, SalesRepresentative $salesRep)
     {
         $salesRep->load(['user:id,name,email', 'employee:id,name']);
+        $tab = $request->query('tab', 'profile');
+        $allowedTabs = ['profile', 'services', 'invoices', 'emails', 'log', 'earnings', 'payouts', 'projects'];
+        if (! in_array($tab, $allowedTabs, true)) {
+            $tab = 'profile';
+        }
 
         $earningsQuery = $salesRep->earnings();
         $payoutsQuery = $salesRep->payouts();
@@ -118,21 +128,88 @@ class SalesRepresentativeController extends Controller
             'paid' => (float) $earningsQuery->where('status', 'paid')->sum('commission_amount'),
         ];
 
-        $recentEarnings = $salesRep->earnings()
-            ->latest()
-            ->take(10)
-            ->get();
+        $recentEarnings = collect();
+        $recentPayouts = collect();
+        $subscriptions = collect();
+        $invoiceEarnings = collect();
+        $projects = collect();
+        $projectStatusCounts = collect();
+        $projectTaskStatusCounts = collect();
 
-        $recentPayouts = $salesRep->payouts()
-            ->latest()
-            ->take(10)
-            ->get();
+        if ($tab === 'earnings') {
+            $recentEarnings = $salesRep->earnings()
+                ->latest()
+                ->take(10)
+                ->get();
+        }
+
+        if ($tab === 'payouts') {
+            $recentPayouts = $salesRep->payouts()
+                ->latest()
+                ->take(10)
+                ->get();
+        }
+
+        if ($tab === 'services') {
+            $subscriptions = Subscription::query()
+                ->with(['plan.product', 'customer'])
+                ->where('sales_rep_id', $salesRep->id)
+                ->latest()
+                ->take(20)
+                ->get();
+        }
+
+        if ($tab === 'invoices') {
+            $invoiceEarnings = CommissionEarning::query()
+                ->with(['invoice.customer', 'project'])
+                ->where('sales_representative_id', $salesRep->id)
+                ->whereNotNull('invoice_id')
+                ->latest('earned_at')
+                ->take(20)
+                ->get();
+        }
+
+        if ($tab === 'projects') {
+            $projects = Project::query()
+                ->with('customer:id,name')
+                ->whereHas('salesRepresentatives', fn ($query) => $query->whereKey($salesRep->id))
+                ->orderByDesc('id')
+                ->get();
+
+            $projectStatusCounts = $projects->countBy('status');
+            $projectIds = $projects->pluck('id');
+
+            if ($projectIds->isNotEmpty()) {
+                $projectTaskStatusCounts = ProjectTask::query()
+                    ->select('project_id', 'status', DB::raw('COUNT(*) as total'))
+                    ->whereIn('project_id', $projectIds)
+                    ->where(function ($query) use ($salesRep) {
+                        $query->where(function ($inner) use ($salesRep) {
+                            $inner->where('assigned_type', 'sales_rep')
+                                ->where('assigned_id', $salesRep->id);
+                        })->orWhereHas('assignments', function ($inner) use ($salesRep) {
+                            $inner->where('assignee_type', 'sales_rep')
+                                ->where('assignee_id', $salesRep->id);
+                        });
+                    })
+                    ->groupBy('project_id', 'status')
+                    ->get()
+                    ->groupBy('project_id')
+                    ->map(fn ($rows) => $rows->pluck('total', 'status'));
+            }
+        }
 
         return view('admin.sales-reps.show', [
             'rep' => $salesRep,
+            'tab' => $tab,
             'summary' => $summary,
             'recentEarnings' => $recentEarnings,
             'recentPayouts' => $recentPayouts,
+            'subscriptions' => $subscriptions,
+            'invoiceEarnings' => $invoiceEarnings,
+            'projects' => $projects,
+            'projectStatusCounts' => $projectStatusCounts,
+            'projectTaskStatusCounts' => $projectTaskStatusCounts,
         ]);
     }
 

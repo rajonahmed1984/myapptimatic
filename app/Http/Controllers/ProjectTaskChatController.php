@@ -153,7 +153,7 @@ class ProjectTaskChatController extends Controller
 
         $salesRep = $request->attributes->get('salesRep');
         if ($salesRep instanceof SalesRepresentative) {
-            return ['type' => 'salesrep', 'id' => $salesRep->id];
+            return ['type' => 'sales_rep', 'id' => $salesRep->id];
         }
 
         $user = $request->user();

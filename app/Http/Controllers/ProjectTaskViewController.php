@@ -24,6 +24,7 @@ class ProjectTaskViewController extends Controller
             'activities.userActor',
             'activities.employeeActor',
             'activities.salesRepActor',
+            'subtasks',
         ]);
 
         $activities = $task->activities->sortBy('created_at')->values();
@@ -50,14 +51,27 @@ class ProjectTaskViewController extends Controller
             $taskTypeOptions[$task->task_type] = ucfirst(str_replace('_', ' ', $task->task_type));
         }
 
-        return view('projects.task-detail', [
+        return view('projects.task-detail-clickup', [
             'layout' => $this->layoutForPrefix($routePrefix),
+            'routePrefix' => $routePrefix,
             'project' => $project,
             'task' => $task,
             'activities' => $activities,
             'uploadActivities' => $uploadActivities,
             'taskTypeOptions' => $taskTypeOptions,
             'priorityOptions' => TaskSettings::priorityOptions(),
+            'statusColors' => [
+                'pending' => ['bg' => '#f1f5f9', 'text' => '#64748b'],
+                'in_progress' => ['bg' => '#fef3c7', 'text' => '#b45309'],
+                'blocked' => ['bg' => '#fee2e2', 'text' => '#b91c1c'],
+                'completed' => ['bg' => '#d1fae5', 'text' => '#065f46'],
+            ],
+            'priorityColors' => [
+                'urgent' => ['color' => '#ef4444'],
+                'high' => ['color' => '#f97316'],
+                'medium' => ['color' => '#eab308'],
+                'low' => ['color' => '#22c55e'],
+            ],
             'assignees' => $assignees,
             'employees' => $employees,
             'salesReps' => $salesReps,
@@ -107,7 +121,7 @@ class ProjectTaskViewController extends Controller
 
         $salesRep = $request->attributes->get('salesRep');
         if ($salesRep instanceof SalesRepresentative) {
-            return ['type' => 'salesrep', 'id' => $salesRep->id];
+            return ['type' => 'sales_rep', 'id' => $salesRep->id];
         }
 
         $user = $request->user();

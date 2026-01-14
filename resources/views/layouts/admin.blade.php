@@ -32,6 +32,7 @@
                 $isEmployeeNav = request()->routeIs('employee.*');
                 $isSalesRepNav = request()->routeIs('rep.*');
                 $invoiceMenuActive = $isAdminNav && request()->routeIs('admin.invoices.*');
+                $projectsMenuActive = $isAdminNav && (request()->routeIs('admin.projects.*') || request()->routeIs('admin.project-maintenances.*'));
                 $logMenuActive = $isAdminNav && request()->routeIs('admin.logs.*');
             @endphp
             <nav class="mt-10 space-y-4 text-sm">
@@ -69,10 +70,17 @@
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Delivery & Services</div>
-                        <a class="{{ request()->routeIs('admin.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.projects.index') }}">
+                        <a class="{{ $projectsMenuActive ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.projects.index') }}">
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Projects <!-- Delivery: project-based execution, tasks, milestones -->
                         </a>
+                        @if($projectsMenuActive)
+                            <div class="ml-6 space-y-1 text-xs text-slate-400">
+                                <a href="{{ route('admin.projects.index') }}" class="block {{ request()->routeIs('admin.projects.index') ? 'text-teal-300' : 'hover:text-slate-200' }}">All Projects</a>
+                                <a href="{{ route('admin.projects.create') }}" class="block {{ request()->routeIs('admin.projects.create') ? 'text-teal-300' : 'hover:text-slate-200' }}">Create Project</a>
+                                <a href="{{ route('admin.project-maintenances.index') }}" class="block {{ request()->routeIs('admin.project-maintenances.*') ? 'text-teal-300' : 'hover:text-slate-200' }}">Maintenance</a>
+                            </div>
+                        @endif
                         <a class="{{ request()->routeIs('admin.subscriptions.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.subscriptions.index') }}">
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Subscriptions <!-- Recurring services/maintenance; avoid mixing with one-off projects -->
@@ -296,28 +304,50 @@
                             <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
                         </div>
                     </div>
-                    @if(!empty($adminHeaderStats))
+                    @if(!empty($adminHeaderStats) && !auth()->user()->isEmployee())
                         <div class="stats hidden flex-wrap items-center gap-3 text-xs text-slate-500 lg:flex">
-                            <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="flex items-center gap-2">
-                                <span class="stat">{{ $adminHeaderStats['pending_orders'] ?? 0 }}</span>
-                                Pending Orders
-                            </a>
-                            <span class="text-slate-300">|</span>
-                            <a href="{{ route('admin.invoices.overdue') }}" class="flex items-center gap-2">
-                                <span class="stat">{{ $adminHeaderStats['overdue_invoices'] ?? 0 }}</span>
-                                Overdue Invoices
-                            </a>
-                            <span class="text-slate-300">|</span>
-                            <a href="{{ route('admin.support-tickets.index', ['status' => 'customer_reply']) }}" class="flex items-center gap-2">
-                                <span class="stat">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>
-                                Ticket(s) Awaiting Reply
-                            </a>
+                            @if(auth()->user()->isAdmin())
+                                {{-- Master Admin and Admin see all stats --}}
+                                <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="flex items-center gap-2">
+                                    <span class="stat">{{ $adminHeaderStats['pending_orders'] ?? 0 }}</span>
+                                    Pending Orders
+                                </a>
+                                <span class="text-slate-300">|</span>
+                                <a href="{{ route('admin.invoices.overdue') }}" class="flex items-center gap-2">
+                                    <span class="stat">{{ $adminHeaderStats['overdue_invoices'] ?? 0 }}</span>
+                                    Overdue Invoices
+                                </a>
+                                <span class="text-slate-300">|</span>
+                            @endif
+                            @if(auth()->user()->isSupport())
+                                {{-- Support sees only tickets --}}
+                                <a href="{{ route('admin.support-tickets.index', ['status' => 'customer_reply']) }}" class="flex items-center gap-2">
+                                    <span class="stat">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>
+                                    Ticket(s) Awaiting Reply
+                                </a>
+                            @endif
                         </div>
                     @endif
                     <div class="hidden items-center gap-4 md:flex">
                         <div class="text-right text-sm">
                             <div class="font-semibold text-slate-900">{{ auth()->user()->name }}</div>
-                            <div class="text-xs text-slate-500">Administrator</div>
+                            <div class="text-xs text-slate-500">
+                                @if(auth()->user()->isEmployee())
+                                    Employee
+                                @elseif(auth()->user()->isMasterAdmin())
+                                    Master Administrator
+                                @elseif(auth()->user()->isSubAdmin())
+                                    Sub Administrator
+                                @elseif(auth()->user()->isSales())
+                                    Sales Representative
+                                @elseif(auth()->user()->isSupport())
+                                    Support
+                                @elseif(auth()->user()->isClient())
+                                    Client
+                                @else
+                                    Administrator
+                                @endif
+                            </div>
                         </div>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf

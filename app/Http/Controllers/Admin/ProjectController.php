@@ -9,6 +9,7 @@ use App\Models\InvoiceItem;
 use App\Models\Order;
 use App\Models\Employee;
 use App\Models\Project;
+use App\Models\ProjectMaintenance;
 use App\Models\ProjectTask;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
@@ -45,7 +46,7 @@ class ProjectController extends Controller
         $salesRepId = \App\Models\SalesRepresentative::where('user_id', $user?->id)->value('id');
 
         $projects = Project::query()
-            ->with(['customer', 'order', 'subscription'])
+            ->with(['customer', 'order', 'subscription', 'employees', 'salesRepresentatives'])
             ->withCount([
                 'tasks as open_tasks_count' => fn ($q) => $q->whereIn('status', ['pending', 'in_progress', 'blocked', 'todo']),
                 'tasks as done_tasks_count' => fn ($q) => $q->whereIn('status', ['completed', 'done']),
@@ -128,6 +129,7 @@ class ProjectController extends Controller
             'start_date' => ['nullable', 'date'],
             'expected_end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'due_date' => ['nullable', 'date'],
+            'description' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'total_budget' => ['required', 'numeric', 'min:0'],
             'initial_payment_amount' => ['required', 'numeric', 'min:0'],
@@ -142,6 +144,13 @@ class ProjectController extends Controller
             'sales_rep_amounts.*' => ['nullable', 'numeric', 'min:0'],
             'employee_ids' => ['array'],
             'employee_ids.*' => ['exists:employees,id'],
+            'maintenances' => ['nullable', 'array'],
+            'maintenances.*.title' => ['required', 'string', 'max:255'],
+            'maintenances.*.amount' => ['required', 'numeric', 'min:0.01'],
+            'maintenances.*.billing_cycle' => ['required', 'in:monthly,yearly'],
+            'maintenances.*.start_date' => ['required', 'date'],
+            'maintenances.*.auto_invoice' => ['nullable', 'boolean'],
+            'maintenances.*.sales_rep_visible' => ['nullable', 'boolean'],
             'tasks' => ['required', 'array', 'min:1'],
             'tasks.*.title' => ['required', 'string', 'max:255'],
             'tasks.*.descriptions' => ['nullable', 'array'],
@@ -200,6 +209,7 @@ class ProjectController extends Controller
                 'start_date' => $data['start_date'] ?? null,
                 'expected_end_date' => $data['expected_end_date'] ?? null,
                 'due_date' => $data['due_date'] ?? null,
+                'description' => $data['description'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'total_budget' => $data['total_budget'],
                 'initial_payment_amount' => $data['initial_payment_amount'],
@@ -287,6 +297,23 @@ class ProjectController extends Controller
                 'line_total' => $project->initial_payment_amount,
             ]);
 
+            foreach ($data['maintenances'] ?? [] as $maintenance) {
+                ProjectMaintenance::create([
+                    'project_id' => $project->id,
+                    'customer_id' => $project->customer_id,
+                    'title' => $maintenance['title'],
+                    'amount' => $maintenance['amount'],
+                    'currency' => $project->currency,
+                    'billing_cycle' => $maintenance['billing_cycle'],
+                    'start_date' => $maintenance['start_date'],
+                    'next_billing_date' => $maintenance['start_date'],
+                    'status' => 'active',
+                    'auto_invoice' => (bool) ($maintenance['auto_invoice'] ?? true),
+                    'sales_rep_visible' => (bool) ($maintenance['sales_rep_visible'] ?? false),
+                    'created_by' => $request->user()?->id,
+                ]);
+            }
+
             SystemLogger::write('activity', 'Project created.', [
                 'project_id' => $project->id,
                 'customer_id' => $project->customer_id,
@@ -314,6 +341,7 @@ class ProjectController extends Controller
             'tasks.assignee',
             'employees',
             'salesRepresentatives',
+            'maintenances' => fn ($query) => $query->withCount('invoices')->orderBy('next_billing_date'),
         ]);
 
         $user = $request->user();
@@ -388,8 +416,15 @@ class ProjectController extends Controller
         }
 
         $previousStatus = $project->status;
+        $previousCurrency = $project->currency;
         $data['currency'] = strtoupper($data['currency']);
         $project->update($data);
+
+        if ($previousCurrency !== $project->currency) {
+            $project->maintenances()->update([
+                'currency' => $project->currency,
+            ]);
+        }
 
         $project->employees()->sync($data['employee_ids'] ?? []);
 

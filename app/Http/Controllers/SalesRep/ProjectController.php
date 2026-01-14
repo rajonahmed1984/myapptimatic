@@ -34,6 +34,12 @@ class ProjectController extends Controller
             ->orderBy('id')
             ->get();
 
+        $maintenances = $project->maintenances()
+            ->where('sales_rep_visible', true)
+            ->with(['invoices' => fn ($query) => $query->latest('issue_date')])
+            ->orderBy('next_billing_date')
+            ->get();
+
         $initialInvoice = $project->invoices()
             ->where('type', 'project_initial_payment')
             ->latest('issue_date')
@@ -42,6 +48,7 @@ class ProjectController extends Controller
         return view('rep.projects.show', [
             'project' => $project,
             'tasks' => $tasks,
+            'maintenances' => $maintenances,
             'initialInvoice' => $initialInvoice,
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),

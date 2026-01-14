@@ -109,6 +109,63 @@
             </div>
         </div>
 
+        <div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Maintenance</div>
+            <div class="mt-3 text-sm text-slate-700">
+                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-slate-800">Maintenance plans</div>
+                        <a href="{{ route('admin.project-maintenances.create', ['project_id' => $project->id]) }}" class="rounded-full border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700 hover:border-teal-300 hover:text-teal-800">Add maintenance</a>
+                    </div>
+                    @php $maintenances = $project->maintenances?->sortBy('next_billing_date') ?? collect(); @endphp
+                    @if($maintenances->isEmpty())
+                        <div class="mt-3 text-xs text-slate-500">No maintenance plans for this project.</div>
+                    @else
+                        <div class="mt-3 overflow-x-auto">
+                            <table class="min-w-full text-left text-sm">
+                                <thead>
+                                <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    <th class="px-3 py-2">Title</th>
+                                    <th class="px-3 py-2">Cycle</th>
+                                    <th class="px-3 py-2">Next Billing</th>
+                                    <th class="px-3 py-2">Status</th>
+                                    <th class="px-3 py-2">Auto</th>
+                                    <th class="px-3 py-2 text-right">Amount</th>
+                                    <th class="px-3 py-2 text-right">Invoices</th>
+                                    <th class="px-3 py-2 text-right">Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach($maintenances as $maintenance)
+                                    <tr class="border-t border-slate-100">
+                                        <td class="px-3 py-2">{{ $maintenance->title }}</td>
+                                        <td class="px-3 py-2">{{ ucfirst($maintenance->billing_cycle) }}</td>
+                                        <td class="px-3 py-2 text-xs text-slate-600">{{ $maintenance->next_billing_date?->format($globalDateFormat) ?? '--' }}</td>
+                                        <td class="px-3 py-2">
+                                            <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $maintenance->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : ($maintenance->status === 'paused' ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-slate-200 text-slate-600 bg-slate-50') }}">
+                                                {{ ucfirst($maintenance->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-2 text-xs text-slate-600">{{ $maintenance->auto_invoice ? 'Yes' : 'No' }}</td>
+                                        <td class="px-3 py-2 text-right">{{ $maintenance->currency }} {{ number_format((float) $maintenance->amount, 2) }}</td>
+                                        <td class="px-3 py-2 text-right">
+                                            <a href="{{ route('admin.invoices.index', ['maintenance_id' => $maintenance->id]) }}" class="text-xs font-semibold text-slate-700 hover:text-teal-600">
+                                                {{ $maintenance->invoices_count ?? 0 }}
+                                            </a>
+                                        </td>
+                                        <td class="px-3 py-2 text-right">
+                                            <a href="{{ route('admin.project-maintenances.edit', $maintenance) }}" class="text-xs font-semibold text-teal-700 hover:text-teal-600">Edit</a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
         @if($project->notes)
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Notes</div>

@@ -28,15 +28,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
+            // Drop foreign key if it exists
             if (Schema::hasColumn('invoices', 'project_id')) {
-                // Check if foreign key exists before dropping
-                $connection = DB::getDoctrineSchemaManager();
-                $indexes = $connection->listTableForeignKeys('invoices');
-                foreach ($indexes as $fk) {
-                    if ($fk->getLocalColumns() === ['project_id']) {
-                        $table->dropForeign(['project_id']);
-                        break;
-                    }
+                try {
+                    $table->dropForeign(['project_id']);
+                } catch (\Exception $e) {
+                    // Foreign key doesn't exist, continue
                 }
                 $table->dropColumn('project_id');
             }

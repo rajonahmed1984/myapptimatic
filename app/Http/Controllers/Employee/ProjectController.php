@@ -13,7 +13,8 @@ class ProjectController extends Controller
 {
     public function index(Request $request)
     {
-        $employee = $request->user(); // guard: employee
+        $user = $request->user(); // guard: employee (returns User model)
+        $employee = $user?->employee; // Get the associated Employee model
         $employeeId = $employee?->id;
 
         $projects = Project::query()
@@ -27,7 +28,7 @@ class ProjectController extends Controller
 
     public function show(Request $request, Project $project)
     {
-        $employee = $request->user(); // guard: employee
+        $user = $request->user(); // guard: employee (returns User model)
         $this->authorize('view', $project);
 
         $project->load(['customer']);

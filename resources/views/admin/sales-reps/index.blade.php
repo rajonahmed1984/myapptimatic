@@ -23,6 +23,7 @@
                         <th class="px-4 py-3 text-left">User</th>
                         <th class="px-4 py-3 text-left">Services</th>
                         <th class="px-4 py-3 text-left">Status</th>
+                        <th class="px-4 py-3 text-right">Projects</th>
                         <th class="px-4 py-3 text-right">Total earned</th>
                         <th class="px-4 py-3 text-right">Payable</th>
                         <th class="px-4 py-3 text-right">Paid</th>
@@ -59,6 +60,7 @@
                                     {{ ucfirst($rep->status) }}
                                 </span>
                             </td>
+                            <td class="px-4 py-3 text-right">{{ $rep->projects_count ?? 0 }}</td>
                             <td class="px-4 py-3 text-right font-semibold">{{ number_format($repTotals->total_earned ?? 0, 2) }}</td>
                             <td class="px-4 py-3 text-right">{{ number_format($repTotals->total_payable ?? 0, 2) }}</td>
                             <td class="px-4 py-3 text-right">{{ number_format($repTotals->total_paid ?? 0, 2) }}</td>
@@ -71,7 +73,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-6 text-center text-slate-500">No sales representatives yet.</td>
+                            <td colspan="10" class="px-4 py-6 text-center text-slate-500">No sales representatives yet.</td>
                         </tr>
                     @endforelse
                 </tbody>

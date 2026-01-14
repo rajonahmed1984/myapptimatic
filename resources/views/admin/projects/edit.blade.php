@@ -37,35 +37,7 @@
                     </div>
                 </div>
 
-                <div class="grid gap-4 md:grid-cols-3">
-                    <div>
-                        <label class="text-xs text-slate-500">Order (optional)</label>
-                        <select name="order_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                            <option value="">-- none --</option>
-                            @foreach($orders as $order)
-                                <option value="{{ $order->id }}" @selected(old('order_id', $project->order_id) == $order->id)>{{ $order->order_number ?? $order->id }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-500">Invoice (optional)</label>
-                        <select name="invoice_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                            <option value="">-- none --</option>
-                            @foreach($invoices as $invoice)
-                                <option value="{{ $invoice->id }}" @selected(old('invoice_id', $project->advance_invoice_id) == $invoice->id)>{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-500">Subscription (optional)</label>
-                        <select name="subscription_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                            <option value="">-- none --</option>
-                            @foreach($subscriptions as $subscription)
-                                <option value="{{ $subscription->id }}" @selected(old('subscription_id', $project->subscription_id) == $subscription->id)>Subscription #{{ $subscription->id }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
+
 
                 <div class="grid gap-4 md:grid-cols-3">
                     <div>
@@ -105,11 +77,6 @@
                 </div>
 
                 <div>
-                    <label class="text-xs text-slate-500">Description</label>
-                    <textarea name="description" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('description', $project->description ?? '') }}</textarea>
-                </div>
-
-                <div>
                     <label class="text-xs text-slate-500">Notes</label>
                     <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('notes', $project->notes) }}</textarea>
                 </div>
@@ -144,11 +111,21 @@
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Assign employees</label>
-                        <select name="employee_ids[]" multiple class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <div class="mt-2 space-y-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
                             @foreach($employees as $employee)
-                                <option value="{{ $employee->id }}" @selected(collect(old('employee_ids', $project->employees->pluck('id')->toArray()))->contains($employee->id))>{{ $employee->name }} {{ $employee->designation ? "({$employee->designation})" : '' }}</option>
+                                @php
+                                    $selectedEmployees = collect(old('employee_ids', $project->employees->pluck('id')->toArray()));
+                                    $isAssigned = $selectedEmployees->contains($employee->id);
+                                @endphp
+                                <div class="flex items-center gap-2">
+                                    <label class="flex items-center gap-2 text-xs text-slate-600">
+                                        <input type="checkbox" name="employee_ids[]" value="{{ $employee->id }}" @checked($isAssigned)>
+                                        <span>{{ $employee->name }} @if($employee->designation)<span class="text-slate-500">({{ $employee->designation }})</span>@endif</span>
+                                    </label>
+                                </div>
                             @endforeach
-                        </select>
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">Select employees assigned to this project.</p>
                     </div>
                 </div>
             </fieldset>

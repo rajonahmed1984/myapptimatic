@@ -32,35 +32,7 @@
                 </div>
             </div>
 
-            <div class="grid gap-4 md:grid-cols-3">
-                <div>
-                    <label class="text-xs text-slate-500">Order (optional)</label>
-                    <select name="order_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <option value="">-- none --</option>
-                        @foreach($orders as $order)
-                            <option value="{{ $order->id }}" @selected(old('order_id') == $order->id)>{{ $order->order_number ?? $order->id }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Invoice (optional)</label>
-                    <select name="invoice_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <option value="">-- none --</option>
-                        @foreach($invoices as $invoice)
-                            <option value="{{ $invoice->id }}" @selected(old('invoice_id') == $invoice->id)>{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Subscription (optional)</label>
-                    <select name="subscription_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <option value="">-- none --</option>
-                        @foreach($subscriptions as $subscription)
-                            <option value="{{ $subscription->id }}" @selected(old('subscription_id') == $subscription->id)>Subscription #{{ $subscription->id }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
+
 
             <div class="grid gap-4 md:grid-cols-3">
                 <div>
@@ -121,22 +93,80 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Assign employees</label>
-                    <select name="employee_ids[]" multiple class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <div class="mt-2 space-y-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
                         @foreach($employees as $employee)
-                            <option value="{{ $employee->id }}" @selected(collect(old('employee_ids', []))->contains($employee->id))>{{ $employee->name }} {{ $employee->designation ? "({$employee->designation})" : '' }}</option>
+                            @php
+                                $selectedEmployees = collect(old('employee_ids', []));
+                                $isAssigned = $selectedEmployees->contains($employee->id);
+                            @endphp
+                            <div class="flex items-center gap-2">
+                                <label class="flex items-center gap-2 text-xs text-slate-600">
+                                    <input type="checkbox" name="employee_ids[]" value="{{ $employee->id }}" @checked($isAssigned)>
+                                    <span>{{ $employee->name }} @if($employee->designation)<span class="text-slate-500">({{ $employee->designation }})</span>@endif</span>
+                                </label>
+                            </div>
                         @endforeach
-                    </select>
+                    </div>
+                    <p class="mt-1 text-xs text-slate-500">Select employees assigned to this project.</p>
                 </div>
-            </div>
-
-            <div>
-                <label class="text-xs text-slate-500">Description</label>
-                <textarea name="description" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('description') }}</textarea>
             </div>
 
             <div>
                 <label class="text-xs text-slate-500">Notes</label>
                 <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('notes') }}</textarea>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white/60 p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="section-label">Add Maintenance Plan</div>
+                        <div class="text-sm text-slate-600">Optional recurring billing tied to this project.</div>
+                    </div>
+                    <button type="button" id="addMaintenanceRow" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add plan</button>
+                </div>
+                <div id="maintenanceRows" class="mt-4 space-y-3">
+                    @php $maintenanceOld = old('maintenances', []); @endphp
+                    @forelse($maintenanceOld as $index => $maintenance)
+                        <div class="maintenance-row grid gap-3 md:grid-cols-6 mb-2" data-index="{{ $index }}">
+                            <div class="md:col-span-2">
+                                <label class="text-xs text-slate-500">Title</label>
+                                <input name="maintenances[{{ $index }}][title]" value="{{ $maintenance['title'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500">Amount</label>
+                                <input name="maintenances[{{ $index }}][amount]" type="number" min="0.01" step="0.01" value="{{ $maintenance['amount'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500">Billing cycle</label>
+                                <select name="maintenances[{{ $index }}][billing_cycle]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                    <option value="monthly" @selected(($maintenance['billing_cycle'] ?? '') === 'monthly')>Monthly</option>
+                                    <option value="yearly" @selected(($maintenance['billing_cycle'] ?? '') === 'yearly')>Yearly</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500">Start date</label>
+                                <input name="maintenances[{{ $index }}][start_date]" type="date" value="{{ $maintenance['start_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            </div>
+                            <div class="flex items-end justify-between gap-2">
+                                <div class="space-y-2">
+                                    <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                                        <input type="hidden" name="maintenances[{{ $index }}][auto_invoice]" value="0">
+                                        <input type="checkbox" name="maintenances[{{ $index }}][auto_invoice]" value="1" @checked(!isset($maintenance['auto_invoice']) || $maintenance['auto_invoice'])>
+                                        <span>Auto invoice</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                                        <input type="hidden" name="maintenances[{{ $index }}][sales_rep_visible]" value="0">
+                                        <input type="checkbox" name="maintenances[{{ $index }}][sales_rep_visible]" value="1" @checked(!empty($maintenance['sales_rep_visible']))>
+                                        <span>Sales rep visible</span>
+                                    </label>
+                                </div>
+                                <button type="button" class="remove-maintenance-row rounded-full border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300">Remove</button>
+                            </div>
+                        </div>
+                    @empty
+                        <div id="maintenanceEmpty" class="text-xs text-slate-500">No maintenance plans added.</div>
+                    @endforelse
+                </div>
             </div>
 
             <div class="grid gap-4 md:grid-cols-4">
@@ -253,7 +283,7 @@
 
                             <div class="descriptions-container mb-3" data-task-index="{{ $index }}">
                                 @php 
-                                    $descriptions = is_array($task['descriptions'] ?? null) ? $task['descriptions'] : (isset($task['description']) && $task['description'] ? [$task['description']] : ['']):
+                                    $descriptions = is_array($task['descriptions'] ?? null) ? $task['descriptions'] : (isset($task['description']) && $task['description'] ? [$task['description']] : ['']);
                                 @endphp
                                 @foreach($descriptions as $descIndex => $description)
                                     <div class="description-group grid gap-3 md:grid-cols-4 mb-2">
@@ -290,6 +320,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const taskRows = document.getElementById('taskRows');
             const addBtn = document.getElementById('addTaskRow');
+            const maintenanceRows = document.getElementById('maintenanceRows');
+            const addMaintenanceBtn = document.getElementById('addMaintenanceRow');
 
             // Handle description field addition for existing and new tasks
             function setupDescriptionHandlers(taskRow) {
@@ -418,6 +450,73 @@
                         e.target.closest('.task-row').remove();
                     } else {
                         alert('At least one task is required.');
+                    }
+                }
+            });
+
+            function addMaintenanceRow() {
+                const index = maintenanceRows.querySelectorAll('.maintenance-row').length;
+                const row = document.createElement('div');
+                row.className = 'maintenance-row grid gap-3 md:grid-cols-6 mb-2';
+                row.dataset.index = index;
+                row.innerHTML = `
+                    <div class="md:col-span-2">
+                        <label class="text-xs text-slate-500">Title</label>
+                        <input name="maintenances[${index}][title]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Amount</label>
+                        <input name="maintenances[${index}][amount]" type="number" min="0.01" step="0.01" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Billing cycle</label>
+                        <select name="maintenances[${index}][billing_cycle]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Start date</label>
+                        <input name="maintenances[${index}][start_date]" type="date" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    </div>
+                    <div class="flex items-end justify-between gap-2">
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                                <input type="hidden" name="maintenances[${index}][auto_invoice]" value="0">
+                                <input type="checkbox" name="maintenances[${index}][auto_invoice]" value="1" checked>
+                                <span>Auto invoice</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                                <input type="hidden" name="maintenances[${index}][sales_rep_visible]" value="0">
+                                <input type="checkbox" name="maintenances[${index}][sales_rep_visible]" value="1">
+                                <span>Sales rep visible</span>
+                            </label>
+                        </div>
+                        <button type="button" class="remove-maintenance-row rounded-full border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300">Remove</button>
+                    </div>
+                `;
+                maintenanceRows.appendChild(row);
+                const emptyLabel = document.getElementById('maintenanceEmpty');
+                if (emptyLabel) {
+                    emptyLabel.remove();
+                }
+            }
+
+            addMaintenanceBtn?.addEventListener('click', (e) => {
+                e.preventDefault();
+                addMaintenanceRow();
+            });
+
+            maintenanceRows?.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove-maintenance-row')) {
+                    e.preventDefault();
+                    e.target.closest('.maintenance-row').remove();
+                    if (maintenanceRows.querySelectorAll('.maintenance-row').length === 0) {
+                        const empty = document.createElement('div');
+                        empty.id = 'maintenanceEmpty';
+                        empty.className = 'text-xs text-slate-500';
+                        empty.textContent = 'No maintenance plans added.';
+                        maintenanceRows.appendChild(empty);
                     }
                 }
             });
