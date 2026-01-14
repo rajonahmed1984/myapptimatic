@@ -5,8 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasOne;use Illuminate\Database\Eloquent\Relations\MorphMany;use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Concerns\HasActivityTracking;
@@ -79,25 +78,26 @@ class Employee extends Authenticatable
         return $this->hasMany(PayrollItem::class);
     }
 
-    // Activity tracking for employees uses dedicated tables.
-    public function sessions(): HasMany
+    // Activity tracking uses polymorphic UserSession/UserActivityDaily via HasActivityTracking trait
+    // These methods override the trait to explicitly define the relations
+    public function sessions(): MorphMany
     {
-        return $this->hasMany(EmployeeSession::class);
+        return $this->morphMany(UserSession::class, 'user');
     }
 
-    public function activityDaily(): HasMany
+    public function activityDaily(): MorphMany
     {
-        return $this->hasMany(EmployeeActivityDaily::class);
+        return $this->morphMany(UserActivityDaily::class, 'user');
     }
 
-    public function activitySessions(): HasMany
+    public function activitySessions(): MorphMany
     {
-        return $this->hasMany(EmployeeSession::class);
+        return $this->morphMany(UserSession::class, 'user');
     }
 
-    public function activityDailyRecords(): HasMany
+    public function activityDailyRecords(): MorphMany
     {
-        return $this->hasMany(EmployeeActivityDaily::class);
+        return $this->morphMany(UserActivityDaily::class, 'user');
     }
 
     public function activeCompensation(): HasOne

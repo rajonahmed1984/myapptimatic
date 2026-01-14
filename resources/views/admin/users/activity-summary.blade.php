@@ -4,6 +4,18 @@
 @section('page-title', 'User Activity Summary')
 
 @section('content')
+    @php
+        $formatDuration = function ($seconds) {
+            if (! $seconds) {
+                return '0:00';
+            }
+
+            $hours = intdiv((int) $seconds, 3600);
+            $minutes = intdiv(((int) $seconds % 3600), 60);
+
+            return sprintf('%d:%02d', $hours, $minutes);
+        };
+    @endphp
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <div class="section-label">Reporting</div>
@@ -93,20 +105,20 @@
                             </td>
                             <td class="px-6 py-4 text-sm text-slate-700">
                                 <div class="font-medium">{{ $data['today']['sessions_count'] }} sessions</div>
-                                <div class="text-xs text-slate-500">{{ formatDuration($data['today']['active_seconds']) }}</div>
+                                <div class="text-xs text-slate-500">{{ $formatDuration($data['today']['active_seconds']) }}</div>
                             </td>
                             <td class="px-6 py-4 text-sm text-slate-700">
                                 <div class="font-medium">{{ $data['week']['sessions_count'] }} sessions</div>
-                                <div class="text-xs text-slate-500">{{ formatDuration($data['week']['active_seconds']) }}</div>
+                                <div class="text-xs text-slate-500">{{ $formatDuration($data['week']['active_seconds']) }}</div>
                             </td>
                             <td class="px-6 py-4 text-sm text-slate-700">
                                 <div class="font-medium">{{ $data['month']['sessions_count'] }} sessions</div>
-                                <div class="text-xs text-slate-500">{{ formatDuration($data['month']['active_seconds']) }}</div>
+                                <div class="text-xs text-slate-500">{{ $formatDuration($data['month']['active_seconds']) }}</div>
                             </td>
                             @if($showRange && $data['range'])
                                 <td class="px-6 py-4 text-sm text-slate-700">
                                     <div class="font-medium">{{ $data['range']['sessions_count'] }} sessions</div>
-                                    <div class="text-xs text-slate-500">{{ formatDuration($data['range']['active_seconds']) }}</div>
+                                    <div class="text-xs text-slate-500">{{ $formatDuration($data['range']['active_seconds']) }}</div>
                                 </td>
                             @endif
                             <td class="px-6 py-4 text-sm text-slate-700">
@@ -140,14 +152,3 @@
         </script>
     @endpush
 @endsection
-
-@php
-if (!function_exists('formatDuration')) {
-    function formatDuration($seconds) {
-        if (!$seconds) return '0:00';
-        $hours = floor($seconds / 3600);
-        $minutes = floor(($seconds % 3600) / 60);
-        return sprintf('%d:%02d', $hours, $minutes);
-    }
-}
-@endphp

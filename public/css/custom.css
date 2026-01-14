@@ -62,6 +62,8 @@ body.bg-dashboard {
 .sidebar {
     background: var(--sidebar-bg);
     color: var(--sidebar-text);
+    flex: 0 0 auto;
+    width: 18rem;
 }
 
 .nav-link {
@@ -193,5 +195,11 @@ body.bg-dashboard {
     .card {
         box-shadow: none;
         border: 0;
+    }
+}
+
+@media (min-width: 768px) {
+    .sidebar {
+        width: 16rem;
     }
 }

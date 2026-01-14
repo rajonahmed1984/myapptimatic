@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Employee;
-use App\Models\EmployeeActivityDaily;
-use App\Models\EmployeeSession;
 use App\Models\Customer;
 use App\Models\User;
 use App\Models\UserSession;
@@ -100,9 +98,11 @@ class UserActivityTrackingTest extends TestCase
             'status' => 'active',
         ]);
 
-        // Create sessions for the employee
-        $session1 = EmployeeSession::create([
-            'employee_id' => $employee->id,
+        // Create sessions for the employee using polymorphic UserSession
+        $session1 = UserSession::create([
+            'user_type' => Employee::class,
+            'user_id' => $employee->id,
+            'guard' => 'employee',
             'session_id' => 'sess-1',
             'login_at' => now(),
             'logout_at' => null,
@@ -110,8 +110,10 @@ class UserActivityTrackingTest extends TestCase
             'active_seconds' => 100,
         ]);
 
-        $session2 = EmployeeSession::create([
-            'employee_id' => $employee->id,
+        $session2 = UserSession::create([
+            'user_type' => Employee::class,
+            'user_id' => $employee->id,
+            'guard' => 'employee',
             'session_id' => 'sess-2',
             'login_at' => now()->subHours(1),
             'logout_at' => now()->subMinutes(30),
@@ -143,9 +145,11 @@ class UserActivityTrackingTest extends TestCase
         // Not online initially
         $this->assertFalse($employee->isOnline());
 
-        // Create recent session
-        EmployeeSession::create([
-            'employee_id' => $employee->id,
+        // Create recent session using polymorphic UserSession
+        UserSession::create([
+            'user_type' => Employee::class,
+            'user_id' => $employee->id,
+            'guard' => 'employee',
             'session_id' => 'test-sess',
             'login_at' => now()->subMinutes(1),
             'logout_at' => null,
@@ -170,9 +174,11 @@ class UserActivityTrackingTest extends TestCase
             'status' => 'active',
         ]);
 
-        // Create session with old last_seen
-        EmployeeSession::create([
-            'employee_id' => $employee->id,
+        // Create session with old last_seen using polymorphic UserSession
+        UserSession::create([
+            'user_type' => Employee::class,
+            'user_id' => $employee->id,
+            'guard' => 'employee',
             'session_id' => 'old-sess',
             'login_at' => now()->subHours(2),
             'logout_at' => null,
@@ -325,9 +331,11 @@ class UserActivityTrackingTest extends TestCase
             'role' => 'admin',
         ]);
 
-        // Create sessions for both
-        EmployeeSession::create([
-            'employee_id' => $employee->id,
+        // Create sessions for both using polymorphic UserSession
+        UserSession::create([
+            'user_type' => Employee::class,
+            'user_id' => $employee->id,
+            'guard' => 'employee',
             'session_id' => 'emp-sess',
             'login_at' => now(),
             'logout_at' => null,
@@ -349,11 +357,11 @@ class UserActivityTrackingTest extends TestCase
         // Verify separate tracking
         $empSessions = $employee->activitySessions;
         $this->assertCount(1, $empSessions);
-
         $adminSessions = $admin->activitySessions;
         $this->assertCount(1, $adminSessions);
 
-        $this->assertInstanceOf(EmployeeSession::class, $empSessions->first());
+        // Both employee and admin sessions should be UserSession instances (polymorphic)
+        $this->assertInstanceOf(UserSession::class, $empSessions->first());
         $this->assertInstanceOf(UserSession::class, $adminSessions->first());
     }
 }

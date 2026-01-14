@@ -43,8 +43,10 @@
                 </div>
             </nav>
 
-            <div class="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
-                Support access only.
+            <div class="mt-auto">
+                <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
+                    Support access only.
+                </div>
             </div>
         </aside>
 

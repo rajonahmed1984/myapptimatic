@@ -60,8 +60,10 @@
                 </div>
             </nav>
 
-            <div class="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
-                Sales view only. Contact admin if access is revoked.
+            <div class="mt-auto">
+                <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
+                    Sales view only. Contact admin if access is revoked.
+                </div>
             </div>
         </aside>
 

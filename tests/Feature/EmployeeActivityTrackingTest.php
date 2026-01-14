@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Employee;
-use App\Models\EmployeeActivityDaily;
-use App\Models\EmployeeSession;
 use App\Models\User;
+use App\Models\UserSession;
+use App\Models\UserActivityDaily;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -45,13 +45,19 @@ class EmployeeActivityTrackingTest extends TestCase
 
         $response->assertRedirect(route('employee.dashboard'));
 
-        $this->assertDatabaseHas('employee_sessions', [
-            'employee_id' => $employee->id,
+        // Employee guard authenticates via User model (not Employee model directly)
+        // so the session is recorded with user_type: User::class
+        $this->assertDatabaseHas('user_sessions', [
+            'user_type' => User::class,
+            'user_id' => $user->id,
+            'guard' => 'employee',
             'logout_at' => null,
         ]);
 
-        $this->assertDatabaseHas('employee_activity_dailies', [
-            'employee_id' => $employee->id,
+        $this->assertDatabaseHas('user_activity_dailies', [
+            'user_type' => User::class,
+            'user_id' => $user->id,
+            'guard' => 'employee',
             'date' => $now->toDateString(),
             'sessions_count' => 1,
         ]);
@@ -71,16 +77,20 @@ class EmployeeActivityTrackingTest extends TestCase
 
         $priorLoginTime = $now->copy()->subMinutes(2);
 
-        $session = EmployeeSession::create([
-            'employee_id' => $employee->id,
+        $session = UserSession::create([
+            'user_type' => Employee::class,
+            'user_id' => $employee->id,
+            'guard' => 'employee',
             'session_id' => 'test-session-123',
             'login_at' => $priorLoginTime,
             'last_seen_at' => $priorLoginTime,
             'active_seconds' => 0,
         ]);
 
-        EmployeeActivityDaily::create([
-            'employee_id' => $employee->id,
+        UserActivityDaily::create([
+            'user_type' => Employee::class,
+            'user_id' => $employee->id,
+            'guard' => 'employee',
             'date' => $priorLoginTime->toDateString(),
             'sessions_count' => 1,
             'active_seconds' => 0,
@@ -103,8 +113,10 @@ class EmployeeActivityTrackingTest extends TestCase
             'status' => 'active',
         ]);
 
-        EmployeeSession::create([
-            'employee_id' => $employee->id,
+        UserSession::create([
+            'user_type' => Employee::class,
+            'user_id' => $employee->id,
+            'guard' => 'employee',
             'session_id' => 'sess-123',
             'login_at' => $now->copy()->subMinutes(5),
             'last_seen_at' => $now->copy()->subMinute(),
@@ -113,10 +125,10 @@ class EmployeeActivityTrackingTest extends TestCase
 
         $this->assertTrue($employee->isOnline());
 
-        EmployeeSession::query()->where('employee_id', $employee->id)->update(['logout_at' => $now]);
+        UserSession::query()->where('user_type', Employee::class)->where('user_id', $employee->id)->update(['logout_at' => $now]);
         $this->assertFalse($employee->isOnline());
 
-        EmployeeSession::query()->update(['logout_at' => null, 'last_seen_at' => $now->copy()->subMinutes(10)]);
+        UserSession::query()->update(['logout_at' => null, 'last_seen_at' => $now->copy()->subMinutes(10)]);
         $this->assertFalse($employee->isOnline());
     }
 
@@ -140,9 +152,11 @@ class EmployeeActivityTrackingTest extends TestCase
         ]);
 
         // Employee A data
-        EmployeeActivityDaily::insert([
+        UserActivityDaily::insert([
             [
-                'employee_id' => $employeeA->id,
+                'user_type' => Employee::class,
+                'user_id' => $employeeA->id,
+                'guard' => 'employee',
                 'date' => $now->toDateString(),
                 'sessions_count' => 2,
                 'active_seconds' => 3600,
@@ -152,7 +166,9 @@ class EmployeeActivityTrackingTest extends TestCase
                 'updated_at' => $now,
             ],
             [
-                'employee_id' => $employeeA->id,
+                'user_type' => Employee::class,
+                'user_id' => $employeeA->id,
+                'guard' => 'employee',
                 'date' => $now->copy()->subDays(2)->toDateString(),
                 'sessions_count' => 1,
                 'active_seconds' => 900,
@@ -162,7 +178,9 @@ class EmployeeActivityTrackingTest extends TestCase
                 'updated_at' => $now,
             ],
             [
-                'employee_id' => $employeeA->id,
+                'user_type' => Employee::class,
+                'user_id' => $employeeA->id,
+                'guard' => 'employee',
                 'date' => $now->copy()->subDays(10)->toDateString(),
                 'sessions_count' => 1,
                 'active_seconds' => 600,
@@ -174,8 +192,10 @@ class EmployeeActivityTrackingTest extends TestCase
         ]);
 
         // Employee B data
-        EmployeeActivityDaily::create([
-            'employee_id' => $employeeB->id,
+        UserActivityDaily::create([
+            'user_type' => Employee::class,
+            'user_id' => $employeeB->id,
+            'guard' => 'employee',
             'date' => $now->toDateString(),
             'sessions_count' => 1,
             'active_seconds' => 300,
@@ -183,16 +203,20 @@ class EmployeeActivityTrackingTest extends TestCase
             'last_seen_at' => $now,
         ]);
 
-        EmployeeSession::create([
-            'employee_id' => $employeeA->id,
+        UserSession::create([
+            'user_type' => Employee::class,
+            'user_id' => $employeeA->id,
+            'guard' => 'employee',
             'session_id' => 'sess-a',
             'login_at' => $now->copy()->subHours(3),
             'last_seen_at' => $now,
             'active_seconds' => 0,
         ]);
 
-        EmployeeSession::create([
-            'employee_id' => $employeeB->id,
+        UserSession::create([
+            'user_type' => Employee::class,
+            'user_id' => $employeeB->id,
+            'guard' => 'employee',
             'session_id' => 'sess-b',
             'login_at' => $now->copy()->subHours(2),
             'last_seen_at' => $now->copy()->subMinutes(1),
