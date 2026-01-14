@@ -100,21 +100,27 @@
                     <label class="text-xs text-slate-500">NID upload (jpg/png/pdf)</label>
                     <input type="file" name="nid_file" accept=".jpg,.jpeg,.png,.pdf" class="w-full text-sm text-slate-700">
                     @if($employee->nid_path)
-                        <div class="text-xs text-slate-500">Current: {{ $employee->nid_path }}</div>
+                        <div class="text-xs text-slate-500">
+                            <a href="{{ route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'nid']) }}" class="text-teal-600 hover:text-teal-500">View current NID</a>
+                        </div>
                     @endif
                 </div>
                 <div class="space-y-2">
                     <label class="text-xs text-slate-500">Photo (jpg/png)</label>
                     <input type="file" name="photo" accept=".jpg,.jpeg,.png" class="w-full text-sm text-slate-700">
                     @if($employee->photo_path)
-                        <div class="text-xs text-slate-500">Current: {{ $employee->photo_path }}</div>
+                        <div class="mt-2">
+                            <x-avatar :path="$employee->photo_path" :name="$employee->name" size="h-16 w-16" textSize="text-sm" />
+                        </div>
                     @endif
                 </div>
                 <div class="space-y-2">
                     <label class="text-xs text-slate-500">CV upload (pdf)</label>
                     <input type="file" name="cv_file" accept=".pdf" class="w-full text-sm text-slate-700">
                     @if($employee->cv_path)
-                        <div class="text-xs text-slate-500">Current: {{ $employee->cv_path }}</div>
+                        <div class="text-xs text-slate-500">
+                            <a href="{{ route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'cv']) }}" class="text-teal-600 hover:text-teal-500">View current CV</a>
+                        </div>
                     @endif
                 </div>
             </div>

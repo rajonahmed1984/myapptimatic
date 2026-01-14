@@ -24,6 +24,9 @@ class SalesRepresentative extends Model
         'payout_method_default',
         'payout_details_encrypted',
         'metadata',
+        'avatar_path',
+        'nid_path',
+        'cv_path',
     ];
 
     protected $casts = [

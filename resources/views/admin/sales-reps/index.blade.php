@@ -23,6 +23,7 @@
                         <th class="px-4 py-3 text-left">User</th>
                         <th class="px-4 py-3 text-left">Services</th>
                         <th class="px-4 py-3 text-left">Status</th>
+                        <th class="px-4 py-3 text-left">Login status</th>
                         <th class="px-4 py-3 text-right">Projects</th>
                         <th class="px-4 py-3 text-right">Total earned</th>
                         <th class="px-4 py-3 text-right">Payable</th>
@@ -36,15 +37,20 @@
                         <tr class="hover:bg-slate-50 transition">
                             <td class="px-4 py-3 font-semibold text-slate-900">#{{ $rep->id }}</td>
                             <td class="px-4 py-3">
-                                <div class="font-semibold text-slate-900">
-                                    <a href="{{ route('admin.sales-reps.show', $rep) }}" class="hover:text-teal-600">
-                                        {{ $rep->name }}
-                                    </a>
+                                <div class="flex items-center gap-3">
+                                    <x-avatar :path="$rep->avatar_path" :name="$rep->name" size="h-8 w-8" textSize="text-xs" />
+                                    <div>
+                                        <div class="font-semibold text-slate-900">
+                                            <a href="{{ route('admin.sales-reps.show', $rep) }}" class="hover:text-teal-600">
+                                                {{ $rep->name }}
+                                            </a>
+                                        </div>
+                                        <div class="text-xs text-slate-500">{{ $rep->email ?? '--' }}</div>
+                                        @if($rep->employee)
+                                            <div class="text-xs text-emerald-600">Employee: {{ $rep->employee->name }}</div>
+                                        @endif
+                                    </div>
                                 </div>
-                                <div class="text-xs text-slate-500">{{ $rep->email ?? '--' }}</div>
-                                @if($rep->employee)
-                                    <div class="text-xs text-emerald-600">Employee: {{ $rep->employee->name }}</div>
-                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 <div>{{ $rep->user?->name ?? '--' }}</div>
@@ -60,6 +66,24 @@
                                     {{ ucfirst($rep->status) }}
                                 </span>
                             </td>
+                            <td class="px-4 py-3">
+                                @php
+                                    $loginStatus = $loginStatuses[$rep->id] ?? 'logout';
+                                    $loginLabel = match ($loginStatus) {
+                                        'login' => 'Login',
+                                        'idle' => 'Idle',
+                                        default => 'Logout',
+                                    };
+                                    $loginClasses = match ($loginStatus) {
+                                        'login' => 'border-emerald-200 text-emerald-700 bg-emerald-50',
+                                        'idle' => 'border-amber-200 text-amber-700 bg-amber-50',
+                                        default => 'border-rose-200 text-rose-700 bg-rose-50',
+                                    };
+                                @endphp
+                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $loginClasses }}">
+                                    {{ $loginLabel }}
+                                </span>
+                            </td>
                             <td class="px-4 py-3 text-right">{{ $rep->projects_count ?? 0 }}</td>
                             <td class="px-4 py-3 text-right font-semibold">{{ number_format($repTotals->total_earned ?? 0, 2) }}</td>
                             <td class="px-4 py-3 text-right">{{ number_format($repTotals->total_payable ?? 0, 2) }}</td>
@@ -73,7 +97,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-4 py-6 text-center text-slate-500">No sales representatives yet.</td>
+                            <td colspan="11" class="px-4 py-6 text-center text-slate-500">No sales representatives yet.</td>
                         </tr>
                     @endforelse
                 </tbody>

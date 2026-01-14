@@ -30,7 +30,7 @@ class StoreEmployeeUserRequest extends FormRequest
             'work_mode' => ['required', 'in:remote,on_site,hybrid'],
             'join_date' => ['required', 'date'],
             'status' => ['required', 'in:active,inactive'],
-            'salary_type' => ['required', 'in:monthly,hourly'],
+            'salary_type' => ['required', 'in:monthly,hourly,project_base'],
             'currency' => ['required', 'string', 'size:3', Rule::in(Currency::allowed())],
             'basic_pay' => ['required', 'numeric'],
             'hourly_rate' => ['nullable', 'numeric'],

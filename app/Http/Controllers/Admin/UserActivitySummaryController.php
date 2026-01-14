@@ -129,7 +129,7 @@ class UserActivitySummaryController
     private function getCustomerSummary($today, $weekStart, $monthStart, $fromDate, $toDate, $userId): array
     {
         // Customers are tracked via User model with role 'client'
-        $users = User::where('role', Role::CLIENT);
+        $users = User::where('role', Role::CLIENT)->with('customer:id,avatar_path');
         if ($userId) {
             $users = $users->where('id', $userId);
         }

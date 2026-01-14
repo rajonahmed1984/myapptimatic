@@ -14,7 +14,7 @@
 
     <div class="card p-6">
 
-        <form method="POST" action="{{ route('admin.customers.store') }}" class="mt-6 space-y-6">
+        <form method="POST" action="{{ route('admin.customers.store') }}" enctype="multipart/form-data" class="mt-6 space-y-6">
             @csrf
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
@@ -67,6 +67,23 @@
                 <div class="md:col-span-2">
                     <label class="text-sm text-slate-600">Notes</label>
                     <textarea name="notes" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes') }}</textarea>
+                </div>
+                <div class="md:col-span-2 grid gap-4 md:grid-cols-3">
+                    <div>
+                        <label class="text-sm text-slate-600">Avatar</label>
+                        <input name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        <p class="mt-1 text-xs text-slate-500">JPG, PNG, or WebP up to 2MB.</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-600">NID</label>
+                        <input name="nid_file" type="file" accept=".jpg,.jpeg,.png,.pdf" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        <p class="mt-1 text-xs text-slate-500">JPG, PNG, or PDF up to 10MB.</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-600">CV</label>
+                        <input name="cv_file" type="file" accept=".pdf" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        <p class="mt-1 text-xs text-slate-500">PDF up to 10MB.</p>
+                    </div>
                 </div>
             </div>
 

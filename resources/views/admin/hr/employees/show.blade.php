@@ -40,7 +40,7 @@
             </div>
             <div class="card p-4">
                 <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Salary Type</div>
-                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ ucfirst($summary['salary_type'] ?? '--') }}</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ ucwords(str_replace('_', ' ', $summary['salary_type'] ?? '--')) }}</div>
             </div>
             <div class="card p-4">
                 <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Basic Pay</div>
@@ -60,11 +60,52 @@
                 <div class="md:col-span-2"><span class="font-semibold text-slate-900">Linked User:</span> {{ $employee->user?->name ? $employee->user->name.' ('.$employee->user->email.')' : '--' }}</div>
             </div>
         </div>
+
+        <div class="mt-4 card p-6">
+            <div class="text-sm font-semibold text-slate-800 mb-3">Documents</div>
+            <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
+                <div>
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Avatar</div>
+                    <div class="mt-2">
+                        <x-avatar :path="$employee->photo_path" :name="$employee->name" size="h-16 w-16" textSize="text-sm" />
+                    </div>
+                </div>
+                @if($employee->nid_path)
+                    @php
+                        $nidIsImage = \Illuminate\Support\Str::endsWith(strtolower($employee->nid_path), ['.jpg', '.jpeg', '.png', '.webp']);
+                        $nidUrl = route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'nid']);
+                    @endphp
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-500">NID</div>
+                        <div class="mt-2 flex items-center gap-3">
+                            @if($nidIsImage)
+                                <img src="{{ $nidUrl }}" alt="NID" class="h-16 w-20 rounded-lg object-cover border border-slate-200">
+                            @else
+                                <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                            @endif
+                            <a href="{{ $nidUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
+                        </div>
+                    </div>
+                @endif
+                @if($employee->cv_path)
+                    @php
+                        $cvUrl = route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'cv']);
+                    @endphp
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-500">CV</div>
+                        <div class="mt-2 flex items-center gap-3">
+                            <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                            <a href="{{ $cvUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
     @elseif($tab === 'compensation')
         <div class="card p-6">
             <div class="text-sm text-slate-700">
                 <div class="font-semibold text-slate-900 mb-2">Current Compensation</div>
-                <div>Salary Type: {{ ucfirst($summary['salary_type'] ?? '--') }}</div>
+                <div>Salary Type: {{ ucwords(str_replace('_', ' ', $summary['salary_type'] ?? '--')) }}</div>
                 <div>Basic Pay: {{ $summary['currency'] ?? '' }} {{ number_format($summary['basic_pay'] ?? 0, 2) }}</div>
                 <div>Effective From: {{ $employee->activeCompensation?->effective_from?->format('Y-m-d') ?? '--' }}</div>
             </div>

@@ -48,18 +48,23 @@ class RecordUserLoginSession
                 // Only increment sessions_count if this is a newly created session
                 if ($sessionRecord->wasRecentlyCreated) {
                     // Get or create daily activity record
-                    $daily = UserActivityDaily::firstOrCreate(
-                        [
+                    $daily = UserActivityDaily::query()
+                        ->where('user_type', get_class($user))
+                        ->where('user_id', $user->id)
+                        ->where('guard', $guard)
+                        ->whereDate('date', $now->toDateString())
+                        ->first();
+
+                    if (! $daily) {
+                        $daily = UserActivityDaily::create([
                             'user_type' => get_class($user),
                             'user_id' => $user->id,
                             'guard' => $guard,
                             'date' => $now->toDateString(),
-                        ],
-                        [
                             'sessions_count' => 0,
                             'active_seconds' => 0,
-                        ]
-                    );
+                        ]);
+                    }
 
                     // Increment session count
                     $daily->increment('sessions_count');

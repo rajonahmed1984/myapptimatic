@@ -19,7 +19,7 @@
     <div class="card p-6">
         @include('admin.customers.partials.tabs', ['customer' => $customer, 'activeTab' => 'profile'])
 
-        <form method="POST" action="{{ route('admin.customers.update', $customer) }}" class="mt-6 space-y-6">
+        <form method="POST" action="{{ route('admin.customers.update', $customer) }}" enctype="multipart/form-data" class="mt-6 space-y-6">
             @csrf
             @method('PUT')
 
@@ -61,6 +61,34 @@
             <div>
                 <label class="text-sm text-slate-600">Notes</label>
                 <textarea name="notes" rows="3" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $customer->notes) }}</textarea>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-3">
+                <div>
+                    <label class="text-sm text-slate-600">Avatar</label>
+                    <input name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <div class="mt-2">
+                        <x-avatar :path="$customer->avatar_path" :name="$customer->name" size="h-16 w-16" textSize="text-sm" />
+                    </div>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">NID</label>
+                    <input name="nid_file" type="file" accept=".jpg,.jpeg,.png,.pdf" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    @if($customer->nid_path)
+                        <div class="mt-1 text-xs text-slate-500">
+                            <a href="{{ route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'nid']) }}" class="text-teal-600 hover:text-teal-500">View current NID</a>
+                        </div>
+                    @endif
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">CV</label>
+                    <input name="cv_file" type="file" accept=".pdf" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    @if($customer->cv_path)
+                        <div class="mt-1 text-xs text-slate-500">
+                            <a href="{{ route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'cv']) }}" class="text-teal-600 hover:text-teal-500">View current CV</a>
+                        </div>
+                    @endif
+                </div>
             </div>
 
             <div class="flex items-center gap-3">

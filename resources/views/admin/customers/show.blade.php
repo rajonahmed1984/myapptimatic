@@ -53,6 +53,49 @@
                 </div>
             </div>
 
+            <div class="mt-6 grid gap-4 md:grid-cols-2">
+                <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Documents</div>
+                    <div class="mt-3 grid gap-4 md:grid-cols-3 text-sm text-slate-600">
+                        <div>
+                            <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Avatar</div>
+                            <div class="mt-2">
+                                <x-avatar :path="$customer->avatar_path" :name="$customer->name" size="h-16 w-16" textSize="text-sm" />
+                            </div>
+                        </div>
+                        @if($customer->nid_path)
+                            @php
+                                $nidIsImage = \Illuminate\Support\Str::endsWith(strtolower($customer->nid_path), ['.jpg', '.jpeg', '.png', '.webp']);
+                                $nidUrl = route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'nid']);
+                            @endphp
+                            <div>
+                                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">NID</div>
+                                <div class="mt-2 flex items-center gap-3">
+                                    @if($nidIsImage)
+                                        <img src="{{ $nidUrl }}" alt="NID" class="h-16 w-20 rounded-lg object-cover border border-slate-200">
+                                    @else
+                                        <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                                    @endif
+                                    <a href="{{ $nidUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
+                                </div>
+                            </div>
+                        @endif
+                        @if($customer->cv_path)
+                            @php
+                                $cvUrl = route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'cv']);
+                            @endphp
+                            <div>
+                                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">CV</div>
+                                <div class="mt-2 flex items-center gap-3">
+                                    <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                                    <a href="{{ $cvUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
             <div class="mt-6 grid gap-4 lg:grid-cols-2">
                 <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Recent Invoices</div>

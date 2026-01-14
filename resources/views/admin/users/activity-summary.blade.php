@@ -73,8 +73,18 @@
                     @forelse($users as $data)
                         <tr class="hover:bg-slate-50 transition">
                             <td class="px-6 py-4">
+                                @php
+                                    if ($data['user'] instanceof \App\Models\Employee) {
+                                        $avatarPath = $data['user']->photo_path;
+                                    } elseif ($data['user'] instanceof \App\Models\User) {
+                                        $avatarPath = $data['user']->avatar_path ?? $data['user']->customer?->avatar_path;
+                                    } else {
+                                        $avatarPath = $data['user']->avatar_path ?? null;
+                                    }
+                                @endphp
                                 <div class="flex items-center gap-3">
                                     <div class="flex h-2 w-2 rounded-full {{ $data['is_online'] ? 'bg-emerald-500' : 'bg-slate-300' }}" title="{{ $data['is_online'] ? 'Online' : 'Offline' }}"></div>
+                                    <x-avatar :path="$avatarPath" :name="$data['user']->name" size="h-8 w-8" textSize="text-xs" />
                                     <div>
                                         <div class="font-medium text-slate-900">{{ $data['user']->name }}</div>
                                         <div class="text-xs text-slate-500">{{ $data['user']->email ?? '--' }}</div>

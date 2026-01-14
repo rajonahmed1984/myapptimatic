@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreSalesUserRequest;
 use App\Http\Requests\StoreSupportUserRequest;
 use App\Models\User;
 use App\Enums\Role;
@@ -45,13 +44,18 @@ class UserController extends Controller
 
         $data = $this->validateStoreRequest($request, $role);
 
-        User::create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => $role,
             'customer_id' => null,
         ]);
+
+        $uploadPaths = $this->handleUploads($request, $user);
+        if (! empty($uploadPaths)) {
+            $user->update($uploadPaths);
+        }
 
         return redirect()->route('admin.users.index', $role)
             ->with('status', 'User created.');
@@ -76,6 +80,9 @@ class UserController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role' => ['required', Rule::in(array_keys($this->adminRoles()))],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ]);
 
         // Prevent self from downgrading own role to avoid lockout.
@@ -105,6 +112,11 @@ class UserController extends Controller
         }
 
         $user->update($updates);
+
+        $uploadPaths = $this->handleUploads($request, $user);
+        if (! empty($uploadPaths)) {
+            $user->update($uploadPaths);
+        }
 
         return redirect()->route('admin.users.index', $data['role'])
             ->with('status', 'User updated.');
@@ -156,17 +168,12 @@ class UserController extends Controller
         return [
             Role::MASTER_ADMIN => 'Master Admin',
             Role::SUB_ADMIN => 'Sub Admin',
-            Role::SALES => 'Sales',
             Role::SUPPORT => 'Support',
         ];
     }
 
     private function validateStoreRequest(Request $request, string $role): array
     {
-        if ($role === Role::SALES) {
-            return $this->resolveFormRequest(StoreSalesUserRequest::class, $request);
-        }
-
         if ($role === Role::SUPPORT) {
             return $this->resolveFormRequest(StoreSupportUserRequest::class, $request);
         }
@@ -175,6 +182,9 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ]);
     }
 
@@ -188,5 +198,27 @@ class UserController extends Controller
         $formRequest->validateResolved();
 
         return $formRequest->validated();
+    }
+
+    private function handleUploads(Request $request, User $user): array
+    {
+        $paths = [];
+
+        if ($request->hasFile('avatar')) {
+            $paths['avatar_path'] = $request->file('avatar')
+                ->store('avatars/users/' . $user->id, 'public');
+        }
+
+        if ($request->hasFile('nid_file')) {
+            $paths['nid_path'] = $request->file('nid_file')
+                ->store('nid/users/' . $user->id, 'public');
+        }
+
+        if ($request->hasFile('cv_file')) {
+            $paths['cv_path'] = $request->file('cv_file')
+                ->store('cv/users/' . $user->id, 'public');
+        }
+
+        return $paths;
     }
 }

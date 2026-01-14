@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Hr;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
+use App\Models\EmployeeSession;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\User;
@@ -26,7 +27,9 @@ class EmployeeController extends Controller
             ->orderByDesc('id')
             ->paginate(20);
 
-        return view('admin.hr.employees.index', compact('employees'));
+        $loginStatuses = $this->resolveEmployeeLoginStatuses($employees);
+
+        return view('admin.hr.employees.index', compact('employees', 'loginStatuses'));
     }
 
     public function create(): View
@@ -250,5 +253,38 @@ class EmployeeController extends Controller
         }
 
         return $paths;
+    }
+
+    private function resolveEmployeeLoginStatuses($employees): array
+    {
+        $employeeIds = $employees->pluck('id')->all();
+        if (empty($employeeIds)) {
+            return [];
+        }
+
+        $openSessions = EmployeeSession::query()
+            ->whereIn('employee_id', $employeeIds)
+            ->whereNull('logout_at')
+            ->orderByDesc('last_seen_at')
+            ->get()
+            ->groupBy('employee_id');
+
+        $threshold = now()->subMinutes(2);
+        $statuses = [];
+
+        foreach ($employeeIds as $employeeId) {
+            $session = $openSessions->get($employeeId)?->first();
+            if (! $session) {
+                $statuses[$employeeId] = 'logout';
+                continue;
+            }
+
+            $lastSeen = $session->last_seen_at;
+            $statuses[$employeeId] = $lastSeen && $lastSeen->greaterThanOrEqualTo($threshold)
+                ? 'login'
+                : 'idle';
+        }
+
+        return $statuses;
     }
 }

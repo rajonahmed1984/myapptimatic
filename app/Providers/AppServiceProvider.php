@@ -23,6 +23,10 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository as CacheRepository;
+use PHPUnit\Framework\Assert;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -39,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->registerTestCacheMacros();
         $this->registerRateLimiters();
         $this->registerEmailLogListener();
         $this->registerAutomationEventListeners();
@@ -143,6 +148,23 @@ class AppServiceProvider extends ServiceProvider
         }
     }
 
+    private function registerTestCacheMacros(): void
+    {
+        if (! $this->app->environment('testing') || Cache::hasMacro('fake')) {
+            return;
+        }
+
+        Cache::macro('fake', function () {
+            $repository = new CacheRepository(new ArrayStore());
+            Cache::swap($repository);
+            return $repository;
+        });
+
+        Cache::macro('assertHas', function (string $key) {
+            Assert::assertTrue(Cache::has($key), "Failed asserting that cache has key [{$key}].");
+        });
+    }
+
     private function registerRateLimiters(): void
     {
         RateLimiter::for('license-verify', function ($request) {
@@ -168,15 +190,18 @@ class AppServiceProvider extends ServiceProvider
     {
         // Capture all outgoing mail lifecycle events so /admin/logs/email shows every message.
         Event::listen(MessageSending::class, function (MessageSending $event) {
-            $this->logEmailEvent('Email sending.', $event->message, $event->mailer ?? null, 'info');
+            $mailer = property_exists($event, 'mailer') ? $event->mailer : null;
+            $this->logEmailEvent('Email sending.', $event->message, $mailer, 'info');
         });
 
         Event::listen(MessageSent::class, function (MessageSent $event) {
-            $this->logEmailEvent('Email sent.', $event->message, $event->mailer ?? null, 'info');
+            $mailer = property_exists($event, 'mailer') ? $event->mailer : null;
+            $this->logEmailEvent('Email sent.', $event->message, $mailer, 'info');
         });
 
         Event::listen(MessageFailed::class, function (MessageFailed $event) {
-            $this->logEmailEvent('Email failed to send.', $event->message, $event->mailer ?? null, 'error', [
+            $mailer = property_exists($event, 'mailer') ? $event->mailer : null;
+            $this->logEmailEvent('Email failed to send.', $event->message, $mailer, 'error', [
                 'failure' => $event->exception?->getMessage(),
             ]);
         });

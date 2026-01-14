@@ -77,6 +77,7 @@ class AuthController extends Controller
             : null;
 
         if ($activeRep) {
+            Auth::guard('sales')->login($user, $remember);
             return redirect()->route('rep.dashboard');
         }
 
@@ -197,6 +198,9 @@ class AuthController extends Controller
             : route('login');
 
         Auth::logout();
+        Auth::guard('employee')->logout();
+        Auth::guard('sales')->logout();
+        Auth::guard('support')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -223,6 +227,8 @@ class AuthController extends Controller
         }
 
         Auth::login($admin);
+        Auth::guard('sales')->logout();
+        Auth::guard('support')->logout();
         $request->session()->regenerate();
 
         return redirect()->route('admin.dashboard');

@@ -78,13 +78,20 @@ class TrackEmployeeActivity
             }
 
             $daily = EmployeeActivityDaily::query()
-                ->firstOrCreate([
+                ->where('employee_id', $employee->id)
+                ->whereDate('date', $now->toDateString())
+                ->first();
+
+            if (! $daily) {
+                $daily = EmployeeActivityDaily::create([
                     'employee_id' => $employee->id,
                     'date' => $now->toDateString(),
-                ], [
+                    'sessions_count' => 0,
+                    'active_seconds' => 0,
                     'first_login_at' => $session->login_at ?? $now,
                     'last_seen_at' => $now,
                 ]);
+            }
 
             $lastSeen = $session->last_seen_at ?? $session->login_at ?? $now;
             $delta = $now->diffInSeconds($lastSeen);

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\SalesRepresentative;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
 use Closure;
 use Illuminate\Http\Request;
@@ -12,10 +13,11 @@ class EnsureSalesRep
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        Auth::shouldUse('sales');
+        $user = Auth::guard('sales')->user();
 
         if (! $user) {
-            return redirect()->route('login');
+            return redirect()->route('sales.login');
         }
 
         $rep = SalesRepresentative::query()
@@ -24,6 +26,7 @@ class EnsureSalesRep
             ->first();
 
         if (! $rep) {
+            Auth::guard('sales')->logout();
             if (View::exists('rep.access-revoked')) {
                 return response()->view('rep.access-revoked', [], 403);
             }

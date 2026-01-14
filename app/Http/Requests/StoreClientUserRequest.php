@@ -28,6 +28,9 @@ class StoreClientUserRequest extends FormRequest
             'user_password' => ['nullable', 'string', 'min:8'],
             'send_account_message' => ['nullable', 'boolean'],
             'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ];
 
         if ($this->filled('user_password')) {

@@ -9,6 +9,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use App\Providers\AuthServiceProvider;
 use App\Providers\EventServiceProvider;
 use App\Providers\ActivityTrackingEventServiceProvider;
+use App\Providers\AppServiceProvider;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withProviders([
+        AppServiceProvider::class,
         AuthServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         ActivityTrackingEventServiceProvider::class,
@@ -39,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'employee' => \App\Http\Middleware\EnsureEmployee::class,
             'employee.activity' => \App\Http\Middleware\TrackEmployeeActivity::class,
             'salesrep' => \App\Http\Middleware\EnsureSalesRep::class,
+            'support' => \App\Http\Middleware\EnsureSupport::class,
             'user.activity' => \App\Http\Middleware\TrackAuthenticatedUserActivity::class,
         ]);
     })

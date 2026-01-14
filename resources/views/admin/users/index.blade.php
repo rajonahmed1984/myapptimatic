@@ -44,7 +44,12 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($users as $user)
                         <tr>
-                            <td class="py-3 font-semibold text-slate-900">{{ $user->name }}</td>
+                            <td class="py-3">
+                                <div class="flex items-center gap-3">
+                                    <x-avatar :path="$user->avatar_path" :name="$user->name" size="h-8 w-8" textSize="text-xs" />
+                                    <div class="font-semibold text-slate-900">{{ $user->name }}</div>
+                                </div>
+                            </td>
                             <td class="py-3 text-slate-600">{{ $user->email }}</td>
                             <td class="py-3 text-slate-600">{{ $roleLabels[$user->role] ?? $user->role }}</td>
                             <td class="py-3">

@@ -10,6 +10,7 @@ use App\Models\ProjectTask;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\UserSession;
 use App\Enums\Role;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -34,9 +35,12 @@ class SalesRepresentativeController extends Controller
             ->get()
             ->keyBy('sales_representative_id');
 
+        $loginStatuses = $this->resolveRepLoginStatuses($reps);
+
         return view('admin.sales-reps.index', [
             'reps' => $reps,
             'totals' => $totals,
+            'loginStatuses' => $loginStatuses,
         ]);
     }
 
@@ -60,25 +64,36 @@ class SalesRepresentativeController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'user_id' => ['required', 'exists:users,id', Rule::unique('sales_representatives', 'user_id')],
+            'user_id' => ['nullable', 'exists:users,id', Rule::unique('sales_representatives', 'user_id')],
             'employee_id' => ['nullable', 'exists:employees,id'],
-            'name' => ['nullable', 'string', 'max:255'],
+            'name' => ['required_without:user_id', 'nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ]);
 
-        $user = User::findOrFail($data['user_id']);
-        $user->update(['role' => Role::SALES]);
+        $user = null;
+        if (! empty($data['user_id'])) {
+            $user = User::findOrFail($data['user_id']);
+            $user->update(['role' => Role::SALES]);
+        }
 
-        SalesRepresentative::create([
-            'user_id' => $data['user_id'],
+        $salesRep = SalesRepresentative::create([
+            'user_id' => $data['user_id'] ?? null,
             'employee_id' => $data['employee_id'] ?? null,
-            'name' => $data['name'] ?? $user->name,
-            'email' => $data['email'] ?? $user->email,
+            'name' => $data['name'] ?? ($user?->name ?? 'Sales Representative'),
+            'email' => $data['email'] ?? $user?->email,
             'phone' => $data['phone'] ?? null,
             'status' => $data['status'],
         ]);
+
+        $uploadPaths = $this->handleUploads($request, $salesRep);
+        if (! empty($uploadPaths)) {
+            $salesRep->update($uploadPaths);
+        }
 
         return redirect()
             ->route('admin.sales-reps.index')
@@ -103,9 +118,17 @@ class SalesRepresentativeController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ]);
 
-        $salesRep->update($data);
+        $salesRep->update(collect($data)->except(['avatar', 'nid_file', 'cv_file'])->all());
+
+        $uploadPaths = $this->handleUploads($request, $salesRep);
+        if (! empty($uploadPaths)) {
+            $salesRep->update($uploadPaths);
+        }
 
         return redirect()
             ->route('admin.sales-reps.index')
@@ -232,8 +255,75 @@ class SalesRepresentativeController extends Controller
 
         $request->session()->put('impersonator_id', $request->user()->id);
         Auth::login($user);
+        Auth::guard('sales')->login($user);
         $request->session()->regenerate();
 
         return redirect()->route('rep.dashboard');
+    }
+
+    private function handleUploads(Request $request, SalesRepresentative $salesRep): array
+    {
+        $paths = [];
+
+        if ($request->hasFile('avatar')) {
+            $paths['avatar_path'] = $request->file('avatar')
+                ->store('avatars/sales-reps/' . $salesRep->id, 'public');
+        }
+
+        if ($request->hasFile('nid_file')) {
+            $paths['nid_path'] = $request->file('nid_file')
+                ->store('nid/sales-reps/' . $salesRep->id, 'public');
+        }
+
+        if ($request->hasFile('cv_file')) {
+            $paths['cv_path'] = $request->file('cv_file')
+                ->store('cv/sales-reps/' . $salesRep->id, 'public');
+        }
+
+        return $paths;
+    }
+
+    private function resolveRepLoginStatuses($reps): array
+    {
+        $userIds = $reps->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            return [];
+        }
+
+        $openSessions = UserSession::query()
+            ->whereIn('user_id', $userIds)
+            ->where('guard', 'sales')
+            ->whereNull('logout_at')
+            ->orderByDesc('last_seen_at')
+            ->get()
+            ->groupBy('user_id');
+
+        $threshold = now()->subMinutes(2);
+        $statuses = [];
+
+        foreach ($reps as $rep) {
+            $userId = $rep->user_id;
+            if (! $userId) {
+                $statuses[$rep->id] = 'logout';
+                continue;
+            }
+
+            $session = $openSessions->get($userId)?->first();
+            if (! $session) {
+                $statuses[$rep->id] = 'logout';
+                continue;
+            }
+
+            $lastSeen = $session->last_seen_at;
+            $statuses[$rep->id] = $lastSeen && $lastSeen->greaterThanOrEqualTo($threshold)
+                ? 'login'
+                : 'idle';
+        }
+
+        return $statuses;
     }
 }

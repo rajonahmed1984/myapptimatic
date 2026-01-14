@@ -14,7 +14,7 @@
     </div>
 
     <div class="card p-6">
-        <form action="{{ route('admin.sales-reps.update', $rep) }}" method="POST" class="grid gap-4 text-sm text-slate-700 lg:grid-cols-2">
+        <form action="{{ route('admin.sales-reps.update', $rep) }}" method="POST" enctype="multipart/form-data" class="grid gap-4 text-sm text-slate-700 lg:grid-cols-2">
             @csrf
             @method('PUT')
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 space-y-3">
@@ -53,6 +53,37 @@
                 <div>
                     <label class="text-xs text-slate-500">Phone</label>
                     <input name="phone" value="{{ old('phone', $rep->phone) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 space-y-3 lg:col-span-2">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Documents</div>
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                        <label class="text-xs text-slate-500">Avatar</label>
+                        <input name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <div class="mt-2">
+                            <x-avatar :path="$rep->avatar_path" :name="$rep->name" size="h-16 w-16" textSize="text-sm" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">NID</label>
+                        <input name="nid_file" type="file" accept=".jpg,.jpeg,.png,.pdf" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        @if($rep->nid_path)
+                            <div class="mt-1 text-[11px] text-slate-500">
+                                <a href="{{ route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $rep->id, 'doc' => 'nid']) }}" class="text-teal-600 hover:text-teal-500">View current NID</a>
+                            </div>
+                        @endif
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">CV</label>
+                        <input name="cv_file" type="file" accept=".pdf" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        @if($rep->cv_path)
+                            <div class="mt-1 text-[11px] text-slate-500">
+                                <a href="{{ route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $rep->id, 'doc' => 'cv']) }}" class="text-teal-600 hover:text-teal-500">View current CV</a>
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
 

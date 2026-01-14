@@ -29,6 +29,9 @@ class User extends Authenticatable
         'role',
         'customer_id',
         'currency',
+        'avatar_path',
+        'nid_path',
+        'cv_path',
     ];
 
     /**

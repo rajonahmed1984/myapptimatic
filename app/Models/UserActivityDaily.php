@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Carbon;
 
 class UserActivityDaily extends Model
 {
@@ -29,6 +30,12 @@ class UserActivityDaily extends Model
             'sessions_count' => 'integer',
             'active_seconds' => 'integer',
         ];
+    }
+
+    public function setDateAttribute($value): void
+    {
+        $date = $value instanceof \DateTimeInterface ? $value : Carbon::parse($value);
+        $this->attributes['date'] = $date->toDateString();
     }
 
     public function user(): MorphTo

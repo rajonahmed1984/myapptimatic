@@ -60,25 +60,6 @@ class AdminUserRoleAssignmentTest extends TestCase
         ]);
     }
 
-    public function test_sales_user_creation_forces_sales_role(): void
-    {
-        $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
-
-        $response = $this->actingAs($admin)->post(route('admin.users.store', Role::SALES), [
-            'name' => 'Sales User',
-            'email' => 'sales@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
-            'role' => 'support',
-        ]);
-
-        $response->assertRedirect();
-        $this->assertDatabaseHas('users', [
-            'email' => 'sales@example.com',
-            'role' => Role::SALES,
-        ]);
-    }
-
     public function test_support_user_creation_forces_support_role(): void
     {
         $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);

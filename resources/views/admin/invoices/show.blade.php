@@ -17,13 +17,11 @@
             <div class="flex items-center gap-4">
                 <div class="flex flex-col items-center text-center">
                     @if(!empty($portalBranding['logo_url']))
-                        <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-12 w-12 rounded-2xl bg-white p-2">
+                        <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-12 w-100 rounded-2xl bg-white p-2">
                     @else
                         <div class="grid h-12 w-12 place-items-center rounded-2xl bg-slate-900 text-sm font-semibold text-white">LM</div>
                     @endif
                     <div class="mt-2 text-xs font-semibold text-slate-600">Invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
-                </div>
-                <div>
                     <div class="section-label">Invoice</div>
                     <div class="mt-2 text-sm text-slate-500">Customer: {{ $invoice->customer->name }}</div>
                 </div>

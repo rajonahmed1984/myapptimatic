@@ -87,18 +87,23 @@ class TrackAuthenticatedUserActivity
             $session->save();
 
             // Update daily activity record
-            $daily = UserActivityDaily::firstOrCreate(
-                [
+            $daily = UserActivityDaily::query()
+                ->where('user_type', get_class($user))
+                ->where('user_id', $user->id)
+                ->where('guard', $guard)
+                ->whereDate('date', $now->toDateString())
+                ->first();
+
+            if (! $daily) {
+                $daily = UserActivityDaily::create([
                     'user_type' => get_class($user),
                     'user_id' => $user->id,
                     'guard' => $guard,
                     'date' => $now->toDateString(),
-                ],
-                [
                     'sessions_count' => 0,
                     'active_seconds' => 0,
-                ]
-            );
+                ]);
+            }
 
             // Add active seconds to daily total (same logic as session)
             if ($delta > 0 && $delta <= self::INACTIVITY_CUTOFF_SECONDS) {

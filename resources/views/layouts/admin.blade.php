@@ -285,14 +285,6 @@
                                     Sub Admins
                                 </x-nav-link>
                                 <x-nav-link 
-                                    :href="route('admin.users.index', 'sales')"
-                                    :inactiveClass="$isUsersRoute && $usersNavRole === 'sales' ? 'nav-link nav-link-active' : 'nav-link'"
-                                    :activeClass="$isUsersRoute && $usersNavRole === 'sales' ? 'nav-link nav-link-active' : 'nav-link'"
-                                >
-                                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                                    Sales Users
-                                </x-nav-link>
-                                <x-nav-link 
                                     :href="route('admin.users.index', 'support')"
                                     :inactiveClass="$isUsersRoute && $usersNavRole === 'support' ? 'nav-link nav-link-active' : 'nav-link'"
                                     :activeClass="$isUsersRoute && $usersNavRole === 'support' ? 'nav-link nav-link-active' : 'nav-link'"
@@ -478,9 +470,10 @@
                             <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
                         </div>
                     </div>
-                    @if(!empty($adminHeaderStats) && !auth()->user()->isEmployee())
+                    @php($adminUser = auth()->user())
+                    @if(!empty($adminHeaderStats) && $adminUser && ! $adminUser->isEmployee())
                         <div class="stats hidden flex-wrap items-center gap-3 text-xs text-slate-500 lg:flex">
-                            @if(auth()->user()->isAdmin())
+                            @if($adminUser->isAdmin())
                                 {{-- Master Admin and Admin see all stats --}}
                                 <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="flex items-center gap-2">
                                     <span class="stat">{{ $adminHeaderStats['pending_orders'] ?? 0 }}</span>
@@ -493,7 +486,7 @@
                                 </a>
                                 <span class="text-slate-300">|</span>
                             @endif
-                            @if(auth()->user()->isSupport() || auth()->user()->isMasterAdmin())
+                            @if($adminUser->isSupport() || $adminUser->isMasterAdmin())
                                 {{-- Support sees only tickets --}}
                                 <a href="{{ route('admin.support-tickets.index', ['status' => 'customer_reply']) }}" class="flex items-center gap-2">
                                     <span class="stat">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>

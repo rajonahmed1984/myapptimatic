@@ -36,7 +36,7 @@ class ProjectTaskVisibilityTest extends TestCase
     {
         [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser] = $this->setupProjectWithMembers();
 
-        $response = $this->actingAs($salesUser)
+        $response = $this->actingAs($salesUser, 'sales')
             ->get(route('rep.projects.show', $project));
 
         $response->assertOk();

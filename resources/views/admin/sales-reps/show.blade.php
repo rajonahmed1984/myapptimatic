@@ -86,6 +86,48 @@
                     </div>
                 </dl>
             </div>
+            <div class="card p-4 md:col-span-2">
+                <div class="mb-3 flex items-center justify-between">
+                    <div class="text-sm font-semibold text-slate-800">Documents</div>
+                </div>
+                <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Avatar</div>
+                        <div class="mt-2">
+                            <x-avatar :path="$rep->avatar_path" :name="$rep->name" size="h-16 w-16" textSize="text-sm" />
+                        </div>
+                    </div>
+                    @if($rep->nid_path)
+                        @php
+                            $nidIsImage = \Illuminate\Support\Str::endsWith(strtolower($rep->nid_path), ['.jpg', '.jpeg', '.png', '.webp']);
+                            $nidUrl = route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $rep->id, 'doc' => 'nid']);
+                        @endphp
+                        <div>
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-500">NID</div>
+                            <div class="mt-2 flex items-center gap-3">
+                                @if($nidIsImage)
+                                    <img src="{{ $nidUrl }}" alt="NID" class="h-16 w-20 rounded-lg object-cover border border-slate-200">
+                                @else
+                                    <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                                @endif
+                                <a href="{{ $nidUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
+                            </div>
+                        </div>
+                    @endif
+                    @if($rep->cv_path)
+                        @php
+                            $cvUrl = route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $rep->id, 'doc' => 'cv']);
+                        @endphp
+                        <div>
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-500">CV</div>
+                            <div class="mt-2 flex items-center gap-3">
+                                <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                                <a href="{{ $cvUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
     @elseif($tab === 'services')
         <div class="card p-6">

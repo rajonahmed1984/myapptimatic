@@ -85,7 +85,7 @@
                                 </button>
                             </form>
                         @endif
-                        <form method="POST" action="{{ route('logout') }}">
+                        <form method="POST" action="{{ route('rep.logout') }}">
                             @csrf
                             <button type="submit" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
                                 Sign out
@@ -122,7 +122,7 @@
                             <a href="{{ route('rep.earnings.index') }}" class="text-slate-700 hover:text-teal-600">Commissions</a>
                             <a href="{{ route('rep.payouts.index') }}" class="text-slate-700 hover:text-teal-600">Payouts</a>
 
-                            <form method="POST" action="{{ route('logout') }}">
+                            <form method="POST" action="{{ route('rep.logout') }}">
                                 @csrf
                                 <button type="submit" class="text-left text-slate-700 hover:text-teal-600">Sign out</button>
                             </form>

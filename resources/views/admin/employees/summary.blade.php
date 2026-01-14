@@ -72,8 +72,9 @@
                 @forelse($employees as $employee)
                     <tr class="border-b border-slate-100">
                         <td class="py-3 px-3 align-top">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-3">
                                 <span class="h-2.5 w-2.5 rounded-full {{ $employee->is_online ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
+                                <x-avatar :path="$employee->photo_path" :name="$employee->name" size="h-8 w-8" textSize="text-xs" />
                                 <div>
                                     <div class="font-semibold text-slate-900">{{ $employee->name }}</div>
                                     <div class="text-xs text-slate-500">{{ $employee->email }}</div>
@@ -112,3 +113,4 @@
         </div>
     </div>
 @endsection
+

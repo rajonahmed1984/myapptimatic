@@ -8,18 +8,18 @@
         <div>
             <div class="section-label">Sales</div>
             <div class="text-2xl font-semibold text-slate-900">Add sales representative</div>
-            <div class="text-sm text-slate-500">Link to an existing user to grant sales access.</div>
+            <div class="text-sm text-slate-500">Link to an existing user to grant portal access (optional).</div>
         </div>
         <a href="{{ route('admin.sales-reps.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
     </div>
 
     <div class="card p-6">
-        <form action="{{ route('admin.sales-reps.store') }}" method="POST" autocomplete="off" class="grid gap-4 text-sm text-slate-700 lg:grid-cols-2">
+        <form action="{{ route('admin.sales-reps.store') }}" method="POST" enctype="multipart/form-data" autocomplete="off" class="grid gap-4 text-sm text-slate-700 lg:grid-cols-2">
             @csrf
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 space-y-3">
                 <div>
-                    <label class="text-xs text-slate-500">User (required)</label>
-                    <select name="user_id" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <label class="text-xs text-slate-500">User (optional)</label>
+                    <select name="user_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                         <option value="">Select user</option>
                         @foreach($users as $user)
                             <option value="{{ $user->id }}"
@@ -65,9 +65,30 @@
                 </div>
             </div>
 
+            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 space-y-3 lg:col-span-2">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Documents</div>
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                        <label class="text-xs text-slate-500">Avatar</label>
+                        <input name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <div class="mt-1 text-[11px] text-slate-500">JPG, PNG, or WebP up to 2MB.</div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">NID</label>
+                        <input name="nid_file" type="file" accept=".jpg,.jpeg,.png,.pdf" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <div class="mt-1 text-[11px] text-slate-500">JPG, PNG, or PDF up to 10MB.</div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">CV</label>
+                        <input name="cv_file" type="file" accept=".pdf" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <div class="mt-1 text-[11px] text-slate-500">PDF up to 10MB.</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="lg:col-span-2 flex items-center gap-3">
                 <button type="submit" class="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Create rep</button>
-                <div class="text-xs text-slate-500">Active reps can access /rep dashboard.</div>
+                <div class="text-xs text-slate-500">Active reps with a linked user can access /sales dashboard.</div>
             </div>
         </form>
     </div>

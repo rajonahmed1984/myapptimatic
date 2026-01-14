@@ -25,6 +25,9 @@ class Customer extends Model
         'access_override_until',
         'referred_by_affiliate_id',
         'notes',
+        'avatar_path',
+        'nid_path',
+        'cv_path',
     ];
 
     protected $casts = [

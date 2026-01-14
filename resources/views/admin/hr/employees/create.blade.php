@@ -100,6 +100,7 @@
                     <select name="salary_type" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                         <option value="monthly" @selected(old('salary_type', 'monthly') === 'monthly')>Monthly</option>
                         <option value="hourly" @selected(old('salary_type') === 'hourly')>Hourly</option>
+                        <option value="project_base" @selected(old('salary_type') === 'project_base')>Project base</option>
                     </select>
                 </div>
                 <div>

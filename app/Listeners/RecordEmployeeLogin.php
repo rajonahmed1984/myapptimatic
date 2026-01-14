@@ -44,13 +44,20 @@ class RecordEmployeeLogin
             );
 
             $daily = EmployeeActivityDaily::query()
-                ->firstOrCreate([
+                ->where('employee_id', $employee->id)
+                ->whereDate('date', $now->toDateString())
+                ->first();
+
+            if (! $daily) {
+                $daily = EmployeeActivityDaily::create([
                     'employee_id' => $employee->id,
                     'date' => $now->toDateString(),
-                ], [
+                    'sessions_count' => 0,
+                    'active_seconds' => 0,
                     'first_login_at' => $now,
                     'last_seen_at' => $now,
                 ]);
+            }
 
             if ($daily->wasRecentlyCreated && $daily->first_login_at === null) {
                 $daily->first_login_at = $now;

@@ -23,12 +23,15 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\CommissionPayoutController;
 use App\Http\Controllers\Admin\CommissionExportController;
+use App\Http\Controllers\Admin\UserDocumentController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\Admin\SystemLogController;
 use App\Http\Controllers\Admin\MilestoneController;
 use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
 use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
+use App\Http\Controllers\Auth\RoleLoginController;
+use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Employee\AuthController as EmployeeAuthController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
@@ -49,6 +52,8 @@ use App\Http\Controllers\Client\SupportTicketController as ClientSupportTicketCo
 use App\Http\Controllers\SalesRep\DashboardController as SalesRepDashboardController;
 use App\Http\Controllers\SalesRep\EarningController as SalesRepEarningController;
 use App\Http\Controllers\SalesRep\PayoutController as SalesRepPayoutController;
+use App\Http\Controllers\Support\DashboardController as SupportDashboardController;
+use App\Http\Controllers\Support\SupportTicketController as SupportSupportTicketController;
 use App\Models\PaymentAttempt;
 use App\Http\Controllers\BrandingAssetController;
 use App\Http\Controllers\CronController;
@@ -66,6 +71,9 @@ Route::get('/', [PublicProductController::class, 'index'])
     ->name('products.public.home');
 
 Route::redirect('/admin', '/admin/login');
+Route::get('/employee', fn () => redirect()->route('employee.login'))->name('employee.home');
+Route::get('/sales', fn () => redirect()->route('sales.login'))->name('sales.home');
+Route::get('/support', fn () => redirect()->route('support.login'))->name('support.home');
 
 // PaymentAttempt route binding supports UUID (preferred) and falls back to numeric ID for legacy links.
 Route::bind('attempt', function ($value) {
@@ -85,8 +93,19 @@ Route::match(['GET', 'POST'], '/cron/billing', [CronController::class, 'billing'
 
 Route::get('/support-ticket-replies/{reply}/attachment', [SupportTicketAttachmentController::class, 'show'])
     ->whereNumber('reply')
-    ->middleware('auth')
+    ->middleware('auth:web,support')
     ->name('support-ticket-replies.attachment');
+
+Route::middleware('auth:web,support')
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('user-documents/{type}/{id}/{doc}', [UserDocumentController::class, 'show'])
+            ->whereIn('type', ['employee', 'customer', 'sales-rep', 'user'])
+            ->whereNumber('id')
+            ->whereIn('doc', ['nid', 'cv'])
+            ->name('user-documents.show');
+    });
 
 Route::match(['GET', 'POST'], '/payments/sslcommerz/{attempt}/success', [PaymentCallbackController::class, 'sslcommerzSuccess'])
     ->middleware('throttle:payment-callbacks')
@@ -128,6 +147,40 @@ Route::middleware('guest:employee')
     ->group(function () {
         Route::get('/login', [EmployeeAuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [EmployeeAuthController::class, 'login'])->name('login.attempt');
+        Route::get('/forgot-password', [RolePasswordResetController::class, 'showEmployeeForgot'])->name('password.request');
+        Route::post('/forgot-password', [RolePasswordResetController::class, 'sendEmployeeResetLink'])
+            ->middleware('throttle:3,10')
+            ->name('password.email');
+        Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showEmployeeReset'])->name('password.reset');
+        Route::post('/reset-password', [RolePasswordResetController::class, 'resetEmployee'])->name('password.update');
+    });
+
+Route::middleware('guest:sales')
+    ->prefix('sales')
+    ->name('sales.')
+    ->group(function () {
+        Route::get('/login', [RoleLoginController::class, 'showSalesLogin'])->name('login');
+        Route::post('/login', [RoleLoginController::class, 'loginSales'])->name('login.attempt');
+        Route::get('/forgot-password', [RolePasswordResetController::class, 'showSalesForgot'])->name('password.request');
+        Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSalesResetLink'])
+            ->middleware('throttle:3,10')
+            ->name('password.email');
+        Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showSalesReset'])->name('password.reset');
+        Route::post('/reset-password', [RolePasswordResetController::class, 'resetSales'])->name('password.update');
+    });
+
+Route::middleware('guest:support')
+    ->prefix('support')
+    ->name('support.')
+    ->group(function () {
+        Route::get('/login', [RoleLoginController::class, 'showSupportLogin'])->name('login');
+        Route::post('/login', [RoleLoginController::class, 'loginSupport'])->name('login.attempt');
+        Route::get('/forgot-password', [RolePasswordResetController::class, 'showSupportForgot'])->name('password.request');
+        Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSupportResetLink'])
+            ->middleware('throttle:3,10')
+            ->name('password.email');
+        Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showSupportReset'])->name('password.reset');
+        Route::post('/reset-password', [RolePasswordResetController::class, 'resetSupport'])->name('password.update');
     });
 
 Route::post('/logout', [AuthController::class, 'logout'])
@@ -211,13 +264,13 @@ Route::middleware(['admin', 'user.activity:web'])->prefix('admin')->name('admin.
         ->middleware('admin.role:master_admin')
         ->group(function () {
             Route::get('{role}', [UserController::class, 'index'])
-                ->whereIn('role', ['master_admin', 'sub_admin', 'sales', 'support'])
+                ->whereIn('role', ['master_admin', 'sub_admin', 'support'])
                 ->name('index');
             Route::get('{role}/create', [UserController::class, 'create'])
-                ->whereIn('role', ['master_admin', 'sub_admin', 'sales', 'support'])
+                ->whereIn('role', ['master_admin', 'sub_admin', 'support'])
                 ->name('create');
             Route::post('{role}', [UserController::class, 'store'])
-                ->whereIn('role', ['master_admin', 'sub_admin', 'sales', 'support'])
+                ->whereIn('role', ['master_admin', 'sub_admin', 'support'])
                 ->name('store');
             Route::get('{user}/edit', [UserController::class, 'edit'])
                 ->whereNumber('user')
@@ -432,10 +485,11 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::put('/affiliates/settings', [ClientAffiliateController::class, 'updateSettings'])->name('affiliates.settings.update');
     });
 
-Route::middleware(['auth', 'salesrep', 'user.activity:web'])
-    ->prefix('rep')
+Route::middleware(['salesrep', 'user.activity:sales'])
+    ->prefix('sales')
     ->name('rep.')
     ->group(function () {
+        Route::post('/logout', [RoleLoginController::class, 'logoutSales'])->name('logout');
         Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
         Route::get('/earnings', [SalesRepEarningController::class, 'index'])->name('earnings.index');
         Route::get('/payouts', [SalesRepPayoutController::class, 'index'])->name('payouts.index');
@@ -466,6 +520,20 @@ Route::middleware(['auth', 'salesrep', 'user.activity:web'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.chat.store');
         Route::get('/projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
+    });
+
+Route::middleware(['support', 'user.activity:support'])
+    ->prefix('support')
+    ->name('support.')
+    ->group(function () {
+        Route::post('/logout', [RoleLoginController::class, 'logoutSupport'])->name('logout');
+        Route::get('/dashboard', SupportDashboardController::class)->name('dashboard');
+        Route::get('/support-tickets', [SupportSupportTicketController::class, 'index'])->name('support-tickets.index');
+        Route::get('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'show'])->name('support-tickets.show');
+        Route::post('/support-tickets/{ticket}/reply', [SupportSupportTicketController::class, 'reply'])->name('support-tickets.reply');
+        Route::patch('/support-tickets/{ticket}/status', [SupportSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
+        Route::patch('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'update'])->name('support-tickets.update');
+        Route::delete('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'destroy'])->name('support-tickets.destroy');
     });
 
 Route::get('/products', [PublicProductController::class, 'index'])

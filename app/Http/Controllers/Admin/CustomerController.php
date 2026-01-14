@@ -9,6 +9,7 @@ use App\Models\SystemLog;
 use App\Models\SalesRepresentative;
 use App\Models\Employee;
 use App\Models\User;
+use App\Models\UserSession;
 use App\Models\Setting;
 use App\Http\Requests\StoreClientUserRequest;
 use App\Enums\Role;
@@ -28,16 +29,19 @@ class CustomerController extends Controller
 {
     public function index()
     {
-        return view('admin.customers.index', [
-            'customers' => Customer::query()
-                ->withCount('subscriptions')
-                ->withCount(['subscriptions as active_subscriptions_count' => function ($query) {
-                    $query->where('status', 'active');
-                }])
-                ->withCount('projects')
-                ->latest()
-                ->paginate(25),
-        ]);
+        $customers = Customer::query()
+            ->with(['users:id,customer_id,role'])
+            ->withCount('subscriptions')
+            ->withCount(['subscriptions as active_subscriptions_count' => function ($query) {
+                $query->where('status', 'active');
+            }])
+            ->withCount('projects')
+            ->latest()
+            ->paginate(25);
+
+        $loginStatuses = $this->resolveCustomerLoginStatuses($customers);
+
+        return view('admin.customers.index', compact('customers', 'loginStatuses'));
     }
 
     public function create()
@@ -62,6 +66,11 @@ class CustomerController extends Controller
             'notes' => $data['notes'] ?? null,
             'default_sales_rep_id' => $data['default_sales_rep_id'] ?? null,
         ]);
+
+        $uploadPaths = $this->handleUploads($request, $customer);
+        if (! empty($uploadPaths)) {
+            $customer->update($uploadPaths);
+        }
 
         if (! empty($data['user_password'])) {
             if (empty($customer->email)) {
@@ -266,9 +275,17 @@ class CustomerController extends Controller
             'access_override_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ]);
 
-        $customer->update($data);
+        $customer->update(collect($data)->except(['avatar', 'nid_file', 'cv_file'])->all());
+
+        $uploadPaths = $this->handleUploads($request, $customer);
+        if (! empty($uploadPaths)) {
+            $customer->update($uploadPaths);
+        }
 
         SystemLogger::write('activity', 'Customer updated.', [
             'customer_id' => $customer->id,
@@ -317,5 +334,74 @@ class CustomerController extends Controller
         }
 
         return route('client.dashboard');
+    }
+
+    private function handleUploads(Request $request, Customer $customer): array
+    {
+        $paths = [];
+
+        if ($request->hasFile('avatar')) {
+            $paths['avatar_path'] = $request->file('avatar')
+                ->store('avatars/customers/' . $customer->id, 'public');
+        }
+
+        if ($request->hasFile('nid_file')) {
+            $paths['nid_path'] = $request->file('nid_file')
+                ->store('nid/customers/' . $customer->id, 'public');
+        }
+
+        if ($request->hasFile('cv_file')) {
+            $paths['cv_path'] = $request->file('cv_file')
+                ->store('cv/customers/' . $customer->id, 'public');
+        }
+
+        return $paths;
+    }
+
+    private function resolveCustomerLoginStatuses($customers): array
+    {
+        $userIds = $customers->pluck('users')
+            ->flatten()
+            ->filter(fn ($user) => $user && $user->role === Role::CLIENT)
+            ->pluck('id')
+            ->unique()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            return [];
+        }
+
+        $openSessions = UserSession::query()
+            ->whereIn('user_id', $userIds)
+            ->where('guard', 'web')
+            ->whereNull('logout_at')
+            ->orderByDesc('last_seen_at')
+            ->get()
+            ->groupBy('user_id');
+
+        $threshold = now()->subMinutes(2);
+        $statuses = [];
+
+        foreach ($customers as $customer) {
+            $status = 'logout';
+            foreach ($customer->users->where('role', Role::CLIENT) as $user) {
+                $session = $openSessions->get($user->id)?->first();
+                if (! $session) {
+                    continue;
+                }
+
+                $lastSeen = $session->last_seen_at;
+                if ($lastSeen && $lastSeen->greaterThanOrEqualTo($threshold)) {
+                    $status = 'login';
+                    break;
+                }
+
+                $status = 'idle';
+            }
+
+            $statuses[$customer->id] = $status;
+        }
+
+        return $statuses;
     }
 }
