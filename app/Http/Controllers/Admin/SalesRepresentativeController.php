@@ -9,13 +9,14 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
-use App\Models\User;
 use App\Models\UserSession;
-use App\Enums\Role;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use App\Enums\Role;
 
 class SalesRepresentativeController extends Controller
 {
@@ -46,49 +47,52 @@ class SalesRepresentativeController extends Controller
 
     public function create()
     {
-        $existingUserIds = SalesRepresentative::pluck('user_id')->filter()->all();
-
-        $users = User::query()
-            ->when($existingUserIds, fn ($q) => $q->whereNotIn('id', $existingUserIds))
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']);
-
         $employees = Employee::orderBy('name')->get(['id', 'name']);
 
         return view('admin.sales-reps.create', [
-            'users' => $users,
             'employees' => $employees,
         ]);
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'user_id' => ['nullable', 'exists:users,id', Rule::unique('sales_representatives', 'user_id')],
+        $rules = [
             'employee_id' => ['nullable', 'exists:employees,id'],
-            'name' => ['required_without:user_id', 'nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'user_password' => ['nullable', 'string', 'min:8'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
-        ]);
+        ];
 
-        $user = null;
-        if (! empty($data['user_id'])) {
-            $user = User::findOrFail($data['user_id']);
-            $user->update(['role' => Role::SALES]);
+        if ($request->filled('user_password')) {
+            $rules['email'][] = 'required';
+            $rules['email'][] = Rule::unique('users', 'email');
         }
 
+        $data = $request->validate($rules);
+
         $salesRep = SalesRepresentative::create([
-            'user_id' => $data['user_id'] ?? null,
             'employee_id' => $data['employee_id'] ?? null,
-            'name' => $data['name'] ?? ($user?->name ?? 'Sales Representative'),
-            'email' => $data['email'] ?? $user?->email,
+            'name' => $data['name'],
+            'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
             'status' => $data['status'],
         ]);
+
+        if (! empty($data['user_password'])) {
+            $user = User::create([
+                'name' => $salesRep->name,
+                'email' => $salesRep->email,
+                'password' => Hash::make($data['user_password']),
+                'role' => Role::SALES,
+            ]);
+
+            $salesRep->update(['user_id' => $user->id]);
+        }
 
         $uploadPaths = $this->handleUploads($request, $salesRep);
         if (! empty($uploadPaths)) {

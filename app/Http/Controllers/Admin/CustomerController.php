@@ -242,16 +242,50 @@ class CustomerController extends Controller
         }
 
         $user = $customer->users()
-            ->where('role', 'client')
+            ->whereIn('role', [Role::CLIENT, 'customer'])
             ->orderBy('id')
             ->first();
+
+        if (! $user && $customer->email) {
+            $existing = User::query()
+                ->where('email', $customer->email)
+                ->first();
+
+            if ($existing && ! in_array($existing->role, [Role::CLIENT, 'customer'], true)) {
+                return back()->withErrors(['impersonate' => 'Customer email is already used by a non-client account.']);
+            }
+
+            if ($existing) {
+                $user = $existing;
+            } else {
+                $user = User::create([
+                    'name' => $customer->name ?: 'Client '.$customer->id,
+                    'email' => $customer->email,
+                    'password' => Hash::make(Str::random(32)),
+                    'role' => Role::CLIENT,
+                    'customer_id' => $customer->id,
+                ]);
+            }
+
+            if ($user && ! $user->customer_id) {
+                $user->customer_id = $customer->id;
+            }
+        }
 
         if (! $user) {
             return back()->withErrors(['impersonate' => 'No client login exists for this customer.']);
         }
 
+        if ($user->role !== Role::CLIENT) {
+            $user->role = Role::CLIENT;
+        }
+
+        if ($user->isDirty()) {
+            $user->save();
+        }
+
         $request->session()->put('impersonator_id', $request->user()->id);
-        Auth::login($user);
+        Auth::guard('web')->login($user);
         // Enable employee-guard access when impersonating an employee account (same provider).
         if (Employee::where('user_id', $user->id)->exists()) {
             Auth::guard('employee')->login($user);

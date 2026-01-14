@@ -186,6 +186,9 @@ Route::middleware('guest:support')
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout')
     ->middleware('auth');
+Route::match(['GET', 'POST'], '/admin/logout', [AuthController::class, 'logout'])
+    ->name('admin.logout')
+    ->middleware('auth');
 Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
     ->name('impersonate.stop')
     ->middleware('auth');

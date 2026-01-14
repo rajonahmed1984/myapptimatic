@@ -119,20 +119,46 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                const buttons = document.querySelectorAll('.copy-license-btn');
-                buttons.forEach((btn) => {
-                    btn.addEventListener('click', async () => {
-                        const key = btn.getAttribute('data-license-key');
-                        if (!key) return;
+                const markCopied = (btn) => {
+                    if (!btn) return;
+                    btn.classList.add('text-emerald-600');
+                    setTimeout(() => btn.classList.remove('text-emerald-600'), 1200);
+                };
 
-                        try {
-                            await navigator.clipboard.writeText(key);
-                            btn.classList.add('text-emerald-600');
-                            setTimeout(() => btn.classList.remove('text-emerald-600'), 1200);
-                        } catch (e) {
-                            alert('Unable to copy license key.');
-                        }
-                    });
+                const fallbackCopy = (text, btn) => {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.setAttribute('readonly', '');
+                    textarea.style.position = 'absolute';
+                    textarea.style.left = '-9999px';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        markCopied(btn);
+                    } catch (e) {
+                        alert('Unable to copy license key.');
+                    } finally {
+                        document.body.removeChild(textarea);
+                    }
+                };
+
+                document.addEventListener('click', (event) => {
+                    const btn = event.target.closest('.copy-license-btn');
+                    if (!btn) return;
+
+                    const row = btn.closest('tr');
+                    const textEl = row ? row.querySelector('.license-key-text') : null;
+                    const key = (textEl?.textContent || btn.getAttribute('data-license-key') || '').trim();
+                    if (!key) return;
+
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(key)
+                            .then(() => markCopied(btn))
+                            .catch(() => fallbackCopy(key, btn));
+                    } else {
+                        fallbackCopy(key, btn);
+                    }
                 });
             });
         </script>

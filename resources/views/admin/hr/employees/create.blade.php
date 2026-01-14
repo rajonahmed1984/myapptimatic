@@ -13,7 +13,7 @@
         <a href="{{ route('admin.hr.employees.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to employees</a>
     </div>
 
-    <div class="card p-6 max-w-4xl">
+    <div class="card p-6">
         <form method="POST" action="{{ route('admin.hr.employees.store') }}" enctype="multipart/form-data" class="space-y-4">
             @csrf
             <div class="section-label">Profile</div>

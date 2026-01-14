@@ -33,7 +33,15 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-slate-700">
                     @forelse($reps as $rep)
-                        @php($repTotals = $totals[$rep->id] ?? null)
+                        @php
+                            $repTotals = $totals[$rep->id] ?? null;
+                            $loginStatus = $loginStatuses[$rep->id] ?? 'logout';
+                            $loginLabel = match ($loginStatus) {
+                                'login' => 'Login',
+                                'idle' => 'Idle',
+                                default => 'Logout',
+                            };
+                        @endphp
                         <tr class="hover:bg-slate-50 transition">
                             <td class="px-4 py-3 font-semibold text-slate-900">#{{ $rep->id }}</td>
                             <td class="px-4 py-3">
@@ -67,20 +75,12 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3">
-                                @php
-                                    $loginStatus = $loginStatuses[$rep->id] ?? 'logout';
-                                    $loginLabel = match ($loginStatus) {
-                                        'login' => 'Login',
-                                        'idle' => 'Idle',
-                                        default => 'Logout',
-                                    };
-                                    $loginClasses = match ($loginStatus) {
-                                        'login' => 'border-emerald-200 text-emerald-700 bg-emerald-50',
-                                        'idle' => 'border-amber-200 text-amber-700 bg-amber-50',
-                                        default => 'border-rose-200 text-rose-700 bg-rose-50',
-                                    };
-                                @endphp
-                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $loginClasses }}">
+                                <span @class([
+                                    'rounded-full border px-2 py-0.5 text-xs font-semibold',
+                                    'border-emerald-200 text-emerald-700 bg-emerald-50' => $loginStatus === 'login',
+                                    'border-amber-200 text-amber-700 bg-amber-50' => $loginStatus === 'idle',
+                                    'border-rose-200 text-rose-700 bg-rose-50' => $loginStatus === 'logout',
+                                ])>
                                     {{ $loginLabel }}
                                 </span>
                             </td>

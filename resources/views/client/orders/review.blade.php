@@ -30,7 +30,7 @@
                 </div>
                 <div class="flex items-center justify-between">
                     <span>Billing period</span>
-                    <span class="font-semibold text-slate-900">{{ $startDate->format($globalDateFormat) }} → {{ $periodEnd->format($globalDateFormat) }}</span>
+                    <span class="font-semibold text-slate-900">{{ $startDate->format($globalDateFormat) }} -> {{ $periodEnd->format($globalDateFormat) }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span>Invoice due</span>
@@ -44,11 +44,16 @@
             <div class="mt-4 text-sm text-slate-600">
                 <div class="flex items-center justify-between">
                     <span>Subtotal</span>
-                    <span class="font-semibold text-slate-900">{{ $currency }} {{ number_format((float) $plan->price, 2) }}</span>
+                    <span class="font-semibold text-slate-900">{{ $currency }} {{ number_format((float) $subtotal, 2) }}</span>
                 </div>
+                @if(!empty($showProration) && $showProration && !empty($cycleDays))
+                    <div class="mt-1 text-xs text-slate-500">
+                        Prorated for {{ $periodDays }}/{{ $cycleDays }} days
+                    </div>
+                @endif
                 <div class="mt-2 flex items-center justify-between">
                     <span>Total</span>
-                    <span class="text-lg font-semibold text-slate-900">{{ $currency }} {{ number_format((float) $plan->price, 2) }}</span>
+                    <span class="text-lg font-semibold text-slate-900">{{ $currency }} {{ number_format((float) $subtotal, 2) }}</span>
                 </div>
             </div>
 
@@ -60,4 +65,3 @@
         </div>
     </div>
 @endsection
-

@@ -67,6 +67,14 @@ class OrderController extends Controller
         $periodEnd = $plan->interval === 'monthly'
             ? $startDate->copy()->endOfMonth()
             : $startDate->copy()->addYear();
+        $subtotal = $this->calculateSubtotal($plan->interval, (float) $plan->price, $startDate, $periodEnd);
+        $periodDays = $startDate->diffInDays($periodEnd) + 1;
+        $cycleDays = $plan->interval === 'monthly'
+            ? $startDate->daysInMonth
+            : ($plan->interval === 'yearly' ? $startDate->daysInYear : null);
+        $showProration = $plan->interval === 'monthly'
+            && $startDate->day !== 1
+            && $periodEnd->isLastOfMonth();
         $dueDays = 0;
 
         return view('client.orders.review', [
@@ -75,6 +83,10 @@ class OrderController extends Controller
             'currency' => $currency,
             'startDate' => $startDate,
             'periodEnd' => $periodEnd,
+            'subtotal' => $subtotal,
+            'periodDays' => $periodDays,
+            'cycleDays' => $cycleDays,
+            'showProration' => $showProration,
             'dueDays' => $dueDays,
         ]);
     }

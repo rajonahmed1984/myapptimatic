@@ -13,7 +13,7 @@
         <table class="w-full text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
-                    <th class="px-4 py-3">Client ID</th>
+                    <th class="px-4 py-3">ID</th>
                     <th class="px-4 py-3">Name</th>
                     <th class="px-4 py-3">Company Name</th>
                     <th class="px-4 py-3">Email</th>

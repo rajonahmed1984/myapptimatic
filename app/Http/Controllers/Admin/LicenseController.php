@@ -131,7 +131,7 @@ class LicenseController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
             'starts_at' => ['required', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'domain_url' => ['nullable', 'string', 'max:255'],
+            'allowed_domains' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
         ]);
 
@@ -139,14 +139,20 @@ class LicenseController extends Controller
 
         $license->update($data);
 
-        $domainInput = trim((string) ($data['domain_url'] ?? ''));
+        $domainInput = $this->extractSingleDomain($data['allowed_domains'] ?? null);
 
-        if ($domainInput !== '') {
+        if ($domainInput === false) {
+            return back()
+                ->withErrors(['allowed_domains' => 'Only one domain is allowed per license.'])
+                ->withInput();
+        }
+
+        if ($domainInput) {
             $domain = $this->normalizeDomain($domainInput);
 
             if (! $domain) {
                 return back()
-                    ->withErrors(['domain_url' => 'Invalid domain format. Use only the hostname or full URL.'])
+                    ->withErrors(['allowed_domains' => 'Invalid domain format. Use only the hostname or full URL.'])
                     ->withInput();
             }
 
@@ -164,6 +170,8 @@ class LicenseController extends Controller
             $license->domains()
                 ->where('domain', '!=', $domain)
                 ->update(['status' => 'revoked']);
+        } else {
+            $license->domains()->update(['status' => 'revoked']);
         }
 
         return redirect()->route('admin.licenses.edit', $license)

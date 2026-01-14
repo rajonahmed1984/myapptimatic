@@ -199,7 +199,7 @@ class ClientNotificationService
 
     public function sendManualPaymentSubmission(PaymentProof $paymentProof): void
     {
-        $paymentProof->loadMissing(['customer', 'invoice.paymentAttempt']);
+        $paymentProof->loadMissing(['customer', 'invoice.paymentAttempts']);
         $customer = $paymentProof->customer ?? $paymentProof->invoice?->customer;
         $invoice = $paymentProof->invoice;
 

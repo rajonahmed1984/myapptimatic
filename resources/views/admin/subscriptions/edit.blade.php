@@ -49,6 +49,18 @@
                     <input name="start_date" type="date" value="{{ old('start_date', optional($subscription->start_date)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
+                    <label class="text-sm text-slate-600">Current period start</label>
+                    <input name="current_period_start" type="date" value="{{ old('current_period_start', optional($subscription->current_period_start)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" required />
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Current period end</label>
+                    <input name="current_period_end" type="date" value="{{ old('current_period_end', optional($subscription->current_period_end)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" required />
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Next invoice at</label>
+                    <input name="next_invoice_at" type="date" value="{{ old('next_invoice_at', optional($subscription->next_invoice_at)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" required />
+                </div>
+                <div>
                     <label class="text-sm text-slate-600">Status</label>
                     <select name="status" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
                         <option value="active" @selected($subscription->status === 'active')>Active</option>
