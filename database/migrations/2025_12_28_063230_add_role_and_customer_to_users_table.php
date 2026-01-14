@@ -26,7 +26,11 @@ return new class extends Migration
 
         $hasRole = Schema::hasColumn('users', 'role');
         $hasCustomer = Schema::hasColumn('users', 'customer_id');
-        $indexExists = !empty(DB::select("SHOW INDEX FROM users WHERE Key_name = 'users_role_customer_id_index'"));
+        $driver = DB::getDriverName();
+        $indexExists = false;
+        if ($driver === 'mysql') {
+            $indexExists = !empty(DB::select("SHOW INDEX FROM users WHERE Key_name = 'users_role_customer_id_index'"));
+        }
 
         if ($hasRole && $hasCustomer && !$indexExists) {
             Schema::table('users', function (Blueprint $table) {
@@ -42,7 +46,11 @@ return new class extends Migration
     {
         $hasRole = Schema::hasColumn('users', 'role');
         $hasCustomer = Schema::hasColumn('users', 'customer_id');
-        $indexExists = !empty(DB::select("SHOW INDEX FROM users WHERE Key_name = 'users_role_customer_id_index'"));
+        $driver = DB::getDriverName();
+        $indexExists = false;
+        if ($driver === 'mysql') {
+            $indexExists = !empty(DB::select("SHOW INDEX FROM users WHERE Key_name = 'users_role_customer_id_index'"));
+        }
 
         if ($hasRole && $hasCustomer && $indexExists) {
             Schema::table('users', function (Blueprint $table) {

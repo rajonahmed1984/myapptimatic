@@ -6,7 +6,10 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskMessage;
+use App\Models\ProjectTaskMessageRead;
 use App\Models\SalesRepresentative;
+use App\Http\Requests\StoreTaskChatMessageRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -22,17 +25,18 @@ class ProjectTaskChatController extends Controller
         Gate::forUser($actor)->authorize('view', $task);
 
         $routePrefix = $this->resolveRoutePrefix($request);
-        return redirect()->route($routePrefix . '.projects.tasks.show', [$project, $task]);
-
         $messages = $task->messages()
             ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor'])
-            ->orderBy('created_at')
-            ->get();
+            ->latest('id')
+            ->limit(30)
+            ->get()
+            ->reverse()
+            ->values();
 
         $identity = $this->resolveAuthorIdentity($request);
         $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
 
-        $canPost = Gate::forUser($actor)->check('view', $task);
+        $canPost = Gate::forUser($actor)->check('comment', $task);
 
         if ($request->boolean('partial')) {
             return view('projects.partials.task-chat-messages', [
@@ -53,28 +57,81 @@ class ProjectTaskChatController extends Controller
             'postRoute' => route($routePrefix . '.projects.tasks.chat.store', [$project, $task]),
             'backRoute' => route($routePrefix . '.projects.show', $project),
             'attachmentRouteName' => $attachmentRouteName,
-            'pollUrl' => route($routePrefix . '.projects.tasks.chat', [$project, $task], false) . '?partial=1',
+            'messagesUrl' => route($routePrefix . '.projects.tasks.chat.messages', [$project, $task]),
+            'postMessagesUrl' => route($routePrefix . '.projects.tasks.chat.messages.store', [$project, $task]),
+            'readUrl' => route($routePrefix . '.projects.tasks.chat.read', [$project, $task]),
             'currentAuthorType' => $identity['type'],
             'currentAuthorId' => $identity['id'],
             'canPost' => $canPost,
         ]);
     }
 
-    public function store(Request $request, Project $project, ProjectTask $task): RedirectResponse
+    public function messages(Request $request, Project $project, ProjectTask $task): JsonResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('view', $task);
 
-        $data = $request->validate([
-            'message' => ['nullable', 'string', 'max:2000', 'required_without:attachment'],
-            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,webp,pdf', 'max:5120', 'required_without:message'],
+        $limit = min(max((int) $request->query('limit', 30), 1), 100);
+        $afterId = (int) $request->query('after_id', 0);
+        $beforeId = (int) $request->query('before_id', 0);
+
+        $query = $task->messages()
+            ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor']);
+
+        if ($afterId > 0) {
+            $query->where('id', '>', $afterId)->orderBy('id');
+        } elseif ($beforeId > 0) {
+            $query->where('id', '<', $beforeId)->orderByDesc('id');
+        } else {
+            $query->orderByDesc('id');
+        }
+
+        $messages = $query->limit($limit)->get();
+        if ($afterId <= 0) {
+            $messages = $messages->reverse()->values();
+        }
+
+        $identity = $this->resolveAuthorIdentity($request);
+        $routePrefix = $this->resolveRoutePrefix($request);
+        $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
+
+        $items = $messages->map(fn (ProjectTaskMessage $message) => $this->messageItem(
+            $message,
+            $project,
+            $task,
+            $attachmentRouteName,
+            $identity
+        ))->values();
+
+        $nextAfterId = $messages->max('id') ?? $afterId;
+        $nextBeforeId = $messages->min('id') ?? $beforeId;
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'items' => $items,
+                'next_after_id' => $nextAfterId,
+                'next_before_id' => $nextBeforeId,
+            ],
         ]);
+    }
+
+    public function store(StoreTaskChatMessageRequest $request, Project $project, ProjectTask $task): RedirectResponse
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('comment', $task);
+
+        $data = $request->validated();
 
         $message = isset($data['message']) ? trim((string) $data['message']) : null;
         $message = $message === '' ? null : $message;
 
         $attachmentPath = $this->storeAttachment($request, $task);
+        if (! $attachmentPath && $message === null) {
+            return back()->withErrors(['message' => 'Message cannot be empty.']);
+        }
 
         $identity = $this->resolveAuthorIdentity($request);
         if (! $identity['id']) {
@@ -90,6 +147,118 @@ class ProjectTaskChatController extends Controller
         ]);
 
         return back()->with('status', 'Message sent.');
+    }
+
+    public function storeMessage(StoreTaskChatMessageRequest $request, Project $project, ProjectTask $task): JsonResponse
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('comment', $task);
+
+        $data = $request->validated();
+        $message = isset($data['message']) ? trim((string) $data['message']) : null;
+        $message = $message === '' ? null : $message;
+
+        $attachmentPath = $this->storeAttachment($request, $task);
+        if (! $attachmentPath && $message === null) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Message cannot be empty.',
+            ], 422);
+        }
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            abort(403, 'Author identity not available.');
+        }
+
+        $messageModel = ProjectTaskMessage::create([
+            'project_task_id' => $task->id,
+            'author_type' => $identity['type'],
+            'author_id' => $identity['id'],
+            'message' => $message,
+            'attachment_path' => $attachmentPath,
+        ]);
+        $messageModel->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor']);
+
+        $routePrefix = $this->resolveRoutePrefix($request);
+        $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
+        $item = $this->messageItem($messageModel, $project, $task, $attachmentRouteName, $identity);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Message sent.',
+            'data' => [
+                'item' => $item,
+                'next_after_id' => $messageModel->id,
+                'next_before_id' => $messageModel->id,
+            ],
+        ]);
+    }
+
+    public function markRead(Request $request, Project $project, ProjectTask $task): JsonResponse
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $task);
+
+        $data = $request->validate([
+            'last_read_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            abort(403, 'Reader identity not available.');
+        }
+
+        $lastReadId = (int) ($data['last_read_id'] ?? 0);
+        if ($lastReadId > 0) {
+            $exists = $task->messages()->whereKey($lastReadId)->exists();
+            if (! $exists) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Invalid message reference.',
+                ], 422);
+            }
+        } else {
+            $lastReadId = (int) ($task->messages()->max('id') ?? 0);
+        }
+
+        $read = ProjectTaskMessageRead::query()
+            ->where('project_task_id', $task->id)
+            ->where('reader_type', $identity['type'])
+            ->where('reader_id', $identity['id'])
+            ->first();
+
+        $previous = $read?->last_read_message_id ?? 0;
+        $nextReadId = max($previous, $lastReadId);
+
+        if (! $read) {
+            $read = ProjectTaskMessageRead::create([
+                'project_task_id' => $task->id,
+                'reader_type' => $identity['type'],
+                'reader_id' => $identity['id'],
+                'last_read_message_id' => $nextReadId,
+                'read_at' => now(),
+            ]);
+        } else {
+            $read->update([
+                'last_read_message_id' => $nextReadId,
+                'read_at' => now(),
+            ]);
+        }
+
+        $unreadCount = $task->messages()
+            ->where('id', '>', $nextReadId)
+            ->count();
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'last_read_id' => $nextReadId,
+                'unread_count' => $unreadCount,
+            ],
+        ]);
     }
 
     public function attachment(Request $request, Project $project, ProjectTask $task, ProjectTaskMessage $message)
@@ -193,5 +362,25 @@ class ProjectTaskChatController extends Controller
         $fileName = $name . '-' . Str::random(8) . '.' . $extension;
 
         return $file->storeAs('project-task-messages/' . $task->id, $fileName, 'public');
+    }
+
+    private function messageItem(
+        ProjectTaskMessage $message,
+        Project $project,
+        ProjectTask $task,
+        string $attachmentRouteName,
+        array $identity
+    ): array {
+        return [
+            'id' => $message->id,
+            'html' => view('projects.partials.task-chat-message', [
+                'message' => $message,
+                'project' => $project,
+                'task' => $task,
+                'attachmentRouteName' => $attachmentRouteName,
+                'currentAuthorType' => $identity['type'],
+                'currentAuthorId' => $identity['id'],
+            ])->render(),
+        ];
     }
 }

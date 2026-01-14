@@ -299,7 +299,15 @@
                         <div class="text-xs text-slate-500">Comments, uploads, and updates in real time.</div>
                     </div>
                 </div>
-                <div id="task-activity-feed" class="mt-4 max-h-[65vh] space-y-4 overflow-y-auto pr-1">
+                @php
+                    $lastActivityId = $activities->last()?->id ?? 0;
+                    $oldestActivityId = $activities->first()?->id ?? 0;
+                @endphp
+                <div id="task-activity-feed"
+                     data-activity-url="{{ $activityItemsUrl ?? '' }}"
+                     data-last-id="{{ $lastActivityId }}"
+                     data-oldest-id="{{ $oldestActivityId }}"
+                     class="mt-4 max-h-[65vh] space-y-4 overflow-y-auto pr-1">
                     @include('projects.partials.task-activity-feed', [
                         'activities' => $activities,
                         'project' => $project,
@@ -309,12 +317,17 @@
                         'currentActorId' => $currentActorId,
                     ])
                 </div>
+                @if(isset($activitiesPaginator) && $activitiesPaginator->hasPages())
+                    <div class="mt-4">
+                        {{ $activitiesPaginator->links() }}
+                    </div>
+                @endif
             </div>
 
             @if($canPost)
                 <div class="card p-6 space-y-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Add comment</div>
-                    <form method="POST" action="{{ $activityPostRoute }}" class="space-y-3">
+                    <form method="POST" action="{{ $activityPostRoute }}" class="space-y-3" id="activityPostForm">
                         @csrf
                         <textarea name="message" rows="3" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Share an update..."></textarea>
                         @error('message')
@@ -425,11 +438,18 @@
 
             // Activity feed polling
             const container = document.getElementById('task-activity-feed');
-            const pollUrl = @json($pollUrl);
+            const activityUrl = container?.dataset?.activityUrl || @json($activityItemsUrl ?? '');
+            const activityForm = document.getElementById('activityPostForm');
+            const activityPostUrl = @json($activityItemsPostUrl ?? '');
 
-            if (!container || !pollUrl) {
+            if (!container || !activityUrl) {
                 return;
             }
+
+            let lastId = Number(container.dataset.lastId || {{ $lastActivityId }} || 0);
+            let oldestId = Number(container.dataset.oldestId || {{ $oldestActivityId }} || 0);
+            let isLoadingOlder = false;
+            let reachedStart = false;
 
             const scrollToBottom = () => {
                 container.scrollTop = container.scrollHeight;
@@ -440,20 +460,120 @@
                 return (container.scrollHeight - container.scrollTop - container.clientHeight) < threshold;
             };
 
+            const appendItems = (items) => {
+                if (!items || !items.length) {
+                    return;
+                }
+                items.forEach((item) => {
+                    if (!item?.html) return;
+                    container.insertAdjacentHTML('beforeend', item.html);
+                    if (item.id) {
+                        lastId = Math.max(lastId, item.id);
+                        if (!oldestId) {
+                            oldestId = item.id;
+                        }
+                    }
+                });
+            };
+
+            const prependItems = (items) => {
+                if (!items || !items.length) {
+                    return;
+                }
+                const previousHeight = container.scrollHeight;
+                const previousTop = container.scrollTop;
+                for (let i = items.length - 1; i >= 0; i -= 1) {
+                    const item = items[i];
+                    if (!item?.html) continue;
+                    container.insertAdjacentHTML('afterbegin', item.html);
+                }
+                const oldestItemId = items[0]?.id;
+                if (oldestItemId) {
+                    oldestId = oldestId ? Math.min(oldestId, oldestItemId) : oldestItemId;
+                }
+                const heightDiff = container.scrollHeight - previousHeight;
+                container.scrollTop = previousTop + heightDiff;
+            };
+
+            const fetchItems = async (params) => {
+                const url = new URL(activityUrl, window.location.origin);
+                Object.entries(params).forEach(([key, value]) => {
+                    if (value !== null && value !== undefined) {
+                        url.searchParams.set(key, value);
+                    }
+                });
+
+                const response = await fetch(url.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) {
+                    return [];
+                }
+                const payload = await response.json();
+                return payload?.data?.items || [];
+            };
+
+            const loadOlder = async () => {
+                if (!oldestId || isLoadingOlder || reachedStart) {
+                    return;
+                }
+                isLoadingOlder = true;
+                const items = await fetchItems({ before_id: oldestId, limit: 30 });
+                if (items.length === 0) {
+                    reachedStart = true;
+                } else {
+                    prependItems(items);
+                }
+                isLoadingOlder = false;
+            };
+
+            if (activityForm && activityPostUrl) {
+                activityForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const formData = new FormData(activityForm);
+
+                    const response = await fetch(activityPostUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        alert('Comment send failed.');
+                        return;
+                    }
+
+                    const payload = await response.json();
+                    const items = payload?.data?.items || [];
+                    if (items.length) {
+                        appendItems(items);
+                        scrollToBottom();
+                    }
+                    activityForm.reset();
+                });
+            }
+
             scrollToBottom();
 
-            setInterval(() => {
+            container.addEventListener('scroll', async () => {
+                if (container.scrollTop <= 80) {
+                    loadOlder();
+                }
+            });
+
+            setInterval(async () => {
                 const keepAtBottom = isNearBottom();
-                fetch(pollUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                    .then(response => response.text())
-                    .then(html => {
-                        container.innerHTML = html;
-                        if (keepAtBottom) {
-                            scrollToBottom();
-                        }
-                    })
-                    .catch(() => {});
-            }, 3000);
+                const items = await fetchItems({ after_id: lastId, limit: 30 });
+                if (items.length) {
+                    appendItems(items);
+                    if (keepAtBottom) {
+                        scrollToBottom();
+                    }
+                }
+            }, 5000);
         });
     </script>
 @endsection

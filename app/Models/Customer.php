@@ -8,9 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\SalesRepresentative;
+use App\Models\Concerns\HasActivityTracking;
 
 class Customer extends Model
 {
+    use HasActivityTracking;
+
     protected $fillable = [
         'name',
         'company_name',

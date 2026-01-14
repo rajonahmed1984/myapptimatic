@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ class AdminUserController extends Controller
     public function index()
     {
         return view('admin.admins.index', [
-            'admins' => User::query()->where('role', 'admin')->orderBy('name')->get(),
+            'admins' => User::query()->where('role', Role::ADMIN)->orderBy('name')->get(),
         ]);
     }
 
@@ -34,7 +35,7 @@ class AdminUserController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
-            'role' => 'admin',
+            'role' => Role::ADMIN,
             'customer_id' => null,
         ]);
 
@@ -44,7 +45,7 @@ class AdminUserController extends Controller
 
     public function edit(User $admin)
     {
-        abort_unless($admin->role === 'admin', 404);
+        abort_unless($admin->role === Role::ADMIN, 404);
 
         return view('admin.admins.edit', [
             'admin' => $admin,
@@ -53,7 +54,7 @@ class AdminUserController extends Controller
 
     public function update(Request $request, User $admin): RedirectResponse
     {
-        abort_unless($admin->role === 'admin', 404);
+        abort_unless($admin->role === Role::ADMIN, 404);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -78,14 +79,14 @@ class AdminUserController extends Controller
 
     public function destroy(Request $request, User $admin): RedirectResponse
     {
-        abort_unless($admin->role === 'admin', 404);
+        abort_unless($admin->role === Role::ADMIN, 404);
 
         if ($request->user()?->id === $admin->id) {
             return redirect()->route('admin.admins.index')
                 ->with('status', 'You cannot delete your own admin account.');
         }
 
-        $adminCount = User::query()->where('role', 'admin')->count();
+        $adminCount = User::query()->where('role', Role::ADMIN)->count();
         if ($adminCount <= 1) {
             return redirect()->route('admin.admins.index')
                 ->with('status', 'At least one admin account must remain.');

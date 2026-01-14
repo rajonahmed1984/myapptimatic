@@ -105,9 +105,9 @@
                 <div>
                     <label class="text-xs text-slate-500">Currency</label>
                     <select name="currency" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        @php($currencyOptions = ['USD', 'EUR', 'GBP', 'BDT'])
+                        @php($currencyOptions = ['BDT', 'USD'])
                         @foreach($currencyOptions as $currency)
-                            <option value="{{ $currency }}" @selected(old('currency', 'USD') === $currency)>{{ $currency }}</option>
+                            <option value="{{ $currency }}" @selected(old('currency', 'BDT') === $currency)>{{ $currency }}</option>
                         @endforeach
                     </select>
                 </div>

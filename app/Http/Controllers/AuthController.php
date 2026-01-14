@@ -6,11 +6,14 @@ use App\Models\Customer;
 use App\Models\User;
 use App\Models\SalesRepresentative;
 use App\Services\ClientNotificationService;
+use App\Support\Currency;
+use App\Enums\Role;
 use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -144,7 +147,13 @@ class AuthController extends Controller
             'password' => ['required', 'confirmed', 'min:8'],
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
+            'currency' => ['nullable', Rule::in(Currency::allowed())],
         ]);
+
+        $currency = strtoupper((string) ($data['currency'] ?? Currency::DEFAULT));
+        if (! Currency::isAllowed($currency)) {
+            $currency = Currency::DEFAULT;
+        }
 
         $customer = Customer::create([
             'name' => $data['name'],
@@ -159,8 +168,9 @@ class AuthController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
-            'role' => 'client',
+            'role' => Role::CLIENT,
             'customer_id' => $customer->id,
+            'currency' => $currency,
         ]);
 
         Auth::login($user);

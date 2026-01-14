@@ -3,32 +3,29 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSalesUserRequest;
+use App\Http\Requests\StoreSupportUserRequest;
 use App\Models\User;
+use App\Enums\Role;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    private const ROLES = [
-        'master_admin' => 'Master Admin',
-        'sub_admin' => 'Sub Admin',
-        'sales' => 'Sales',
-        'support' => 'Support',
-    ];
-
     public function index(string $role)
     {
         $role = $this->normalizeRole($role);
+        $roles = $this->adminRoles();
 
         return view('admin.users.index', [
             'users' => User::query()
-                ->whereIn('role', array_keys(self::ROLES))
+                ->whereIn('role', array_keys($roles))
                 ->when($role, fn ($q) => $q->where('role', $role))
                 ->orderBy('name')
                 ->get(),
             'selectedRole' => $role,
-            'roles' => self::ROLES,
+            'roles' => $roles,
         ]);
     }
 
@@ -38,7 +35,7 @@ class UserController extends Controller
 
         return view('admin.users.create', [
             'selectedRole' => $role,
-            'roles' => self::ROLES,
+            'roles' => $this->adminRoles(),
         ]);
     }
 
@@ -46,22 +43,17 @@ class UserController extends Controller
     {
         $role = $this->normalizeRole($role);
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', Rule::in(array_keys(self::ROLES))],
-        ]);
+        $data = $this->validateStoreRequest($request, $role);
 
         User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
-            'role' => $data['role'],
+            'role' => $role,
             'customer_id' => null,
         ]);
 
-        return redirect()->route('admin.users.index', $data['role'])
+        return redirect()->route('admin.users.index', $role)
             ->with('status', 'User created.');
     }
 
@@ -71,7 +63,7 @@ class UserController extends Controller
 
         return view('admin.users.edit', [
             'user' => $user,
-            'roles' => self::ROLES,
+            'roles' => $this->adminRoles(),
         ]);
     }
 
@@ -83,7 +75,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', Rule::in(array_keys(self::ROLES))],
+            'role' => ['required', Rule::in(array_keys($this->adminRoles()))],
         ]);
 
         // Prevent self from downgrading own role to avoid lockout.
@@ -145,7 +137,7 @@ class UserController extends Controller
 
     private function normalizeRole(string $role): string
     {
-        if (! array_key_exists($role, self::ROLES)) {
+        if (! array_key_exists($role, $this->adminRoles())) {
             abort(404);
         }
 
@@ -154,8 +146,47 @@ class UserController extends Controller
 
     private function abortIfNotAdminRole(User $user): void
     {
-        if (! array_key_exists($user->role, self::ROLES)) {
+        if (! array_key_exists($user->role, $this->adminRoles())) {
             abort(404);
         }
+    }
+
+    private function adminRoles(): array
+    {
+        return [
+            Role::MASTER_ADMIN => 'Master Admin',
+            Role::SUB_ADMIN => 'Sub Admin',
+            Role::SALES => 'Sales',
+            Role::SUPPORT => 'Support',
+        ];
+    }
+
+    private function validateStoreRequest(Request $request, string $role): array
+    {
+        if ($role === Role::SALES) {
+            return $this->resolveFormRequest(StoreSalesUserRequest::class, $request);
+        }
+
+        if ($role === Role::SUPPORT) {
+            return $this->resolveFormRequest(StoreSupportUserRequest::class, $request);
+        }
+
+        return $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+    }
+
+    private function resolveFormRequest(string $class, Request $request): array
+    {
+        /** @var \Illuminate\Foundation\Http\FormRequest $formRequest */
+        $formRequest = $class::createFrom($request);
+        $formRequest->setContainer(app())->setRedirector(app('redirect'));
+        $formRequest->setUserResolver($request->getUserResolver());
+        $formRequest->setRouteResolver($request->getRouteResolver());
+        $formRequest->validateResolved();
+
+        return $formRequest->validated();
     }
 }

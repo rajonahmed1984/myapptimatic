@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\ProjectTaskMessage;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -80,6 +81,106 @@ class ProjectTaskChatTest extends TestCase
             ->get(route('employee.projects.tasks.show', [$project, $hiddenTask]));
 
         $response->assertOk();
+    }
+
+    #[Test]
+    public function chat_messages_endpoint_returns_incremental_results(): void
+    {
+        [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser, $clientUser] = $this->setupProjectWithMembers();
+
+        $first = ProjectTaskMessage::create([
+            'project_task_id' => $visibleTask->id,
+            'author_type' => 'user',
+            'author_id' => $clientUser->id,
+            'message' => 'First message',
+        ]);
+
+        $second = ProjectTaskMessage::create([
+            'project_task_id' => $visibleTask->id,
+            'author_type' => 'user',
+            'author_id' => $clientUser->id,
+            'message' => 'Second message',
+        ]);
+
+        $response = $this->actingAs($clientUser)
+            ->getJson(route('client.projects.tasks.chat.messages', [$project, $visibleTask, 'after_id' => $first->id]));
+
+        $response->assertOk();
+        $this->assertTrue($response->json('ok'));
+        $this->assertCount(1, $response->json('data.items'));
+        $this->assertEquals($second->id, $response->json('data.items.0.id'));
+    }
+
+    #[Test]
+    public function client_cannot_read_messages_for_hidden_task(): void
+    {
+        [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser, $clientUser] = $this->setupProjectWithMembers();
+
+        $response = $this->actingAs($clientUser)
+            ->getJson(route('client.projects.tasks.chat.messages', [$project, $hiddenTask]));
+
+        $response->assertStatus(403);
+    }
+
+    #[Test]
+    public function client_can_send_chat_message_via_json(): void
+    {
+        [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser, $clientUser] = $this->setupProjectWithMembers();
+
+        $response = $this->actingAs($clientUser)
+            ->postJson(route('client.projects.tasks.chat.messages.store', [$project, $visibleTask]), [
+                'message' => 'Hello from json',
+            ]);
+
+        $response->assertOk();
+        $this->assertTrue($response->json('ok'));
+        $this->assertDatabaseHas('project_task_messages', [
+            'project_task_id' => $visibleTask->id,
+            'author_type' => 'user',
+            'author_id' => $clientUser->id,
+            'message' => 'Hello from json',
+        ]);
+    }
+
+    #[Test]
+    public function client_can_mark_chat_as_read(): void
+    {
+        [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser, $clientUser] = $this->setupProjectWithMembers();
+
+        $first = ProjectTaskMessage::create([
+            'project_task_id' => $visibleTask->id,
+            'author_type' => 'user',
+            'author_id' => $clientUser->id,
+            'message' => 'First message',
+        ]);
+
+        $second = ProjectTaskMessage::create([
+            'project_task_id' => $visibleTask->id,
+            'author_type' => 'user',
+            'author_id' => $clientUser->id,
+            'message' => 'Second message',
+        ]);
+
+        $response = $this->actingAs($clientUser)
+            ->patchJson(route('client.projects.tasks.chat.read', [$project, $visibleTask]), [
+                'last_read_id' => $second->id,
+            ]);
+
+        $response->assertOk()
+            ->assertJson([
+                'ok' => true,
+                'data' => [
+                    'last_read_id' => $second->id,
+                    'unread_count' => 0,
+                ],
+            ]);
+
+        $this->assertDatabaseHas('project_task_message_reads', [
+            'project_task_id' => $visibleTask->id,
+            'reader_type' => 'user',
+            'reader_id' => $clientUser->id,
+            'last_read_message_id' => $second->id,
+        ]);
     }
 
     private function setupProjectWithMembers(): array

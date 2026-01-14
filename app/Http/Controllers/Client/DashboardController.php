@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LicenseDomain;
 use App\Models\Project;
 use App\Models\Setting;
+use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -97,7 +98,7 @@ class DashboardController extends Controller
             'nextOpenInvoice' => $nextOpenInvoice,
             'recentTickets' => $recentTickets,
             'expiringLicenses' => $expiringLicenses,
-            'currency' => strtoupper((string) Setting::getValue('currency', 'USD')),
+            'currency' => strtoupper((string) Setting::getValue('currency', Currency::DEFAULT)),
             'projects' => $projects,
             'maintenanceRenewal' => $maintenanceRenewal,
         ]);

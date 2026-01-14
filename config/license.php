@@ -17,7 +17,7 @@ return [
         'billing_last_started_at' => null,
         'billing_last_status' => null,
         'billing_last_error' => null,
-        'currency' => 'USD',
+        'currency' => 'BDT',
         'invoice_generation_days' => 7,
         'invoice_due_days' => 7,
         'grace_period_days' => 0,

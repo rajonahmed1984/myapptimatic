@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Support\SystemLogger;
@@ -14,33 +16,14 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class ProjectTaskController extends Controller
 {
-    public function store(Request $request, Project $project): RedirectResponse
+    public function store(StoreTaskRequest $request, Project $project): RedirectResponse
     {
         $this->authorize('createTask', $project);
 
-        $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
-        $priorityOptions = array_keys(TaskSettings::priorityOptions());
-        $maxMb = TaskSettings::uploadMaxMb();
-
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'task_type' => ['required', Rule::in($taskTypeOptions)],
-            'priority' => ['nullable', Rule::in($priorityOptions)],
-            'time_estimate_minutes' => ['nullable', 'integer', 'min:0'],
-            'tags' => ['nullable', 'string'],
-            'relationship_ids' => ['nullable', 'string'],
-            'start_date' => ['required', 'date'],
-            'due_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'customer_visible' => ['nullable', 'boolean'],
-            'assignees' => ['nullable', 'array'],
-            'assignees.*' => ['nullable', 'string'],
-            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:' . ($maxMb * 1024)],
-        ]);
+        $data = $request->validated();
 
         $assignees = TaskAssignees::parse($data['assignees'] ?? []);
         if (empty($assignees)) {
@@ -88,7 +71,7 @@ class ProjectTaskController extends Controller
         return back()->with('status', 'Task added.');
     }
 
-    public function update(Request $request, Project $project, ProjectTask $task): RedirectResponse
+    public function update(UpdateTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse
     {
         $this->authorize('update', $task);
         $this->ensureTaskBelongsToProject($project, $task);
@@ -97,22 +80,7 @@ class ProjectTaskController extends Controller
             return back()->withErrors(['dates' => 'Task dates cannot be changed after creation.']);
         }
 
-        $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
-        $priorityOptions = array_keys(TaskSettings::priorityOptions());
-
-        $data = $request->validate([
-            'status' => ['required', 'in:pending,in_progress,blocked,completed,done'],
-            'description' => ['nullable', 'string'],
-            'task_type' => ['nullable', Rule::in($taskTypeOptions)],
-            'priority' => ['nullable', Rule::in($priorityOptions)],
-            'time_estimate_minutes' => ['nullable', 'integer', 'min:0'],
-            'tags' => ['nullable', 'string'],
-            'relationship_ids' => ['nullable', 'string'],
-            'progress' => ['nullable', 'integer', 'min:0', 'max:100'],
-            'customer_visible' => ['nullable', 'boolean'],
-            'assignees' => ['nullable', 'array'],
-            'assignees.*' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $taskType = $data['task_type'] ?? $task->task_type ?? 'feature';
         if ($taskType === 'upload' && ! $task->activities()->where('type', 'upload')->exists()) {

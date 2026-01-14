@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use App\Enums\Role;
 
 class EnsureAdmin
 {
@@ -16,7 +17,7 @@ class EnsureAdmin
             return redirect()->route('admin.login');
         }
 
-        if (! $user->isMasterAdmin() && ! $user->isSubAdmin() && ! $user->isSales() && ! $user->isSupport()) {
+        if (! in_array($user->role, Role::adminPanelRoles(), true)) {
             abort(403);
         }
 

@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use App\Providers\AuthServiceProvider;
+use App\Providers\EventServiceProvider;
+use App\Providers\ActivityTrackingEventServiceProvider;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withProviders([
         AuthServiceProvider::class,
+        App\Providers\EventServiceProvider::class,
+        ActivityTrackingEventServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->validateCsrfTokens(except: [
@@ -33,7 +37,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'verify.api.signature' => \App\Http\Middleware\VerifyApiSignature::class,
             'restrict.cron' => \App\Http\Middleware\RestrictCronAccess::class,
             'employee' => \App\Http\Middleware\EnsureEmployee::class,
+            'employee.activity' => \App\Http\Middleware\TrackEmployeeActivity::class,
             'salesrep' => \App\Http\Middleware\EnsureSalesRep::class,
+            'user.activity' => \App\Http\Middleware\TrackAuthenticatedUserActivity::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

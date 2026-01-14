@@ -10,6 +10,8 @@ use App\Models\SalesRepresentative;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\Setting;
+use App\Http\Requests\StoreClientUserRequest;
+use App\Enums\Role;
 use App\Support\Branding;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
@@ -45,27 +47,9 @@ class CustomerController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreClientUserRequest $request)
     {
-        $rules = [
-            'name' => ['required', 'string', 'max:255'],
-            'company_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'address' => ['nullable', 'string'],
-            'status' => ['required', Rule::in(['active', 'inactive'])],
-            'access_override_until' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-            'user_password' => ['nullable', 'string', 'min:8'],
-            'send_account_message' => ['nullable', 'boolean'],
-            'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
-        ];
-
-        if ($request->filled('user_password')) {
-            $rules['email'] = ['required', 'email', 'max:255', Rule::unique('users', 'email')];
-        }
-
-        $data = $request->validate($rules);
+        $data = $request->validated();
 
         $customer = Customer::create([
             'name' => $data['name'],
@@ -90,7 +74,7 @@ class CustomerController extends Controller
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'password' => Hash::make($data['user_password']),
-                'role' => 'client',
+                'role' => Role::CLIENT,
                 'customer_id' => $customer->id,
             ]);
 

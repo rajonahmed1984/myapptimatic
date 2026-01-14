@@ -28,20 +28,17 @@ class ProjectTaskActivity extends Model
 
     public function userActor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'actor_id')
-            ->whereIn('actor_type', ['admin', 'client', 'user']);
+        return $this->belongsTo(User::class, 'actor_id');
     }
 
     public function employeeActor(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'actor_id')
-            ->where('actor_type', 'employee');
+        return $this->belongsTo(Employee::class, 'actor_id');
     }
 
     public function salesRepActor(): BelongsTo
     {
-        return $this->belongsTo(SalesRepresentative::class, 'actor_id')
-            ->whereIn('actor_type', ['sales_rep', 'salesrep']);
+        return $this->belongsTo(SalesRepresentative::class, 'actor_id');
     }
 
     public function actorName(): string

@@ -3,33 +3,23 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
-use App\Support\TaskSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class ProjectTaskController extends Controller
 {
-    public function store(Request $request, Project $project): RedirectResponse
+    public function store(StoreTaskRequest $request, Project $project): RedirectResponse
     {
         $this->authorize('createTask', $project);
 
-        $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
-        $priorityOptions = array_keys(TaskSettings::priorityOptions());
-        $maxMb = TaskSettings::uploadMaxMb();
-
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'task_type' => ['required', Rule::in($taskTypeOptions)],
-            'priority' => ['nullable', Rule::in($priorityOptions)],
-            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:' . ($maxMb * 1024)],
-        ]);
+        $data = $request->validated();
 
         if ($data['task_type'] === 'upload' && ! $request->hasFile('attachment')) {
             return back()->withErrors(['attachment' => 'Upload tasks require at least one file.'])->withInput();
@@ -68,15 +58,12 @@ class ProjectTaskController extends Controller
         return back()->with('status', 'Task added.');
     }
 
-    public function update(Request $request, Project $project, ProjectTask $task): RedirectResponse
+    public function update(UpdateTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse
     {
         $this->authorize('update', $task);
         $this->ensureTaskBelongsToProject($project, $task);
 
-        $data = $request->validate([
-            'status' => ['required', 'in:pending,in_progress,blocked,completed,done'],
-            'description' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $payload = [
             'status' => $data['status'],

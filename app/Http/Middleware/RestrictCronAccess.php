@@ -19,6 +19,10 @@ class RestrictCronAccess
             abort(403, 'Cron access denied (IP).');
         }
 
+        if (! $request->hasValidSignature()) {
+            abort(401, 'Invalid cron signature.');
+        }
+
         $secret = env('CRON_HMAC_SECRET');
         $timestamp = $request->header('X-Timestamp');
         $signature = $request->header('X-Signature');

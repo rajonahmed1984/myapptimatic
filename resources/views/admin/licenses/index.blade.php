@@ -65,10 +65,10 @@
                             <div class="mt-2 text-slate-900">{{ $domain ?? '--' }}</div>
                         </td>
                         <td class="px-4 py-3">
-                            <div class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $syncClass }}">
+                            <div class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $syncClass }}" data-sync-badge="{{ $license->id }}">
                                 {{ $syncLabel }}
                             </div>
-                            <div class="mt-1 text-xs text-slate-500">
+                            <div class="mt-1 text-xs text-slate-500" data-sync-time="{{ $license->id }}">
                                 {{ $syncAt ? $syncAt->format($globalDateFormat.' H:i') : 'No sync yet' }}
                             </div>
                         </td>
@@ -86,7 +86,13 @@
                             <div class="flex items-center justify-end gap-3">
                                 <form method="POST" action="{{ route('admin.licenses.sync', $license) }}" style="display: inline;">
                                     @csrf
-                                    <button type="submit" class="text-blue-600 hover:text-blue-500 text-sm font-medium">Sync</button>
+                                    <button
+                                        type="submit"
+                                        class="text-blue-600 hover:text-blue-500 text-sm font-medium"
+                                        data-license-sync
+                                        data-license-id="{{ $license->id }}"
+                                        data-sync-status-url="{{ route('admin.licenses.sync-status', $license) }}"
+                                    >Sync</button>
                                 </form>
                                 <a href="{{ route('admin.licenses.edit', $license) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
                                 <form method="POST" action="{{ route('admin.licenses.destroy', $license) }}" onsubmit="return confirm('Delete this license?');" style="display: inline;">
@@ -128,6 +134,102 @@
                         }
                     });
                 });
+            });
+        </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const statusClasses = [
+                    'bg-emerald-100',
+                    'text-emerald-700',
+                    'bg-amber-100',
+                    'text-amber-700',
+                    'bg-slate-100',
+                    'text-slate-600',
+                ];
+
+                const updateBadge = (badge, label, classNames) => {
+                    if (!badge) return;
+                    badge.classList.remove(...statusClasses);
+                    const nextClasses = (classNames || '').split(' ').filter(Boolean);
+                    if (nextClasses.length) {
+                        badge.classList.add(...nextClasses);
+                    }
+                    badge.textContent = label || 'Synced';
+                };
+
+                const refreshStatus = async (statusUrl, licenseId) => {
+                    if (!statusUrl || !licenseId) return;
+
+                    const badge = document.querySelector(`[data-sync-badge="${licenseId}"]`);
+                    const time = document.querySelector(`[data-sync-time="${licenseId}"]`);
+
+                    try {
+                        const response = await fetch(statusUrl, { headers: { 'Accept': 'application/json' } });
+                        if (!response.ok) return;
+                        const payload = await response.json();
+                        if (!payload.ok) return;
+
+                        updateBadge(badge, payload.data?.sync_label, payload.data?.sync_class);
+                        if (time && payload.data?.display_time) {
+                            time.textContent = payload.data.display_time;
+                        }
+                    } catch (e) {
+                        // Silent fail keeps current UI state.
+                    }
+                };
+
+                const bindSyncButtons = () => {
+                    const syncButtons = document.querySelectorAll('[data-license-sync]');
+                    syncButtons.forEach((btn) => {
+                        if (btn.dataset.syncBound === 'true') return;
+                        btn.dataset.syncBound = 'true';
+
+                        btn.addEventListener('click', async (event) => {
+                            if (!window.fetch) {
+                                return;
+                            }
+
+                            event.preventDefault();
+
+                            const form = btn.closest('form');
+                            if (!form) return;
+
+                            const licenseId = btn.getAttribute('data-license-id');
+                            const statusUrl = btn.getAttribute('data-sync-status-url');
+                            const badge = document.querySelector(`[data-sync-badge="${licenseId}"]`);
+                            const time = document.querySelector(`[data-sync-time="${licenseId}"]`);
+                            const token = form.querySelector('input[name="_token"]')?.value;
+                            const originalLabel = btn.textContent;
+
+                            btn.disabled = true;
+                            btn.textContent = 'Syncing...';
+                            updateBadge(badge, 'Queued', 'bg-slate-100 text-slate-600');
+                            if (time) {
+                                time.textContent = 'Sync queued';
+                            }
+
+                            try {
+                                await fetch(form.action, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': token || '',
+                                    },
+                                });
+
+                                setTimeout(() => refreshStatus(statusUrl, licenseId), 1500);
+                            } catch (e) {
+                                updateBadge(badge, 'Sync failed', 'bg-amber-100 text-amber-700');
+                            } finally {
+                                btn.disabled = false;
+                                btn.textContent = originalLabel;
+                            }
+                        });
+                    });
+                };
+
+                bindSyncButtons();
+                document.addEventListener('htmx:afterSwap', bindSyncButtons);
             });
         </script>
     @endpush

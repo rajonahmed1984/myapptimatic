@@ -10,7 +10,7 @@ class CronController extends Controller
 {
     public function billing(Request $request)
     {
-        $token = (string) $request->query('token', '');
+        $token = (string) $request->input('token', '');
         $expected = (string) Setting::getValue('cron_token');
 
         if ($expected === '' || ! hash_equals($expected, $token)) {

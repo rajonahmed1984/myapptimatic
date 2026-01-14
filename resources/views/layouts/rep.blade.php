@@ -23,28 +23,40 @@
 
             <nav class="mt-10 space-y-4 text-sm">
                 <div>
-                    <a class="{{ request()->routeIs('rep.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('rep.dashboard') }}">
+                    <x-nav-link 
+                        :href="route('rep.dashboard')"
+                        routes="rep.dashboard"
+                    >
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Sales Dashboard
-                    </a>
+                    </x-nav-link>
                 </div>
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Work & Delivery</div>
-                    <a class="{{ request()->routeIs('rep.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('rep.projects.index') }}">
+                    <x-nav-link 
+                        :href="route('rep.projects.index')"
+                        routes="rep.projects.*"
+                    >
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Projects
-                    </a>
+                    </x-nav-link>
                 </div>
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
-                    <a class="{{ request()->routeIs('rep.earnings.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('rep.earnings.index') }}">
+                    <x-nav-link 
+                        :href="route('rep.earnings.index')"
+                        routes="rep.earnings.*"
+                    >
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Commissions
-                    </a>
-                    <a class="{{ request()->routeIs('rep.payouts.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('rep.payouts.index') }}">
+                    </x-nav-link>
+                    <x-nav-link 
+                        :href="route('rep.payouts.index')"
+                        routes="rep.payouts.*"
+                    >
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Payouts
-                    </a>
+                    </x-nav-link>
                 </div>
             </nav>
 

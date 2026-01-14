@@ -8,12 +8,16 @@ use App\Models\PayrollItem;
 use App\Models\Timesheet;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\ProjectTaskSubtask;
+use App\Models\License;
 use App\Policies\EmployeePolicy;
 use App\Policies\LeaveRequestPolicy;
 use App\Policies\PayrollItemPolicy;
 use App\Policies\TimesheetPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\ProjectTaskPolicy;
+use App\Policies\ProjectTaskSubtaskPolicy;
+use App\Policies\LicensePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -26,6 +30,8 @@ class AuthServiceProvider extends ServiceProvider
         PayrollItem::class => PayrollItemPolicy::class,
         Project::class => ProjectPolicy::class,
         ProjectTask::class => ProjectTaskPolicy::class,
+        ProjectTaskSubtask::class => ProjectTaskSubtaskPolicy::class,
+        License::class => LicensePolicy::class,
     ];
 
     public function boot(): void

@@ -9,11 +9,13 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Enums\Role;
 use App\Models\Employee;
+use App\Models\Concerns\HasActivityTracking;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasActivityTracking;
 
     /**
      * The attributes that are mass assignable.
@@ -26,6 +28,7 @@ class User extends Authenticatable
         'password',
         'role',
         'customer_id',
+        'currency',
     ];
 
     /**
@@ -73,32 +76,32 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return in_array($this->role, ['admin', 'master_admin', 'sub_admin']);
+        return in_array($this->role, Role::adminRoles(), true);
     }
 
     public function isMasterAdmin(): bool
     {
-        return $this->role === 'master_admin';
+        return $this->role === Role::MASTER_ADMIN;
     }
 
     public function isSubAdmin(): bool
     {
-        return $this->role === 'sub_admin';
+        return $this->role === Role::SUB_ADMIN;
     }
 
     public function isSales(): bool
     {
-        return $this->role === 'sales';
+        return $this->role === Role::SALES;
     }
 
     public function isSupport(): bool
     {
-        return $this->role === 'support';
+        return $this->role === Role::SUPPORT;
     }
 
     public function isClient(): bool
     {
-        return $this->role === 'client';
+        return $this->role === Role::CLIENT;
     }
 
     public function employee(): HasOne

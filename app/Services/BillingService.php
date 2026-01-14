@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\Subscription;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class BillingService
 {
@@ -228,16 +229,43 @@ class BillingService
 
     public function nextInvoiceNumber(): string
     {
-        $maxNumber = (int) Invoice::query()
+        return DB::transaction(function () {
+            DB::table('invoice_sequences')->insertOrIgnore([
+                'id' => 1,
+                'current_number' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $sequence = DB::table('invoice_sequences')
+                ->where('id', 1)
+                ->lockForUpdate()
+                ->first();
+
+            $currentNumber = $sequence ? (int) $sequence->current_number : 0;
+            $maxNumber = $this->maxInvoiceNumber();
+
+            if ($maxNumber > $currentNumber) {
+                $currentNumber = $maxNumber;
+            }
+
+            $nextNumber = $currentNumber + 1;
+
+            DB::table('invoice_sequences')
+                ->where('id', 1)
+                ->update([
+                    'current_number' => $nextNumber,
+                    'updated_at' => now(),
+                ]);
+
+            return (string) $nextNumber;
+        });
+    }
+
+    private function maxInvoiceNumber(): int
+    {
+        return (int) Invoice::query()
             ->selectRaw('MAX(CAST(number AS UNSIGNED)) as max_number')
             ->value('max_number');
-
-        $next = $maxNumber + 1;
-
-        while (Invoice::query()->where('number', (string) $next)->exists()) {
-            $next++;
-        }
-
-        return (string) $next;
     }
 }

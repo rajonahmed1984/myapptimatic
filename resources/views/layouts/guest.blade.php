@@ -10,7 +10,7 @@
                 $wideForm = request()->routeIs('register');
             @endphp
             <div class="w-full">
-                <div class="mb-8 flex flex-wrap items-center justify-between border-b gap-4">
+                <div class="mb-8 flex flex-wrap items-center justify-between border-b py-2 gap-4">
                     <a href="{{ url('/') }}" class="flex items-center gap-3">
                         @if(!empty($portalBranding['logo_url']))
                             <img src="{{ $portalBranding['logo_url'] }}" alt="Company logo" class="h-12 rounded-xl p-1">

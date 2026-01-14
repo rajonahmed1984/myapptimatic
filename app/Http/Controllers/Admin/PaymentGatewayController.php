@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentGateway;
 use App\Models\Setting;
+use App\Support\Currency;
 use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PaymentGatewayController extends Controller
 {
@@ -20,10 +22,15 @@ class PaymentGatewayController extends Controller
 
     public function edit(PaymentGateway $paymentGateway)
     {
+        $defaultCurrency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($defaultCurrency)) {
+            $defaultCurrency = Currency::DEFAULT;
+        }
+
         return view('admin.payment-gateways.edit', [
             'gateway' => $paymentGateway,
-            'currencyOptions' => ['BDT', 'USD'],
-            'defaultCurrency' => strtoupper((string) Setting::getValue('currency', 'USD')),
+            'currencyOptions' => Currency::allowed(),
+            'defaultCurrency' => $defaultCurrency,
         ]);
     }
 
@@ -63,7 +70,7 @@ class PaymentGatewayController extends Controller
             'force_subscriptions' => ['nullable', 'boolean'],
             'require_shipping' => ['nullable', 'boolean'],
             'client_address_matching' => ['nullable', 'boolean'],
-            'processing_currency' => ['nullable', 'string', 'max:10'],
+            'processing_currency' => ['nullable', 'string', 'size:3', Rule::in(Currency::allowed())],
             'sandbox' => ['nullable', 'boolean'],
             'deactivate' => ['nullable', 'boolean'],
         ]);
@@ -105,7 +112,9 @@ class PaymentGatewayController extends Controller
                     'store_password' => $data['store_password'] ?? '',
                     'button_label' => $data['button_label'] ?? '',
                     'easy_checkout' => $request->boolean('easy_checkout'),
-                    'processing_currency' => $data['processing_currency'] ?? '',
+                    'processing_currency' => isset($data['processing_currency'])
+                        ? strtoupper($data['processing_currency'])
+                        : '',
                     'sandbox' => $request->boolean('sandbox'),
                 ]);
                 break;

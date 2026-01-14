@@ -9,12 +9,16 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Concerns\HasActivityTracking;
+use App\Models\EmployeeSession;
+use App\Models\EmployeeActivityDaily;
 
 class Employee extends Authenticatable
 {
     use HasFactory;
     use Notifiable;
     use SoftDeletes;
+    use HasActivityTracking;
 
     protected $fillable = [
         'user_id',
@@ -75,6 +79,27 @@ class Employee extends Authenticatable
         return $this->hasMany(PayrollItem::class);
     }
 
+    // Activity tracking for employees uses dedicated tables.
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(EmployeeSession::class);
+    }
+
+    public function activityDaily(): HasMany
+    {
+        return $this->hasMany(EmployeeActivityDaily::class);
+    }
+
+    public function activitySessions(): HasMany
+    {
+        return $this->hasMany(EmployeeSession::class);
+    }
+
+    public function activityDailyRecords(): HasMany
+    {
+        return $this->hasMany(EmployeeActivityDaily::class);
+    }
+
     public function activeCompensation(): HasOne
     {
         return $this->hasOne(EmployeeCompensation::class)
@@ -90,5 +115,13 @@ class Employee extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function isOnline(int $minutes = 2): bool
+    {
+        return $this->sessions()
+            ->whereNull('logout_at')
+            ->where('last_seen_at', '>=', now()->subMinutes($minutes))
+            ->exists();
     }
 }

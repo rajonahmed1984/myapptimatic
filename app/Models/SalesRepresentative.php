@@ -8,9 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
+use App\Models\Concerns\HasActivityTracking;
 
 class SalesRepresentative extends Model
 {
+    use HasActivityTracking;
+
     protected $fillable = [
         'user_id',
         'employee_id',

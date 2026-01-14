@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 
 class PublicProductController extends Controller
@@ -22,7 +23,7 @@ class PublicProductController extends Controller
 
         return view('public.products.index', [
             'products' => $products,
-            'currency' => strtoupper((string) Setting::getValue('currency', 'USD')),
+            'currency' => strtoupper((string) Setting::getValue('currency', Currency::DEFAULT)),
         ]);
     }
 
@@ -52,7 +53,7 @@ class PublicProductController extends Controller
 
         return view('public.products.show', [
             'product' => $product,
-            'currency' => strtoupper((string) Setting::getValue('currency', 'USD')),
+            'currency' => strtoupper((string) Setting::getValue('currency', Currency::DEFAULT)),
             'selectedPlanId' => $selectedPlanId,
         ]);
     }

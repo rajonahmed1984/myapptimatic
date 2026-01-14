@@ -7,19 +7,20 @@ use App\Models\Invoice;
 use App\Models\License;
 use App\Models\Setting;
 use App\Models\Subscription;
+use App\Jobs\SendCronSummaryEmail;
+use App\Jobs\SendInvoiceCreatedNotifications;
+use App\Jobs\SendInvoiceReminderNotification;
+use App\Jobs\SendLicenseExpiryNoticeNotification;
+use App\Jobs\SendTicketAdminReminderNotification;
+use App\Jobs\SendTicketAutoCloseNotification;
+use App\Jobs\SendTicketFeedbackNotification;
 use App\Services\BillingService;
 use App\Services\MaintenanceBillingService;
 use App\Services\StatusUpdateService;
-use App\Services\AdminNotificationService;
-use App\Services\ClientNotificationService;
 use App\Models\SupportTicket;
-use App\Support\Branding;
 use App\Support\SystemLogger;
-use App\Support\UrlResolver;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class RunBillingCycle extends Command
 {
@@ -30,9 +31,7 @@ class RunBillingCycle extends Command
     public function __construct(
         private BillingService $billingService,
         private MaintenanceBillingService $maintenanceBillingService,
-        private StatusUpdateService $statusUpdateService,
-        private AdminNotificationService $adminNotifications,
-        private ClientNotificationService $clientNotifications
+        private StatusUpdateService $statusUpdateService
     )
     {
         parent::__construct();
@@ -137,36 +136,36 @@ class RunBillingCycle extends Command
     {
         $count = 0;
         $fixedTermTerminations = 0;
-        $subscriptions = Subscription::query()
-            ->with('plan')
+        Subscription::query()
+            ->with(['plan', 'customer'])
             ->where('status', 'active')
-            ->whereDate('next_invoice_at', '<=', $today)
-            ->get();
+            ->whereDate('next_invoice_at', '<=', $today->toDateString())
+            ->orderBy('id')
+            ->chunkById(200, function ($subscriptions) use (&$count, &$fixedTermTerminations, $today) {
+                foreach ($subscriptions as $subscription) {
+                    if ($subscription->cancel_at_period_end && $subscription->current_period_end->lessThanOrEqualTo($today)) {
+                        $subscription->update([
+                            'status' => 'cancelled',
+                            'auto_renew' => false,
+                        ]);
+                        $fixedTermTerminations++;
+                        continue;
+                    }
 
-        foreach ($subscriptions as $subscription) {
-            if ($subscription->cancel_at_period_end && $subscription->current_period_end->lessThanOrEqualTo($today)) {
-                $subscription->update([
-                    'status' => 'cancelled',
-                    'auto_renew' => false,
-                ]);
-                $fixedTermTerminations++;
-                continue;
-            }
+                    if ($subscription->cancel_at_period_end && $subscription->current_period_end->greaterThan($today)) {
+                        $subscription->update([
+                            'next_invoice_at' => $subscription->current_period_end->toDateString(),
+                        ]);
+                        continue;
+                    }
 
-            if ($subscription->cancel_at_period_end && $subscription->current_period_end->greaterThan($today)) {
-                $subscription->update([
-                    'next_invoice_at' => $subscription->current_period_end->toDateString(),
-                ]);
-                continue;
-            }
-
-            $invoice = $this->billingService->generateInvoiceForSubscription($subscription, $today);
-            if ($invoice) {
-                $count++;
-                $this->adminNotifications->sendInvoiceCreated($invoice);
-                $this->clientNotifications->sendInvoiceCreated($invoice);
-            }
-        }
+                    $invoice = $this->billingService->generateInvoiceForSubscription($subscription, $today);
+                    if ($invoice) {
+                        $count++;
+                        SendInvoiceCreatedNotifications::dispatch($invoice->id);
+                    }
+                }
+            });
 
         return [
             'generated' => $count,
@@ -199,6 +198,7 @@ class RunBillingCycle extends Command
         $lateFeeDays = (int) Setting::getValue('late_fee_days');
         $lateFeeAmount = (float) Setting::getValue('late_fee_amount');
         $lateFeeType = Setting::getValue('late_fee_type');
+        $now = Carbon::now();
 
         if ($lateFeeDays <= 0 || $lateFeeAmount <= 0) {
             return $count;
@@ -206,28 +206,29 @@ class RunBillingCycle extends Command
 
         $targetDate = $today->copy()->subDays($lateFeeDays);
 
-        $invoices = Invoice::query()
+        Invoice::query()
             ->whereIn('status', ['unpaid', 'overdue'])
             ->whereNull('late_fee_applied_at')
-            ->whereDate('due_date', '<=', $targetDate)
-            ->get();
+            ->whereDate('due_date', '<=', $targetDate->toDateString())
+            ->orderBy('id')
+            ->chunkById(200, function ($invoices) use (&$count, $lateFeeType, $lateFeeAmount, $now) {
+                foreach ($invoices as $invoice) {
+                    $lateFee = $lateFeeType === 'percent'
+                        ? ($invoice->subtotal * ($lateFeeAmount / 100))
+                        : $lateFeeAmount;
 
-        foreach ($invoices as $invoice) {
-            $lateFee = $lateFeeType === 'percent'
-                ? ($invoice->subtotal * ($lateFeeAmount / 100))
-                : $lateFeeAmount;
+                    if ($lateFee <= 0) {
+                        continue;
+                    }
 
-            if ($lateFee <= 0) {
-                continue;
-            }
-
-            $invoice->update([
-                'late_fee' => $invoice->late_fee + $lateFee,
-                'total' => $invoice->subtotal + $invoice->late_fee + $lateFee,
-                'late_fee_applied_at' => Carbon::now(),
-            ]);
-            $count++;
-        }
+                    $invoice->update([
+                        'late_fee' => $invoice->late_fee + $lateFee,
+                        'total' => $invoice->subtotal + $invoice->late_fee + $lateFee,
+                        'late_fee_applied_at' => $now,
+                    ]);
+                    $count++;
+                }
+            });
 
         return $count;
     }
@@ -238,23 +239,13 @@ class RunBillingCycle extends Command
             return 0;
         }
 
-        $count = 0;
         $days = (int) Setting::getValue('auto_cancellation_days');
         $targetDate = $today->copy()->subDays($days);
 
-        $invoices = Invoice::query()
+        return (int) Invoice::query()
             ->whereIn('status', ['unpaid', 'overdue'])
-            ->whereDate('due_date', '<=', $targetDate)
-            ->get();
-
-        foreach ($invoices as $invoice) {
-            $invoice->update([
-                'status' => 'cancelled',
-            ]);
-            $count++;
-        }
-
-        return $count;
+            ->whereDate('due_date', '<=', $targetDate->toDateString())
+            ->update(['status' => 'cancelled']);
     }
 
     private function applySuspensions(Carbon $today): int
@@ -461,23 +452,32 @@ class RunBillingCycle extends Command
 
         $threshold = $today->copy()->subDays($days)->endOfDay();
         $count = 0;
+        $now = Carbon::now();
 
-        $tickets = SupportTicket::query()
+        SupportTicket::query()
+            ->select('id')
             ->whereIn('status', ['open', 'answered', 'customer_reply'])
             ->whereNotNull('last_reply_at')
             ->where('last_reply_at', '<=', $threshold)
             ->whereNull('closed_at')
-            ->get();
+            ->orderBy('id')
+            ->chunkById(200, function ($tickets) use (&$count, $now) {
+                $ids = $tickets->pluck('id')->all();
+                foreach ($ids as $ticketId) {
+                    SendTicketAutoCloseNotification::dispatch($ticketId);
+                }
 
-        foreach ($tickets as $ticket) {
-            $ticket->update([
-                'status' => 'closed',
-                'closed_at' => Carbon::now(),
-                'auto_closed_at' => Carbon::now(),
-            ]);
-            $this->clientNotifications->sendTicketAutoClose($ticket->fresh('customer'));
-            $count++;
-        }
+                if (! empty($ids)) {
+                    SupportTicket::query()
+                        ->whereIn('id', $ids)
+                        ->update([
+                            'status' => 'closed',
+                            'closed_at' => $now,
+                            'auto_closed_at' => $now,
+                        ]);
+                    $count += count($ids);
+                }
+            });
 
         return $count;
     }
@@ -491,19 +491,28 @@ class RunBillingCycle extends Command
 
         $threshold = $today->copy()->subDays($days)->endOfDay();
         $count = 0;
+        $now = Carbon::now();
 
-        $tickets = SupportTicket::query()
+        SupportTicket::query()
+            ->select('id')
             ->where('status', 'customer_reply')
             ->whereNotNull('last_reply_at')
             ->where('last_reply_at', '<=', $threshold)
             ->whereNull('admin_reminder_sent_at')
-            ->get();
+            ->orderBy('id')
+            ->chunkById(200, function ($tickets) use (&$count, $now) {
+                $ids = $tickets->pluck('id')->all();
+                foreach ($ids as $ticketId) {
+                    SendTicketAdminReminderNotification::dispatch($ticketId);
+                }
 
-        foreach ($tickets as $ticket) {
-            $this->adminNotifications->sendTicketReminder($ticket->fresh('customer'));
-            $ticket->update(['admin_reminder_sent_at' => Carbon::now()]);
-            $count++;
-        }
+                if (! empty($ids)) {
+                    SupportTicket::query()
+                        ->whereIn('id', $ids)
+                        ->update(['admin_reminder_sent_at' => $now]);
+                    $count += count($ids);
+                }
+            });
 
         return $count;
     }
@@ -517,19 +526,28 @@ class RunBillingCycle extends Command
 
         $threshold = $today->copy()->subDays($days)->endOfDay();
         $count = 0;
+        $now = Carbon::now();
 
-        $tickets = SupportTicket::query()
+        SupportTicket::query()
+            ->select('id')
             ->where('status', 'closed')
             ->whereNotNull('closed_at')
             ->where('closed_at', '<=', $threshold)
             ->whereNull('feedback_sent_at')
-            ->get();
+            ->orderBy('id')
+            ->chunkById(200, function ($tickets) use (&$count, $now) {
+                $ids = $tickets->pluck('id')->all();
+                foreach ($ids as $ticketId) {
+                    SendTicketFeedbackNotification::dispatch($ticketId);
+                }
 
-        foreach ($tickets as $ticket) {
-            $this->clientNotifications->sendTicketFeedback($ticket->fresh('customer'));
-            $ticket->update(['feedback_sent_at' => Carbon::now()]);
-            $count++;
-        }
+                if (! empty($ids)) {
+                    SupportTicket::query()
+                        ->whereIn('id', $ids)
+                        ->update(['feedback_sent_at' => $now]);
+                    $count += count($ids);
+                }
+            });
 
         return $count;
     }
@@ -539,49 +557,74 @@ class RunBillingCycle extends Command
         $count = 0;
         $firstDays = (int) Setting::getValue('license_expiry_first_notice_days');
         $secondDays = (int) Setting::getValue('license_expiry_second_notice_days');
+        $now = Carbon::now();
 
         if ($firstDays > 0) {
             $targetDate = $today->copy()->addDays($firstDays)->toDateString();
-            $licenses = License::query()
+            License::query()
+                ->select('id')
                 ->where('status', 'active')
                 ->whereDate('expires_at', $targetDate)
                 ->whereNull('expiry_first_notice_sent_at')
-                ->get();
+                ->orderBy('id')
+                ->chunkById(200, function ($licenses) use (&$count, $now) {
+                    $ids = $licenses->pluck('id')->all();
+                    foreach ($ids as $licenseId) {
+                        SendLicenseExpiryNoticeNotification::dispatch($licenseId, 'license_expiry_notice');
+                    }
 
-            foreach ($licenses as $license) {
-                $this->clientNotifications->sendLicenseExpiryNotice($license, 'license_expiry_notice');
-                $license->update(['expiry_first_notice_sent_at' => Carbon::now()]);
-                $count++;
-            }
+                    if (! empty($ids)) {
+                        License::query()
+                            ->whereIn('id', $ids)
+                            ->update(['expiry_first_notice_sent_at' => $now]);
+                        $count += count($ids);
+                    }
+                });
         }
 
         if ($secondDays > 0) {
             $targetDate = $today->copy()->addDays($secondDays)->toDateString();
-            $licenses = License::query()
+            License::query()
+                ->select('id')
                 ->where('status', 'active')
                 ->whereDate('expires_at', $targetDate)
                 ->whereNull('expiry_second_notice_sent_at')
-                ->get();
+                ->orderBy('id')
+                ->chunkById(200, function ($licenses) use (&$count, $now) {
+                    $ids = $licenses->pluck('id')->all();
+                    foreach ($ids as $licenseId) {
+                        SendLicenseExpiryNoticeNotification::dispatch($licenseId, 'license_expiry_notice');
+                    }
 
-            foreach ($licenses as $license) {
-                $this->clientNotifications->sendLicenseExpiryNotice($license, 'license_expiry_notice');
-                $license->update(['expiry_second_notice_sent_at' => Carbon::now()]);
-                $count++;
-            }
+                    if (! empty($ids)) {
+                        License::query()
+                            ->whereIn('id', $ids)
+                            ->update(['expiry_second_notice_sent_at' => $now]);
+                        $count += count($ids);
+                    }
+                });
         }
 
-        $expired = License::query()
+        License::query()
+            ->select('id')
             ->where('status', 'active')
             ->whereNotNull('expires_at')
             ->where('expires_at', '<=', $today->toDateString())
             ->whereNull('expiry_expired_notice_sent_at')
-            ->get();
+            ->orderBy('id')
+            ->chunkById(200, function ($licenses) use (&$count, $now) {
+                $ids = $licenses->pluck('id')->all();
+                foreach ($ids as $licenseId) {
+                    SendLicenseExpiryNoticeNotification::dispatch($licenseId, 'license_expired_notice');
+                }
 
-        foreach ($expired as $license) {
-            $this->clientNotifications->sendLicenseExpiryNotice($license, 'license_expired_notice');
-            $license->update(['expiry_expired_notice_sent_at' => Carbon::now()]);
-            $count++;
-        }
+                if (! empty($ids)) {
+                    License::query()
+                        ->whereIn('id', $ids)
+                        ->update(['expiry_expired_notice_sent_at' => $now]);
+                    $count += count($ids);
+                }
+            });
 
         return $count;
     }
@@ -609,19 +652,27 @@ class RunBillingCycle extends Command
         array $statuses
     ): int {
         $count = 0;
+        $now = Carbon::now();
 
-        $invoices = Invoice::query()
-            ->with('customer')
+        Invoice::query()
+            ->select('id')
             ->whereIn('status', $statuses)
             ->whereDate('due_date', $targetDate->toDateString())
             ->whereNull($sentColumn)
-            ->get();
+            ->orderBy('id')
+            ->chunkById(200, function ($invoices) use (&$count, $templateKey, $sentColumn, $now) {
+                $ids = $invoices->pluck('id')->all();
+                foreach ($ids as $invoiceId) {
+                    SendInvoiceReminderNotification::dispatch($invoiceId, $templateKey);
+                }
 
-        foreach ($invoices as $invoice) {
-            $this->adminNotifications->sendInvoiceReminder($invoice, $templateKey);
-            $invoice->update([$sentColumn => Carbon::now()]);
-            $count++;
-        }
+                if (! empty($ids)) {
+                    Invoice::query()
+                        ->whereIn('id', $ids)
+                        ->update([$sentColumn => $now]);
+                    $count += count($ids);
+                }
+            });
 
         return $count;
     }
@@ -656,72 +707,12 @@ class RunBillingCycle extends Command
         Carbon $finishedAt,
         ?string $errorMessage
     ): void {
-        $to = Setting::getValue('company_email') ?: config('mail.from.address');
-        if (! $to) {
-            return;
-        }
-
-        $companyName = Setting::getValue('company_name', config('app.name'));
-        $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
-        $portalUrl = UrlResolver::portalUrl();
-        $portalLoginUrl = $portalUrl . '/admin';
-        $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
-        $timeZone = Setting::getValue('time_zone', config('app.timezone'));
-        $subject = $status === 'success'
-            ? "{$companyName} Cron Job Activity"
-            : "{$companyName} Cron Job Failed";
-
-        // Structured metrics to mirror WHMCS-style cron summary rows.
-        $metricCards = [
-            ['label' => 'Invoices', 'value' => $metrics['invoices_generated'], 'subtitle' => 'Generated'],
-            ['label' => 'Maintenance Invoices', 'value' => $metrics['maintenance_invoices_generated'], 'subtitle' => 'Generated'],
-            ['label' => 'Late Fees', 'value' => $metrics['late_fees_added'], 'subtitle' => 'Added'],
-            ['label' => 'Credit Card Charges', 'value' => 0, 'subtitle' => 'Captured'],
-            ['label' => 'Invoice & Overdue Reminders', 'value' => $metrics['invoice_reminders_sent'], 'subtitle' => 'Sent'],
-            ['label' => 'Domain Renewal Notices', 'value' => $metrics['license_expiry_notices'], 'subtitle' => 'Sent'],
-            ['label' => 'Cancellation Requests', 'value' => 0, 'subtitle' => 'Processed'],
-            ['label' => 'Overdue Suspensions', 'value' => $metrics['suspensions'], 'subtitle' => 'Suspended'],
-            ['label' => 'Overdue Terminations', 'value' => $metrics['terminations'], 'subtitle' => 'Terminated'],
-            ['label' => 'Fixed Term Terminations', 'value' => $metrics['fixed_term_terminations'], 'subtitle' => 'Terminated'],
-            ['label' => 'Auto Cancellations', 'value' => $metrics['auto_cancellations'], 'subtitle' => 'Invoices'],
-            ['label' => 'Client Status Update', 'value' => $metrics['client_status_updates'], 'subtitle' => 'Completed'],
-            ['label' => 'Inactive Tickets', 'value' => $metrics['ticket_auto_closed'], 'subtitle' => 'Closed'],
-            ['label' => 'Process Email Campaigns', 'value' => 0, 'subtitle' => 'Emails Queued'],
-            ['label' => 'Process Email Queue', 'value' => 0, 'subtitle' => 'Emails Sent'],
-            ['label' => 'Email Marketer Rules', 'value' => 0, 'subtitle' => 'Emails Sent'],
-            ['label' => 'SSL Sync', 'value' => 0, 'subtitle' => 'Synced'],
-            ['label' => 'Domain Expiry', 'value' => 0, 'subtitle' => 'Expired'],
-            ['label' => 'Data Retention Pruning', 'value' => 0, 'subtitle' => 'Deleted'],
-            ['label' => 'Run Jobs Queue', 'value' => 0, 'subtitle' => 'Executed'],
-        ];
-
-        try {
-            Mail::send('emails.cron-activity', [
-                'subject' => $subject,
-                'companyName' => $companyName,
-                'logoUrl' => $logoUrl,
-                'portalUrl' => $portalUrl,
-                'portalLoginUrl' => $portalLoginUrl,
-                'portalLoginLabel' => 'log in to the admin area',
-                'status' => $status,
-                'metrics' => $metricCards,
-                'startedAt' => $startedAt,
-                'finishedAt' => $finishedAt,
-                'dateFormat' => $dateFormat,
-                'timeZone' => $timeZone,
-                'errorMessage' => $errorMessage,
-            ], function ($message) use ($to, $subject, $companyName) {
-                $message->to($to)->subject($subject);
-
-                $fromEmail = Setting::getValue('company_email');
-                if ($fromEmail) {
-                    $message->from($fromEmail, $companyName);
-                }
-            });
-        } catch (\Throwable $e) {
-            Log::warning('Failed to send cron activity email.', [
-                'error' => $e->getMessage(),
-            ]);
-        }
+        SendCronSummaryEmail::dispatch(
+            $status,
+            $metrics,
+            $startedAt->toDateTimeString(),
+            $finishedAt->toDateTimeString(),
+            $errorMessage
+        );
     }
 }

@@ -6,8 +6,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\ProjectMaintenance;
 use App\Models\Setting;
-use App\Services\AdminNotificationService;
-use App\Services\ClientNotificationService;
+use App\Jobs\SendInvoiceCreatedNotifications;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +14,7 @@ use Illuminate\Support\Facades\DB;
 class MaintenanceBillingService
 {
     public function __construct(
-        private BillingService $billingService,
-        private AdminNotificationService $adminNotifications,
-        private ClientNotificationService $clientNotifications
+        private BillingService $billingService
     )
     {
     }
@@ -28,22 +25,23 @@ class MaintenanceBillingService
         $generated = 0;
         $skipped = 0;
 
-        $maintenanceIds = ProjectMaintenance::query()
+        ProjectMaintenance::query()
+            ->select('id')
             ->where('status', 'active')
             ->where('auto_invoice', true)
-            ->whereDate('next_billing_date', '<=', $today)
-            ->pluck('id');
-
-        foreach ($maintenanceIds as $maintenanceId) {
-            $invoice = $this->billMaintenance((int) $maintenanceId, $today);
-            if ($invoice) {
-                $generated++;
-                $this->adminNotifications->sendInvoiceCreated($invoice);
-                $this->clientNotifications->sendInvoiceCreated($invoice);
-            } else {
-                $skipped++;
-            }
-        }
+            ->whereDate('next_billing_date', '<=', $today->toDateString())
+            ->orderBy('id')
+            ->chunkById(200, function ($maintenances) use (&$generated, &$skipped, $today) {
+                foreach ($maintenances as $maintenance) {
+                    $invoice = $this->billMaintenance((int) $maintenance->id, $today);
+                    if ($invoice) {
+                        $generated++;
+                        SendInvoiceCreatedNotifications::dispatch($invoice->id);
+                    } else {
+                        $skipped++;
+                    }
+                }
+            });
 
         return [
             'generated' => $generated,

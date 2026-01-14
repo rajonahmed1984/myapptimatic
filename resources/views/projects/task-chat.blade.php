@@ -34,7 +34,16 @@
                     <div class="text-xs text-slate-500">Messages refresh every few seconds.</div>
                 </div>
             </div>
-            <div id="task-chat-messages" class="mt-4 max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+            @php
+                $lastMessageId = $messages->last()?->id ?? 0;
+                $oldestMessageId = $messages->first()?->id ?? 0;
+            @endphp
+            <div id="task-chat-messages"
+                 data-messages-url="{{ $messagesUrl }}"
+                 data-read-url="{{ $readUrl }}"
+                 data-last-id="{{ $lastMessageId }}"
+                 data-oldest-id="{{ $oldestMessageId }}"
+                 class="mt-4 max-h-[60vh] space-y-4 overflow-y-auto pr-1">
                 @include('projects.partials.task-chat-messages', [
                     'messages' => $messages,
                     'project' => $project,
@@ -49,7 +58,7 @@
         @if($canPost)
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Post a message</div>
-                <form method="POST" action="{{ $postRoute }}" enctype="multipart/form-data" class="mt-4 space-y-3">
+                <form method="POST" action="{{ $postRoute }}" data-post-url="{{ $postMessagesUrl }}" enctype="multipart/form-data" class="mt-4 space-y-3" id="chatMessageForm">
                     @csrf
                     <div>
                         <label class="text-xs text-slate-500">Message</label>
@@ -77,11 +86,18 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById('task-chat-messages');
-            const pollUrl = @json($pollUrl);
+            const form = document.getElementById('chatMessageForm');
+            const messagesUrl = @json($messagesUrl);
+            const readUrl = container?.dataset?.readUrl || @json($readUrl ?? '');
 
-            if (!container || !pollUrl) {
+            if (!container || !messagesUrl) {
                 return;
             }
+
+            let lastId = Number(container.dataset.lastId || {{ $lastMessageId }} || 0);
+            let oldestId = Number(container.dataset.oldestId || {{ $oldestMessageId }} || 0);
+            let isLoadingOlder = false;
+            let reachedStart = false;
 
             const scrollToBottom = () => {
                 container.scrollTop = container.scrollHeight;
@@ -92,20 +108,147 @@
                 return (container.scrollHeight - container.scrollTop - container.clientHeight) < threshold;
             };
 
-            scrollToBottom();
-
-            setInterval(() => {
-                const keepAtBottom = isNearBottom();
-                fetch(pollUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                    .then(response => response.text())
-                    .then(html => {
-                        container.innerHTML = html;
-                        if (keepAtBottom) {
-                            scrollToBottom();
+            const appendItems = (items) => {
+                if (!items || !items.length) {
+                    return;
+                }
+                items.forEach((item) => {
+                    if (!item?.html) return;
+                    container.insertAdjacentHTML('beforeend', item.html);
+                    if (item.id) {
+                        lastId = Math.max(lastId, item.id);
+                        if (!oldestId) {
+                            oldestId = item.id;
                         }
-                    })
-                    .catch(() => {});
-            }, 3000);
+                    }
+                });
+            };
+
+            const prependItems = (items) => {
+                if (!items || !items.length) {
+                    return;
+                }
+                const previousHeight = container.scrollHeight;
+                const previousTop = container.scrollTop;
+                for (let i = items.length - 1; i >= 0; i -= 1) {
+                    const item = items[i];
+                    if (!item?.html) continue;
+                    container.insertAdjacentHTML('afterbegin', item.html);
+                }
+                const oldestItemId = items[0]?.id;
+                if (oldestItemId) {
+                    oldestId = oldestId ? Math.min(oldestId, oldestItemId) : oldestItemId;
+                }
+                const heightDiff = container.scrollHeight - previousHeight;
+                container.scrollTop = previousTop + heightDiff;
+            };
+
+            const fetchMessages = async (params) => {
+                const url = new URL(messagesUrl, window.location.origin);
+                Object.entries(params).forEach(([key, value]) => {
+                    if (value !== null && value !== undefined) {
+                        url.searchParams.set(key, value);
+                    }
+                });
+
+                const response = await fetch(url.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) {
+                    return [];
+                }
+                const payload = await response.json();
+                return payload?.data?.items || [];
+            };
+
+            const loadOlder = async () => {
+                if (!oldestId || isLoadingOlder || reachedStart) {
+                    return;
+                }
+                isLoadingOlder = true;
+                const items = await fetchMessages({ before_id: oldestId, limit: 30 });
+                if (items.length === 0) {
+                    reachedStart = true;
+                } else {
+                    prependItems(items);
+                }
+                isLoadingOlder = false;
+            };
+
+            const updateReadStatus = async (readId) => {
+                if (!readUrl || !readId) {
+                    return;
+                }
+                const token = document.querySelector('[name="_token"]')?.value || '';
+                const formData = new FormData();
+                formData.append('_token', token);
+                formData.append('last_read_id', readId);
+
+                try {
+                    await fetch(readUrl, {
+                        method: 'PATCH',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData,
+                    });
+                } catch (e) {
+                    // Ignore read status failures.
+                }
+            };
+
+            if (form) {
+                form.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const postUrl = form.dataset.postUrl || form.action;
+                    const formData = new FormData(form);
+
+                    const response = await fetch(postUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        alert('Message send failed.');
+                        return;
+                    }
+
+                    const payload = await response.json();
+                    const item = payload?.data?.item;
+                    if (item?.html) {
+                        appendItems([item]);
+                        scrollToBottom();
+                        updateReadStatus(lastId);
+                    }
+                    form.reset();
+                });
+            }
+
+            scrollToBottom();
+            updateReadStatus(lastId);
+
+            container.addEventListener('scroll', async () => {
+                if (container.scrollTop <= 80) {
+                    loadOlder();
+                }
+            });
+
+            setInterval(async () => {
+                const keepAtBottom = isNearBottom();
+                const items = await fetchMessages({ after_id: lastId, limit: 30 });
+                if (items.length) {
+                    appendItems(items);
+                    if (keepAtBottom) {
+                        scrollToBottom();
+                        updateReadStatus(lastId);
+                    }
+                }
+            }, 5000);
         });
     </script>
 @endsection

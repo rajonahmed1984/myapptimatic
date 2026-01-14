@@ -7,8 +7,10 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskActivity;
 use App\Models\SalesRepresentative;
+use App\Http\Requests\StoreTaskActivityRequest;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskSettings;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -23,10 +25,13 @@ class ProjectTaskActivityController extends Controller
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('view', $task);
 
-        $activities = $task->activities()
+        $activityPaginator = $task->activities()
             ->with(['userActor', 'employeeActor', 'salesRepActor'])
-            ->orderBy('created_at')
-            ->get();
+            ->latest('created_at')
+            ->paginate(30)
+            ->withQueryString();
+
+        $activities = $activityPaginator->getCollection()->reverse()->values();
 
         $identity = $this->resolveActorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
@@ -43,18 +48,67 @@ class ProjectTaskActivityController extends Controller
             ]);
         }
 
-        return response()->json($activities);
+        return response()->json($activityPaginator->items());
     }
 
-    public function store(Request $request, Project $project, ProjectTask $task): RedirectResponse
+    public function items(Request $request, Project $project, ProjectTask $task): JsonResponse
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $task);
+
+        $limit = min(max((int) $request->query('limit', 30), 1), 100);
+        $afterId = (int) $request->query('after_id', 0);
+        $beforeId = (int) $request->query('before_id', 0);
+
+        $query = $task->activities()
+            ->with(['userActor', 'employeeActor', 'salesRepActor']);
+
+        if ($afterId > 0) {
+            $query->where('id', '>', $afterId)->orderBy('id');
+        } elseif ($beforeId > 0) {
+            $query->where('id', '<', $beforeId)->orderByDesc('id');
+        } else {
+            $query->orderByDesc('id');
+        }
+
+        $activities = $query->limit($limit)->get();
+        if ($afterId <= 0) {
+            $activities = $activities->reverse()->values();
+        }
+
+        $identity = $this->resolveActorIdentity($request);
+        $routePrefix = $this->resolveRoutePrefix($request);
+        $attachmentRouteName = $routePrefix . '.projects.tasks.activity.attachment';
+
+        $items = $activities->map(fn (ProjectTaskActivity $activity) => $this->activityItem(
+            $activity,
+            $project,
+            $task,
+            $attachmentRouteName,
+            $identity
+        ))->values();
+
+        $nextAfterId = $activities->max('id') ?? $afterId;
+        $nextBeforeId = $activities->min('id') ?? $beforeId;
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'items' => $items,
+                'next_after_id' => $nextAfterId,
+                'next_before_id' => $nextBeforeId,
+            ],
+        ]);
+    }
+
+    public function store(StoreTaskActivityRequest $request, Project $project, ProjectTask $task): RedirectResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('comment', $task);
 
-        $data = $request->validate([
-            'message' => ['required', 'string', 'max:2000'],
-        ]);
+        $data = $request->validated();
 
         $message = trim((string) $data['message']);
         if ($message === '') {
@@ -72,6 +126,63 @@ class ProjectTaskActivityController extends Controller
         }
 
         return back()->with('status', 'Comment added.');
+    }
+
+    public function storeItem(StoreTaskActivityRequest $request, Project $project, ProjectTask $task): JsonResponse
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('comment', $task);
+
+        $data = $request->validated();
+        $message = trim((string) $data['message']);
+        if ($message === '') {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Message cannot be empty.',
+            ], 422);
+        }
+
+        $activities = [];
+        $activities[] = TaskActivityLogger::record($task, $request, 'comment', $message);
+
+        $urls = $this->extractUrls($message);
+        foreach ($urls as $url) {
+            $activities[] = TaskActivityLogger::record($task, $request, 'link', null, [
+                'url' => $url,
+                'host' => parse_url($url, PHP_URL_HOST),
+            ]);
+        }
+
+        collect($activities)->each->load(['userActor', 'employeeActor', 'salesRepActor']);
+
+        $identity = $this->resolveActorIdentity($request);
+        $routePrefix = $this->resolveRoutePrefix($request);
+        $attachmentRouteName = $routePrefix . '.projects.tasks.activity.attachment';
+
+        $items = collect($activities)
+            ->filter()
+            ->map(fn (ProjectTaskActivity $activity) => $this->activityItem(
+                $activity,
+                $project,
+                $task,
+                $attachmentRouteName,
+                $identity
+            ))
+            ->values();
+
+        $maxId = collect($activities)->max('id') ?? 0;
+        $minId = collect($activities)->min('id') ?? 0;
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Comment added.',
+            'data' => [
+                'items' => $items,
+                'next_after_id' => $maxId,
+                'next_before_id' => $minId,
+            ],
+        ]);
     }
 
     public function upload(Request $request, Project $project, ProjectTask $task): RedirectResponse
@@ -193,5 +304,25 @@ class ProjectTaskActivityController extends Controller
         $unique = array_values(array_unique($urls));
 
         return $unique;
+    }
+
+    private function activityItem(
+        ProjectTaskActivity $activity,
+        Project $project,
+        ProjectTask $task,
+        string $attachmentRouteName,
+        array $identity
+    ): array {
+        return [
+            'id' => $activity->id,
+            'html' => view('projects.partials.task-activity-item', [
+                'activity' => $activity,
+                'project' => $project,
+                'task' => $task,
+                'attachmentRouteName' => $attachmentRouteName,
+                'currentActorType' => $identity['type'],
+                'currentActorId' => $identity['id'],
+            ])->render(),
+        ];
     }
 }

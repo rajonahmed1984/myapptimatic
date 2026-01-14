@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ProjectTaskSubtaskController extends Controller
 {
     public function store(Request $request, Project $project, ProjectTask $task)
     {
         $this->ensureTaskBelongsToProject($project, $task);
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('create', [ProjectTaskSubtask::class, $task]);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -33,6 +37,8 @@ class ProjectTaskSubtaskController extends Controller
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $this->ensureSubtaskBelongsToTask($task, $subtask);
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('update', $subtask);
 
         $data = $request->validate([
             'is_completed' => ['required', 'boolean'],
@@ -53,10 +59,12 @@ class ProjectTaskSubtaskController extends Controller
         return back()->with('status', 'Subtask updated.');
     }
 
-    public function destroy(Project $project, ProjectTask $task, ProjectTaskSubtask $subtask)
+    public function destroy(Request $request, Project $project, ProjectTask $task, ProjectTaskSubtask $subtask)
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $this->ensureSubtaskBelongsToTask($task, $subtask);
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('delete', $subtask);
 
         $subtask->delete();
 
@@ -75,5 +83,20 @@ class ProjectTaskSubtaskController extends Controller
         if ($subtask->project_task_id !== $task->id) {
             abort(404);
         }
+    }
+
+    private function resolveActor(Request $request): object
+    {
+        $employee = $request->attributes->get('employee');
+        if ($employee instanceof Employee) {
+            return $employee;
+        }
+
+        $user = $request->user();
+        if ($user) {
+            return $user;
+        }
+
+        abort(403, 'Authentication required.');
     }
 }

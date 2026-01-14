@@ -34,11 +34,9 @@
             </div>
             <div>
                 <label class="text-sm text-slate-600">Role</label>
-                <select name="role" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                    @foreach($roleLabels as $value => $label)
-                        <option value="{{ $value }}" @selected(old('role', $selectedRole) === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
+                <div class="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+                    {{ $roleLabels[$selectedRole] ?? ucfirst($selectedRole) }}
+                </div>
             </div>
             <div class="md:col-span-2 flex justify-end">
                 <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Create User</button>

@@ -21,14 +21,21 @@ class ProjectTaskViewController extends Controller
         $task->load([
             'assignments.employee',
             'assignments.salesRep',
-            'activities.userActor',
-            'activities.employeeActor',
-            'activities.salesRepActor',
             'subtasks',
         ]);
 
-        $activities = $task->activities->sortBy('created_at')->values();
-        $uploadActivities = $activities->where('type', 'upload');
+        $activityPaginator = $task->activities()
+            ->with(['userActor', 'employeeActor', 'salesRepActor'])
+            ->latest('created_at')
+            ->paginate(30)
+            ->withQueryString();
+
+        $activities = $activityPaginator->getCollection()->reverse()->values();
+
+        $uploadActivities = $task->activities()
+            ->where('type', 'upload')
+            ->orderBy('created_at')
+            ->get();
 
         $identity = $this->resolveActorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
@@ -57,6 +64,7 @@ class ProjectTaskViewController extends Controller
             'project' => $project,
             'task' => $task,
             'activities' => $activities,
+            'activitiesPaginator' => $activityPaginator,
             'uploadActivities' => $uploadActivities,
             'taskTypeOptions' => $taskTypeOptions,
             'priorityOptions' => TaskSettings::priorityOptions(),
@@ -82,10 +90,11 @@ class ProjectTaskViewController extends Controller
             'updateRoute' => route($routePrefix . '.projects.tasks.update', [$project, $task]),
             'activityRoute' => route($routePrefix . '.projects.tasks.activity', [$project, $task]),
             'activityPostRoute' => route($routePrefix . '.projects.tasks.activity.store', [$project, $task]),
+            'activityItemsUrl' => route($routePrefix . '.projects.tasks.activity.items', [$project, $task]),
+            'activityItemsPostUrl' => route($routePrefix . '.projects.tasks.activity.items.store', [$project, $task]),
             'uploadRoute' => route($routePrefix . '.projects.tasks.upload', [$project, $task]),
             'backRoute' => route($routePrefix . '.projects.show', $project),
             'attachmentRouteName' => $attachmentRouteName,
-            'pollUrl' => route($routePrefix . '.projects.tasks.activity', [$project, $task], false) . '?partial=1',
             'uploadMaxMb' => TaskSettings::uploadMaxMb(),
         ]);
     }

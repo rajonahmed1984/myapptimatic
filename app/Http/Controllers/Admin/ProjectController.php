@@ -18,6 +18,7 @@ use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskAssignmentManager;
 use App\Support\TaskAssignees;
+use App\Support\Currency;
 use App\Support\TaskSettings;
 use App\Services\CommissionService;
 use App\Services\BillingService;
@@ -34,7 +35,6 @@ class ProjectController extends Controller
     private const STATUSES = ['ongoing', 'hold', 'complete', 'cancel'];
     private const TYPES = ['software', 'website', 'other'];
     private const TASK_STATUSES = ['pending', 'in_progress', 'blocked', 'completed'];
-    private const CURRENCY_OPTIONS = ['BDT', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'JPY', 'INR', 'SGD', 'AED'];
 
     public function index(Request $request)
     {
@@ -71,6 +71,11 @@ class ProjectController extends Controller
 
     public function create()
     {
+        $defaultCurrency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($defaultCurrency)) {
+            $defaultCurrency = Currency::DEFAULT;
+        }
+
         return view('admin.projects.create', [
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
@@ -84,8 +89,8 @@ class ProjectController extends Controller
             'salesReps' => SalesRepresentative::where('status', 'active')
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']),
-            'defaultCurrency' => strtoupper((string) Setting::getValue('currency')),
-            'currencyOptions' => self::CURRENCY_OPTIONS,
+            'defaultCurrency' => $defaultCurrency,
+            'currencyOptions' => Currency::allowed(),
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),
         ]);
@@ -107,7 +112,7 @@ class ProjectController extends Controller
             'salesReps' => SalesRepresentative::where('status', 'active')
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']),
-            'currencyOptions' => self::CURRENCY_OPTIONS,
+            'currencyOptions' => Currency::allowed(),
         ]);
     }
 
@@ -133,7 +138,7 @@ class ProjectController extends Controller
             'notes' => ['nullable', 'string'],
             'total_budget' => ['required', 'numeric', 'min:0'],
             'initial_payment_amount' => ['required', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'size:3', Rule::in(self::CURRENCY_OPTIONS)],
+            'currency' => ['required', 'string', 'size:3', Rule::in(Currency::allowed())],
             'budget_amount' => ['nullable', 'numeric', 'min:0'],
             'planned_hours' => ['nullable', 'numeric', 'min:0'],
             'hourly_cost' => ['nullable', 'numeric', 'min:0'],
@@ -338,7 +343,6 @@ class ProjectController extends Controller
             'subscription',
             'advanceInvoice',
             'finalInvoice',
-            'tasks.assignee',
             'employees',
             'salesRepresentatives',
             'maintenances' => fn ($query) => $query->withCount('invoices')->orderBy('next_billing_date'),
@@ -354,7 +358,7 @@ class ProjectController extends Controller
 
         $tasksQuery->when($user?->isClient(), fn ($q) => $q->where('customer_visible', true));
 
-        $tasks = $tasksQuery->get();
+        $tasks = $tasksQuery->paginate(25)->withQueryString();
 
         $initialInvoice = $project->invoices()
             ->where('type', 'project_initial_payment')
@@ -394,7 +398,7 @@ class ProjectController extends Controller
             'final_invoice_id' => ['nullable', 'exists:invoices,id'],
             'total_budget' => ['required', 'numeric', 'min:0'],
             'initial_payment_amount' => ['required', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'size:3', Rule::in(self::CURRENCY_OPTIONS)],
+            'currency' => ['required', 'string', 'size:3', Rule::in(Currency::allowed())],
             'budget_amount' => ['nullable', 'numeric', 'min:0'],
             'planned_hours' => ['nullable', 'numeric', 'min:0'],
             'hourly_cost' => ['nullable', 'numeric', 'min:0'],

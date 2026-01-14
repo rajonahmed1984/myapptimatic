@@ -12,6 +12,7 @@ use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use DateTimeZone;
 
@@ -34,8 +35,9 @@ class SettingController extends Controller
             Setting::setValue('cron_token', $cronToken);
         }
 
-        $baseUrl = UrlResolver::portalUrl();
-        $cronUrl = $cronToken !== '' ? "{$baseUrl}/cron/billing?token={$cronToken}" : null;
+        $cronUrl = $cronToken !== ''
+            ? URL::signedRoute('cron.billing', ['token' => $cronToken])
+            : null;
 
         $emailTemplates = Schema::hasTable('email_templates')
             ? EmailTemplate::query()->orderBy('category')->orderBy('name')->get()

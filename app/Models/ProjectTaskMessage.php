@@ -22,20 +22,17 @@ class ProjectTaskMessage extends Model
 
     public function userAuthor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'author_id')
-            ->whereIn('author_type', ['admin', 'client', 'user']);
+        return $this->belongsTo(User::class, 'author_id');
     }
 
     public function employeeAuthor(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'author_id')
-            ->where('author_type', 'employee');
+        return $this->belongsTo(Employee::class, 'author_id');
     }
 
     public function salesRepAuthor(): BelongsTo
     {
-        return $this->belongsTo(SalesRepresentative::class, 'author_id')
-            ->whereIn('author_type', ['sales_rep', 'salesrep']);
+        return $this->belongsTo(SalesRepresentative::class, 'author_id');
     }
 
     public function authorName(): string

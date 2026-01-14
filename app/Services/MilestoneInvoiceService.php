@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Order;
 use App\Support\SystemLogger;
+use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -74,6 +75,12 @@ class MilestoneInvoiceService
     {
         $today = Carbon::today();
 
+        // Determine currency with fallback and validation
+        $currency = $order->invoice->currency ?? Currency::DEFAULT;
+        if (!Currency::isAllowed($currency)) {
+            $currency = Currency::DEFAULT;
+        }
+
         $invoice = Invoice::create([
             'customer_id' => $order->customer_id,
             'subscription_id' => $order->subscription_id,
@@ -83,7 +90,7 @@ class MilestoneInvoiceService
             'subtotal' => $amount,
             'late_fee' => 0,
             'total' => $amount,
-            'currency' => $order->invoice->currency ?? 'USD',
+            'currency' => $currency,
             'notes' => $description,
         ]);
 

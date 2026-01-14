@@ -17,8 +17,14 @@ Schedule::command('queue:work --stop-when-empty')->everyFiveMinutes()->withoutOv
 Schedule::command('horizon:snapshot')->everyFiveMinutes(); // If using Horizon
 Schedule::command('payroll:run')->monthlyOn(1, '03:00'); // Monthly payroll draft
 
+// Activity tracking: close stale sessions hourly
+Schedule::command('user-sessions:close-stale')->hourly();
+
 // Cron health monitor: alert if billing cron missed/failed.
 Schedule::command('cron:monitor')->hourly();
+
+// Close stale employee sessions so online indicators stay accurate.
+Schedule::command('employee-sessions:close-stale')->hourly();
 
 // Payment processing checks
 Schedule::call(function () {

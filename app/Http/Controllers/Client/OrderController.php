@@ -14,6 +14,7 @@ use App\Models\Setting;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
 use App\Services\ClientNotificationService;
+use App\Support\Currency;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -37,7 +38,7 @@ class OrderController extends Controller
         return view('client.orders.index', [
             'customer' => $customer,
             'products' => $products,
-            'currency' => strtoupper((string) Setting::getValue('currency', 'USD')),
+            'currency' => strtoupper((string) Setting::getValue('currency', Currency::DEFAULT)),
         ]);
     }
 
@@ -61,7 +62,7 @@ class OrderController extends Controller
                 ->withErrors(['plan_id' => 'This plan is not available for ordering.']);
         }
 
-        $currency = strtoupper((string) Setting::getValue('currency', 'USD'));
+        $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
         $startDate = Carbon::today();
         $periodEnd = $plan->interval === 'monthly'
             ? $startDate->copy()->endOfMonth()
@@ -124,7 +125,7 @@ class OrderController extends Controller
 
             $issueDate = Carbon::today();
             $subtotal = $this->calculateSubtotal($plan->interval, (float) $plan->price, $startDate, $periodEnd);
-            $currency = strtoupper((string) Setting::getValue('currency', 'USD'));
+            $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
             $dueDate = $issueDate->copy();
 
             $invoice = Invoice::create([

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    private const CURRENCY_OPTIONS = ['BDT', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'JPY', 'INR', 'SGD', 'AED'];
+    private const CURRENCY_OPTIONS = ['BDT', 'USD'];
 
     public function up(): void
     {

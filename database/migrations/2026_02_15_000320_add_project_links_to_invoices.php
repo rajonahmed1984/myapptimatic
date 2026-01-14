@@ -2,14 +2,17 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // First, ensure projects table uses InnoDB engine
-        DB::statement('ALTER TABLE projects ENGINE = InnoDB');
+        // First, ensure projects table uses InnoDB engine (MySQL only).
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE projects ENGINE = InnoDB');
+        }
 
         if (!Schema::hasColumn('invoices', 'project_id')) {
             Schema::table('invoices', function (Blueprint $table) {

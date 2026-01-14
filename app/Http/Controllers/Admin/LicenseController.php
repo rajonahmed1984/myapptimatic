@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SyncLicenseJob;
 use App\Models\License;
 use App\Models\LicenseDomain;
 use App\Models\Product;
@@ -13,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use App\Models\Setting;
 
 class LicenseController extends Controller
 {
@@ -192,13 +194,56 @@ class LicenseController extends Controller
 
     public function sync(License $license)
     {
-        $license->update([
-            'last_check_at' => Carbon::now(),
-            'last_check_ip' => request()->ip(),
-        ]);
+        $this->authorize('update', $license);
+
+        SyncLicenseJob::dispatch($license->id, request()->ip());
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => 'License sync queued.',
+            ]);
+        }
 
         return redirect()->route('admin.licenses.index')
-            ->with('status', 'License sync initiated. Status updated.');
+            ->with('status', 'License sync queued.');
+    }
+
+    public function syncStatus(License $license)
+    {
+        $this->authorize('view', $license);
+
+        $syncAt = $license->last_check_at;
+        $syncLabel = 'Never';
+        $syncClass = 'bg-slate-100 text-slate-600';
+
+        if ($syncAt) {
+            $hours = $syncAt->diffInHours(now());
+            if ($hours <= 24) {
+                $syncLabel = 'Synced';
+                $syncClass = 'bg-emerald-100 text-emerald-700';
+            } elseif ($hours > 48) {
+                $syncLabel = 'Stale';
+                $syncClass = 'bg-amber-100 text-amber-700';
+            } else {
+                $syncLabel = 'Synced';
+                $syncClass = 'bg-emerald-100 text-emerald-700';
+            }
+        }
+
+        $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
+        $displayAt = $syncAt ? $syncAt->format($dateFormat.' H:i') : 'No sync yet';
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'last_check_at' => $syncAt?->toDateTimeString(),
+                'last_check_ip' => $license->last_check_ip,
+                'sync_label' => $syncLabel,
+                'sync_class' => $syncClass,
+                'display_time' => $displayAt,
+            ],
+        ]);
     }
 
     private function extractSingleDomain(?string $input): string|bool|null

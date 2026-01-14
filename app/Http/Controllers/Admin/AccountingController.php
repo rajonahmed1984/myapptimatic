@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\PaymentGateway;
 use App\Models\Setting;
+use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -134,6 +135,11 @@ class AccountingController extends Controller
             $dueAmount = max(0, $selectedInvoice->total - $paidAmount);
         }
 
+        $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($currency)) {
+            $currency = Currency::DEFAULT;
+        }
+
         return [
             'entry' => $entry,
             'type' => $type,
@@ -142,7 +148,7 @@ class AccountingController extends Controller
             'customers' => Customer::query()->orderBy('name')->get(),
             'invoices' => Invoice::query()->with('customer')->orderByDesc('issue_date')->get(),
             'gateways' => PaymentGateway::query()->orderBy('sort_order')->get(),
-            'currency' => strtoupper((string) Setting::getValue('currency', 'USD')),
+            'currency' => $currency,
         ];
     }
 
@@ -155,7 +161,7 @@ class AccountingController extends Controller
             'type' => ['required', Rule::in(self::TYPES)],
             'entry_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'currency' => ['required', 'string', 'size:3'],
+            'currency' => ['required', 'string', 'size:3', Rule::in(Currency::allowed())],
             'description' => ['nullable', 'string'],
             'reference' => ['nullable', 'string', 'max:255'],
             'customer_id' => ['nullable', 'exists:customers,id'],

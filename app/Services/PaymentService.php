@@ -6,7 +6,9 @@ use App\Models\AccountingEntry;
 use App\Models\Invoice;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentGateway;
+use App\Services\Currency\CurrencyService;
 use App\Support\SystemLogger;
+use App\Support\Currency;
 use App\Models\StatusAuditLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -15,13 +17,20 @@ class PaymentService
 {
     public function createAttempt(Invoice $invoice, PaymentGateway $gateway): PaymentAttempt
     {
+        $currency = strtoupper($invoice->currency ?? Currency::DEFAULT);
+        
+        // Ensure currency is allowed
+        if (!Currency::isAllowed($currency)) {
+            $currency = Currency::DEFAULT;
+        }
+
         $attempt = PaymentAttempt::create([
             'invoice_id' => $invoice->id,
             'customer_id' => $invoice->customer_id,
             'payment_gateway_id' => $gateway->id,
             'status' => 'pending',
             'amount' => (float) $invoice->total,
-            'currency' => strtoupper($invoice->currency),
+            'currency' => $currency,
             'gateway_reference' => null,
         ]);
 
@@ -416,7 +425,7 @@ class PaymentService
         $settings = $gateway->settings ?? [];
         $clientId = $settings['client_id'] ?? null;
         $clientSecret = $settings['client_secret'] ?? null;
-        $currency = strtoupper((string) ($settings['processing_currency'] ?? $attempt->currency));
+        [$amount, $currency] = $this->resolveGatewayAmount($attempt, $settings);
 
         if (! $clientId || ! $clientSecret) {
             $email = $settings['paypal_email'] ?? null;
@@ -448,7 +457,7 @@ class PaymentService
                 'description' => 'Invoice '.$attempt->invoice->number,
                 'amount' => [
                     'currency_code' => $currency,
-                    'value' => number_format((float) $attempt->amount, 2, '.', ''),
+                    'value' => number_format($amount, 2, '.', ''),
                 ],
             ]],
             'application_context' => [
@@ -493,11 +502,11 @@ class PaymentService
 
         $customer = $attempt->customer;
         $baseUrl = $this->sslcommerzBaseUrl($settings);
-        $currency = strtoupper((string) ($settings['processing_currency'] ?? $attempt->currency));
+        [$amount, $currency] = $this->resolveGatewayAmount($attempt, $settings);
         $payload = [
             'store_id' => $storeId,
             'store_passwd' => $storePassword,
-            'total_amount' => number_format((float) $attempt->amount, 2, '.', ''),
+            'total_amount' => number_format($amount, 2, '.', ''),
             'currency' => $currency,
             'tran_id' => $attempt->gateway_reference,
             'success_url' => route('payments.sslcommerz.success', $attempt),
@@ -554,10 +563,10 @@ class PaymentService
         $baseUrl = $this->bkashBaseUrl($settings);
         $appKey = $settings['app_key'] ?? null;
 
-        $currency = strtoupper((string) ($settings['processing_currency'] ?? $attempt->currency));
+        [$amount, $currency] = $this->resolveGatewayAmount($attempt, $settings);
 
         $payload = [
-            'amount' => number_format((float) $attempt->amount, 2, '.', ''),
+            'amount' => number_format($amount, 2, '.', ''),
             'currency' => $currency,
             'merchantInvoiceNumber' => $attempt->gateway_reference,
             'intent' => 'sale',
@@ -616,8 +625,8 @@ class PaymentService
             ? 'https://www.sandbox.paypal.com/cgi-bin/webscr'
             : 'https://www.paypal.com/cgi-bin/webscr';
 
-        $currency = strtoupper((string) ($settings['processing_currency'] ?? $attempt->currency));
-        $amount = number_format((float) $attempt->amount, 2, '.', '');
+        [$amount, $currency] = $this->resolveGatewayAmount($attempt, $settings);
+        $amount = number_format($amount, 2, '.', '');
         $itemName = 'Invoice '.$attempt->invoice->number;
 
         $query = http_build_query([
@@ -678,5 +687,25 @@ class PaymentService
     private function mergeMeta(?array $existing, array $meta): array
     {
         return array_merge($existing ?? [], $meta);
+    }
+
+    private function resolveGatewayAmount(PaymentAttempt $attempt, array $settings): array
+    {
+        $processingCurrency = strtoupper((string) ($settings['processing_currency'] ?? $attempt->currency));
+        if (! Currency::isAllowed($processingCurrency)) {
+            $processingCurrency = Currency::DEFAULT;
+        }
+
+        $sourceCurrency = strtoupper((string) $attempt->currency);
+        if (! Currency::isAllowed($sourceCurrency)) {
+            $sourceCurrency = Currency::DEFAULT;
+        }
+
+        $amount = (float) $attempt->amount;
+        if ($processingCurrency !== $sourceCurrency) {
+            $amount = app(CurrencyService::class)->convert($amount, $sourceCurrency, $processingCurrency);
+        }
+
+        return [$amount, $processingCurrency];
     }
 }

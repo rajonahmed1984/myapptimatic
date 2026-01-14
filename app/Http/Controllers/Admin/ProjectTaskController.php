@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
+use App\Http\Requests\UpdateTaskStatusRequest;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\Employee;
@@ -13,41 +16,19 @@ use App\Support\TaskAssignmentManager;
 use App\Support\TaskAssignees;
 use App\Support\TaskSettings;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class ProjectTaskController extends Controller
 {
-    private const STATUSES = ['pending', 'in_progress', 'blocked', 'completed', 'done'];
 
-    public function store(Request $request, Project $project): RedirectResponse
+    public function store(StoreTaskRequest $request, Project $project): RedirectResponse|JsonResponse
     {
         $this->authorize('createTask', $project);
 
-        $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
-        $priorityOptions = array_keys(TaskSettings::priorityOptions());
-        $maxMb = TaskSettings::uploadMaxMb();
-
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'descriptions' => ['nullable', 'array'],
-            'descriptions.*' => ['nullable', 'string'],
-            'task_type' => ['required', Rule::in($taskTypeOptions)],
-            'priority' => ['nullable', Rule::in($priorityOptions)],
-            'time_estimate_minutes' => ['nullable', 'integer', 'min:0'],
-            'tags' => ['nullable', 'string'],
-            'relationship_ids' => ['nullable', 'string'],
-            'start_date' => ['required', 'date'],
-            'due_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'assignees' => ['nullable', 'array'],
-            'assignees.*' => ['nullable', 'string'],
-            'assignee' => ['nullable', 'string'], // format type:id (legacy)
-            'customer_visible' => ['nullable', 'boolean'],
-            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:' . ($maxMb * 1024)],
-        ]);
+        $data = $request->validated();
 
         $assigneeInputs = $data['assignees'] ?? [];
         if (empty($assigneeInputs) && ! empty($data['assignee'])) {
@@ -56,14 +37,14 @@ class ProjectTaskController extends Controller
 
         $assignees = TaskAssignees::parse($assigneeInputs);
         if (empty($assignees)) {
-            return back()->withErrors(['assignees' => 'Select at least one assignee.'])->withInput();
+            return $this->validationError($request, ['assignees' => 'Select at least one assignee.']);
         }
 
         $description = $this->combineDescriptions($data);
         $taskType = $data['task_type'];
 
         if ($taskType === 'upload' && ! $request->hasFile('attachment')) {
-            return back()->withErrors(['attachment' => 'Upload tasks require at least one file.'])->withInput();
+            return $this->validationError($request, ['attachment' => 'Upload tasks require at least one file.']);
         }
 
         $task = ProjectTask::create([
@@ -102,10 +83,27 @@ class ProjectTaskController extends Controller
             'actor_id' => $request->user()?->id,
         ], $request->user()?->id, $request->ip());
 
+        if ($request->expectsJson()) {
+            $task->load(['assignments.employee', 'assignments.salesRep']);
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Task added.',
+                'data' => [
+                    'task_id' => $task->id,
+                    'row_html' => view('admin.projects.partials.task-row', [
+                        'task' => $task,
+                        'project' => $project,
+                        'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+                    ])->render(),
+                ],
+            ]);
+        }
+
         return back()->with('status', 'Task added.');
     }
 
-    public function update(Request $request, Project $project, ProjectTask $task): RedirectResponse
+    public function update(UpdateTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse|JsonResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $this->authorize('update', $task);
@@ -114,27 +112,11 @@ class ProjectTaskController extends Controller
             return back()->withErrors(['dates' => 'Task dates cannot be changed after creation.']);
         }
 
-        $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
-        $priorityOptions = array_keys(TaskSettings::priorityOptions());
-
-        $data = $request->validate([
-            'status' => ['required', 'in:' . implode(',', self::STATUSES)],
-            'description' => ['nullable', 'string'],
-            'task_type' => ['nullable', Rule::in($taskTypeOptions)],
-            'priority' => ['nullable', Rule::in($priorityOptions)],
-            'time_estimate_minutes' => ['nullable', 'integer', 'min:0'],
-            'tags' => ['nullable', 'string'],
-            'relationship_ids' => ['nullable', 'string'],
-            'progress' => ['nullable', 'integer', 'min:0', 'max:100'],
-            'customer_visible' => ['nullable', 'boolean'],
-            'notes' => ['nullable', 'string'],
-            'assignees' => ['nullable', 'array'],
-            'assignees.*' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $taskType = $data['task_type'] ?? $task->task_type ?? 'feature';
         if ($taskType === 'upload' && ! $task->activities()->where('type', 'upload')->exists()) {
-            return back()->withErrors(['task_type' => 'Upload tasks require at least one file.'])->withInput();
+            return $this->validationError($request, ['task_type' => 'Upload tasks require at least one file.']);
         }
 
         $payload = [
@@ -166,7 +148,7 @@ class ProjectTaskController extends Controller
         if (! empty($data['assignees'])) {
             $assignees = TaskAssignees::parse($data['assignees']);
             if (empty($assignees)) {
-                return back()->withErrors(['assignees' => 'Select at least one valid assignee.'])->withInput();
+                return $this->validationError($request, ['assignees' => 'Select at least one valid assignee.']);
             }
             $changes = TaskAssignmentManager::sync($task, $assignees);
             if ($changes['before'] !== $changes['after']) {
@@ -186,18 +168,32 @@ class ProjectTaskController extends Controller
             'actor_id' => $request->user()?->id,
         ], $request->user()?->id, $request->ip());
 
+        if ($request->expectsJson()) {
+            $task->load(['assignments.employee', 'assignments.salesRep']);
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Task updated.',
+                'data' => [
+                    'task_id' => $task->id,
+                    'row_html' => view('admin.projects.partials.task-row', [
+                        'task' => $task,
+                        'project' => $project,
+                        'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+                    ])->render(),
+                ],
+            ]);
+        }
+
         return back()->with('status', 'Task updated.');
     }
 
-    public function changeStatus(Request $request, Project $project, ProjectTask $task): RedirectResponse
+    public function changeStatus(UpdateTaskStatusRequest $request, Project $project, ProjectTask $task): RedirectResponse|JsonResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $this->authorize('update', $task);
 
-        $data = $request->validate([
-            'status' => ['required', 'in:' . implode(',', self::STATUSES)],
-            'progress' => ['nullable', 'integer', 'min:0', 'max:100'],
-        ]);
+        $data = $request->validated();
 
         $payload = [
             'status' => $data['status'],
@@ -225,6 +221,23 @@ class ProjectTaskController extends Controller
             'actor_id' => $request->user()?->id,
         ], $request->user()?->id, $request->ip());
 
+        if ($request->expectsJson()) {
+            $task->load(['assignments.employee', 'assignments.salesRep']);
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Task status updated.',
+                'data' => [
+                    'task_id' => $task->id,
+                    'row_html' => view('admin.projects.partials.task-row', [
+                        'task' => $task,
+                        'project' => $project,
+                        'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+                    ])->render(),
+                ],
+            ]);
+        }
+
         return back()->with('status', 'Task status updated.');
     }
 
@@ -247,6 +260,20 @@ class ProjectTaskController extends Controller
         ], $request->user()?->id, $request->ip());
 
         return back()->with('status', 'Task removed.');
+    }
+
+    private function validationError(StoreTaskRequest|UpdateTaskRequest $request, array $errors): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            $message = collect($errors)->flatten()->first() ?? 'Validation failed.';
+            return response()->json([
+                'ok' => false,
+                'message' => $message,
+                'errors' => $errors,
+            ], 422);
+        }
+
+        return back()->withErrors($errors)->withInput();
     }
 
     private function ensureTaskBelongsToProject(Project $project, ProjectTask $task): void

@@ -10,6 +10,7 @@ use App\Models\ProjectTask;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Enums\Role;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,11 +69,12 @@ class SalesRepresentativeController extends Controller
         ]);
 
         $user = User::findOrFail($data['user_id']);
+        $user->update(['role' => Role::SALES]);
 
         SalesRepresentative::create([
             'user_id' => $data['user_id'],
             'employee_id' => $data['employee_id'] ?? null,
-            'name' => $data['name'] ?: $user->name,
+            'name' => $data['name'] ?? $user->name,
             'email' => $data['email'] ?? $user->email,
             'phone' => $data['phone'] ?? null,
             'status' => $data['status'],

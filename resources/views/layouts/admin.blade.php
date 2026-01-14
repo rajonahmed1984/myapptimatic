@@ -31,262 +31,436 @@
                 $isAdminNav = request()->routeIs('admin.*');
                 $isEmployeeNav = request()->routeIs('employee.*');
                 $isSalesRepNav = request()->routeIs('rep.*');
-                $invoiceMenuActive = $isAdminNav && request()->routeIs('admin.invoices.*');
-                $projectsMenuActive = $isAdminNav && (request()->routeIs('admin.projects.*') || request()->routeIs('admin.project-maintenances.*'));
-                $logMenuActive = $isAdminNav && request()->routeIs('admin.logs.*');
+                
+                // Nested menu: Projects/Maintenance
+                $projectsMenuActive = isActive(['admin.projects.*', 'admin.project-maintenances.*']);
+                
+                // Nested menu: Invoices
+                $invoiceMenuActive = isActive('admin.invoices.*');
+                
+                // Nested menu: Logs
+                $logMenuActive = isActive('admin.logs.*');
             @endphp
             <nav class="mt-10 space-y-4 text-sm">
                 @if($isAdminNav)
                     <div>
-                        <a class="{{ request()->routeIs('admin.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.dashboard') }}">
+                        <x-nav-link 
+                            :href="route('admin.dashboard')"
+                            routes="admin.dashboard"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Dashboard
-                        </a>
+                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Sales & Customers</div>
-                        <a class="{{ request()->routeIs('admin.customers.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.customers.index') }}">
+                        <x-nav-link 
+                            :href="route('admin.customers.index')"
+                            routes="admin.customers.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Customers
-                        </a>
-                        <a class="{{ request()->routeIs('admin.orders.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.orders.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.orders.index')"
+                            routes="admin.orders.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Orders
-                        </a>
-                        <a class="{{ request()->routeIs('admin.sales-reps.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.sales-reps.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.sales-reps.index')"
+                            routes="admin.sales-reps.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Sales Representatives
-                        </a>
-                        <a class="{{ request()->routeIs('admin.affiliates.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.affiliates.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.affiliates.index')"
+                            routes="admin.affiliates.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Affiliates
-                        </a>
-                        <a class="{{ request()->routeIs('admin.requests.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.requests.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.requests.index')"
+                            routes="admin.requests.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Requests
-                        </a>
+                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Delivery & Services</div>
-                        <a class="{{ $projectsMenuActive ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.projects.index') }}">
+                        
+                        {{-- Nested menu: Projects --}}
+                        <x-nav-menu
+                            :href="route('admin.projects.index')"
+                            :routes="['admin.projects.*', 'admin.project-maintenances.*']"
+                            label="Projects"
+                        >
+                            <a href="{{ route('admin.projects.index') }}" class="block {{ activeIf(request()->routeIs('admin.projects.index')) }}">All Projects</a>
+                            <a href="{{ route('admin.projects.create') }}" class="block {{ activeIf(request()->routeIs('admin.projects.create')) }}">Create Project</a>
+                            <a href="{{ route('admin.project-maintenances.index') }}" class="block {{ activeIf(request()->routeIs('admin.project-maintenances.*')) }}">Maintenance</a>
+                        </x-nav-menu>
+                        
+                        <x-nav-link 
+                            :href="route('admin.subscriptions.index')"
+                            routes="admin.subscriptions.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Projects <!-- Delivery: project-based execution, tasks, milestones -->
-                        </a>
-                        @if($projectsMenuActive)
-                            <div class="ml-6 space-y-1 text-xs text-slate-400">
-                                <a href="{{ route('admin.projects.index') }}" class="block {{ request()->routeIs('admin.projects.index') ? 'text-teal-300' : 'hover:text-slate-200' }}">All Projects</a>
-                                <a href="{{ route('admin.projects.create') }}" class="block {{ request()->routeIs('admin.projects.create') ? 'text-teal-300' : 'hover:text-slate-200' }}">Create Project</a>
-                                <a href="{{ route('admin.project-maintenances.index') }}" class="block {{ request()->routeIs('admin.project-maintenances.*') ? 'text-teal-300' : 'hover:text-slate-200' }}">Maintenance</a>
-                            </div>
-                        @endif
-                        <a class="{{ request()->routeIs('admin.subscriptions.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.subscriptions.index') }}">
+                            Subscriptions
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.licenses.index')"
+                            routes="admin.licenses.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Subscriptions <!-- Recurring services/maintenance; avoid mixing with one-off projects -->
-                        </a>
-                        <a class="{{ request()->routeIs('admin.licenses.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.licenses.index') }}">
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Licenses <!-- Delivery artifacts tied to subs/orders -->
-                        </a>
+                            Licenses
+                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Billing & Finance</div>
-                        <a class="{{ request()->routeIs('admin.invoices.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.invoices.index') }}">
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Invoices
-                        </a>
-                        @if($invoiceMenuActive)
-                            <div class="ml-6 space-y-1 text-xs text-slate-400">
-                                <a href="{{ route('admin.invoices.index') }}" class="block {{ request()->routeIs('admin.invoices.index') ? 'text-teal-300' : 'hover:text-slate-200' }}">All invoices</a>
-                                <a href="{{ route('admin.invoices.paid') }}" class="block {{ request()->routeIs('admin.invoices.paid') ? 'text-teal-300' : 'hover:text-slate-200' }}">Paid</a>
-                                <a href="{{ route('admin.invoices.unpaid') }}" class="block {{ request()->routeIs('admin.invoices.unpaid') ? 'text-teal-300' : 'hover:text-slate-200' }}">Unpaid</a>
-                                <a href="{{ route('admin.invoices.overdue') }}" class="block {{ request()->routeIs('admin.invoices.overdue') ? 'text-teal-300' : 'hover:text-slate-200' }}">Overdue</a>
-                                <a href="{{ route('admin.invoices.cancelled') }}" class="block {{ request()->routeIs('admin.invoices.cancelled') ? 'text-teal-300' : 'hover:text-slate-200' }}">Cancelled</a>
-                                <a href="{{ route('admin.invoices.refunded') }}" class="block {{ request()->routeIs('admin.invoices.refunded') ? 'text-teal-300' : 'hover:text-slate-200' }}">Refunded</a>
-                            </div>
-                        @endif
-                        <a class="{{ request()->routeIs('admin.payment-proofs.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.payment-proofs.index') }}">
+                        
+                        {{-- Nested menu: Invoices --}}
+                        <x-nav-menu
+                            :href="route('admin.invoices.index')"
+                            routes="admin.invoices.*"
+                            label="Invoices"
+                        >
+                            <a href="{{ route('admin.invoices.index') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.index')) }}">All invoices</a>
+                            <a href="{{ route('admin.invoices.paid') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.paid')) }}">Paid</a>
+                            <a href="{{ route('admin.invoices.unpaid') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.unpaid')) }}">Unpaid</a>
+                            <a href="{{ route('admin.invoices.overdue') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.overdue')) }}">Overdue</a>
+                            <a href="{{ route('admin.invoices.cancelled') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.cancelled')) }}">Cancelled</a>
+                            <a href="{{ route('admin.invoices.refunded') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.refunded')) }}">Refunded</a>
+                        </x-nav-menu>
+                        
+                        <x-nav-link 
+                            :href="route('admin.payment-proofs.index')"
+                            routes="admin.payment-proofs.*"
+                            :badge="($adminHeaderStats['pending_manual_payments'] ?? 0) > 0 ? $adminHeaderStats['pending_manual_payments'] : null"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             <span>Manual Payments</span>
-                            @if(($adminHeaderStats['pending_manual_payments'] ?? 0) > 0)
-                                <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{{ $adminHeaderStats['pending_manual_payments'] }}</span>
-                            @endif
-                        </a>
-                        <a class="{{ request()->routeIs('admin.accounting.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.accounting.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.accounting.index')"
+                            routes="admin.accounting.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Accounting
-                        </a>
-                        <a class="{{ request()->routeIs('admin.payment-gateways.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.payment-gateways.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.payment-gateways.index')"
+                            routes="admin.payment-gateways.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Payment Gateways
-                        </a>
-                        <a class="{{ request()->routeIs('admin.commission-payouts.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.commission-payouts.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.commission-payouts.index')"
+                            routes="admin.commission-payouts.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Commission Payouts
-                        </a>
+                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Products & Plans</div>
-                        <a class="{{ request()->routeIs('admin.products.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.products.index') }}">
+                        <x-nav-link 
+                            :href="route('admin.products.index')"
+                            routes="admin.products.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Products
-                        </a>
-                        <a class="{{ request()->routeIs('admin.plans.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.plans.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.plans.index')"
+                            routes="admin.plans.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Plans
-                        </a>
+                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">People (HR)</div>
-                        <a class="{{ request()->routeIs('admin.hr.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.hr.dashboard') }}">
+                        <x-nav-link 
+                            :href="route('admin.hr.dashboard')"
+                            routes="admin.hr.dashboard"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             HR Dashboard
-                        </a>
-                        <a class="{{ request()->routeIs('admin.hr.employees.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.hr.employees.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.hr.employees.index')"
+                            routes="admin.hr.employees.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Employees
-                        </a>
-                        <a class="{{ request()->routeIs('admin.hr.timesheets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.hr.timesheets.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.employees.summary')"
+                            routes="admin.employees.summary"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Employee Summary
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.users.activity-summary')"
+                            routes="admin.users.activity-summary"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Activity Summary
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.hr.timesheets.index')"
+                            routes="admin.hr.timesheets.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Timesheets
-                        </a>
-                        <a class="{{ request()->routeIs('admin.hr.leave-types.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.hr.leave-types.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.hr.leave-types.index')"
+                            routes="admin.hr.leave-types.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Leave Types
-                        </a>
-                        <a class="{{ request()->routeIs('admin.hr.leave-requests.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.hr.leave-requests.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.hr.leave-requests.index')"
+                            routes="admin.hr.leave-requests.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Leave Requests
-                        </a>
-                        <a class="{{ request()->routeIs('admin.hr.payroll.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.hr.payroll.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.hr.payroll.index')"
+                            routes="admin.hr.payroll.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Payroll
-                        </a>
+                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Support & Communication</div>
-                        <a class="{{ request()->routeIs('admin.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.support-tickets.index') }}">
+                        <x-nav-link 
+                            :href="route('admin.support-tickets.index')"
+                            routes="admin.support-tickets.*"
+                            :badge="($adminHeaderStats['tickets_waiting'] ?? 0) > 0 ? $adminHeaderStats['tickets_waiting'] : null"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             <span>Support</span>
-                            @if(($adminHeaderStats['tickets_waiting'] ?? 0) > 0)
-                                <span class="ml-auto rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">{{ $adminHeaderStats['tickets_waiting'] }}</span>
-                            @endif
-                        </a>
+                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Administration</div>
                         @php
                             $usersNavRole = request()->route('role') ?? optional(request()->route('user'))->role;
-                            $isUsersRoute = request()->routeIs('admin.users.*') || request()->routeIs('admin.admins.*');
+                            $isUsersRoute = isActive(['admin.users.*', 'admin.admins.*']);
                         @endphp
                         @if(auth()->user()?->isMasterAdmin())
                             <div class="space-y-1">
-                                <a class="{{ $isUsersRoute && $usersNavRole === 'master_admin' ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.users.index', 'master_admin') }}">
+                                <x-nav-link 
+                                    :href="route('admin.users.index', 'master_admin')"
+                                    :inactiveClass="$isUsersRoute && $usersNavRole === 'master_admin' ? 'nav-link nav-link-active' : 'nav-link'"
+                                    :activeClass="$isUsersRoute && $usersNavRole === 'master_admin' ? 'nav-link nav-link-active' : 'nav-link'"
+                                >
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
                                     Master Admins
-                                </a>
-                                <a class="{{ $isUsersRoute && $usersNavRole === 'sub_admin' ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.users.index', 'sub_admin') }}">
+                                </x-nav-link>
+                                <x-nav-link 
+                                    :href="route('admin.users.index', 'sub_admin')"
+                                    :inactiveClass="$isUsersRoute && $usersNavRole === 'sub_admin' ? 'nav-link nav-link-active' : 'nav-link'"
+                                    :activeClass="$isUsersRoute && $usersNavRole === 'sub_admin' ? 'nav-link nav-link-active' : 'nav-link'"
+                                >
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
                                     Sub Admins
-                                </a>
-                                <a class="{{ $isUsersRoute && $usersNavRole === 'sales' ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.users.index', 'sales') }}">
+                                </x-nav-link>
+                                <x-nav-link 
+                                    :href="route('admin.users.index', 'sales')"
+                                    :inactiveClass="$isUsersRoute && $usersNavRole === 'sales' ? 'nav-link nav-link-active' : 'nav-link'"
+                                    :activeClass="$isUsersRoute && $usersNavRole === 'sales' ? 'nav-link nav-link-active' : 'nav-link'"
+                                >
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
                                     Sales Users
-                                </a>
-                                <a class="{{ $isUsersRoute && $usersNavRole === 'support' ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.users.index', 'support') }}">
+                                </x-nav-link>
+                                <x-nav-link 
+                                    :href="route('admin.users.index', 'support')"
+                                    :inactiveClass="$isUsersRoute && $usersNavRole === 'support' ? 'nav-link nav-link-active' : 'nav-link'"
+                                    :activeClass="$isUsersRoute && $usersNavRole === 'support' ? 'nav-link nav-link-active' : 'nav-link'"
+                                >
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
                                     Support Users
-                                </a>
+                                </x-nav-link>
                             </div>
                         @endif
-                        <a class="{{ request()->routeIs('admin.profile.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.profile.edit') }}">
+                        <x-nav-link 
+                            :href="route('admin.profile.edit')"
+                            routes="admin.profile.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Profile
-                        </a>
+                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">System & Monitoring</div>
-                        <a class="{{ request()->routeIs('admin.automation-status') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.automation-status') }}">
+                        <x-nav-link 
+                            :href="route('admin.automation-status')"
+                            routes="admin.automation-status"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Automation Status
-                        </a>
-                        <a class="{{ $logMenuActive ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.logs.activity') }}">
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Logs
-                        </a>
-                        @if($logMenuActive)
-                            <div class="ml-6 space-y-1 text-xs text-slate-400">
-                                <a href="{{ route('admin.logs.activity') }}" class="block {{ request()->routeIs('admin.logs.activity') ? 'text-teal-300' : 'hover:text-slate-200' }}">Activity</a>
-                                <a href="{{ route('admin.logs.admin') }}" class="block {{ request()->routeIs('admin.logs.admin') ? 'text-teal-300' : 'hover:text-slate-200' }}">Admin</a>
-                                <a href="{{ route('admin.logs.module') }}" class="block {{ request()->routeIs('admin.logs.module') ? 'text-teal-300' : 'hover:text-slate-200' }}">Module</a>
-                                <a href="{{ route('admin.logs.email') }}" class="block {{ request()->routeIs('admin.logs.email') ? 'text-teal-300' : 'hover:text-slate-200' }}">Email</a>
-                                <a href="{{ route('admin.logs.ticket-mail-import') }}" class="block {{ request()->routeIs('admin.logs.ticket-mail-import') ? 'text-teal-300' : 'hover:text-slate-200' }}">Ticket Mail Import</a>
-                            </div>
-                        @endif
-                        <a class="{{ request()->routeIs('admin.settings.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('admin.settings.edit') }}">
+                        </x-nav-link>
+                        
+                        {{-- Nested menu: Logs --}}
+                        <x-nav-menu
+                            :href="route('admin.logs.activity')"
+                            routes="admin.logs.*"
+                            label="Logs"
+                        >
+                            <a href="{{ route('admin.logs.activity') }}" class="block {{ activeIf(request()->routeIs('admin.logs.activity')) }}">Activity</a>
+                            <a href="{{ route('admin.logs.admin') }}" class="block {{ activeIf(request()->routeIs('admin.logs.admin')) }}">Admin</a>
+                            <a href="{{ route('admin.logs.module') }}" class="block {{ activeIf(request()->routeIs('admin.logs.module')) }}">Module</a>
+                            <a href="{{ route('admin.logs.email') }}" class="block {{ activeIf(request()->routeIs('admin.logs.email')) }}">Email</a>
+                            <a href="{{ route('admin.logs.ticket-mail-import') }}" class="block {{ activeIf(request()->routeIs('admin.logs.ticket-mail-import')) }}">Ticket Mail Import</a>
+                        </x-nav-menu>
+                        
+                        <x-nav-link 
+                            :href="route('admin.settings.edit')"
+                            routes="admin.settings.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Settings
-                        </a>
+                        </x-nav-link>
                     </div>
                 @elseif($isEmployeeNav)
                     <div>
-                        <a class="{{ request()->routeIs('employee.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('employee.dashboard') }}">
+                        <x-nav-link 
+                            :href="route('employee.dashboard')"
+                            routes="employee.dashboard"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Dashboard
-                        </a>
+                        </x-nav-link>
                     </div>
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">My Work</div>
-                        <a class="{{ request()->routeIs('employee.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('employee.projects.index') }}">
+                        <x-nav-link 
+                            :href="route('employee.projects.index')"
+                            routes="employee.projects.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Projects
-                        </a>
-                        <a class="{{ request()->routeIs('employee.timesheets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('employee.timesheets.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('employee.timesheets.index')"
+                            routes="employee.timesheets.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Timesheets
-                        </a>
-                        <a class="{{ request()->routeIs('employee.leave-requests.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('employee.leave-requests.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('employee.leave-requests.index')"
+                            routes="employee.leave-requests.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Leave Requests
-                        </a>
+                        </x-nav-link>
                     </div>
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payroll</div>
-                        <a class="{{ request()->routeIs('employee.payroll.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('employee.payroll.index') }}">
+                        <x-nav-link 
+                            :href="route('employee.payroll.index')"
+                            routes="employee.payroll.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Payroll
-                        </a>
+                        </x-nav-link>
                     </div>
                 @elseif($isSalesRepNav)
                     <div>
-                        <a class="{{ request()->routeIs('rep.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('rep.dashboard') }}">
+                        <x-nav-link 
+                            :href="route('rep.dashboard')"
+                            routes="rep.dashboard"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Sales Dashboard
-                        </a>
+                        </x-nav-link>
                     </div>
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
-                        <a class="{{ request()->routeIs('rep.earnings.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('rep.earnings.index') }}">
+                        <x-nav-link 
+                            :href="route('rep.earnings.index')"
+                            routes="rep.earnings.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Earnings
-                        </a>
-                        <a class="{{ request()->routeIs('rep.payouts.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('rep.payouts.index') }}">
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('rep.payouts.index')"
+                            routes="rep.payouts.*"
+                        >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Payouts
-                        </a>
+                        </x-nav-link>
                     </div>
                 @endif
             </nav>
 
-            <div class="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
-                Billing cycle runs daily via scheduler. Verify task setup for production.
+            @php
+                $sidebarUser = auth()->user();
+                $sidebarName = $sidebarUser?->name ?? 'User';
+                $sidebarRole = 'Administrator';
+                if ($sidebarUser?->isEmployee()) {
+                    $sidebarRole = 'Employee';
+                } elseif ($sidebarUser?->isMasterAdmin()) {
+                    $sidebarRole = 'Master Administrator';
+                } elseif ($sidebarUser?->isSubAdmin()) {
+                    $sidebarRole = 'Sub Administrator';
+                } elseif ($sidebarUser?->isSales()) {
+                    $sidebarRole = 'Sales Representative';
+                } elseif ($sidebarUser?->isSupport()) {
+                    $sidebarRole = 'Support';
+                } elseif ($sidebarUser?->isClient()) {
+                    $sidebarRole = 'Client';
+                }
+                $nameParts = preg_split('/\s+/', trim($sidebarName));
+                $sidebarInitials = '';
+                foreach ($nameParts as $part) {
+                    if ($part !== '') {
+                        $sidebarInitials .= strtoupper(substr($part, 0, 1));
+                        if (strlen($sidebarInitials) >= 2) {
+                            break;
+                        }
+                    }
+                }
+                $sidebarInitials = $sidebarInitials !== '' ? $sidebarInitials : 'U';
+            @endphp
+            <div class="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
+                <div class="flex items-center gap-3">
+                    <div class="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-sm font-semibold text-white">
+                        {{ $sidebarInitials }}
+                    </div>
+                    <div class="min-w-0">
+                        <div class="truncate text-sm font-semibold text-white">{{ $sidebarName }}</div>
+                        <div class="text-[11px] text-slate-400">{{ $sidebarRole }}</div>
+                    </div>
+                </div>
+                <form method="POST" action="{{ route('logout') }}" class="mt-3">
+                    @csrf
+                    <button type="submit" class="w-full rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/20">
+                        Sign out
+                    </button>
+                </form>
             </div>
         </aside>
 
@@ -319,7 +493,7 @@
                                 </a>
                                 <span class="text-slate-300">|</span>
                             @endif
-                            @if(auth()->user()->isSupport())
+                            @if(auth()->user()->isSupport() || auth()->user()->isMasterAdmin())
                                 {{-- Support sees only tickets --}}
                                 <a href="{{ route('admin.support-tickets.index', ['status' => 'customer_reply']) }}" class="flex items-center gap-2">
                                     <span class="stat">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>
@@ -328,34 +502,7 @@
                             @endif
                         </div>
                     @endif
-                    <div class="hidden items-center gap-4 md:flex">
-                        <div class="text-right text-sm">
-                            <div class="font-semibold text-slate-900">{{ auth()->user()->name }}</div>
-                            <div class="text-xs text-slate-500">
-                                @if(auth()->user()->isEmployee())
-                                    Employee
-                                @elseif(auth()->user()->isMasterAdmin())
-                                    Master Administrator
-                                @elseif(auth()->user()->isSubAdmin())
-                                    Sub Administrator
-                                @elseif(auth()->user()->isSales())
-                                    Sales Representative
-                                @elseif(auth()->user()->isSupport())
-                                    Support
-                                @elseif(auth()->user()->isClient())
-                                    Client
-                                @else
-                                    Administrator
-                                @endif
-                            </div>
-                        </div>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
-                                Sign out
-                            </button>
-                        </form>
-                    </div>
+                    <div class="hidden items-center gap-4 md:flex"></div>
                 </div>
 
                 @if(session()->has('impersonator_id') && !auth()->user()?->isAdmin())
@@ -376,7 +523,7 @@
                 @endif
             </header>
 
-            <main class="w-full px-6 py-10 fade-in">
+            <main id="main-content" class="w-full px-6 py-10 fade-in" hx-boost="true">
                 @if ($errors->any())
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                         <ul class="space-y-1">
@@ -425,6 +572,13 @@
                 if (event.key === 'Escape') {
                     closeSidebar();
                 }
+            });
+
+            // HTMX configuration: Update active sidebar state after content loads
+            document.addEventListener('htmx:afterSwap', function(event) {
+                // Reload page to ensure sidebar active states are updated
+                // This is a safeguard; the server-side route detection should already handle it
+                // For pure HTMX without reload, you could update active classes here
             });
         });
     </script>

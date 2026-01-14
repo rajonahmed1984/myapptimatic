@@ -2,15 +2,18 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // Ensure tables use InnoDB engine (required for foreign keys)
-        DB::statement('ALTER TABLE employees ENGINE = InnoDB');
-        DB::statement('ALTER TABLE sales_representatives ENGINE = InnoDB');
+        // Ensure tables use InnoDB engine (required for foreign keys, MySQL only).
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE employees ENGINE = InnoDB');
+            DB::statement('ALTER TABLE sales_representatives ENGINE = InnoDB');
+        }
 
         if (!Schema::hasTable('employee_project')) {
             Schema::create('employee_project', function (Blueprint $table) {

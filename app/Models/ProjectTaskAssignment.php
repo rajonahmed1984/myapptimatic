@@ -20,14 +20,12 @@ class ProjectTaskAssignment extends Model
 
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'assignee_id')
-            ->where('assignee_type', 'employee');
+        return $this->belongsTo(Employee::class, 'assignee_id');
     }
 
     public function salesRep(): BelongsTo
     {
-        return $this->belongsTo(SalesRepresentative::class, 'assignee_id')
-            ->whereIn('assignee_type', ['sales_rep', 'salesrep']);
+        return $this->belongsTo(SalesRepresentative::class, 'assignee_id');
     }
 
     public function assigneeName(): string

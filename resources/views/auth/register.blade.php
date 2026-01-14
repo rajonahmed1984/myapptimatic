@@ -1,4 +1,4 @@
-@extends('layouts.guest')
+﻿@extends('layouts.guest')
 
 @section('title', 'Create Account')
 
@@ -89,6 +89,16 @@
                     value="{{ old('phone') }}"
                     class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-200"
                 />
+            </div>
+            <div>
+                <label class="text-sm text-slate-600">Currency</label>
+                <select
+                    name="currency"
+                    class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                >
+                    <option value="BDT" {{ old('currency', 'BDT') === 'BDT' ? 'selected' : '' }}>BDT (৳)</option>
+                    <option value="USD" {{ old('currency') === 'USD' ? 'selected' : '' }}>USD ($)</option>
+                </select>
             </div>
             <div class="md:col-span-2">
                 <label class="text-sm text-slate-600">Address</label>
