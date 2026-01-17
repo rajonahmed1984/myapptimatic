@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProjectTaskSubtask;
 use App\Models\Project;
 use App\Models\SalesRepresentative;
 use App\Models\Employee;
@@ -19,6 +20,21 @@ class ProjectController extends Controller
 
         $projects = Project::query()
             ->with(['customer'])
+            ->withCount([
+                'tasks',
+                'tasks as completed_tasks_count' => fn ($query) => $query->whereIn('status', ['completed', 'done']),
+            ])
+            ->addSelect([
+                'subtasks_count' => ProjectTaskSubtask::query()
+                    ->selectRaw('count(*)')
+                    ->join('project_tasks', 'project_tasks.id', '=', 'project_task_subtasks.project_task_id')
+                    ->whereColumn('project_tasks.project_id', 'projects.id'),
+                'completed_subtasks_count' => ProjectTaskSubtask::query()
+                    ->selectRaw('count(*)')
+                    ->join('project_tasks', 'project_tasks.id', '=', 'project_task_subtasks.project_task_id')
+                    ->whereColumn('project_tasks.project_id', 'projects.id')
+                    ->where('project_task_subtasks.is_completed', true),
+            ])
             ->whereHas('employees', fn ($q) => $q->whereKey($employeeId))
             ->latest()
             ->paginate(20);

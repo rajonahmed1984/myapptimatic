@@ -18,6 +18,8 @@
                     <th class="px-4 py-3 w-20">ID</th>
                     <th class="px-4 py-3">Project</th>
                     <th class="px-4 py-3">Customer</th>
+                    <th class="px-4 py-3">Tasks</th>
+                    <th class="px-4 py-3">Subtasks</th>
                     <th class="px-4 py-3">Status</th>
                     <th class="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -28,6 +30,12 @@
                         <td class="px-4 py-3 font-semibold text-slate-900">#{{ $project->id }}</td>
                         <td class="px-4 py-3">{{ $project->name }}</td>
                         <td class="px-4 py-3">{{ $project->customer?->name ?? '--' }}</td>
+                        <td class="px-4 py-3 text-xs text-slate-600">
+                            {{ (int) $project->tasks_count }} total / {{ (int) $project->completed_tasks_count }} completed
+                        </td>
+                        <td class="px-4 py-3 text-xs text-slate-600">
+                            {{ (int) $project->subtasks_count }} total / {{ (int) $project->completed_subtasks_count }} completed
+                        </td>
                         <td class="px-4 py-3">
                             <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ ucfirst(str_replace('_',' ', $project->status)) }}</span>
                         </td>
@@ -37,7 +45,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-6 text-center text-sm text-slate-500">No projects assigned.</td>
+                        <td colspan="7" class="px-4 py-6 text-center text-sm text-slate-500">No projects assigned.</td>
                     </tr>
                 @endforelse
                 </tbody>

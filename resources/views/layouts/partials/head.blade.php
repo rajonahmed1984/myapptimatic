@@ -9,3 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="{{ asset('css/custom.css') }}"><script src="https://unpkg.com/htmx.org@1.9.11"></script>
+@if (request()->routeIs('register'))
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/12.1.13/css/intlTelInput.css">
+@endif

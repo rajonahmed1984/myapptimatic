@@ -84,7 +84,8 @@
             <div>
                 <label class="text-sm text-slate-600">Mobile number</label>
                 <input
-                    type="text"
+                    type="tel"
+                    id="phone"
                     name="phone"
                     value="{{ old('phone') }}"
                     class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-200"
@@ -130,7 +131,26 @@
         <script src="https://www.google.com/recaptcha/enterprise.js" async defer></script>
     @endif
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/12.1.13/js/intlTelInput.min.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('phone');
+
+            if (!input || !window.jQuery || !window.jQuery.fn?.intlTelInput) {
+                return;
+            }
+
+            window.jQuery(input).intlTelInput({
+                initialCountry: 'bd',
+                preferredCountries: ['bd', 'us', 'gb'],
+                separateDialCode: true,
+                autoHideDialCode: false,
+                nationalMode: false,
+                utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/12.1.13/js/utils.js'
+            });
+        });
+
         function togglePassword(inputId, button) {
             const input = document.getElementById(inputId);
             const eyeOpen = button.querySelectorAll('.eye-open');

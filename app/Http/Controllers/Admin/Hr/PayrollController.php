@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\PayrollPeriod;
+use App\Models\PayrollItem;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\PayrollService;
 use Illuminate\Http\RedirectResponse;
@@ -38,6 +39,28 @@ class PayrollController extends Controller
         $service->finalizePeriod($payrollPeriod);
 
         return back()->with('status', 'Payroll period finalized.');
+    }
+
+    public function show(PayrollPeriod $payrollPeriod): View
+    {
+        $items = PayrollItem::query()
+            ->where('payroll_period_id', $payrollPeriod->id)
+            ->with('employee')
+            ->orderBy('employee_id')
+            ->paginate(50)
+            ->withQueryString();
+
+        $totals = PayrollItem::query()
+            ->where('payroll_period_id', $payrollPeriod->id)
+            ->selectRaw('currency, SUM(base_pay) as base_total, SUM(gross_pay) as gross_total, SUM(net_pay) as net_total')
+            ->groupBy('currency')
+            ->get();
+
+        return view('admin.hr.payroll.show', [
+            'period' => $payrollPeriod,
+            'items' => $items,
+            'totals' => $totals,
+        ]);
     }
 
     public function export(PayrollPeriod $payrollPeriod): StreamedResponse

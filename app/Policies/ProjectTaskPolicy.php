@@ -64,6 +64,10 @@ class ProjectTaskPolicy
 
     public function delete($actor, ProjectTask $task): bool
     {
+        if ($actor instanceof User && $actor->isSales()) {
+            return false;
+        }
+
         if (in_array($task->status, ['completed', 'done'], true)) {
             return false;
         }

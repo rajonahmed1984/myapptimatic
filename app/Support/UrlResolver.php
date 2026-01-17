@@ -11,12 +11,25 @@ class UrlResolver
         $url = '';
         $settingUrl = Setting::getValue('app_url');
 
-        if (is_string($settingUrl) && $settingUrl !== '') {
-            $url = $settingUrl;
-        } elseif (app()->bound('request')) {
-            $root = request()->root();
-            if (is_string($root) && $root !== '') {
-                $url = $root;
+        if (app()->environment('local')) {
+            if (app()->bound('request')) {
+                $root = request()->root();
+                if (is_string($root) && $root !== '') {
+                    $url = $root;
+                }
+            }
+
+            if ($url === '' && is_string($settingUrl) && $settingUrl !== '') {
+                $url = $settingUrl;
+            }
+        } else {
+            if (is_string($settingUrl) && $settingUrl !== '') {
+                $url = $settingUrl;
+            } elseif (app()->bound('request')) {
+                $root = request()->root();
+                if (is_string($root) && $root !== '') {
+                    $url = $root;
+                }
             }
         }
 

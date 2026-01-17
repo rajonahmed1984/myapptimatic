@@ -26,6 +26,38 @@
             </div>
         </form>
 
+        @if($assignedProjects->isNotEmpty())
+            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+                <div class="text-xs uppercase text-slate-500">Assigned project commissions</div>
+                <div class="mt-3 overflow-x-auto">
+                    <table class="min-w-full text-sm text-left">
+                        <thead>
+                            <tr class="text-xs uppercase text-slate-500">
+                                <th class="px-2 py-2">Project</th>
+                                <th class="px-2 py-2">Customer</th>
+                                <th class="px-2 py-2">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($assignedProjects as $project)
+                                @php
+                                    $rep = $project->salesRepresentatives->first();
+                                    $amount = $rep?->pivot?->amount;
+                                @endphp
+                                <tr class="border-t border-slate-200">
+                                    <td class="px-2 py-2">#{{ $project->id }} · {{ $project->name }}</td>
+                                    <td class="px-2 py-2">{{ $project->customer?->name ?? '--' }}</td>
+                                    <td class="px-2 py-2">
+                                        {{ $amount !== null ? number_format((float) $amount, 2) . ' ' . $project->currency : '--' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
         <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
             <div class="mt-3 overflow-x-auto">
                 <table class="min-w-full text-sm text-left">

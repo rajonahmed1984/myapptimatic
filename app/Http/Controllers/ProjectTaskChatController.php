@@ -307,6 +307,10 @@ class ProjectTaskChatController extends Controller
         }
 
         if ($user) {
+            if (method_exists($user, 'isEmployee') && $user->isEmployee() && $user->employee) {
+                return $user->employee;
+            }
+
             return $user;
         }
 

@@ -61,6 +61,10 @@ class ProjectTaskSubtaskPolicy
             return false;
         }
 
+        if ($actor instanceof User && $actor->isSales()) {
+            return false;
+        }
+
         return $this->canEditTask($actor, $task);
     }
 
@@ -96,7 +100,7 @@ class ProjectTaskSubtaskPolicy
         }
 
         if ($actor instanceof User) {
-            return $actor->isAdmin() || $actor->isSales();
+            return $actor->isAdmin() || $actor->isSales() || $actor->isEmployee();
         }
 
         return false;

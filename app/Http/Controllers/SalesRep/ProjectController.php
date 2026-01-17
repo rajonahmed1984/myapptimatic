@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SalesRep;
 
 use App\Http\Controllers\Controller;
+use App\Models\CommissionEarning;
 use App\Models\Project;
 use App\Models\SalesRepresentative;
 use App\Support\TaskSettings;
@@ -20,7 +21,33 @@ class ProjectController extends Controller
             ->latest()
             ->paginate(20);
 
-        return view('rep.projects.index', compact('projects'));
+        $commissionMap = [];
+        $projectIds = $projects->getCollection()->pluck('id')->all();
+        if (! empty($projectIds)) {
+            $commissions = CommissionEarning::query()
+                ->where('sales_representative_id', $repId)
+                ->whereIn('project_id', $projectIds)
+                ->selectRaw('project_id, currency, SUM(commission_amount) as total')
+                ->groupBy('project_id', 'currency')
+                ->get();
+
+            $commissionMap = $commissions
+                ->groupBy('project_id')
+                ->map(function ($rows) {
+                    return $rows->map(function ($row) {
+                        return [
+                            'amount' => (float) $row->total,
+                            'currency' => (string) $row->currency,
+                        ];
+                    })->values();
+                })
+                ->all();
+        }
+
+        return view('rep.projects.index', [
+            'projects' => $projects,
+            'commissionMap' => $commissionMap,
+        ]);
     }
 
     public function show(Request $request, Project $project)

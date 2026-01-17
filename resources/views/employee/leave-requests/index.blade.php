@@ -9,7 +9,7 @@
         <div class="text-2xl font-semibold text-slate-900">Request leave</div>
         <div class="text-sm text-slate-500">Submit a new request and track approvals.</div>
 
-        <form method="POST" action="{{ route('employee.leave-requests.store') }}" class="mt-4 grid gap-3 md:grid-cols-4 text-sm">
+        <form method="POST" action="{{ route('employee.leave-requests.store') }}" class="mt-4 grid gap-3 md:grid-cols-4 text-sm" hx-boost="false">
             @csrf
             <div>
                 <label class="text-xs text-slate-500">Leave type</label>
@@ -32,7 +32,7 @@
                 <input name="reason" value="{{ old('reason') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Optional">
             </div>
             <div class="md:col-span-4">
-                <button class="rounded-full bg-emerald-600 px-4 py-2 text-white text-sm font-semibold hover:bg-emerald-500">Submit</button>
+                <button type="submit" class="rounded-full bg-emerald-600 px-4 py-2 text-white text-sm font-semibold hover:bg-emerald-500">Submit</button>
             </div>
         </form>
 

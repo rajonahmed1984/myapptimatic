@@ -221,6 +221,10 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::post('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'store'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.activity.store');
+        Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])
+            ->name('projects.tasks.subtasks.store');
+        Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])
+            ->name('projects.tasks.subtasks.update');
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
@@ -253,6 +257,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         Route::post('timesheets/{timesheet}/lock', [\App\Http\Controllers\Admin\Hr\TimesheetController::class, 'lock'])->name('timesheets.lock');
         Route::get('payroll', [HrPayrollController::class, 'index'])->name('payroll.index');
         Route::post('payroll/generate', [HrPayrollController::class, 'generate'])->name('payroll.generate');
+        Route::get('payroll/{payrollPeriod}', [HrPayrollController::class, 'show'])->name('payroll.show');
         Route::post('payroll/{payrollPeriod}/finalize', [HrPayrollController::class, 'finalize'])->name('payroll.finalize');
         Route::get('payroll/{payrollPeriod}/export', [HrPayrollController::class, 'export'])->name('payroll.export');
     });

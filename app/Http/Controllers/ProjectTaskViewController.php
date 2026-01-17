@@ -115,6 +115,10 @@ class ProjectTaskViewController extends Controller
 
         $user = $request->user();
         if ($user) {
+            if (method_exists($user, 'isEmployee') && $user->isEmployee() && $user->employee) {
+                return $user->employee;
+            }
+
             return $user;
         }
 
@@ -134,6 +138,9 @@ class ProjectTaskViewController extends Controller
         }
 
         $user = $request->user();
+        if ($user && method_exists($user, 'isEmployee') && $user->isEmployee()) {
+            return ['type' => 'employee', 'id' => $user->employee?->id];
+        }
         if ($user?->isAdmin()) {
             return ['type' => 'admin', 'id' => $user?->id];
         }
@@ -172,6 +179,10 @@ class ProjectTaskViewController extends Controller
         }
 
         if (method_exists($actor, 'isSales') && $actor->isSales()) {
+            return true;
+        }
+
+        if (method_exists($actor, 'isEmployee') && $actor->isEmployee()) {
             return true;
         }
 

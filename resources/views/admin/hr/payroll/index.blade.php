@@ -36,6 +36,7 @@
                         <td class="py-2 px-3">{{ ucfirst($period->status) }}</td>
                         <td class="py-2 px-3">{{ $period->items_count }}</td>
                         <td class="py-2 px-3 text-right space-x-2">
+                            <a href="{{ route('admin.hr.payroll.show', $period) }}" class="text-xs text-slate-700 hover:underline">View</a>
                             <a href="{{ route('admin.hr.payroll.export', $period) }}" class="text-xs text-slate-700 hover:underline">Export CSV</a>
                             @if($period->status === 'draft')
                                 <form method="POST" action="{{ route('admin.hr.payroll.finalize', $period) }}" class="inline">

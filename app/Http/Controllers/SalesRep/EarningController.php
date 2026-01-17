@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SalesRep;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommissionEarning;
+use App\Models\Project;
 use Illuminate\Http\Request;
 
 class EarningController extends Controller
@@ -30,6 +31,11 @@ class EarningController extends Controller
             'earnings' => $earnings,
             'status' => $status,
             'statusOptions' => $statusOptions,
+            'assignedProjects' => Project::query()
+                ->with(['customer', 'salesRepresentatives' => fn ($q) => $q->whereKey($rep->id)])
+                ->whereHas('salesRepresentatives', fn ($q) => $q->whereKey($rep->id))
+                ->latest()
+                ->get(),
         ]);
     }
 }

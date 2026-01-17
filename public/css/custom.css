@@ -203,3 +203,8 @@ body.bg-dashboard {
         width: 16rem;
     }
 }
+
+.intl-tel-input {
+    display: block;
+    width: 100%;
+}
