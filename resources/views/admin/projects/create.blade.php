@@ -26,7 +26,12 @@
                     <select name="customer_id" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                         <option value="">Select customer</option>
                         @foreach($customers as $customer)
-                            <option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>{{ $customer->name }}</option>
+                            <option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>
+                                {{ $customer->name }}
+                                @if($customer->company_name)
+                                    ({{ $customer->company_name }})
+                                @endif
+                            </option>
                         @endforeach
                     </select>
                 </div>
