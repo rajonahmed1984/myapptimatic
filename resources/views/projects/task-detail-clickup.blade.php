@@ -303,13 +303,36 @@
             </div>
 
             <!-- Activity/Attachments Section -->
-            @if($uploadActivities->isNotEmpty())
+            @if($uploadActivities->isNotEmpty() || $canPost)
                 <div class="card p-6">
                     <h2 class="text-lg font-bold text-slate-900 mb-4">Attachments</h2>
+                    @if($canPost)
+                        <form method="POST" action="{{ $uploadRoute }}" enctype="multipart/form-data" class="mb-6 space-y-3">
+                            @csrf
+                            <input type="file" name="attachments[]" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" multiple class="block w-full text-sm text-slate-600" />
+                            <input type="text" name="message" placeholder="Optional note" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                            <p class="text-xs text-slate-500">Max {{ $uploadMaxMb }}MB per file.</p>
+                            @error('attachments')
+                                <div class="text-xs text-rose-600">{{ $message }}</div>
+                            @enderror
+                            @error('attachments.*')
+                                <div class="text-xs text-rose-600">{{ $message }}</div>
+                            @enderror
+                            @error('attachment')
+                                <div class="text-xs text-rose-600">{{ $message }}</div>
+                            @enderror
+                            <div class="flex justify-end">
+                                <button type="submit" class="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Upload</button>
+                            </div>
+                        </form>
+                    @endif
                     @php
                         $uploadsByDay = $uploadActivities->groupBy(fn ($upload) => $upload->created_at?->format($globalDateFormat) ?? 'Unknown date');
                     @endphp
-                    <div class="space-y-4">
+                    @if($uploadActivities->isEmpty())
+                        <div class="text-xs text-slate-500">No attachments yet.</div>
+                    @else
+                        <div class="space-y-4">
                         @foreach($uploadsByDay as $day => $uploads)
                             <div>
                                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">{{ $day }}</div>
@@ -332,7 +355,8 @@
                                 </div>
                             </div>
                         @endforeach
-                    </div>
+                        </div>
+                    @endif
                 </div>
             @endif
         </div>        

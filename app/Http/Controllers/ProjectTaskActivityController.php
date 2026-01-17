@@ -13,6 +13,7 @@ use App\Support\TaskSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -194,17 +195,26 @@ class ProjectTaskActivityController extends Controller
         $maxMb = TaskSettings::uploadMaxMb();
 
         $data = $request->validate([
-            'attachment' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:' . ($maxMb * 1024)],
+            'attachments' => ['array', 'min:1', 'required_without:attachment'],
+            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:' . ($maxMb * 1024)],
+            'attachment' => ['file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:' . ($maxMb * 1024), 'required_without:attachments'],
             'message' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $attachmentPath = $this->storeAttachment($request, $task);
+        $files = $request->file('attachments', []);
+        if (empty($files) && $request->hasFile('attachment')) {
+            $files = [$request->file('attachment')];
+        }
+
         $message = isset($data['message']) ? trim((string) $data['message']) : null;
         $message = $message === '' ? null : $message;
 
-        TaskActivityLogger::record($task, $request, 'upload', $message, [], $attachmentPath);
+        foreach ($files as $file) {
+            $attachmentPath = $this->storeAttachment($file, $task);
+            TaskActivityLogger::record($task, $request, 'upload', $message, [], $attachmentPath);
+        }
 
-        return back()->with('status', 'File uploaded.');
+        return back()->with('status', count($files) > 1 ? 'Files uploaded.' : 'File uploaded.');
     }
 
     public function attachment(Request $request, Project $project, ProjectTask $task, ProjectTaskActivity $activity)
@@ -290,9 +300,8 @@ class ProjectTaskActivityController extends Controller
         return 'admin';
     }
 
-    private function storeAttachment(Request $request, ProjectTask $task): string
+    private function storeAttachment(UploadedFile $file, ProjectTask $task): string
     {
-        $file = $request->file('attachment');
         $name = pathinfo((string) $file->getClientOriginalName(), PATHINFO_FILENAME);
         $name = $name !== '' ? Str::slug($name) : 'attachment';
         $extension = $file->getClientOriginalExtension();
