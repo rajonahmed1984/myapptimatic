@@ -50,6 +50,10 @@
         ];
         $billingAmounts = $billingAmounts ?? ['today' => 0, 'month' => 0, 'year' => 0, 'all_time' => 0];
         $currency = $currency ?? 'BDT';
+        $systemOverview = $systemOverview ?? [
+            'automation_last_run' => '--',
+            'automation_cards' => ['status_badge' => ''],
+        ];
         $periodMetrics = $periodMetrics ?? [
             'today' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0],
             'month' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0],

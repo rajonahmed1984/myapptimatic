@@ -202,7 +202,7 @@ class ProjectController extends Controller
             }
         }
 
-        $project = DB::transaction(function () use ($data, $request, $billingService, $salesRepSync) {
+        $project = DB::transaction(function () use ($data, $request, $billingService, $salesRepSync, $commissionService) {
             $project = Project::create([
                 'name' => $data['name'],
                 'customer_id' => $data['customer_id'],
