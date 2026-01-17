@@ -31,6 +31,28 @@
                                 {{ $taskTypeOptions[$task->task_type] ?? 'Task' }}
                             </span>
                         </div>
+                        @if(!($routePrefix === 'admin' && $canEdit))
+                            <div class="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
+                                <div class="grid gap-4 md:grid-cols-3">
+                                    <div>
+                                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Start Date</div>
+                                        <div class="text-sm font-medium text-slate-900">{{ $task->start_date?->format($globalDateFormat) ?? '—' }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Due Date</div>
+                                        <div class="text-sm font-medium text-slate-900">{{ $task->due_date?->format($globalDateFormat) ?? '—' }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Time Estimate</div>
+                                        <div class="text-sm font-medium text-slate-900">{{ $task->time_estimate_minutes ? $task->time_estimate_minutes . ' min' : '—' }}</div>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Tags</div>
+                                    <div class="text-sm text-slate-700">{{ $task->tags ? implode(', ', $task->tags) : '—' }}</div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                     <div>
                         <div class="mt-4 grid gap-6 md:grid-cols-2">
@@ -183,28 +205,6 @@
                         </button>
                     </div>
                 </form>
-            @else
-                <!-- Read Only View -->
-                <div class="card p-6 space-y-4">
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <div>
-                            <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Start Date</div>
-                            <div class="text-sm font-medium text-slate-900">{{ $task->start_date?->format($globalDateFormat) ?? '—' }}</div>
-                        </div>
-                        <div>
-                            <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Due Date</div>
-                            <div class="text-sm font-medium text-slate-900">{{ $task->due_date?->format($globalDateFormat) ?? '—' }}</div>
-                        </div>
-                        <div>
-                            <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Time Estimate</div>
-                            <div class="text-sm font-medium text-slate-900">{{ $task->time_estimate_minutes ? $task->time_estimate_minutes . ' min' : '—' }}</div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Tags</div>
-                        <div class="text-sm text-slate-700">{{ $task->tags ? implode(', ', $task->tags) : '—' }}</div>
-                    </div>
-                </div>
             @endif
 
             <!-- Subtasks Section -->
