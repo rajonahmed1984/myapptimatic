@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\SalesRep;
 
 use App\Http\Controllers\Controller;
-use App\Models\CommissionEarning;
 use App\Models\Project;
 use App\Models\SalesRepresentative;
 use App\Support\TaskSettings;
@@ -16,33 +15,21 @@ class ProjectController extends Controller
         $repId = SalesRepresentative::where('user_id', $request->user()->id)->value('id');
 
         $projects = Project::query()
-            ->with('customer')
+            ->with([
+                'customer',
+                'salesRepresentatives' => fn ($q) => $q->whereKey($repId),
+            ])
             ->whereHas('salesRepresentatives', fn ($q) => $q->whereKey($repId))
             ->latest()
             ->paginate(20);
 
-        $commissionMap = [];
-        $projectIds = $projects->getCollection()->pluck('id')->all();
-        if (! empty($projectIds)) {
-            $commissions = CommissionEarning::query()
-                ->where('sales_representative_id', $repId)
-                ->whereIn('project_id', $projectIds)
-                ->selectRaw('project_id, currency, SUM(commission_amount) as total')
-                ->groupBy('project_id', 'currency')
-                ->get();
-
-            $commissionMap = $commissions
-                ->groupBy('project_id')
-                ->map(function ($rows) {
-                    return $rows->map(function ($row) {
-                        return [
-                            'amount' => (float) $row->total,
-                            'currency' => (string) $row->currency,
-                        ];
-                    })->values();
-                })
-                ->all();
-        }
+        $commissionMap = $projects->getCollection()
+            ->mapWithKeys(function (Project $project) {
+                $rep = $project->salesRepresentatives->first();
+                $amount = $rep?->pivot?->amount;
+                return [$project->id => $amount !== null ? (float) $amount : null];
+            })
+            ->all();
 
         return view('rep.projects.index', [
             'projects' => $projects,
@@ -55,7 +42,11 @@ class ProjectController extends Controller
         $repId = SalesRepresentative::where('user_id', $request->user()->id)->value('id');
         $this->authorize('view', $project);
 
-        $project->load(['customer']);
+        $project->load([
+            'customer',
+            'salesRepresentatives' => fn ($q) => $q->whereKey($repId),
+        ]);
+        $repAmount = $project->salesRepresentatives->first()?->pivot?->amount;
 
         $tasks = $project->tasks()
             ->orderBy('id')
@@ -79,6 +70,7 @@ class ProjectController extends Controller
             'initialInvoice' => $initialInvoice,
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),
+            'salesRepAmount' => $repAmount !== null ? (float) $repAmount : null,
         ]);
     }
 }

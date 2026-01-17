@@ -33,13 +33,9 @@
                         </td>
                         <td class="px-4 py-3 text-sm text-slate-600">
                             @php
-                                $entries = $commissionMap[$project->id] ?? [];
+                                $commission = $commissionMap[$project->id] ?? null;
                             @endphp
-                            @if(empty($entries))
-                                --
-                            @else
-                                {{ collect($entries)->map(fn ($entry) => number_format((float) $entry['amount'], 2).' '.$entry['currency'])->implode(' / ') }}
-                            @endif
+                            {{ $commission !== null ? number_format((float) $commission, 2) . ' ' . $project->currency : '--' }}
                         </td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('rep.projects.show', $project) }}" class="text-sm font-semibold text-teal-700 hover:text-teal-600">View</a>

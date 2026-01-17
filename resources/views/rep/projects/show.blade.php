@@ -30,6 +30,7 @@
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Financials</div>
                 <div class="mt-2 text-sm text-slate-700">
                     Budget: {{ $project->total_budget ? $project->currency.' '.$project->total_budget : '--' }}<br>
+                    Sales rep amount: {{ $salesRepAmount !== null ? $project->currency.' '.number_format($salesRepAmount, 2) : '--' }}<br>
                     Initial payment: {{ $project->initial_payment_amount ? $project->currency.' '.$project->initial_payment_amount : '--' }}
                 </div>
                 @if(!empty($initialInvoice))
