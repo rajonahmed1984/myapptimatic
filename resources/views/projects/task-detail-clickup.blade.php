@@ -90,13 +90,15 @@
                     <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Latest Upload</div>
                     <div class="flex items-center gap-4">
                         @php $latestUpload = $uploadActivities->last(); @endphp
-                        @if($latestUpload?->isImageAttachment())
-                            <img src="{{ route($attachmentRouteName, [$project, $task, $latestUpload]) }}" alt="Attachment" class="h-20 w-20 rounded-lg border border-slate-200 object-cover" />
-                        @else
-                            <div class="h-20 w-20 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center">
-                                <span class="text-xs font-bold text-slate-500">FILE</span>
-                            </div>
-                        @endif
+                        <a href="{{ route($attachmentRouteName, [$project, $task, $latestUpload]) }}" target="_blank" rel="noopener" class="block">
+                            @if($latestUpload?->isImageAttachment())
+                                <img src="{{ route($attachmentRouteName, [$project, $task, $latestUpload]) }}" alt="Attachment" class="h-20 w-20 rounded-lg border border-slate-200 object-cover" />
+                            @else
+                                <div class="h-20 w-20 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center">
+                                    <span class="text-xs font-bold text-slate-500">FILE</span>
+                                </div>
+                            @endif
+                        </a>
                         <div>
                             <div class="font-semibold text-slate-900">{{ $latestUpload?->attachmentName() ?? 'Attachment' }}</div>
                             <div class="text-xs text-slate-500">{{ $latestUpload?->created_at->format($globalDateFormat . ' H:i') }}</div>
@@ -308,7 +310,7 @@
                                         <div class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
                                             <a href="{{ route($attachmentRouteName, [$project, $task, $upload]) }}" target="_blank" rel="noopener" class="flex items-center gap-3 flex-1 min-w-0">
                                                 @if($upload->isImageAttachment())
-                                                    <img src="{{ route($attachmentRouteName, [$project, $task, $upload]) }}" alt="Attachment" class="h-12 w-12 rounded border border-slate-200 object-cover" />
+                                                    <img src="{{ route($attachmentRouteName, [$project, $task, $upload]) }}" alt="Attachment" class="h-12 w-12 rounded border border-slate-200 object-cover" loading="lazy" />
                                                 @else
                                                     <div class="h-12 w-12 rounded border border-slate-200 bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">DOC</div>
                                                 @endif
@@ -340,8 +342,8 @@
                     @endforeach
                 </div>
             </div>
-        @endif
-    </div>
+    @endif
+</div>
 
     <script>
         // Initialize subtask form buttons
@@ -443,6 +445,7 @@
                 });
             });
         });
+
     </script>
 
     <style>
