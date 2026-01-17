@@ -49,6 +49,18 @@ class MaintenanceBillingService
         ];
     }
 
+    public function createInvoiceForMaintenance(ProjectMaintenance $maintenance, ?Carbon $today = null): ?Invoice
+    {
+        $today = $today ?? Carbon::today();
+        $invoice = $this->billMaintenance((int) $maintenance->id, $today);
+
+        if ($invoice) {
+            SendInvoiceCreatedNotifications::dispatch($invoice->id);
+        }
+
+        return $invoice;
+    }
+
     private function billMaintenance(int $maintenanceId, Carbon $today): ?Invoice
     {
         return DB::transaction(function () use ($maintenanceId, $today) {

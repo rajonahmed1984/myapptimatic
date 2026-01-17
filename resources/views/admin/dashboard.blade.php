@@ -12,30 +12,30 @@
     </div>
 
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4 stagger">
-        <div class="card px-4 py-3 leading-tight">
+        <a href="{{ route('admin.customers.index') }}" class="card px-4 py-3 leading-tight transition hover:border-teal-300 hover:shadow-sm">
             <div class="flex items-center justify-between gap-3">
                 <div class="section-label">Customers</div>
                 <div class="text-xl font-semibold text-slate-900">{{ $customerCount }}</div>
             </div>
-        </div>
-        <div class="card px-4 py-3 leading-tight">
+        </a>
+        <a href="{{ route('admin.subscriptions.index') }}" class="card px-4 py-3 leading-tight transition hover:border-teal-300 hover:shadow-sm">
             <div class="flex items-center justify-between gap-3">
                 <div class="section-label">Subscriptions</div>
                 <div class="text-xl font-semibold text-slate-900">{{ $subscriptionCount }}</div>
             </div>
-        </div>
-        <div class="card px-4 py-3 leading-tight">
+        </a>
+        <a href="{{ route('admin.licenses.index') }}" class="card px-4 py-3 leading-tight transition hover:border-teal-300 hover:shadow-sm">
             <div class="flex items-center justify-between gap-3">
                 <div class="section-label">Licenses</div>
                 <div class="text-xl font-semibold text-slate-900">{{ $licenseCount }}</div>
             </div>
-        </div>
-        <div class="card px-4 py-3 leading-tight">
+        </a>
+        <a href="{{ route('admin.invoices.unpaid') }}" class="card px-4 py-3 leading-tight transition hover:border-teal-300 hover:shadow-sm">
             <div class="flex items-center justify-between gap-3">
                 <div class="section-label">Unpaid Invoices</div>
                 <div class="text-xl font-semibold text-blue-600">{{ $pendingInvoiceCount }}</div>
             </div>
-        </div>
+        </a>
     </div>
 
     @php
@@ -48,129 +48,132 @@
             'finalized_payroll_periods' => 0,
             'payroll_items_to_pay' => 0,
         ];
-        $systemOverview = $systemOverview ?? [
-            'period_activity' => 'No recent data',
-            'billing_status' => 'Healthy',
-            'revenue_snapshot' => 0,
-            'automation_last_run' => 'N/A',
-            'sessions' => [],
+        $billingAmounts = $billingAmounts ?? ['today' => 0, 'month' => 0, 'year' => 0, 'all_time' => 0];
+        $currency = $currency ?? 'BDT';
+        $periodMetrics = $periodMetrics ?? [
+            'today' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0],
+            'month' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0],
+            'year' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0],
         ];
-        $systemOverview['sessions'] = $systemOverview['sessions'] ?? [];
-        $systemOverview['revenue_cards'] = $systemOverview['revenue_cards'] ?? [
-            'today' => 0,
-            'month' => 0,
-            'year' => 0,
-            'all_time' => 0,
+        $periodSeries = $periodSeries ?? [
+            'today' => ['labels' => [], 'new_orders' => [], 'active_orders' => [], 'income' => []],
+            'month' => ['labels' => [], 'new_orders' => [], 'active_orders' => [], 'income' => []],
+            'year' => ['labels' => [], 'new_orders' => [], 'active_orders' => [], 'income' => []],
         ];
-        $systemOverview['automation_cards'] = $systemOverview['automation_cards'] ?? [
-            'invoices_created' => 0,
-            'overdue_suspensions' => 0,
-            'inactive_tickets_closed' => 0,
-            'overdue_reminders' => 0,
-            'status_badge' => 'Ok',
-            'status_badge_color' => 'emerald',
-        ];
+        $periodDefault = 'month';
+        $defaultMetrics = $periodMetrics[$periodDefault] ?? ['new_orders' => 0, 'active_orders' => 0, 'income' => 0];
     @endphp
 
     <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div class="card px-4 py-3 leading-tight">
-            <div class="flex items-center justify-between gap-3">
+            <a href="{{ route('admin.projects.index', ['status' => 'ongoing']) }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Ongoing projects</div>
                 <div class="text-xl font-semibold text-slate-900">{{ $projectMaintenance['projects_active'] }}</div>
-            </div>
-            <div class="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+            </a>
+            <a href="{{ route('admin.projects.index', ['status' => 'hold']) }}" class="mt-1 flex items-center justify-between text-[11px] text-slate-500 transition hover:text-teal-600">
                 <span>Hold</span>
                 <span>{{ $projectMaintenance['projects_on_hold'] }}</span>
-            </div>
+            </a>
         </div>
         <div class="card px-4 py-3 leading-tight">
-            <div class="flex items-center justify-between gap-3">
+            <a href="{{ route('admin.subscriptions.index') }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Blocked services</div>
                 <div class="text-xl font-semibold text-rose-600">{{ $projectMaintenance['subscriptions_blocked'] }}</div>
-            </div>
-            <div class="mt-1 text-[11px] text-slate-500">Suspended subscriptions</div>
+            </a>
+            <a href="{{ route('admin.subscriptions.index') }}" class="mt-1 text-[11px] text-slate-500 transition hover:text-teal-600">Suspended subscriptions</a>
         </div>
         <div class="card px-4 py-3 leading-tight">
-            <div class="flex items-center justify-between gap-3">
+            <a href="{{ route('admin.subscriptions.index') }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Renewals (30d)</div>
                 <div class="text-xl font-semibold text-emerald-600">{{ $projectMaintenance['renewals_30d'] }}</div>
-            </div>
-            <div class="mt-1 text-[11px] text-slate-500">Upcoming maintenance invoices</div>
+            </a>
+            <a href="{{ route('admin.project-maintenances.index') }}" class="mt-1 text-[11px] text-slate-500 transition hover:text-teal-600">Upcoming maintenance invoices</a>
         </div>
         <div class="card px-4 py-3 leading-tight">
-            <div class="flex items-center justify-between gap-3">
+            <a href="{{ route('admin.projects.index') }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Profitability</div>
                 <div class="text-xl font-semibold text-emerald-600">{{ $projectMaintenance['projects_profitable'] }}</div>
-            </div>
-            <div class="mt-1 flex items-center justify-between text-[11px] text-rose-600">
+            </a>
+            <a href="{{ route('admin.projects.index') }}" class="mt-1 flex items-center justify-between text-[11px] text-rose-600 transition hover:text-rose-700">
                 <span>Loss risk</span>
                 <span>{{ $projectMaintenance['projects_loss'] }}</span>
-            </div>
+            </a>
         </div>
     </div>
 
     <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div class="card px-4 py-3 leading-tight">
-            <div class="flex items-center justify-between gap-3">
+            <a href="{{ route('admin.hr.employees.index') }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Active employees</div>
                 <div class="text-xl font-semibold text-slate-900">{{ $hrStats['active_employees'] }}</div>
-            </div>
-            <div class="mt-1 text-[11px] text-slate-500">Currently enabled profiles</div>
+            </a>
+            <a href="{{ route('admin.hr.employees.index') }}" class="mt-1 text-[11px] text-slate-500 transition hover:text-teal-600">Currently enabled profiles</a>
         </div>
         <div class="card px-4 py-3 leading-tight">
-            <div class="flex items-center justify-between gap-3">
+            <a href="{{ route('admin.hr.timesheets.index') }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Timesheets</div>
                 <div class="text-xl font-semibold text-amber-600">{{ $hrStats['pending_timesheets'] }}</div>
-            </div>
-            <div class="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+            </a>
+            <a href="{{ route('admin.hr.timesheets.index') }}" class="mt-1 flex items-center justify-between text-[11px] text-slate-500 transition hover:text-teal-600">
                 <span>Awaiting approval</span>
                 <span class="text-emerald-600">Approved: {{ $hrStats['approved_timesheets'] }}</span>
-            </div>
+            </a>
         </div>
         <div class="card px-4 py-3 leading-tight">
-            <div class="flex items-center justify-between gap-3">
+            <a href="{{ route('admin.hr.payroll.index') }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Payroll periods</div>
                 <div class="text-xl font-semibold text-slate-900">{{ $hrStats['draft_payroll_periods'] }}</div>
-            </div>
-            <div class="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+            </a>
+            <a href="{{ route('admin.hr.payroll.index') }}" class="mt-1 flex items-center justify-between text-[11px] text-slate-500 transition hover:text-teal-600">
                 <span>Draft</span>
                 <span class="text-emerald-600">Finalized: {{ $hrStats['finalized_payroll_periods'] }}</span>
-            </div>
+            </a>
         </div>
         <div class="card px-4 py-3 leading-tight">
-            <div class="flex items-center justify-between gap-3">
+            <a href="{{ route('admin.hr.payroll.index') }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">
                 <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Payroll to pay</div>
                 <div class="text-xl font-semibold text-rose-600">{{ $hrStats['payroll_items_to_pay'] }}</div>
-            </div>
-            <div class="mt-1 text-[11px] text-slate-500">Pending disbursements</div>
+            </a>
+            <a href="{{ route('admin.hr.payroll.index') }}" class="mt-1 text-[11px] text-slate-500 transition hover:text-teal-600">Pending disbursements</a>
         </div>
     </div>
 
 
+    @php
+        $clientActivity = $clientActivity ?? ['recentClients' => collect()];
+        $recentClients = $clientActivity['recentClients'] ?? collect();
+    @endphp
     <div class="mt-6 card p-6">
         <div class="flex items-center justify-between">
             <div>
-                <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Client Activity</div>
+                <a href="{{ route('admin.customers.index') }}" class="text-xs uppercase tracking-[0.25em] text-slate-400 hover:text-teal-600 transition">Client Activity</a>
                 <div class="text-xl font-semibold text-slate-900">Sessions from the last logins</div>
             </div>
+            <a href="{{ route('admin.customers.index') }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">View customers</a>
         </div>
         <div class="mt-4 text-sm text-slate-700">
-            @if(!empty($systemOverview['sessions']))
+            @if($recentClients->isNotEmpty())
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-left text-sm">
                         <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                             <tr>
                                 <th class="py-2 pr-4">User</th>
-                                <th class="py-2 pr-4">Role</th>
                                 <th class="py-2 pr-4">Last login</th>
                                 <th class="py-2 pr-4">IP</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            @foreach($systemOverview['sessions'] as $session)
+                            @foreach($recentClients as $session)
                                 <tr>
-                                    <td class="py-2 pr-4">{{ $session['user'] ?? '--' }}</td>
-                                    <td class="py-2 pr-4">{{ $session['role'] ?? '--' }}</td>
+                                    <td class="py-2 pr-4">
+                                        @if(!empty($session['customer_id']))
+                                            <a href="{{ route('admin.customers.show', $session['customer_id']) }}" class="hover:text-teal-600">
+                                                {{ $session['name'] ?? '--' }}
+                                            </a>
+                                        @else
+                                            {{ $session['name'] ?? '--' }}
+                                        @endif
+                                    </td>
                                     <td class="py-2 pr-4">{{ $session['last_login'] ?? '--' }}</td>
                                     <td class="py-2 pr-4">{{ $session['ip'] ?? '--' }}</td>
                                 </tr>
@@ -197,19 +200,19 @@
             <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
                 <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                     <div class="text-xs uppercase tracking-[0.2em] text-emerald-600">Today</div>
-                    <div class="mt-2 text-2xl font-semibold text-emerald-600">BDT{{ number_format($systemOverview['revenue_cards']['today'], 2) }}</div>
+                    <div class="mt-2 text-2xl font-semibold text-emerald-600">{{ $currency }}{{ number_format($billingAmounts['today'] ?? 0, 2) }}</div>
                 </div>
                 <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                     <div class="text-xs uppercase tracking-[0.2em] text-amber-600">This Month</div>
-                    <div class="mt-2 text-2xl font-semibold text-amber-500">BDT{{ number_format($systemOverview['revenue_cards']['month'], 2) }}</div>
+                    <div class="mt-2 text-2xl font-semibold text-amber-500">{{ $currency }}{{ number_format($billingAmounts['month'] ?? 0, 2) }}</div>
                 </div>
                 <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                     <div class="text-xs uppercase tracking-[0.2em] text-rose-600">This Year</div>
-                    <div class="mt-2 text-2xl font-semibold text-rose-500">BDT{{ number_format($systemOverview['revenue_cards']['year'], 2) }}</div>
+                    <div class="mt-2 text-2xl font-semibold text-rose-500">{{ $currency }}{{ number_format($billingAmounts['year'] ?? 0, 2) }}</div>
                 </div>
                 <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-600">All Time</div>
-                    <div class="mt-2 text-2xl font-semibold text-slate-900">BDT{{ number_format($systemOverview['revenue_cards']['all_time'], 2) }}</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $currency }}{{ number_format($billingAmounts['all_time'] ?? 0, 2) }}</div>
                 </div>
             </div>
         </div>
@@ -218,40 +221,40 @@
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <div class="section-label">Automation Overview</div>
-                    <div class="mt-1 text-sm text-slate-500">Last Automation Run: {{ $systemOverview['automation_last_run'] }}</div>
+                    <div class="mt-1 text-sm text-slate-500">Last Automation Run: {{ $systemOverview['automation_last_run'] ?? '--' }}</div>
                     <a href="{{ route('admin.automation-status') }}" class="mt-1 inline-flex items-center text-xs font-semibold text-teal-600 hover:text-teal-500">
                         View automation status
                     </a>
                 </div>
-                <span class="rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">{{ $systemOverview['automation_cards']['status_badge'] }}</span>
+                <span class="rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">{{ $systemOverview['automation_cards']['status_badge'] ?? '' }}</span>
             </div>
 
             <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
                 <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Invoices Created</div>
                     <div class="mt-2 flex items-center justify-between">
-                        <div class="text-2xl font-semibold text-slate-900">{{ $systemOverview['automation_cards']['invoices_created'] }}</div>
+                        <div class="text-2xl font-semibold text-slate-900">{{ $automation['invoices_created'] ?? 0 }}</div>
                         <svg viewBox="0 0 120 32" class="h-8 w-28"><polygon fill="#10b98122" points="0 31 120 31 120 31"></polygon><polyline fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="square" points="0,1 120,1 "></polyline></svg>
                     </div>
                 </div>
                 <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overdue Suspensions</div>
                     <div class="mt-2 flex items-center justify-between">
-                        <div class="text-2xl font-semibold text-slate-900">{{ $systemOverview['automation_cards']['overdue_suspensions'] }}</div>
+                        <div class="text-2xl font-semibold text-slate-900">{{ $automation['overdue_suspensions'] ?? 0 }}</div>
                         <svg viewBox="0 0 120 32" class="h-8 w-28"><polygon fill="#f59e0b22" points="0 31 120 31 120 31"></polygon><polyline fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="square" points="0,31 120,31 "></polyline></svg>
                     </div>
                 </div>
                 <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Inactive Tickets Closed</div>
                     <div class="mt-2 flex items-center justify-between">
-                        <div class="text-2xl font-semibold text-slate-900">{{ $systemOverview['automation_cards']['inactive_tickets_closed'] }}</div>
+                        <div class="text-2xl font-semibold text-slate-900">{{ $automation['tickets_closed'] ?? 0 }}</div>
                         <svg viewBox="0 0 120 32" class="h-8 w-28"><polygon fill="#0ea5e922" points="0 31 120 31 120 31"></polygon><polyline fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="square" points="0,31 120,31 "></polyline></svg>
                     </div>
                 </div>
                 <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overdue Reminders</div>
                     <div class="mt-2 flex items-center justify-between">
-                        <div class="text-2xl font-semibold text-slate-900">{{ $systemOverview['automation_cards']['overdue_reminders'] }}</div>
+                        <div class="text-2xl font-semibold text-slate-900">{{ $automation['overdue_reminders'] ?? 0 }}</div>
                         <svg viewBox="0 0 120 32" class="h-8 w-28"><polygon fill="#f43f5e22" points="0 31 120 31 120 31"></polygon><polyline fill="none" stroke="#f43f5e" stroke-width="2" stroke-linecap="square" points="0,1 120,1 "></polyline></svg>
                     </div>
                 </div>
@@ -276,11 +279,11 @@
                         <div class="mt-4 space-y-3">
                             <div class="rounded-xl bg-white p-3 shadow-sm">
                                 <div class="text-xs text-slate-500">New Orders</div>
-                                <div class="mt-1 text-xl font-bold text-slate-900" id="left-sidebar-new-orders">4</div>
+                                <div class="mt-1 text-xl font-bold text-slate-900" id="left-sidebar-new-orders">{{ $defaultMetrics['new_orders'] ?? 0 }}</div>
                             </div>
                             <div class="rounded-xl bg-white p-3 shadow-sm">
                                 <div class="text-xs text-slate-500">Active Orders</div>
-                                <div class="mt-1 text-xl font-bold text-blue-600" id="left-sidebar-active-orders">4</div>
+                                <div class="mt-1 text-xl font-bold text-blue-600" id="left-sidebar-active-orders">{{ $defaultMetrics['active_orders'] ?? 0 }}</div>
                             </div>
                         </div>
                     </div>
@@ -340,11 +343,18 @@
                         <div class="mt-4 space-y-3">
                             <div class="rounded-xl bg-white p-3 shadow-sm">
                                 <div class="text-xs text-slate-500">Total Income</div>
-                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-income">BDT3,145.16</div>
+                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-income">{{ $currency }}{{ number_format($defaultMetrics['income'] ?? 0, 2) }}</div>
                             </div>
                             <div class="rounded-xl bg-white p-3 shadow-sm">
                                 <div class="text-xs text-slate-500">Avg Per Order</div>
-                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-avg-income">BDT786.29</div>
+                                @php
+                                    $avgIncome = 0;
+                                    $orderCount = (int) ($defaultMetrics['new_orders'] ?? 0);
+                                    if ($orderCount > 0) {
+                                        $avgIncome = ($defaultMetrics['income'] ?? 0) / $orderCount;
+                                    }
+                                @endphp
+                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-avg-income">{{ $currency }}{{ number_format($avgIncome, 2) }}</div>
                             </div>
                         </div>
                     </div>
@@ -360,10 +370,161 @@
                 </div>
             </div>
 
-            <div id="system-period-metrics" data-period-default="month"
-                 data-period-metrics='{"today":{"new_orders":0,"active_orders":0,"income":0},"month":{"new_orders":4,"active_orders":4,"income":3145.16},"year":{"new_orders":4,"active_orders":4,"income":3145.16}}'
-                 data-period-series='{"today":{"labels":["00","01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23"],"new_orders":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"active_orders":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"income":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},"month":{"labels":["07 Dec","08 Dec","09 Dec","10 Dec","11 Dec","12 Dec","13 Dec","14 Dec","15 Dec","16 Dec","17 Dec","18 Dec","19 Dec","20 Dec","21 Dec","22 Dec","23 Dec","24 Dec","25 Dec","26 Dec","27 Dec","28 Dec","29 Dec","30 Dec","31 Dec","01 Jan","02 Jan","03 Jan","04 Jan","05 Jan"],"new_orders":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,2,1,0,0],"active_orders":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,2,1,0,0],"income":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,96.77,3000,48.39,0,0]},"year":{"labels":["Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan"],"new_orders":[0,0,0,0,0,0,0,0,0,0,1,3],"active_orders":[0,0,0,0,0,0,0,0,0,0,1,3],"income":[0,0,0,0,0,0,0,0,0,0,0,3145.16]}}'
-                 data-currency="BDT" style="display:none"></div>
+            <div id="system-period-metrics" data-period-default="{{ $periodDefault }}"
+                 data-period-metrics='@json($periodMetrics)'
+                 data-period-series='@json($periodSeries)'
+                 data-currency="{{ $currency }}" style="display:none"></div>
         </div>
     </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const metricsEl = document.getElementById('system-period-metrics');
+                const graph = document.getElementById('system-overview-graph');
+                const axis = document.getElementById('system-overview-axis');
+                const newOrdersEl = document.getElementById('left-sidebar-new-orders');
+                const activeOrdersEl = document.getElementById('left-sidebar-active-orders');
+                const incomeEl = document.getElementById('right-sidebar-income');
+                const avgIncomeEl = document.getElementById('right-sidebar-avg-income');
+                const periodButtons = document.querySelectorAll('.btn-period-chooser [data-period]');
+
+                if (!metricsEl || !graph) {
+                    return;
+                }
+
+                const periodMetrics = JSON.parse(metricsEl.dataset.periodMetrics || '{}');
+                const periodSeries = JSON.parse(metricsEl.dataset.periodSeries || '{}');
+                const currency = metricsEl.dataset.currency || '';
+                const defaultPeriod = metricsEl.dataset.periodDefault || 'month';
+                const chartWidth = 400;
+                const chartHeight = 200;
+                const chartTop = 40;
+                const chartBottom = 200;
+                const chartRange = chartBottom - chartTop;
+
+                const formatMoney = (value) => {
+                    const number = Number(value || 0);
+                    return `${currency}${number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                };
+
+                const setActiveButton = (periodKey) => {
+                    periodButtons.forEach((btn) => {
+                        btn.classList.toggle('active', btn.dataset.period === periodKey);
+                    });
+                };
+
+                const scaleValues = (values) => {
+                    const max = Math.max(...values, 1);
+                    return values.map((value, index) => {
+                        const x = values.length > 1 ? (index / (values.length - 1)) * chartWidth : chartWidth / 2;
+                        const y = chartBottom - (Number(value || 0) / max) * chartRange;
+                        return { x, y };
+                    });
+                };
+
+                const buildAreaPath = (points) => {
+                    if (!points.length) {
+                        return '';
+                    }
+                    const start = `M ${points[0].x.toFixed(2)} ${chartBottom.toFixed(2)}`;
+                    const line = points.map((point) => `${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' L ');
+                    const end = `L ${points[points.length - 1].x.toFixed(2)} ${chartBottom.toFixed(2)} Z`;
+                    return `${start} L ${line} ${end}`;
+                };
+
+                const buildLinePoints = (points) => points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
+
+                const renderBars = (values) => {
+                    const barGroup = graph.querySelector('#system-overview-bars');
+                    if (!barGroup) {
+                        return;
+                    }
+                    barGroup.innerHTML = '';
+                    if (!values.length) {
+                        return;
+                    }
+                    const max = Math.max(...values, 1);
+                    const barWidth = Math.max(3, Math.min(10, chartWidth / (values.length * 1.8)));
+                    values.forEach((value, index) => {
+                        const x = values.length > 1
+                            ? (index / (values.length - 1)) * chartWidth - barWidth / 2
+                            : chartWidth / 2 - barWidth / 2;
+                        const height = (Number(value || 0) / max) * chartRange;
+                        const y = chartBottom - height;
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', x.toFixed(2));
+                        rect.setAttribute('y', y.toFixed(2));
+                        rect.setAttribute('width', barWidth.toFixed(2));
+                        rect.setAttribute('height', height.toFixed(2));
+                        rect.setAttribute('rx', '2');
+                        rect.setAttribute('fill', 'url(#activeGradient2)');
+                        barGroup.appendChild(rect);
+                    });
+                };
+
+                const renderAxis = (labels) => {
+                    if (!axis) {
+                        return;
+                    }
+                    axis.innerHTML = '';
+                    labels.forEach((label) => {
+                        const span = document.createElement('span');
+                        span.textContent = label;
+                        axis.appendChild(span);
+                    });
+                };
+
+                const updateMetrics = (periodKey) => {
+                    const summary = periodMetrics[periodKey] || { new_orders: 0, active_orders: 0, income: 0 };
+                    const series = periodSeries[periodKey] || { labels: [], new_orders: [], active_orders: [], income: [] };
+
+                    if (newOrdersEl) {
+                        newOrdersEl.textContent = summary.new_orders ?? 0;
+                    }
+                    if (activeOrdersEl) {
+                        activeOrdersEl.textContent = summary.active_orders ?? 0;
+                    }
+                    if (incomeEl) {
+                        incomeEl.textContent = formatMoney(summary.income ?? 0);
+                    }
+                    if (avgIncomeEl) {
+                        const orderCount = Number(summary.new_orders || 0);
+                        const avg = orderCount > 0 ? (Number(summary.income || 0) / orderCount) : 0;
+                        avgIncomeEl.textContent = formatMoney(avg);
+                    }
+
+                    const orderPoints = scaleValues(series.new_orders || []);
+                    const incomePoints = scaleValues(series.income || []);
+                    const areas = graph.querySelectorAll('#system-overview-areas path');
+                    const lines = graph.querySelectorAll('#system-overview-lines polyline');
+
+                    if (areas[0]) {
+                        areas[0].setAttribute('d', buildAreaPath(orderPoints));
+                    }
+                    if (areas[1]) {
+                        areas[1].setAttribute('d', buildAreaPath(incomePoints));
+                    }
+                    if (lines[0]) {
+                        lines[0].setAttribute('points', buildLinePoints(orderPoints));
+                    }
+                    if (lines[1]) {
+                        lines[1].setAttribute('points', buildLinePoints(incomePoints));
+                    }
+
+                    renderBars(series.active_orders || []);
+                    renderAxis(series.labels || []);
+                    setActiveButton(periodKey);
+                };
+
+                periodButtons.forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        updateMetrics(btn.dataset.period || defaultPeriod);
+                    });
+                });
+
+                updateMetrics(defaultPeriod);
+            });
+        </script>
+    @endpush
 @endsection

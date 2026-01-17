@@ -54,38 +54,28 @@ class ProjectController extends Controller
             ->orderBy('id')
             ->get();
 
-        $chatTaskId = (int) $request->query('chat_task');
-        $chatTask = $tasks->first();
-        if ($chatTaskId > 0) {
-            $chatTask = $tasks->firstWhere('id', $chatTaskId) ?? $chatTask;
-        }
+        $chatMessages = $project->messages()
+            ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor'])
+            ->latest('id')
+            ->limit(30)
+            ->get()
+            ->reverse()
+            ->values();
 
-        $chatMessages = collect();
-        $chatMeta = null;
-        if ($chatTask) {
-            $chatMessages = $chatTask->messages()
-                ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor'])
-                ->latest('id')
-                ->limit(30)
-                ->get()
-                ->reverse()
-                ->values();
+        $employee = $request->attributes->get('employee');
+        $currentAuthorType = $employee ? 'employee' : 'user';
+        $currentAuthorId = $employee?->id ?? $request->user()?->id;
 
-            $employee = $request->attributes->get('employee');
-            $currentAuthorType = $employee ? 'employee' : 'user';
-            $currentAuthorId = $employee?->id ?? $request->user()?->id;
-
-            $chatMeta = [
-                'messagesUrl' => route('employee.projects.tasks.chat.messages', [$project, $chatTask]),
-                'postMessagesUrl' => route('employee.projects.tasks.chat.messages.store', [$project, $chatTask]),
-                'postRoute' => route('employee.projects.tasks.chat.store', [$project, $chatTask]),
-                'readUrl' => route('employee.projects.tasks.chat.read', [$project, $chatTask]),
-                'attachmentRouteName' => 'employee.projects.tasks.messages.attachment',
-                'currentAuthorType' => $currentAuthorType,
-                'currentAuthorId' => $currentAuthorId,
-                'canPost' => Gate::forUser($request->user())->check('comment', $chatTask),
-            ];
-        }
+        $chatMeta = [
+            'messagesUrl' => route('employee.projects.chat.messages', $project),
+            'postMessagesUrl' => route('employee.projects.chat.messages.store', $project),
+            'postRoute' => route('employee.projects.chat.store', $project),
+            'readUrl' => route('employee.projects.chat.read', $project),
+            'attachmentRouteName' => 'employee.projects.chat.messages.attachment',
+            'currentAuthorType' => $currentAuthorType,
+            'currentAuthorId' => $currentAuthorId,
+            'canPost' => Gate::forUser($request->user())->check('view', $project),
+        ];
 
         $employees = Employee::where('status', 'active')->orderBy('name')->get(['id', 'name']);
         $salesReps = []; // employees do not assign sales reps; left empty
@@ -103,7 +93,6 @@ class ProjectController extends Controller
             'initialInvoice' => $initialInvoice,
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),
-            'chatTask' => $chatTask,
             'chatMessages' => $chatMessages,
             'chatMeta' => $chatMeta,
         ]);

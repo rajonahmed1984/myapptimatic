@@ -14,6 +14,10 @@ class RecordEmployeeLogout
             return;
         }
 
+        if (! $event->user) {
+            return;
+        }
+
         $employee = Employee::query()
             ->where('user_id', $event->user->id)
             ->first();

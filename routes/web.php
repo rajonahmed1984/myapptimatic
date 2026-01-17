@@ -61,6 +61,7 @@ use App\Http\Controllers\SupportTicketAttachmentController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\PublicProductController;
+use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskActivityController;
 use App\Http\Controllers\ProjectTaskViewController;
@@ -227,6 +228,18 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
             ->name('projects.tasks.subtasks.update');
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
+        Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
+        Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
+        Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
+            ->middleware('throttle:10,1')
+            ->name('projects.chat.messages.store');
+        Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
+            ->name('projects.chat.read');
+        Route::post('/projects/{project}/chat', [ProjectChatController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('projects.chat.store');
+        Route::get('/projects/{project}/chat/messages/{message}/attachment', [ProjectChatController::class, 'attachment'])
+            ->name('projects.chat.messages.attachment');
         Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
         Route::get('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
         Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
@@ -319,6 +332,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::resource('projects', ProjectController::class);
     Route::resource('project-maintenances', \App\Http\Controllers\Admin\ProjectMaintenanceController::class)
         ->except(['show', 'destroy']);
+    Route::get('project-maintenances/{projectMaintenance}', [\App\Http\Controllers\Admin\ProjectMaintenanceController::class, 'show'])
+        ->name('project-maintenances.show');
     Route::post('projects/{project}/tasks', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
     Route::patch('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
     Route::patch('projects/{project}/tasks/{task}/status', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'changeStatus'])->name('projects.tasks.changeStatus');
@@ -337,16 +352,28 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         ->name('projects.tasks.activity.store');
     Route::post('projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
     Route::get('projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
-        Route::get('projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
-        Route::get('projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
-        Route::post('projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
-            ->middleware('throttle:10,1')
-            ->name('projects.tasks.chat.messages.store');
-        Route::patch('projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
-            ->name('projects.tasks.chat.read');
-        Route::post('projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
-            ->middleware('throttle:10,1')
-            ->name('projects.tasks.chat.store');
+    Route::get('projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
+    Route::get('projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
+    Route::post('projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
+        ->middleware('throttle:10,1')
+        ->name('projects.chat.messages.store');
+    Route::patch('projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
+        ->name('projects.chat.read');
+    Route::post('projects/{project}/chat', [ProjectChatController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('projects.chat.store');
+    Route::get('projects/{project}/chat/messages/{message}/attachment', [ProjectChatController::class, 'attachment'])
+        ->name('projects.chat.messages.attachment');
+    Route::get('projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
+    Route::get('projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
+    Route::post('projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
+        ->middleware('throttle:10,1')
+        ->name('projects.tasks.chat.messages.store');
+    Route::patch('projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
+        ->name('projects.tasks.chat.read');
+    Route::post('projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('projects.tasks.chat.store');
     Route::get('projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
     Route::resource('sales-reps', \App\Http\Controllers\Admin\SalesRepresentativeController::class)->except(['destroy']);
     Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
@@ -468,6 +495,18 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
             ->name('projects.tasks.subtasks.update');
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
+        Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
+        Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
+        Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
+            ->middleware('throttle:10,1')
+            ->name('projects.chat.messages.store');
+        Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
+            ->name('projects.chat.read');
+        Route::post('/projects/{project}/chat', [ProjectChatController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('projects.chat.store');
+        Route::get('/projects/{project}/chat/messages/{message}/attachment', [ProjectChatController::class, 'attachment'])
+            ->name('projects.chat.messages.attachment');
         Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
         Route::get('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
         Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
@@ -527,6 +566,18 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
             ->name('projects.tasks.subtasks.destroy');
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
+        Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
+        Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
+        Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
+            ->middleware('throttle:10,1')
+            ->name('projects.chat.messages.store');
+        Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
+            ->name('projects.chat.read');
+        Route::post('/projects/{project}/chat', [ProjectChatController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('projects.chat.store');
+        Route::get('/projects/{project}/chat/messages/{message}/attachment', [ProjectChatController::class, 'attachment'])
+            ->name('projects.chat.messages.attachment');
         Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
         Route::get('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
         Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])

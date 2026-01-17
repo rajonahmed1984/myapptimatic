@@ -154,6 +154,168 @@ class CommissionService
     }
 
     /**
+    * Create or update commission earnings for sales reps assigned to a project.
+    */
+    public function syncProjectEarnings(Project $project, array $salesRepSync): void
+    {
+        $repAmounts = [];
+        foreach ($salesRepSync as $repId => $payload) {
+            $amount = (float) ($payload['amount'] ?? 0);
+            if ($amount > 0) {
+                $repAmounts[(int) $repId] = $amount;
+            }
+        }
+
+        $existing = CommissionEarning::query()
+            ->where('source_type', 'project')
+            ->where('source_id', $project->id)
+            ->get()
+            ->keyBy('idempotency_key');
+
+        $now = Carbon::now();
+        $targetStatus = $project->status === 'complete' ? 'payable' : 'earned';
+
+        foreach ($repAmounts as $repId => $amount) {
+            $idempotencyKey = sprintf('project:%s:rep:%s', $project->id, $repId);
+            $earning = $existing->get($idempotencyKey);
+
+            $payload = [
+                'sales_representative_id' => $repId,
+                'source_type' => 'project',
+                'source_id' => $project->id,
+                'invoice_id' => null,
+                'subscription_id' => $project->subscription_id,
+                'project_id' => $project->id,
+                'customer_id' => $project->customer_id,
+                'currency' => $project->currency,
+                'paid_amount' => (float) ($project->total_budget ?? $amount),
+                'commission_amount' => $amount,
+                'status' => $targetStatus,
+                'earned_at' => $now,
+                'payable_at' => $targetStatus === 'payable' ? $now : null,
+                'idempotency_key' => $idempotencyKey,
+            ];
+
+            if (! $earning) {
+                $earning = CommissionEarning::create($payload);
+                $this->logStatusChange($earning, null, $targetStatus, 'project_assigned');
+                continue;
+            }
+
+            if (in_array($earning->status, ['paid', 'reversed'], true)) {
+                continue;
+            }
+
+            $previousStatus = $earning->status;
+            $payload['earned_at'] = $earning->earned_at ?? $now;
+            if ($earning->status === 'payable' && $targetStatus !== 'payable') {
+                $payload['status'] = 'payable';
+                $payload['payable_at'] = $earning->payable_at ?? $now;
+            }
+
+            $earning->update($payload);
+
+            if ($previousStatus !== $earning->status) {
+                $this->logStatusChange($earning, $previousStatus, $earning->status, 'project_assignment_update');
+            }
+        }
+
+        if (! empty($repAmounts)) {
+            $activeKeys = array_map(
+                fn ($repId) => sprintf('project:%s:rep:%s', $project->id, $repId),
+                array_keys($repAmounts)
+            );
+        } else {
+            $activeKeys = [];
+        }
+
+        $removals = CommissionEarning::query()
+            ->where('source_type', 'project')
+            ->where('source_id', $project->id)
+            ->when($activeKeys, fn ($query) => $query->whereNotIn('idempotency_key', $activeKeys))
+            ->get();
+
+        foreach ($removals as $earning) {
+            if (in_array($earning->status, ['paid', 'reversed'], true)) {
+                continue;
+            }
+
+            $previousStatus = $earning->status;
+            $earning->update([
+                'status' => 'reversed',
+                'reversed_at' => $now,
+            ]);
+            $this->logStatusChange($earning, $previousStatus, 'reversed', 'project_assignment_removed');
+        }
+    }
+
+    /**
+    * Backfill missing project earnings for selected sales reps.
+    */
+    public function ensureProjectEarningsForRepIds(array $repIds): void
+    {
+        $repIds = array_values(array_filter(array_unique(array_map('intval', $repIds))));
+        if (empty($repIds)) {
+            return;
+        }
+
+        $assignments = DB::table('project_sales_representative')
+            ->join('projects', 'project_sales_representative.project_id', '=', 'projects.id')
+            ->whereIn('project_sales_representative.sales_representative_id', $repIds)
+            ->where('project_sales_representative.amount', '>', 0)
+            ->select([
+                'project_sales_representative.project_id',
+                'project_sales_representative.sales_representative_id',
+                'project_sales_representative.amount',
+                'projects.status',
+                'projects.customer_id',
+                'projects.subscription_id',
+                'projects.currency',
+                'projects.total_budget',
+            ])
+            ->get();
+
+        if ($assignments->isEmpty()) {
+            return;
+        }
+
+        $keys = $assignments->map(fn ($row) => sprintf('project:%s:rep:%s', $row->project_id, $row->sales_representative_id));
+        $existingKeys = CommissionEarning::query()
+            ->whereIn('idempotency_key', $keys)
+            ->pluck('idempotency_key')
+            ->all();
+
+        $now = Carbon::now();
+
+        foreach ($assignments as $row) {
+            $key = sprintf('project:%s:rep:%s', $row->project_id, $row->sales_representative_id);
+            if (in_array($key, $existingKeys, true)) {
+                continue;
+            }
+
+            $status = $row->status === 'complete' ? 'payable' : 'earned';
+            $earning = CommissionEarning::create([
+                'sales_representative_id' => (int) $row->sales_representative_id,
+                'source_type' => 'project',
+                'source_id' => (int) $row->project_id,
+                'invoice_id' => null,
+                'subscription_id' => $row->subscription_id,
+                'project_id' => (int) $row->project_id,
+                'customer_id' => $row->customer_id,
+                'currency' => $row->currency,
+                'paid_amount' => (float) ($row->total_budget ?? $row->amount),
+                'commission_amount' => (float) $row->amount,
+                'status' => $status,
+                'earned_at' => $now,
+                'payable_at' => $status === 'payable' ? $now : null,
+                'idempotency_key' => $key,
+            ]);
+
+            $this->logStatusChange($earning, null, $status, 'project_assignment_backfill');
+        }
+    }
+
+    /**
     * Reverse earnings for a refunded/voided invoice or payment attempt.
     */
     public function reverseEarningsOnRefund(object $subject): int

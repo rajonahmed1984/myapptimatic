@@ -7,7 +7,6 @@
     @php
         $chatMessages = $chatMessages ?? collect();
         $chatMeta = $chatMeta ?? null;
-        $chatTask = $chatTask ?? null;
         $chatLastMessageId = $chatMessages->last()?->id ?? 0;
         $chatOldestMessageId = $chatMessages->first()?->id ?? 0;
     @endphp
@@ -179,41 +178,24 @@
         <div class="card p-6">
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Task Chat</div>
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Project Chat</div>
                     <div class="text-sm text-slate-500">Messages refresh every few seconds.</div>
                 </div>
-                @if($chatTask)
-                    <a href="{{ route('client.projects.tasks.chat', [$project, $chatTask]) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Open full chat</a>
+                @if($chatMeta)
+                    <a href="{{ route('client.projects.chat', $project) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Open full chat</a>
                 @endif
             </div>
-
-            @if($tasks && $tasks->isNotEmpty())
-                <div class="mt-4">
-                    <label class="text-xs text-slate-500">Task</label>
-                    <select id="chatTaskSelect" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        @foreach($tasks as $taskOption)
-                            <option value="{{ $taskOption->id }}" @selected($chatTask && $chatTask->id === $taskOption->id)>
-                                {{ $taskOption->title }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-            @else
-                <div class="mt-4 text-xs text-slate-500">No tasks yet.</div>
-            @endif
-
-            @if($chatTask && $chatMeta)
+            @if($chatMeta)
                 <div class="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
-                    <div id="task-chat-messages"
+                    <div id="project-chat-messages"
                          data-messages-url="{{ $chatMeta['messagesUrl'] }}"
                          data-read-url="{{ $chatMeta['readUrl'] }}"
                          data-last-id="{{ $chatLastMessageId }}"
                          data-oldest-id="{{ $chatOldestMessageId }}"
                          class="max-h-[50vh] space-y-4 overflow-y-auto pr-1 text-sm text-slate-700">
-                        @include('projects.partials.task-chat-messages', [
+                        @include('projects.partials.project-chat-messages', [
                             'messages' => $chatMessages,
                             'project' => $project,
-                            'task' => $chatTask,
                             'attachmentRouteName' => $chatMeta['attachmentRouteName'],
                             'currentAuthorType' => $chatMeta['currentAuthorType'],
                             'currentAuthorId' => $chatMeta['currentAuthorId'],
@@ -253,16 +235,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const chatSelect = document.getElementById('chatTaskSelect');
-            if (chatSelect) {
-                chatSelect.addEventListener('change', () => {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('chat_task', chatSelect.value);
-                    window.location.assign(url.toString());
-                });
-            }
-
-            const container = document.getElementById('task-chat-messages');
+            const container = document.getElementById('project-chat-messages');
             const form = document.getElementById('chatMessageForm');
             const messagesUrl = @json($chatMeta ? $chatMeta['messagesUrl'] : '');
             const readUrl = container?.dataset?.readUrl || @json($chatMeta ? $chatMeta['readUrl'] : '');
@@ -375,34 +348,51 @@
                 }
             };
 
-            if (form) {
+            if (form && form.dataset.bound !== '1') {
+                form.dataset.bound = '1';
                 form.addEventListener('submit', async (event) => {
                     event.preventDefault();
-                    const postUrl = form.dataset.postUrl || form.action;
-                    const formData = new FormData(form);
-
-                    const response = await fetch(postUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: formData
-                    });
-
-                    if (!response.ok) {
-                        alert('Message send failed.');
+                    if (form.dataset.submitting === '1') {
                         return;
                     }
-
-                    const payload = await response.json();
-                    const item = payload?.data?.item;
-                    if (item?.html) {
-                        appendItems([item]);
-                        scrollToBottom();
-                        updateReadStatus(lastId);
+                    form.dataset.submitting = '1';
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    if (submitButton) {
+                        submitButton.disabled = true;
                     }
-                    form.reset();
+
+                    try {
+                        const postUrl = form.dataset.postUrl || form.action;
+                        const formData = new FormData(form);
+
+                        const response = await fetch(postUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData
+                        });
+
+                        if (!response.ok) {
+                            alert('Message send failed.');
+                            return;
+                        }
+
+                        const payload = await response.json();
+                        const item = payload?.data?.item;
+                        if (item?.html) {
+                            appendItems([item]);
+                            scrollToBottom();
+                            updateReadStatus(lastId);
+                        }
+                        form.reset();
+                    } finally {
+                        form.dataset.submitting = '0';
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                        }
+                    }
                 });
             }
 

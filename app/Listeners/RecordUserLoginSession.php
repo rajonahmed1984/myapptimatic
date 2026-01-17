@@ -85,6 +85,6 @@ class RecordUserLoginSession
      */
     private function shouldTrack(string $guard): bool
     {
-        return in_array($guard, ['employee', 'web', 'client', 'rep']);
+        return in_array($guard, ['employee', 'web', 'sales', 'support'], true);
     }
 }

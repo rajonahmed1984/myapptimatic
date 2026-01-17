@@ -68,29 +68,11 @@ class AutomationStatusService
                 ],
             ],
             [
-                'label' => 'Credit Card Charges',
-                'enabled' => false,
-                'disabled_label' => 'Not available',
-                'stats' => [
-                    ['value' => 0, 'label' => 'Captured'],
-                    ['value' => 0, 'label' => 'Declined'],
-                ],
-            ],
-            [
                 'label' => 'Invoice & Overdue Reminders',
                 'enabled' => (bool) Setting::getValue('payment_reminder_emails'),
                 'disabled_label' => 'Disabled',
                 'stats' => [
                     ['value' => $metrics['invoice_reminders_sent'], 'label' => 'Sent'],
-                ],
-            ],
-            [
-                'label' => 'Cancellation Requests',
-                'enabled' => false,
-                'disabled_label' => 'Not available',
-                'stats' => [
-                    ['value' => 0, 'label' => 'Processed'],
-                    ['value' => 0, 'label' => 'Failed'],
                 ],
             ],
             [
@@ -129,51 +111,11 @@ class AutomationStatusService
                 ],
             ],
             [
-                'label' => 'Domain Renewal Notices',
-                'enabled' => (int) Setting::getValue('license_expiry_first_notice_days') > 0 || (int) Setting::getValue('license_expiry_second_notice_days') > 0,
-                'disabled_label' => 'Disabled',
-                'stats' => [
-                    ['value' => $metrics['license_expiry_notices'], 'label' => 'Sent'],
-                ],
-            ],
-            [
-                'label' => 'Domain Transfer Status Synchronisation',
-                'enabled' => false,
-                'disabled_label' => 'Not available',
-                'stats' => [
-                    ['value' => 0, 'label' => 'Transfers Checked'],
-                ],
-            ],
-            [
-                'label' => 'Domain Status Synchronisation',
-                'enabled' => false,
-                'disabled_label' => 'Not available',
-                'stats' => [
-                    ['value' => 0, 'label' => 'Domains Synced'],
-                ],
-            ],
-            [
                 'label' => 'Inactive Tickets',
                 'enabled' => (int) Setting::getValue('ticket_auto_close_days') > 0,
                 'disabled_label' => 'Disabled',
                 'stats' => [
                     ['value' => $metrics['ticket_auto_closed'], 'label' => 'Closed'],
-                ],
-            ],
-            [
-                'label' => 'Delayed Affiliate Commissions',
-                'enabled' => false,
-                'disabled_label' => 'Not available',
-                'stats' => [
-                    ['value' => 0, 'label' => 'Cleared'],
-                ],
-            ],
-            [
-                'label' => 'Email Marketer Rules',
-                'enabled' => false,
-                'disabled_label' => 'Not available',
-                'stats' => [
-                    ['value' => 0, 'label' => 'Emails Sent'],
                 ],
             ],
             [

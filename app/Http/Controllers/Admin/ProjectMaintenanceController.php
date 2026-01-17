@@ -6,12 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectMaintenance;
 use App\Models\Setting;
+use App\Services\MaintenanceBillingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ProjectMaintenanceController extends Controller
 {
+    public function __construct(
+        private MaintenanceBillingService $maintenanceBillingService
+    )
+    {
+    }
+
     public function index(): View
     {
         $maintenances = ProjectMaintenance::query()
@@ -53,7 +60,7 @@ class ProjectMaintenanceController extends Controller
         $project = Project::query()->findOrFail($data['project_id']);
         $currency = $project->currency ?: strtoupper((string) Setting::getValue('currency'));
 
-        ProjectMaintenance::create([
+        $maintenance = ProjectMaintenance::create([
             'project_id' => $project->id,
             'customer_id' => $project->customer_id,
             'title' => $data['title'],
@@ -68,9 +75,14 @@ class ProjectMaintenanceController extends Controller
             'created_by' => $request->user()?->id,
         ]);
 
+        $invoice = $this->maintenanceBillingService->createInvoiceForMaintenance($maintenance);
+        $statusMessage = $invoice
+            ? sprintf('Maintenance plan created. Invoice #%s generated.', $invoice->number ?? $invoice->id)
+            : 'Maintenance plan created.';
+
         return redirect()
             ->route('admin.project-maintenances.index')
-            ->with('status', 'Maintenance plan created.');
+            ->with('status', $statusMessage);
     }
 
     public function edit(ProjectMaintenance $projectMaintenance): View
@@ -82,6 +94,20 @@ class ProjectMaintenanceController extends Controller
         ]);
 
         return view('admin.project-maintenances.edit', [
+            'maintenance' => $projectMaintenance,
+        ]);
+    }
+
+    public function show(ProjectMaintenance $projectMaintenance): View
+    {
+        $projectMaintenance->load([
+            'project:id,name,currency',
+            'customer:id,name',
+            'creator:id,name',
+            'invoices' => fn ($query) => $query->latest('issue_date'),
+        ]);
+
+        return view('admin.project-maintenances.show', [
             'maintenance' => $projectMaintenance,
         ]);
     }

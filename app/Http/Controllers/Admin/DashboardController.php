@@ -24,6 +24,13 @@ class DashboardController extends Controller
             'statusUrl' => route('admin.automation-status'),
         ];
 
+        $systemOverview = [
+            'automation_last_run' => $automationStatusPayload['lastCompletionText'] ?? 'Never',
+            'automation_cards' => [
+                'status_badge' => $automationStatusPayload['statusLabel'] ?? 'Pending',
+            ],
+        ];
+
         $metrics = $this->dashboardMetricsService->getMetrics();
 
         return view('admin.dashboard', array_merge(
@@ -33,6 +40,7 @@ class DashboardController extends Controller
                 'automationRuns' => $metrics['automationRuns'],
                 'automationMetrics' => $metrics['automationMetrics'],
                 'automationSummary' => $automationSummary,
+                'systemOverview' => $systemOverview,
                 'periodMetrics' => $metrics['periodMetrics'],
                 'periodSeries' => $metrics['periodSeries'],
                 'billingAmounts' => $metrics['billingAmounts'],

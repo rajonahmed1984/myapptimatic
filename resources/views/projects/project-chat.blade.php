@@ -1,32 +1,19 @@
 @extends($layout)
 
-@section('title', 'Task Chat')
-@section('page-title', 'Task Chat')
+@section('title', 'Project Chat')
+@section('page-title', 'Project Chat')
 
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-            <div class="section-label">Task Chat</div>
-            <div class="text-2xl font-semibold text-slate-900">{{ $task->title }}</div>
-            <div class="text-sm text-slate-500">Project: {{ $project->name }}</div>
+            <div class="section-label">Project Chat</div>
+            <div class="text-2xl font-semibold text-slate-900">{{ $project->name }}</div>
+            <div class="text-sm text-slate-500">Status: {{ ucfirst(str_replace('_', ' ', $project->status)) }}</div>
         </div>
         <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to project</a>
     </div>
 
     <div class="card p-6 space-y-6">
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Task Details</div>
-            <div class="mt-2 font-semibold text-slate-900">{{ $task->title }}</div>
-            @if($task->description)
-                <div class="mt-1 text-xs text-slate-600 whitespace-pre-wrap">{{ $task->description }}</div>
-            @endif
-            <div class="mt-2 text-xs text-slate-500">
-                Start: {{ $task->start_date?->format($globalDateFormat) ?? '--' }} |
-                Due: {{ $task->due_date?->format($globalDateFormat) ?? '--' }} |
-                Status: {{ ucfirst(str_replace('_', ' ', $task->status)) }}
-            </div>
-        </div>
-
         <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -38,19 +25,20 @@
                 $lastMessageId = $messages->last()?->id ?? 0;
                 $oldestMessageId = $messages->first()?->id ?? 0;
             @endphp
-            <div id="task-chat-messages"
+            <div id="project-chat-messages"
                  data-messages-url="{{ $messagesUrl }}"
                  data-read-url="{{ $readUrl }}"
                  data-last-id="{{ $lastMessageId }}"
                  data-oldest-id="{{ $oldestMessageId }}"
                  class="mt-4 max-h-[60vh] space-y-4 overflow-y-auto pr-1">
-                @include('projects.partials.task-chat-messages', [
+                @include('projects.partials.project-chat-messages', [
                     'messages' => $messages,
                     'project' => $project,
-                    'task' => $task,
                     'attachmentRouteName' => $attachmentRouteName,
                     'currentAuthorType' => $currentAuthorType,
                     'currentAuthorId' => $currentAuthorId,
+                    'readReceipts' => $readReceipts ?? [],
+                    'authorStatuses' => $authorStatuses ?? [],
                 ])
             </div>
         </div>
@@ -85,7 +73,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const container = document.getElementById('task-chat-messages');
+            const container = document.getElementById('project-chat-messages');
             const form = document.getElementById('chatMessageForm');
             const messagesUrl = @json($messagesUrl);
             const readUrl = container?.dataset?.readUrl || @json($readUrl ?? '');
@@ -112,6 +100,8 @@
                 if (!items || !items.length) {
                     return;
                 }
+                container.querySelectorAll('.chat-seen-by').forEach((item) => item.remove());
+                container.querySelectorAll('.chat-read-up-to').forEach((item) => item.remove());
                 items.forEach((item) => {
                     if (!item?.html) return;
                     container.insertAdjacentHTML('beforeend', item.html);

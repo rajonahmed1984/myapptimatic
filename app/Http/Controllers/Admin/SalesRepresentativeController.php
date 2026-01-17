@@ -17,10 +17,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use App\Enums\Role;
+use App\Services\CommissionService;
 
 class SalesRepresentativeController extends Controller
 {
-    public function index()
+    public function index(CommissionService $commissionService)
     {
         $reps = SalesRepresentative::query()
             ->with(['user:id,name,email', 'employee:id,name'])
@@ -28,8 +29,10 @@ class SalesRepresentativeController extends Controller
             ->orderBy('name')
             ->get();
 
+        $commissionService->ensureProjectEarningsForRepIds($reps->pluck('id')->all());
+
         $totals = CommissionEarning::query()
-            ->selectRaw('sales_representative_id, SUM(commission_amount) as total_earned')
+            ->selectRaw('sales_representative_id, SUM(CASE WHEN status != "reversed" THEN commission_amount ELSE 0 END) as total_earned')
             ->selectRaw('SUM(CASE WHEN status = "payable" THEN commission_amount ELSE 0 END) as total_payable')
             ->selectRaw('SUM(CASE WHEN status = "paid" THEN commission_amount ELSE 0 END) as total_paid')
             ->groupBy('sales_representative_id')
@@ -139,7 +142,7 @@ class SalesRepresentativeController extends Controller
             ->with('status', 'Sales representative updated.');
     }
 
-    public function show(Request $request, SalesRepresentative $salesRep)
+    public function show(Request $request, SalesRepresentative $salesRep, CommissionService $commissionService)
     {
         $salesRep->load(['user:id,name,email', 'employee:id,name']);
         $tab = $request->query('tab', 'profile');
@@ -148,13 +151,16 @@ class SalesRepresentativeController extends Controller
             $tab = 'profile';
         }
 
+        $commissionService->ensureProjectEarningsForRepIds([$salesRep->id]);
+        $balance = $commissionService->computeRepBalance($salesRep->id);
+
         $earningsQuery = $salesRep->earnings();
         $payoutsQuery = $salesRep->payouts();
 
         $summary = [
-            'total_earned' => (float) $earningsQuery->sum('commission_amount'),
-            'payable' => (float) $earningsQuery->where('status', 'payable')->sum('commission_amount'),
-            'paid' => (float) $earningsQuery->where('status', 'paid')->sum('commission_amount'),
+            'total_earned' => $balance['total_earned'] ?? 0,
+            'payable' => $balance['payable_balance'] ?? 0,
+            'paid' => $balance['total_paid'] ?? 0,
         ];
 
         $recentEarnings = collect();

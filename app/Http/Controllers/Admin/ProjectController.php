@@ -11,6 +11,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectMaintenance;
 use App\Models\ProjectTask;
+use App\Models\ProjectMessageRead;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
 use App\Models\User;
@@ -116,7 +117,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function store(Request $request, BillingService $billingService): RedirectResponse
+    public function store(Request $request, BillingService $billingService, CommissionService $commissionService): RedirectResponse
     {
         $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
         $priorityOptions = array_keys(TaskSettings::priorityOptions());
@@ -232,6 +233,7 @@ class ProjectController extends Controller
 
             if (! empty($data['sales_rep_ids'])) {
                 $project->salesRepresentatives()->sync($salesRepSync);
+                $commissionService->syncProjectEarnings($project, $salesRepSync);
             }
 
             foreach ($data['tasks'] as $index => $task) {
@@ -365,6 +367,21 @@ class ProjectController extends Controller
             ->latest('issue_date')
             ->first();
 
+        $readerType = 'user';
+        $readerId = $user?->id;
+        $lastReadId = null;
+        if ($readerId) {
+            $lastReadId = ProjectMessageRead::query()
+                ->where('project_id', $project->id)
+                ->where('reader_type', $readerType)
+                ->where('reader_id', $readerId)
+                ->value('last_read_message_id');
+        }
+
+        $projectChatUnreadCount = $project->messages()
+            ->when($lastReadId, fn ($query) => $query->where('id', '>', $lastReadId))
+            ->count();
+
         return view('admin.projects.show', [
             'project' => $project,
             'statuses' => self::STATUSES,
@@ -377,6 +394,7 @@ class ProjectController extends Controller
             'financials' => $this->financials($project),
             'tasks' => $tasks,
             'initialInvoice' => $initialInvoice,
+            'projectChatUnreadCount' => $projectChatUnreadCount,
         ]);
     }
 
@@ -436,6 +454,7 @@ class ProjectController extends Controller
         $project->update([
             'sales_rep_ids' => $data['sales_rep_ids'] ?? [],
         ]);
+        $commissionService->syncProjectEarnings($project, $salesRepSync);
 
         SystemLogger::write('activity', 'Project updated.', [
             'project_id' => $project->id,

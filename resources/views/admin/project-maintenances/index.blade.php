@@ -52,6 +52,7 @@
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-2 text-xs font-semibold">
+                                    <a href="{{ route('admin.project-maintenances.show', $maintenance) }}" class="text-slate-700 hover:text-teal-600">View</a>
                                     <a href="{{ route('admin.project-maintenances.edit', $maintenance) }}" class="text-teal-700 hover:text-teal-600">Edit</a>
                                     @if($maintenance->status === 'active')
                                         <form method="POST" action="{{ route('admin.project-maintenances.update', $maintenance) }}">
