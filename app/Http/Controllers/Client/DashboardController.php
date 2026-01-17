@@ -66,16 +66,23 @@ class DashboardController extends Controller
                 ->limit(4)
                 ->get()
             : collect();
-        $projects = $customer
-            ? Project::where('customer_id', $customer->id)
+        $projects = collect();
+        if ($customer) {
+            $projectQuery = Project::where('customer_id', $customer->id)
                 ->withCount([
                     'tasks as open_tasks_count' => fn ($q) => $q->whereIn('status', ['todo', 'in_progress', 'blocked']),
                     'tasks as done_tasks_count' => fn ($q) => $q->where('status', 'done'),
-                ])
+                ]);
+
+            if ($request->user()->isClientProject() && $request->user()->project_id) {
+                $projectQuery->whereKey($request->user()->project_id);
+            }
+
+            $projects = $projectQuery
                 ->latest()
                 ->limit(5)
-                ->get()
-            : collect();
+                ->get();
+        }
         $maintenanceRenewal = $subscriptions
             ->where('status', 'active')
             ->filter(fn ($s) => $s->next_invoice_at)

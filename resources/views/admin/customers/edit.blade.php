@@ -97,4 +97,85 @@
             </div>
         </form>
     </div>
+
+    <div class="card p-6 mt-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <div class="section-label">Project clients</div>
+                <h2 class="text-xl font-semibold text-slate-900">Project-specific logins</h2>
+                <p class="text-sm text-slate-500">Assign a dedicated login that can only view and update one project.</p>
+            </div>
+        </div>
+
+        @if($projectClients->isNotEmpty())
+            <div class="mt-4 overflow-x-auto text-sm">
+                <table class="min-w-full text-left text-slate-700">
+                    <thead>
+                        <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <th class="py-2">Name</th>
+                            <th class="py-2">Email</th>
+                            <th class="py-2">Project</th>
+                            <th class="py-2">Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($projectClients as $clientUser)
+                            <tr class="border-b border-slate-100">
+                                <td class="py-2">{{ $clientUser->name }}</td>
+                                <td class="py-2">{{ $clientUser->email }}</td>
+                                <td class="py-2">{{ $clientUser->project?->name ?? '—' }}</td>
+                                <td class="py-2">{{ $clientUser->created_at?->format($globalDateFormat) ?? '--' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <p class="mt-3 text-sm text-slate-500">No project-specific logins have been created yet.</p>
+        @endif
+
+        <form method="POST" action="{{ route('admin.customers.project-users.store', $customer) }}" class="mt-6 grid gap-4 md:grid-cols-2 text-sm">
+            @csrf
+            <div>
+                <label class="text-sm text-slate-600">Project</label>
+                <select name="project_id" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    <option value="">Select a project</option>
+                    @foreach($projects as $projectOption)
+                        <option value="{{ $projectOption->id }}" @selected(old('project_id') == $projectOption->id)>{{ $projectOption->name }}</option>
+                    @endforeach
+                </select>
+                @error('project_id')
+                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="text-sm text-slate-600">Name</label>
+                <input name="name" value="{{ old('name') }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                @error('name')
+                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="text-sm text-slate-600">Email</label>
+                <input name="email" type="email" value="{{ old('email') }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                @error('email')
+                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="text-sm text-slate-600">Password</label>
+                <input name="password" type="password" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                @error('password')
+                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                @enderror
+            </div>
+            <div class="md:col-span-2">
+                <label class="text-sm text-slate-600">Confirm Password</label>
+                <input name="password_confirmation" type="password" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+            </div>
+            <div class="md:col-span-2 flex justify-end">
+                <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Create project login</button>
+            </div>
+        </form>
+    </div>
 @endsection

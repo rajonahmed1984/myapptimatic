@@ -5,6 +5,7 @@ namespace App\Enums;
 class Role
 {
     public const CLIENT = 'client';
+    public const CLIENT_PROJECT = 'client_project';
     public const EMPLOYEE = 'employee';
     public const SALES = 'sales';
     public const SUPPORT = 'support';
@@ -16,6 +17,7 @@ class Role
     {
         return [
             self::CLIENT,
+            self::CLIENT_PROJECT,
             self::EMPLOYEE,
             self::SALES,
             self::SUPPORT,
@@ -59,6 +61,7 @@ class Role
             self::SUPPORT => 'Support',
             self::EMPLOYEE => 'Employee',
             self::CLIENT => 'Client',
+            self::CLIENT_PROJECT => 'Project Client',
         ];
     }
 }

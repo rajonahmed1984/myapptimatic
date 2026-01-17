@@ -12,7 +12,7 @@ class EnsureClient
     {
         $user = $request->user();
 
-        if (! $user || ! $user->isClient()) {
+        if (! $user || (! $user->isClient() && ! $user->isClientProject())) {
             abort(403);
         }
 

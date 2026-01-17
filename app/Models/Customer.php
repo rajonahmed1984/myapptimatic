@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Enums\Role;
 use App\Models\SalesRepresentative;
+use App\Models\User;
 use App\Models\Concerns\HasActivityTracking;
 
 class Customer extends Model
@@ -37,6 +39,13 @@ class Customer extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function projectUsers(): HasMany
+    {
+        return $this->hasMany(User::class)
+            ->where('role', Role::CLIENT_PROJECT)
+            ->whereNotNull('project_id');
     }
 
     public function subscriptions(): HasMany

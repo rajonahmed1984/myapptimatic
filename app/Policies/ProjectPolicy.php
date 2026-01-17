@@ -20,6 +20,10 @@ class ProjectPolicy
                 return true;
             }
 
+            if ($actor->isClientProject() && $actor->project_id === $project->id) {
+                return true;
+            }
+
             if ($actor->isEmployee()) {
                 $employeeId = $actor->employee?->id;
                 return $employeeId && $project->employees()->whereKey($employeeId)->exists();

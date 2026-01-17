@@ -14,7 +14,7 @@
     </div>
 
     <div class="card p-6">
-        <form method="POST" action="{{ route('admin.projects.store') }}" class="mt-2 grid gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('admin.projects.store') }}" hx-boost="false" class="mt-2 grid gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5" enctype="multipart/form-data">
             @csrf
             <div class="grid gap-4 md:grid-cols-2">
                 <div>

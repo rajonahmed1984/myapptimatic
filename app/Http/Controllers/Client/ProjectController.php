@@ -12,11 +12,18 @@ class ProjectController extends Controller
 {
     public function index(Request $request)
     {
-        $projects = Project::query()
+        $query = Project::query()
             ->with(['customer', 'maintenances'])
-            ->where('customer_id', $request->user()->customer_id)
-            ->latest()
-            ->paginate(20);
+            ->where('customer_id', $request->user()->customer_id);
+
+        if ($request->user()->isClientProject()) {
+            $projectId = $request->user()->project_id;
+            if ($projectId) {
+                $query->whereKey($projectId);
+            }
+        }
+
+        $projects = $query->latest()->paginate(20);
 
         return view('client.projects.index', compact('projects'));
     }

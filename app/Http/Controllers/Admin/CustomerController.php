@@ -178,6 +178,8 @@ class CustomerController extends Controller
         return view('admin.customers.edit', [
             'customer' => $customer,
             'salesReps' => SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']),
+            'projectClients' => $customer->projectUsers()->with('project')->get(),
+            'projects' => $customer->projects()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\ClientRequestController as AdminClientRequestController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\CustomerProjectUserController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\InvoiceController as AdminInvoiceController;
 use App\Http\Controllers\Admin\EmployeeSummaryController;
@@ -54,6 +55,7 @@ use App\Http\Controllers\SalesRep\EarningController as SalesRepEarningController
 use App\Http\Controllers\SalesRep\PayoutController as SalesRepPayoutController;
 use App\Http\Controllers\Support\DashboardController as SupportDashboardController;
 use App\Http\Controllers\Support\SupportTicketController as SupportSupportTicketController;
+use App\Http\Controllers\ProjectClient\AuthController as ProjectClientAuthController;
 use App\Models\PaymentAttempt;
 use App\Http\Controllers\BrandingAssetController;
 use App\Http\Controllers\CronController;
@@ -67,6 +69,7 @@ use App\Http\Controllers\ProjectTaskActivityController;
 use App\Http\Controllers\ProjectTaskViewController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 Route::get('/', [PublicProductController::class, 'index'])
     ->name('products.public.home');
@@ -75,6 +78,22 @@ Route::redirect('/admin', '/admin/login');
 Route::get('/employee', fn () => redirect()->route('employee.login'))->name('employee.home');
 Route::get('/sales', fn () => redirect()->route('sales.login'))->name('sales.home');
 Route::get('/support', fn () => redirect()->route('support.login'))->name('support.home');
+
+Route::get('storage/avatars/{category}/{entity}/{filename}', function (string $category, string $entity, string $filename) {
+    $allowed = ['customers', 'users', 'sales-reps'];
+    if (! in_array($category, $allowed, true)) {
+        abort(404);
+    }
+
+    $path = "avatars/{$category}/{$entity}/{$filename}";
+    if (! Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+
+    return Storage::disk('public')->response($path);
+})->where('category', 'customers|users|sales-reps')
+    ->where('entity', '\d+')
+    ->where('filename', '.*');
 
 // PaymentAttempt route binding supports UUID (preferred) and falls back to numeric ID for legacy links.
 Route::bind('attempt', function ($value) {
@@ -130,6 +149,8 @@ Route::match(['GET', 'POST'], '/payments/bkash/{attempt}/callback', [PaymentCall
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
+    Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])->name('project-client.login');
+    Route::post('/project-login', [ProjectClientAuthController::class, 'login'])->name('project-client.login.attempt');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
     Route::get('/admin/login', [AuthController::class, 'showAdminLogin'])->name('admin.login');
@@ -315,6 +336,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     });
     Route::resource('customers', CustomerController::class);
     Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])->name('customers.impersonate');
+    Route::post('customers/{customer}/project-users', [CustomerProjectUserController::class, 'store'])->name('customers.project-users.store');
     Route::resource('products', ProductController::class)->except(['show']);
     Route::resource('plans', PlanController::class)->except(['show']);
     Route::resource('subscriptions', SubscriptionController::class)->except(['show']);
@@ -445,7 +467,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::delete('affiliates/payouts/{payout}', [AffiliatePayoutController::class, 'destroy'])->name('affiliates.payouts.destroy');
 });
 
-Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.activity:web', 'nocache'])
+Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.activity:web', 'project.client', 'nocache'])
     ->prefix('client')
     ->name('client.')
     ->group(function () {

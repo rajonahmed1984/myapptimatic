@@ -7,8 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\Role;
 use App\Models\Employee;
 use App\Models\SalesRepresentative;
+use App\Models\User;
 
 class Project extends Model
 {
@@ -105,6 +107,13 @@ class Project extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(\App\Models\Invoice::class);
+    }
+
+    public function projectClients(): HasMany
+    {
+        return $this->hasMany(User::class)
+            ->where('role', Role::CLIENT_PROJECT)
+            ->where('project_id', $this->id);
     }
 
     public function employees()

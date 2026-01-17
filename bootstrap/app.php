@@ -36,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'client' => \App\Http\Middleware\EnsureClient::class,
             'client.block' => \App\Http\Middleware\PreventBlockedClientAccess::class,
             'client.notice' => \App\Http\Middleware\ShareClientInvoiceStatus::class,
+            'project.client' => \App\Http\Middleware\EnsureProjectClientAccess::class,
             'verify.api.signature' => \App\Http\Middleware\VerifyApiSignature::class,
             'restrict.cron' => \App\Http\Middleware\RestrictCronAccess::class,
             'employee' => \App\Http\Middleware\EnsureEmployee::class,

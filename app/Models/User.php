@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Enums\Role;
 use App\Models\Employee;
+use App\Models\Project;
 use App\Models\Concerns\HasActivityTracking;
 
 class User extends Authenticatable
@@ -28,6 +29,7 @@ class User extends Authenticatable
         'password',
         'role',
         'customer_id',
+        'project_id',
         'currency',
         'avatar_path',
         'nid_path',
@@ -60,6 +62,11 @@ class User extends Authenticatable
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     public function supportTickets(): HasMany
@@ -105,6 +112,11 @@ class User extends Authenticatable
     public function isClient(): bool
     {
         return $this->role === Role::CLIENT;
+    }
+
+    public function isClientProject(): bool
+    {
+        return $this->role === Role::CLIENT_PROJECT;
     }
 
     public function employee(): HasOne
