@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use App\Enums\Role;
+use Illuminate\Support\Facades\Log;
 use App\Services\CommissionService;
 
 class SalesRepresentativeController extends Controller
@@ -59,9 +60,15 @@ class SalesRepresentativeController extends Controller
 
     public function store(Request $request)
     {
+        Log::info('sales rep store request', $request->all());
         $rules = [
             'employee_id' => ['nullable', 'exists:employees,id'],
-            'name' => ['required', 'string', 'max:255'],
+            'user_id' => ['nullable', 'exists:users,id'],
+            'name' => [
+                Rule::requiredIf(! $request->filled('user_id')),
+                'string',
+                'max:255',
+            ],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
@@ -78,22 +85,33 @@ class SalesRepresentativeController extends Controller
 
         $data = $request->validate($rules);
 
+        $user = null;
+        Log::info('user_id filled check', ['filled' => $request->filled('user_id'), 'user_id' => $request->input('user_id')]);
+        if ($request->filled('user_id')) {
+            $user = User::findOrFail($request->input('user_id'));
+        }
+
         $salesRep = SalesRepresentative::create([
             'employee_id' => $data['employee_id'] ?? null,
-            'name' => $data['name'],
-            'email' => $data['email'] ?? null,
+            'name' => $data['name'] ?? $user?->name ?? $user?->email ?? 'Sales Representative',
+            'email' => $data['email'] ?? $user?->email ?? null,
             'phone' => $data['phone'] ?? null,
             'status' => $data['status'],
         ]);
 
-        if (! empty($data['user_password'])) {
+        if ($user) {
+            Log::info('Assigning sales role to existing user', ['user_id' => $user->id]);
+            $user->update(['role' => Role::SALES]);
+        } elseif (! empty($data['user_password'])) {
             $user = User::create([
                 'name' => $salesRep->name,
                 'email' => $salesRep->email,
                 'password' => Hash::make($data['user_password']),
                 'role' => Role::SALES,
             ]);
+        }
 
+        if ($user) {
             $salesRep->update(['user_id' => $user->id]);
         }
 
