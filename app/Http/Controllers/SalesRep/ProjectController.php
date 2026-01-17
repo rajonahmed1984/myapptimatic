@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\SalesRepresentative;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ProjectController extends Controller
 {
@@ -52,6 +53,39 @@ class ProjectController extends Controller
             ->orderBy('id')
             ->get();
 
+        $chatTaskId = (int) $request->query('chat_task');
+        $chatTask = $tasks->first();
+        if ($chatTaskId > 0) {
+            $chatTask = $tasks->firstWhere('id', $chatTaskId) ?? $chatTask;
+        }
+
+        $chatMessages = collect();
+        $chatMeta = null;
+        if ($chatTask) {
+            $chatMessages = $chatTask->messages()
+                ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor'])
+                ->latest('id')
+                ->limit(30)
+                ->get()
+                ->reverse()
+                ->values();
+
+            $salesRep = $request->attributes->get('salesRep');
+            $currentAuthorType = $salesRep ? 'sales_rep' : 'user';
+            $currentAuthorId = $salesRep?->id ?? $request->user()?->id;
+
+            $chatMeta = [
+                'messagesUrl' => route('rep.projects.tasks.chat.messages', [$project, $chatTask]),
+                'postMessagesUrl' => route('rep.projects.tasks.chat.messages.store', [$project, $chatTask]),
+                'postRoute' => route('rep.projects.tasks.chat.store', [$project, $chatTask]),
+                'readUrl' => route('rep.projects.tasks.chat.read', [$project, $chatTask]),
+                'attachmentRouteName' => 'rep.projects.tasks.messages.attachment',
+                'currentAuthorType' => $currentAuthorType,
+                'currentAuthorId' => $currentAuthorId,
+                'canPost' => Gate::forUser($request->user())->check('comment', $chatTask),
+            ];
+        }
+
         $maintenances = $project->maintenances()
             ->where('sales_rep_visible', true)
             ->with(['invoices' => fn ($query) => $query->latest('issue_date')])
@@ -71,6 +105,9 @@ class ProjectController extends Controller
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),
             'salesRepAmount' => $repAmount !== null ? (float) $repAmount : null,
+            'chatTask' => $chatTask,
+            'chatMessages' => $chatMessages,
+            'chatMeta' => $chatMeta,
         ]);
     }
 }
