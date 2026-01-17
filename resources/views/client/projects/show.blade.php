@@ -4,6 +4,13 @@
 @section('page-title', 'Project')
 
 @section('content')
+    @php
+        $chatMessages = $chatMessages ?? collect();
+        $chatMeta = $chatMeta ?? null;
+        $chatTask = $chatTask ?? null;
+        $chatLastMessageId = $chatMessages->last()?->id ?? 0;
+        $chatOldestMessageId = $chatMessages->first()?->id ?? 0;
+    @endphp
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <div class="section-label">Project</div>
@@ -12,8 +19,9 @@
         </div>
     </div>
 
-    <div class="card p-6">
-        <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
+    <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <div class="card p-6">
+            <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Project ID</div>
                 <div class="mt-2 font-semibold text-slate-900">#{{ $project->id }}</div>
@@ -137,7 +145,6 @@
                         <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
                             <th class="px-3 py-2">Task</th>
                             <th class="px-3 py-2">Dates</th>
-                            <th class="px-3 py-2">Status</th>
                             <th class="px-3 py-2 text-right">Actions</th>
                         </tr>
                         </thead>
@@ -157,31 +164,268 @@
                                     Start: {{ $task->start_date?->format($globalDateFormat) ?? '--' }}<br>
                                     Due: {{ $task->due_date?->format($globalDateFormat) ?? '--' }}
                                 </td>
-                                <td class="px-3 py-2">
-                                    <form method="POST" action="{{ route('client.projects.tasks.update', [$project, $task]) }}" class="space-y-2">
-                                        @csrf
-                                        @method('PATCH')
-                                        <select name="status" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
-                                            @foreach(['pending','in_progress','blocked','completed'] as $status)
-                                                <option value="{{ $status }}" @selected($task->status === $status)>{{ ucfirst(str_replace('_',' ', $status)) }}</option>
+                                <td class="px-3 py-2 text-right align-top">
+                                    <a href="{{ route('client.projects.tasks.show', [$project, $task]) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Open Task</a>
+                                </td>
+                            </tr>
                         @endforeach
-                    </select>
-                    <textarea name="description" rows="2" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs" placeholder="Description">{{ $task->description }}</textarea>
-                    <div class="flex justify-end">
-                        <button type="submit" class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-800">Update</button>
-                    </div>
-                </form>
-            </td>
-            <td class="px-3 py-2 text-right align-top text-xs text-slate-500">
-                <div>Status updates only; dates/assignees are fixed.</div>
-                <a href="{{ route('client.projects.tasks.show', [$project, $task]) }}" class="mt-2 inline-flex text-xs font-semibold text-teal-600 hover:text-teal-500">Open Task</a>
-            </td>
-        </tr>
-        @endforeach
-        </tbody>
-    </table>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         @endif
     </div>
+
+        <div class="card p-6">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Task Chat</div>
+                    <div class="text-sm text-slate-500">Messages refresh every few seconds.</div>
+                </div>
+                @if($chatTask)
+                    <a href="{{ route('client.projects.tasks.chat', [$project, $chatTask]) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Open full chat</a>
+                @endif
+            </div>
+
+            @if($tasks && $tasks->isNotEmpty())
+                <div class="mt-4">
+                    <label class="text-xs text-slate-500">Task</label>
+                    <select id="chatTaskSelect" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        @foreach($tasks as $taskOption)
+                            <option value="{{ $taskOption->id }}" @selected($chatTask && $chatTask->id === $taskOption->id)>
+                                {{ $taskOption->title }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            @else
+                <div class="mt-4 text-xs text-slate-500">No tasks yet.</div>
+            @endif
+
+            @if($chatTask && $chatMeta)
+                <div class="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div id="task-chat-messages"
+                         data-messages-url="{{ $chatMeta['messagesUrl'] }}"
+                         data-read-url="{{ $chatMeta['readUrl'] }}"
+                         data-last-id="{{ $chatLastMessageId }}"
+                         data-oldest-id="{{ $chatOldestMessageId }}"
+                         class="max-h-[50vh] space-y-4 overflow-y-auto pr-1 text-sm text-slate-700">
+                        @include('projects.partials.task-chat-messages', [
+                            'messages' => $chatMessages,
+                            'project' => $project,
+                            'task' => $chatTask,
+                            'attachmentRouteName' => $chatMeta['attachmentRouteName'],
+                            'currentAuthorType' => $chatMeta['currentAuthorType'],
+                            'currentAuthorId' => $chatMeta['currentAuthorId'],
+                        ])
+                    </div>
+                </div>
+
+                @if($chatMeta['canPost'])
+                    <div class="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Post a message</div>
+                        <form method="POST" action="{{ $chatMeta['postRoute'] }}" data-post-url="{{ $chatMeta['postMessagesUrl'] }}" enctype="multipart/form-data" class="mt-4 space-y-3" id="chatMessageForm">
+                            @csrf
+                            <div>
+                                <label class="text-xs text-slate-500">Message</label>
+                                <textarea name="message" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Share an update...">{{ old('message') }}</textarea>
+                                @error('message')
+                                    <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500">Attachment (optional)</label>
+                                <input name="attachment" type="file" accept="image/*,.pdf" class="mt-1 block w-full text-sm text-slate-600" />
+                                <p class="mt-1 text-xs text-slate-500">Images or PDF up to 5MB.</p>
+                                @error('attachment')
+                                    <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="flex justify-end">
+                                <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Send message</button>
+                            </div>
+                        </form>
+                    </div>
+                @endif
+            @endif
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatSelect = document.getElementById('chatTaskSelect');
+            if (chatSelect) {
+                chatSelect.addEventListener('change', () => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('chat_task', chatSelect.value);
+                    window.location.assign(url.toString());
+                });
+            }
+
+            const container = document.getElementById('task-chat-messages');
+            const form = document.getElementById('chatMessageForm');
+            const messagesUrl = @json($chatMeta ? $chatMeta['messagesUrl'] : '');
+            const readUrl = container?.dataset?.readUrl || @json($chatMeta ? $chatMeta['readUrl'] : '');
+
+            if (!container || !messagesUrl) {
+                return;
+            }
+
+            let lastId = Number(container.dataset.lastId || {{ $chatLastMessageId }} || 0);
+            let oldestId = Number(container.dataset.oldestId || {{ $chatOldestMessageId }} || 0);
+            let isLoadingOlder = false;
+            let reachedStart = false;
+
+            const scrollToBottom = () => {
+                container.scrollTop = container.scrollHeight;
+            };
+
+            const isNearBottom = () => {
+                const threshold = 120;
+                return (container.scrollHeight - container.scrollTop - container.clientHeight) < threshold;
+            };
+
+            const appendItems = (items) => {
+                if (!items || !items.length) {
+                    return;
+                }
+                items.forEach((item) => {
+                    if (!item?.html) return;
+                    container.insertAdjacentHTML('beforeend', item.html);
+                    if (item.id) {
+                        lastId = Math.max(lastId, item.id);
+                        if (!oldestId) {
+                            oldestId = item.id;
+                        }
+                    }
+                });
+            };
+
+            const prependItems = (items) => {
+                if (!items || !items.length) {
+                    return;
+                }
+                const previousHeight = container.scrollHeight;
+                const previousTop = container.scrollTop;
+                for (let i = items.length - 1; i >= 0; i -= 1) {
+                    const item = items[i];
+                    if (!item?.html) continue;
+                    container.insertAdjacentHTML('afterbegin', item.html);
+                }
+                const oldestItemId = items[0]?.id;
+                if (oldestItemId) {
+                    oldestId = oldestId ? Math.min(oldestId, oldestItemId) : oldestItemId;
+                }
+                const heightDiff = container.scrollHeight - previousHeight;
+                container.scrollTop = previousTop + heightDiff;
+            };
+
+            const fetchMessages = async (params) => {
+                const url = new URL(messagesUrl, window.location.origin);
+                Object.entries(params).forEach(([key, value]) => {
+                    if (value !== null && value !== undefined) {
+                        url.searchParams.set(key, value);
+                    }
+                });
+
+                const response = await fetch(url.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) {
+                    return [];
+                }
+                const payload = await response.json();
+                return payload?.data?.items || [];
+            };
+
+            const loadOlder = async () => {
+                if (!oldestId || isLoadingOlder || reachedStart) {
+                    return;
+                }
+                isLoadingOlder = true;
+                const items = await fetchMessages({ before_id: oldestId, limit: 30 });
+                if (items.length === 0) {
+                    reachedStart = true;
+                } else {
+                    prependItems(items);
+                }
+                isLoadingOlder = false;
+            };
+
+            const updateReadStatus = async (readId) => {
+                if (!readUrl || !readId) {
+                    return;
+                }
+                const token = document.querySelector('[name="_token"]')?.value || '';
+                const formData = new FormData();
+                formData.append('_token', token);
+                formData.append('last_read_id', readId);
+
+                try {
+                    await fetch(readUrl, {
+                        method: 'PATCH',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData,
+                    });
+                } catch (e) {
+                    // Ignore read status failures.
+                }
+            };
+
+            if (form) {
+                form.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const postUrl = form.dataset.postUrl || form.action;
+                    const formData = new FormData(form);
+
+                    const response = await fetch(postUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        alert('Message send failed.');
+                        return;
+                    }
+
+                    const payload = await response.json();
+                    const item = payload?.data?.item;
+                    if (item?.html) {
+                        appendItems([item]);
+                        scrollToBottom();
+                        updateReadStatus(lastId);
+                    }
+                    form.reset();
+                });
+            }
+
+            scrollToBottom();
+            updateReadStatus(lastId);
+
+            container.addEventListener('scroll', async () => {
+                if (container.scrollTop <= 80) {
+                    loadOlder();
+                }
+            });
+
+            setInterval(async () => {
+                const keepAtBottom = isNearBottom();
+                const items = await fetchMessages({ after_id: lastId, limit: 30 });
+                if (items.length) {
+                    appendItems(items);
+                    if (keepAtBottom) {
+                        scrollToBottom();
+                        updateReadStatus(lastId);
+                    }
+                }
+            }, 5000);
+        });
+    </script>
 @endsection

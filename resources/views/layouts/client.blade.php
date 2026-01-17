@@ -90,8 +90,48 @@
                 </div>
             </nav>
 
-            <div class="mt-auto">
-                <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
+            @php
+                $sidebarUser = auth()->user();
+                $sidebarName = $sidebarUser?->name ?? 'Client';
+                $nameParts = preg_split('/\s+/', trim($sidebarName));
+                $sidebarInitials = '';
+                foreach ($nameParts as $part) {
+                    if ($part !== '') {
+                        $sidebarInitials .= strtoupper(substr($part, 0, 1));
+                        if (strlen($sidebarInitials) >= 2) {
+                            break;
+                        }
+                    }
+                }
+                $sidebarInitials = $sidebarInitials !== '' ? $sidebarInitials : 'CL';
+            @endphp
+            <div class="mt-auto space-y-4">
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-sm font-semibold text-white">
+                            {{ $sidebarInitials }}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="truncate text-sm font-semibold text-white">{{ $sidebarName }}</div>
+                            <div class="text-[11px] text-slate-400">Client account</div>
+                        </div>
+                    </div>
+                    @if(session()->has('impersonator_id'))
+                        <form method="POST" action="{{ route('impersonate.stop') }}" class="mt-3">
+                            @csrf
+                            <button type="submit" class="w-full rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:border-amber-300">
+                                Return to Admin
+                            </button>
+                        </form>
+                    @endif
+                    <form method="POST" action="{{ route('logout') }}" class="mt-3">
+                        @csrf
+                        <button type="submit" class="w-full rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/20">
+                            Sign out
+                        </button>
+                    </form>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
                     Need help? Contact support to keep access active.
                 </div>
             </div>
@@ -104,34 +144,7 @@
                         <div class="section-label">Client workspace</div>
                         <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
                     </div>
-                    <div class="hidden items-center gap-4 md:flex">
-                        <div class="text-right text-sm">
-                            <div class="font-semibold text-slate-900">{{ auth()->user()->name }}</div>
-                            <div class="text-xs text-slate-500">Client account</div>
-                        </div>
-                        @if(session()->has('impersonator_id'))
-                            <form method="POST" action="{{ route('impersonate.stop') }}">
-                                @csrf
-                                <button
-                                    type="submit"
-                                    class="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:border-amber-300"
-                                    title="You are currently masquerading as a client. Click to return to Admin Area"
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                                        <path d="M10 17l5-5-5-5"></path>
-                                        <path d="M4 12h11"></path>
-                                        <path d="M20 4v16"></path>
-                                    </svg>
-                                </button>
-                            </form>
-                        @endif
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
-                                Sign out
-                            </button>
-                        </form>
-                    </div>
+                    <div class="hidden items-center gap-4 md:flex"></div>
                 </div>
 
                 @if(session()->has('impersonator_id'))
