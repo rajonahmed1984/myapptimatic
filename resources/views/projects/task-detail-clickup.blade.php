@@ -9,14 +9,14 @@
         <div class="text-xs text-slate-500">Project: {{ $project->name }}</div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-[1fr_360px]">
+    <div class="space-y-6">
         <!-- Main Content -->
         <div class="space-y-6">
             <!-- Task Header -->
             <div class="card p-6">
                 <div class="flex items-start justify-between gap-4 mb-4">
                     <div class="flex-1">
-                        <h1 class="text-3xl font-bold text-slate-900 mb-2">{{ $task->title }}</h1>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">{{ $task->title }}</div>
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold gap-2"
                                 style="background-color: {{ $statusColors[$task->status]['bg'] ?? '#f1f5f9' }}; color: {{ $statusColors[$task->status]['text'] ?? '#64748b' }};">
@@ -30,6 +30,55 @@
                             <span class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
                                 {{ $taskTypeOptions[$task->task_type] ?? 'Task' }}
                             </span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="mt-4 grid gap-6 md:grid-cols-2">
+                            <!-- Assignees Card -->
+                            <div class="card p-5">
+                                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Assignees</h3>
+                                @php
+                                    $assigneeList = $task->assignments->map(fn ($a) => ['name' => $a->assigneeName(), 'type' => $a->assignee_type])
+                                        ->filter(fn ($a) => $a['name'])
+                                        ->unique('name')
+                                        ->values();
+                                    if ($assigneeList->isEmpty() && $task->assigned_type && $task->assigned_id) {
+                                        $assigneeList = collect([['name' => ucfirst(str_replace('_', ' ', $task->assigned_type)) . ' #' . $task->assigned_id, 'type' => $task->assigned_type]]);
+                                    }
+                                @endphp
+                                
+                                @if($assigneeList->isNotEmpty())
+                                    <div class="space-y-2">
+                                        @foreach($assigneeList as $assignee)
+                                            <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-50">
+                                                <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-xs font-bold text-teal-700">
+                                                    {{ substr($assignee['name'], 0, 1) }}
+                                                </div>
+                                                <span class="text-xs font-medium text-slate-700 truncate">{{ $assignee['name'] }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="text-xs text-slate-500">No assignees</div>
+                                @endif
+                            </div>
+
+                            <!-- Created & Completed Card -->
+                            <div class="card p-5">
+                                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Timeline</h3>
+                                <div class="space-y-3 text-xs text-slate-600">
+                                    <div>
+                                        <div class="text-slate-500 mb-1">Created</div>
+                                        <div class="font-medium text-slate-900">{{ $task->created_at->format($globalDateFormat . ' H:i') }}</div>
+                                    </div>
+                                    @if($task->status === 'completed')
+                                        <div class="pt-3 border-t border-slate-200">
+                                            <div class="text-slate-500 mb-1">Completed</div>
+                                            <div class="font-medium text-slate-900">{{ $task->updated_at->format($globalDateFormat . ' H:i') }}</div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -264,73 +313,22 @@
                     </div>
                 </div>
             @endif
-        </div>
+        </div>        
 
-        <!-- Sidebar -->
-        <div class="space-y-6">
-            <!-- Assignees Card -->
+        <!-- Relationships Card -->
+        @if($task->relationship_ids)
             <div class="card p-5">
-                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Assignees</h3>
-                @php
-                    $assigneeList = $task->assignments->map(fn ($a) => ['name' => $a->assigneeName(), 'type' => $a->assignee_type])
-                        ->filter(fn ($a) => $a['name'])
-                        ->unique('name')
-                        ->values();
-                    if ($assigneeList->isEmpty() && $task->assigned_type && $task->assigned_id) {
-                        $assigneeList = collect([['name' => ucfirst(str_replace('_', ' ', $task->assigned_type)) . ' #' . $task->assigned_id, 'type' => $task->assigned_type]]);
-                    }
-                @endphp
-                
-                @if($assigneeList->isNotEmpty())
-                    <div class="space-y-2">
-                        @foreach($assigneeList as $assignee)
-                            <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-50">
-                                <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-xs font-bold text-teal-700">
-                                    {{ substr($assignee['name'], 0, 1) }}
-                                </div>
-                                <span class="text-xs font-medium text-slate-700 truncate">{{ $assignee['name'] }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="text-xs text-slate-500">No assignees</div>
-                @endif
-
-                
-            </div>
-
-            <!-- Created & Completed Card -->
-            <div class="card p-5">
-                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Timeline</h3>
-                <div class="space-y-3 text-xs text-slate-600">
-                    <div>
-                        <div class="text-slate-500 mb-1">Created</div>
-                        <div class="font-medium text-slate-900">{{ $task->created_at->format($globalDateFormat . ' H:i') }}</div>
-                    </div>
-                    @if($task->status === 'completed')
-                        <div class="pt-3 border-t border-slate-200">
-                            <div class="text-slate-500 mb-1">Completed</div>
-                            <div class="font-medium text-slate-900">{{ $task->updated_at->format($globalDateFormat . ' H:i') }}</div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Related Tasks</h3>
+                <div class="space-y-2 text-xs">
+                    @foreach(explode(',', implode(',', $task->relationship_ids)) as $relId)
+                        @php $relId = trim($relId); @endphp
+                        <div class="px-2 py-1 rounded bg-slate-100 text-slate-700 font-medium">
+                            Task #{{ $relId }}
                         </div>
-                    @endif
+                    @endforeach
                 </div>
             </div>
-
-            <!-- Relationships Card -->
-            @if($task->relationship_ids)
-                <div class="card p-5">
-                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Related Tasks</h3>
-                    <div class="space-y-2 text-xs">
-                        @foreach(explode(',', implode(',', $task->relationship_ids)) as $relId)
-                            @php $relId = trim($relId); @endphp
-                            <div class="px-2 py-1 rounded bg-slate-100 text-slate-700 font-medium">
-                                Task #{{ $relId }}
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
-        </div>
+        @endif
     </div>
 
     <script>
