@@ -19,7 +19,7 @@
     <div class="card p-6">
         @include('admin.customers.partials.tabs', ['customer' => $customer, 'activeTab' => 'profile'])
 
-        <form method="POST" action="{{ route('admin.customers.update', $customer) }}" enctype="multipart/form-data" class="mt-6 space-y-6">
+        <form method="POST" action="{{ route('admin.customers.update', $customer) }}" enctype="multipart/form-data" hx-boost="false" class="mt-6 space-y-6">
             @csrf
             @method('PUT')
 

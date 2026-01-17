@@ -14,7 +14,7 @@
 
     <div class="card p-6">
 
-        <form method="POST" action="{{ route('admin.customers.store') }}" enctype="multipart/form-data" class="mt-6 space-y-6">
+        <form method="POST" action="{{ route('admin.customers.store') }}" enctype="multipart/form-data" hx-boost="false" class="mt-6 space-y-6">
             @csrf
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
