@@ -108,7 +108,7 @@
             @endif
 
             <!-- Edit Form / Read Only Details -->
-            @if($canEdit)
+            @if($routePrefix === 'admin' && $canEdit)
                 <form method="POST" action="{{ $updateRoute }}" class="card p-6 space-y-6">
                     @csrf
                     @method('PATCH')
@@ -237,13 +237,21 @@
                     <div class="space-y-2 mb-6">
                         @foreach($task->subtasks as $subtask)
                             <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition group">
-                                @if($routePrefix !== 'rep')
+                                @if($routePrefix === 'employee')
+                                    <select data-subtask-id="{{ $subtask->id }}" class="subtask-status-select mt-0.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
+                                        <option value="in_progress" @selected(! $subtask->is_completed)>In progress</option>
+                                        <option value="completed" @selected($subtask->is_completed)>Completed</option>
+                                    </select>
+                                @elseif($routePrefix !== 'rep')
                                     <input type="checkbox" data-subtask-id="{{ $subtask->id }}" @checked($subtask->is_completed) class="subtask-checkbox mt-1 rounded cursor-pointer" />
                                 @endif
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <span class="text-sm {{ $subtask->is_completed ? 'line-through text-slate-400' : 'font-medium text-slate-900' }}">
                                             {{ $subtask->title }}
+                                        </span>
+                                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $subtask->is_completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700' }}">
+                                            {{ $subtask->is_completed ? 'Completed' : 'In progress' }}
                                         </span>
                                         @if($subtask->due_date)
                                             <span class="text-xs text-slate-500 whitespace-nowrap">
@@ -346,6 +354,10 @@
 </div>
 
     <script>
+        const csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content')
+            || document.querySelector('[name=\"_token\"]')?.value
+            || '';
+
         // Initialize subtask form buttons
         const addBtn = document.getElementById('addSubtaskBtn');
         const cancelBtn = document.getElementById('cancelSubtaskBtn');
@@ -384,12 +396,13 @@
                 formData.append('title', title);
                 formData.append('due_date', date || '');
                 formData.append('due_time', time || '');
-                formData.append('_token', document.querySelector('[name="_token"]').value);
+                formData.append('_token', csrfToken);
 
                 fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.store', [$project, $task]) }}`, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: formData
@@ -419,12 +432,50 @@
 
                 const formData = new FormData();
                 formData.append('is_completed', isCompleted ? 1 : 0);
-                formData.append('_token', document.querySelector('[name="_token"]').value);
+                formData.append('_token', csrfToken);
+                formData.append('_method', 'PATCH');
 
                 fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.update', [$project, $task, ':id']) }}`.replace(':id', subtaskId), {
-                    method: 'PATCH',
+                    method: 'POST',
                     headers: {
                         'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        return response.text().then(text => {
+                            console.error('Response:', text);
+                            alert('Error updating subtask: ' + (response.status || 'Unknown error'));
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating subtask: ' + error.message);
+                });
+            });
+        });
+
+        document.querySelectorAll('.subtask-status-select').forEach(select => {
+            select.addEventListener('change', () => {
+                const subtaskId = select.getAttribute('data-subtask-id');
+                const isCompleted = select.value === 'completed';
+
+                const formData = new FormData();
+                formData.append('is_completed', isCompleted ? 1 : 0);
+                formData.append('_token', csrfToken);
+                formData.append('_method', 'PATCH');
+
+                fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.update', [$project, $task, ':id']) }}`.replace(':id', subtaskId), {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: formData
@@ -461,3 +512,4 @@
         }
     </style>
 @endsection
+
