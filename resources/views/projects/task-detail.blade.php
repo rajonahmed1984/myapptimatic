@@ -148,6 +148,14 @@
                                                     <div>Created: {{ $subtask->created_at->format($globalDateFormat . ' H:i') }} @if($subtask->is_completed)| Completed: {{ $subtask->completed_at->format($globalDateFormat . ' H:i') }}@endif</div>
                                                 </div>
                                             </div>
+                                            <div class="flex items-center gap-2">
+                                                <button type="button" class="subtask-status-btn rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300" data-subtask-id="{{ $subtask->id }}" data-status="complete">
+                                                    Complete
+                                                </button>
+                                                <button type="button" class="subtask-status-btn rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300" data-subtask-id="{{ $subtask->id }}" data-status="in_progress">
+                                                    In progress
+                                                </button>
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -256,6 +264,14 @@
                                                     @endif
                                                     <div>Created: {{ $subtask->created_at->format($globalDateFormat . ' H:i') }} @if($subtask->is_completed)| Completed: {{ $subtask->completed_at->format($globalDateFormat . ' H:i') }}@endif</div>
                                                 </div>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <button type="button" class="subtask-status-btn rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300" data-subtask-id="{{ $subtask->id }}" data-status="complete">
+                                                    Complete
+                                                </button>
+                                                <button type="button" class="subtask-status-btn rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300" data-subtask-id="{{ $subtask->id }}" data-status="in_progress">
+                                                    In progress
+                                                </button>
                                             </div>
                                         </div>
                                     @endforeach
@@ -370,6 +386,7 @@
             const cancelSubtaskBtn = document.getElementById('cancelSubtaskBtn');
             const saveSubtaskBtn = document.getElementById('saveSubtaskBtn');
             const subtaskCheckboxes = document.querySelectorAll('.subtask-checkbox');
+            const subtaskStatusButtons = document.querySelectorAll('.subtask-status-btn');
 
             if (addSubtaskBtn && subtaskForm) {
                 addSubtaskBtn.addEventListener('click', (e) => {
@@ -433,6 +450,19 @@
                         location.reload();
                     })
                     .catch(() => alert('Error updating subtask'));
+                });
+            });
+
+            subtaskStatusButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const subtaskId = button.getAttribute('data-subtask-id');
+                    const status = button.getAttribute('data-status');
+                    const checkbox = document.querySelector(`.subtask-checkbox[data-subtask-id="${subtaskId}"]`);
+                    if (!checkbox) {
+                        return;
+                    }
+                    checkbox.checked = status === 'complete';
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
                 });
             });
 
