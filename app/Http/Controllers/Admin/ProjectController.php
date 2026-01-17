@@ -27,7 +27,9 @@ use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -80,7 +82,7 @@ class ProjectController extends Controller
         return view('admin.projects.create', [
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
-            'customers' => Customer::orderBy('name')->get(['id', 'name']),
+            'customers' => Customer::orderBy('name')->get(['id', 'name', 'company_name']),
             'orders' => Order::latest()->limit(50)->get(['id', 'order_number']),
             'subscriptions' => Subscription::latest()->limit(50)->get(['id']),
             'invoices' => Invoice::latest('issue_date')->limit(50)->get(['id', 'number', 'total']),
@@ -103,7 +105,7 @@ class ProjectController extends Controller
             'project' => $project,
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
-            'customers' => Customer::orderBy('name')->get(['id', 'name']),
+            'customers' => Customer::orderBy('name')->get(['id', 'name', 'company_name']),
             'orders' => Order::latest()->limit(50)->get(['id', 'order_number']),
             'subscriptions' => Subscription::latest()->limit(50)->get(['id']),
             'invoices' => Invoice::latest('issue_date')->limit(50)->get(['id', 'number', 'total']),
@@ -144,6 +146,13 @@ class ProjectController extends Controller
             'planned_hours' => ['nullable', 'numeric', 'min:0'],
             'hourly_cost' => ['nullable', 'numeric', 'min:0'],
             'actual_hours' => ['nullable', 'numeric', 'min:0'],
+            'software_overhead' => ['nullable', 'numeric', 'min:0'],
+            'website_overhead' => ['nullable', 'numeric', 'min:0'],
+            'overheads' => ['array'],
+            'overheads.*.short_details' => ['nullable', 'string', 'max:255'],
+            'overheads.*.amount' => ['nullable', 'numeric', 'min:0'],
+            'contract_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:10240'],
+            'proposal_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:10240'],
             'sales_rep_ids' => ['array'],
             'sales_rep_ids.*' => ['exists:sales_representatives,id'],
             'sales_rep_amounts' => ['array'],
@@ -224,8 +233,10 @@ class ProjectController extends Controller
                 'budget_amount' => $data['budget_amount'] ?? null,
                 'planned_hours' => $data['planned_hours'] ?? null,
                 'hourly_cost' => $data['hourly_cost'] ?? null,
-                'actual_hours' => $data['actual_hours'] ?? null,
-            ]);
+            'actual_hours' => $data['actual_hours'] ?? null,
+            'software_overhead' => $data['software_overhead'] ?? null,
+            'website_overhead' => $data['website_overhead'] ?? null,
+        ]);
 
             if (! empty($data['employee_ids'])) {
                 $project->employees()->sync($data['employee_ids']);
@@ -235,6 +246,8 @@ class ProjectController extends Controller
                 $project->salesRepresentatives()->sync($salesRepSync);
                 $commissionService->syncProjectEarnings($project, $salesRepSync);
             }
+
+            $this->createProjectOverheads($project, $data['overheads'] ?? [], $request->user());
 
             foreach ($data['tasks'] as $index => $task) {
                 $assignees = TaskAssignees::parse([$task['assignee']]);
@@ -282,6 +295,12 @@ class ProjectController extends Controller
             $dueDays = (int) Setting::getValue('invoice_due_days');
             $dueDate = $issueDate->copy()->addDays($dueDays);
 
+            $overheadItems = $project->overheads()->whereNull('invoice_id')->get();
+            $columnOverheadTotal = (float) ($project->software_overhead ?? 0) + (float) ($project->website_overhead ?? 0);
+            $overheadTotal = (float) $overheadItems->sum('amount') + $columnOverheadTotal;
+            $initialPayment = (float) $project->initial_payment_amount;
+            $invoiceSubtotal = $initialPayment + $overheadTotal;
+
             $invoice = Invoice::create([
                 'customer_id' => $project->customer_id,
                 'project_id' => $project->id,
@@ -289,9 +308,9 @@ class ProjectController extends Controller
                 'status' => 'unpaid',
                 'issue_date' => $issueDate->toDateString(),
                 'due_date' => $dueDate->toDateString(),
-                'subtotal' => $project->initial_payment_amount,
+                'subtotal' => $invoiceSubtotal,
                 'late_fee' => 0,
-                'total' => $project->initial_payment_amount,
+                'total' => $invoiceSubtotal,
                 'currency' => $project->currency,
                 'type' => 'project_initial_payment',
             ]);
@@ -303,6 +322,27 @@ class ProjectController extends Controller
                 'unit_price' => $project->initial_payment_amount,
                 'line_total' => $project->initial_payment_amount,
             ]);
+
+            $this->createColumnOverheadInvoiceItems($invoice, $project);
+
+            foreach ($overheadItems as $overhead) {
+                if ((float) $overhead->amount <= 0) {
+                    continue;
+                }
+
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'description' => sprintf(
+                        'Overhead: %s',
+                        $overhead->short_details ?: 'Overhead fee',
+                    ),
+                    'quantity' => 1,
+                    'unit_price' => $overhead->amount,
+                    'line_total' => $overhead->amount,
+                ]);
+
+                $overhead->update(['invoice_id' => $invoice->id]);
+            }
 
             foreach ($data['maintenances'] ?? [] as $maintenance) {
                 ProjectMaintenance::create([
@@ -328,6 +368,9 @@ class ProjectController extends Controller
                 'invoice_id' => $invoice->id,
             ], $request->user()?->id, $request->ip());
 
+            $this->storeProjectFile($project, $request->file('contract_file'), 'contract');
+            $this->storeProjectFile($project, $request->file('proposal_file'), 'proposal');
+
             return $project;
         });
 
@@ -345,6 +388,7 @@ class ProjectController extends Controller
             'subscription',
             'advanceInvoice',
             'finalInvoice',
+            'overheads',
             'employees',
             'salesRepresentatives',
             'maintenances' => fn ($query) => $query->withCount('invoices')->orderBy('next_billing_date'),
@@ -421,6 +465,10 @@ class ProjectController extends Controller
             'planned_hours' => ['nullable', 'numeric', 'min:0'],
             'hourly_cost' => ['nullable', 'numeric', 'min:0'],
             'actual_hours' => ['nullable', 'numeric', 'min:0'],
+            'software_overhead' => ['nullable', 'numeric', 'min:0'],
+            'website_overhead' => ['nullable', 'numeric', 'min:0'],
+            'contract_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:10240'],
+            'proposal_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:10240'],
             'sales_rep_ids' => ['array'],
             'sales_rep_ids.*' => ['exists:sales_representatives,id'],
             'sales_rep_amounts' => ['array'],
@@ -472,7 +520,31 @@ class ProjectController extends Controller
             }
         }
 
+        $this->storeProjectFile($project, $request->file('contract_file'), 'contract');
+        $this->storeProjectFile($project, $request->file('proposal_file'), 'proposal');
+
         return back()->with('status', 'Project updated.');
+    }
+
+    public function downloadFile(Project $project, string $type)
+    {
+        $this->authorize('view', $project);
+
+        if (! in_array($type, ['contract', 'proposal'], true)) {
+            abort(404);
+        }
+
+        $pathColumn = "{$type}_file_path";
+        $nameColumn = "{$type}_original_name";
+
+        $path = $project->{$pathColumn};
+        if (! $path || ! Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        $originalName = $project->{$nameColumn} ?: ucfirst($type);
+
+        return Storage::disk('public')->download($path, $originalName);
     }
 
     public function destroy(Project $project): RedirectResponse
@@ -595,10 +667,14 @@ class ProjectController extends Controller
 
         $plannedCost = $hourlyCost * $plannedHours;
         $actualCost = $hourlyCost * $actualHours;
-        $profit = $budget - $actualCost;
+        $overhead = $project->overhead_total;
+        $budgetWithOverhead = $budget + $overhead;
+        $profit = $budgetWithOverhead - $actualCost;
 
         return [
             'budget' => $budget,
+            'overhead_total' => $overhead,
+            'budget_with_overhead' => $budgetWithOverhead,
             'planned_hours' => $plannedHours,
             'actual_hours' => $actualHours,
             'hourly_cost' => $hourlyCost,
@@ -653,5 +729,73 @@ class ProjectController extends Controller
         $fileName = $name . '-' . Str::random(8) . '.' . $extension;
 
         return $attachment->storeAs('project-task-activities/' . $task->id, $fileName, 'public');
+    }
+
+    private function storeProjectFile(Project $project, ?UploadedFile $file, string $type): void
+    {
+        if (! $file) {
+            return;
+        }
+
+        $columnPath = "{$type}_file_path";
+        $columnOriginalName = "{$type}_original_name";
+        $previousPath = $project->{$columnPath};
+
+        if ($previousPath) {
+            Storage::disk('public')->delete($previousPath);
+        }
+
+        $fileName = Str::slug("{$type}-{$project->id}-" . time());
+        $fileName .= '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs("projects/{$project->id}", $fileName, 'public');
+
+        $project->update([
+            $columnPath => $path,
+            $columnOriginalName => $file->getClientOriginalName(),
+        ]);
+    }
+
+    private function createColumnOverheadInvoiceItems(Invoice $invoice, Project $project): void
+    {
+        foreach (['software', 'website'] as $type) {
+            $column = "{$type}_overhead";
+            $amount = (float) ($project->{$column} ?? 0);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'description' => sprintf('%s overhead for project %s', ucfirst($type), $project->name),
+                'quantity' => 1,
+                'unit_price' => $amount,
+                'line_total' => $amount,
+            ]);
+        }
+    }
+
+    private function createProjectOverheads(Project $project, array $rows, ?User $creator): void
+    {
+        $filtered = collect($rows)
+            ->map(fn ($row) => [
+                'short_details' => trim((string) ($row['short_details'] ?? '')),
+                'amount' => isset($row['amount']) ? (float) $row['amount'] : 0.0,
+            ])
+            ->filter(fn ($row) => $row['short_details'] !== '' && $row['amount'] > 0)
+            ->values();
+
+        if ($filtered->isEmpty()) {
+            return;
+        }
+
+        foreach ($filtered as $entry) {
+            $project->overheads()->create([
+                'short_details' => $entry['short_details'],
+                'amount' => $entry['amount'],
+                'created_by' => $creator?->id,
+            ]);
+        }
+
+        $project->loadMissing('overheads');
     }
 }

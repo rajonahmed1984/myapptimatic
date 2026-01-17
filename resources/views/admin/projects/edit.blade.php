@@ -14,7 +14,7 @@
     </div>
 
     <div class="card p-6">
-        <form method="POST" action="{{ route('admin.projects.update', $project) }}" class="mt-2 space-y-6 rounded-2xl border border-slate-200 bg-white/80 p-5">
+        <form method="POST" action="{{ route('admin.projects.update', $project) }}" enctype="multipart/form-data" class="mt-2 space-y-6 rounded-2xl border border-slate-200 bg-white/80 p-5">
             @csrf
             @method('PUT')
 
@@ -31,7 +31,7 @@
                         <select name="customer_id" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                             <option value="">Select customer</option>
                             @foreach($customers as $customer)
-                                <option value="{{ $customer->id }}" @selected(old('customer_id', $project->customer_id) == $customer->id)>{{ $customer->name }}</option>
+                                <option value="{{ $customer->id }}" @selected(old('customer_id', $project->customer_id) == $customer->id)>{{ $customer->display_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -79,6 +79,27 @@
                 <div>
                     <label class="text-xs text-slate-500">Notes</label>
                     <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('notes', $project->notes) }}</textarea>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label class="text-xs text-slate-500">Contract file</label>
+                        <input type="file" name="contract_file" accept=".pdf,.doc,.docx,image/*" class="mt-1 w-full text-xs text-slate-600">
+                        @if($project->contract_file_path)
+                            <a href="{{ route('admin.projects.download', ['project' => $project, 'type' => 'contract']) }}" class="mt-1 block text-xs font-semibold text-teal-700 hover:text-teal-600">
+                                {{ $project->contract_original_name ?? 'Download contract' }}
+                            </a>
+                        @endif
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Proposal file</label>
+                        <input type="file" name="proposal_file" accept=".pdf,.doc,.docx,image/*" class="mt-1 w-full text-xs text-slate-600">
+                        @if($project->proposal_file_path)
+                            <a href="{{ route('admin.projects.download', ['project' => $project, 'type' => 'proposal']) }}" class="mt-1 block text-xs font-semibold text-teal-700 hover:text-teal-600">
+                                {{ $project->proposal_original_name ?? 'Download proposal' }}
+                            </a>
+                        @endif
+                    </div>
                 </div>
             </fieldset>
 
@@ -150,11 +171,22 @@
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label class="text-xs text-slate-500">Budget (legacy)</label>
-                        <input name="budget_amount" type="number" step="0.01" value="{{ old('budget_amount', $project->budget_amount) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                    </div>
+                <div>
+                    <label class="text-xs text-slate-500">Budget (legacy)</label>
+                    <input name="budget_amount" type="number" step="0.01" value="{{ old('budget_amount', $project->budget_amount) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                 </div>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="text-xs text-slate-500">Software overhead fee</label>
+                    <input name="software_overhead" type="number" step="0.01" min="0" value="{{ old('software_overhead', $project->software_overhead) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Website overhead fee</label>
+                    <input name="website_overhead" type="number" step="0.01" min="0" value="{{ old('website_overhead', $project->website_overhead) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                </div>
+            </div>
 
                 <div class="grid gap-4 md:grid-cols-3">
                     <div>

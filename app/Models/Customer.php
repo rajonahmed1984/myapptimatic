@@ -36,6 +36,16 @@ class Customer extends Model
         'access_override_until' => 'datetime',
     ];
 
+    public function getDisplayNameAttribute(): string
+    {
+        $company = trim((string) ($this->company_name ?? ''));
+        if ($company === '') {
+            return $this->name;
+        }
+
+        return "{$this->name} - {$company}";
+    }
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class);

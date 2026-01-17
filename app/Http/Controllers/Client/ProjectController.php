@@ -32,7 +32,7 @@ class ProjectController extends Controller
     {
         $this->authorize('view', $project);
 
-        $project->load('customer');
+        $project->load(['customer', 'overheads']);
 
         $tasks = $project->tasks()
             ->where('customer_visible', true)

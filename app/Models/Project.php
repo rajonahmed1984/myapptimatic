@@ -11,6 +11,7 @@ use App\Enums\Role;
 use App\Models\Employee;
 use App\Models\SalesRepresentative;
 use App\Models\User;
+use App\Models\ProjectOverhead;
 
 class Project extends Model
 {
@@ -38,6 +39,12 @@ class Project extends Model
         'planned_hours',
         'hourly_cost',
         'actual_hours',
+        'software_overhead',
+        'website_overhead',
+        'contract_file_path',
+        'contract_original_name',
+        'proposal_file_path',
+        'proposal_original_name',
     ];
 
     protected $casts = [
@@ -50,6 +57,8 @@ class Project extends Model
         'planned_hours' => 'decimal:2',
         'hourly_cost' => 'decimal:2',
         'actual_hours' => 'decimal:2',
+        'software_overhead' => 'decimal:2',
+        'website_overhead' => 'decimal:2',
         'sales_rep_ids' => 'array',
     ];
 
@@ -116,6 +125,11 @@ class Project extends Model
             ->where('project_id', $this->id);
     }
 
+    public function overheads(): HasMany
+    {
+        return $this->hasMany(ProjectOverhead::class);
+    }
+
     public function employees()
     {
         return $this->belongsToMany(Employee::class, 'employee_project')->withTimestamps();
@@ -134,12 +148,25 @@ class Project extends Model
             ->sum(fn ($rep) => (float) ($rep->pivot?->amount ?? 0));
     }
 
+    public function getOverheadTotalAttribute(): float
+    {
+        $relationTotal = (float) $this->overheads
+            ->sum(fn ($overhead) => (float) ($overhead->amount ?? 0));
+
+        return $relationTotal + $this->getColumnOverheadTotal();
+    }
+
+    private function getColumnOverheadTotal(): float
+    {
+        return (float) ($this->software_overhead ?? 0) + (float) ($this->website_overhead ?? 0);
+    }
+
     public function getRemainingBudgetAttribute(): ?float
     {
         if ($this->total_budget === null) {
             return null;
         }
 
-        return (float) $this->total_budget - $this->sales_rep_total;
+        return (float) $this->total_budget - $this->sales_rep_total - $this->overhead_total;
     }
 }

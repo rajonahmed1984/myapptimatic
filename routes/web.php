@@ -352,6 +352,9 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::post('orders/{order}/milestones', [MilestoneController::class, 'store'])->name('orders.milestones.store');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::resource('projects', ProjectController::class);
+    Route::get('projects/{project}/download/{type}', [ProjectController::class, 'downloadFile'])
+        ->where('type', 'contract|proposal')
+        ->name('projects.download');
     Route::resource('project-maintenances', \App\Http\Controllers\Admin\ProjectMaintenanceController::class)
         ->except(['show', 'destroy']);
     Route::get('project-maintenances/{projectMaintenance}', [\App\Http\Controllers\Admin\ProjectMaintenanceController::class, 'show'])

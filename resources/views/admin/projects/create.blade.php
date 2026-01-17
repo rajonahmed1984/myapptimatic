@@ -26,12 +26,7 @@
                     <select name="customer_id" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                         <option value="">Select customer</option>
                         @foreach($customers as $customer)
-                            <option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>
-                                {{ $customer->name }}
-                                @if($customer->company_name)
-                                    ({{ $customer->company_name }})
-                                @endif
-                            </option>
+                            <option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>{{ $customer->display_name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -121,6 +116,19 @@
                 <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('notes') }}</textarea>
             </div>
 
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="text-xs text-slate-500">Contract file</label>
+                    <input type="file" name="contract_file" accept=".pdf,.doc,.docx,image/*" class="mt-1 w-full text-xs text-slate-600">
+                    <p class="mt-1 text-xs text-slate-500">Optional upload for signed contract.</p>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Proposal file</label>
+                    <input type="file" name="proposal_file" accept=".pdf,.doc,.docx,image/*" class="mt-1 w-full text-xs text-slate-600">
+                    <p class="mt-1 text-xs text-slate-500">Optional upload for proposal.</p>
+                </div>
+            </div>
+
             <div class="rounded-2xl border border-slate-200 bg-white/60 p-4">
                 <div class="flex items-center justify-between">
                     <div>
@@ -194,6 +202,36 @@
                 <div>
                     <label class="text-xs text-slate-500">Budget (legacy)</label>
                     <input name="budget_amount" type="number" step="0.01" value="{{ old('budget_amount') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white/60 p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="section-label">Overhead fees (optional)</div>
+                        <div class="text-sm text-slate-600">Add per-project overhead line items.</div>
+                    </div>
+                    <button type="button" id="addOverheadRow" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add fee</button>
+                </div>
+                <div id="overheadRows" class="mt-4 space-y-3">
+                    @php
+                        $overheadsOld = old('overheads', [['short_details' => '', 'amount' => '']]);
+                    @endphp
+                    @foreach($overheadsOld as $index => $overhead)
+                        <div class="overhead-row grid gap-3 md:grid-cols-3 items-end" data-index="{{ $index }}">
+                            <div class="md:col-span-2">
+                                <label class="text-xs text-slate-500">Details</label>
+                                <input name="overheads[{{ $index }}][short_details]" value="{{ $overhead['short_details'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="e.g. Payment gateway setup">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500">Amount</label>
+                                <div class="flex items-center gap-2">
+                                    <input name="overheads[{{ $index }}][amount]" type="number" step="0.01" min="0" value="{{ $overhead['amount'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                    <button type="button" class="remove-overhead-row rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             </div>
 

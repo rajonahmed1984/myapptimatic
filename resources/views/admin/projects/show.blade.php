@@ -87,17 +87,55 @@
         </div>
 
         <div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Documents</div>
+            <div class="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+                <div class="space-y-3">
+                    @if($project->contract_file_path)
+                        <div>
+                            <div class="text-xs text-slate-500">Contract</div>
+                            <a href="{{ route('admin.projects.download', ['project' => $project, 'type' => 'contract']) }}" class="text-sm font-semibold text-teal-700 hover:text-teal-600">
+                                {{ $project->contract_original_name ?? 'Download contract' }}
+                            </a>
+                        </div>
+                    @else
+                        <div class="text-xs text-slate-500">No contract uploaded.</div>
+                    @endif
+
+                    @if($project->proposal_file_path)
+                        <div>
+                            <div class="text-xs text-slate-500">Proposal</div>
+                            <a href="{{ route('admin.projects.download', ['project' => $project, 'type' => 'proposal']) }}" class="text-sm font-semibold text-teal-700 hover:text-teal-600">
+                                {{ $project->proposal_original_name ?? 'Download proposal' }}
+                            </a>
+                        </div>
+                    @else
+                        <div class="text-xs text-slate-500">No proposal uploaded.</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        @php
+            $financials = $financials ?? [];
+            $overheadTotal = $financials['overhead_total'] ?? $project->overhead_total;
+            $budgetWithOverhead = $financials['budget_with_overhead'] ?? ((float) ($project->budget_amount ?? 0) + $overheadTotal);
+        @endphp
+
+        <div>
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Budget & Currency</div>
             <div class="mt-3 grid gap-4 md:grid-cols-2 text-sm text-slate-700">
                 <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Budget Summary</div>
                     <div class="mt-2 text-xs text-slate-600">
                         Total budget: {{ $project->total_budget !== null ? $project->currency.' '.number_format($project->total_budget, 2) : '--' }}<br>
+                        Overhead total: {{ $project->currency ?? '' }}{{ number_format($overheadTotal, 2) }}<br>
+                        Budget with overhead: {{ $project->currency ?? '' }}{{ number_format($budgetWithOverhead, 2) }}<br>
                         Sales rep total: {{ $project->sales_rep_total !== null ? $project->currency.' '.number_format($project->sales_rep_total, 2) : '--' }}<br>
                         Remaining budget: {{ $project->remaining_budget !== null ? $project->currency.' '.number_format($project->remaining_budget, 2) : '--' }}<br>
                         Initial payment: {{ $project->initial_payment_amount !== null ? $project->currency.' '.number_format($project->initial_payment_amount, 2) : '--' }}<br>
                         Budget (legacy): {{ $project->budget_amount !== null ? $project->currency.' '.number_format($project->budget_amount, 2) : '--' }}<br>
-                        Currency: {{ $project->currency ?? '--' }}
+                        Currency: {{ $project->currency ?? '--' }}<br>
+                        Profit: {{ isset($financials['profit']) ? $project->currency.' '.number_format($financials['profit'], 2) : '--' }}
                     </div>
                 </div>
                 <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
@@ -113,6 +151,57 @@
                         <div class="mt-2 text-xs text-slate-500">No initial invoice linked.</div>
                     @endif
                 </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overhead fees</div>
+            <div class="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+                @if($project->overheads->isEmpty())
+                    <div class="text-xs text-slate-500">No overhead line items added.</div>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    <th class="px-3 py-2">Details</th>
+                                    <th class="px-3 py-2">Amount</th>
+                                    <th class="px-3 py-2">Date</th>
+                                    <th class="px-3 py-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($project->overheads as $overhead)
+                                    <tr class="border-t border-slate-100">
+                                        <td class="px-3 py-2 w-2/5">{{ $overhead->short_details }}</td>
+                                        <td class="px-3 py-2 text-right">{{ $project->currency }} {{ number_format((float) $overhead->amount, 2) }}</td>
+                                        <td class="px-3 py-2">{{ $overhead->created_at?->format($globalDateFormat) ?? '--' }}</td>
+                                        <td class="px-3 py-2">
+                                            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $overhead->invoice_id ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-600 bg-slate-50' }}">
+                                                {{ $overhead->invoice_id ? 'Invoiced' : 'Pending' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('admin.projects.overheads.store', $project) }}" class="mt-4 grid gap-3 md:grid-cols-3">
+                    @csrf
+                    <div class="md:col-span-2">
+                        <label class="text-xs text-slate-500">Details</label>
+                        <input name="short_details" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Feature fee or description">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Amount</label>
+                        <input name="amount" required type="number" step="0.01" min="0" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div class="md:col-span-3 flex justify-end">
+                        <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Add overhead fee</button>
+                    </div>
+                </form>
             </div>
         </div>
 

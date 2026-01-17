@@ -9,6 +9,10 @@
         $chatMeta = $chatMeta ?? null;
         $chatLastMessageId = $chatMessages->last()?->id ?? 0;
         $chatOldestMessageId = $chatMessages->first()?->id ?? 0;
+        $softwareOverhead = (float) ($project->software_overhead ?? 0);
+        $websiteOverhead = (float) ($project->website_overhead ?? 0);
+        $overheadTotal = $softwareOverhead + $websiteOverhead;
+        $budgetWithOverhead = (float) ($project->budget_amount ?? 0) + $overheadTotal;
     @endphp
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -33,12 +37,14 @@
                     Due: {{ $project->due_date?->format($globalDateFormat) ?? '--' }}
                 </div>
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Financials</div>
-                <div class="mt-2 text-sm text-slate-700">
-                    Budget: {{ $project->total_budget ? $project->currency.' '.$project->total_budget : '--' }}<br>
-                    Initial payment: {{ $project->initial_payment_amount ? $project->currency.' '.$project->initial_payment_amount : '--' }}
-                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Financials</div>
+                    <div class="mt-2 text-sm text-slate-700">
+                        Budget: {{ $project->total_budget ? $project->currency.' '.number_format($project->total_budget, 2) : '--' }}<br>
+                        Initial payment: {{ $project->initial_payment_amount ? $project->currency.' '.number_format($project->initial_payment_amount, 2) : '--' }}<br>
+                        Total overhead: {{ $project->currency ?? '' }}{{ number_format($overheadTotal, 2) }}<br>
+                        Budget with overhead: {{ $project->currency ?? '' }}{{ number_format($budgetWithOverhead, 2) }}
+                    </div>
                 @if(!empty($initialInvoice))
                     <div class="mt-2 text-xs text-slate-500">
                         Initial invoice: #{{ $initialInvoice->number ?? $initialInvoice->id }} ({{ ucfirst($initialInvoice->status) }})

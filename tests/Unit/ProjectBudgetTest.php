@@ -29,6 +29,8 @@ class ProjectBudgetTest extends TestCase
             'total_budget' => 1000,
             'initial_payment_amount' => 100,
             'currency' => 'USD',
+            'software_overhead' => 50,
+            'website_overhead' => 25,
         ]);
 
         $repUserOne = User::factory()->create(['role' => 'sales']);
@@ -54,6 +56,7 @@ class ProjectBudgetTest extends TestCase
         $project->load('salesRepresentatives');
 
         $this->assertSame(400.0, $project->sales_rep_total);
-        $this->assertSame(600.0, $project->remaining_budget);
+        $this->assertSame(75.0, $project->overhead_total);
+        $this->assertSame(525.0, $project->remaining_budget);
     }
 }
