@@ -32,25 +32,23 @@
                             </span>
                         </div>
                         @if(!($routePrefix === 'admin' && $canEdit))
-                            <div class="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
-                                <div class="grid gap-4 md:grid-cols-3">
-                                    <div>
-                                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Start Date</div>
-                                        <div class="text-sm font-medium text-slate-900">{{ $task->start_date?->format($globalDateFormat) ?? '—' }}</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Due Date</div>
-                                        <div class="text-sm font-medium text-slate-900">{{ $task->due_date?->format($globalDateFormat) ?? '—' }}</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Time Estimate</div>
-                                        <div class="text-sm font-medium text-slate-900">{{ $task->time_estimate_minutes ? $task->time_estimate_minutes . ' min' : '—' }}</div>
-                                    </div>
+                            <div class="grid gap-4 md:grid-cols-3 pd-2 mt-4">
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Start Date</div>
+                                    <div class="text-sm font-medium text-slate-900">{{ $task->start_date?->format($globalDateFormat) ?? '—' }}</div>
                                 </div>
-                                <div class="mt-4">
-                                    <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Tags</div>
-                                    <div class="text-sm text-slate-700">{{ $task->tags ? implode(', ', $task->tags) : '—' }}</div>
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Due Date</div>
+                                    <div class="text-sm font-medium text-slate-900">{{ $task->due_date?->format($globalDateFormat) ?? '—' }}</div>
                                 </div>
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Time Estimate</div>
+                                    <div class="text-sm font-medium text-slate-900">{{ $task->time_estimate_minutes ? $task->time_estimate_minutes . ' min' : '—' }}</div>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Tags</div>
+                                <div class="text-sm text-slate-700">{{ $task->tags ? implode(', ', $task->tags) : '—' }}</div>
                             </div>
                         @endif
                     </div>
@@ -347,7 +345,11 @@
                                                 @endif
                                                 <div class="flex-1 min-w-0">
                                                     <div class="text-sm font-medium text-slate-900 truncate">{{ $upload->attachmentName() }}</div>
+                                                    <div class="text-xs text-slate-500">Uploaded by {{ $upload->actorName() }}</div>
                                                     <div class="text-xs text-slate-500">{{ $upload->created_at->format($globalDateFormat . ' H:i') }}</div>
+                                                    @if($upload->message)
+                                                        <div class="text-xs text-slate-600">{{ $upload->message }}</div>
+                                                    @endif
                                                 </div>
                                             </a>
                                         </div>

@@ -34,6 +34,7 @@ class ProjectTaskViewController extends Controller
 
         $uploadActivities = $task->activities()
             ->where('type', 'upload')
+            ->with(['userActor', 'employeeActor', 'salesRepActor'])
             ->orderBy('created_at')
             ->get();
 
