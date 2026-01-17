@@ -462,6 +462,10 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::post('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'store'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.activity.store');
+        Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])
+            ->name('projects.tasks.subtasks.store');
+        Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])
+            ->name('projects.tasks.subtasks.update');
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
@@ -515,6 +519,12 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
         Route::post('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'store'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.activity.store');
+        Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])
+            ->name('projects.tasks.subtasks.store');
+        Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])
+            ->name('projects.tasks.subtasks.update');
+        Route::delete('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])
+            ->name('projects.tasks.subtasks.destroy');
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
