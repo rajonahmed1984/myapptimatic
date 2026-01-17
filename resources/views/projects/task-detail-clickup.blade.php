@@ -296,30 +296,7 @@
                     <div class="text-xs text-slate-500">No assignees</div>
                 @endif
 
-                @if($canEdit)
-                    <div class="mt-4 pt-4 border-t border-slate-200 space-y-2">
-                        @if($employees->isNotEmpty())
-                            <div class="text-xs font-semibold text-slate-600 mb-2">Employees</div>
-                            @foreach($employees as $employee)
-                                @php $value = 'employee:'.$employee->id; @endphp
-                                <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer hover:bg-slate-50 p-2 rounded">
-                                    <input type="checkbox" name="assignees[]" value="{{ $value }}" @checked(in_array($value, $assignees, true)) class="rounded border-slate-300 cursor-pointer" />
-                                    <span class="flex-1">{{ $employee->name }}</span>
-                                </label>
-                            @endforeach
-                        @endif
-                        @if($salesReps->isNotEmpty())
-                            <div class="text-xs font-semibold text-slate-600 mb-2 mt-3">Sales Reps</div>
-                            @foreach($salesReps as $rep)
-                                @php $value = 'sales_rep:'.$rep->id; @endphp
-                                <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer hover:bg-slate-50 p-2 rounded">
-                                    <input type="checkbox" name="assignees[]" value="{{ $value }}" @checked(in_array($value, $assignees, true)) class="rounded border-slate-300 cursor-pointer" />
-                                    <span class="flex-1">{{ $rep->name }}</span>
-                                </label>
-                            @endforeach
-                        @endif
-                    </div>
-                @endif
+                
             </div>
 
             <!-- Created & Completed Card -->
