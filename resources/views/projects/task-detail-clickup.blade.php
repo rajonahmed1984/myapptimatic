@@ -235,7 +235,9 @@
                     <div class="space-y-2 mb-6">
                         @foreach($task->subtasks as $subtask)
                             <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition group">
-                                <input type="checkbox" data-subtask-id="{{ $subtask->id }}" @checked($subtask->is_completed) class="subtask-checkbox mt-1 rounded cursor-pointer" />
+                                @if($routePrefix !== 'rep')
+                                    <input type="checkbox" data-subtask-id="{{ $subtask->id }}" @checked($subtask->is_completed) class="subtask-checkbox mt-1 rounded cursor-pointer" />
+                                @endif
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <span class="text-sm {{ $subtask->is_completed ? 'line-through text-slate-400' : 'font-medium text-slate-900' }}">
@@ -266,7 +268,7 @@
                 @if($canEdit)
                     <div id="subtaskForm" style="display: none;" class="p-4 rounded-lg border-2 border-teal-200 bg-teal-50 space-y-3">
                         <div>
-                            <input type="text" id="subtaskTitle" placeholder="What needs to be done?" class="w-full rounded-lg border border-teal-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 placeholder-slate-500" />
+                            <textarea id="subtaskTitle" placeholder="What needs to be done?" class="w-full rounded-lg border border-teal-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 placeholder-slate-500"></textarea>
                         </div>
                         <div class="grid gap-3 md:grid-cols-2">
                             <div>
@@ -294,19 +296,29 @@
             @if($uploadActivities->isNotEmpty())
                 <div class="card p-6">
                     <h2 class="text-lg font-bold text-slate-900 mb-4">Attachments</h2>
-                    <div class="space-y-3">
-                        @foreach($uploadActivities as $upload)
-                            <div class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                <div class="flex items-center gap-3 flex-1 min-w-0">
-                                    @if($upload->isImageAttachment())
-                                        <img src="{{ route($attachmentRouteName, [$project, $task, $upload]) }}" alt="Attachment" class="h-10 w-10 rounded border border-slate-200 object-cover" />
-                                    @else
-                                        <div class="h-10 w-10 rounded border border-slate-200 bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">DOC</div>
-                                    @endif
-                                    <div class="flex-1 min-w-0">
-                                        <div class="text-sm font-medium text-slate-900 truncate">{{ $upload->attachmentName() }}</div>
-                                        <div class="text-xs text-slate-500">{{ $upload->created_at->format($globalDateFormat . ' H:i') }}</div>
-                                    </div>
+                    @php
+                        $uploadsByDay = $uploadActivities->groupBy(fn ($upload) => $upload->created_at?->format($globalDateFormat) ?? 'Unknown date');
+                    @endphp
+                    <div class="space-y-4">
+                        @foreach($uploadsByDay as $day => $uploads)
+                            <div>
+                                <div class="text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">{{ $day }}</div>
+                                <div class="space-y-3">
+                                    @foreach($uploads as $upload)
+                                        <div class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                            <a href="{{ route($attachmentRouteName, [$project, $task, $upload]) }}" target="_blank" rel="noopener" class="flex items-center gap-3 flex-1 min-w-0">
+                                                @if($upload->isImageAttachment())
+                                                    <img src="{{ route($attachmentRouteName, [$project, $task, $upload]) }}" alt="Attachment" class="h-12 w-12 rounded border border-slate-200 object-cover" />
+                                                @else
+                                                    <div class="h-12 w-12 rounded border border-slate-200 bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">DOC</div>
+                                                @endif
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="text-sm font-medium text-slate-900 truncate">{{ $upload->attachmentName() }}</div>
+                                                    <div class="text-xs text-slate-500">{{ $upload->created_at->format($globalDateFormat . ' H:i') }}</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    @endforeach
                                 </div>
                             </div>
                         @endforeach
