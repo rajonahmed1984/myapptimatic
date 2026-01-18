@@ -47,7 +47,6 @@ use App\Http\Controllers\Client\DomainController as ClientDomainController;
 use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;
 use App\Http\Controllers\Client\ManualPaymentController;
 use App\Http\Controllers\Client\LicenseController as ClientLicenseController;
-use App\Http\Controllers\AuthController as ClientAuthController;
 use App\Http\Controllers\Client\OrderController as ClientOrderController;
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\Client\ServiceController as ClientServiceController;
@@ -363,6 +362,10 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         ->except(['show', 'destroy']);
     Route::get('project-maintenances/{projectMaintenance}', [\App\Http\Controllers\Admin\ProjectMaintenanceController::class, 'show'])
         ->name('project-maintenances.show');
+    Route::post('projects/{project}/overheads', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'store'])
+        ->name('projects.overheads.store');
+    Route::delete('projects/{project}/overheads/{overhead}', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'destroy'])
+        ->name('projects.overheads.destroy');
     Route::post('projects/{project}/tasks', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
     Route::patch('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
     Route::patch('projects/{project}/tasks/{task}/status', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'changeStatus'])->name('projects.tasks.changeStatus');
@@ -478,7 +481,6 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
     ->prefix('client')
     ->name('client.')
     ->group(function () {
-        Route::post('/logout', [ClientAuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
         Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/review', [ClientOrderController::class, 'review'])->name('orders.review');

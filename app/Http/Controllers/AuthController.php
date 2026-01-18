@@ -65,6 +65,11 @@ class AuthController extends Controller
             'user_id' => $user?->id,
         ], $user?->id, $request->ip());
 
+        // Handle project-specific clients
+        if ($user && $user->isClientProject() && $user->project_id) {
+            return redirect()->route('client.projects.show', $user->project_id);
+        }
+
         if ($user && $user->isAdmin()) {
             return redirect()->route('admin.dashboard');
         }
