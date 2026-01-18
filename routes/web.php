@@ -481,7 +481,7 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
     ->prefix('client')
     ->name('client.')
     ->group(function () {
-        Route::get('/dashboard', [ClientDashboardController::class, 'index'])->middleware('project.financial')->name('dashboard');
+        Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
         Route::get('/orders', [ClientOrderController::class, 'index'])->middleware('project.financial')->name('orders.index');
         Route::get('/orders/review', [ClientOrderController::class, 'review'])->middleware('project.financial')->name('orders.review');
         Route::post('/orders', [ClientOrderController::class, 'store'])->middleware('project.financial')->name('orders.store');
