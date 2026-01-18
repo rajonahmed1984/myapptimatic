@@ -526,12 +526,14 @@
                     }
                 }
                 $sidebarInitials = $sidebarInitials !== '' ? $sidebarInitials : 'U';
+                $sidebarAvatarPath = $sidebarUser?->employee?->photo_path
+                    ?? $sidebarUser?->avatar_path;
             @endphp
             <div class="mt-auto">
                 <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
                     <div class="flex items-center gap-3">
-                        <div class="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-sm font-semibold text-white">
-                            {{ $sidebarInitials }}
+                        <div class="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/10">
+                            <x-avatar :path="$sidebarAvatarPath" :name="$sidebarName" size="h-10 w-10" textSize="text-sm" />
                         </div>
                         <div class="min-w-0">
                             <div class="truncate text-sm font-semibold text-white">{{ $sidebarName }}</div>

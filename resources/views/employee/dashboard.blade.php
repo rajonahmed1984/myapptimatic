@@ -27,28 +27,7 @@
                     </button>
                 </form>
             </div>
-
-            <div class="mt-4 space-y-2 text-sm text-slate-600">
-                <div>Visit the profile settings panel below to update your name, email, and contact number.</div>
-                <div>Upload a new profile photo or change your password (current password required) from the profile page.</div>
-            </div>
         </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Profile & Security</div>
-                    <div class="text-sm text-slate-500">Update your personal information and password.</div>
-                </div>
-                <a href="{{ route('employee.profile.edit') }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Go to profile</a>
-            </div>
-            <ul class="mt-3 space-y-2 text-slate-500">
-                <li>- Change your display name and email.</li>
-                <li>- Upload a profile photo (PNG/JPG up to 2MB).</li>
-                <li>- Reset your password by providing the current password.</li>
-            </ul>
-        </div>
-
         <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Timesheets</div>
