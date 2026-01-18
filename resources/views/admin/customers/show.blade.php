@@ -211,7 +211,11 @@
                             @endphp
                             <tr class="border-b border-slate-100">
                                 <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
-                                <td class="px-4 py-3 font-medium text-slate-900">{{ $project->name }}</td>
+                                <td class="px-4 py-3 font-medium text-slate-900">
+                                    <a href="{{ route('admin.projects.show', $project) }}" class="text-teal-700 hover:text-teal-500">
+                                        {{ $project->name }}
+                                    </a>
+                                </td>
                                 <td class="px-4 py-3 text-slate-600">{{ ucfirst($project->type) }}</td>
                                 <td class="px-4 py-3">
                                     <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ ucfirst(str_replace('_', ' ', $project->status)) }}</span>

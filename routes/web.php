@@ -479,6 +479,7 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
     ->group(function () {
         Route::post('/logout', [ClientAuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/review', [ClientOrderController::class, 'review'])->name('orders.review');
         Route::post('/orders', [ClientOrderController::class, 'store'])->name('orders.store');
         Route::get('/services', [ClientServiceController::class, 'index'])->name('services.index');
