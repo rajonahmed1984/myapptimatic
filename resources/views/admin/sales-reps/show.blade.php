@@ -215,7 +215,30 @@
             No activity log entries.
         </div>
     @elseif($tab === 'earnings')
-        <div class="card p-4">
+        <div class="grid gap-4 md:grid-cols-3">
+            <div class="card p-4">
+                <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Earned Amount</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">
+                    {{ number_format($summary['total_earned'] ?? 0, 2) }}
+                </div>
+                <div class="text-xs text-slate-500">Includes pending, payable, and paid commission.</div>
+            </div>
+            <div class="card p-4">
+                <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Outstanding</div>
+                <div class="mt-2 text-2xl font-semibold text-amber-700">
+                    {{ number_format($summary['outstanding'] ?? (($summary['total_earned'] ?? 0) - ($summary['paid'] ?? 0)), 2) }}
+                </div>
+                <div class="text-xs text-slate-500">Amount yet to be paid (total minus paid).</div>
+            </div>
+            <div class="card p-4">
+                <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Payable</div>
+                <div class="mt-2 text-2xl font-semibold text-emerald-700">
+                    {{ number_format($summary['payable'] ?? 0, 2) }}
+                </div>
+                <div class="text-xs text-slate-500">Ready for payout.</div>
+            </div>
+        </div>
+        <div class="mt-4 card p-4">
             <div class="mb-3 flex items-center justify-between">
                 <div class="text-sm font-semibold text-slate-800">Recent Earnings</div>
                 <a href="{{ route('admin.commission-payouts.create', ['sales_rep_id' => $rep->id]) }}" class="text-xs font-semibold text-teal-700 hover:text-teal-600">
@@ -223,24 +246,44 @@
                 </a>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[500px] text-sm text-slate-700">
+                <table class="w-full min-w-[640px] text-sm text-slate-700">
                     <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                         <tr>
                             <th class="py-2 text-left">Date</th>
                             <th class="py-2 text-left">Status</th>
+                            <th class="py-2 text-left">Source</th>
+                            <th class="py-2 text-left">Details</th>
                             <th class="py-2 text-right">Amount</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($recentEarnings as $earning)
+                            @php
+                                $sourceLabel = match($earning->source_type) {
+                                    'invoice' => 'Invoice',
+                                    'subscription' => 'Subscription',
+                                    'project' => 'Project',
+                                    default => 'Commission',
+                                };
+                                $details = match($sourceLabel) {
+                                    'Invoice' => 'Inv #' . ($earning->invoice?->number ?? $earning->invoice?->id ?? '—') . ' / ' . ($earning->invoice?->customer?->name ?? '--'),
+                                    'Subscription' => $earning->subscription?->plan?->name ?? '--',
+                                    'Project' => $earning->project?->name ?? '--',
+                                    default => $earning->metadata['description'] ?? '--',
+                                };
+                            @endphp
                             <tr class="border-b border-slate-100">
-                                <td class="py-2">{{ $earning->created_at?->format($globalDateFormat ?? 'Y-m-d') }}</td>
+                                <td class="py-2">{{ $earning->created_at?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
                                 <td class="py-2">{{ ucfirst($earning->status) }}</td>
-                                <td class="py-2 text-right">{{ number_format($earning->commission_amount, 2) }}</td>
+                                <td class="py-2">{{ $sourceLabel }}</td>
+                                <td class="py-2 text-xs text-slate-600">{{ $details }}</td>
+                                <td class="py-2 text-right">
+                                    {{ $earning->currency ?? '' }} {{ number_format($earning->commission_amount, 2) }}
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="py-4 text-center text-slate-500">No earnings yet.</td>
+                                <td colspan="5" class="py-4 text-center text-slate-500">No earnings yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
