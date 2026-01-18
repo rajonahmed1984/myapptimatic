@@ -41,6 +41,7 @@ use App\Http\Controllers\Employee\TimesheetController as EmployeeTimesheetContro
 use App\Http\Controllers\Employee\LeaveRequestController as EmployeeLeaveRequestController;
 use App\Http\Controllers\Employee\PayrollController as EmployeePayrollController;
 use App\Http\Controllers\Client\AffiliateController as ClientAffiliateController;
+use App\Http\Controllers\Client\AuthController as ClientAuthController;
 use App\Http\Controllers\Client\ClientRequestController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\DomainController as ClientDomainController;
@@ -152,6 +153,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
     Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])->name('project-client.login');
     Route::post('/project-login', [ProjectClientAuthController::class, 'login'])->name('project-client.login.attempt');
+    Route::get('/client/login', [ClientAuthController::class, 'showLogin'])->name('client.login');
+    Route::post('/client/login', [ClientAuthController::class, 'login'])->name('client.login.attempt');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
     Route::get('/admin/login', [AuthController::class, 'showAdminLogin'])->name('admin.login');
@@ -477,6 +480,7 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
     ->prefix('client')
     ->name('client.')
     ->group(function () {
+        Route::post('/logout', [ClientAuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
         Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/review', [ClientOrderController::class, 'review'])->name('orders.review');
