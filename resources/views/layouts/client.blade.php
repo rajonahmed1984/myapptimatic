@@ -216,5 +216,6 @@
             });
         });
     </script>
+    @include('layouts.partials.table-responsive')
 </body>
 </html>

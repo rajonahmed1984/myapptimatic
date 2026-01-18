@@ -641,6 +641,7 @@
             })();
         </script>
     @endif
+    @include('layouts.partials.table-responsive')
     @stack('scripts')
 </body>
 </html>

@@ -208,6 +208,7 @@
             });
         });
     </script>
+    @include('layouts.partials.table-responsive')
     @if(session('cache_cleared'))
         <script>
             (async function () {
