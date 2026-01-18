@@ -4,7 +4,7 @@
     @include('layouts.partials.head')
 </head>
 <body class="bg-guest">
-    <main class="min-h-screen px-6 py-12" style="padding-top: 0;">
+    <main class="min-h-screen px-6 py-6" style="padding-top: 0;">
         <div class="mx-auto flex min-h-[70vh] max-w-6xl flex-col gap-10">
             @php
                 $wideForm = request()->routeIs('register');

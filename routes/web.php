@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AffiliateCommissionController;
 use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
 use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\AutomationStatusController;
+use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\Admin\ClientRequestController as AdminClientRequestController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerProjectUserController;
@@ -299,6 +300,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::get('employees/summary', [EmployeeSummaryController::class, 'index'])->name('employees.summary');
     Route::get('users/activity-summary', [UserActivitySummaryController::class, 'index'])->name('users.activity-summary');
     Route::get('/automation-status', [AutomationStatusController::class, 'index'])->name('automation-status');
+    Route::post('/system/cache/clear', SystemCacheController::class)
+        ->name('system.cache.clear');
     Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
     Route::prefix('user')

@@ -497,7 +497,18 @@
                             @endif
                         </div>
                     @endif
-                    <div class="hidden items-center gap-4 md:flex"></div>
+                    <div class="hidden items-center gap-4 md:flex">
+                        <form method="POST" action="{{ route('admin.system.cache.clear') }}">
+                            @csrf
+                            <button
+                                type="submit"
+                                class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
+                                title="Clears Laravel system caches and purges browser storage helpers"
+                            >
+                                Clear caches
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
                 @if(session()->has('impersonator_id') && !auth()->user()?->isAdmin())
@@ -577,6 +588,59 @@
             });
         });
     </script>
+    @if(session('cache_cleared'))
+        <script>
+            (async function () {
+                const safeRun = async (fn) => {
+                    try {
+                        await fn();
+                    } catch (error) {
+                        console.warn('Browser purge helper failed', error);
+                    }
+                };
+
+                await safeRun(async () => {
+                    if (window.caches && window.caches.keys) {
+                        const keys = await window.caches.keys();
+                        await Promise.all(keys.map((key) => window.caches.delete(key)));
+                    }
+                });
+
+                try {
+                    localStorage.clear();
+                } catch (error) {
+                    console.warn('Failed to clear localStorage', error);
+                }
+
+                try {
+                    sessionStorage.clear();
+                } catch (error) {
+                    console.warn('Failed to clear sessionStorage', error);
+                }
+
+                await safeRun(async () => {
+                    const indexedDBInstance = window.indexedDB;
+                    if (indexedDBInstance?.databases) {
+                        const databases = await indexedDBInstance.databases();
+                        await Promise.all(
+                            databases.filter((db) => db?.name).map((db) => indexedDBInstance.deleteDatabase(db.name))
+                        );
+                    }
+                });
+
+                await safeRun(async () => {
+                    if (navigator.serviceWorker?.getRegistrations) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(registrations.map((registration) => registration.unregister()));
+                    }
+                });
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            })();
+        </script>
+    @endif
     @stack('scripts')
 </body>
 </html>

@@ -44,7 +44,7 @@
                                 {{ $customer->active_subscriptions_count }} ({{ $customer->subscriptions_count }})
                             </td>
                             <td class="px-4 py-3 text-slate-500">
-                                <a href="{{ route('admin.projects.index') }}?customer_id={{ $customer->id }}" class="hover:text-teal-600">{{ $customer->projects_count ?? 0 }} Projects</a>
+                                <a href="{{ route('admin.projects.index') }}?customer_id={{ $customer->id }}" class="hover:text-teal-600">{{ $customer->projects_count ?? 0 }}</a>
                             </td>
                             <td class="px-4 py-3 text-slate-500">{{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</td>
                             <td class="px-4 py-3">

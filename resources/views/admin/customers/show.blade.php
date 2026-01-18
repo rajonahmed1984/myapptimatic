@@ -11,8 +11,7 @@
             <div class="mt-1 text-sm text-slate-500">Client ID: {{ $customer->id }}</div>
         </div>
         <div class="text-sm text-slate-600">
-            <div>Status: {{ ucfirst($customer->status) }}</div>
-            <div>Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</div>
+            <div>Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }} | Status: {{ ucfirst($customer->status) }}</div>
             <div class="mt-3 flex flex-wrap items-center gap-3">
                 <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Customers</a>
                 <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}">
@@ -138,7 +137,12 @@
                 </div>
             </div>
         @elseif($tab === 'services')
-            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm text-slate-500">Need a new product or service? Start here.</p>
+                <a href="{{ route('admin.products.create') }}" class="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400">Create product/service</a>
+            </div>
+
+            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
                 <table class="w-full min-w-[800px] text-left text-sm">
                     <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
@@ -175,7 +179,12 @@
                 </table>
             </div>
         @elseif($tab === 'projects')
-            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm text-slate-500">Start a new project for this customer.</p>
+                <a href="{{ route('admin.projects.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Create project</a>
+            </div>
+
+            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
                 <table class="w-full min-w-[900px] text-left text-sm">
                     <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
