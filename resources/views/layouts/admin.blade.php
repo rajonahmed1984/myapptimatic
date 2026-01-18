@@ -497,7 +497,7 @@
                             @endif
                         </div>
                     @endif
-                    <div class="hidden items-center gap-4 md:flex">
+                    <div class="flex flex-wrap items-center gap-3 md:gap-4">
                         <form method="POST" action="{{ route('admin.system.cache.clear') }}">
                             @csrf
                             <button
