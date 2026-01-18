@@ -32,22 +32,24 @@
                     $isProjectSpecificUser = auth()->user()->isClientProject();
                 @endphp
                 
-                @if(!$isProjectSpecificUser)
                 <div>
                     <a class="{{ request()->routeIs('client.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.dashboard') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
-                        Overview
+                        @if($isProjectSpecificUser)
+                            Dashboard
+                        @else
+                            Overview
+                        @endif
                     </a>
                 </div>
-                @endif
                 
+                @if(!$isProjectSpecificUser)
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Projects & Services</div>
                     <a class="{{ request()->routeIs('client.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.projects.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Projects
                     </a>
-                    @if(!$isProjectSpecificUser)
                     <a class="{{ request()->routeIs('client.services.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.services.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Services
@@ -60,10 +62,8 @@
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Licenses
                     </a>
-                    @endif
                 </div>
 
-                @if(!$isProjectSpecificUser)
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Orders & Requests</div>
                     <a class="{{ request()->routeIs('client.orders.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.orders.index') }}">
@@ -92,6 +92,29 @@
                     <a class="{{ request()->routeIs('client.affiliates.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.affiliates.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Affiliates
+                    </a>
+                </div>
+                @else
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">My Project</div>
+                    <a class="{{ request()->routeIs('client.projects.show') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ auth()->user()->project_id ? route('client.projects.show', auth()->user()->project_id) : '#' }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Project Details
+                    </a>
+                    <a class="{{ request()->routeIs('client.projects.chat') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ auth()->user()->project_id ? route('client.projects.chat', auth()->user()->project_id) : '#' }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Project Chat
+                    </a>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Support</div>
+                    <a class="{{ request()->routeIs('client.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.support-tickets.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Support Tickets
+                        @if(($clientHeaderStats['pending_admin_replies'] ?? 0) > 0)
+                            <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $clientHeaderStats['pending_admin_replies'] }}</span>
+                        @endif
                     </a>
                 </div>
                 @endif

@@ -16,9 +16,9 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         
-        // Redirect project-specific users directly to their project
+        // Show project-specific dashboard for project users
         if ($user->isClientProject() && $user->project_id) {
-            return redirect()->route('client.projects.show', $user->project_id);
+            return $this->projectSpecificDashboard($request, $user);
         }
 
         $customer = $user->customer;
@@ -115,6 +115,72 @@ class DashboardController extends Controller
             'currency' => strtoupper((string) Setting::getValue('currency', Currency::DEFAULT)),
             'projects' => $projects,
             'maintenanceRenewal' => $maintenanceRenewal,
+        ]);
+    }
+
+    private function projectSpecificDashboard(Request $request, $user)
+    {
+        $project = Project::with([
+            'customer',
+            'tasks' => function ($query) {
+                $query->latest()->limit(10);
+            },
+            'tasks.assignees',
+            'maintenances'
+        ])->findOrFail($user->project_id);
+
+        $this->authorize('view', $project);
+
+        // Task statistics
+        $totalTasks = $project->tasks()->count();
+        $todoTasks = $project->tasks()->where('status', 'todo')->count();
+        $inProgressTasks = $project->tasks()->where('status', 'in_progress')->count();
+        $completedTasks = $project->tasks()->where('status', 'completed')->count();
+        $blockedTasks = $project->tasks()->where('status', 'blocked')->count();
+
+        // Recent activity (last 10 tasks)
+        $recentTasks = $project->tasks()
+            ->with('assignees')
+            ->latest('updated_at')
+            ->limit(10)
+            ->get();
+
+        // Unread messages count
+        $unreadMessagesCount = $project->messages()
+            ->where('read', false)
+            ->where('user_id', '!=', $user->id)
+            ->count();
+
+        // Recent chat messages
+        $recentMessages = $project->messages()
+            ->with('user')
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        // Support tickets for this user
+        $openTicketsCount = $user->customer?->supportTickets()
+            ->whereIn('status', ['open', 'customer_reply'])
+            ->count() ?? 0;
+
+        $recentTickets = $user->customer?->supportTickets()
+            ->latest('updated_at')
+            ->limit(4)
+            ->get() ?? collect();
+
+        return view('client.project-dashboard', [
+            'project' => $project,
+            'user' => $user,
+            'totalTasks' => $totalTasks,
+            'todoTasks' => $todoTasks,
+            'inProgressTasks' => $inProgressTasks,
+            'completedTasks' => $completedTasks,
+            'blockedTasks' => $blockedTasks,
+            'recentTasks' => $recentTasks,
+            'unreadMessagesCount' => $unreadMessagesCount,
+            'recentMessages' => $recentMessages,
+            'openTicketsCount' => $openTicketsCount,
+            'recentTickets' => $recentTickets,
         ]);
     }
 }

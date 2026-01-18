@@ -5,6 +5,13 @@ This document summarizes all access restrictions implemented for Project-Specifi
 
 ## What Project-Specific Users CAN Access
 
+✅ **Project Dashboard**
+- Access their own dashboard at `/client/dashboard`
+- View project overview and statistics
+- See recent tasks and activity
+- View recent chat messages
+- Check support ticket status
+
 ✅ **Project Details**
 - View their assigned project via `/client/projects/{project_id}`
 - See project overview, tasks, milestones, status
@@ -33,9 +40,10 @@ This document summarizes all access restrictions implemented for Project-Specifi
 
 ## What Project-Specific Users CANNOT Access
 
-❌ **Dashboard**
-- Cannot access `/client/dashboard`
-- Redirected to their assigned project instead
+❌ **Regular Client Dashboard Features**
+- Cannot see invoices, subscriptions, or licenses on dashboard
+- Cannot see financial statistics
+- Dashboard shows only project-related information
 
 ❌ **Project Index**
 - Cannot access `/client/projects` (list of all projects)
@@ -89,18 +97,34 @@ if ($user->isClientProject() && $user->project_id) {
 }
 ```
 
-### 2. Dashboard Redirect
+### 2. Dashboard View
 **File:** `app/Http/Controllers/Client/DashboardController.php`
 ```php
 public function index(Request $request) {
     $user = $request->user();
     
+    // Show project-specific dashboard for project users
     if ($user->isClientProject() && $user->project_id) {
-        return redirect()->route('client.projects.show', $user->project_id);
+        return $this->projectSpecificDashboard($request, $user);
     }
     // ... load dashboard data for regular clients
 }
+
+private function projectSpecificDashboard(Request $request, $user) {
+    $project = Project::with(['customer', 'tasks', 'maintenances'])->findOrFail($user->project_id);
+    // Load project-specific data: tasks, messages, tickets
+    return view('client.project-dashboard', [...]);
+}
 ```
+
+**File:** `resources/views/client/project-dashboard.blade.php`
+- Displays project name, status, and description
+- Shows task statistics (total, in progress, completed, blocked)
+- Lists recent tasks with status
+- Shows recent chat messages
+- Displays support ticket information
+- Task breakdown by status with progress bars
+- No financial information visible
 
 ### 3. Project Index Redirect
 **File:** `app/Http/Controllers/Client/ProjectController.php`
@@ -146,11 +170,19 @@ public function show(Request $request, Project $project) {
     $isProjectSpecificUser = auth()->user()->isClientProject();
 @endphp
 
-@if(!$isProjectSpecificUser)
-    <!-- Hide Dashboard, Services, Domains, Licenses, Orders, Invoices, Affiliates -->
-@endif
+<a href="{{ route('client.dashboard') }}">
+    @if($isProjectSpecificUser)
+        Dashboard
+    @else
+        Overview
+    @endif
+</a>
 
-<!-- Always show Projects (but redirects to assigned project only) -->
+@if(!$isProjectSpecificUser)
+    <!-- Show: Services, Domains, Licenses, Orders, Invoices, Affiliates -->
+@else
+    <!-- Show only: Dashboard, Project Details, Project Chat, Support Tickets -->
+@endif
 ```
 
 ### 6. Route-Level Protection
@@ -162,8 +194,8 @@ public function handle(Request $request, Closure $next): Response {
     }
     return $next($request);
 }
-```
-
+``Dashboard route: `/client/dashboard` - **ALLOWED** (shows project-specific dashboard)
+- Applied `project.financial` middleware to:
 **File:** `bootstrap/app.php`
 ```php
 'project.financial' => \App\Http\Middleware\BlockProjectSpecificFinancial::class,
@@ -191,29 +223,44 @@ public function handle(Request $request, Closure $next): Response {
 To verify restrictions are working:
 
 1. ✅ Login via `/login` with project-specific credentials
-2. ✅ Should redirect to `/client/projects/{project_id}`
-3. ✅ Can see project details, tasks, and chat
-4. ✅ Cannot see budget, payments, or maintenance pricing
-5. ✅ Sidebar only shows "Projects" menu item
-6. ✅ Attempting to access `/client/dashboard` redirects to project
-7. ✅ Attempting to access `/client/invoices` returns 403 Forbidden
-8. ✅ Attempting to access `/client/services` returns 403 Forbidden
-9. ✅ Attempting to access `/client/orders` returns 403 Forbidden
-10. ✅ Can edit profile at `/client/profile`
-11. ✅ Can create and view tasks
-12. ✅ Can use project chat and task chat
-13. ✅ Can upload and view attachments
+2. ✅ Should redirect to `/client/dashboard` (project-specific dashboard)
+3. ✅ Dashboard shows project statistics, tasks, and chat
+4. ✅ Dashboard does NOT show invoices, subscriptions, or financial data
+5. ✅ Can navigate to project details and project chat
+6. ✅ Cannot see budget, payments, or maintenance pricing in project view
+7. ✅ Sidebar shows: Dashboard, Project Details, Project Chat, Support Tickets
+8. ✅ Sidebar does NOT show: Services, Domains, Licenses, Orders, Invoices, Affiliates
+9. ✅ Attempting to access `/client/projects` redirects to their assigned project
+10. ✅ Attempting to access `/client/invoices` returns 403 Forbidden
+11. ✅ Attempting to access `/client/services` returns 403 Forbidden
+12. ✅ Attempting to access `/client/orders` returns 403 Forbidden
+13. ✅ Can edit profile at `/client/profile`
+14. ✅ Can create and view tasks
+15. ✅ Can use project chat and task chat
+16. ✅ Can upload and view attachments
+17. ✅ Can create and view support tickets
 
 ## User Experience
 
 **Project-Specific User Login Flow:**
 1. User logs in at `/login`
-2. Automatically redirected to their assigned project
-3. Sees only project information (no financial data)
-4. Sidebar shows minimal navigation (Projects only)
-5. Can work on tasks and communicate via chat
-6. Cannot navigate to any financial sections
-7. Direct URL attempts to financial pages result in 403 errors
+2. Automatically redirected to `/client/dashboard` (project-specific dashboard)
+3. Dashboard displays:
+   - Project name and status
+   - Task statistics (total, in progress, completed, blocked)
+   - Recent tasks with quick links
+   - Recent chat messages
+   - Support ticket status
+   - Task breakdown by status
+4. Sidebar navigation shows:
+   - Dashboard (current page)
+   - Project Details (link to full project view)
+   - Project Chat (link to project chat)
+   - Support Tickets (link to support system)
+5. Can navigate to project details for full task management
+6. Can access project chat for communication
+7. Cannot navigate to any financial sections
+8. Direct URL attempts to financial pages result in 403 errors
 
 ## Notes
 
