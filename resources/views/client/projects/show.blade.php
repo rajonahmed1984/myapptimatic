@@ -37,6 +37,7 @@
                     Due: {{ $project->due_date?->format($globalDateFormat) ?? '--' }}
                 </div>
             </div>
+            @if(!$isProjectSpecificUser)
                 <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Financials</div>
                     <div class="mt-2 text-sm text-slate-700">
@@ -51,10 +52,11 @@
                         <a href="{{ route('client.invoices.show', $initialInvoice) }}" class="text-teal-700 hover:text-teal-600">View invoice</a>
                     </div>
                 @endif
-            </div>
+                </div>
+            @endif
         </div>
 
-        @if(!empty($maintenances) && $maintenances->isNotEmpty())
+        @if(!empty($maintenances) && $maintenances->isNotEmpty() && !$isProjectSpecificUser)
             <div class="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Maintenance</div>
                 <div class="overflow-x-auto">

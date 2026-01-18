@@ -13,8 +13,8 @@ class ProjectPolicy
     public function view($actor, Project $project): bool
     {
         if ($actor instanceof User) {
-            // Allow all admin-panel roles except sales to view any project; sales is handled separately below.
-            if (in_array($actor->role, [Role::ADMIN, Role::MASTER_ADMIN, Role::SUB_ADMIN, Role::SUPPORT], true)) {
+            // Allow all admin-panel roles (including sales/support) to view any project.
+            if (in_array($actor->role, [Role::ADMIN, Role::MASTER_ADMIN, Role::SUB_ADMIN, Role::SUPPORT, Role::SALES], true)) {
                 return true;
             }
 

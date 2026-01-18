@@ -71,6 +71,8 @@ class ProjectController extends Controller
             ->latest('issue_date')
             ->first();
 
+        $isProjectSpecificUser = $request->user()->isClientProject();
+
         return view('client.projects.show', [
             'project' => $project,
             'tasks' => $tasks,
@@ -80,6 +82,7 @@ class ProjectController extends Controller
             'priorityOptions' => TaskSettings::priorityOptions(),
             'chatMessages' => $chatMessages,
             'chatMeta' => $chatMeta,
+            'isProjectSpecificUser' => $isProjectSpecificUser,
         ]);
     }
 }

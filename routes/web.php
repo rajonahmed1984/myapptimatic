@@ -47,6 +47,7 @@ use App\Http\Controllers\Client\DomainController as ClientDomainController;
 use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;
 use App\Http\Controllers\Client\ManualPaymentController;
 use App\Http\Controllers\Client\LicenseController as ClientLicenseController;
+use App\Http\Controllers\AuthController as ClientAuthController;
 use App\Http\Controllers\Client\OrderController as ClientOrderController;
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\Client\ServiceController as ClientServiceController;
