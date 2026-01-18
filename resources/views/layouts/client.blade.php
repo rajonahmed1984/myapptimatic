@@ -28,18 +28,26 @@
             </button>
 
             <nav class="mt-10 space-y-4 text-sm">
+                @php
+                    $isProjectSpecificUser = auth()->user()->isClientProject();
+                @endphp
+                
+                @if(!$isProjectSpecificUser)
                 <div>
                     <a class="{{ request()->routeIs('client.dashboard') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.dashboard') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Overview
                     </a>
                 </div>
+                @endif
+                
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Projects & Services</div>
                     <a class="{{ request()->routeIs('client.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.projects.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Projects
                     </a>
+                    @if(!$isProjectSpecificUser)
                     <a class="{{ request()->routeIs('client.services.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.services.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Services
@@ -52,8 +60,10 @@
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Licenses
                     </a>
+                    @endif
                 </div>
 
+                @if(!$isProjectSpecificUser)
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Orders & Requests</div>
                     <a class="{{ request()->routeIs('client.orders.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.orders.index') }}">
@@ -84,9 +94,23 @@
                         Affiliates
                     </a>
                 </div>
+                @endif
             </nav>
 
             <div class="mt-auto">
+                <div class="mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-200">
+                    <div>
+                        <div class="text-sm font-semibold text-white">{{ auth()->user()->name }}</div>
+                        <div class="text-xs text-slate-300">Client</div>
+                    </div>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-[11px] font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/20">
+                            Sign out
+                        </button>
+                    </form>
+                </div>
+
                 <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
                     Client view only.
                 </div>
@@ -106,18 +130,6 @@
                             <div class="section-label">Client workspace</div>
                             <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
                         </div>
-                    </div>
-                    <div class="hidden items-center gap-4 md:flex">
-                        <div class="text-right text-sm">
-                            <div class="font-semibold text-slate-900">{{ auth()->user()->name }}</div>
-                            <div class="text-xs text-slate-500">Client</div>
-                        </div>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
-                                Sign out
-                            </button>
-                        </form>
                     </div>
                 </div>
 

@@ -14,7 +14,14 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $customer = $request->user()->customer;
+        $user = $request->user();
+        
+        // Redirect project-specific users directly to their project
+        if ($user->isClientProject() && $user->project_id) {
+            return redirect()->route('client.projects.show', $user->project_id);
+        }
+
+        $customer = $user->customer;
         $subscriptions = $customer?->subscriptions()->with('plan.product')->get() ?? collect();
         $invoices = $customer?->invoices()->latest('issue_date')->limit(5)->get() ?? collect();
         $licenses = $customer?->licenses()

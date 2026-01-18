@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
@@ -25,6 +27,7 @@ class ProfileController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => ['nullable', 'confirmed', PasswordRule::defaults()],
+            'avatar' => ['nullable', 'image', 'max:2048'],
         ]);
 
         $user->update([
@@ -37,8 +40,31 @@ class ProfileController extends Controller
             $user->save();
         }
 
+        if ($request->hasFile('avatar')) {
+            $this->storeAvatar($request, $user);
+        }
+
         return redirect()
             ->route('admin.profile.edit')
             ->with('status', 'Profile updated.');
+    }
+
+    private function storeAvatar(Request $request, $user): void
+    {
+        $file = $request->file('avatar');
+        if (! $file) {
+            return;
+        }
+
+        $disk = Storage::disk('public');
+        if ($user->avatar_path && $disk->exists($user->avatar_path)) {
+            $disk->delete($user->avatar_path);
+        }
+
+        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs("avatars/users/{$user->id}", $filename, 'public');
+
+        $user->avatar_path = $path;
+        $user->save();
     }
 }

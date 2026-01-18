@@ -14,11 +14,21 @@
 
     <div class="card p-6">
 
-        <form method="POST" action="{{ route('admin.profile.update') }}" class="mt-6 space-y-6">
+        <form method="POST" action="{{ route('admin.profile.update') }}" class="mt-6 space-y-6" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
             <div class="grid gap-4 md:grid-cols-2">
+                <div class="flex items-center gap-4">
+                    <div class="h-16 w-16 overflow-hidden rounded-full border border-slate-200 bg-white">
+                        <x-avatar :path="$user->avatar_path" :name="$user->name" size="h-16 w-16" textSize="text-sm" />
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-600">Profile photo</label>
+                        <input name="avatar" type="file" accept="image/*" class="mt-2 text-sm text-slate-600" />
+                        <p class="text-xs text-slate-500">PNG/JPG up to 2MB.</p>
+                    </div>
+                </div>
                 <div>
                     <label class="text-sm text-slate-600">Full name</label>
                     <input name="name" value="{{ old('name', $user->name) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />

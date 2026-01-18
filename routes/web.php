@@ -481,29 +481,29 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
     ->prefix('client')
     ->name('client.')
     ->group(function () {
-        Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
-        Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/review', [ClientOrderController::class, 'review'])->name('orders.review');
-        Route::post('/orders', [ClientOrderController::class, 'store'])->name('orders.store');
-        Route::get('/services', [ClientServiceController::class, 'index'])->name('services.index');
-        Route::get('/services/{subscription}', [ClientServiceController::class, 'show'])->name('services.show');
-        Route::get('/invoices', [ClientInvoiceController::class, 'index'])->name('invoices.index');
-        Route::get('/invoices/paid', [ClientInvoiceController::class, 'paid'])->name('invoices.paid');
-        Route::get('/invoices/unpaid', [ClientInvoiceController::class, 'unpaid'])->name('invoices.unpaid');
-        Route::get('/invoices/overdue', [ClientInvoiceController::class, 'overdue'])->name('invoices.overdue');
-        Route::get('/invoices/cancelled', [ClientInvoiceController::class, 'cancelled'])->name('invoices.cancelled');
-        Route::get('/invoices/refunded', [ClientInvoiceController::class, 'refunded'])->name('invoices.refunded');
-        Route::get('/invoices/{invoice}', [ClientInvoiceController::class, 'show'])->name('invoices.show');
+        Route::get('/dashboard', [ClientDashboardController::class, 'index'])->middleware('project.financial')->name('dashboard');
+        Route::get('/orders', [ClientOrderController::class, 'index'])->middleware('project.financial')->name('orders.index');
+        Route::get('/orders/review', [ClientOrderController::class, 'review'])->middleware('project.financial')->name('orders.review');
+        Route::post('/orders', [ClientOrderController::class, 'store'])->middleware('project.financial')->name('orders.store');
+        Route::get('/services', [ClientServiceController::class, 'index'])->middleware('project.financial')->name('services.index');
+        Route::get('/services/{subscription}', [ClientServiceController::class, 'show'])->middleware('project.financial')->name('services.show');
+        Route::get('/invoices', [ClientInvoiceController::class, 'index'])->middleware('project.financial')->name('invoices.index');
+        Route::get('/invoices/paid', [ClientInvoiceController::class, 'paid'])->middleware('project.financial')->name('invoices.paid');
+        Route::get('/invoices/unpaid', [ClientInvoiceController::class, 'unpaid'])->middleware('project.financial')->name('invoices.unpaid');
+        Route::get('/invoices/overdue', [ClientInvoiceController::class, 'overdue'])->middleware('project.financial')->name('invoices.overdue');
+        Route::get('/invoices/cancelled', [ClientInvoiceController::class, 'cancelled'])->middleware('project.financial')->name('invoices.cancelled');
+        Route::get('/invoices/refunded', [ClientInvoiceController::class, 'refunded'])->middleware('project.financial')->name('invoices.refunded');
+        Route::get('/invoices/{invoice}', [ClientInvoiceController::class, 'show'])->middleware('project.financial')->name('invoices.show');
         Route::get('/profile', [ClientProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [ClientProfileController::class, 'update'])->name('profile.update');
-        Route::get('/invoices/{invoice}/pay', [ClientInvoiceController::class, 'pay'])->name('invoices.pay');
-        Route::post('/invoices/{invoice}/checkout', [ClientInvoiceController::class, 'checkout'])->name('invoices.checkout');
-        Route::get('/invoices/{invoice}/manual/{attempt}', [ManualPaymentController::class, 'create'])->name('invoices.manual');
-        Route::post('/invoices/{invoice}/manual/{attempt}', [ManualPaymentController::class, 'store'])->name('invoices.manual.store');
-        Route::get('/invoices/{invoice}/download', [ClientInvoiceController::class, 'download'])->name('invoices.download');
-        Route::get('/domains', [ClientDomainController::class, 'index'])->name('domains.index');
-        Route::get('/domains/{domain}', [ClientDomainController::class, 'show'])->name('domains.show');
-        Route::get('/licenses', [ClientLicenseController::class, 'index'])->name('licenses.index');
+        Route::get('/invoices/{invoice}/pay', [ClientInvoiceController::class, 'pay'])->middleware('project.financial')->name('invoices.pay');
+        Route::post('/invoices/{invoice}/checkout', [ClientInvoiceController::class, 'checkout'])->middleware('project.financial')->name('invoices.checkout');
+        Route::get('/invoices/{invoice}/manual/{attempt}', [ManualPaymentController::class, 'create'])->middleware('project.financial')->name('invoices.manual');
+        Route::post('/invoices/{invoice}/manual/{attempt}', [ManualPaymentController::class, 'store'])->middleware('project.financial')->name('invoices.manual.store');
+        Route::get('/invoices/{invoice}/download', [ClientInvoiceController::class, 'download'])->middleware('project.financial')->name('invoices.download');
+        Route::get('/domains', [ClientDomainController::class, 'index'])->middleware('project.financial')->name('domains.index');
+        Route::get('/domains/{domain}', [ClientDomainController::class, 'show'])->middleware('project.financial')->name('domains.show');
+        Route::get('/licenses', [ClientLicenseController::class, 'index'])->middleware('project.financial')->name('licenses.index');
         Route::post('/requests', [ClientRequestController::class, 'store'])->name('requests.store');
         Route::get('/projects', [\App\Http\Controllers\Client\ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/{project}', [\App\Http\Controllers\Client\ProjectController::class, 'show'])->name('projects.show');
@@ -558,14 +558,14 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::patch('/support-tickets/{ticket}/status', [ClientSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
         
         // Affiliate routes
-        Route::get('/affiliates', [ClientAffiliateController::class, 'index'])->name('affiliates.index');
-        Route::get('/affiliates/apply', [ClientAffiliateController::class, 'apply'])->name('affiliates.apply');
-        Route::post('/affiliates/apply', [ClientAffiliateController::class, 'storeApplication'])->name('affiliates.apply.store');
-        Route::get('/affiliates/referrals', [ClientAffiliateController::class, 'referrals'])->name('affiliates.referrals');
-        Route::get('/affiliates/commissions', [ClientAffiliateController::class, 'commissions'])->name('affiliates.commissions');
-        Route::get('/affiliates/payouts', [ClientAffiliateController::class, 'payouts'])->name('affiliates.payouts');
-        Route::get('/affiliates/settings', [ClientAffiliateController::class, 'settings'])->name('affiliates.settings');
-        Route::put('/affiliates/settings', [ClientAffiliateController::class, 'updateSettings'])->name('affiliates.settings.update');
+        Route::get('/affiliates', [ClientAffiliateController::class, 'index'])->middleware('project.financial')->name('affiliates.index');
+        Route::get('/affiliates/apply', [ClientAffiliateController::class, 'apply'])->middleware('project.financial')->name('affiliates.apply');
+        Route::post('/affiliates/apply', [ClientAffiliateController::class, 'storeApplication'])->middleware('project.financial')->name('affiliates.apply.store');
+        Route::get('/affiliates/referrals', [ClientAffiliateController::class, 'referrals'])->middleware('project.financial')->name('affiliates.referrals');
+        Route::get('/affiliates/commissions', [ClientAffiliateController::class, 'commissions'])->middleware('project.financial')->name('affiliates.commissions');
+        Route::get('/affiliates/payouts', [ClientAffiliateController::class, 'payouts'])->middleware('project.financial')->name('affiliates.payouts');
+        Route::get('/affiliates/settings', [ClientAffiliateController::class, 'settings'])->middleware('project.financial')->name('affiliates.settings');
+        Route::put('/affiliates/settings', [ClientAffiliateController::class, 'updateSettings'])->middleware('project.financial')->name('affiliates.settings.update');
     });
 
 Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])

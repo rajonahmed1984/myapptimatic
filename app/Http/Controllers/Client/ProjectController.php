@@ -12,16 +12,16 @@ class ProjectController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+        
+        // Redirect project-specific users directly to their assigned project
+        if ($user->isClientProject() && $user->project_id) {
+            return redirect()->route('client.projects.show', $user->project_id);
+        }
+
         $query = Project::query()
             ->with(['customer', 'maintenances'])
-            ->where('customer_id', $request->user()->customer_id);
-
-        if ($request->user()->isClientProject()) {
-            $projectId = $request->user()->project_id;
-            if ($projectId) {
-                $query->whereKey($projectId);
-            }
-        }
+            ->where('customer_id', $user->customer_id);
 
         $projects = $query->latest()->paginate(20);
 
