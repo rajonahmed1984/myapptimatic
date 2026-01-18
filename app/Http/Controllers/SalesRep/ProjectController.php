@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SalesRep;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\SalesRepresentative;
+use App\Models\ProjectMessageRead;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -65,6 +66,16 @@ class ProjectController extends Controller
         $currentAuthorType = $salesRep ? 'sales_rep' : 'user';
         $currentAuthorId = $salesRep?->id ?? $request->user()?->id;
 
+        $lastReadId = ProjectMessageRead::query()
+            ->where('project_id', $project->id)
+            ->where('reader_type', $currentAuthorType)
+            ->where('reader_id', $currentAuthorId)
+            ->value('last_read_message_id');
+
+        $unreadCount = $project->messages()
+            ->when($lastReadId, fn ($query) => $query->where('id', '>', $lastReadId))
+            ->count();
+
         $chatMeta = [
             'messagesUrl' => route('rep.projects.chat.messages', $project),
             'postMessagesUrl' => route('rep.projects.chat.messages.store', $project),
@@ -87,6 +98,11 @@ class ProjectController extends Controller
             ->latest('issue_date')
             ->first();
 
+        $statusCounts = $project->tasks()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
         return view('rep.projects.show', [
             'project' => $project,
             'tasks' => $tasks,
@@ -97,6 +113,12 @@ class ProjectController extends Controller
             'salesRepAmount' => $repAmount !== null ? (float) $repAmount : null,
             'chatMessages' => $chatMessages,
             'chatMeta' => $chatMeta,
+            'taskStats' => [
+                'total' => (int) $statusCounts->values()->sum(),
+                'in_progress' => (int) ($statusCounts['in_progress'] ?? 0),
+                'completed' => (int) (($statusCounts['completed'] ?? 0) + ($statusCounts['done'] ?? 0)),
+                'unread' => (int) $unreadCount,
+            ],
         ]);
     }
 }

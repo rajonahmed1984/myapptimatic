@@ -28,6 +28,28 @@
         </div>
     </div>
 
+    @php
+        $stats = $taskStats ?? ['total' => 0, 'in_progress' => 0, 'completed' => 0, 'unread' => 0];
+    @endphp
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+            <div class="text-2xl font-semibold text-slate-900">{{ $stats['total'] }}</div>
+            <div class="text-xs uppercase tracking-[0.25em] text-slate-500">Total Tasks</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+            <div class="text-2xl font-semibold text-slate-900">{{ $stats['in_progress'] }}</div>
+            <div class="text-xs uppercase tracking-[0.25em] text-slate-500">In Progress</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+            <div class="text-2xl font-semibold text-slate-900">{{ $stats['completed'] }}</div>
+            <div class="text-xs uppercase tracking-[0.25em] text-slate-500">Completed</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+            <div class="text-2xl font-semibold text-slate-900">{{ $stats['unread'] }}</div>
+            <div class="text-xs uppercase tracking-[0.25em] text-slate-500">Unread</div>
+        </div>
+    </div>
+
     <div class="card p-6 space-y-6">
         <div>
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Project Info</div>

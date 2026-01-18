@@ -24,14 +24,14 @@ class UserActivitySummaryController
         if (! $user || ! in_array($user->role, Role::adminRoles(), true)) {
             abort(403, 'Unauthorized access to activity summary');
         }
-        $type = $request->query('type', 'employee'); // employee, customer, salesrep, admin
+        $type = $request->query('type', 'all'); // all, employee, customer, salesrep, admin
         $from = $request->query('from');
         $to = $request->query('to');
         $userId = $request->query('user_id');
 
         // Validate type
-        if (!in_array($type, ['employee', 'customer', 'salesrep', 'admin'])) {
-            $type = 'employee';
+        if (!in_array($type, ['all', 'employee', 'customer', 'salesrep', 'admin'])) {
+            $type = 'all';
         }
 
         // Parse dates
@@ -71,6 +71,8 @@ class UserActivitySummaryController
         $monthStart = now()->startOfMonth()->toDateString();
 
         switch ($type) {
+            case 'all':
+                return $this->getAllUsersSummary($today, $weekStart, $monthStart, $fromDate, $toDate, $userId);
             case 'employee':
                 return $this->getEmployeeSummary($today, $weekStart, $monthStart, $fromDate, $toDate, $userId);
             case 'customer':
@@ -80,8 +82,113 @@ class UserActivitySummaryController
             case 'admin':
                 return $this->getAdminUsersSummary($today, $weekStart, $monthStart, $fromDate, $toDate, $userId);
             default:
-                return $this->getEmployeeSummary($today, $weekStart, $monthStart, $fromDate, $toDate, $userId);
+                return $this->getAllUsersSummary($today, $weekStart, $monthStart, $fromDate, $toDate, $userId);
         }
+    }
+
+    /**
+     * Get all users activity summary (combined from all user types).
+     */
+    private function getAllUsersSummary($today, $weekStart, $monthStart, $fromDate, $toDate, $userId): array
+    {
+        $users = [];
+
+        // Get employees
+        $employees = Employee::where('status', 'active');
+        if ($userId) {
+            $employees = $employees->where('id', $userId);
+        }
+        foreach ($employees->get() as $employee) {
+            $users[] = $this->getUserMetrics(
+                $employee,
+                'employee',
+                'employee',
+                $today,
+                $weekStart,
+                $monthStart,
+                $fromDate,
+                $toDate
+            );
+        }
+
+        // Get customers (if no specific user filter or if the userId matches a customer)
+        if (!$userId) {
+            $customers = User::where('role', Role::CLIENT)->with('customer:id,avatar_path')->get();
+            foreach ($customers as $user) {
+                $users[] = $this->getUserMetrics(
+                    $user,
+                    'client',
+                    'web',
+                    $today,
+                    $weekStart,
+                    $monthStart,
+                    $fromDate,
+                    $toDate
+                );
+            }
+        }
+
+        // Get sales representatives (if no specific user filter or if the userId matches a sales rep)
+        if (!$userId) {
+            $salesReps = SalesRepresentative::with('user')->get();
+            foreach ($salesReps as $rep) {
+                if ($rep->user) {
+                    $users[] = $this->getUserMetrics(
+                        $rep->user,
+                        'sales_rep',
+                        'web',
+                        $today,
+                        $weekStart,
+                        $monthStart,
+                        $fromDate,
+                        $toDate
+                    );
+                }
+            }
+        }
+
+        // Get admin/web users (if no specific user filter or if the userId matches an admin)
+        if (!$userId) {
+            $adminUsers = User::whereIn('role', Role::adminRoles())->get();
+            foreach ($adminUsers as $user) {
+                $users[] = $this->getUserMetrics(
+                    $user,
+                    'admin',
+                    'web',
+                    $today,
+                    $weekStart,
+                    $monthStart,
+                    $fromDate,
+                    $toDate
+                );
+            }
+        }
+
+        // Sort by last seen (online users first)
+        usort($users, function ($a, $b) {
+            $aLastSeen = $a['last_seen_at'] ? strtotime($a['last_seen_at']) : 0;
+            $bLastSeen = $b['last_seen_at'] ? strtotime($b['last_seen_at']) : 0;
+            return $bLastSeen <=> $aLastSeen;
+        });
+
+        // Get all user options for dropdown
+        $userOptions = [];
+        $userOptions += Employee::where('status', 'active')->pluck('name', 'id')->toArray();
+        $userOptions += User::where('role', Role::CLIENT)->pluck('name', 'id')->toArray();
+        $userOptions += User::whereIn('role', Role::adminRoles())->pluck('name', 'id')->toArray();
+
+        return [
+            'type' => 'all',
+            'users' => $users,
+            'filters' => [
+                'type' => 'all',
+                'user_id' => $userId,
+                'from' => $fromDate?->toDateString(),
+                'to' => $toDate?->toDateString(),
+            ],
+            'userOptions' => $userOptions,
+            'showRange' => $fromDate && $toDate,
+        ];
     }
 
     /**

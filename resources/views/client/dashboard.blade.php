@@ -24,8 +24,8 @@
             <div class="card p-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <div class="text-2xl font-semibold text-slate-900">{{ $serviceCount }}</div>
-                        <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Services</div>
+                        <div class="text-2xl font-semibold text-slate-900">{{ $serviceCount }} / {{ $projectCount ?? 0 }}</div>
+                        <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Services / Projects</div>
                     </div>
                     <div class="rounded-2xl bg-teal-100 p-2 text-teal-600">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -36,7 +36,7 @@
                 </div>
                 <div class="mt-4 h-1 w-full rounded-full bg-teal-100">
                     <div class="h-1 w-1/2 rounded-full bg-teal-500"></div>
-                </div>
+                </div>                
             </div>
             <div class="card p-4">
                 <div class="flex items-center justify-between">
@@ -145,22 +145,6 @@
             </div>
         </div>
 
-        <div class="card p-4">
-            <div class="flex items-center gap-3">
-                <div class="text-slate-400">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <circle cx="11" cy="11" r="7"></circle>
-                        <path d="M21 21l-4.3-4.3"></path>
-                    </svg>
-                </div>
-                <input
-                    type="text"
-                    placeholder="Search knowledgebase or ask a question..."
-                    class="w-full border-0 bg-transparent text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none"
-                />
-            </div>
-        </div>
-
         <div class="grid gap-6 lg:grid-cols-2">
             <div class="space-y-6">
                 <div class="card p-6">
@@ -194,19 +178,21 @@
 
                 <div class="card p-6">
                     <div class="flex items-center justify-between">
-                        <div class="section-label">Overdue invoices</div>
+                        <div class="section-label">Outstanding invoices</div>
+                        <a href="{{ route('client.invoices.index') }}" class="text-xs font-semibold text-slate-500 hover:text-teal-600">View all</a>
                     </div>
                     <div class="mt-4 text-sm text-slate-600">
-                        @if($overdueInvoiceCount > 0)
-                            You have {{ $overdueInvoiceCount }} overdue invoice(s) with a total balance due of
-                            {{ $currency }} {{ number_format((float) $overdueInvoiceBalance, 2) }}. Pay now to avoid interruptions.
-                            @if($nextOverdueInvoice)
-                                <div class="mt-3">
-                                    <a href="{{ route('client.invoices.pay', $nextOverdueInvoice) }}" class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white">Pay now</a>
+                        @if($openInvoiceCount > 0)
+                            You have {{ $openInvoiceCount }} unpaid/overdue invoice(s) with a total balance due of
+                            {{ $currency }} {{ number_format((float) $openInvoiceBalance, 2) }}.
+                            @if($nextOpenInvoice)
+                                <div class="mt-3 flex items-center gap-3 text-xs text-slate-600">
+                                    <span>Next due: {{ $nextOpenInvoice->due_date?->format($globalDateFormat) ?? 'N/A' }}</span>
+                                    <a href="{{ route('client.invoices.pay', $nextOpenInvoice) }}" class="rounded-full bg-rose-500 px-3 py-1 text-[11px] font-semibold text-white">Pay now</a>
                                 </div>
                             @endif
                         @else
-                            No overdue invoices. You are all caught up.
+                            No outstanding invoices. You are all caught up.
                         @endif
                     </div>
                 </div>
@@ -257,17 +243,6 @@
                     </div>
                 </div>
 
-                <div class="card p-6">
-                    <div class="section-label">Add a new website</div>
-                    <div class="mt-4 text-sm text-slate-600">
-                        Start a new service or transfer an existing site into your account.
-                    </div>
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <a href="{{ route('client.orders.index') }}" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Order</a>
-                        <a href="{{ route('client.support-tickets.create') }}" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Contact support</a>
-                    </div>
-                </div>
-
                 <div id="invoices" class="card p-6">
                     <div class="flex items-center justify-between">
                         <div class="section-label">Recent invoices</div>
@@ -301,4 +276,3 @@
         </div>
     </div>
 @endsection
-

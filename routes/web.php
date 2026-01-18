@@ -37,6 +37,7 @@ use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Employee\AuthController as EmployeeAuthController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
+use App\Http\Controllers\Employee\ProfileController as EmployeeProfileController;
 use App\Http\Controllers\Employee\TimesheetController as EmployeeTimesheetController;
 use App\Http\Controllers\Employee\LeaveRequestController as EmployeeLeaveRequestController;
 use App\Http\Controllers\Employee\PayrollController as EmployeePayrollController;
@@ -54,6 +55,7 @@ use App\Http\Controllers\Client\SupportTicketController as ClientSupportTicketCo
 use App\Http\Controllers\SalesRep\DashboardController as SalesRepDashboardController;
 use App\Http\Controllers\SalesRep\EarningController as SalesRepEarningController;
 use App\Http\Controllers\SalesRep\PayoutController as SalesRepPayoutController;
+use App\Http\Controllers\SalesRep\ProfileController as SalesRepProfileController;
 use App\Http\Controllers\Support\DashboardController as SupportDashboardController;
 use App\Http\Controllers\Support\SupportTicketController as SupportSupportTicketController;
 use App\Http\Controllers\ProjectClient\AuthController as ProjectClientAuthController;
@@ -222,6 +224,8 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
     ->group(function () {
         Route::post('/logout', [EmployeeAuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', EmployeeDashboardController::class)->name('dashboard');
+        Route::get('/profile', [EmployeeProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('/profile', [EmployeeProfileController::class, 'update'])->name('profile.update');
         Route::get('/timesheets', [EmployeeTimesheetController::class, 'index'])->name('timesheets.index');
         Route::post('/timesheets', [EmployeeTimesheetController::class, 'store'])->name('timesheets.store');
         Route::get('/leave-requests', [EmployeeLeaveRequestController::class, 'index'])->name('leave-requests.index');
@@ -482,6 +486,7 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
     ->name('client.')
     ->group(function () {
         Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
+        Route::post('/system/cache/clear', SystemCacheController::class)->name('system.cache.clear');
         Route::get('/orders', [ClientOrderController::class, 'index'])->middleware('project.financial')->name('orders.index');
         Route::get('/orders/review', [ClientOrderController::class, 'review'])->middleware('project.financial')->name('orders.review');
         Route::post('/orders', [ClientOrderController::class, 'store'])->middleware('project.financial')->name('orders.store');
@@ -574,6 +579,8 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
     ->group(function () {
         Route::post('/logout', [RoleLoginController::class, 'logoutSales'])->name('logout');
         Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
+        Route::get('/profile', [SalesRepProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('/profile', [SalesRepProfileController::class, 'update'])->name('profile.update');
         Route::post('/system/cache/clear', SystemCacheController::class)
             ->name('system.cache.clear');
         Route::get('/earnings', [SalesRepEarningController::class, 'index'])->name('earnings.index');

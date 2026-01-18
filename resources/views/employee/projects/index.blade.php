@@ -29,7 +29,9 @@
                 @forelse($projects as $project)
                     <tr class="border-t border-slate-100 hover:bg-slate-50/70">
                         <td class="px-4 py-3 font-semibold text-slate-900">#{{ $project->id }}</td>
-                        <td class="px-4 py-3">{{ $project->name }}</td>
+                        <td class="px-4 py-3">
+                            <a href="{{ route('employee.projects.show', $project) }}" class="text-sm font-semibold text-teal-700 hover:text-teal-600">{{ $project->name }}</a>                            
+                        </td>
                         <td class="px-4 py-3">{{ $project->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-xs text-slate-600">
                             {{ (int) $project->tasks_count }} total / {{ (int) $project->completed_tasks_count }} completed

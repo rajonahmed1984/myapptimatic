@@ -228,12 +228,18 @@ class ProjectTaskActivityController extends Controller
         Gate::forUser($actor)->authorize('view', $task);
 
         if (! $activity->attachment_path) {
-            abort(404);
+            abort(404, 'This activity does not have an attachment.');
         }
 
         $disk = Storage::disk('public');
         if (! $disk->exists($activity->attachment_path)) {
-            abort(404);
+            \Log::warning('Attachment file not found in storage', [
+                'activity_id' => $activity->id,
+                'attachment_path' => $activity->attachment_path,
+                'task_id' => $task->id,
+                'project_id' => $project->id
+            ]);
+            abort(404, 'The attachment file is no longer available. It may have been deleted or the upload was interrupted.');
         }
 
         if ($activity->isImageAttachment()) {

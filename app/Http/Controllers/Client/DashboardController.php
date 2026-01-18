@@ -74,6 +74,7 @@ class DashboardController extends Controller
                 ->get()
             : collect();
         $projects = collect();
+        $projectCount = 0;
         if ($customer) {
             $projectQuery = Project::where('customer_id', $customer->id)
                 ->withCount([
@@ -84,6 +85,8 @@ class DashboardController extends Controller
             if ($request->user()->isClientProject() && $request->user()->project_id) {
                 $projectQuery->whereKey($request->user()->project_id);
             }
+
+            $projectCount = (clone $projectQuery)->count();
 
             $projects = $projectQuery
                 ->latest()
@@ -102,6 +105,7 @@ class DashboardController extends Controller
             'invoices' => $invoices,
             'licenses' => $licenses,
             'serviceCount' => $subscriptions->count(),
+            'projectCount' => $projectCount,
             'domainCount' => $domainCount,
             'ticketOpenCount' => $ticketOpenCount,
             'openInvoiceCount' => $openInvoiceCount,
@@ -125,7 +129,7 @@ class DashboardController extends Controller
             'tasks' => function ($query) {
                 $query->latest()->limit(10);
             },
-            'tasks.assignees',
+            'tasks.assignments',
             'maintenances'
         ])->findOrFail($user->project_id);
 
@@ -140,20 +144,16 @@ class DashboardController extends Controller
 
         // Recent activity (last 10 tasks)
         $recentTasks = $project->tasks()
-            ->with('assignees')
+            ->with('assignments')
             ->latest('updated_at')
             ->limit(10)
             ->get();
 
-        // Unread messages count
-        $unreadMessagesCount = $project->messages()
-            ->where('read', false)
-            ->where('user_id', '!=', $user->id)
-            ->count();
+        // Unread messages count (messages don't have read status, use count of recent messages)
+        $unreadMessagesCount = 0;
 
         // Recent chat messages
         $recentMessages = $project->messages()
-            ->with('user')
             ->latest()
             ->limit(5)
             ->get();

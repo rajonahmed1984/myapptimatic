@@ -7,6 +7,7 @@ use App\Models\ProjectTaskSubtask;
 use App\Models\Project;
 use App\Models\SalesRepresentative;
 use App\Models\Employee;
+use App\Models\ProjectMessageRead;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -66,6 +67,16 @@ class ProjectController extends Controller
         $currentAuthorType = $employee ? 'employee' : 'user';
         $currentAuthorId = $employee?->id ?? $request->user()?->id;
 
+        $lastReadId = ProjectMessageRead::query()
+            ->where('project_id', $project->id)
+            ->where('reader_type', $currentAuthorType)
+            ->where('reader_id', $currentAuthorId)
+            ->value('last_read_message_id');
+
+        $unreadCount = $project->messages()
+            ->when($lastReadId, fn ($query) => $query->where('id', '>', $lastReadId))
+            ->count();
+
         $chatMeta = [
             'messagesUrl' => route('employee.projects.chat.messages', $project),
             'postMessagesUrl' => route('employee.projects.chat.messages.store', $project),
@@ -85,6 +96,11 @@ class ProjectController extends Controller
             ->latest('issue_date')
             ->first();
 
+        $statusCounts = $project->tasks()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
         return view('employee.projects.show', [
             'project' => $project,
             'tasks' => $tasks,
@@ -95,6 +111,12 @@ class ProjectController extends Controller
             'priorityOptions' => TaskSettings::priorityOptions(),
             'chatMessages' => $chatMessages,
             'chatMeta' => $chatMeta,
+            'taskStats' => [
+                'total' => (int) $statusCounts->values()->sum(),
+                'in_progress' => (int) ($statusCounts['in_progress'] ?? 0),
+                'completed' => (int) (($statusCounts['completed'] ?? 0) + ($statusCounts['done'] ?? 0)),
+                'unread' => (int) $unreadCount,
+            ],
         ]);
     }
 }

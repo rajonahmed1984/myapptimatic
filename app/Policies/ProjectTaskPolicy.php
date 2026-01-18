@@ -22,8 +22,20 @@ class ProjectTaskPolicy
                 return true;
             }
 
-            if ($actor->isClient()) {
-                return $actor->customer_id === $project->customer_id && $task->customer_visible;
+            // Check both regular clients and project-specific clients
+            if ($actor->isClient() || $actor->isClientProject()) {
+                // Check if user belongs to the project's customer
+                if ($actor->customer_id !== $project->customer_id) {
+                    return false;
+                }
+                
+                // Project-specific users can view all tasks in their assigned project
+                if ($actor->isClientProject() && $actor->project_id === $project->id) {
+                    return true;
+                }
+                
+                // Regular clients can only view tasks marked as customer_visible
+                return $task->customer_visible;
             }
 
             if ($actor->isEmployee()) {

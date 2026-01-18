@@ -65,11 +65,24 @@
                         Payouts
                     </x-nav-link>
                 </div>
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Account</div>
+                    <x-nav-link 
+                        :href="route('rep.profile.edit')"
+                        routes="rep.profile.*"
+                    >
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Profile & Security
+                    </x-nav-link>
+                </div>
             </nav>
 
             @php
                 $sidebarUser = auth()->user();
-                $sidebarName = $sidebarUser?->name ?? 'Sales Rep';
+                $sidebarSalesRep = $sidebarUser ? request()->attributes->get('salesRep') : null;
+                $sidebarName = $sidebarSalesRep?->name
+                    ?? $sidebarUser?->name
+                    ?? 'Sales Rep';
                 $nameParts = preg_split('/\s+/', trim($sidebarName));
                 $sidebarInitials = '';
                 foreach ($nameParts as $part) {
@@ -85,8 +98,8 @@
             <div class="mt-auto space-y-4">
                 <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
                     <div class="flex items-center gap-3">
-                        <div class="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-sm font-semibold text-white">
-                            {{ $sidebarInitials }}
+                        <div class="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/10">
+                            <x-avatar :path="$salesRep?->avatar_path ?? $sidebarUser?->avatar_path" :name="$sidebarName" size="h-10 w-10" textSize="text-sm" />
                         </div>
                         <div class="min-w-0">
                             <div class="truncate text-sm font-semibold text-white">{{ $sidebarName }}</div>
@@ -107,9 +120,6 @@
                             Sign out
                         </button>
                     </form>
-                </div>
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
-                    Sales view only. Contact admin if access is revoked.
                 </div>
             </div>
         </aside>

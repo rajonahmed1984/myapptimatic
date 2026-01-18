@@ -120,22 +120,29 @@
                 @endif
             </nav>
 
-            <div class="mt-auto">
-                <div class="mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-200">
-                    <div>
-                        <div class="text-sm font-semibold text-white">{{ auth()->user()->name }}</div>
-                        <div class="text-xs text-slate-300">Client</div>
-                    </div>
-                    <form method="POST" action="{{ route('logout') }}">
+            <div class="mt-auto">              
+                <div class="mt-5 space-y-2">
+                    <a href="{{ route('client.profile.edit') }}" class="{{ request()->routeIs('client.profile.*') ? 'nav-link nav-link-active' : 'nav-link' }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        Profile Settings
+                    </a>
+                </div>
+                <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 overflow-hidden rounded-full border border-white/20">
+                            <x-avatar :path="auth()->user()->avatar_path" :name="auth()->user()->name" size="h-10 w-10" textSize="text-xs" />
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-sm font-semibold text-white">{{ auth()->user()->name }}</div>
+                            <div class="text-xs text-slate-300">Client</div>                            
+                        </div>
+                    </div>                    
+                    <form method="POST" action="{{ route('logout') }}" class="mt-3">
                         @csrf
-                        <button type="submit" class="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-[11px] font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/20">
+                        <button type="submit" class="w-full rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/20">
                             Sign out
                         </button>
-                    </form>
-                </div>
-
-                <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300">
-                    Client view only.
+                    </form>                    
                 </div>
             </div>
         </aside>
@@ -153,6 +160,18 @@
                             <div class="section-label">Client workspace</div>
                             <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
                         </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 md:gap-4">
+                        <form method="POST" action="{{ route('client.system.cache.clear') }}">
+                            @csrf
+                            <button
+                                type="submit"
+                                class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
+                                title="Clears Laravel system caches and purges browser storage helpers"
+                            >
+                                Clear caches
+                            </button>
+                        </form>
                     </div>
                 </div>
 
@@ -175,11 +194,11 @@
             </header>
 
             <main class="w-full px-6 py-10 fade-in">
-                @if(!empty($clientInvoiceNotice) && $clientInvoiceNotice['has_due'])
+                @if(!empty($clientInvoiceNotice) && $clientInvoiceNotice['has_due'] && !auth()->user()->isClientProject())
                     @include('partials.overdue-banner', ['notice' => $clientInvoiceNotice])
                 @endif
 
-                @if(!empty($clientAccessBlock['blocked']))
+                @if(!empty($clientAccessBlock['blocked']) && !auth()->user()->isClientProject())
                     @php
                         $graceEnds = $clientAccessBlock['grace_ends_at']
                             ? \Illuminate\Support\Carbon::parse($clientAccessBlock['grace_ends_at'])->format($globalDateFormat . ' H:i')
@@ -251,6 +270,33 @@
             });
         });
     </script>
+    @if(session('cache_cleared'))
+        <script>
+            (async function () {
+                const safeRun = async (fn) => {
+                    try {
+                        await fn();
+                    } catch (error) {
+                        console.warn('Browser purge helper failed', error);
+                    }
+                };
+
+                await safeRun(async () => {
+                    if (window.caches && window.caches.keys) {
+                        const keys = await window.caches.keys();
+                        await Promise.all(keys.map((key) => window.caches.delete(key)));
+                    }
+                });
+
+                try {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                } catch (error) {
+                    console.warn('Storage clear failed', error);
+                }
+            })();
+        </script>
+    @endif
     @include('layouts.partials.table-responsive')
 </body>
 </html>

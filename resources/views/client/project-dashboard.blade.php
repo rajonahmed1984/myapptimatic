@@ -157,9 +157,9 @@
                                             @else
                                                 <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">To Do</span>
                                             @endif
-                                            @if($task->assignees->isNotEmpty())
+                                            @if($task->assignments->isNotEmpty())
                                                 <span class="text-xs text-slate-500">
-                                                    👤 {{ $task->assignees->pluck('name')->implode(', ') }}
+                                                    👤 {{ $task->assignments->map(fn($a) => $a->assigneeName())->implode(', ') }}
                                                 </span>
                                             @endif
                                         </div>
@@ -201,11 +201,11 @@
                                 <div class="rounded-2xl border border-slate-200 bg-white p-3">
                                     <div class="flex items-start gap-3">
                                         <div class="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-teal-100 text-xs font-semibold text-teal-700">
-                                            {{ substr($message->user->name ?? 'U', 0, 1) }}
+                                            {{ substr($message->authorName() ?? 'U', 0, 1) }}
                                         </div>
                                         <div class="flex-1">
                                             <div class="flex items-center gap-2">
-                                                <div class="text-xs font-semibold text-slate-900">{{ $message->user->name ?? 'User' }}</div>
+                                                <div class="text-xs font-semibold text-slate-900">{{ $message->authorName() ?? 'User' }}</div>
                                                 <div class="text-xs text-slate-400">{{ $message->created_at->diffForHumans() }}</div>
                                             </div>
                                             <div class="mt-1 text-xs text-slate-600">{{ Str::limit($message->message, 100) }}</div>

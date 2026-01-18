@@ -30,6 +30,7 @@
             <div>
                 <label for="type" class="block text-sm font-medium text-slate-700">User Type</label>
                 <select name="type" id="type" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    <option value="all" @selected($filters['type'] === 'all')>All User Types</option>
                     <option value="employee" @selected($filters['type'] === 'employee')>Employees</option>
                     <option value="customer" @selected($filters['type'] === 'customer')>Customers</option>
                     <option value="salesrep" @selected($filters['type'] === 'salesrep')>Sales Representatives</option>

@@ -406,6 +406,15 @@ class ProjectController extends Controller
 
         $tasks = $tasksQuery->paginate(25)->withQueryString();
 
+        $statusCounts = $project->tasks()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $totalTasks = (int) $statusCounts->values()->sum();
+        $inProgressTasks = (int) ($statusCounts['in_progress'] ?? 0);
+        $completedTasks = (int) (($statusCounts['completed'] ?? 0) + ($statusCounts['done'] ?? 0));
+
         $initialInvoice = $project->invoices()
             ->where('type', 'project_initial_payment')
             ->latest('issue_date')
@@ -439,6 +448,12 @@ class ProjectController extends Controller
             'tasks' => $tasks,
             'initialInvoice' => $initialInvoice,
             'projectChatUnreadCount' => $projectChatUnreadCount,
+            'taskStats' => [
+                'total' => $totalTasks,
+                'in_progress' => $inProgressTasks,
+                'completed' => $completedTasks,
+                'unread' => (int) $projectChatUnreadCount,
+            ],
         ]);
     }
 

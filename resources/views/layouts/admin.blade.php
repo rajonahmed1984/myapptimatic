@@ -7,17 +7,20 @@
     <div class="min-h-screen flex flex-col md:flex-row">
         <div id="sidebarOverlay" class="fixed inset-0 z-20 bg-slate-900/60 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
         <aside id="adminSidebar" class="sidebar fixed inset-y-0 left-0 z-30 flex w-72 max-w-[90vw] flex-shrink-0 flex-col px-6 py-7 overflow-y-auto max-h-screen transform transition-transform duration-200 ease-in-out -translate-x-full md:w-64 md:max-w-none md:translate-x-0 md:overflow-y-auto md:max-h-screen md:sticky md:top-0">
+            @php
+                $sidebarImage = $portalBranding['favicon_url'] ?? ($portalBranding['logo_url'] ?? null);
+                $isAdminNav = request()->routeIs('admin.*');
+                $isEmployeeNav = request()->routeIs('employee.*');
+                $isSalesRepNav = request()->routeIs('rep.*');
+            @endphp
             <div class="flex items-center gap-3">
-                @php
-                    $sidebarImage = $portalBranding['favicon_url'] ?? ($portalBranding['logo_url'] ?? null);
-                @endphp
                 @if(!empty($sidebarImage))
                     <img src="{{ $sidebarImage }}" alt="Brand mark" class="h-11 w-11 rounded-2xl bg-white p-1">
                 @else
                     <div class="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-lg font-semibold text-white">LM</div>
                 @endif
                 <div>
-                    <div class="text-xs uppercase tracking-[0.35em] text-slate-400">Admin</div>
+                    <div class="text-xs uppercase tracking-[0.35em] text-slate-400">{{ $isEmployeeNav ? 'Employee' : 'Admin' }}</div>
                     <div class="text-lg font-semibold text-white">{{ $portalBranding['company_name'] ?? 'License Portal' }}</div>
                 </div>
             </div>
@@ -28,16 +31,12 @@
             </button>
 
             @php
-                $isAdminNav = request()->routeIs('admin.*');
-                $isEmployeeNav = request()->routeIs('employee.*');
-                $isSalesRepNav = request()->routeIs('rep.*');
-                
                 // Nested menu: Projects/Maintenance
                 $projectsMenuActive = isActive(['admin.projects.*', 'admin.project-maintenances.*']);
-                
+
                 // Nested menu: Invoices
                 $invoiceMenuActive = isActive('admin.invoices.*');
-                
+
                 // Nested menu: Logs
                 $logMenuActive = isActive('admin.logs.*');
             @endphp
@@ -378,6 +377,16 @@
                             Payroll
                         </x-nav-link>
                     </div>
+                    <div class="space-y-2">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Account</div>
+                        <x-nav-link 
+                            :href="route('employee.profile.edit')"
+                            routes="employee.profile.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Profile & Security
+                        </x-nav-link>
+                    </div>
                 @elseif($isSalesRepNav)
                     <div>
                         <x-nav-link 
@@ -404,8 +413,89 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Payouts
                         </x-nav-link>
-                    </div>
-                @endif
+                        </div>
+                    @elseif($isEmployeeNav)
+                        <div>
+                            <x-nav-link 
+                                :href="route('employee.dashboard')"
+                                routes="employee.dashboard"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Dashboard
+                            </x-nav-link>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">My Work</div>
+                            <x-nav-link 
+                                :href="route('employee.projects.index')"
+                                routes="employee.projects.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Projects
+                            </x-nav-link>
+                            <x-nav-link 
+                                :href="route('employee.timesheets.index')"
+                                routes="employee.timesheets.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Timesheets
+                            </x-nav-link>
+                            <x-nav-link 
+                                :href="route('employee.leave-requests.index')"
+                                routes="employee.leave-requests.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Leave Requests
+                            </x-nav-link>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payroll</div>
+                            <x-nav-link 
+                                :href="route('employee.payroll.index')"
+                                routes="employee.payroll.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Payroll
+                            </x-nav-link>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Account</div>
+                            <x-nav-link 
+                                :href="route('employee.profile.edit')"
+                                routes="employee.profile.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Profile & Security
+                            </x-nav-link>
+                        </div>
+                    @elseif($isSalesRepNav)
+                        <div>
+                            <x-nav-link 
+                                :href="route('rep.dashboard')"
+                                routes="rep.dashboard"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Sales Dashboard
+                            </x-nav-link>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
+                            <x-nav-link 
+                                :href="route('rep.earnings.index')"
+                                routes="rep.earnings.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Earnings
+                            </x-nav-link>
+                            <x-nav-link 
+                                :href="route('rep.payouts.index')"
+                                routes="rep.payouts.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Payouts
+                            </x-nav-link>
+                        </div>
+                    @endif
             </nav>
 
             @php
@@ -468,7 +558,7 @@
                             </svg>
                         </button>
                         <div>
-                            <div class="section-label">Admin workspace</div>
+                            <div class="section-label">{{ $isEmployeeNav ? 'Employee workspace' : 'Admin workspace' }}</div>
                             <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
                         </div>
                     </div>
