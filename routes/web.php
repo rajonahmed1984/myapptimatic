@@ -570,6 +570,8 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
     ->group(function () {
         Route::post('/logout', [RoleLoginController::class, 'logoutSales'])->name('logout');
         Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
+        Route::post('/system/cache/clear', SystemCacheController::class)
+            ->name('system.cache.clear');
         Route::get('/earnings', [SalesRepEarningController::class, 'index'])->name('earnings.index');
         Route::get('/payouts', [SalesRepPayoutController::class, 'index'])->name('payouts.index');
         Route::get('/projects', [\App\Http\Controllers\SalesRep\ProjectController::class, 'index'])->name('projects.index');

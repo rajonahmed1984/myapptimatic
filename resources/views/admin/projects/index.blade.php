@@ -39,7 +39,8 @@
         </form>
 
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
-            <table class="w-full text-left text-sm text-slate-700">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[640px] text-left text-sm text-slate-700">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                         <th class="px-4 py-3 w-16">ID</th>
