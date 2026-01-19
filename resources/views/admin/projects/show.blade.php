@@ -140,7 +140,7 @@
         @php
             $financials = $financials ?? [];
             $overheadTotal = $financials['overhead_total'] ?? $project->overhead_total;
-            $budgetWithOverhead = $financials['budget_with_overhead'] ?? ((float) ($project->budget_amount ?? 0) + $overheadTotal);
+            $budgetWithOverhead = $financials['budget_with_overhead'] ?? ((float) ($project->total_budget ?? 0) + $overheadTotal);
         @endphp
 
         <div>

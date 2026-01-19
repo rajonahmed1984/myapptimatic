@@ -739,7 +739,7 @@ class ProjectController extends Controller
 
     private function financials(Project $project): array
     {
-        $budget = (float) ($project->budget_amount ?? 0);
+        $budget = (float) ($project->total_budget ?? 0);
         $plannedHours = (float) ($project->planned_hours ?? 0);
         $actualHours = (float) ($project->actual_hours ?? $plannedHours);
         $hourlyCost = (float) ($project->hourly_cost ?? 0);

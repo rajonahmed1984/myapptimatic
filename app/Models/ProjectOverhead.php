@@ -24,4 +24,9 @@ class ProjectOverhead extends Model
     {
         return $this->belongsTo(Project::class);
     }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
 }

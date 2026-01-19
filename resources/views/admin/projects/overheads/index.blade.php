@@ -26,6 +26,7 @@
                 <table class="min-w-full text-left text-sm">
                     <thead>
                         <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <th class="px-3 py-2">Invoice</th>
                             <th class="px-3 py-2">Details</th>
                             <th class="px-3 py-2">Amount</th>
                             <th class="px-3 py-2">Date</th>
@@ -35,6 +36,13 @@
                     <tbody>
                         @foreach($overheads as $overhead)
                             <tr class="border-t border-slate-100">
+                                <td class="px-3 py-2">
+                                    @if($overhead->invoice_id && $overhead->invoice)
+                                        <a href="{{ route('admin.invoices.show', $overhead->invoice) }}" class="text-teal-700 hover:text-teal-600 font-semibold">#{{ $overhead->invoice->number ?? $overhead->invoice_id }}</a>
+                                    @else
+                                        <span class="text-slate-400 text-xs">--</span>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-2 w-2/5">{{ $overhead->short_details }}</td>
                                 <td class="px-3 py-2 text-right">{{ $project->currency }} {{ number_format((float) $overhead->amount, 2) }}</td>
                                 <td class="px-3 py-2">{{ $overhead->created_at?->format($globalDateFormat) ?? '--' }}</td>
@@ -51,6 +59,16 @@
         @endif
 
         <div class="border-t border-slate-100 pt-4">
+            @php($pendingCount = $overheads->where('invoice_id', null)->count())
+            @if($pendingCount > 0)
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <div class="text-xs text-slate-500">{{ $pendingCount }} pending overhead{{ $pendingCount > 1 ? 's' : '' }} can be invoiced.</div>
+                    <form method="POST" action="{{ route('admin.projects.overheads.invoice', $project) }}">
+                        @csrf
+                        <button type="submit" class="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-500">Invoice pending overheads</button>
+                    </form>
+                </div>
+            @endif
             <form method="POST" action="{{ route('admin.projects.overheads.store', $project) }}" class="space-y-3 text-xs text-slate-500">
                 @csrf
                 <div class="grid gap-3 md:grid-cols-3">

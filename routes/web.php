@@ -376,6 +376,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         ->name('projects.overheads.store');
     Route::delete('projects/{project}/overheads/{overhead}', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'destroy'])
         ->name('projects.overheads.destroy');
+    Route::post('projects/{project}/overheads/invoice', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'invoicePending'])
+        ->name('projects.overheads.invoice');
     Route::post('projects/{project}/tasks', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
     Route::patch('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
     Route::patch('projects/{project}/tasks/{task}/status', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'changeStatus'])->name('projects.tasks.changeStatus');
