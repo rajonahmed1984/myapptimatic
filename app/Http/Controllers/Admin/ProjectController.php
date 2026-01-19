@@ -420,6 +420,11 @@ class ProjectController extends Controller
             ->latest('issue_date')
             ->first();
 
+        $remainingBudgetInvoices = $project->invoices()
+            ->where('type', 'project_remaining_budget')
+            ->latest('issue_date')
+            ->get();
+
         $readerType = 'user';
         $readerId = $user?->id;
         $lastReadId = null;
@@ -447,6 +452,7 @@ class ProjectController extends Controller
             'financials' => $this->financials($project),
             'tasks' => $tasks,
             'initialInvoice' => $initialInvoice,
+            'remainingBudgetInvoices' => $remainingBudgetInvoices,
             'projectChatUnreadCount' => $projectChatUnreadCount,
             'taskStats' => [
                 'total' => $totalTasks,
@@ -455,6 +461,64 @@ class ProjectController extends Controller
                 'unread' => (int) $projectChatUnreadCount,
             ],
         ]);
+    }
+
+    public function invoiceRemainingBudget(
+        Request $request,
+        Project $project,
+        BillingService $billingService
+    ): RedirectResponse {
+        $this->authorize('view', $project);
+
+        $remainingBudget = (float) ($project->remaining_budget ?? 0);
+        if ($remainingBudget <= 0) {
+            return back()->with('status', 'No remaining budget available to invoice.');
+        }
+
+        $data = $request->validate([
+            'amount' => [
+                'required',
+                'numeric',
+                'min:0.01',
+                'lte:' . $remainingBudget,
+            ],
+        ]);
+
+        $amount = (float) $data['amount'];
+        $issueDate = Carbon::today();
+        $dueDays = (int) Setting::getValue('invoice_due_days');
+        $dueDate = $issueDate->copy()->addDays($dueDays);
+
+        $invoice = Invoice::create([
+            'customer_id' => $project->customer_id,
+            'project_id' => $project->id,
+            'number' => $billingService->nextInvoiceNumber(),
+            'status' => 'unpaid',
+            'issue_date' => $issueDate->toDateString(),
+            'due_date' => $dueDate->toDateString(),
+            'subtotal' => $amount,
+            'late_fee' => 0,
+            'total' => $amount,
+            'currency' => $project->currency,
+            'type' => 'project_remaining_budget',
+        ]);
+
+        InvoiceItem::create([
+            'invoice_id' => $invoice->id,
+            'description' => sprintf('Remaining budget for project %s', $project->name),
+            'quantity' => 1,
+            'unit_price' => $amount,
+            'line_total' => $amount,
+        ]);
+
+        SystemLogger::write('activity', 'Project remaining budget invoiced.', [
+            'project_id' => $project->id,
+            'invoice_id' => $invoice->id,
+            'amount' => $amount,
+        ], $request->user()?->id, $request->ip());
+
+        return redirect()->route('admin.projects.show', $project)
+            ->with('status', sprintf('Invoice #%s created for %s %s.', $invoice->number ?? $invoice->id, $project->currency, number_format($amount, 2)));
     }
 
     public function update(Request $request, Project $project, CommissionService $commissionService): RedirectResponse

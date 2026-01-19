@@ -73,6 +73,8 @@ use App\Http\Controllers\ProjectTaskViewController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Gate;
+use App\Models\Project;
 
 Route::get('/', [PublicProductController::class, 'index'])
     ->name('products.public.home');
@@ -359,6 +361,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::post('orders/{order}/milestones', [MilestoneController::class, 'store'])->name('orders.milestones.store');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::resource('projects', ProjectController::class);
+    Route::post('projects/{project}/invoice-remaining', [ProjectController::class, 'invoiceRemainingBudget'])
+        ->name('projects.invoice-remaining');
     Route::get('projects/{project}/download/{type}', [ProjectController::class, 'downloadFile'])
         ->where('type', 'contract|proposal')
         ->name('projects.download');
@@ -366,6 +370,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         ->except(['show', 'destroy']);
     Route::get('project-maintenances/{projectMaintenance}', [\App\Http\Controllers\Admin\ProjectMaintenanceController::class, 'show'])
         ->name('project-maintenances.show');
+    Route::get('projects/{project}/overheads', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'index'])
+        ->name('projects.overheads.index');
     Route::post('projects/{project}/overheads', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'store'])
         ->name('projects.overheads.store');
     Route::delete('projects/{project}/overheads/{overhead}', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'destroy'])

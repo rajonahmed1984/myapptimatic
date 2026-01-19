@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\ProjectMessageRead;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -50,6 +51,16 @@ class ProjectController extends Controller
         $currentAuthorType = 'user';
         $currentAuthorId = $request->user()?->id;
 
+        $lastReadId = ProjectMessageRead::query()
+            ->where('project_id', $project->id)
+            ->where('reader_type', $currentAuthorType)
+            ->where('reader_id', $currentAuthorId)
+            ->value('last_read_message_id');
+
+        $unreadCount = $project->messages()
+            ->when($lastReadId, fn ($query) => $query->where('id', '>', $lastReadId))
+            ->count();
+
         $chatMeta = [
             'messagesUrl' => route('client.projects.chat.messages', $project),
             'postMessagesUrl' => route('client.projects.chat.messages.store', $project),
@@ -59,6 +70,7 @@ class ProjectController extends Controller
             'currentAuthorType' => $currentAuthorType,
             'currentAuthorId' => $currentAuthorId,
             'canPost' => Gate::forUser($request->user())->check('view', $project),
+            'unreadCount' => (int) $unreadCount,
         ];
 
         $maintenances = $project->maintenances()

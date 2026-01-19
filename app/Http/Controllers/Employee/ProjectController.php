@@ -86,6 +86,7 @@ class ProjectController extends Controller
             'currentAuthorType' => $currentAuthorType,
             'currentAuthorId' => $currentAuthorId,
             'canPost' => Gate::forUser($request->user())->check('view', $project),
+            'unreadCount' => (int) $unreadCount,
         ];
 
         $employees = Employee::where('status', 'active')->orderBy('name')->get(['id', 'name']);

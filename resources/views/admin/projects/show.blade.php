@@ -177,7 +177,10 @@
         </div>
 
         <div>
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overhead fees</div>
+            <div class="flex items-center justify-between gap-3">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overhead fees</div>
+                <a href="{{ route('admin.projects.overheads.index', $project) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Manage overheads</a>
+            </div>
             <div class="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
                 @if($project->overheads->isEmpty())
                     <div class="text-xs text-slate-500">No overhead line items added.</div>
@@ -224,6 +227,90 @@
                         <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Add overhead fee</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Remaining budget invoices</div>
+            <div class="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="text-sm font-semibold text-slate-800">Remaining budget invoices</div>
+                    <div class="text-xs text-slate-500">
+                        Remaining: {{ $project->remaining_budget !== null ? $project->currency.' '.number_format($project->remaining_budget, 2) : '--' }}
+                    </div>
+                </div>
+
+                @if($remainingBudgetInvoices->isEmpty())
+                    <div class="text-xs text-slate-500">No invoices generated from the remaining budget yet.</div>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    <th class="px-3 py-2">Invoice</th>
+                                    <th class="px-3 py-2">Amount</th>
+                                    <th class="px-3 py-2">Issue</th>
+                                    <th class="px-3 py-2">Due</th>
+                                    <th class="px-3 py-2">Status</th>
+                                    <th class="px-3 py-2 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($remainingBudgetInvoices as $invoice)
+                                    <tr class="border-t border-slate-100">
+                                        <td class="px-3 py-2 font-medium text-slate-900">
+                                            <a href="{{ route('admin.invoices.show', $invoice) }}" class="text-teal-700 hover:text-teal-600">
+                                                #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}
+                                            </a>
+                                        </td>
+                                        <td class="px-3 py-2 text-slate-700">{{ $invoice->currency }} {{ $invoice->total }}</td>
+                                        <td class="px-3 py-2 text-slate-500">{{ $invoice->issue_date?->format($globalDateFormat) ?? '--' }}</td>
+                                        <td class="px-3 py-2 text-slate-500">{{ $invoice->due_date?->format($globalDateFormat) ?? '--' }}</td>
+                                        <td class="px-3 py-2">
+                                            <x-status-badge :status="$invoice->status" />
+                                        </td>
+                                        <td class="px-3 py-2 text-right">
+                                            <a href="{{ route('admin.invoices.show', $invoice) }}" class="text-xs font-semibold text-slate-700 hover:text-teal-600">View</a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                <div class="border-t border-slate-100 pt-4">
+                    @if($project->remaining_budget !== null && $project->remaining_budget > 0)
+                        <form method="POST" action="{{ route('admin.projects.invoice-remaining', $project) }}" class="space-y-3 text-xs text-slate-500">
+                            @csrf
+                            <div class="space-y-1">
+                                <label class="text-[10px] uppercase tracking-[0.2em] text-slate-400 flex justify-between">
+                                    <span>Amount</span>
+                                    <span class="text-slate-500">Available: {{ $project->currency }} {{ number_format($project->remaining_budget, 2) }}</span>
+                                </label>
+                                <input
+                                    name="amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    max="{{ $project->remaining_budget }}"
+                                    value="{{ old('amount', $project->remaining_budget) }}"
+                                    class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-teal-400 focus:outline-none"
+                                >
+                                @error('amount')
+                                    <p class="text-rose-500 text-[10px]">{{ $message }}</p>
+                                @enderror
+                                <p class="text-[10px] text-slate-400">Invoice the full remaining amount or enter a smaller partial amount.</p>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Invoice remaining budget</button>
+                            </div>
+                        </form>
+                    @else
+                        <p class="text-[10px] text-slate-500">Remaining budget must be positive before you can generate an additional invoice.</p>
+                    @endif
+                </div>
             </div>
         </div>
 
