@@ -51,11 +51,39 @@ class DashboardController extends Controller
             'completed' => (int) (($taskStatusCounts['done'] ?? 0) + ($taskStatusCounts['completed'] ?? 0)),
         ];
 
+        $contractSummary = null;
+        $contractProjects = collect();
+
+        if ($employeeId && $employee?->employment_type === 'contract') {
+            $contractProjectsQuery = Project::query()
+                ->whereHas('employees', fn ($query) => $query->whereKey($employeeId))
+                ->whereNotNull('contract_employee_total_earned');
+
+            $contractSummary = [
+                'total_earned' => (float) (clone $contractProjectsQuery)->sum('contract_employee_total_earned'),
+                'payable' => (float) (clone $contractProjectsQuery)->sum('contract_employee_payable'),
+            ];
+
+            $contractProjects = (clone $contractProjectsQuery)
+                ->orderByDesc('updated_at')
+                ->limit(5)
+                ->get([
+                    'id',
+                    'name',
+                    'status',
+                    'contract_employee_total_earned',
+                    'contract_employee_payable',
+                    'currency',
+                ]);
+        }
+
         return view('employee.dashboard', [
             'totalProjects' => $totalProjects,
             'projectStatusCounts' => $projectStatusCounts,
             'recentProjects' => $recentProjects,
             'taskStats' => $taskStats,
+            'contractSummary' => $contractSummary,
+            'contractProjects' => $contractProjects,
         ]);
     }
 }

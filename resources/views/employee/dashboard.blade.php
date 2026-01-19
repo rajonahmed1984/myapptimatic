@@ -98,6 +98,49 @@
             </div>
         </div>
 
+        @if($contractSummary)
+            <div class="card p-6">
+                <div class="section-label">Contract earnings</div>
+                <div class="text-sm text-slate-500">Summary of your contract project payments.</div>
+
+                <div class="mt-6 grid gap-4 md:grid-cols-2 text-sm text-slate-700">
+                    <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payable</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900">{{ number_format($contractSummary['payable'] ?? 0, 2) }}</div>
+                        <div class="text-xs text-slate-500">Awaiting payout</div>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Total earned</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900">{{ number_format($contractSummary['total_earned'] ?? 0, 2) }}</div>
+                        <div class="text-xs text-slate-500">All time</div>
+                    </div>
+                </div>
+
+                <div class="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm font-semibold text-slate-800">Recent contract projects</div>
+                        <a href="{{ route('employee.projects.index') }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">View all</a>
+                    </div>
+                    <div class="mt-3 space-y-2">
+                        @forelse($contractProjects as $project)
+                            <div class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="font-semibold text-slate-900">
+                                        <a href="{{ route('employee.projects.show', $project) }}" class="hover:text-teal-600">{{ $project->name }}</a>
+                                    </div>
+                                    <div class="text-xs text-slate-500">{{ ucfirst(str_replace('_', ' ', $project->status)) }}</div>
+                                </div>
+                                <div class="text-xs text-slate-600">Earned: {{ number_format((float) ($project->contract_employee_total_earned ?? 0), 2) }} {{ $project->currency }}</div>
+                                <div class="text-xs text-slate-500">Payable: {{ number_format((float) ($project->contract_employee_payable ?? 0), 2) }} {{ $project->currency }}</div>
+                            </div>
+                        @empty
+                            <div class="text-sm text-slate-500">No contract projects yet.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="card overflow-hidden rounded-2xl border border-slate-200">
             <div class="flex items-center justify-between px-6 py-4">
                 <div>
