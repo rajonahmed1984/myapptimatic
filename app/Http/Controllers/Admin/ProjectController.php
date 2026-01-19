@@ -88,7 +88,7 @@ class ProjectController extends Controller
             'invoices' => Invoice::latest('issue_date')->limit(50)->get(['id', 'number', 'total']),
             'employees' => Employee::where('status', 'active')
                 ->orderBy('name')
-                ->get(['id', 'name', 'designation']),
+                ->get(['id', 'name', 'designation', 'employment_type']),
             'salesReps' => SalesRepresentative::where('status', 'active')
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']),
@@ -111,7 +111,7 @@ class ProjectController extends Controller
             'invoices' => Invoice::latest('issue_date')->limit(50)->get(['id', 'number', 'total']),
             'employees' => Employee::where('status', 'active')
                 ->orderBy('name')
-                ->get(['id', 'name', 'designation']),
+                ->get(['id', 'name', 'designation', 'employment_type']),
             'salesReps' => SalesRepresentative::where('status', 'active')
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']),
@@ -159,6 +159,8 @@ class ProjectController extends Controller
             'sales_rep_amounts.*' => ['nullable', 'numeric', 'min:0'],
             'employee_ids' => ['array'],
             'employee_ids.*' => ['exists:employees,id'],
+            'contract_employee_amounts' => ['array'],
+            'contract_employee_amounts.*' => ['nullable', 'numeric', 'min:0'],
             'maintenances' => ['nullable', 'array'],
             'maintenances.*.title' => ['required', 'string', 'max:255'],
             'maintenances.*.amount' => ['required', 'numeric', 'min:0.01'],
@@ -211,7 +213,47 @@ class ProjectController extends Controller
             }
         }
 
-        $project = DB::transaction(function () use ($data, $request, $billingService, $salesRepSync, $commissionService) {
+        $contractEmployeeTotal = null;
+        $contractEmployeePayable = null;
+        $contractEmployeePayoutStatus = null;
+
+        $contractEmployeeIds = [];
+        if (! empty($data['employee_ids'])) {
+            $contractEmployeeIds = Employee::whereIn('id', $data['employee_ids'])
+                ->where('employment_type', 'contract')
+                ->pluck('id')
+                ->all();
+        }
+
+        if (! empty($contractEmployeeIds)) {
+            $amounts = $request->input('contract_employee_amounts', []);
+            $errors = [];
+            $contractEmployeeTotal = 0.0;
+
+            foreach ($contractEmployeeIds as $employeeId) {
+                $amount = $amounts[$employeeId] ?? null;
+                if ($amount === null || $amount === '') {
+                    $errors["contract_employee_amounts.{$employeeId}"] = 'Amount is required for contract employees.';
+                    continue;
+                }
+                if (! is_numeric($amount) || (float) $amount < 0) {
+                    $errors["contract_employee_amounts.{$employeeId}"] = 'Amount must be at least 0.';
+                    continue;
+                }
+
+                $contractEmployeeTotal += (float) $amount;
+            }
+
+            if (! empty($errors)) {
+                return back()->withErrors($errors)->withInput();
+            }
+
+            $isComplete = $data['status'] === 'complete';
+            $contractEmployeePayable = $isComplete ? $contractEmployeeTotal : 0.0;
+            $contractEmployeePayoutStatus = $isComplete ? 'payable' : 'earned';
+        }
+
+        $project = DB::transaction(function () use ($data, $request, $billingService, $salesRepSync, $commissionService, $contractEmployeeTotal, $contractEmployeePayable, $contractEmployeePayoutStatus) {
             $project = Project::create([
                 'name' => $data['name'],
                 'customer_id' => $data['customer_id'],
@@ -233,10 +275,14 @@ class ProjectController extends Controller
                 'budget_amount' => $data['budget_amount'] ?? null,
                 'planned_hours' => $data['planned_hours'] ?? null,
                 'hourly_cost' => $data['hourly_cost'] ?? null,
-            'actual_hours' => $data['actual_hours'] ?? null,
-            'software_overhead' => $data['software_overhead'] ?? null,
-            'website_overhead' => $data['website_overhead'] ?? null,
-        ]);
+                'actual_hours' => $data['actual_hours'] ?? null,
+                'software_overhead' => $data['software_overhead'] ?? null,
+                'website_overhead' => $data['website_overhead'] ?? null,
+                'contract_amount' => $contractEmployeeTotal,
+                'contract_employee_total_earned' => $contractEmployeeTotal,
+                'contract_employee_payable' => $contractEmployeePayable,
+                'contract_employee_payout_status' => $contractEmployeePayoutStatus,
+            ]);
 
             if (! empty($data['employee_ids'])) {
                 $project->employees()->sync($data['employee_ids']);
@@ -589,6 +635,24 @@ class ProjectController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if ($previousStatus !== 'complete' && $project->status === 'complete') {
+            if ($project->contract_employee_total_earned !== null) {
+                $totalEarned = (float) $project->contract_employee_total_earned;
+                $currentPayable = (float) ($project->contract_employee_payable ?? 0);
+                $updates = [];
+
+                if ($currentPayable < $totalEarned) {
+                    $updates['contract_employee_payable'] = $totalEarned;
+                }
+
+                if ($project->contract_employee_payout_status !== 'payable') {
+                    $updates['contract_employee_payout_status'] = 'payable';
+                }
+
+                if (! empty($updates)) {
+                    $project->update($updates);
+                }
+            }
+
             try {
                 $commissionService->markEarningPayableOnProjectCompleted($project);
             } catch (\Throwable $e) {

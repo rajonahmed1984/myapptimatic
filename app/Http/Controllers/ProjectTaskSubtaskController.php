@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
+use App\Support\TaskCompletionManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -51,6 +52,7 @@ class ProjectTaskSubtaskController extends Controller
         }
 
         $subtask->update($data);
+        TaskCompletionManager::syncFromSubtasks($task);
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'Subtask updated.']);
@@ -67,6 +69,7 @@ class ProjectTaskSubtaskController extends Controller
         Gate::forUser($actor)->authorize('delete', $subtask);
 
         $subtask->delete();
+        TaskCompletionManager::syncFromSubtasks($task);
 
         return back()->with('status', 'Subtask deleted.');
     }

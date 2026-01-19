@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
+use App\Support\TaskCompletionManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -20,6 +21,12 @@ class ProjectTaskController extends Controller
         $this->authorize('createTask', $project);
 
         $data = $request->validated();
+
+        if (in_array($data['status'], ['completed', 'done'], true)
+            && TaskCompletionManager::hasSubtasks($task)
+            && ! TaskCompletionManager::allSubtasksCompleted($task)) {
+            return back()->withErrors(['status' => 'Complete all subtasks before completing this task.'])->withInput();
+        }
 
         if ($data['task_type'] === 'upload' && ! $request->hasFile('attachment')) {
             return back()->withErrors(['attachment' => 'Upload tasks require at least one file.'])->withInput();

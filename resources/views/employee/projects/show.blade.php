@@ -163,6 +163,18 @@
                                 </td>
                                 <td class="px-3 py-2 text-right align-top">
                                     <a href="{{ route('employee.projects.tasks.show', [$project, $task]) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Open Task</a>
+                                    @can('update', $task)
+                                        @if((int) ($task->subtasks_count ?? 0) === 0 && ! in_array($task->status, ['completed', 'done'], true))
+                                            <form method="POST" action="{{ route('employee.projects.tasks.update', [$project, $task]) }}" class="mt-2 inline-block">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="status" value="completed">
+                                                <button type="submit" class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300">
+                                                    Complete
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @endcan
                                 </td>
                             </tr>
                         @endforeach

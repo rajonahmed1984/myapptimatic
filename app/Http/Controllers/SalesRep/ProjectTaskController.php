@@ -11,6 +11,7 @@ use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskAssignmentManager;
 use App\Support\TaskAssignees;
+use App\Support\TaskCompletionManager;
 use App\Support\TaskSettings;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,12 @@ class ProjectTaskController extends Controller
         $this->authorize('createTask', $project);
 
         $data = $request->validated();
+
+        if (in_array($data['status'], ['completed', 'done'], true)
+            && TaskCompletionManager::hasSubtasks($task)
+            && ! TaskCompletionManager::allSubtasksCompleted($task)) {
+            return back()->withErrors(['status' => 'Complete all subtasks before completing this task.'])->withInput();
+        }
 
         $assignees = TaskAssignees::parse($data['assignees'] ?? []);
         if (empty($assignees)) {

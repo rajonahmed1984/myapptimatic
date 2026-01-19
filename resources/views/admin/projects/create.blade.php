@@ -98,16 +98,25 @@
                             @php
                                 $selectedEmployees = collect(old('employee_ids', []));
                                 $isAssigned = $selectedEmployees->contains($employee->id);
+                                $isContract = $employee->employment_type === 'contract';
+                                $contractAmount = old('contract_employee_amounts.'.$employee->id, '');
                             @endphp
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center justify-between gap-3" data-employee-row>
                                 <label class="flex items-center gap-2 text-xs text-slate-600">
-                                    <input type="checkbox" name="employee_ids[]" value="{{ $employee->id }}" @checked($isAssigned)>
+                                    <input type="checkbox" name="employee_ids[]" value="{{ $employee->id }}" @checked($isAssigned) data-employment-type="{{ $employee->employment_type }}">
                                     <span>{{ $employee->name }} @if($employee->designation)<span class="text-slate-500">({{ $employee->designation }})</span>@endif</span>
                                 </label>
+                                @if($isContract)
+                                    <div class="flex items-center gap-2 {{ $isAssigned ? '' : 'hidden' }}" data-contract-amount>
+                                        <span class="text-xs text-slate-500">Amount</span>
+                                        <input type="number" min="0" step="0.01" name="contract_employee_amounts[{{ $employee->id }}]" value="{{ $contractAmount }}" class="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs" @disabled(! $isAssigned)>
+                                    </div>
+                                @endif
                             </div>
                         @endforeach
                     </div>
                     <p class="mt-1 text-xs text-slate-500">Select employees assigned to this project.</p>
+                    <p class="mt-1 text-xs text-slate-500">Contract employee amounts apply only to selected contract employees.</p>
                 </div>
             </div>
 
@@ -365,6 +374,39 @@
             const addBtn = document.getElementById('addTaskRow');
             const maintenanceRows = document.getElementById('maintenanceRows');
             const addMaintenanceBtn = document.getElementById('addMaintenanceRow');
+            const employeeRows = document.querySelectorAll('[data-employee-row]');
+
+            const toggleContractAmount = (row) => {
+                const checkbox = row.querySelector('input[type="checkbox"][data-employment-type]');
+                const amountWrap = row.querySelector('[data-contract-amount]');
+
+                if (!checkbox || !amountWrap) {
+                    return;
+                }
+
+                if (checkbox.dataset.employmentType !== 'contract') {
+                    return;
+                }
+
+                const shouldShow = checkbox.checked;
+                const amountInput = amountWrap.querySelector('input');
+
+                amountWrap.classList.toggle('hidden', !shouldShow);
+
+                if (amountInput) {
+                    amountInput.disabled = !shouldShow;
+                    amountInput.required = shouldShow;
+                    if (!shouldShow) {
+                        amountInput.value = '';
+                    }
+                }
+            };
+
+            employeeRows.forEach((row) => {
+                toggleContractAmount(row);
+                const checkbox = row.querySelector('input[type="checkbox"][data-employment-type]');
+                checkbox?.addEventListener('change', () => toggleContractAmount(row));
+            });
 
             // Handle description field addition for existing and new tasks
             function setupDescriptionHandlers(taskRow) {

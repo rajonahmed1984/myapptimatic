@@ -199,7 +199,7 @@
                     <!-- Save Button -->
                     <div class="flex justify-end pt-4 border-t border-slate-200">
                         <button type="submit" class="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition">
-                            Save Changes
+                            Update Task
                         </button>
                     </div>
                 </form>

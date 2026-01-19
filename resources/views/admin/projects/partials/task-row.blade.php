@@ -25,49 +25,19 @@
         {{ $assigneeNames ?: '--' }}
     </td>
     <td class="px-3 py-2">
-        @can('update', $task)
-            @php
-                $statusStyles = [
-                    'pending' => ['bg' => '#e2e8f0', 'text' => '#475569'],
-                    'in_progress' => ['bg' => '#fef3c7', 'text' => '#b45309'],
-                    'blocked' => ['bg' => '#fee2e2', 'text' => '#b91c1c'],
-                    'completed' => ['bg' => '#dcfce7', 'text' => '#15803d'],
-                ];
-                $currentStatus = $task->status ?? 'pending';
-                $statusStyle = $statusStyles[$currentStatus] ?? $statusStyles['pending'];
-            @endphp
-            <form id="update-task-{{ $task->id }}" method="POST" action="{{ route('admin.projects.tasks.update', [$project, $task]) }}" class="space-y-2 task-update-form" data-task-id="{{ $task->id }}">
-                @csrf
-                @method('PATCH')
-                <select name="status"
-                        class="w-full inline-flex items-center rounded-full text-xs font-semibold px-3 py-1 border border-transparent appearance-none"
-                        style="background-color: {{ $statusStyle['bg'] }}; color: {{ $statusStyle['text'] }};">
-                    @foreach(['pending','in_progress','blocked','completed'] as $status)
-                        <option value="{{ $status }}" @selected($task->status === $status)>{{ ucfirst(str_replace('_',' ', $status)) }}</option>
-                    @endforeach
-                </select>
-            </form>
-            @can('delete', $task)
-                <form id="delete-task-{{ $task->id }}" method="POST" action="{{ route('admin.projects.tasks.destroy', [$project, $task]) }}" onsubmit="return confirm('Delete this task?');" class="hidden">
-                    @csrf
-                    @method('DELETE')
-                </form>
-            @endcan
-        @else
-            @php
-                $statusStyles = [
-                    'pending' => ['bg' => '#e2e8f0', 'text' => '#475569'],
-                    'in_progress' => ['bg' => '#fef3c7', 'text' => '#b45309'],
-                    'blocked' => ['bg' => '#fee2e2', 'text' => '#b91c1c'],
-                    'completed' => ['bg' => '#dcfce7', 'text' => '#15803d'],
-                ];
-                $currentStatus = $task->status ?? 'pending';
-                $statusStyle = $statusStyles[$currentStatus] ?? $statusStyles['pending'];
-            @endphp
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold gap-2" style="background-color: {{ $statusStyle['bg'] }}; color: {{ $statusStyle['text'] }};">
-                {{ ucfirst(str_replace('_',' ', $currentStatus)) }}
-            </span>
-        @endcan
+        @php
+            $statusStyles = [
+                'pending' => ['bg' => '#e2e8f0', 'text' => '#475569'],
+                'in_progress' => ['bg' => '#fef3c7', 'text' => '#b45309'],
+                'blocked' => ['bg' => '#fee2e2', 'text' => '#b91c1c'],
+                'completed' => ['bg' => '#dcfce7', 'text' => '#15803d'],
+            ];
+            $currentStatus = $task->status ?? 'pending';
+            $statusStyle = $statusStyles[$currentStatus] ?? $statusStyles['pending'];
+        @endphp
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold gap-2" style="background-color: {{ $statusStyle['bg'] }}; color: {{ $statusStyle['text'] }};">
+            {{ ucfirst(str_replace('_',' ', $currentStatus)) }}
+        </span>
     </td>
     <td class="px-3 py-2 text-xs text-slate-600 align-top">
         @php
@@ -87,12 +57,11 @@
     <td class="px-3 py-2 text-right align-top">
         <div class="flex flex-col items-end gap-2 text-xs font-semibold">
             <a href="{{ route('admin.projects.tasks.show', [$project, $task]) }}" class="text-teal-600 hover:text-teal-500">Open Task</a>
-            @can('update', $task)
-                <button type="submit" form="update-task-{{ $task->id }}" class="rounded-full border border-slate-200 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600">
-                    Update
-                </button>
-            @endcan
             @can('delete', $task)
+                <form id="delete-task-{{ $task->id }}" method="POST" action="{{ route('admin.projects.tasks.destroy', [$project, $task]) }}" onsubmit="return confirm('Delete this task?');" class="hidden">
+                    @csrf
+                    @method('DELETE')
+                </form>
                 <button type="submit" form="delete-task-{{ $task->id }}" class="rounded-full border border-rose-200 px-3 py-1 text-rose-600 hover:border-rose-300">
                     Delete
                 </button>

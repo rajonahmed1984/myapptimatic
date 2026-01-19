@@ -71,12 +71,20 @@ class ProjectTaskPolicy
 
     public function update($actor, ProjectTask $task): bool
     {
+        if ($actor instanceof User && $actor->isAdmin()) {
+            return $actor->isMasterAdmin() && $this->view($actor, $task);
+        }
+
         return $this->view($actor, $task);
     }
 
     public function delete($actor, ProjectTask $task): bool
     {
-        if ($actor instanceof User && $actor->isSales()) {
+        if (! ($actor instanceof User)) {
+            return false;
+        }
+
+        if ($actor->isSales()) {
             return false;
         }
 
@@ -84,7 +92,7 @@ class ProjectTaskPolicy
             return false;
         }
 
-        return $this->view($actor, $task);
+        return $actor->isMasterAdmin() && $this->view($actor, $task);
     }
 
     public function comment($actor, ProjectTask $task): bool

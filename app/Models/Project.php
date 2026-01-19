@@ -45,6 +45,11 @@ class Project extends Model
         'contract_original_name',
         'proposal_file_path',
         'proposal_original_name',
+        'contract_amount',
+        'contract_employee_total_earned',
+        'contract_employee_payable',
+        'contract_employee_payout_status',
+        'contract_employee_payout_reference',
     ];
 
     protected $casts = [
@@ -60,6 +65,9 @@ class Project extends Model
         'software_overhead' => 'decimal:2',
         'website_overhead' => 'decimal:2',
         'sales_rep_ids' => 'array',
+        'contract_amount' => 'decimal:2',
+        'contract_employee_total_earned' => 'decimal:2',
+        'contract_employee_payable' => 'decimal:2',
     ];
 
     protected static function booted(): void

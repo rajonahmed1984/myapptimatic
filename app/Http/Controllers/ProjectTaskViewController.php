@@ -86,7 +86,7 @@ class ProjectTaskViewController extends Controller
             'salesReps' => $salesReps,
             'currentActorType' => $identity['type'],
             'currentActorId' => $identity['id'],
-            'canEdit' => $this->canEdit($actor),
+            'canEdit' => $this->canEdit($actor, $task),
             'canPost' => Gate::forUser($actor)->check('comment', $task),
             'updateRoute' => route($routePrefix . '.projects.tasks.update', [$project, $task]),
             'activityRoute' => route($routePrefix . '.projects.tasks.activity', [$project, $task]),
@@ -169,25 +169,9 @@ class ProjectTaskViewController extends Controller
         };
     }
 
-    private function canEdit(object $actor): bool
+    private function canEdit(object $actor, ProjectTask $task): bool
     {
-        if ($actor instanceof Employee) {
-            return true;
-        }
-
-        if (method_exists($actor, 'isAdmin') && $actor->isAdmin()) {
-            return true;
-        }
-
-        if (method_exists($actor, 'isSales') && $actor->isSales()) {
-            return true;
-        }
-
-        if (method_exists($actor, 'isEmployee') && $actor->isEmployee()) {
-            return true;
-        }
-
-        return false;
+        return Gate::forUser($actor)->check('update', $task);
     }
 
     private function assigneeEmployees(object $actor, Project $project)
