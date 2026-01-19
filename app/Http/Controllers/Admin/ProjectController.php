@@ -600,6 +600,8 @@ class ProjectController extends Controller
             'sales_rep_amounts.*' => ['nullable', 'numeric', 'min:0'],
             'employee_ids' => ['array'],
             'employee_ids.*' => ['exists:employees,id'],
+            'contract_employee_amounts' => ['array'],
+            'contract_employee_amounts.*' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $salesRepSync = $this->buildSalesRepSyncData($request, $data['sales_rep_ids'] ?? []);
@@ -610,10 +612,70 @@ class ProjectController extends Controller
                 ->withInput();
         }
 
+        $contractEmployeeTotal = null;
+        $contractEmployeePayable = null;
+        $contractEmployeePayoutStatus = null;
+        $contractEmployeePayoutReference = null;
+
+        $contractEmployeeIds = [];
+        if (! empty($data['employee_ids'])) {
+            $contractEmployeeIds = Employee::whereIn('id', $data['employee_ids'])
+                ->where('employment_type', 'contract')
+                ->pluck('id')
+                ->all();
+        }
+
+        if (! empty($contractEmployeeIds)) {
+            $amounts = $request->input('contract_employee_amounts', []);
+            $errors = [];
+            $contractEmployeeTotal = 0.0;
+
+            foreach ($contractEmployeeIds as $employeeId) {
+                $amount = $amounts[$employeeId] ?? null;
+                if ($amount === null || $amount === '') {
+                    $errors["contract_employee_amounts.{$employeeId}"] = 'Amount is required for contract employees.';
+                    continue;
+                }
+                if (! is_numeric($amount) || (float) $amount < 0) {
+                    $errors["contract_employee_amounts.{$employeeId}"] = 'Amount must be at least 0.';
+                    continue;
+                }
+
+                $contractEmployeeTotal += (float) $amount;
+            }
+
+            if (! empty($errors)) {
+                return back()->withErrors($errors)->withInput();
+            }
+
+            $isComplete = $data['status'] === 'complete';
+            $contractEmployeePayable = $isComplete ? $contractEmployeeTotal : 0.0;
+            $contractEmployeePayoutStatus = $isComplete ? 'payable' : 'earned';
+        } else {
+            $contractEmployeePayoutReference = null;
+        }
+
+        if (! empty($contractEmployeeIds)) {
+            $contractPayload = [
+                'contract_amount' => $contractEmployeeTotal,
+                'contract_employee_total_earned' => $contractEmployeeTotal,
+                'contract_employee_payable' => $contractEmployeePayable,
+                'contract_employee_payout_status' => $contractEmployeePayoutStatus,
+            ];
+        } else {
+            $contractPayload = [
+                'contract_amount' => null,
+                'contract_employee_total_earned' => null,
+                'contract_employee_payable' => null,
+                'contract_employee_payout_status' => null,
+                'contract_employee_payout_reference' => $contractEmployeePayoutReference,
+            ];
+        }
+
         $previousStatus = $project->status;
         $previousCurrency = $project->currency;
         $data['currency'] = strtoupper($data['currency']);
-        $project->update($data);
+        $project->update(array_merge($data, $contractPayload));
 
         if ($previousCurrency !== $project->currency) {
             $project->maintenances()->update([
