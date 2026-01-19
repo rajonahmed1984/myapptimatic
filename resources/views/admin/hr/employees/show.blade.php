@@ -67,7 +67,10 @@
                 <div>
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Avatar</div>
                     <div class="mt-2">
-                        <x-avatar :path="$employee->photo_path" :name="$employee->name" size="h-16 w-16" textSize="text-sm" />
+                        @php
+                            $avatarPath = $employee->photo_path ?: $employee->user?->avatar_path;
+                        @endphp
+                        <x-avatar :path="$avatarPath" :name="$employee->name" size="h-16 w-16" textSize="text-sm" />
                     </div>
                 </div>
                 @if($employee->nid_path)

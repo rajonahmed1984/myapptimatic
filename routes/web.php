@@ -257,12 +257,18 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
+        Route::get('/projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
+            ->name('projects.chat.participants');
         Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
+        Route::get('/projects/{project}/chat/stream', [ProjectChatController::class, 'stream'])
+            ->name('projects.chat.stream');
         Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.messages.store');
         Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
             ->name('projects.chat.read');
+        Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
+            ->name('projects.chat.presence');
         Route::post('/projects/{project}/chat', [ProjectChatController::class, 'store'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.store');
@@ -346,6 +352,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::resource('customers', CustomerController::class);
     Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])->name('customers.impersonate');
     Route::post('customers/{customer}/project-users', [CustomerProjectUserController::class, 'store'])->name('customers.project-users.store');
+    Route::put('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'update'])->name('customers.project-users.update');
+    Route::delete('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'destroy'])->name('customers.project-users.destroy');
     Route::resource('products', ProductController::class)->except(['show']);
     Route::resource('plans', PlanController::class)->except(['show']);
     Route::resource('subscriptions', SubscriptionController::class)->except(['show']);
@@ -397,6 +405,13 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::post('projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
     Route::get('projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
     Route::get('projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
+    Route::get('projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
+        ->name('projects.chat.participants');
+    Route::post('projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
+        ->middleware('throttle:60,1')
+        ->name('projects.chat.presence');
+    Route::get('projects/{project}/chat/stream', [ProjectChatController::class, 'stream'])
+        ->name('projects.chat.stream');
     Route::get('projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
     Route::post('projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
         ->middleware('throttle:10,1')

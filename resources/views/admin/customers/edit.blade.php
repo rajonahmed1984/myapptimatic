@@ -116,6 +116,7 @@
                             <th class="py-2">Email</th>
                             <th class="py-2">Project</th>
                             <th class="py-2">Created</th>
+                            <th class="py-2 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -125,6 +126,32 @@
                                 <td class="py-2">{{ $clientUser->email }}</td>
                                 <td class="py-2">{{ $clientUser->project?->name ?? '—' }}</td>
                                 <td class="py-2">{{ $clientUser->created_at?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="py-2 text-right">
+                                    <button
+                                        type="button"
+                                        onclick="openEditModal({{ json_encode([
+                                            'id' => $clientUser->id,
+                                            'name' => $clientUser->name,
+                                            'email' => $clientUser->email,
+                                            'project_id' => $clientUser->project_id
+                                        ]) }})"
+                                        class="text-teal-600 hover:text-teal-500 mr-3"
+                                    >
+                                        Edit
+                                    </button>
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.customers.project-users.destroy', [$customer, $clientUser]) }}"
+                                        class="inline"
+                                        onsubmit="return confirm('Are you sure you want to delete this project login? This action cannot be undone.');"
+                                    >
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-rose-600 hover:text-rose-500">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -178,4 +205,86 @@
             </div>
         </form>
     </div>
+
+    <!-- Edit Project User Modal -->
+    <div id="editModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-slate-900 bg-opacity-50 transition-opacity" aria-hidden="true" onclick="closeEditModal()"></div>
+
+            <!-- Modal panel -->
+            <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form id="editForm" method="POST" class="p-6">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold text-slate-900">Edit Project Login</h3>
+                        <p class="text-sm text-slate-500 mt-1">Update the project-specific login details</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm text-slate-600">Project</label>
+                            <select id="edit_project_id" name="project_id" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                                <option value="">Select a project</option>
+                                @foreach($projects as $projectOption)
+                                    <option value="{{ $projectOption->id }}">{{ $projectOption->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-sm text-slate-600">Name</label>
+                            <input id="edit_name" name="name" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        </div>
+
+                        <div>
+                            <label class="text-sm text-slate-600">Email</label>
+                            <input id="edit_email" name="email" type="email" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        </div>
+
+                        <div>
+                            <label class="text-sm text-slate-600">Password</label>
+                            <input id="edit_password" name="password" type="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <p class="mt-1 text-xs text-slate-500">Leave blank to keep current password</p>
+                        </div>
+
+                        <div>
+                            <label class="text-sm text-slate-600">Confirm Password</label>
+                            <input id="edit_password_confirmation" name="password_confirmation" type="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex items-center justify-end gap-3">
+                        <button type="button" onclick="closeEditModal()" class="text-sm text-slate-600 hover:text-teal-600">Cancel</button>
+                        <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white hover:bg-teal-600">Update Login</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openEditModal(user) {
+            document.getElementById('editForm').action = "{{ route('admin.customers.project-users.update', [$customer, '__USER_ID__']) }}".replace('__USER_ID__', user.id);
+            document.getElementById('edit_name').value = user.name;
+            document.getElementById('edit_email').value = user.email;
+            document.getElementById('edit_project_id').value = user.project_id;
+            document.getElementById('edit_password').value = '';
+            document.getElementById('edit_password_confirmation').value = '';
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeEditModal();
+            }
+        });
+    </script>
 @endsection

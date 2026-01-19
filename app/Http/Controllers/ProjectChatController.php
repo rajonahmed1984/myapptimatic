@@ -11,9 +11,12 @@ use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Http\Requests\StoreTaskChatMessageRequest;
 use App\Support\ChatPresence;
+use App\Support\ChatMentions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -40,6 +43,9 @@ class ProjectChatController extends Controller
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
         $readReceipts = $this->readReceiptsForMessages($project, $messages, $identity);
         $authorStatuses = ChatPresence::authorStatusesForMessages($messages);
+        $messageMentions = $this->mentionsForMessages($messages);
+        $mentionables = $this->mentionablesForProject($project, $identity);
+        $participantStatuses = $this->participantStatuses($mentionables);
         $allParticipantsReadUpTo = $latestMessageId > 0
             ? $this->allParticipantsReadUpTo($project, $identity)
             : null;
@@ -55,6 +61,7 @@ class ProjectChatController extends Controller
                 'currentAuthorId' => $identity['id'],
                 'readReceipts' => $readReceipts,
                 'authorStatuses' => $authorStatuses,
+                'messageMentions' => $messageMentions,
                 'latestMessageId' => $latestMessageId,
                 'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
             ]);
@@ -68,13 +75,19 @@ class ProjectChatController extends Controller
             'backRoute' => route($routePrefix . '.projects.show', $project),
             'attachmentRouteName' => $attachmentRouteName,
             'messagesUrl' => route($routePrefix . '.projects.chat.messages', $project),
+            'streamUrl' => route($routePrefix . '.projects.chat.stream', $project),
             'postMessagesUrl' => route($routePrefix . '.projects.chat.messages.store', $project),
             'readUrl' => route($routePrefix . '.projects.chat.read', $project),
+            'participantsUrl' => route($routePrefix . '.projects.chat.participants', $project),
+            'presenceUrl' => route($routePrefix . '.projects.chat.presence', $project),
             'currentAuthorType' => $identity['type'],
             'currentAuthorId' => $identity['id'],
             'canPost' => $canPost,
             'readReceipts' => $readReceipts,
             'authorStatuses' => $authorStatuses,
+            'messageMentions' => $messageMentions,
+            'participants' => $mentionables,
+            'participantStatuses' => $participantStatuses,
             'latestMessageId' => $latestMessageId,
             'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
         ]);
@@ -111,6 +124,7 @@ class ProjectChatController extends Controller
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
         $readReceipts = $this->readReceiptsForMessages($project, $messages, $identity);
         $authorStatuses = ChatPresence::authorStatusesForMessages($messages);
+        $messageMentions = $this->mentionsForMessages($messages);
         $latestMessageId = (int) ($project->messages()->max('id') ?? 0);
         $allParticipantsReadUpTo = $latestMessageId > 0
             ? $this->allParticipantsReadUpTo($project, $identity)
@@ -123,6 +137,7 @@ class ProjectChatController extends Controller
             $identity,
             $readReceipts[$message->id] ?? [],
             $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
+            $messageMentions[$message->id] ?? [],
             $latestMessageId,
             $allParticipantsReadUpTo
         ))->values();
@@ -137,6 +152,164 @@ class ProjectChatController extends Controller
                 'next_after_id' => $nextAfterId,
                 'next_before_id' => $nextBeforeId,
             ],
+        ]);
+    }
+
+    public function participants(Request $request, Project $project): JsonResponse
+    {
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $project);
+        $this->touchPresence($request);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        $participants = $this->mentionablesForProject($project, $identity);
+
+        $query = trim((string) $request->query('q', ''));
+        if ($query !== '') {
+            $participants = array_values(array_filter($participants, function ($participant) use ($query) {
+                return stripos((string) ($participant['label'] ?? ''), $query) !== false;
+            }));
+        }
+
+        $limit = min(max((int) $request->query('limit', 20), 1), 50);
+        $participants = array_slice($participants, 0, $limit);
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'items' => $participants,
+            ],
+        ]);
+    }
+
+    public function presence(Request $request, Project $project): JsonResponse
+    {
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $project);
+        $this->touchPresence($request);
+
+        $data = $request->validate([
+            'status' => ['nullable', 'string', Rule::in(['active', 'idle'])],
+        ]);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            abort(403, 'Author identity not available.');
+        }
+
+        $status = $data['status'] ?? 'active';
+        ChatPresence::reportPresence($identity['type'], (int) $identity['id'], $status);
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'status' => $status,
+            ],
+        ]);
+    }
+
+    public function stream(Request $request, Project $project): StreamedResponse
+    {
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $project);
+        $this->touchPresence($request);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        $routePrefix = $this->resolveRoutePrefix($request);
+        $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $mentionables = $this->mentionablesForProject($project, $identity);
+        $participantKeys = array_values(array_filter(array_map(
+            fn ($participant) => $participant['key'] ?? null,
+            $mentionables
+        )));
+
+        $cursor = max(
+            (int) $request->query('after_id', 0),
+            (int) $request->header('Last-Event-ID', 0)
+        );
+
+        return response()->stream(function () use (
+            $project,
+            $identity,
+            $attachmentRouteName,
+            $participantKeys,
+            $cursor
+        ) {
+            $lastId = $cursor;
+            $startedAt = now();
+            $lastPresencePayload = null;
+            $lastPresenceSent = microtime(true);
+            $presenceInterval = 2.0;
+
+            while (true) {
+                if (connection_aborted()) {
+                    break;
+                }
+
+                $messages = $project->messages()
+                    ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor'])
+                    ->where('id', '>', $lastId)
+                    ->orderBy('id')
+                    ->limit(50)
+                    ->get();
+
+                if ($messages->isNotEmpty()) {
+                    $readReceipts = $this->readReceiptsForMessages($project, $messages, $identity);
+                    $authorStatuses = ChatPresence::authorStatusesForMessages($messages);
+                    $messageMentions = $this->mentionsForMessages($messages);
+                    $latestMessageId = (int) ($project->messages()->max('id') ?? $lastId);
+                    $allParticipantsReadUpTo = $latestMessageId > 0
+                        ? $this->allParticipantsReadUpTo($project, $identity)
+                        : null;
+
+                    $items = $messages->map(fn (ProjectMessage $message) => $this->messageItem(
+                        $message,
+                        $project,
+                        $attachmentRouteName,
+                        $identity,
+                        $readReceipts[$message->id] ?? [],
+                        $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
+                        $messageMentions[$message->id] ?? [],
+                        $latestMessageId,
+                        $allParticipantsReadUpTo
+                    ))->values();
+
+                    $lastId = (int) ($messages->max('id') ?? $lastId);
+                    $payload = [
+                        'items' => $items,
+                        'last_id' => $lastId,
+                    ];
+
+                    echo "event: messages\n";
+                    echo "id: {$lastId}\n";
+                    echo 'data: ' . json_encode($payload) . "\n\n";
+                }
+
+                $now = microtime(true);
+                if ($now - $lastPresenceSent >= $presenceInterval && ! empty($participantKeys)) {
+                    $presence = ChatPresence::participantStatuses($participantKeys);
+                    if ($presence !== $lastPresencePayload) {
+                        $lastPresencePayload = $presence;
+                        echo "event: presence\n";
+                        echo 'data: ' . json_encode(['statuses' => $presence]) . "\n\n";
+                    }
+                    $lastPresenceSent = $now;
+                }
+
+                echo ": ping\n\n";
+                @ob_flush();
+                flush();
+
+                if ($startedAt->diffInSeconds(now()) >= 25) {
+                    break;
+                }
+
+                usleep(500000);
+            }
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'X-Accel-Buffering' => 'no',
         ]);
     }
 
@@ -168,11 +341,14 @@ class ProjectChatController extends Controller
             abort(403, 'Author identity not available.');
         }
 
+        $mentions = $this->resolveMentions($project, $identity, $message, $data['mentions'] ?? null);
+
         ProjectMessage::create([
             'project_id' => $project->id,
             'author_type' => $identity['type'],
             'author_id' => $identity['id'],
             'message' => $message,
+            'mentions' => $mentions ?: null,
             'attachment_path' => $attachmentPath,
         ]);
 
@@ -198,6 +374,7 @@ class ProjectChatController extends Controller
                 $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
                 $readReceipts = $this->readReceiptsForMessages($project, collect([$duplicate]), $identity);
                 $authorStatuses = ChatPresence::authorStatusesForMessages(collect([$duplicate]));
+                $messageMentions = $this->mentionsForMessages(collect([$duplicate]));
                 $allParticipantsReadUpTo = $this->allParticipantsReadUpTo($project, $identity);
                 $item = $this->messageItem(
                     $duplicate,
@@ -206,6 +383,7 @@ class ProjectChatController extends Controller
                     $identity,
                     $readReceipts[$duplicate->id] ?? [],
                     $authorStatuses[$duplicate->author_type . ':' . $duplicate->author_id] ?? 'offline',
+                    $messageMentions[$duplicate->id] ?? [],
                     $duplicate->id,
                     $allParticipantsReadUpTo
                 );
@@ -235,11 +413,14 @@ class ProjectChatController extends Controller
             abort(403, 'Author identity not available.');
         }
 
+        $mentions = $this->resolveMentions($project, $identity, $message, $data['mentions'] ?? null);
+
         $messageModel = ProjectMessage::create([
             'project_id' => $project->id,
             'author_type' => $identity['type'],
             'author_id' => $identity['id'],
             'message' => $message,
+            'mentions' => $mentions ?: null,
             'attachment_path' => $attachmentPath,
         ]);
         $messageModel->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor']);
@@ -248,6 +429,7 @@ class ProjectChatController extends Controller
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
         $readReceipts = $this->readReceiptsForMessages($project, collect([$messageModel]), $identity);
         $authorStatuses = ChatPresence::authorStatusesForMessages(collect([$messageModel]));
+        $messageMentions = $this->mentionsForMessages(collect([$messageModel]));
         $allParticipantsReadUpTo = $this->allParticipantsReadUpTo($project, $identity);
         $item = $this->messageItem(
             $messageModel,
@@ -256,6 +438,7 @@ class ProjectChatController extends Controller
             $identity,
             $readReceipts[$messageModel->id] ?? [],
             $authorStatuses[$messageModel->author_type . ':' . $messageModel->author_id] ?? 'offline',
+            $messageMentions[$messageModel->id] ?? [],
             $messageModel->id,
             $allParticipantsReadUpTo
         );
@@ -487,6 +670,247 @@ class ProjectChatController extends Controller
         return $file->storeAs('project-messages/' . $project->id, $fileName, 'public');
     }
 
+    private function resolveMentions(Project $project, array $identity, ?string $message, ?string $mentionsPayload): array
+    {
+        $message = $message !== null ? trim($message) : '';
+        if ($message === '') {
+            return [];
+        }
+
+        $mentionables = $this->mentionablesForProject($project, $identity);
+        $submittedMentions = $this->decodeMentionsPayload($mentionsPayload);
+
+        return ChatMentions::normalize($message, $mentionables, $submittedMentions);
+    }
+
+    private function decodeMentionsPayload(?string $payload): ?array
+    {
+        if (! is_string($payload) || trim($payload) === '') {
+            return null;
+        }
+
+        $decoded = json_decode($payload, true);
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+            return null;
+        }
+
+        return $decoded;
+    }
+
+    private function mentionsForMessages($messages): array
+    {
+        $messages = $messages instanceof \Illuminate\Support\Collection ? $messages : collect($messages);
+        if ($messages->isEmpty()) {
+            return [];
+        }
+
+        $idsByType = [
+            'user' => [],
+            'employee' => [],
+            'sales_rep' => [],
+        ];
+
+        foreach ($messages as $message) {
+            foreach ((array) ($message->mentions ?? []) as $mention) {
+                $type = $this->normalizeAuthorType($mention['type'] ?? '');
+                $id = (int) ($mention['id'] ?? 0);
+                if (! $type || $id <= 0) {
+                    continue;
+                }
+                if (! array_key_exists($type, $idsByType)) {
+                    continue;
+                }
+                $idsByType[$type][] = $id;
+            }
+        }
+
+        $userNames = ! empty($idsByType['user'])
+            ? User::whereIn('id', array_unique($idsByType['user']))->pluck('name', 'id')->all()
+            : [];
+        $employeeNames = ! empty($idsByType['employee'])
+            ? Employee::whereIn('id', array_unique($idsByType['employee']))->pluck('name', 'id')->all()
+            : [];
+        $salesRepNames = ! empty($idsByType['sales_rep'])
+            ? SalesRepresentative::whereIn('id', array_unique($idsByType['sales_rep']))->pluck('name', 'id')->all()
+            : [];
+
+        $mentionsByMessage = [];
+        foreach ($messages as $message) {
+            $matches = [];
+            foreach ((array) ($message->mentions ?? []) as $mention) {
+                $type = $this->normalizeAuthorType($mention['type'] ?? '');
+                $id = (int) ($mention['id'] ?? 0);
+                $label = trim((string) ($mention['label'] ?? ''));
+
+                if (! $type || $id <= 0 || $label === '') {
+                    continue;
+                }
+
+                $display = $label;
+                if ($type === 'employee') {
+                    $display = $employeeNames[$id] ?? $label;
+                } elseif ($type === 'sales_rep') {
+                    $display = $salesRepNames[$id] ?? $label;
+                } else {
+                    $display = $userNames[$id] ?? $label;
+                }
+
+                $matches[] = [
+                    'label' => $label,
+                    'display' => $display,
+                ];
+            }
+
+            $mentionsByMessage[$message->id] = $matches;
+        }
+
+        return $mentionsByMessage;
+    }
+
+    private function mentionablesForProject(Project $project, array $identity): array
+    {
+        $userIds = $project->projectClients()->pluck('users.id')->all();
+        $employeeIds = $project->employees()->pluck('employees.id')->all();
+        $salesRepIds = $project->salesRepresentatives()->pluck('sales_representatives.id')->all();
+
+        $authors = ProjectMessage::query()
+            ->where('project_id', $project->id)
+            ->select('author_type', 'author_id')
+            ->distinct()
+            ->get();
+
+        foreach ($authors as $author) {
+            $type = $this->normalizeAuthorType($author->author_type ?? '');
+            $id = (int) ($author->author_id ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            if ($type === 'employee') {
+                $employeeIds[] = $id;
+            } elseif ($type === 'sales_rep') {
+                $salesRepIds[] = $id;
+            } else {
+                $userIds[] = $id;
+            }
+        }
+
+        if (! empty($identity['id'])) {
+            if ($identity['type'] === 'employee') {
+                $employeeIds[] = (int) $identity['id'];
+            } elseif ($identity['type'] === 'sales_rep') {
+                $salesRepIds[] = (int) $identity['id'];
+            } else {
+                $userIds[] = (int) $identity['id'];
+            }
+        }
+
+        $users = ! empty($userIds)
+            ? User::whereIn('id', array_unique($userIds))->get(['id', 'name', 'role'])
+            : collect();
+        $employees = ! empty($employeeIds)
+            ? Employee::whereIn('id', array_unique($employeeIds))->get(['id', 'name'])
+            : collect();
+        $salesReps = ! empty($salesRepIds)
+            ? SalesRepresentative::whereIn('id', array_unique($salesRepIds))->get(['id', 'name'])
+            : collect();
+
+        $participants = [];
+
+        foreach ($users as $user) {
+            $participants[] = [
+                'key' => 'user:' . $user->id,
+                'type' => 'user',
+                'id' => $user->id,
+                'label' => $user->name,
+                'role' => $this->userRoleLabel($user),
+            ];
+        }
+
+        foreach ($employees as $employee) {
+            $participants[] = [
+                'key' => 'employee:' . $employee->id,
+                'type' => 'employee',
+                'id' => $employee->id,
+                'label' => $employee->name,
+                'role' => 'Employee',
+            ];
+        }
+
+        foreach ($salesReps as $salesRep) {
+            $participants[] = [
+                'key' => 'sales_rep:' . $salesRep->id,
+                'type' => 'sales_rep',
+                'id' => $salesRep->id,
+                'label' => $salesRep->name,
+                'role' => 'Sales Rep',
+            ];
+        }
+
+        usort($participants, fn ($a, $b) => strcasecmp($a['label'], $b['label']));
+
+        return $participants;
+    }
+
+    private function participantStatuses(array $participants): array
+    {
+        $keys = array_values(array_filter(array_map(
+            fn ($participant) => $participant['key'] ?? null,
+            $participants
+        )));
+
+        $statuses = ChatPresence::participantStatuses($keys);
+
+        foreach ($keys as $key) {
+            if (! array_key_exists($key, $statuses)) {
+                $statuses[$key] = 'offline';
+            }
+        }
+
+        return $statuses;
+    }
+
+    private function normalizeAuthorType(?string $type): string
+    {
+        $type = strtolower((string) $type);
+        if ($type === 'salesrep') {
+            return 'sales_rep';
+        }
+
+        return $type;
+    }
+
+    private function userRoleLabel(User $user): string
+    {
+        if ($user->isClientProject() || $user->isClient()) {
+            return 'Client';
+        }
+
+        if ($user->isAdmin()) {
+            return 'Admin';
+        }
+
+        if ($user->isSales()) {
+            return 'Sales';
+        }
+
+        if ($user->isSupport()) {
+            return 'Support';
+        }
+
+        return 'User';
+    }
+
+    private function messageSnippet(ProjectMessage $message): string
+    {
+        $text = trim((string) ($message->message ?? ''));
+        if ($text === '') {
+            return $message->attachment_path ? 'Attachment' : '';
+        }
+
+        return Str::limit($text, 120);
+    }
+
     private function messageItem(
         ProjectMessage $message,
         Project $project,
@@ -494,6 +918,7 @@ class ProjectChatController extends Controller
         array $identity,
         array $seenBy,
         string $authorStatus,
+        array $mentionMatches,
         int $latestMessageId,
         ?array $allParticipantsReadUpTo
     ): array {
@@ -507,9 +932,17 @@ class ProjectChatController extends Controller
                 'currentAuthorId' => $identity['id'],
                 'seenBy' => $seenBy,
                 'authorStatus' => $authorStatus,
+                'mentionMatches' => $mentionMatches,
                 'latestMessageId' => $latestMessageId,
                 'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
             ])->render(),
+            'meta' => [
+                'author' => $message->authorName(),
+                'author_type' => $message->author_type,
+                'author_id' => $message->author_id,
+                'snippet' => $this->messageSnippet($message),
+                'project' => $project->name,
+            ],
         ];
     }
 

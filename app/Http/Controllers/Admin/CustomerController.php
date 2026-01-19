@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountingEntry;
 use App\Models\Customer;
 use App\Models\EmailTemplate;
 use App\Models\SystemLog;
@@ -14,6 +15,7 @@ use App\Models\Setting;
 use App\Http\Requests\StoreClientUserRequest;
 use App\Enums\Role;
 use App\Support\Branding;
+use App\Support\Currency;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use Illuminate\Http\Request;
@@ -228,11 +230,58 @@ class CustomerController extends Controller
                 ->get();
         }
 
+        $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($currencyCode)) {
+            $currencyCode = Currency::DEFAULT;
+        }
+        $currencySymbol = Currency::symbol($currencyCode);
+
+        $statusDefinitions = [
+            ['key' => 'paid', 'label' => 'Paid', 'statuses' => ['paid']],
+            ['key' => 'draft', 'label' => 'Draft', 'statuses' => ['draft']],
+            ['key' => 'unpaid_due', 'label' => 'Unpaid/Due', 'statuses' => ['unpaid', 'overdue']],
+            ['key' => 'cancelled', 'label' => 'Cancelled', 'statuses' => ['cancelled']],
+            ['key' => 'refunded', 'label' => 'Refunded', 'statuses' => ['refunded']],
+            ['key' => 'collections', 'label' => 'Collections', 'statuses' => ['collections']],
+        ];
+
+        $invoiceStatusSummary = [];
+        foreach ($statusDefinitions as $definition) {
+            $filtered = $customer->invoices->whereIn('status', $definition['statuses']);
+            $invoiceStatusSummary[] = [
+                'key' => $definition['key'],
+                'label' => $definition['label'],
+                'count' => $filtered->count(),
+                'amount' => (float) $filtered->sum('total'),
+            ];
+        }
+
+        $grossRevenue = (float) AccountingEntry::query()
+            ->where('customer_id', $customer->id)
+            ->where('type', 'payment')
+            ->sum('amount');
+        $clientExpenses = (float) AccountingEntry::query()
+            ->where('customer_id', $customer->id)
+            ->where('type', 'expense')
+            ->sum('amount');
+        $creditBalance = (float) AccountingEntry::query()
+            ->where('customer_id', $customer->id)
+            ->where('type', 'credit')
+            ->sum('amount');
+        $netIncome = $grossRevenue - $clientExpenses;
+
         return view('admin.customers.show', [
             'customer' => $customer,
             'tab' => $tab,
             'activityLogs' => $activityLogs,
             'emailLogs' => $emailLogs,
+            'invoiceStatusSummary' => $invoiceStatusSummary,
+            'grossRevenue' => $grossRevenue,
+            'clientExpenses' => $clientExpenses,
+            'netIncome' => $netIncome,
+            'creditBalance' => $creditBalance,
+            'currencyCode' => $currencyCode,
+            'currencySymbol' => $currencySymbol,
         ]);
     }
 

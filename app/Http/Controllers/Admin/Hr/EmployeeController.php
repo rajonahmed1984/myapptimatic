@@ -48,6 +48,7 @@ class EmployeeController extends Controller
 
         $userId = $data['user_id'] ?? null;
         $passwordInput = $data['user_password'] ?? null;
+        $linkedUser = null;
 
         if (! $userId && $passwordInput) {
             $existingUser = User::query()->where('email', $data['email'])->first();
@@ -66,6 +67,9 @@ class EmployeeController extends Controller
             ]);
 
             $userId = $user->id;
+            $linkedUser = $user;
+        } elseif ($userId) {
+            $linkedUser = User::query()->find($userId);
         }
 
         $employeeData = collect($data)->only([
@@ -98,6 +102,8 @@ class EmployeeController extends Controller
         $uploadPaths = $this->handleUploads($request);
         if (! empty($uploadPaths)) {
             $employee->update($uploadPaths);
+        } elseif (! $request->hasFile('photo') && $linkedUser?->avatar_path) {
+            $employee->update(['photo_path' => $linkedUser->avatar_path]);
         }
 
         EmployeeCompensation::create([
@@ -125,6 +131,7 @@ class EmployeeController extends Controller
 
     public function update(Request $request, Employee $employee): RedirectResponse
     {
+        $originalUserId = $employee->user_id;
         $data = $request->validate([
             'user_id' => ['nullable', 'exists:users,id'],
             'manager_id' => ['nullable', 'exists:employees,id'],
@@ -147,6 +154,7 @@ class EmployeeController extends Controller
 
         $userId = $data['user_id'] ?? $employee->user_id;
         $passwordInput = $data['user_password'] ?? null;
+        $linkedUser = null;
 
         if ($userId) {
             $user = User::query()->find($userId);
@@ -179,6 +187,7 @@ class EmployeeController extends Controller
                 }
 
                 $user->update($updates);
+                $linkedUser = $user;
             }
         } elseif ($passwordInput) {
             $existingUser = User::query()->where('email', $employee->email)->first();
@@ -197,11 +206,17 @@ class EmployeeController extends Controller
             ]);
 
             $employee->update(['user_id' => $user->id]);
+            $linkedUser = $user;
         }
 
         $uploadPaths = $this->handleUploads($request);
         if (! empty($uploadPaths)) {
             $employee->update($uploadPaths);
+        } elseif (! $request->hasFile('photo')
+            && $linkedUser
+            && $linkedUser->avatar_path
+            && $originalUserId !== $linkedUser->id) {
+            $employee->update(['photo_path' => $linkedUser->avatar_path]);
         }
 
         return redirect()->route('admin.hr.employees.index')
@@ -218,7 +233,7 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee): View
     {
-        $employee->load(['manager:id,name', 'user:id,name,email', 'activeCompensation']);
+        $employee->load(['manager:id,name', 'user:id,name,email,avatar_path', 'activeCompensation']);
 
         $comp = $employee->activeCompensation;
         $summary = [

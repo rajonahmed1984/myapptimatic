@@ -12,7 +12,12 @@ class ProjectMessage extends Model
         'author_type',
         'author_id',
         'message',
+        'mentions',
         'attachment_path',
+    ];
+
+    protected $casts = [
+        'mentions' => 'array',
     ];
 
     public function project(): BelongsTo

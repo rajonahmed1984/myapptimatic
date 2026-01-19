@@ -1,6 +1,7 @@
 @php
     $readReceipts = $readReceipts ?? [];
     $authorStatuses = $authorStatuses ?? [];
+    $messageMentions = $messageMentions ?? [];
     $latestMessageId = $latestMessageId ?? ($messages->last()?->id ?? 0);
     $allParticipantsReadUpTo = $allParticipantsReadUpTo ?? null;
 @endphp
@@ -13,6 +14,7 @@
         'currentAuthorId' => $currentAuthorId,
         'seenBy' => $readReceipts[$message->id] ?? [],
         'authorStatus' => $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
+        'mentionMatches' => $messageMentions[$message->id] ?? [],
         'latestMessageId' => $latestMessageId,
         'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
     ])

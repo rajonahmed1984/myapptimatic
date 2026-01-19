@@ -2,26 +2,47 @@
     $isOwn = $message->author_type === $currentAuthorType
         && (string) $message->author_id === (string) $currentAuthorId;
     $safeMessage = $message->message !== null ? e($message->message) : '';
-    $linkedMessage = $safeMessage !== ''
-        ? preg_replace('~(https?://[^\\s<]+)~', '<a href="$1" class="text-teal-600 hover:text-teal-500 underline" target="_blank" rel="noopener">$1</a>', $safeMessage)
+    $mentionMatches = $mentionMatches ?? [];
+    $formattedMessage = $safeMessage;
+    if ($formattedMessage !== '' && ! empty($mentionMatches)) {
+        usort($mentionMatches, function ($left, $right) {
+            return mb_strlen((string) ($right['label'] ?? '')) <=> mb_strlen((string) ($left['label'] ?? ''));
+        });
+
+        foreach ($mentionMatches as $mention) {
+            $label = trim((string) ($mention['label'] ?? ''));
+            if ($label === '') {
+                continue;
+            }
+
+            $display = trim((string) ($mention['display'] ?? $label));
+            $escapedDisplay = e($display);
+            $pattern = '/(^|\\s)@' . preg_quote($label, '/') . '(?=\\s|$|[[:punct:]])/iu';
+            $replacement = '$1<span class="rounded bg-amber-100 px-1 text-amber-700 font-semibold chat-mention">@' . $escapedDisplay . '</span>';
+            $formattedMessage = preg_replace($pattern, $replacement, $formattedMessage);
+        }
+    }
+
+    $linkedMessage = $formattedMessage !== ''
+        ? preg_replace('~(https?://[^\\s<]+)~', '<a href="$1" class="text-teal-600 hover:text-teal-500 underline" target="_blank" rel="noopener">$1</a>', $formattedMessage)
         : '';
     $seenBy = $seenBy ?? [];
     $authorStatus = $authorStatus ?? 'offline';
-    $statusDotClass = $authorStatus === 'online'
+    $statusDotClass = $authorStatus === 'active'
         ? 'bg-emerald-500'
-        : ($authorStatus === 'away' ? 'bg-amber-400' : 'bg-rose-500');
-    $statusLabel = $authorStatus === 'online'
-        ? 'Online'
-        : ($authorStatus === 'away' ? 'Away' : 'Offline');
+        : ($authorStatus === 'idle' ? 'bg-amber-400' : 'bg-slate-400');
+    $statusLabel = $authorStatus === 'active'
+        ? 'Active'
+        : ($authorStatus === 'idle' ? 'Idle' : 'Offline');
     $latestMessageId = $latestMessageId ?? 0;
     $allParticipantsReadUpTo = $allParticipantsReadUpTo ?? null;
     $showLatestMeta = $message->id === $latestMessageId;
 @endphp
-<div class="flex {{ $isOwn ? 'justify-end' : 'justify-start' }}">
+<div class="flex {{ $isOwn ? 'justify-end' : 'justify-start' }}" data-message-id="{{ $message->id }}">
     <div class="max-w-2xl rounded-2xl border border-slate-200 bg-white/90 p-3 text-sm text-slate-700">
         <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
             <span class="flex items-center gap-2 font-semibold text-slate-700">
-                <span class="h-2 w-2 rounded-full {{ $statusDotClass }}" title="{{ $statusLabel }}"></span>
+                <span class="h-2 w-2 rounded-full {{ $statusDotClass }}" title="{{ $statusLabel }}" data-presence-dot data-presence-key="{{ $message->author_type }}:{{ $message->author_id }}"></span>
                 {{ $message->authorName() }}
             </span>
             <span>{{ $message->authorTypeLabel() }}</span>

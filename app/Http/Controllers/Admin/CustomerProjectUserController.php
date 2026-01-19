@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProjectClientUserRequest;
+use App\Http\Requests\UpdateProjectClientUserRequest;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\User;
@@ -39,5 +40,62 @@ class CustomerProjectUserController extends Controller
 
         return redirect()->route('admin.customers.edit', $customer)
             ->with('status', 'Project client user created.');
+    }
+
+    public function update(UpdateProjectClientUserRequest $request, Customer $customer, User $user)
+    {
+        // Verify user belongs to this customer and is a project client
+        if ($user->customer_id !== $customer->id || $user->role !== Role::CLIENT_PROJECT) {
+            abort(404);
+        }
+
+        $data = $request->validated();
+        $project = Project::findOrFail($data['project_id']);
+
+        if ($project->customer_id !== $customer->id) {
+            abort(404);
+        }
+
+        $updateData = [
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'project_id' => $project->id,
+        ];
+
+        // Only update password if provided
+        if (!empty($data['password'])) {
+            $updateData['password'] = Hash::make($data['password']);
+        }
+
+        $user->update($updateData);
+
+        SystemLogger::write('activity', 'Project client login updated.', [
+            'customer_id' => $customer->id,
+            'project_id' => $project->id,
+            'user_id' => $user->id,
+        ], $request->user()?->id, $request->ip());
+
+        return redirect()->route('admin.customers.edit', $customer)
+            ->with('status', 'Project client user updated.');
+    }
+
+    public function destroy(Customer $customer, User $user)
+    {
+        // Verify user belongs to this customer and is a project client
+        if ($user->customer_id !== $customer->id || $user->role !== Role::CLIENT_PROJECT) {
+            abort(404);
+        }
+
+        SystemLogger::write('activity', 'Project client login deleted.', [
+            'customer_id' => $customer->id,
+            'project_id' => $user->project_id,
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+        ], request()->user()?->id, request()->ip());
+
+        $user->delete();
+
+        return redirect()->route('admin.customers.edit', $customer)
+            ->with('status', 'Project client user deleted.');
     }
 }

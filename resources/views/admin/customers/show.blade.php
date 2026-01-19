@@ -4,6 +4,14 @@
 @section('page-title', 'Customer Details')
 
 @section('content')
+    @php
+        $currencySymbol = $currencySymbol ?? '';
+        $currencyCode = $currencyCode ?? '';
+        $formatCurrency = function ($amount) use ($currencySymbol, $currencyCode) {
+            $formatted = number_format((float) ($amount ?? 0), 2);
+            return "{$currencySymbol}{$formatted}{$currencyCode}";
+        };
+    @endphp
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <div class="section-label">Customer</div>
@@ -34,7 +42,7 @@
         @include('admin.customers.partials.tabs', ['customer' => $customer, 'activeTab' => $tab])
 
         @if($tab === 'summary')
-            <div class="mt-6 grid gap-4 md:grid-cols-2 text-sm text-slate-600">
+            <div class="mt-6 grid gap-4 md:grid-cols-3 text-sm text-slate-600">
                 <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Profile</div>
                     <div class="mt-2">Company: {{ $customer->company_name ?: '--' }}</div>
@@ -50,52 +58,80 @@
                     <div class="mt-1">Invoices: {{ $customer->invoices->count() }}</div>
                     <div class="mt-1">Tickets: {{ $customer->supportTickets->count() }}</div>
                 </div>
-            </div>
-
-            <div class="mt-6 grid gap-4 md:grid-cols-2">
                 <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Documents</div>
-                    <div class="mt-3 grid gap-4 md:grid-cols-3 text-sm text-slate-600">
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Avatar</div>
+                        <div class="mt-2">
+                            <x-avatar :path="$customer->avatar_path" :name="$customer->name" size="h-16 w-16" textSize="text-sm" />
+                        </div>
+                    </div>
+                    @if($customer->nid_path)
+                        @php
+                            $nidIsImage = \Illuminate\Support\Str::endsWith(strtolower($customer->nid_path), ['.jpg', '.jpeg', '.png', '.webp']);
+                            $nidUrl = route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'nid']);
+                        @endphp
                         <div>
-                            <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Avatar</div>
-                            <div class="mt-2">
-                                <x-avatar :path="$customer->avatar_path" :name="$customer->name" size="h-16 w-16" textSize="text-sm" />
+                            <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">NID</div>
+                            <div class="mt-2 flex items-center gap-3">
+                                @if($nidIsImage)
+                                    <img src="{{ $nidUrl }}" alt="NID" class="h-16 w-20 rounded-lg object-cover border border-slate-200">
+                                @else
+                                    <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                                @endif
+                                <a href="{{ $nidUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
                             </div>
                         </div>
-                        @if($customer->nid_path)
-                            @php
-                                $nidIsImage = \Illuminate\Support\Str::endsWith(strtolower($customer->nid_path), ['.jpg', '.jpeg', '.png', '.webp']);
-                                $nidUrl = route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'nid']);
-                            @endphp
-                            <div>
-                                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">NID</div>
-                                <div class="mt-2 flex items-center gap-3">
-                                    @if($nidIsImage)
-                                        <img src="{{ $nidUrl }}" alt="NID" class="h-16 w-20 rounded-lg object-cover border border-slate-200">
-                                    @else
-                                        <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
-                                    @endif
-                                    <a href="{{ $nidUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
-                                </div>
+                    @endif
+                    @if($customer->cv_path)
+                        @php
+                            $cvUrl = route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'cv']);
+                        @endphp
+                        <div>
+                            <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">CV</div>
+                            <div class="mt-2 flex items-center gap-3">
+                                <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                                <a href="{{ $cvUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
                             </div>
-                        @endif
-                        @if($customer->cv_path)
-                            @php
-                                $cvUrl = route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'cv']);
-                            @endphp
-                            <div>
-                                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">CV</div>
-                                <div class="mt-2 flex items-center gap-3">
-                                    <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
-                                    <a href="{{ $cvUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
-                                </div>
-                            </div>
-                        @endif
-                    </div>
+                        </div>
+                    @endif
                 </div>
             </div>
 
-            <div class="mt-6 grid gap-4 lg:grid-cols-2">
+            <div class="mt-6 grid gap-4 md:grid-cols-2">                
+                <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Invoice status & Income</div>
+                    <div class="mt-4 space-y-3 text-sm text-slate-600">
+                        @foreach($invoiceStatusSummary as $status)
+                            <!--div-- class="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                                <div class="uppercase tracking-[0.2em] text-[11px] text-slate-400">{{ $status['label'] }}</div>
+                                <div class="mt-1 text-2xl font-semibold text-slate-900">{{ $status['count'] }}</div>
+                                <div class="text-[11px] text-slate-500">{{ $formatCurrency($status['amount']) }}</div>
+                            </!--div-->
+                            <div class="flex items-center justify-between">
+                                <div>{{ $status['label'] }} ( {{ $status['count'] }} )</div>
+                                <div class="font-semibold text-slate-900">{{ $formatCurrency($status['amount']) }}</div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="mt-4 space-y-3 text-sm text-slate-600">
+                        <div class="flex items-center justify-between">
+                            <div>Gross Revenue</div>
+                            <div class="font-semibold text-slate-900">{{ $formatCurrency($grossRevenue) }}</div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>Client Expenses</div>
+                            <div class="font-semibold text-slate-900">{{ $formatCurrency($clientExpenses) }}</div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>Net Income</div>
+                            <div class="font-semibold text-emerald-600">{{ $formatCurrency($netIncome) }}</div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>Credit Balance</div>
+                            <div class="font-semibold text-slate-900">{{ $formatCurrency($creditBalance) }}</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Recent Invoices</div>
                     <div class="mt-3 space-y-2 text-sm">
@@ -114,6 +150,14 @@
                         @endforelse
                     </div>
                 </div>
+            </div>
+
+            
+
+           
+
+            <div class="mt-6 grid gap-4 lg:grid-cols-1">
+                
 
                 <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Recent Tickets</div>
@@ -252,7 +296,9 @@
                         @forelse($customer->invoices as $invoice)
                             <tr class="border-b border-slate-100">
                                 <td class="px-4 py-3 font-medium text-slate-900">{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ ucfirst($invoice->status) }}</td>
+                                <td class="px-4 py-3">
+                                    <x-status-badge :status="$invoice->status" :label="ucfirst($invoice->status)" />
+                                </td>
                                 <td class="px-4 py-3 text-slate-600">{{ $invoice->currency }} {{ $invoice->total }}</td>
                                 <td class="px-4 py-3 text-slate-500">{{ $invoice->issue_date?->format($globalDateFormat) ?? '--' }}</td>
                                 <td class="px-4 py-3 text-slate-500">{{ $invoice->due_date?->format($globalDateFormat) ?? '--' }}</td>
