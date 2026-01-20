@@ -39,7 +39,7 @@ class TrackEmployeeActivity
         $sessionId = $request->session()->getId();
 
         $lastUpdate = $request->session()->get('employee_activity_last_update');
-        if ($lastUpdate && $now->diffInSeconds($lastUpdate) < 60) {
+        if ($lastUpdate && $lastUpdate->diffInSeconds($now) < 60) {
             return;
         }
 
@@ -94,7 +94,7 @@ class TrackEmployeeActivity
             }
 
             $lastSeen = $session->last_seen_at ?? $session->login_at ?? $now;
-            $delta = $now->diffInSeconds($lastSeen);
+            $delta = $lastSeen->diffInSeconds($now);
 
             if ($delta > 0 && $delta <= 300) {
                 $session->active_seconds = ($session->active_seconds ?? 0) + $delta;

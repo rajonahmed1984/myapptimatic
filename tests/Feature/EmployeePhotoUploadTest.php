@@ -39,6 +39,9 @@ class EmployeePhotoUploadTest extends TestCase
             'work_mode' => 'remote',
             'join_date' => now()->toDateString(),
             'status' => 'active',
+            'salary_type' => 'monthly',
+            'currency' => 'BDT',
+            'basic_pay' => 1000,
             'photo' => UploadedFile::fake()->image('photo.jpg'),
         ]);
 

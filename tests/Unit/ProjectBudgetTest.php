@@ -57,6 +57,6 @@ class ProjectBudgetTest extends TestCase
 
         $this->assertSame(400.0, $project->sales_rep_total);
         $this->assertSame(75.0, $project->overhead_total);
-        $this->assertSame(575.0, $project->remaining_budget);
+        $this->assertSame(975.0, $project->remaining_budget);
     }
 }

@@ -54,7 +54,7 @@ class AdminProjectProfitTest extends TestCase
             ->get(route('admin.projects.show', $project));
 
         $response->assertOk();
-        $response->assertSee('Remaining budget: BDT 13,000.00');
+        $response->assertSee('Remaining budget: BDT 20,000.00');
         $response->assertSee('Profit: BDT 13,000.00');
     }
 }

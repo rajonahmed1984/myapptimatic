@@ -57,8 +57,7 @@ class ProjectTaskPolicy
 
         if ($actor instanceof Employee) {
             return $project->employees()->whereKey($actor->id)->exists() ||
-                ($task->assigned_type === 'employee' && $task->assigned_id === $actor->id) ||
-                $task->customer_visible;
+                ($task->assigned_type === 'employee' && $task->assigned_id === $actor->id);
         }
 
         return false;

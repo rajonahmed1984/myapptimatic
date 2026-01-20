@@ -6,7 +6,8 @@ use App\Models\Employee;
 use App\Models\EmployeeCompensation;
 use App\Models\EmployeeWorkSession;
 use App\Models\User;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -18,7 +19,7 @@ class EmployeeWorkSessionTest extends TestCase
     #[Test]
     public function part_time_remote_ping_counts_active_time_within_idle_cutoff(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-04-02 09:00:00'));
+        Date::setTestNow(Carbon::parse('2026-04-02 09:00:00'));
 
         [$user, $employee] = $this->makeEmployee([
             'employment_type' => 'part_time',
@@ -32,7 +33,7 @@ class EmployeeWorkSessionTest extends TestCase
             ->post(route('employee.work-sessions.start'))
             ->assertOk();
 
-        Carbon::setTestNow(Carbon::parse('2026-04-02 09:10:00'));
+        Date::setTestNow(Carbon::parse('2026-04-02 09:10:00'));
 
         $this->actingAs($user, 'employee')
             ->post(route('employee.work-sessions.ping'))
@@ -45,7 +46,7 @@ class EmployeeWorkSessionTest extends TestCase
     #[Test]
     public function idle_gap_at_or_above_fifteen_minutes_is_not_counted(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-04-02 09:00:00'));
+        Date::setTestNow(Carbon::parse('2026-04-02 09:00:00'));
 
         [$user] = $this->makeEmployee([
             'employment_type' => 'part_time',
@@ -56,7 +57,7 @@ class EmployeeWorkSessionTest extends TestCase
             ->post(route('employee.work-sessions.start'))
             ->assertOk();
 
-        Carbon::setTestNow(Carbon::parse('2026-04-02 09:20:00'));
+        Date::setTestNow(Carbon::parse('2026-04-02 09:20:00'));
 
         $this->actingAs($user, 'employee')
             ->post(route('employee.work-sessions.ping'))
@@ -65,7 +66,7 @@ class EmployeeWorkSessionTest extends TestCase
         $session = EmployeeWorkSession::first();
         $this->assertSame(0, (int) $session->active_seconds);
 
-        Carbon::setTestNow(Carbon::parse('2026-04-02 09:25:00'));
+        Date::setTestNow(Carbon::parse('2026-04-02 09:25:00'));
 
         $this->actingAs($user, 'employee')
             ->post(route('employee.work-sessions.ping'))
@@ -78,7 +79,7 @@ class EmployeeWorkSessionTest extends TestCase
     #[Test]
     public function full_time_remote_summary_returns_required_seconds(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-04-02 10:00:00'));
+        Date::setTestNow(Carbon::parse('2026-04-02 10:00:00'));
 
         [$user] = $this->makeEmployee([
             'employment_type' => 'full_time',
@@ -95,7 +96,7 @@ class EmployeeWorkSessionTest extends TestCase
     #[Test]
     public function daily_summary_generation_is_proportional_and_capped(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-04-02 08:00:00'));
+        Date::setTestNow(Carbon::parse('2026-04-02 08:00:00'));
 
         [$user, $employee] = $this->makeEmployee([
             'employment_type' => 'part_time',
@@ -118,7 +119,7 @@ class EmployeeWorkSessionTest extends TestCase
 
         $this->assertDatabaseHas('employee_work_summaries', [
             'employee_id' => $employee->id,
-            'work_date' => '2026-04-01',
+            'work_date' => '2026-04-01 00:00:00',
             'active_seconds' => 21600,
             'required_seconds' => 14400,
             'generated_salary_amount' => 400.00,
@@ -128,7 +129,7 @@ class EmployeeWorkSessionTest extends TestCase
     #[Test]
     public function non_remote_employees_cannot_start_work_sessions(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-04-02 11:00:00'));
+        Date::setTestNow(Carbon::parse('2026-04-02 11:00:00'));
 
         [$user] = $this->makeEmployee([
             'employment_type' => 'full_time',
@@ -162,5 +163,12 @@ class EmployeeWorkSessionTest extends TestCase
         ], $compOverrides));
 
         return [$user, $employee];
+    }
+
+    protected function tearDown(): void
+    {
+        Date::setTestNow();
+
+        parent::tearDown();
     }
 }

@@ -11,6 +11,19 @@
 - Enforced subtask permissions via policy checks in the controller.
 - Cron endpoint now requires signed URLs (token still required); settings show the signed URL.
 - Added chat read-state endpoint and infinite-scroll loading for chat/activity history.
+- Fixed signed time-delta accumulation for work session/activity tracking under Carbon 3.
+- Added `diagnostics:integrity` command for orphaned data scans with tests.
+- Added client task detail view test to ensure subtask completion controls stay hidden.
+- Tightened employee task view permissions so unassigned employees cannot access other projects' visible tasks (with test coverage).
+- Added client invoice access tests to confirm same-customer restrictions.
+- Added commission payout idempotency coverage for project completion.
+- Added client checkout workflow tests for paid and unpaid invoices.
+- Added admin invoice status update tests for paid/overdue timestamps.
+- Added sales rep negative-access coverage for unassigned project tasks.
+- Added license verification tests for expiry, inactive status, domain binding, and signature enforcement.
+- Added project chat API stability tests and stale session closure command coverage.
+- Added upload coverage for project chat attachments and support ticket attachments.
+- Added expense validation coverage for inactive categories.
 
 ## Deploy / Notes
 1. Run `php artisan migrate` to apply new tables/indexes (including `invoice_sequences`).

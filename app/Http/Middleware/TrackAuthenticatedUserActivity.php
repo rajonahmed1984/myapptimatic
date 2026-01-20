@@ -64,7 +64,7 @@ class TrackAuthenticatedUserActivity
 
             // Check throttle: only update if 60+ seconds since last update
             $lastUpdate = session(self::LAST_HEARTBEAT_KEY, $now);
-            $deltaSinceLastUpdate = $now->diffInSeconds($lastUpdate);
+        $deltaSinceLastUpdate = $lastUpdate->diffInSeconds($now);
 
             if ($deltaSinceLastUpdate < self::HEARTBEAT_THROTTLE_SECONDS) {
                 return; // Too soon, skip update
@@ -75,7 +75,7 @@ class TrackAuthenticatedUserActivity
 
             // Calculate activity delta
             $lastSeen = $session->last_seen_at;
-            $delta = $now->diffInSeconds($lastSeen);
+            $delta = $lastSeen->diffInSeconds($now);
 
             // Only count active time if within inactivity cutoff (0 to 5 minutes)
             if ($delta > 0 && $delta <= self::INACTIVITY_CUTOFF_SECONDS) {

@@ -61,6 +61,70 @@ class ProjectTaskVisibilityTest extends TestCase
         });
     }
 
+    #[Test]
+    public function employee_cannot_view_tasks_on_unassigned_project_even_if_visible(): void
+    {
+        [$project, $visibleTask, $hiddenTask, $employeeUser] = $this->setupProjectWithMembers();
+
+        $otherCustomer = Customer::create([
+            'name' => 'Other Client',
+        ]);
+
+        $otherProject = Project::create([
+            'name' => 'Other Project',
+            'customer_id' => $otherCustomer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'total_budget' => 1000,
+            'initial_payment_amount' => 100,
+            'currency' => 'USD',
+        ]);
+
+        $otherTask = ProjectTask::create([
+            'project_id' => $otherProject->id,
+            'title' => 'Other Visible Task',
+            'status' => 'pending',
+            'customer_visible' => true,
+        ]);
+
+        $response = $this->actingAs($employeeUser, 'employee')
+            ->get(route('employee.projects.tasks.show', [$otherProject, $otherTask]));
+
+        $response->assertStatus(403);
+    }
+
+    #[Test]
+    public function sales_rep_cannot_view_tasks_on_unassigned_project(): void
+    {
+        [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser] = $this->setupProjectWithMembers();
+
+        $otherCustomer = Customer::create([
+            'name' => 'Other Client',
+        ]);
+
+        $otherProject = Project::create([
+            'name' => 'Other Project',
+            'customer_id' => $otherCustomer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'total_budget' => 1000,
+            'initial_payment_amount' => 100,
+            'currency' => 'USD',
+        ]);
+
+        $otherTask = ProjectTask::create([
+            'project_id' => $otherProject->id,
+            'title' => 'Other Visible Task',
+            'status' => 'pending',
+            'customer_visible' => true,
+        ]);
+
+        $response = $this->actingAs($salesUser, 'sales')
+            ->get(route('rep.projects.tasks.show', [$otherProject, $otherTask]));
+
+        $response->assertStatus(403);
+    }
+
     private function setupProjectWithMembers(): array
     {
         $customer = Customer::create([

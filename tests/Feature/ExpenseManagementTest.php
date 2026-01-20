@@ -55,6 +55,29 @@ class ExpenseManagementTest extends TestCase
     }
 
     #[Test]
+    public function inactive_category_cannot_be_used_for_expenses(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'master_admin',
+        ]);
+
+        $category = ExpenseCategory::create([
+            'name' => 'Deprecated',
+            'description' => 'Inactive category',
+            'status' => 'inactive',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.expenses.store'), [
+            'category_id' => $category->id,
+            'title' => 'Old expense',
+            'amount' => 50,
+            'expense_date' => now()->toDateString(),
+        ]);
+
+        $response->assertSessionHasErrors('category_id');
+    }
+
+    #[Test]
     public function salary_items_are_included_in_expense_entries(): void
     {
         $employee = Employee::create([

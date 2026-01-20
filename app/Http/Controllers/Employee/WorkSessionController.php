@@ -154,7 +154,7 @@ class WorkSessionController extends Controller
     private function applyActivityDelta(EmployeeWorkSession $session, Carbon $now): void
     {
         $lastActivity = $session->last_activity_at ?? $session->started_at ?? $now;
-        $delta = $now->diffInSeconds($lastActivity);
+        $delta = $lastActivity->diffInSeconds($now);
 
         if ($delta > 0 && $delta < self::IDLE_CUTOFF_SECONDS) {
             $session->active_seconds = (int) ($session->active_seconds ?? 0) + $delta;
@@ -187,7 +187,7 @@ class WorkSessionController extends Controller
         if ($activeSession && $activeSession->work_date?->toDateString() === $today) {
             $isActive = true;
             $lastActivity = $activeSession->last_activity_at ?? $activeSession->started_at ?? $now;
-            $delta = $now->diffInSeconds($lastActivity);
+            $delta = $lastActivity->diffInSeconds($now);
 
             if ($delta < self::IDLE_CUTOFF_SECONDS) {
                 if ($delta > 0) {
