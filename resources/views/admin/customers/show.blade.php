@@ -100,19 +100,15 @@
             <div class="mt-6 grid gap-4 md:grid-cols-2">                
                 <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Invoice status & Income</div>
-                    <div class="mt-4 space-y-3 text-sm text-slate-600">
+                    <div class="mt-4 pb-4 space-y-3 text-sm text-slate-600">
                         @foreach($invoiceStatusSummary as $status)
-                            <!--div-- class="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-                                <div class="uppercase tracking-[0.2em] text-[11px] text-slate-400">{{ $status['label'] }}</div>
-                                <div class="mt-1 text-2xl font-semibold text-slate-900">{{ $status['count'] }}</div>
-                                <div class="text-[11px] text-slate-500">{{ $formatCurrency($status['amount']) }}</div>
-                            </!--div-->
                             <div class="flex items-center justify-between">
                                 <div>{{ $status['label'] }} ( {{ $status['count'] }} )</div>
                                 <div class="font-semibold text-slate-900">{{ $formatCurrency($status['amount']) }}</div>
                             </div>
                         @endforeach
                     </div>
+                    <hr>
                     <div class="mt-4 space-y-3 text-sm text-slate-600">
                         <div class="flex items-center justify-between">
                             <div>Gross Revenue</div>
@@ -133,52 +129,49 @@
                     </div>
                 </div>
                 <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Recent Invoices</div>
-                    <div class="mt-3 space-y-2 text-sm">
-                        @forelse($customer->invoices->take(5) as $invoice)
-                            <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-                                <div>
-                                    <div class="font-semibold text-slate-900">
-                                        Invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}
-                                    </div>
-                                    <div class="text-xs text-slate-500">{{ $invoice->issue_date?->format($globalDateFormat) ?? '--' }}</div>
-                                </div>
-                                <div class="text-sm text-slate-600">{{ ucfirst($invoice->status) }}</div>
-                            </div>
-                        @empty
-                            <div class="text-sm text-slate-500">No invoices yet.</div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
-
-            
-
-           
-
-            <div class="mt-6 grid gap-4 lg:grid-cols-1">
-                
-
-                <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Recent Tickets</div>
                     <div class="mt-3 space-y-2 text-sm">
                         @forelse($customer->supportTickets->take(5) as $ticket)
                             <div class="flex items-center justify-between border-b border-slate-200 pb-2">
                                 <div>
-                                    <div class="font-semibold text-slate-900">{{ $ticket->subject }}</div>
+                                    <div class="font-semibold text-slate-900">
+                                        <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="hover:text-teal-600">
+                                            {{ $ticket->subject }}
+                                        </a>
+                                    </div>
                                     <div class="text-xs text-slate-500">
-                                        TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}
+                                        <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="hover:text-teal-600">
+                                            TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}
+                                        </a>
                                         <span class="mx-1">•</span>
                                         {{ $ticket->created_at?->format($globalDateFormat) ?? '--' }}
                                     </div>
                                 </div>
-                                <div class="text-sm text-slate-600">{{ ucfirst(str_replace('_', ' ', $ticket->status)) }}</div>
+                                @php
+                                    $statusLabel = ucfirst(str_replace('_', ' ', $ticket->status));
+                                    $statusClasses = match ($ticket->status) {
+                                        'open' => 'bg-amber-100 text-amber-700',
+                                        'answered' => 'bg-emerald-100 text-emerald-700',
+                                        'customer_reply' => 'bg-blue-100 text-blue-700',
+                                        'closed' => 'bg-slate-100 text-slate-600',
+                                        default => 'bg-slate-100 text-slate-600',
+                                    };
+                                @endphp
+                                <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">
+                                    {{ $statusLabel }}
+                                </span>
                             </div>
                         @empty
                             <div class="text-sm text-slate-500">No support tickets yet.</div>
                         @endforelse
                     </div>
-                </div>
+                </div>                
+            </div>
+
+            <div class="mt-6 grid gap-4 lg:grid-cols-1">
+                
+
+                
             </div>
         @elseif($tab === 'services')
             <div class="mt-6 flex flex-wrap items-center justify-between gap-3">

@@ -21,11 +21,11 @@
         <div class="h-px bg-slate-200/80"></div>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="card p-4">
+            <a href="{{ route('client.licenses.index') }}" class="card block p-4 transition hover:border-teal-300 hover:shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
-                        <div class="text-2xl font-semibold text-slate-900">{{ $serviceCount }} / {{ $projectCount ?? 0 }}</div>
-                        <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Services / Projects</div>
+                        <div class="text-2xl font-semibold text-slate-900">{{ $serviceCount }}</div>
+                        <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Services</div>
                     </div>
                     <div class="rounded-2xl bg-teal-100 p-2 text-teal-600">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -37,12 +37,12 @@
                 <div class="mt-4 h-1 w-full rounded-full bg-teal-100">
                     <div class="h-1 w-1/2 rounded-full bg-teal-500"></div>
                 </div>                
-            </div>
-            <div class="card p-4">
+            </a>
+            <a href="{{ route('client.projects.index') }}" class="card block p-4 transition hover:border-sky-300 hover:shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
-                        <div class="text-2xl font-semibold text-slate-900">{{ $domainCount }}</div>
-                        <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Domains</div>
+                        <div class="text-2xl font-semibold text-slate-900">{{ $projectCount ?? 0 }}</div>
+                        <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Projects</div>
                     </div>
                     <div class="rounded-2xl bg-sky-100 p-2 text-sky-600">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -55,8 +55,8 @@
                 <div class="mt-4 h-1 w-full rounded-full bg-sky-100">
                     <div class="h-1 w-2/3 rounded-full bg-sky-500"></div>
                 </div>
-            </div>
-            <div class="card p-4">
+            </a>
+            <a href="{{ route('client.support-tickets.index') }}" class="card block p-4 transition hover:border-amber-300 hover:shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="text-2xl font-semibold text-slate-900">{{ $ticketOpenCount }}</div>
@@ -71,8 +71,8 @@
                 <div class="mt-4 h-1 w-full rounded-full bg-amber-100">
                     <div class="h-1 w-1/3 rounded-full bg-amber-500"></div>
                 </div>
-            </div>
-            <div class="card p-4">
+            </a>
+            <a href="{{ route('client.invoices.index') }}" class="card block p-4 transition hover:border-rose-300 hover:shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="text-2xl font-semibold text-slate-900">{{ $openInvoiceCount }}</div>
@@ -89,7 +89,7 @@
                 <div class="mt-4 h-1 w-full rounded-full bg-rose-100">
                     <div class="h-1 w-1/2 rounded-full bg-rose-500"></div>
                 </div>
-            </div>
+            </a>
         </div>
 
         @php
@@ -107,23 +107,30 @@
                 </div>
                 <div class="mt-4 space-y-3">
                     @forelse($projects as $project)
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                        @php
+                            $done = (int) ($project->done_tasks_count ?? 0);
+                            $open = (int) ($project->open_tasks_count ?? 0);
+                            $totalTasks = max(0, $done + $open);
+                            $statusClasses = match ($project->status) {
+                                'ongoing' => 'bg-emerald-100 text-emerald-700',
+                                'complete' => 'bg-blue-100 text-blue-700',
+                                'hold' => 'bg-amber-100 text-amber-700',
+                                'cancel' => 'bg-rose-100 text-rose-700',
+                                default => 'bg-slate-100 text-slate-600',
+                            };
+                        @endphp
+                        <a href="{{ route('client.projects.show', $project) }}" class="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-teal-300 hover:shadow-sm">
                             <div class="flex items-start justify-between">
                                 <div>
                                     <div class="text-sm text-slate-500">Project</div>
                                     <div class="text-lg font-semibold text-slate-900">{{ $project->name }}</div>
-                                    @php
-                                        $done = (int) ($project->done_tasks_count ?? 0);
-                                        $open = (int) ($project->open_tasks_count ?? 0);
-                                        $totalTasks = max(0, $done + $open);
-                                    @endphp
                                     <div class="mt-1 text-xs text-slate-500">Tasks: {{ $done }}/{{ $totalTasks }} done</div>
                                 </div>
-                                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
+                                <span class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] {{ $statusClasses }}">
                                     {{ ucfirst(str_replace('_',' ', $project->status)) }}
                                 </span>
                             </div>
-                        </div>
+                        </a>
                     @empty
                         <div class="text-sm text-slate-500">No ongoing projects right now.</div>
                     @endforelse

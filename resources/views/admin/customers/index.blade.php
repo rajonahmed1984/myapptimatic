@@ -48,7 +48,12 @@
                             </td>
                             <td class="px-4 py-3 text-slate-500">{{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</td>
                             <td class="px-4 py-3">
-                                <x-status-badge :status="$customer->status" />
+                                @php
+                                    $hasActiveService = ($customer->active_subscriptions_count ?? 0) > 0;
+                                    $hasActiveProject = ($customer->active_projects_count ?? 0) > 0;
+                                    $effectiveStatus = ($hasActiveService || $hasActiveProject) ? 'active' : $customer->status;
+                                @endphp
+                                <x-status-badge :status="$effectiveStatus" />
                             </td>
                             <td class="px-4 py-3">
                                 @php

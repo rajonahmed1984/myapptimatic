@@ -142,6 +142,106 @@
         </div>
     </div>
 
+    <div class="mt-8">
+        <div class="card p-6">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <div class="section-label">System Overview</div>
+                    <div class="mt-2 text-sm text-slate-500">Period activity snapshot</div>
+                </div>
+                <div class="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">Live</div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">            
+
+                <div class="lg:col-span-8">
+                    <div class="mt-2">
+                        <svg viewBox="0 0 400 200" class="h-64 w-full" id="system-overview-graph">
+                            <g id="system-overview-grid" stroke="#e2e8f0" stroke-width="0.6">
+                                <line x1="0" y1="20" x2="400" y2="20"></line>
+                                <line x1="0" y1="50" x2="400" y2="50"></line>
+                                <line x1="0" y1="80" x2="400" y2="80"></line>
+                                <line x1="0" y1="110" x2="400" y2="110"></line>
+                                <line x1="0" y1="140" x2="400" y2="140"></line>
+                                <line x1="0" y1="170" x2="400" y2="170"></line>
+                            </g>
+                            <g id="system-overview-areas">
+                                <path d="M 0.00 200 L 0.00 200.00 L 13.79 200.00 L 27.59 200.00 L 41.38 200.00 L 55.17 200.00 L 68.97 200.00 L 82.76 200.00 L 96.55 200.00 L 110.34 200.00 L 124.14 200.00 L 137.93 200.00 L 151.72 200.00 L 165.52 200.00 L 179.31 200.00 L 193.10 200.00 L 206.90 200.00 L 220.69 200.00 L 234.48 200.00 L 248.28 200.00 L 262.07 200.00 L 275.86 200.00 L 289.66 200.00 L 303.45 200.00 L 317.24 200.00 L 331.03 120.00 L 344.83 200.00 L 358.62 40.00 L 372.41 120.00 L 386.21 200.00 L 400.00 200.00 L 400.00 200 Z" fill="url(#ordersGradient2)" fill-opacity="0.35"></path>
+                                <path d="M 0.00 200 L 0.00 200.00 L 13.79 200.00 L 27.59 200.00 L 41.38 200.00 L 55.17 200.00 L 68.97 200.00 L 82.76 200.00 L 96.55 200.00 L 110.34 200.00 L 124.14 200.00 L 137.93 200.00 L 151.72 200.00 L 165.52 200.00 L 179.31 200.00 L 193.10 200.00 L 206.90 200.00 L 220.69 200.00 L 234.48 200.00 L 248.28 200.00 L 262.07 200.00 L 275.86 200.00 L 289.66 200.00 L 303.45 200.00 L 317.24 200.00 L 331.03 200.00 L 344.83 194.84 L 358.62 40.00 L 372.41 197.42 L 386.21 200.00 L 400.00 200.00 L 400.00 200 Z" fill="url(#incomeGradient2)" fill-opacity="0.35"></path>
+                            </g>
+                            <g id="system-overview-lines">
+                                <polyline points="0.00,200.00 13.79,200.00 27.59,200.00 41.38,200.00 55.17,200.00 68.97,200.00 82.76,200.00 96.55,200.00 110.34,200.00 124.14,200.00 137.93,200.00 151.72,200.00 165.52,200.00 179.31,200.00 193.10,200.00 206.90,200.00 220.69,200.00 234.48,200.00 248.28,200.00 262.07,200.00 275.86,200.00 289.66,200.00 303.45,200.00 317.24,200.00 331.03,120.00 344.83,200.00 358.62,40.00 372.41,120.00 386.21,200.00 400.00,200.00" fill="none" stroke="url(#ordersGradient2)" stroke-width="2"></polyline>
+                                <polyline points="0.00,200.00 13.79,200.00 27.59,200.00 41.38,200.00 55.17,200.00 68.97,200.00 82.76,200.00 96.55,200.00 110.34,200.00 124.14,200.00 137.93,200.00 151.72,200.00 165.52,200.00 179.31,200.00 193.10,200.00 206.90,200.00 220.69,200.00 234.48,200.00 248.28,200.00 262.07,200.00 275.86,200.00 289.66,200.00 303.45,200.00 317.24,200.00 331.03,200.00 344.83,194.84 358.62,40.00 372.41,197.42 386.21,200.00 400.00,200.00" fill="none" stroke="url(#incomeGradient2)" stroke-width="2"></polyline>
+                            </g>
+                            <g id="system-overview-bars">
+                                <rect x="3.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="17.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="30.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="43.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="57.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="70.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="83.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="97.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="110.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="123.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="137.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="150.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="163.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="177.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="190.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="203.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="217.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="230.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="243.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="257.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="270.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="283.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="297.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="310.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="323.67" y="120.00" width="6.00" height="80.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="337.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="350.33" y="40.00" width="6.00" height="160.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="363.67" y="120.00" width="6.00" height="80.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="377.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="390.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect>
+                            </g>
+                            <defs>
+                                <linearGradient id="ordersGradient2" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stop-color="#cbd5e1"></stop>
+                                    <stop offset="100%" stop-color="#94a3b8"></stop>
+                                </linearGradient>
+                                <linearGradient id="activeGradient2" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stop-color="#2563eb"></stop>
+                                    <stop offset="100%" stop-color="#60a5fa"></stop>
+                                </linearGradient>
+                                <linearGradient id="incomeGradient2" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stop-color="#22c55e"></stop>
+                                    <stop offset="100%" stop-color="#86efac"></stop>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-slate-500" id="system-overview-axis">
+                        <span>07 Dec</span><span>08 Dec</span><span>09 Dec</span><span>10 Dec</span><span>11 Dec</span><span>12 Dec</span><span>13 Dec</span><span>14 Dec</span><span>15 Dec</span><span>16 Dec</span><span>17 Dec</span><span>18 Dec</span><span>19 Dec</span><span>20 Dec</span><span>21 Dec</span><span>22 Dec</span><span>23 Dec</span><span>24 Dec</span><span>25 Dec</span><span>26 Dec</span><span>27 Dec</span><span>28 Dec</span><span>29 Dec</span><span>30 Dec</span><span>31 Dec</span><span>01 Jan</span><span>02 Jan</span><span>03 Jan</span><span>04 Jan</span><span>05 Jan</span>
+                    </div>
+                    <div class="mt-4 flex flex-wrap items-center gap-6 text-xs text-slate-600">
+                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-slate-400"></span><span class="font-medium">New Orders</span></span>
+                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-blue-500"></span><span class="font-medium">Active Orders</span></span>
+                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-emerald-500"></span><span class="font-medium">Income</span></span>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-4 flex flex-col">
+                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-4">
+                        <div class="text-xs font-semibold uppercase tracking-widest text-emerald-700">Income Breakdown</div>
+                        <div class="mt-4 space-y-3">
+                            <div class="rounded-xl bg-white p-3 shadow-sm">
+                                <div class="text-xs text-slate-500">Total Income</div>
+                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-income">{{ $currency }}{{ number_format($defaultMetrics['income'] ?? 0, 2) }}</div>
+                            </div>
+                            <div class="rounded-xl bg-white p-3 shadow-sm">
+                                <div class="text-xs text-slate-500">Avg Per Order</div>
+                                @php
+                                    $avgIncome = 0;
+                                    $orderCount = (int) ($defaultMetrics['new_orders'] ?? 0);
+                                    if ($orderCount > 0) {
+                                        $avgIncome = ($defaultMetrics['income'] ?? 0) / $orderCount;
+                                    }
+                                @endphp
+                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-avg-income">{{ $currency }}{{ number_format($avgIncome, 2) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-6">
+                <div class="section-label">Period Controls</div>
+                <div class="btn-group btn-group-sm btn-period-chooser" role="group" aria-label="Period chooser">
+                    <button type="button" class="btn btn-default" data-period="today">Today</button>
+                    <button type="button" class="btn btn-default active" data-period="month">Last 30 Days</button>
+                    <button type="button" class="btn btn-default" data-period="year">Last 1 Year</button>
+                </div>
+            </div>
+
+            <div id="system-period-metrics" data-period-default="{{ $periodDefault }}"
+                 data-period-metrics='@json($periodMetrics)'
+                 data-period-series='@json($periodSeries)'
+                 data-currency="{{ $currency }}" style="display:none"></div>
+        </div>
+    </div>
+
 
     @php
         $clientActivity = $clientActivity ?? ['recentClients' => collect()];
@@ -151,7 +251,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <a href="{{ route('admin.customers.index') }}" class="text-xs uppercase tracking-[0.25em] text-slate-400 hover:text-teal-600 transition">Client Activity</a>
-                <div class="text-xl font-semibold text-slate-900">Sessions from the last logins</div>
+                <div class="text-xl font-semibold text-slate-900">Sessions from the last 30 logins</div>
             </div>
             <a href="{{ route('admin.customers.index') }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">View customers</a>
         </div>
@@ -170,7 +270,11 @@
                             @foreach($recentClients as $session)
                                 <tr>
                                     <td class="py-2 pr-4">
-                                        @if(!empty($session['customer_id']))
+                                        @if(!empty($session['user_id']))
+                                            <a href="{{ route('admin.users.edit', $session['user_id']) }}" class="hover:text-teal-600">
+                                                {{ $session['name'] ?? '--' }}
+                                            </a>
+                                        @elseif(!empty($session['customer_id']))
                                             <a href="{{ route('admin.customers.show', $session['customer_id']) }}" class="hover:text-teal-600">
                                                 {{ $session['name'] ?? '--' }}
                                             </a>
@@ -263,121 +367,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div class="mt-8">
-        <div class="card p-6">
-            <div class="flex items-center justify-between gap-4">
-                <div>
-                    <div class="section-label">System Overview</div>
-                    <div class="mt-2 text-sm text-slate-500">Period activity snapshot</div>
-                </div>
-                <div class="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">Live</div>
-            </div>
-
-            <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
-                <div class="lg:col-span-2 flex flex-col justify-center">
-                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-                        <div class="text-xs font-semibold uppercase tracking-widest text-slate-600">Orders Amount</div>
-                        <div class="mt-4 space-y-3">
-                            <div class="rounded-xl bg-white p-3 shadow-sm">
-                                <div class="text-xs text-slate-500">New Orders</div>
-                                <div class="mt-1 text-xl font-bold text-slate-900" id="left-sidebar-new-orders">{{ $defaultMetrics['new_orders'] ?? 0 }}</div>
-                            </div>
-                            <div class="rounded-xl bg-white p-3 shadow-sm">
-                                <div class="text-xs text-slate-500">Active Orders</div>
-                                <div class="mt-1 text-xl font-bold text-blue-600" id="left-sidebar-active-orders">{{ $defaultMetrics['active_orders'] ?? 0 }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="lg:col-span-8">
-                    <div class="mt-2">
-                        <svg viewBox="0 0 400 200" class="h-64 w-full" id="system-overview-graph">
-                            <g id="system-overview-grid" stroke="#e2e8f0" stroke-width="0.6">
-                                <line x1="0" y1="20" x2="400" y2="20"></line>
-                                <line x1="0" y1="50" x2="400" y2="50"></line>
-                                <line x1="0" y1="80" x2="400" y2="80"></line>
-                                <line x1="0" y1="110" x2="400" y2="110"></line>
-                                <line x1="0" y1="140" x2="400" y2="140"></line>
-                                <line x1="0" y1="170" x2="400" y2="170"></line>
-                            </g>
-                            <g id="system-overview-areas">
-                                <path d="M 0.00 200 L 0.00 200.00 L 13.79 200.00 L 27.59 200.00 L 41.38 200.00 L 55.17 200.00 L 68.97 200.00 L 82.76 200.00 L 96.55 200.00 L 110.34 200.00 L 124.14 200.00 L 137.93 200.00 L 151.72 200.00 L 165.52 200.00 L 179.31 200.00 L 193.10 200.00 L 206.90 200.00 L 220.69 200.00 L 234.48 200.00 L 248.28 200.00 L 262.07 200.00 L 275.86 200.00 L 289.66 200.00 L 303.45 200.00 L 317.24 200.00 L 331.03 120.00 L 344.83 200.00 L 358.62 40.00 L 372.41 120.00 L 386.21 200.00 L 400.00 200.00 L 400.00 200 Z" fill="url(#ordersGradient2)" fill-opacity="0.35"></path>
-                                <path d="M 0.00 200 L 0.00 200.00 L 13.79 200.00 L 27.59 200.00 L 41.38 200.00 L 55.17 200.00 L 68.97 200.00 L 82.76 200.00 L 96.55 200.00 L 110.34 200.00 L 124.14 200.00 L 137.93 200.00 L 151.72 200.00 L 165.52 200.00 L 179.31 200.00 L 193.10 200.00 L 206.90 200.00 L 220.69 200.00 L 234.48 200.00 L 248.28 200.00 L 262.07 200.00 L 275.86 200.00 L 289.66 200.00 L 303.45 200.00 L 317.24 200.00 L 331.03 200.00 L 344.83 194.84 L 358.62 40.00 L 372.41 197.42 L 386.21 200.00 L 400.00 200.00 L 400.00 200 Z" fill="url(#incomeGradient2)" fill-opacity="0.35"></path>
-                            </g>
-                            <g id="system-overview-lines">
-                                <polyline points="0.00,200.00 13.79,200.00 27.59,200.00 41.38,200.00 55.17,200.00 68.97,200.00 82.76,200.00 96.55,200.00 110.34,200.00 124.14,200.00 137.93,200.00 151.72,200.00 165.52,200.00 179.31,200.00 193.10,200.00 206.90,200.00 220.69,200.00 234.48,200.00 248.28,200.00 262.07,200.00 275.86,200.00 289.66,200.00 303.45,200.00 317.24,200.00 331.03,120.00 344.83,200.00 358.62,40.00 372.41,120.00 386.21,200.00 400.00,200.00" fill="none" stroke="url(#ordersGradient2)" stroke-width="2"></polyline>
-                                <polyline points="0.00,200.00 13.79,200.00 27.59,200.00 41.38,200.00 55.17,200.00 68.97,200.00 82.76,200.00 96.55,200.00 110.34,200.00 124.14,200.00 137.93,200.00 151.72,200.00 165.52,200.00 179.31,200.00 193.10,200.00 206.90,200.00 220.69,200.00 234.48,200.00 248.28,200.00 262.07,200.00 275.86,200.00 289.66,200.00 303.45,200.00 317.24,200.00 331.03,200.00 344.83,194.84 358.62,40.00 372.41,197.42 386.21,200.00 400.00,200.00" fill="none" stroke="url(#incomeGradient2)" stroke-width="2"></polyline>
-                            </g>
-                            <g id="system-overview-bars">
-                                <rect x="3.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="17.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="30.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="43.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="57.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="70.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="83.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="97.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="110.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="123.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="137.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="150.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="163.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="177.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="190.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="203.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="217.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="230.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="243.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="257.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="270.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="283.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="297.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="310.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="323.67" y="120.00" width="6.00" height="80.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="337.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="350.33" y="40.00" width="6.00" height="160.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="363.67" y="120.00" width="6.00" height="80.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="377.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="390.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect>
-                            </g>
-                            <defs>
-                                <linearGradient id="ordersGradient2" x1="0" y1="0" x2="1" y2="0">
-                                    <stop offset="0%" stop-color="#cbd5e1"></stop>
-                                    <stop offset="100%" stop-color="#94a3b8"></stop>
-                                </linearGradient>
-                                <linearGradient id="activeGradient2" x1="0" y1="0" x2="1" y2="0">
-                                    <stop offset="0%" stop-color="#2563eb"></stop>
-                                    <stop offset="100%" stop-color="#60a5fa"></stop>
-                                </linearGradient>
-                                <linearGradient id="incomeGradient2" x1="0" y1="0" x2="1" y2="0">
-                                    <stop offset="0%" stop-color="#22c55e"></stop>
-                                    <stop offset="100%" stop-color="#86efac"></stop>
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                    </div>
-                    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-slate-500" id="system-overview-axis">
-                        <span>07 Dec</span><span>08 Dec</span><span>09 Dec</span><span>10 Dec</span><span>11 Dec</span><span>12 Dec</span><span>13 Dec</span><span>14 Dec</span><span>15 Dec</span><span>16 Dec</span><span>17 Dec</span><span>18 Dec</span><span>19 Dec</span><span>20 Dec</span><span>21 Dec</span><span>22 Dec</span><span>23 Dec</span><span>24 Dec</span><span>25 Dec</span><span>26 Dec</span><span>27 Dec</span><span>28 Dec</span><span>29 Dec</span><span>30 Dec</span><span>31 Dec</span><span>01 Jan</span><span>02 Jan</span><span>03 Jan</span><span>04 Jan</span><span>05 Jan</span>
-                    </div>
-                    <div class="mt-4 flex flex-wrap items-center gap-6 text-xs text-slate-600">
-                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-slate-400"></span><span class="font-medium">New Orders</span></span>
-                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-blue-500"></span><span class="font-medium">Active Orders</span></span>
-                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-emerald-500"></span><span class="font-medium">Income</span></span>
-                    </div>
-                </div>
-
-                <div class="lg:col-span-2 flex flex-col justify-center">
-                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-4">
-                        <div class="text-xs font-semibold uppercase tracking-widest text-emerald-700">Income Breakdown</div>
-                        <div class="mt-4 space-y-3">
-                            <div class="rounded-xl bg-white p-3 shadow-sm">
-                                <div class="text-xs text-slate-500">Total Income</div>
-                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-income">{{ $currency }}{{ number_format($defaultMetrics['income'] ?? 0, 2) }}</div>
-                            </div>
-                            <div class="rounded-xl bg-white p-3 shadow-sm">
-                                <div class="text-xs text-slate-500">Avg Per Order</div>
-                                @php
-                                    $avgIncome = 0;
-                                    $orderCount = (int) ($defaultMetrics['new_orders'] ?? 0);
-                                    if ($orderCount > 0) {
-                                        $avgIncome = ($defaultMetrics['income'] ?? 0) / $orderCount;
-                                    }
-                                @endphp
-                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-avg-income">{{ $currency }}{{ number_format($avgIncome, 2) }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-6">
-                <div class="section-label">Period Controls</div>
-                <div class="btn-group btn-group-sm btn-period-chooser" role="group" aria-label="Period chooser">
-                    <button type="button" class="btn btn-default" data-period="today">Today</button>
-                    <button type="button" class="btn btn-default active" data-period="month">Last 30 Days</button>
-                    <button type="button" class="btn btn-default" data-period="year">Last 1 Year</button>
-                </div>
-            </div>
-
-            <div id="system-period-metrics" data-period-default="{{ $periodDefault }}"
-                 data-period-metrics='@json($periodMetrics)'
-                 data-period-series='@json($periodSeries)'
-                 data-currency="{{ $currency }}" style="display:none"></div>
         </div>
     </div>
 

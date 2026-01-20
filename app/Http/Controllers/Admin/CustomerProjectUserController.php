@@ -75,6 +75,25 @@ class CustomerProjectUserController extends Controller
             'user_id' => $user->id,
         ], $request->user()?->id, $request->ip());
 
+        if ($request->expectsJson()) {
+            $user->load('project');
+            $dateFormat = config('app.date_format', 'd-m-Y');
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Project client user updated.',
+                'data' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'project_id' => $user->project_id,
+                    'project_name' => $user->project?->name,
+                    'created_at' => $user->created_at?->format($dateFormat),
+                    'updated_at' => $user->updated_at?->format($dateFormat),
+                ],
+            ]);
+        }
+
         return redirect()->route('admin.customers.edit', $customer)
             ->with('status', 'Project client user updated.');
     }

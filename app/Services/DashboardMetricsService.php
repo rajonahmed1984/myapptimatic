@@ -303,7 +303,7 @@ class DashboardMetricsService
                     ->on('s.last_activity', '=', 'latest.last_activity');
             })
             ->orderByDesc('s.last_activity')
-            ->limit(12)
+            ->limit(30)
             ->get();
 
         $userIds = array_filter(array_map(fn ($row) => $row->user_id, $latestSessions->all()));
@@ -315,6 +315,7 @@ class DashboardMetricsService
             $displayName = $customerName ?: ($user->name ?? 'Unknown User');
 
             return [
+                'user_id' => $user?->id,
                 'name' => $displayName,
                 'customer_id' => $user?->customer?->id,
                 'last_login' => $sessionRow->last_activity

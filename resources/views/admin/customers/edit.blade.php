@@ -121,20 +121,21 @@
                     </thead>
                     <tbody>
                         @foreach($projectClients as $clientUser)
-                            <tr class="border-b border-slate-100">
-                                <td class="py-2">{{ $clientUser->name }}</td>
-                                <td class="py-2">{{ $clientUser->email }}</td>
-                                <td class="py-2">{{ $clientUser->project?->name ?? '—' }}</td>
-                                <td class="py-2">{{ $clientUser->created_at?->format($globalDateFormat) ?? '--' }}</td>
+                            <tr class="border-b border-slate-100" data-project-user-row="{{ $clientUser->id }}">
+                                <td class="py-2" data-user-field="name">{{ $clientUser->name }}</td>
+                                <td class="py-2" data-user-field="email">{{ $clientUser->email }}</td>
+                                <td class="py-2" data-user-field="project">{{ $clientUser->project?->name ?? '—' }}</td>
+                                <td class="py-2" data-user-field="created">{{ $clientUser->created_at?->format($globalDateFormat) ?? '--' }}</td>
                                 <td class="py-2 text-right">
                                     <button
                                         type="button"
-                                        onclick="openEditModal({{ json_encode([
-                                            'id' => $clientUser->id,
-                                            'name' => $clientUser->name,
-                                            'email' => $clientUser->email,
-                                            'project_id' => $clientUser->project_id
-                                        ]) }})"
+                                        data-project-user-edit
+                                        data-user-id="{{ $clientUser->id }}"
+                                        data-user-name="{{ $clientUser->name }}"
+                                        data-user-email="{{ $clientUser->email }}"
+                                        data-project-id="{{ $clientUser->project_id }}"
+                                        data-project-name="{{ $clientUser->project?->name ?? '' }}"
+                                        data-created-at="{{ $clientUser->created_at?->format($globalDateFormat) ?? '--' }}"
                                         class="text-teal-600 hover:text-teal-500 mr-3"
                                     >
                                         Edit
@@ -204,87 +205,282 @@
                 <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Create project login</button>
             </div>
         </form>
-    </div>
 
-    <!-- Edit Project User Modal -->
-    <div id="editModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <!-- Background overlay -->
-            <div class="fixed inset-0 bg-slate-900 bg-opacity-50 transition-opacity" aria-hidden="true" onclick="closeEditModal()"></div>
+        <div id="project-user-edit-panel" class="mt-8 hidden">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <div class="section-label">Edit project login</div>
+                    <h3 class="text-lg font-semibold text-slate-900">Update project-specific login</h3>
+                    <p class="text-sm text-slate-500">Changes are saved without leaving this page.</p>
+                </div>
+            </div>
 
-            <!-- Modal panel -->
-            <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <form id="editForm" method="POST" class="p-6">
-                    @csrf
-                    @method('PUT')
+            <form id="project-user-edit-form" method="POST" hx-boost="false" data-update-url-template="{{ route('admin.customers.project-users.update', [$customer, '__USER_ID__']) }}" class="mt-4 grid gap-4 md:grid-cols-2 text-sm">
+                @csrf
+                @method('PUT')
 
-                    <div class="mb-6">
-                        <h3 class="text-xl font-semibold text-slate-900">Edit Project Login</h3>
-                        <p class="text-sm text-slate-500 mt-1">Update the project-specific login details</p>
-                    </div>
+                <div>
+                    <label class="text-sm text-slate-600">Project</label>
+                    <select name="project_id" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                        <option value="">Select a project</option>
+                        @foreach($projects as $projectOption)
+                            <option value="{{ $projectOption->id }}">{{ $projectOption->name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-rose-500 hidden" data-error-for="project_id"></p>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Name</label>
+                    <input name="name" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <p class="mt-1 text-xs text-rose-500 hidden" data-error-for="name"></p>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Email</label>
+                    <input name="email" type="email" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <p class="mt-1 text-xs text-rose-500 hidden" data-error-for="email"></p>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Password</label>
+                    <input name="password" type="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <p class="mt-1 text-xs text-slate-500">Leave blank to keep current password</p>
+                    <p class="mt-1 text-xs text-rose-500 hidden" data-error-for="password"></p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm text-slate-600">Confirm Password</label>
+                    <input name="password_confirmation" type="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                </div>
+                <div class="md:col-span-2 flex items-center justify-end gap-3">
+                    <button type="button" class="text-sm text-slate-600 hover:text-teal-600" data-edit-cancel>Cancel</button>
+                    <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Update login</button>
+                </div>
+            </form>
+            <p id="project-user-edit-status" class="mt-3 text-sm text-slate-500 hidden"></p>
+        </div>
 
-                    <div class="space-y-4">
-                        <div>
-                            <label class="text-sm text-slate-600">Project</label>
-                            <select id="edit_project_id" name="project_id" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                                <option value="">Select a project</option>
-                                @foreach($projects as $projectOption)
-                                    <option value="{{ $projectOption->id }}">{{ $projectOption->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="text-sm text-slate-600">Name</label>
-                            <input id="edit_name" name="name" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                        </div>
-
-                        <div>
-                            <label class="text-sm text-slate-600">Email</label>
-                            <input id="edit_email" name="email" type="email" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                        </div>
-
-                        <div>
-                            <label class="text-sm text-slate-600">Password</label>
-                            <input id="edit_password" name="password" type="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                            <p class="mt-1 text-xs text-slate-500">Leave blank to keep current password</p>
-                        </div>
-
-                        <div>
-                            <label class="text-sm text-slate-600">Confirm Password</label>
-                            <input id="edit_password_confirmation" name="password_confirmation" type="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex items-center justify-end gap-3">
-                        <button type="button" onclick="closeEditModal()" class="text-sm text-slate-600 hover:text-teal-600">Cancel</button>
-                        <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white hover:bg-teal-600">Update Login</button>
-                    </div>
-                </form>
+        <div id="project-user-details" class="mt-6 hidden rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div class="section-label">Updated login details</div>
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-6">
+                <div>
+                    <div class="text-lg font-semibold text-slate-900" data-detail="name">--</div>
+                    <div class="mt-1 text-sm text-slate-600">Email: <span data-detail="email">--</span></div>
+                    <div class="text-sm text-slate-600">Project: <span data-detail="project">--</span></div>
+                </div>
+                <div class="text-sm text-slate-500">
+                    <div>Created: <span data-detail="created">--</span></div>
+                    <div>Updated: <span data-detail="updated">--</span></div>
+                </div>
             </div>
         </div>
     </div>
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const editPanel = document.getElementById('project-user-edit-panel');
+                const editForm = document.getElementById('project-user-edit-form');
+                const statusEl = document.getElementById('project-user-edit-status');
+                const detailsPanel = document.getElementById('project-user-details');
 
-    <script>
-        function openEditModal(user) {
-            document.getElementById('editForm').action = "{{ route('admin.customers.project-users.update', [$customer, '__USER_ID__']) }}".replace('__USER_ID__', user.id);
-            document.getElementById('edit_name').value = user.name;
-            document.getElementById('edit_email').value = user.email;
-            document.getElementById('edit_project_id').value = user.project_id;
-            document.getElementById('edit_password').value = '';
-            document.getElementById('edit_password_confirmation').value = '';
-            document.getElementById('editModal').classList.remove('hidden');
-        }
+                if (!editPanel || !editForm) {
+                    return;
+                }
 
-        function closeEditModal() {
-            document.getElementById('editModal').classList.add('hidden');
-        }
+                const updateUrlTemplate = editForm.dataset.updateUrlTemplate || '';
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const detailMap = {
+                    name: detailsPanel?.querySelector('[data-detail="name"]'),
+                    email: detailsPanel?.querySelector('[data-detail="email"]'),
+                    project: detailsPanel?.querySelector('[data-detail="project"]'),
+                    created: detailsPanel?.querySelector('[data-detail="created"]'),
+                    updated: detailsPanel?.querySelector('[data-detail="updated"]'),
+                };
 
-        // Close modal on Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeEditModal();
-            }
-        });
-    </script>
+                const setStatus = (message, isError = false) => {
+                    if (!statusEl) {
+                        return;
+                    }
+
+                    if (!message) {
+                        statusEl.textContent = '';
+                        statusEl.classList.add('hidden');
+                        statusEl.classList.remove('text-rose-600', 'text-emerald-600');
+                        return;
+                    }
+
+                    statusEl.textContent = message;
+                    statusEl.classList.remove('hidden');
+                    statusEl.classList.toggle('text-rose-600', isError);
+                    statusEl.classList.toggle('text-emerald-600', !isError);
+                };
+
+                const clearErrors = () => {
+                    editForm.querySelectorAll('[data-error-for]').forEach((el) => {
+                        el.textContent = '';
+                        el.classList.add('hidden');
+                    });
+                };
+
+                const showErrors = (errors) => {
+                    Object.entries(errors || {}).forEach(([field, messages]) => {
+                        const el = editForm.querySelector(`[data-error-for="${field}"]`);
+                        if (!el) {
+                            return;
+                        }
+                        const text = Array.isArray(messages) ? messages.join(' ') : String(messages);
+                        el.textContent = text;
+                        el.classList.remove('hidden');
+                    });
+                };
+
+                const updateRow = (data) => {
+                    if (!data || !data.id) {
+                        return;
+                    }
+
+                    const row = document.querySelector(`[data-project-user-row="${data.id}"]`);
+                    if (!row) {
+                        return;
+                    }
+
+                    const nameCell = row.querySelector('[data-user-field="name"]');
+                    const emailCell = row.querySelector('[data-user-field="email"]');
+                    const projectCell = row.querySelector('[data-user-field="project"]');
+
+                    if (nameCell) {
+                        nameCell.textContent = data.name || '--';
+                    }
+                    if (emailCell) {
+                        emailCell.textContent = data.email || '--';
+                    }
+                    if (projectCell) {
+                        projectCell.textContent = data.project_name || '--';
+                    }
+
+                    const editBtn = row.querySelector('[data-project-user-edit]');
+                    if (editBtn) {
+                        editBtn.dataset.userName = data.name || '';
+                        editBtn.dataset.userEmail = data.email || '';
+                        editBtn.dataset.projectId = data.project_id || '';
+                        editBtn.dataset.projectName = data.project_name || '';
+                        if (data.created_at) {
+                            editBtn.dataset.createdAt = data.created_at;
+                        }
+                    }
+                };
+
+                const updateDetails = (data) => {
+                    if (!detailsPanel || !data) {
+                        return;
+                    }
+
+                    if (detailMap.name) {
+                        detailMap.name.textContent = data.name || '--';
+                    }
+                    if (detailMap.email) {
+                        detailMap.email.textContent = data.email || '--';
+                    }
+                    if (detailMap.project) {
+                        detailMap.project.textContent = data.project_name || '--';
+                    }
+                    if (detailMap.created) {
+                        detailMap.created.textContent = data.created_at || '--';
+                    }
+                    if (detailMap.updated) {
+                        detailMap.updated.textContent = data.updated_at || '--';
+                    }
+
+                    detailsPanel.classList.remove('hidden');
+                };
+
+                const setFormUser = (data) => {
+                    if (!data || !data.id) {
+                        return;
+                    }
+
+                    if (!updateUrlTemplate) {
+                        return;
+                    }
+
+                    editForm.dataset.userId = data.id;
+                    editForm.action = updateUrlTemplate.replace('__USER_ID__', data.id);
+                    editForm.querySelector('[name="name"]').value = data.name || '';
+                    editForm.querySelector('[name="email"]').value = data.email || '';
+                    editForm.querySelector('[name="project_id"]').value = data.projectId || '';
+                    editForm.querySelector('[name="password"]').value = '';
+                    editForm.querySelector('[name="password_confirmation"]').value = '';
+                };
+
+                document.addEventListener('click', (event) => {
+                    const btn = event.target.closest('[data-project-user-edit]');
+                    if (btn) {
+                        const payload = {
+                            id: btn.dataset.userId,
+                            name: btn.dataset.userName || '',
+                            email: btn.dataset.userEmail || '',
+                            projectId: btn.dataset.projectId || '',
+                            projectName: btn.dataset.projectName || '',
+                            createdAt: btn.dataset.createdAt || '--',
+                        };
+
+                        setFormUser(payload);
+                        clearErrors();
+                        setStatus('');
+                        editPanel.classList.remove('hidden');
+                        editPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        return;
+                    }
+
+                    if (event.target.closest('[data-edit-cancel]')) {
+                        editPanel.classList.add('hidden');
+                        setStatus('');
+                    }
+                });
+
+                editForm.addEventListener('submit', async (event) => {
+                    if (!window.fetch) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    clearErrors();
+                    setStatus('Saving changes...');
+
+                    try {
+                        const response = await fetch(editForm.action, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: new FormData(editForm),
+                        });
+
+                        const payload = await response.json().catch(() => null);
+
+                        if (!response.ok) {
+                            if (response.status === 422 && payload?.errors) {
+                                showErrors(payload.errors);
+                                setStatus('Please fix the highlighted fields.', true);
+                                return;
+                            }
+                            setStatus(payload?.message || 'Unable to update project login.', true);
+                            return;
+                        }
+
+                        if (!payload?.ok) {
+                            setStatus(payload?.message || 'Unable to update project login.', true);
+                            return;
+                        }
+
+                        updateRow(payload.data || {});
+                        updateDetails(payload.data || {});
+                        editForm.querySelector('[name="password"]').value = '';
+                        editForm.querySelector('[name="password_confirmation"]').value = '';
+                        setStatus(payload.message || 'Project login updated.');
+                    } catch (error) {
+                        setStatus('Unable to update project login.', true);
+                    }
+                });
+            });
+        </script>
+    @endpush
 @endsection
