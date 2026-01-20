@@ -30,6 +30,11 @@ use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\Admin\SystemLogController;
 use App\Http\Controllers\Admin\MilestoneController;
+use App\Http\Controllers\Admin\ExpenseController as AdminExpenseController;
+use App\Http\Controllers\Admin\ExpenseCategoryController as AdminExpenseCategoryController;
+use App\Http\Controllers\Admin\RecurringExpenseController as AdminRecurringExpenseController;
+use App\Http\Controllers\Admin\ExpenseDashboardController as AdminExpenseDashboardController;
+use App\Http\Controllers\Admin\ExpenseInvoiceController as AdminExpenseInvoiceController;
 use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
 use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
 use App\Http\Controllers\Auth\RoleLoginController;
@@ -41,6 +46,7 @@ use App\Http\Controllers\Employee\ProfileController as EmployeeProfileController
 use App\Http\Controllers\Employee\TimesheetController as EmployeeTimesheetController;
 use App\Http\Controllers\Employee\LeaveRequestController as EmployeeLeaveRequestController;
 use App\Http\Controllers\Employee\PayrollController as EmployeePayrollController;
+use App\Http\Controllers\Employee\WorkSessionController as EmployeeWorkSessionController;
 use App\Http\Controllers\Client\AffiliateController as ClientAffiliateController;
 use App\Http\Controllers\Client\ClientRequestController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
@@ -244,6 +250,10 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
     ->group(function () {
         Route::post('/logout', [EmployeeAuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', EmployeeDashboardController::class)->name('dashboard');
+        Route::post('/work-sessions/start', [EmployeeWorkSessionController::class, 'start'])->name('work-sessions.start');
+        Route::post('/work-sessions/ping', [EmployeeWorkSessionController::class, 'ping'])->name('work-sessions.ping');
+        Route::post('/work-sessions/stop', [EmployeeWorkSessionController::class, 'stop'])->name('work-sessions.stop');
+        Route::get('/work-summaries/today', [EmployeeWorkSessionController::class, 'today'])->name('work-summaries.today');
         Route::get('/profile', [EmployeeProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [EmployeeProfileController::class, 'update'])->name('profile.update');
         Route::get('/timesheets', [EmployeeTimesheetController::class, 'index'])->name('timesheets.index');
@@ -359,6 +369,34 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
             Route::delete('{user}', [UserController::class, 'destroy'])
                 ->whereNumber('user')
                 ->name('destroy');
+    });
+
+    Route::middleware('admin.role:master_admin')
+        ->prefix('expenses')
+        ->name('expenses.')
+        ->group(function () {
+            Route::get('/', [AdminExpenseController::class, 'index'])->name('index');
+            Route::get('/dashboard', [AdminExpenseDashboardController::class, 'index'])->name('dashboard');
+            Route::get('/create', [AdminExpenseController::class, 'create'])->name('create');
+            Route::post('/', [AdminExpenseController::class, 'store'])->name('store');
+            Route::get('/{expense}/attachment', [AdminExpenseController::class, 'attachment'])->name('attachments.show');
+            Route::post('/invoices', [AdminExpenseInvoiceController::class, 'store'])->name('invoices.store');
+
+            Route::get('/categories', [AdminExpenseCategoryController::class, 'index'])->name('categories.index');
+            Route::post('/categories', [AdminExpenseCategoryController::class, 'store'])->name('categories.store');
+            Route::get('/categories/{category}/edit', [AdminExpenseCategoryController::class, 'edit'])->name('categories.edit');
+            Route::put('/categories/{category}', [AdminExpenseCategoryController::class, 'update'])->name('categories.update');
+            Route::delete('/categories/{category}', [AdminExpenseCategoryController::class, 'destroy'])->name('categories.destroy');
+
+            Route::get('/recurring', [AdminRecurringExpenseController::class, 'index'])->name('recurring.index');
+            Route::get('/recurring/create', [AdminRecurringExpenseController::class, 'create'])->name('recurring.create');
+            Route::post('/recurring', [AdminRecurringExpenseController::class, 'store'])->name('recurring.store');
+            Route::get('/recurring/{recurringExpense}/edit', [AdminRecurringExpenseController::class, 'edit'])->name('recurring.edit');
+            Route::put('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'update'])->name('recurring.update');
+            Route::post('/recurring/{recurringExpense}/pause', [AdminRecurringExpenseController::class, 'pause'])->name('recurring.pause');
+            Route::post('/recurring/{recurringExpense}/resume', [AdminRecurringExpenseController::class, 'resume'])->name('recurring.resume');
+            Route::post('/recurring/{recurringExpense}/stop', [AdminRecurringExpenseController::class, 'stop'])->name('recurring.stop');
+            Route::post('/recurring/generate', [AdminRecurringExpenseController::class, 'generate'])->name('recurring.generate');
         });
 
     // Legacy route names for backward compatibility with old /admin/admins URLs.

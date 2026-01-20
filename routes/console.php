@@ -26,6 +26,12 @@ Schedule::command('cron:monitor')->hourly();
 // Close stale employee sessions so online indicators stay accurate.
 Schedule::command('employee-sessions:close-stale')->hourly();
 
+// Generate daily work summaries for remote part-time/full-time employees.
+Schedule::command('employee-work-summaries:generate')->dailyAt('00:10');
+
+// Generate recurring expense occurrences.
+Schedule::command('expenses:generate-recurring')->dailyAt('00:15');
+
 // Payment processing checks
 Schedule::call(function () {
     // Process pending payment attempts

@@ -43,6 +43,52 @@
             </div>
         </div>
 
+        @if($workSessionEligible)
+            @php
+                $requiredSeconds = (int) ($workSessionRequiredSeconds ?? 0);
+                $requiredHoursLabel = $requiredSeconds > 0 ? (int) ($requiredSeconds / 3600) . 'h' : '--';
+                $formatSeconds = function (int $seconds): string {
+                    $hours = (int) floor($seconds / 3600);
+                    $minutes = (int) floor(($seconds % 3600) / 60);
+                    return sprintf('%02d:%02d', $hours, $minutes);
+                };
+            @endphp
+            <div class="card p-6" id="work-session-card"
+                 data-start-url="{{ route('employee.work-sessions.start') }}"
+                 data-ping-url="{{ route('employee.work-sessions.ping') }}"
+                 data-stop-url="{{ route('employee.work-sessions.stop') }}"
+                 data-summary-url="{{ route('employee.work-summaries.today') }}"
+                 data-required-seconds="{{ $requiredSeconds }}">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <div class="section-label">Work Session</div>
+                        <div class="text-sm text-slate-500">Track your remote hours. Idle 15+ minutes are not counted.</div>
+                    </div>
+                    <span data-work-session-status class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Stopped</span>
+                </div>
+
+                <div class="mt-6 grid gap-4 md:grid-cols-3">
+                    <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Worked Today</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900" data-work-session-worked>{{ $formatSeconds(0) }}</div>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Required</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900" data-work-session-required>{{ $requiredHoursLabel }}</div>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Salary Estimate</div>
+                        <div class="mt-2 text-2xl font-semibold text-slate-900" data-work-session-salary>0.00</div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <button type="button" data-work-session-start class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Start</button>
+                    <button type="button" data-work-session-stop class="hidden rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:text-rose-600">Stop</button>
+                </div>
+            </div>
+        @endif
+
         <div class="grid gap-4 lg:grid-cols-2">
             <div class="card p-6">
                 <div class="flex items-center justify-between">
@@ -181,4 +227,151 @@
             </div>
         </div>
     </div>
+
+    @if($workSessionEligible)
+        @push('scripts')
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const card = document.getElementById('work-session-card');
+                    if (!card) {
+                        return;
+                    }
+
+                    const startUrl = card.dataset.startUrl;
+                    const pingUrl = card.dataset.pingUrl;
+                    const stopUrl = card.dataset.stopUrl;
+                    const summaryUrl = card.dataset.summaryUrl;
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+                    const workedEl = card.querySelector('[data-work-session-worked]');
+                    const requiredEl = card.querySelector('[data-work-session-required]');
+                    const salaryEl = card.querySelector('[data-work-session-salary]');
+                    const statusEl = card.querySelector('[data-work-session-status]');
+                    const startBtn = card.querySelector('[data-work-session-start]');
+                    const stopBtn = card.querySelector('[data-work-session-stop]');
+
+                    const statusStyles = {
+                        working: { text: 'Working', classes: ['bg-emerald-100', 'text-emerald-700'] },
+                        idle: { text: 'Idle', classes: ['bg-amber-100', 'text-amber-700'] },
+                        stopped: { text: 'Stopped', classes: ['bg-slate-100', 'text-slate-600'] },
+                    };
+
+                    const allStatusClasses = Object.values(statusStyles).flatMap((item) => item.classes);
+                    const formatSeconds = (seconds) => {
+                        const total = Math.max(0, Number(seconds || 0));
+                        const hours = Math.floor(total / 3600);
+                        const minutes = Math.floor((total % 3600) / 60);
+                        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                    };
+
+                    const updateStatus = (statusKey) => {
+                        const status = statusStyles[statusKey] || statusStyles.stopped;
+                        statusEl.textContent = status.text;
+                        allStatusClasses.forEach((cls) => statusEl.classList.remove(cls));
+                        status.classes.forEach((cls) => statusEl.classList.add(cls));
+                    };
+
+                    const updateButtons = (isActive) => {
+                        startBtn.classList.toggle('hidden', Boolean(isActive));
+                        stopBtn.classList.toggle('hidden', !isActive);
+                    };
+
+                    const updateUI = (data) => {
+                        if (!data) {
+                            return;
+                        }
+                        workedEl.textContent = formatSeconds(data.active_seconds || 0);
+                        if (data.required_seconds) {
+                            requiredEl.textContent = `${Math.round(data.required_seconds / 3600)}h`;
+                        }
+                        salaryEl.textContent = Number(data.salary_estimate || 0).toFixed(2);
+                        updateStatus(data.status || 'stopped');
+                        updateButtons(data.is_active);
+                    };
+
+                    const postJson = async (url) => {
+                        const formData = new FormData();
+                        formData.append('_token', csrfToken);
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body: formData,
+                        });
+                        const payload = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            alert(payload.message || 'Request failed.');
+                            return null;
+                        }
+                        return payload.data || null;
+                    };
+
+                    const fetchSummary = async () => {
+                        const response = await fetch(summaryUrl, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+                        const payload = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            return null;
+                        }
+                        return payload.data || null;
+                    };
+
+                    let pingTimer = null;
+                    const startPing = () => {
+                        if (pingTimer) {
+                            return;
+                        }
+                        pingTimer = setInterval(async () => {
+                            const data = await postJson(pingUrl);
+                            if (data) {
+                                updateUI(data);
+                            } else {
+                                const summary = await fetchSummary();
+                                if (summary) {
+                                    updateUI(summary);
+                                }
+                                stopPing();
+                            }
+                        }, 90000);
+                    };
+
+                    const stopPing = () => {
+                        if (pingTimer) {
+                            clearInterval(pingTimer);
+                            pingTimer = null;
+                        }
+                    };
+
+                    startBtn?.addEventListener('click', async () => {
+                        const data = await postJson(startUrl);
+                        if (data) {
+                            updateUI(data);
+                            startPing();
+                        }
+                    });
+
+                    stopBtn?.addEventListener('click', async () => {
+                        const data = await postJson(stopUrl);
+                        if (data) {
+                            updateUI(data);
+                            stopPing();
+                        }
+                    });
+
+                    fetchSummary().then((data) => {
+                        updateUI(data);
+                        if (data?.is_active) {
+                            startPing();
+                        }
+                    });
+                });
+            </script>
+        @endpush
+    @endif
 @endsection

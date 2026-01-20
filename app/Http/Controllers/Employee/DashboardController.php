@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Services\EmployeeWorkSummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, EmployeeWorkSummaryService $workSummaryService): View
     {
         $employee = $request->user()?->employee;
         $employeeId = $employee?->id;
@@ -77,6 +78,16 @@ class DashboardController extends Controller
                 ]);
         }
 
+        $workSessionEligible = false;
+        $workSessionRequiredSeconds = null;
+
+        if ($employee) {
+            $workSessionEligible = $workSummaryService->isEligible($employee);
+            if ($workSessionEligible) {
+                $workSessionRequiredSeconds = $workSummaryService->requiredSeconds($employee);
+            }
+        }
+
         return view('employee.dashboard', [
             'totalProjects' => $totalProjects,
             'projectStatusCounts' => $projectStatusCounts,
@@ -84,6 +95,8 @@ class DashboardController extends Controller
             'taskStats' => $taskStats,
             'contractSummary' => $contractSummary,
             'contractProjects' => $contractProjects,
+            'workSessionEligible' => $workSessionEligible,
+            'workSessionRequiredSeconds' => $workSessionRequiredSeconds,
         ]);
     }
 }

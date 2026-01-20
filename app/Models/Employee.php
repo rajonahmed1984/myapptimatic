@@ -12,6 +12,8 @@ use App\Models\Concerns\HasActivityTracking;
 use App\Models\EmployeeSession;
 use App\Models\EmployeeActivityDaily;
 use App\Models\EmployeePayout;
+use App\Models\EmployeeWorkSession;
+use App\Models\EmployeeWorkSummary;
 
 class Employee extends Authenticatable
 {
@@ -82,6 +84,16 @@ class Employee extends Authenticatable
     public function payouts(): HasMany
     {
         return $this->hasMany(EmployeePayout::class);
+    }
+
+    public function workSessions(): HasMany
+    {
+        return $this->hasMany(EmployeeWorkSession::class);
+    }
+
+    public function workSummaries(): HasMany
+    {
+        return $this->hasMany(EmployeeWorkSummary::class);
     }
 
     // Activity tracking uses polymorphic UserSession/UserActivityDaily via HasActivityTracking trait

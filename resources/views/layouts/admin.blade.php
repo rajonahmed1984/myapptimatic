@@ -153,6 +153,18 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Accounting
                         </x-nav-link>
+                        @if(auth()->user()?->isMasterAdmin())
+                            <x-nav-menu
+                                :href="route('admin.expenses.dashboard')"
+                                routes="admin.expenses.*"
+                                label="Expenses"
+                            >
+                                <a href="{{ route('admin.expenses.dashboard') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.dashboard')) }}">Dashboard</a>
+                                <a href="{{ route('admin.expenses.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.index')) }}">All expenses</a>
+                                <a href="{{ route('admin.expenses.recurring.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.recurring.*')) }}">Recurring</a>
+                                <a href="{{ route('admin.expenses.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.categories.*')) }}">Categories</a>
+                            </x-nav-menu>
+                        @endif
                         <x-nav-link 
                             :href="route('admin.payment-gateways.index')"
                             routes="admin.payment-gateways.*"
