@@ -115,13 +115,9 @@
                 </div>
                 <form method="POST" action="{{ route('rep.projects.tasks.store', $project) }}" class="grid gap-3 md:grid-cols-6" enctype="multipart/form-data">
                     @csrf
-                    <div class="md:col-span-2">
+                    <div class="md:col-span-3">
                         <label class="text-xs text-slate-500">Title</label>
                         <input name="title" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="text-xs text-slate-500">Description</label>
-                        <input name="description" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                     </div>
                     <div class="md:col-span-2">
                         <label class="text-xs text-slate-500">Task type</label>
@@ -131,15 +127,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label class="text-xs text-slate-500">Start date</label>
-                        <input type="date" name="start_date" value="{{ old('start_date', now()->toDateString()) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-500">Due date</label>
-                        <input type="date" name="due_date" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                    </div>
-                    <div>
+                    <div class="md:col-span-1">
                         <label class="text-xs text-slate-500">Priority</label>
                         <select name="priority" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                             @foreach($priorityOptions as $value => $label)
@@ -147,6 +135,20 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="md:col-span-6">
+                        <label class="text-xs text-slate-500">Description</label>
+                        <input name="description" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="text-xs text-slate-500">Start date</label>
+                        <input type="date" name="start_date" value="{{ old('start_date', now()->toDateString()) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-xs text-slate-500">Due date</label>
+                        <input type="date" name="due_date" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    
                     <div class="md:col-span-2">
                         <label class="text-xs text-slate-500">Attachment (required for Upload type)</label>
                         <input type="file" name="attachment" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" class="mt-1 w-full text-xs text-slate-600">
