@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\LicenseDomain;
 use App\Models\Project;
+use App\Models\ProjectMaintenance;
 use App\Models\Setting;
 use App\Support\Currency;
 use Carbon\Carbon;
@@ -93,11 +94,14 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
         }
-        $maintenanceRenewal = $subscriptions
-            ->where('status', 'active')
-            ->filter(fn ($s) => $s->next_invoice_at)
-            ->sortBy('next_invoice_at')
-            ->first();
+        $maintenanceRenewal = $customer
+            ? ProjectMaintenance::query()
+                ->with('project')
+                ->where('customer_id', $customer->id)
+                ->where('status', 'active')
+                ->orderByRaw('COALESCE(next_billing_date, start_date)')
+                ->first()
+            : null;
 
         return view('client.dashboard', [
             'customer' => $customer,

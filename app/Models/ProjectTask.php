@@ -92,4 +92,17 @@ class ProjectTask extends Model
         $completed = $subtasks->where('is_completed', true)->count();
         return (int) (($completed / $subtasks->count()) * 100);
     }
+
+    public function creatorEditWindowExpired(?int $userId): bool
+    {
+        if (! $userId || ! $this->created_by || $this->created_by !== $userId) {
+            return false;
+        }
+
+        if (! $this->created_at) {
+            return true;
+        }
+
+        return $this->created_at->copy()->addHours(24)->isPast();
+    }
 }

@@ -141,6 +141,7 @@
             $financials = $financials ?? [];
             $overheadTotal = $financials['overhead_total'] ?? $project->overhead_total;
             $budgetWithOverhead = $financials['budget_with_overhead'] ?? ((float) ($project->total_budget ?? 0) + $overheadTotal);
+            $remainingBudget = $financials['remaining_budget'] ?? $project->remaining_budget;
         @endphp
 
         <div>
@@ -152,11 +153,11 @@
                         Total budget: {{ $project->total_budget !== null ? $project->currency.' '.number_format($project->total_budget, 2) : '--' }}<br>
                         Overhead total: {{ $project->currency ?? '' }}{{ number_format($overheadTotal, 2) }}<br>
                         Budget with overhead: {{ $project->currency ?? '' }}{{ number_format($budgetWithOverhead, 2) }}<br>
-                        Sales rep total: {{ $project->sales_rep_total !== null ? $project->currency.' '.number_format($project->sales_rep_total, 2) : '--' }}<br>
-                        Remaining budget: {{ $project->remaining_budget !== null ? $project->currency.' '.number_format($project->remaining_budget, 2) : '--' }}<br>
-                        Initial payment: {{ $project->initial_payment_amount !== null ? $project->currency.' '.number_format($project->initial_payment_amount, 2) : '--' }}<br>
+                        Initial payment: {{ $project->initial_payment_amount !== null ? $project->currency.' '.number_format($project->initial_payment_amount, 2) : '--' }}<br>                        
+                        Remaining budget: {{ $remainingBudget !== null ? $project->currency.' '.number_format($remainingBudget, 2) : '--' }}<br>
                         Budget (legacy): {{ $project->budget_amount !== null ? $project->currency.' '.number_format($project->budget_amount, 2) : '--' }}<br>
                         Currency: {{ $project->currency ?? '--' }}<br>
+                        Sales rep total: {{ $project->sales_rep_total !== null ? $project->currency.' '.number_format($project->sales_rep_total, 2) : '--' }}<br>
                         Profit: {{ isset($financials['profit']) ? $project->currency.' '.number_format($financials['profit'], 2) : '--' }}
                     </div>
                 </div>
@@ -395,7 +396,7 @@
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Start date</label>
-                            <input type="date" name="start_date" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <input type="date" name="start_date" value="{{ old('start_date', now()->toDateString()) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Due date</label>
@@ -553,6 +554,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const addTaskForm = document.getElementById('addTaskForm');
             const tasksBody = document.getElementById('tasksTableBody');
+            const defaultStartDate = @json(now()->toDateString());
 
             const parseError = async (response) => {
                 try {
@@ -612,8 +614,12 @@
                             return;
                         }
 
-                        tasksBody.insertAdjacentHTML('beforeend', rowHtml);
+                        tasksBody.insertAdjacentHTML('afterbegin', rowHtml);
                         addTaskForm.reset();
+                        const startDateInput = addTaskForm.querySelector('input[name="start_date"]');
+                        if (startDateInput) {
+                            startDateInput.value = defaultStartDate;
+                        }
 
                         const groups = document.querySelectorAll('#descriptionsContainer .description-group');
                         if (groups.length > 1) {

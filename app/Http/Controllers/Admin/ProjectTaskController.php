@@ -113,6 +113,10 @@ class ProjectTaskController extends Controller
             return back()->withErrors(['dates' => 'Task dates cannot be changed after creation.']);
         }
 
+        if ($task->creatorEditWindowExpired($request->user()?->id)) {
+            return $this->forbiddenResponse($request, 'Task can only be edited within 24 hours of creation.');
+        }
+
         $data = $request->validated();
 
         if (in_array($data['status'], ['completed', 'done'], true)
@@ -202,7 +206,19 @@ class ProjectTaskController extends Controller
         $this->ensureTaskBelongsToProject($project, $task);
         $this->authorize('update', $task);
 
+        if ($task->creatorEditWindowExpired($request->user()?->id)) {
+            return $this->forbiddenResponse($request, 'Task can only be edited within 24 hours of creation.');
+        }
+
         $data = $request->validated();
+
+        if (in_array($data['status'], ['completed', 'done'], true)
+            && TaskCompletionManager::hasSubtasks($task)
+            && ! TaskCompletionManager::allSubtasksCompleted($task)) {
+            return $this->validationError($request, [
+                'status' => 'Complete all subtasks before completing this task.',
+            ]);
+        }
 
         $payload = [
             'status' => $data['status'],
@@ -265,13 +281,13 @@ class ProjectTaskController extends Controller
             'project_id' => $project->id,
             'task_id' => $task->id,
             'actor_type' => 'admin',
-            'actor_id' => $request->user()?->id,
-        ], $request->user()?->id, $request->ip());
+            'actor_id' => request()->user()?->id,
+        ], request()->user()?->id, request()->ip());
 
         return back()->with('status', 'Task removed.');
     }
 
-    private function validationError(StoreTaskRequest|UpdateTaskRequest $request, array $errors): RedirectResponse|JsonResponse
+    private function validationError(Request $request, array $errors): RedirectResponse|JsonResponse
     {
         if ($request->expectsJson()) {
             $message = collect($errors)->flatten()->first() ?? 'Validation failed.';
@@ -283,6 +299,18 @@ class ProjectTaskController extends Controller
         }
 
         return back()->withErrors($errors)->withInput();
+    }
+
+    private function forbiddenResponse(Request $request, string $message): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => false,
+                'message' => $message,
+            ], 403);
+        }
+
+        return back()->withErrors(['task' => $message]);
     }
 
     private function ensureTaskBelongsToProject(Project $project, ProjectTask $task): void

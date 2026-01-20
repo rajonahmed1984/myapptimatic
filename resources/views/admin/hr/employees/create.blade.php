@@ -79,7 +79,7 @@
             <div class="grid gap-4 md:grid-cols-3">
                 <div>
                     <label class="text-xs text-slate-500">Employment type</label>
-                    <select name="employment_type" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="employment_type" required data-employment-type class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                         <option value="full_time" @selected(old('employment_type') === 'full_time')>Full-time</option>
                         <option value="part_time" @selected(old('employment_type') === 'part_time')>Part-time</option>
                         <option value="contract" @selected(old('employment_type') === 'contract')>Contract</option>
@@ -106,7 +106,7 @@
             <div class="grid gap-4 md:grid-cols-3">
                 <div>
                     <label class="text-xs text-slate-500">Salary type</label>
-                    <select name="salary_type" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="salary_type" required data-salary-type class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                         <option value="monthly" @selected(old('salary_type', 'monthly') === 'monthly')>Monthly</option>
                         <option value="hourly" @selected(old('salary_type') === 'hourly')>Hourly</option>
                         <option value="project_base" @selected(old('salary_type') === 'project_base')>Project base</option>
@@ -123,7 +123,8 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Basic pay</label>
-                    <input name="basic_pay" type="number" step="0.01" min="0" value="{{ old('basic_pay', 0) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <input name="basic_pay" type="number" step="0.01" min="0" value="{{ old('basic_pay', 0) }}" data-basic-pay class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <p class="mt-1 text-xs text-slate-400" data-basic-pay-note>Required unless contract + project base.</p>
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Hourly rate (optional)</label>
@@ -140,6 +141,9 @@
                 <div class="space-y-2">
                     <label class="text-xs text-slate-500">Photo (jpg/png)</label>
                     <input type="file" name="photo" accept=".jpg,.jpeg,.png" class="w-full text-sm text-slate-700">
+                    <div class="mt-2">
+                        <x-avatar id="employee-photo-preview" :path="null" :name="old('name')" size="h-16 w-16" textSize="text-sm" />
+                    </div>
                 </div>
                 <div class="space-y-2">
                     <label class="text-xs text-slate-500">CV upload (pdf)</label>
@@ -153,4 +157,47 @@
             </div>
         </form>
     </div>
+
+    <script>
+        const employeePhotoInput = document.querySelector('input[name="photo"]');
+        const employeePhotoPreview = document.getElementById('employee-photo-preview');
+
+        if (employeePhotoInput && employeePhotoPreview) {
+            employeePhotoInput.addEventListener('change', () => {
+                const file = employeePhotoInput.files && employeePhotoInput.files[0];
+                if (!file) {
+                    return;
+                }
+
+                const previewUrl = URL.createObjectURL(file);
+                employeePhotoPreview.innerHTML = `<img src="${previewUrl}" alt="Photo preview" class="h-full w-full object-cover">`;
+            });
+        }
+
+        const employmentTypeInput = document.querySelector('[data-employment-type]');
+        const salaryTypeInput = document.querySelector('[data-salary-type]');
+        const basicPayInput = document.querySelector('[data-basic-pay]');
+        const basicPayNote = document.querySelector('[data-basic-pay-note]');
+
+        const syncBasicPayRequirement = () => {
+            if (!employmentTypeInput || !salaryTypeInput || !basicPayInput) {
+                return;
+            }
+
+            const isOptional = employmentTypeInput.value === 'contract' && salaryTypeInput.value === 'project_base';
+            basicPayInput.required = !isOptional;
+
+            if (basicPayNote) {
+                basicPayNote.textContent = isOptional
+                    ? 'Optional for contract employees on project-base salary.'
+                    : 'Required unless contract + project base.';
+            }
+        };
+
+        if (employmentTypeInput && salaryTypeInput && basicPayInput) {
+            syncBasicPayRequirement();
+            employmentTypeInput.addEventListener('change', syncBasicPayRequirement);
+            salaryTypeInput.addEventListener('change', syncBasicPayRequirement);
+        }
+    </script>
 @endsection

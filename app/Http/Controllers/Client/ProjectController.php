@@ -37,7 +37,8 @@ class ProjectController extends Controller
 
         $tasks = $project->tasks()
             ->where('customer_visible', true)
-            ->orderBy('id')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get();
 
         $chatMessages = $project->messages()
@@ -83,6 +84,18 @@ class ProjectController extends Controller
             ->latest('issue_date')
             ->first();
 
+        $budgetBase = $project->total_budget ?? $project->budget_amount;
+        $overheadTotal = (float) ($project->overhead_total ?? 0);
+        $initialPaymentInvoiced = (float) $project->invoices()
+            ->where('type', 'project_initial_payment')
+            ->sum('total');
+        $initialPayment = $initialPaymentInvoiced > 0
+            ? $initialPaymentInvoiced
+            : ($project->initial_payment_amount ?? null);
+        $budgetWithOverhead = $budgetBase !== null
+            ? (float) $budgetBase + $overheadTotal
+            : null;
+
         $isProjectSpecificUser = $request->user()->isClientProject();
 
         return view('client.projects.show', [
@@ -90,6 +103,12 @@ class ProjectController extends Controller
             'tasks' => $tasks,
             'maintenances' => $maintenances,
             'initialInvoice' => $initialInvoice,
+            'financials' => [
+                'budget' => $budgetBase,
+                'initial_payment' => $initialPayment,
+                'overhead_total' => $overheadTotal,
+                'budget_with_overhead' => $budgetWithOverhead,
+            ],
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),
             'chatMessages' => $chatMessages,

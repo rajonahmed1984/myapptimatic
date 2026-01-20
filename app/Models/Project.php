@@ -177,12 +177,7 @@ class Project extends Model
 
         $budgetWithOverhead = (float) $this->total_budget + $this->overhead_total;
         $initialPayment = (float) ($this->initial_payment_amount ?? 0);
-        
-        // Sum all remaining budget invoices
-        $remainingBudgetInvoiced = (float) $this->invoices()
-            ->where('type', 'project_remaining_budget')
-            ->sum('total');
-        
-        return $budgetWithOverhead - $this->sales_rep_total - $initialPayment - $remainingBudgetInvoiced;
+
+        return $budgetWithOverhead - $initialPayment;
     }
 }

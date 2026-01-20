@@ -10,6 +10,8 @@ use App\Models\ProjectTask;
 use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskCompletionManager;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -21,12 +23,6 @@ class ProjectTaskController extends Controller
         $this->authorize('createTask', $project);
 
         $data = $request->validated();
-
-        if (in_array($data['status'], ['completed', 'done'], true)
-            && TaskCompletionManager::hasSubtasks($task)
-            && ! TaskCompletionManager::allSubtasksCompleted($task)) {
-            return back()->withErrors(['status' => 'Complete all subtasks before completing this task.'])->withInput();
-        }
 
         if ($data['task_type'] === 'upload' && ! $request->hasFile('attachment')) {
             return back()->withErrors(['attachment' => 'Upload tasks require at least one file.'])->withInput();
@@ -65,12 +61,22 @@ class ProjectTaskController extends Controller
         return back()->with('status', 'Task added.');
     }
 
-    public function update(UpdateTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse
+    public function update(UpdateTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse|JsonResponse
     {
         $this->authorize('update', $task);
         $this->ensureTaskBelongsToProject($project, $task);
 
+        if ($task->creatorEditWindowExpired($request->user()?->id)) {
+            return $this->forbiddenResponse($request, 'Task can only be edited within 24 hours of creation.');
+        }
+
         $data = $request->validated();
+
+        if (in_array($data['status'], ['completed', 'done'], true)
+            && TaskCompletionManager::hasSubtasks($task)
+            && ! TaskCompletionManager::allSubtasksCompleted($task)) {
+            return back()->withErrors(['status' => 'Complete all subtasks before completing this task.']);
+        }
 
         $payload = [
             'status' => $data['status'],
@@ -78,6 +84,12 @@ class ProjectTaskController extends Controller
         ];
 
         $previousStatus = $task->status;
+
+        $isCompleted = in_array($data['status'], ['completed', 'done'], true);
+        if ($task->status !== 'completed' && $isCompleted) {
+            $payload['completed_at'] = Carbon::now();
+        }
+
         $task->update($payload);
 
         if ($previousStatus !== $task->status) {
@@ -101,6 +113,18 @@ class ProjectTaskController extends Controller
         if ($task->project_id !== $project->id) {
             abort(404);
         }
+    }
+
+    private function forbiddenResponse(Request $request, string $message): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => false,
+                'message' => $message,
+            ], 403);
+        }
+
+        return back()->withErrors(['task' => $message]);
     }
 
     private function storeAttachment(Request $request, ProjectTask $task): ?string

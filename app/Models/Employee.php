@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Concerns\HasActivityTracking;
 use App\Models\EmployeeSession;
 use App\Models\EmployeeActivityDaily;
+use App\Models\EmployeePayout;
 
 class Employee extends Authenticatable
 {
@@ -76,6 +77,11 @@ class Employee extends Authenticatable
     public function payrollItems(): HasMany
     {
         return $this->hasMany(PayrollItem::class);
+    }
+
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(EmployeePayout::class);
     }
 
     // Activity tracking uses polymorphic UserSession/UserActivityDaily via HasActivityTracking trait

@@ -133,7 +133,7 @@
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Start date</label>
-                        <input type="date" name="start_date" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <input type="date" name="start_date" value="{{ old('start_date', now()->toDateString()) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Due date</label>

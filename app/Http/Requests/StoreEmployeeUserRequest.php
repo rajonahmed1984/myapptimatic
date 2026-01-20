@@ -32,7 +32,11 @@ class StoreEmployeeUserRequest extends FormRequest
             'status' => ['required', 'in:active,inactive'],
             'salary_type' => ['required', 'in:monthly,hourly,project_base'],
             'currency' => ['required', 'string', 'size:3', Rule::in(Currency::allowed())],
-            'basic_pay' => ['required', 'numeric'],
+            'basic_pay' => [
+                Rule::requiredIf(fn () => ! ($this->input('employment_type') === 'contract' && $this->input('salary_type') === 'project_base')),
+                'nullable',
+                'numeric',
+            ],
             'hourly_rate' => ['nullable', 'numeric'],
             'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:4096'],
             'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:4096'],

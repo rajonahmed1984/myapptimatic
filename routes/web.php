@@ -100,6 +100,24 @@ Route::get('storage/avatars/{category}/{entity}/{filename}', function (string $c
     ->where('entity', '\d+')
     ->where('filename', '.*');
 
+Route::get('storage/employees/photos/{path}', function (string $path) {
+    if (str_contains($path, '..')) {
+        abort(404);
+    }
+
+    $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    if (! in_array($extension, ['jpg', 'jpeg', 'png'], true)) {
+        abort(404);
+    }
+
+    $filePath = 'employees/photos/' . ltrim($path, '/');
+    if (! Storage::disk('public')->exists($filePath)) {
+        abort(404);
+    }
+
+    return Storage::disk('public')->response($filePath);
+})->where('path', '.*');
+
 // PaymentAttempt route binding supports UUID (preferred) and falls back to numeric ID for legacy links.
 Route::bind('attempt', function ($value) {
     return PaymentAttempt::query()
@@ -237,6 +255,7 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::get('/projects/{project}', [\App\Http\Controllers\Employee\ProjectController::class, 'show'])->name('projects.show');
         Route::post('/projects/{project}/tasks', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
         Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
+        Route::patch('/projects/{project}/tasks/{task}/start', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'start'])->name('projects.tasks.start');
         Route::delete('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
         Route::get('/projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
@@ -293,6 +312,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         Route::get('/dashboard', HrDashboardController::class)->name('dashboard');
         Route::post('employees/{employee}/impersonate', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'impersonate'])->name('employees.impersonate');
         Route::resource('employees', \App\Http\Controllers\Admin\Hr\EmployeeController::class);
+        Route::get('employee-payouts/create', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'create'])->name('employee-payouts.create');
+        Route::post('employee-payouts', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'store'])->name('employee-payouts.store');
         Route::get('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'index'])->name('leave-types.index');
         Route::post('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'store'])->name('leave-types.store');
         Route::delete('leave-types/{leaveType}', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'destroy'])->name('leave-types.destroy');
@@ -556,12 +577,18 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
+        Route::get('/projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
+            ->name('projects.chat.participants');
         Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
+        Route::get('/projects/{project}/chat/stream', [ProjectChatController::class, 'stream'])
+            ->name('projects.chat.stream');
         Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.messages.store');
         Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
             ->name('projects.chat.read');
+        Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
+            ->name('projects.chat.presence');
         Route::post('/projects/{project}/chat', [ProjectChatController::class, 'store'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.store');
@@ -631,12 +658,18 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
+        Route::get('/projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
+            ->name('projects.chat.participants');
         Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
+        Route::get('/projects/{project}/chat/stream', [ProjectChatController::class, 'stream'])
+            ->name('projects.chat.stream');
         Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.messages.store');
         Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
             ->name('projects.chat.read');
+        Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
+            ->name('projects.chat.presence');
         Route::post('/projects/{project}/chat', [ProjectChatController::class, 'store'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.store');

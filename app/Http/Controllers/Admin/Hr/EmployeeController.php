@@ -6,17 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
 use App\Models\EmployeeSession;
+use App\Models\EmployeePayout;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\ProjectTaskSubtask;
 use App\Models\User;
 use App\Enums\Role;
 use App\Http\Requests\StoreEmployeeUserRequest;
+use App\Support\Currency;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
@@ -45,6 +49,7 @@ class EmployeeController extends Controller
     {
         $data = $request->validated();
         $data['currency'] = strtoupper($data['currency']);
+        $data['basic_pay'] = $data['basic_pay'] ?? 0;
 
         $userId = $data['user_id'] ?? null;
         $passwordInput = $data['user_password'] ?? null;
@@ -144,12 +149,22 @@ class EmployeeController extends Controller
             'work_mode' => ['required', 'in:remote,on_site,hybrid'],
             'join_date' => ['required', 'date'],
             'status' => ['required', 'in:active,inactive'],
+            'salary_type' => ['required', 'in:monthly,hourly,project_base'],
+            'currency' => ['required', 'string', 'size:3', Rule::in(Currency::allowed())],
+            'basic_pay' => [
+                Rule::requiredIf(fn () => ! ($request->input('employment_type') === 'contract' && $request->input('salary_type') === 'project_base')),
+                'nullable',
+                'numeric',
+            ],
+            'hourly_rate' => ['nullable', 'numeric'],
             'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:4096'],
             'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:4096'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
             'user_password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
+        $data['currency'] = strtoupper($data['currency']);
+        $data['basic_pay'] = $data['basic_pay'] ?? 0;
         $employee->update($data);
 
         $userId = $data['user_id'] ?? $employee->user_id;
@@ -219,6 +234,25 @@ class EmployeeController extends Controller
             $employee->update(['photo_path' => $linkedUser->avatar_path]);
         }
 
+        $compensationPayload = [
+            'salary_type' => $data['salary_type'],
+            'currency' => $data['currency'],
+            'basic_pay' => $data['basic_pay'],
+            'overtime_rate' => $data['hourly_rate'] ?? null,
+            'set_by' => $request->user()?->id,
+        ];
+
+        $activeCompensation = $employee->activeCompensation;
+        if ($activeCompensation) {
+            $activeCompensation->update($compensationPayload);
+        } else {
+            EmployeeCompensation::create(array_merge($compensationPayload, [
+                'employee_id' => $employee->id,
+                'effective_from' => $employee->join_date,
+                'is_active' => true,
+            ]));
+        }
+
         return redirect()->route('admin.hr.employees.index')
             ->with('status', 'Employee updated.');
     }
@@ -244,6 +278,11 @@ class EmployeeController extends Controller
 
         $tab = request()->query('tab', 'summary');
         $allowedTabs = ['summary', 'profile', 'compensation', 'timesheets', 'leave', 'payroll', 'projects'];
+        $isProjectBase = ($summary['salary_type'] ?? null) === 'project_base';
+        if ($isProjectBase) {
+            $allowedTabs[] = 'earnings';
+            $allowedTabs[] = 'payouts';
+        }
         if (! in_array($tab, $allowedTabs, true)) {
             $tab = 'summary';
         }
@@ -251,6 +290,135 @@ class EmployeeController extends Controller
         $projects = collect();
         $projectStatusCounts = collect();
         $projectTaskStatusCounts = collect();
+        $taskSummary = null;
+        $subtaskSummary = null;
+        $taskProgress = null;
+        $projectBaseEarnings = null;
+        $recentEarnings = collect();
+        $recentPayouts = collect();
+        $contractProjectsQuery = null;
+
+        if ($isProjectBase) {
+            $contractProjectsQuery = Project::query()
+                ->whereHas('employees', fn ($query) => $query->whereKey($employee->id))
+                ->whereNotNull('contract_employee_total_earned');
+        }
+
+        if ($tab === 'summary') {
+            $taskBaseQuery = ProjectTask::query()
+                ->where(function ($query) use ($employee) {
+                    $query->where(function ($inner) use ($employee) {
+                        $inner->where('assigned_type', 'employee')
+                            ->where('assigned_id', $employee->id);
+                    })->orWhereHas('assignments', function ($inner) use ($employee) {
+                        $inner->where('assignee_type', 'employee')
+                            ->where('assignee_id', $employee->id);
+                    });
+                });
+
+            $taskStatusCounts = (clone $taskBaseQuery)
+                ->select('status', DB::raw('COUNT(*) as total'))
+                ->groupBy('status')
+                ->pluck('total', 'status');
+
+            $taskTotal = (int) $taskStatusCounts->sum();
+            $completedTasks = (int) (($taskStatusCounts['completed'] ?? 0) + ($taskStatusCounts['done'] ?? 0));
+            $taskSummary = [
+                'total' => $taskTotal,
+                'projects' => (int) (clone $taskBaseQuery)->distinct('project_id')->count('project_id'),
+                'pending' => (int) ($taskStatusCounts['pending'] ?? 0),
+                'in_progress' => (int) ($taskStatusCounts['in_progress'] ?? 0),
+                'blocked' => (int) ($taskStatusCounts['blocked'] ?? 0),
+                'completed' => $completedTasks,
+                'other' => (int) $taskStatusCounts->except(['pending', 'in_progress', 'blocked', 'completed', 'done'])->sum(),
+            ];
+
+            $taskProgress = [
+                'percent' => $taskTotal > 0 ? (int) round(($completedTasks / $taskTotal) * 100) : 0,
+            ];
+
+            $subtaskCounts = ProjectTaskSubtask::query()
+                ->select('is_completed', DB::raw('COUNT(*) as total'))
+                ->whereIn('project_task_id', (clone $taskBaseQuery)->select('id'))
+                ->groupBy('is_completed')
+                ->pluck('total', 'is_completed');
+
+            $subtaskTotal = (int) $subtaskCounts->sum();
+            $subtaskCompleted = (int) ($subtaskCounts[1] ?? 0);
+
+            $subtaskSummary = [
+                'total' => $subtaskTotal,
+                'completed' => $subtaskCompleted,
+                'pending' => $subtaskTotal - $subtaskCompleted,
+            ];
+
+            if ($contractProjectsQuery) {
+                $totalEarned = (float) (clone $contractProjectsQuery)->sum('contract_employee_total_earned');
+                $payableRaw = (float) (clone $contractProjectsQuery)->sum('contract_employee_payable');
+                $paid = (float) EmployeePayout::query()
+                    ->where('employee_id', $employee->id)
+                    ->sum('amount');
+
+                $projectBaseEarnings = [
+                    'total_earned' => $totalEarned,
+                    'payable' => max(0, $payableRaw - $paid),
+                    'paid' => $paid,
+                ];
+            }
+        }
+
+        if ($tab === 'earnings' && $contractProjectsQuery) {
+            $totalEarned = (float) (clone $contractProjectsQuery)->sum('contract_employee_total_earned');
+            $payableRaw = (float) (clone $contractProjectsQuery)->sum('contract_employee_payable');
+            $paid = (float) EmployeePayout::query()
+                ->where('employee_id', $employee->id)
+                ->sum('amount');
+            $projectBaseEarnings = [
+                'total_earned' => $totalEarned,
+                'payable' => max(0, $payableRaw - $paid),
+                'paid' => $paid,
+            ];
+
+            $recentEarnings = (clone $contractProjectsQuery)
+                ->orderByDesc('updated_at')
+                ->limit(10)
+                ->get([
+                    'id',
+                    'name',
+                    'status',
+                    'currency',
+                    'contract_employee_total_earned',
+                    'contract_employee_payable',
+                    'contract_employee_payout_status',
+                    'updated_at',
+                ]);
+        }
+
+        if ($tab === 'payouts' && $contractProjectsQuery) {
+            $totalEarned = (float) (clone $contractProjectsQuery)->sum('contract_employee_total_earned');
+            $payableRaw = (float) (clone $contractProjectsQuery)->sum('contract_employee_payable');
+            $paid = (float) EmployeePayout::query()
+                ->where('employee_id', $employee->id)
+                ->sum('amount');
+            $projectBaseEarnings = [
+                'total_earned' => $totalEarned,
+                'payable' => max(0, $payableRaw - $paid),
+                'paid' => $paid,
+            ];
+
+            $recentPayouts = EmployeePayout::query()
+                ->where('employee_id', $employee->id)
+                ->whereNotNull('paid_at')
+                ->orderByDesc('paid_at')
+                ->limit(10)
+                ->get([
+                    'paid_at',
+                    'reference',
+                    'amount',
+                    'currency',
+                    'payout_method',
+                ]);
+        }
 
         if ($tab === 'projects') {
             $projects = Project::query()
@@ -289,6 +457,12 @@ class EmployeeController extends Controller
             'projects' => $projects,
             'projectStatusCounts' => $projectStatusCounts,
             'projectTaskStatusCounts' => $projectTaskStatusCounts,
+            'taskSummary' => $taskSummary,
+            'subtaskSummary' => $subtaskSummary,
+            'taskProgress' => $taskProgress,
+            'projectBaseEarnings' => $projectBaseEarnings,
+            'recentEarnings' => $recentEarnings,
+            'recentPayouts' => $recentPayouts,
         ]);
     }
 

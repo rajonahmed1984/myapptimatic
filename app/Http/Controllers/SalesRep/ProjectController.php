@@ -51,7 +51,8 @@ class ProjectController extends Controller
         $repAmount = $project->salesRepresentatives->first()?->pivot?->amount;
 
         $tasks = $project->tasks()
-            ->orderBy('id')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get();
 
         $chatMessages = $project->messages()

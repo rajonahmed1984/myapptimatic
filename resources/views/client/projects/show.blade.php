@@ -9,10 +9,16 @@
         $chatMeta = $chatMeta ?? null;
         $chatLastMessageId = $chatMessages->last()?->id ?? 0;
         $chatOldestMessageId = $chatMessages->first()?->id ?? 0;
-        $softwareOverhead = (float) ($project->software_overhead ?? 0);
-        $websiteOverhead = (float) ($project->website_overhead ?? 0);
-        $overheadTotal = $softwareOverhead + $websiteOverhead;
-        $budgetWithOverhead = (float) ($project->budget_amount ?? 0) + $overheadTotal;
+        $financials = $financials ?? [
+            'budget' => $project->total_budget ?? $project->budget_amount,
+            'initial_payment' => $project->initial_payment_amount ?? null,
+            'overhead_total' => (float) ($project->overhead_total ?? 0),
+            'budget_with_overhead' => null,
+        ];
+        if ($financials['budget_with_overhead'] === null && $financials['budget'] !== null) {
+            $financials['budget_with_overhead'] = (float) $financials['budget'] + (float) ($financials['overhead_total'] ?? 0);
+        }
+        $currencyCode = $project->currency ?? '';
     @endphp
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -24,27 +30,24 @@
 
     <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <div class="card p-6">
-            <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
+            <div class="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Project ID</div>
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Project ID & Dates</div>
                 <div class="mt-2 font-semibold text-slate-900">#{{ $project->id }}</div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Dates</div>
                 <div class="mt-2 text-sm text-slate-700">
                     Start: {{ $project->start_date?->format($globalDateFormat) ?? '--' }}<br>
                     Expected end: {{ $project->expected_end_date?->format($globalDateFormat) ?? '--' }}<br>
                     Due: {{ $project->due_date?->format($globalDateFormat) ?? '--' }}
                 </div>
-            </div>
+            </div>            
             @if(!$isProjectSpecificUser)
                 <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Financials</div>
                     <div class="mt-2 text-sm text-slate-700">
-                        Budget: {{ $project->total_budget ? $project->currency.' '.number_format($project->total_budget, 2) : '--' }}<br>
-                        Initial payment: {{ $project->initial_payment_amount ? $project->currency.' '.number_format($project->initial_payment_amount, 2) : '--' }}<br>
-                        Total overhead: {{ $project->currency ?? '' }}{{ number_format($overheadTotal, 2) }}<br>
-                        Budget with overhead: {{ $project->currency ?? '' }}{{ number_format($budgetWithOverhead, 2) }}
+                        Budget: {{ $financials['budget'] !== null ? $currencyCode.' '.number_format((float) $financials['budget'], 2) : '--' }}<br>
+                        Initial payment: {{ $financials['initial_payment'] !== null ? $currencyCode.' '.number_format((float) $financials['initial_payment'], 2) : '--' }}<br>
+                        Total overhead: {{ $currencyCode }} {{ number_format((float) ($financials['overhead_total'] ?? 0), 2) }}<br>
+                        Budget with overhead: {{ $financials['budget_with_overhead'] !== null ? $currencyCode.' '.number_format((float) $financials['budget_with_overhead'], 2) : '--' }}
                     </div>
                 @if(!empty($initialInvoice))
                     <div class="mt-2 text-xs text-slate-500">
@@ -109,13 +112,9 @@
             </div>
             <form method="POST" action="{{ route('client.projects.tasks.store', $project) }}" class="mt-4 grid gap-3 md:grid-cols-3" enctype="multipart/form-data">
                 @csrf
-                <div class="md:col-span-1">
+                <div class="md:col-span-2">
                     <label class="text-xs text-slate-500">Title</label>
                     <input name="title" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-                <div class="md:col-span-2">
-                    <label class="text-xs text-slate-500">Description</label>
-                    <input name="description" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                 </div>
                 <div class="md:col-span-1">
                     <label class="text-xs text-slate-500">Task type</label>
@@ -124,6 +123,10 @@
                             <option value="{{ $value }}">{{ $label }}</option>
                         @endforeach
                     </select>
+                </div>                
+                <div class="md:col-span-3">
+                    <label class="text-xs text-slate-500">Description</label>
+                    <input name="description" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                 </div>
                 <div class="md:col-span-1">
                     <label class="text-xs text-slate-500">Priority</label>
@@ -159,7 +162,9 @@
                         @foreach($tasks as $task)
                             <tr class="border-t border-slate-100 align-top">
                                 <td class="px-3 py-2">
-                                    <div class="font-semibold text-slate-900">{{ $task->title }}</div>
+                                    <div class="font-semibold text-slate-900">
+                                        <a href="{{ route('client.projects.tasks.show', [$project, $task]) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500"> {{ $task->title }}</a>                                       
+                                    </div>
                                     <div class="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-400">
                                         {{ $taskTypeOptions[$task->task_type] ?? ucfirst($task->task_type ?? 'Task') }}
                                     </div>

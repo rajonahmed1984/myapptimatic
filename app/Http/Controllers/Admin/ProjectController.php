@@ -20,11 +20,13 @@ use App\Support\TaskActivityLogger;
 use App\Support\TaskAssignmentManager;
 use App\Support\TaskAssignees;
 use App\Support\Currency;
+use App\Support\TaskCompletionManager;
 use App\Support\TaskSettings;
 use App\Services\CommissionService;
 use App\Services\BillingService;
 use App\Models\Setting;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -446,7 +448,8 @@ class ProjectController extends Controller
 
         $tasksQuery = $project->tasks()
             ->with(['assignments.employee', 'assignments.salesRep'])
-            ->orderBy('id');
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
 
         $tasksQuery->when($user?->isClient(), fn ($q) => $q->where('customer_visible', true));
 
@@ -776,6 +779,7 @@ class ProjectController extends Controller
 
         $taskData = array_merge($data, [
             'completed_at' => $data['status'] === 'done' ? Carbon::now() : null,
+            'created_by' => $request->user()?->id,
         ]);
 
         $task = $project->tasks()->create($taskData);
@@ -789,9 +793,17 @@ class ProjectController extends Controller
         return back()->with('status', 'Task added.');
     }
 
-    public function updateTask(Request $request, Project $project, ProjectTask $task): RedirectResponse
+    public function updateTask(Request $request, Project $project, ProjectTask $task): RedirectResponse|JsonResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
+
+        if ($task->creatorEditWindowExpired($request->user()?->id)) {
+            $message = 'Task can only be edited within 24 hours of creation.';
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $message], 403);
+            }
+            return back()->withErrors(['task' => $message]);
+        }
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -800,6 +812,12 @@ class ProjectController extends Controller
             'due_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        if ($data['status'] === 'done'
+            && TaskCompletionManager::hasSubtasks($task)
+            && ! TaskCompletionManager::allSubtasksCompleted($task)) {
+            return back()->withErrors(['status' => 'Complete all subtasks before completing this task.']);
+        }
 
         $payload = array_merge($data, [
             'completed_at' => $data['status'] === 'done'
@@ -874,12 +892,19 @@ class ProjectController extends Controller
         $actualCost = $hourlyCost * $actualHours;
         $overhead = $project->overhead_total;
         $budgetWithOverhead = $budget + $overhead;
-        $profit = $budgetWithOverhead - $actualCost;
+        $salesRepTotal = (float) ($project->sales_rep_total ?? 0);
+        $contractTotal = (float) ($project->contract_amount ?? $project->contract_employee_total_earned ?? 0);
+        $payoutsTotal = $salesRepTotal + $contractTotal;
+        $initialPayment = (float) ($project->initial_payment_amount ?? 0);
+        $remainingBudget = $budgetWithOverhead - $initialPayment;
+        $profit = ($budgetWithOverhead - $payoutsTotal) - $actualCost;
 
         return [
             'budget' => $budget,
             'overhead_total' => $overhead,
             'budget_with_overhead' => $budgetWithOverhead,
+            'payouts_total' => $payoutsTotal,
+            'remaining_budget' => $remainingBudget,
             'planned_hours' => $plannedHours,
             'actual_hours' => $actualHours,
             'hourly_cost' => $hourlyCost,

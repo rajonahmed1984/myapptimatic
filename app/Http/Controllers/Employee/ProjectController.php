@@ -53,7 +53,8 @@ class ProjectController extends Controller
 
         $tasks = $project->tasks()
             ->withCount('subtasks')
-            ->orderBy('id')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get();
 
         $chatMessages = $project->messages()

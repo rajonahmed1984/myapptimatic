@@ -94,10 +94,11 @@
 
         @php
             $maintenanceRenewal = $maintenanceRenewal ?? null;
+            $hasMaintenance = !empty($maintenanceRenewal);
         @endphp
 
         <div class="grid gap-4 md:grid-cols-3">
-            <div class="card p-4 md:col-span-2">
+            <div class="card p-4 {{ $hasMaintenance ? 'md:col-span-2' : 'md:col-span-3' }}">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="section-label">Projects</div>
@@ -136,20 +137,24 @@
                     @endforelse
                 </div>
             </div>
-            <div class="card p-4">
-                <div class="section-label">Maintenance</div>
-                <div class="mt-2 text-sm text-slate-600">
-                    @if($maintenanceRenewal)
-                        Next renewal: {{ $maintenanceRenewal->next_invoice_at->format($globalDateFormat) }}<br>
-                        Service: {{ $maintenanceRenewal->plan->product->name ?? 'Service' }} — {{ $maintenanceRenewal->plan->name ?? '' }}
-                    @else
-                        No upcoming maintenance renewals in the next cycle.
-                    @endif
+            @if($hasMaintenance)
+                <div class="card p-4">
+                    <div class="section-label">Maintenance</div>
+                    <div class="mt-2 text-sm text-slate-600">
+                        @php
+                            $nextBillingDate = $maintenanceRenewal->next_billing_date ?? $maintenanceRenewal->start_date;
+                        @endphp
+                        Next renewal: {{ $nextBillingDate?->format($globalDateFormat) ?? '--' }}<br>
+                        Plan: {{ $maintenanceRenewal->title ?? 'Maintenance' }}
+                        @if($maintenanceRenewal->project?->name)
+                            <br>Project: {{ $maintenanceRenewal->project->name }}
+                        @endif
+                    </div>
+                    <div class="mt-4">
+                        <a href="{{ route('client.invoices.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View invoices</a>
+                    </div>
                 </div>
-                <div class="mt-4">
-                    <a href="{{ route('client.invoices.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View invoices</a>
-                </div>
-            </div>
+            @endif
         </div>
 
         <div class="grid gap-6 lg:grid-cols-2">

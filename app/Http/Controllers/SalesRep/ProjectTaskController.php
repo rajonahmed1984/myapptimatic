@@ -14,6 +14,7 @@ use App\Support\TaskAssignees;
 use App\Support\TaskCompletionManager;
 use App\Support\TaskSettings;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -25,12 +26,6 @@ class ProjectTaskController extends Controller
         $this->authorize('createTask', $project);
 
         $data = $request->validated();
-
-        if (in_array($data['status'], ['completed', 'done'], true)
-            && TaskCompletionManager::hasSubtasks($task)
-            && ! TaskCompletionManager::allSubtasksCompleted($task)) {
-            return back()->withErrors(['status' => 'Complete all subtasks before completing this task.'])->withInput();
-        }
 
         $assignees = TaskAssignees::parse($data['assignees'] ?? []);
         if (empty($assignees)) {
@@ -78,7 +73,7 @@ class ProjectTaskController extends Controller
         return back()->with('status', 'Task added.');
     }
 
-    public function update(UpdateTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse
+    public function update(UpdateTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse|JsonResponse
     {
         $this->authorize('update', $task);
         $this->ensureTaskBelongsToProject($project, $task);
@@ -87,7 +82,17 @@ class ProjectTaskController extends Controller
             return back()->withErrors(['dates' => 'Task dates cannot be changed after creation.']);
         }
 
+        if ($task->creatorEditWindowExpired($request->user()?->id)) {
+            return $this->forbiddenResponse($request, 'Task can only be edited within 24 hours of creation.');
+        }
+
         $data = $request->validated();
+
+        if (in_array($data['status'], ['completed', 'done'], true)
+            && TaskCompletionManager::hasSubtasks($task)
+            && ! TaskCompletionManager::allSubtasksCompleted($task)) {
+            return back()->withErrors(['status' => 'Complete all subtasks before completing this task.']);
+        }
 
         $taskType = $data['task_type'] ?? $task->task_type ?? 'feature';
         if ($taskType === 'upload' && ! $task->activities()->where('type', 'upload')->exists()) {
@@ -206,6 +211,18 @@ class ProjectTaskController extends Controller
         $fileName = $name . '-' . Str::random(8) . '.' . $extension;
 
         return $file->storeAs('project-task-activities/' . $task->id, $fileName, 'public');
+    }
+
+    private function forbiddenResponse(Request $request, string $message): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => false,
+                'message' => $message,
+            ], 403);
+        }
+
+        return back()->withErrors(['task' => $message]);
     }
 
     private function repId(Request $request): int

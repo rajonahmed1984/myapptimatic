@@ -14,6 +14,7 @@ use App\Support\TaskAssignees;
 use App\Support\TaskCompletionManager;
 use App\Support\TaskSettings;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -48,7 +49,7 @@ class ProjectTaskController extends Controller
             'assigned_id' => $assignees[0]['id'] ?? $request->user()->id,
             'customer_visible' => (bool) ($data['customer_visible'] ?? TaskSettings::defaultCustomerVisible()),
             'progress' => 0,
-            'created_by' => null,
+            'created_by' => $request->user()?->id,
             'time_estimate_minutes' => $data['time_estimate_minutes'] ?? null,
             'tags' => $this->parseTags($data['tags'] ?? null),
             'relationship_ids' => $this->parseRelationships($data['relationship_ids'] ?? null),
@@ -72,13 +73,17 @@ class ProjectTaskController extends Controller
         return back()->with('status', 'Task added.');
     }
 
-    public function update(UpdateTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse
+    public function update(UpdateTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse|JsonResponse
     {
         $this->authorize('update', $task);
         $this->ensureTaskBelongsToProject($project, $task);
 
         if ($request->hasAny(['start_date', 'due_date'])) {
             return back()->withErrors(['dates' => 'Task dates cannot be changed after creation.']);
+        }
+
+        if ($task->creatorEditWindowExpired($request->user()?->id)) {
+            return $this->forbiddenResponse($request, 'Task can only be edited within 24 hours of creation.');
         }
 
         $data = $request->validated();
@@ -165,6 +170,41 @@ class ProjectTaskController extends Controller
         return back()->with('status', 'Task removed.');
     }
 
+    public function start(Request $request, Project $project, ProjectTask $task): RedirectResponse|JsonResponse
+    {
+        $this->authorize('update', $task);
+        $this->ensureTaskBelongsToProject($project, $task);
+
+        if ($task->creatorEditWindowExpired($request->user()?->id)) {
+            return $this->forbiddenResponse($request, 'Task can only be edited within 24 hours of creation.');
+        }
+
+        $currentStatus = $task->status ?? 'pending';
+        if (in_array($currentStatus, ['completed', 'done'], true)) {
+            return $this->startResponse($request, $task, 'Task already completed.');
+        }
+
+        if ($currentStatus === 'in_progress') {
+            return $this->startResponse($request, $task, 'Task already in progress.');
+        }
+
+        if (! in_array($currentStatus, ['pending', 'todo'], true)) {
+            return $this->startResponse($request, $task, 'Task status unchanged.');
+        }
+
+        $task->update(['status' => 'in_progress']);
+
+        TaskActivityLogger::record($task, $request, 'status', 'Status changed to In progress.');
+        SystemLogger::write('activity', 'Project task started (employee).', [
+            'project_id' => $project->id,
+            'task_id' => $task->id,
+            'actor_type' => 'employee',
+            'actor_id' => $request->user()->id,
+        ]);
+
+        return $this->startResponse($request, $task, 'Task marked as in progress.');
+    }
+
     private function ensureTaskBelongsToProject(Project $project, ProjectTask $task): void
     {
         if ($task->project_id !== $project->id) {
@@ -206,5 +246,33 @@ class ProjectTaskController extends Controller
         $fileName = $name . '-' . Str::random(8) . '.' . $extension;
 
         return $file->storeAs('project-task-activities/' . $task->id, $fileName, 'public');
+    }
+
+    private function forbiddenResponse(Request $request, string $message): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => false,
+                'message' => $message,
+            ], 403);
+        }
+
+        return back()->withErrors(['task' => $message]);
+    }
+
+    private function startResponse(Request $request, ProjectTask $task, string $message): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => $message,
+                'data' => [
+                    'task_id' => $task->id,
+                    'status' => $task->status,
+                ],
+            ]);
+        }
+
+        return back()->with('status', $message);
     }
 }

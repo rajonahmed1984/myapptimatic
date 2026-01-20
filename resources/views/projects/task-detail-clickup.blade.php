@@ -240,7 +240,7 @@
                                         <option value="in_progress" @selected(! $subtask->is_completed)>In progress</option>
                                         <option value="completed" @selected($subtask->is_completed)>Completed</option>
                                     </select>
-                                @elseif($routePrefix !== 'rep')
+                                @elseif($routePrefix === 'admin')
                                     <input type="checkbox" data-subtask-id="{{ $subtask->id }}" @checked($subtask->is_completed) class="subtask-checkbox mt-1 rounded cursor-pointer" />
                                 @endif
                                 <div class="flex-1 min-w-0">
@@ -450,7 +450,8 @@
             });
         }
 
-        // Handle subtask completion
+        @if($routePrefix === 'admin')
+        // Handle subtask completion (admin)
         document.querySelectorAll('.subtask-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 const subtaskId = checkbox.getAttribute('data-subtask-id');
@@ -486,7 +487,9 @@
                 });
             });
         });
+        @endif
 
+        @if($routePrefix === 'employee')
         document.querySelectorAll('.subtask-status-select').forEach(select => {
             select.addEventListener('change', () => {
                 const subtaskId = select.getAttribute('data-subtask-id');
@@ -522,6 +525,7 @@
                 });
             });
         });
+        @endif
 
     </script>
 

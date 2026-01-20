@@ -17,8 +17,49 @@
         <form method="POST" action="{{ route('admin.hr.employees.update', $employee) }}" enctype="multipart/form-data" class="space-y-4">
             @csrf
             @method('PUT')
+            @php
+                $compensation = $employee->activeCompensation;
+                $currencyOptions = ['BDT', 'USD'];
+            @endphp
             <div class="section-label">Profile</div>
             <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="text-xs text-slate-500">Name</label>
+                    <input name="name" value="{{ old('name', $employee->name) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Email</label>
+                    <input name="email" type="email" value="{{ old('email', $employee->email) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Phone</label>
+                    <input name="phone" value="{{ old('phone', $employee->phone) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-xs text-slate-500">Address</label>
+                    <input name="address" value="{{ old('address', $employee->address) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Department (optional)</label>
+                    <input name="department" value="{{ old('department', $employee->department) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Join date</label>
+                    <input name="join_date" type="date" value="{{ old('join_date', optional($employee->join_date)->format('Y-m-d')) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Designation</label>
+                    <input name="designation" value="{{ old('designation', $employee->designation) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Manager (optional)</label>
+                    <select name="manager_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <option value="">-- none --</option>
+                        @foreach($managers as $manager)
+                            <option value="{{ $manager->id }}" @selected($employee->manager_id === $manager->id)>{{ $manager->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div>
                     <label class="text-xs text-slate-500">Linked user (optional)</label>
                     <select name="user_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
@@ -37,46 +78,13 @@
                     <label class="text-xs text-slate-500">Confirm password</label>
                     <input name="user_password_confirmation" type="password" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                 </div>
-                <div>
-                    <label class="text-xs text-slate-500">Designation</label>
-                    <input name="designation" value="{{ old('designation', $employee->designation) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Manager (optional)</label>
-                    <select name="manager_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <option value="">-- none --</option>
-                        @foreach($managers as $manager)
-                            <option value="{{ $manager->id }}" @selected($employee->manager_id === $manager->id)>{{ $manager->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Name</label>
-                    <input name="name" value="{{ old('name', $employee->name) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Email</label>
-                    <input name="email" type="email" value="{{ old('email', $employee->email) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
-                </div>
-                <div class="md:col-span-2">
-                    <label class="text-xs text-slate-500">Address</label>
-                    <input name="address" value="{{ old('address', $employee->address) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Department (optional)</label>
-                    <input name="department" value="{{ old('department', $employee->department) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Join date</label>
-                    <input name="join_date" type="date" value="{{ old('join_date', optional($employee->join_date)->format('Y-m-d')) }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
-                </div>
             </div>
 
             <div class="section-label">Employment</div>
             <div class="grid gap-4 md:grid-cols-3">
                 <div>
                     <label class="text-xs text-slate-500">Employment type</label>
-                    <select name="employment_type" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="employment_type" required data-employment-type class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                         <option value="full_time" @selected(old('employment_type', $employee->employment_type) === 'full_time')>Full-time</option>
                         <option value="part_time" @selected(old('employment_type', $employee->employment_type) === 'part_time')>Part-time</option>
                         <option value="contract" @selected(old('employment_type', $employee->employment_type) === 'contract')>Contract</option>
@@ -99,12 +107,37 @@
                 </div>
             </div>
 
+            <div class="section-label">Compensation</div>
+            <div class="grid gap-4 md:grid-cols-3">
+                <div class="space-y-2">
+                    <label class="text-xs text-slate-500">Salary type</label>
+                    <select name="salary_type" required data-salary-type class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <option value="monthly" @selected(old('salary_type', $compensation?->salary_type) === 'monthly')>Monthly</option>
+                        <option value="hourly" @selected(old('salary_type', $compensation?->salary_type) === 'hourly')>Hourly</option>
+                        <option value="project_base" @selected(old('salary_type', $compensation?->salary_type) === 'project_base')>Project base</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs text-slate-500">Currency</label>
+                    <select name="currency" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        @foreach($currencyOptions as $currency)
+                            <option value="{{ $currency }}" @selected(old('currency', $compensation?->currency) === $currency)>{{ $currency }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs text-slate-500">Basic pay</label>
+                    <input name="basic_pay" type="number" step="0.01" min="0" value="{{ old('basic_pay', $compensation?->basic_pay ?? 0) }}" data-basic-pay class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <p class="mt-1 text-xs text-slate-400" data-basic-pay-note>Required unless contract + project base.</p>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs text-slate-500">Hourly rate (optional)</label>
+                    <input name="hourly_rate" type="number" step="0.01" min="0" value="{{ old('hourly_rate', $compensation?->overtime_rate) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                </div>
+            </div>
+
             <div class="section-label">Additional</div>
             <div class="grid gap-4 md:grid-cols-2">
-                <div>
-                    <label class="text-xs text-slate-500">Phone</label>
-                    <input name="phone" value="{{ old('phone', $employee->phone) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
                 <div class="space-y-2">
                     <label class="text-xs text-slate-500">NID upload (jpg/png/pdf)</label>
                     <input type="file" name="nid_file" accept=".jpg,.jpeg,.png,.pdf" class="w-full text-sm text-slate-700">
@@ -117,11 +150,9 @@
                 <div class="space-y-2">
                     <label class="text-xs text-slate-500">Photo (jpg/png)</label>
                     <input type="file" name="photo" accept=".jpg,.jpeg,.png" class="w-full text-sm text-slate-700">
-                    @if($employee->photo_path)
-                        <div class="mt-2">
-                            <x-avatar :path="$employee->photo_path" :name="$employee->name" size="h-16 w-16" textSize="text-sm" />
-                        </div>
-                    @endif
+                    <div class="mt-2">
+                        <x-avatar id="employee-photo-preview" :path="$employee->photo_path" :name="$employee->name" size="h-16 w-16" textSize="text-sm" />
+                    </div>
                 </div>
                 <div class="space-y-2">
                     <label class="text-xs text-slate-500">CV upload (pdf)</label>
@@ -140,4 +171,47 @@
             </div>
         </form>
     </div>
+
+    <script>
+        const employeePhotoInput = document.querySelector('input[name="photo"]');
+        const employeePhotoPreview = document.getElementById('employee-photo-preview');
+
+        if (employeePhotoInput && employeePhotoPreview) {
+            employeePhotoInput.addEventListener('change', () => {
+                const file = employeePhotoInput.files && employeePhotoInput.files[0];
+                if (!file) {
+                    return;
+                }
+
+                const previewUrl = URL.createObjectURL(file);
+                employeePhotoPreview.innerHTML = `<img src="${previewUrl}" alt="Photo preview" class="h-full w-full object-cover">`;
+            });
+        }
+
+        const employmentTypeInput = document.querySelector('[data-employment-type]');
+        const salaryTypeInput = document.querySelector('[data-salary-type]');
+        const basicPayInput = document.querySelector('[data-basic-pay]');
+        const basicPayNote = document.querySelector('[data-basic-pay-note]');
+
+        const syncBasicPayRequirement = () => {
+            if (!employmentTypeInput || !salaryTypeInput || !basicPayInput) {
+                return;
+            }
+
+            const isOptional = employmentTypeInput.value === 'contract' && salaryTypeInput.value === 'project_base';
+            basicPayInput.required = !isOptional;
+
+            if (basicPayNote) {
+                basicPayNote.textContent = isOptional
+                    ? 'Optional for contract employees on project-base salary.'
+                    : 'Required unless contract + project base.';
+            }
+        };
+
+        if (employmentTypeInput && salaryTypeInput && basicPayInput) {
+            syncBasicPayRequirement();
+            employmentTypeInput.addEventListener('change', syncBasicPayRequirement);
+            salaryTypeInput.addEventListener('change', syncBasicPayRequirement);
+        }
+    </script>
 @endsection

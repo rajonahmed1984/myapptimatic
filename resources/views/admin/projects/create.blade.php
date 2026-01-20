@@ -268,25 +268,14 @@
                     <button type="button" id="addTaskRow" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add task</button>
                 </div>
                 <div id="taskRows" class="mt-4 space-y-3">
-                    @php $taskOld = old('tasks', [ ['title' => '', 'task_type' => 'feature', 'priority' => 'medium', 'descriptions' => [''], 'start_date' => '', 'due_date' => '', 'assignee' => '', 'customer_visible' => false] ]); @endphp
+                    @php $taskOld = old('tasks', [ ['title' => '', 'task_type' => 'feature', 'priority' => 'medium', 'descriptions' => [''], 'start_date' => now()->toDateString(), 'due_date' => '', 'assignee' => '', 'customer_visible' => false] ]); @endphp
                     @foreach($taskOld as $index => $task)
                         <div class="rounded-xl border border-slate-100 bg-white p-3 task-row" data-index="{{ $index }}">
-                            <div class="grid gap-3 md:grid-cols-4 mb-3">
+                            <div class="grid gap-3 md:grid-cols-5 mb-3">
                                 <div class="md:col-span-2">
                                     <label class="text-xs text-slate-500">Title</label>
                                     <input name="tasks[{{ $index }}][title]" value="{{ $task['title'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm task-title" required>
                                 </div>
-                                <div>
-                                    <label class="text-xs text-slate-500">Start date</label>
-                                    <input type="date" name="tasks[{{ $index }}][start_date]" value="{{ $task['start_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
-                                </div>
-                                <div>
-                                    <label class="text-xs text-slate-500">Due date</label>
-                                    <input type="date" name="tasks[{{ $index }}][due_date]" value="{{ $task['due_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
-                                </div>
-                            </div>
-
-                            <div class="grid gap-3 md:grid-cols-4 mb-3">
                                 <div>
                                     <label class="text-xs text-slate-500">Task type</label>
                                     <select name="tasks[{{ $index }}][task_type]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
@@ -303,13 +292,14 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="md:col-span-2">
-                                    <label class="text-xs text-slate-500">Attachment (required for Upload type)</label>
-                                    <input type="file" name="tasks[{{ $index }}][attachment]" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" class="mt-1 w-full text-xs text-slate-600">
+                                <div>
+                                    <label class="text-xs text-slate-500">Start date</label>
+                                    <input type="date" name="tasks[{{ $index }}][start_date]" value="{{ $task['start_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
                                 </div>
-                            </div>
-
-                            <div class="grid gap-3 md:grid-cols-3 mb-3">
+                                <div>
+                                    <label class="text-xs text-slate-500">Due date</label>
+                                    <input type="date" name="tasks[{{ $index }}][due_date]" value="{{ $task['due_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                </div>
                                 <div class="md:col-span-2">
                                     <label class="text-xs text-slate-500">Assign to</label>
                                     <select name="tasks[{{ $index }}][assignee]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
@@ -325,12 +315,26 @@
                                     </select>
                                 </div>
                                 <div class="flex items-end">
-                                    <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                                    <label class="mt-1 flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 cursor-pointer focus-within:border-teal-300 focus-within:ring-2 focus-within:ring-teal-100">
                                         <input type="hidden" name="tasks[{{ $index }}][customer_visible]" value="0">
-                                        <input type="checkbox" name="tasks[{{ $index }}][customer_visible]" value="1" @checked(!empty($task['customer_visible']))>
+                                        <input type="checkbox" name="tasks[{{ $index }}][customer_visible]" value="1" @checked(!empty($task['customer_visible'])) class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-2 focus:ring-teal-200 focus:ring-offset-0">
                                         <span>Customer visible</span>
                                     </label>
                                 </div>
+                                
+                                <div>
+                                    <label class="text-xs text-slate-500">Attachment (required for Upload type)</label>
+                                    <input type="file" name="tasks[{{ $index }}][attachment]" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" class="mt-1 w-full text-xs text-slate-600">
+                                </div>
+                            </div>
+
+                            <div class="grid gap-3 md:grid-cols-4 mb-3">
+                                
+                                
+                            </div>
+
+                            <div class="grid gap-3 md:grid-cols-3 mb-3">
+                                
                             </div>
 
                             <div class="descriptions-container mb-3" data-task-index="{{ $index }}">
@@ -375,6 +379,7 @@
             const maintenanceRows = document.getElementById('maintenanceRows');
             const addMaintenanceBtn = document.getElementById('addMaintenanceRow');
             const employeeRows = document.querySelectorAll('[data-employee-row]');
+            const defaultStartDate = @json(now()->toDateString());
 
             const toggleContractAmount = (row) => {
                 const checkbox = row.querySelector('input[type="checkbox"][data-employment-type]');
@@ -454,7 +459,7 @@
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Start date</label>
-                            <input type="date" name="tasks[${index}][start_date]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            <input type="date" name="tasks[${index}][start_date]" value="${defaultStartDate}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Due date</label>
@@ -499,9 +504,9 @@
                             </select>
                         </div>
                         <div class="flex items-end">
-                            <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                            <label class="mt-1 flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 cursor-pointer focus-within:border-teal-300 focus-within:ring-2 focus-within:ring-teal-100">
                                 <input type="hidden" name="tasks[${index}][customer_visible]" value="0">
-                                <input type="checkbox" name="tasks[${index}][customer_visible]" value="1">
+                                <input type="checkbox" name="tasks[${index}][customer_visible]" value="1" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-2 focus:ring-teal-200 focus:ring-offset-0">
                                 <span>Customer visible</span>
                             </label>
                         </div>

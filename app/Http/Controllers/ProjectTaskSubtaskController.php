@@ -26,6 +26,7 @@ class ProjectTaskSubtaskController extends Controller
         ]);
 
         $subtask = $task->subtasks()->create($data);
+        TaskCompletionManager::syncFromSubtasks($task);
 
         if ($request->wantsJson()) {
             return response()->json(['id' => $subtask->id, 'message' => 'Subtask added.'], 201);
