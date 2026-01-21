@@ -153,6 +153,10 @@ class ClientTaskPermissionTest extends TestCase
             'title' => 'New Subtask',
             'created_by' => $client->id,
         ]);
+        $subtask = ProjectTaskSubtask::where('project_task_id', $task->id)->latest('id')->first();
+        $this->assertNotNull($subtask);
+        $this->assertNull($subtask->due_date);
+        $this->assertNull($subtask->due_time);
     }
 
     #[Test]

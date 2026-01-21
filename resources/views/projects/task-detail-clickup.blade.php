@@ -281,7 +281,7 @@
                                         <span class="subtask-title text-sm {{ $subtask->is_completed ? 'line-through text-slate-400' : 'font-medium text-slate-900' }}" data-subtask-id="{{ $subtask->id }}">
                                             {{ $subtask->title }}
                                         </span>
-                                        @php $incompleteLabel = $routePrefix === 'client' ? 'Open' : 'In progress'; @endphp
+                                        @php $incompleteLabel = 'Open'; @endphp
                                         <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $subtask->is_completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700' }}">{{ $subtask->is_completed ? 'Completed' : $incompleteLabel }}</span>
                                         @if($subtask->due_date)
                                             <span class="text-xs text-slate-500 whitespace-nowrap">
@@ -333,18 +333,7 @@
                         <div>
                             <textarea id="subtaskTitle" placeholder="What needs to be done?" class="w-full rounded-lg border border-teal-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 placeholder-slate-500"></textarea>
                         </div>
-                        @if($routePrefix !== 'client')
-                            <div class="grid gap-3 md:grid-cols-2">
-                                <div>
-                                    <label class="text-xs text-slate-600 font-medium block mb-1">Due Date</label>
-                                    <input type="date" id="subtaskDate" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
-                                </div>
-                                <div>
-                                    <label class="text-xs text-slate-600 font-medium block mb-1">Due Time</label>
-                                    <input type="time" id="subtaskTime" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
-                                </div>
-                            </div>
-                        @endif
+                        <div id="subtaskError" class="text-xs text-rose-600" style="display: none;"></div>
                         <div class="flex gap-2 justify-end">
                             <button type="button" id="cancelSubtaskBtn" class="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition">
                                 Cancel
@@ -438,8 +427,7 @@
 
     <script>
         const csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content')
-            || document.querySelector('[name=\"_token\"]')?.value
-            || '';
+            || @json(csrf_token());
 
         // Initialize subtask form buttons
         const addBtn = document.getElementById('addSubtaskBtn');
@@ -447,13 +435,30 @@
         const saveBtn = document.getElementById('saveSubtaskBtn');
         const form = document.getElementById('subtaskForm');
         const titleInput = document.getElementById('subtaskTitle');
-        const dateInput = document.getElementById('subtaskDate');
-        const timeInput = document.getElementById('subtaskTime');
+        const errorBox = document.getElementById('subtaskError');
+
+        const showSubtaskError = (message) => {
+            if (!errorBox) {
+                alert(message);
+                return;
+            }
+            errorBox.textContent = message;
+            errorBox.style.display = 'block';
+        };
+
+        const clearSubtaskError = () => {
+            if (!errorBox) {
+                return;
+            }
+            errorBox.textContent = '';
+            errorBox.style.display = 'none';
+        };
 
         if (addBtn) {
             addBtn.addEventListener('click', () => {
                 form.style.display = 'block';
                 titleInput.focus();
+                clearSubtaskError();
             });
         }
 
@@ -461,34 +466,27 @@
             cancelBtn.addEventListener('click', () => {
                 form.style.display = 'none';
                 titleInput.value = '';
-                if (dateInput) {
-                    dateInput.value = '';
-                }
-                if (timeInput) {
-                    timeInput.value = '';
-                }
+                clearSubtaskError();
             });
         }
 
         if (saveBtn) {
             saveBtn.addEventListener('click', () => {
+                clearSubtaskError();
                 const title = titleInput.value.trim();
-                const date = dateInput ? dateInput.value : '';
-                const time = timeInput ? timeInput.value : '';
 
                 if (!title) {
-                    alert('Please enter a subtask title');
+                    showSubtaskError('Please enter a subtask title');
+                    return;
+                }
+
+                if (!csrfToken) {
+                    showSubtaskError('Unable to add subtask right now. Please refresh and try again.');
                     return;
                 }
 
                 const formData = new FormData();
                 formData.append('title', title);
-                if (dateInput) {
-                    formData.append('due_date', date || '');
-                }
-                if (timeInput) {
-                    formData.append('due_time', time || '');
-                }
                 formData.append('_token', csrfToken);
 
                 fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.store', [$project, $task]) }}`, {
@@ -501,19 +499,36 @@
                     credentials: 'same-origin',
                     body: formData
                 })
-                .then(response => {
+                .then(async response => {
                     if (response.ok) {
                         location.reload();
-                    } else {
-                        return response.text().then(text => {
-                            console.error('Response:', text);
-                            alert('Error adding subtask: ' + (response.status || 'Unknown error'));
-                        });
+                        return;
                     }
+
+                    let message = 'Error adding subtask.';
+                    const contentType = response.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        const payload = await response.json().catch(() => null);
+                        if (payload?.errors) {
+                            const firstError = Object.values(payload.errors).flat()[0];
+                            if (firstError) {
+                                message = firstError;
+                            }
+                        } else if (payload?.message) {
+                            message = payload.message;
+                        }
+                    } else {
+                        const text = await response.text();
+                        if (text) {
+                            console.error('Response:', text);
+                        }
+                    }
+
+                    showSubtaskError(message);
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error adding subtask: ' + error.message);
+                    showSubtaskError('Error adding subtask: ' + error.message);
                 });
             });
         }

@@ -21,8 +21,8 @@ class ProjectTaskSubtaskController extends Controller
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'due_date' => ['nullable', 'date'],
-            'due_time' => ['nullable', 'date_format:H:i'],
+            'due_date' => ['sometimes', 'nullable', 'date'],
+            'due_time' => ['sometimes', 'nullable', 'date_format:H:i'],
         ]);
 
         $data['created_by'] = $request->user()?->id;
