@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateProjectClientUserRequest;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\StatusColorHelper;
 use App\Support\SystemLogger;
 use Illuminate\Support\Facades\Hash;
 
@@ -28,6 +29,7 @@ class CustomerProjectUserController extends Controller
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'role' => Role::CLIENT_PROJECT,
+            'status' => 'active',
             'customer_id' => $customer->id,
             'project_id' => $project->id,
         ]);
@@ -40,6 +42,20 @@ class CustomerProjectUserController extends Controller
 
         return redirect()->route('admin.customers.edit', $customer)
             ->with('status', 'Project client user created.');
+    }
+
+    public function show(Customer $customer, User $user)
+    {
+        if ($user->customer_id !== $customer->id || $user->role !== Role::CLIENT_PROJECT) {
+            abort(404);
+        }
+
+        $user->load('project');
+
+        return response()->json([
+            'ok' => true,
+            'data' => $this->formatPayload($user),
+        ]);
     }
 
     public function update(UpdateProjectClientUserRequest $request, Customer $customer, User $user)
@@ -60,6 +76,7 @@ class CustomerProjectUserController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'project_id' => $project->id,
+            'status' => $data['status'],
         ];
 
         // Only update password if provided
@@ -77,20 +94,10 @@ class CustomerProjectUserController extends Controller
 
         if ($request->expectsJson()) {
             $user->load('project');
-            $dateFormat = config('app.date_format', 'd-m-Y');
-
             return response()->json([
                 'ok' => true,
                 'message' => 'Project client user updated.',
-                'data' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'project_id' => $user->project_id,
-                    'project_name' => $user->project?->name,
-                    'created_at' => $user->created_at?->format($dateFormat),
-                    'updated_at' => $user->updated_at?->format($dateFormat),
-                ],
+                'data' => $this->formatPayload($user),
             ]);
         }
 
@@ -116,5 +123,24 @@ class CustomerProjectUserController extends Controller
 
         return redirect()->route('admin.customers.edit', $customer)
             ->with('status', 'Project client user deleted.');
+    }
+
+    private function formatPayload(User $user): array
+    {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+        $status = $user->status ?: 'active';
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'status' => $status,
+            'status_label' => ucfirst($status),
+            'status_classes' => StatusColorHelper::getBadgeClasses($status),
+            'project_id' => $user->project_id,
+            'project_name' => $user->project?->name,
+            'created_at' => $user->created_at?->format($dateFormat),
+            'updated_at' => $user->updated_at?->format($dateFormat),
+        ];
     }
 }

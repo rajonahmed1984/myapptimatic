@@ -63,6 +63,8 @@ class ProjectClientAccessTest extends TestCase
     #[Test]
     public function project_client_login_redirects_to_assigned_project(): void
     {
+        config(['recaptcha.enabled' => false]);
+
         $customer = Customer::create(['name' => 'Client', 'status' => 'active']);
         $project = Project::create(['customer_id' => $customer->id, 'name' => 'Assigned project']);
 
@@ -70,6 +72,7 @@ class ProjectClientAccessTest extends TestCase
             'role' => Role::CLIENT_PROJECT,
             'customer_id' => $customer->id,
             'project_id' => $project->id,
+            'status' => 'active',
             'password' => Hash::make('secret'),
         ]);
 
@@ -79,5 +82,29 @@ class ProjectClientAccessTest extends TestCase
         ])->assertRedirect(route('client.projects.show', $project));
 
         $this->assertAuthenticatedAs($user);
+    }
+
+    #[Test]
+    public function inactive_project_client_cannot_log_in(): void
+    {
+        config(['recaptcha.enabled' => false]);
+
+        $customer = Customer::create(['name' => 'Client', 'status' => 'active']);
+        $project = Project::create(['customer_id' => $customer->id, 'name' => 'Assigned project']);
+
+        $user = User::factory()->create([
+            'role' => Role::CLIENT_PROJECT,
+            'customer_id' => $customer->id,
+            'project_id' => $project->id,
+            'status' => 'inactive',
+            'password' => Hash::make('secret'),
+        ]);
+
+        $this->post(route('project-client.login.attempt'), [
+            'email' => $user->email,
+            'password' => 'secret',
+        ])->assertSessionHasErrors(['email']);
+
+        $this->assertGuest();
     }
 }

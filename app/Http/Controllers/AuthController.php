@@ -55,9 +55,25 @@ class AuthController extends Controller
             ]);
         }
 
-        $request->session()->regenerate();
-
         $user = $request->user();
+
+        if ($user && $user->isClientProject() && $user->status === 'inactive') {
+            SystemLogger::write('admin', 'Project client login denied (inactive).', [
+                'login_type' => 'project_client',
+                'email' => $user->email,
+                'user_id' => $user->id,
+            ], $user->id, $request->ip(), 'warning');
+
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw ValidationException::withMessages([
+                'email' => 'Your account is inactive. Please contact support.',
+            ]);
+        }
+
+        $request->session()->regenerate();
 
         SystemLogger::write('admin', 'Login successful.', [
             'login_type' => $user && $user->isAdmin() ? 'admin' : 'client',

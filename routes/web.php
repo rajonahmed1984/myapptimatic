@@ -445,6 +445,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::resource('customers', CustomerController::class);
     Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])->name('customers.impersonate');
     Route::post('customers/{customer}/project-users', [CustomerProjectUserController::class, 'store'])->name('customers.project-users.store');
+    Route::get('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'show'])->name('customers.project-users.show');
     Route::put('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'update'])->name('customers.project-users.update');
     Route::delete('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'destroy'])->name('customers.project-users.destroy');
     Route::resource('products', ProductController::class)->except(['show']);

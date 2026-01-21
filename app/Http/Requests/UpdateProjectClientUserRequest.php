@@ -30,6 +30,7 @@ class UpdateProjectClientUserRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($projectUser->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'project_id' => ['required', $projectRule],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
         ];
     }
 }
