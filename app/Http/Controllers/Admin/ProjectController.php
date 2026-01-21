@@ -256,7 +256,7 @@ class ProjectController extends Controller
             $contractEmployeePayoutStatus = $isComplete ? 'payable' : 'earned';
         }
 
-        $project = DB::transaction(function () use ($data, $request, $billingService, $salesRepSync, $commissionService, $contractEmployeeTotal, $contractEmployeePayable, $contractEmployeePayoutStatus) {
+        $project = DB::transaction(function () use ($data, $request, $billingService, $taxService, $salesRepSync, $commissionService, $contractEmployeeTotal, $contractEmployeePayable, $contractEmployeePayoutStatus) {
             $project = Project::create([
                 'name' => $data['name'],
                 'customer_id' => $data['customer_id'],

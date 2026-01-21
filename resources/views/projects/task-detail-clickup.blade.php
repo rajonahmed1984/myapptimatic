@@ -282,9 +282,7 @@
                                             {{ $subtask->title }}
                                         </span>
                                         @php $incompleteLabel = $routePrefix === 'client' ? 'Open' : 'In progress'; @endphp
-                                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $subtask->is_completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700' }}">
-                                            {{ $subtask->is_completed ? 'Completed' : $incompleteLabel }}
-                                        </span>
+                                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $subtask->is_completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700' }}">{{ $subtask->is_completed ? 'Completed' : $incompleteLabel }}</span>
                                         @if($subtask->due_date)
                                             <span class="text-xs text-slate-500 whitespace-nowrap">
                                                 📅 {{ $subtask->due_date->format($globalDateFormat) }}

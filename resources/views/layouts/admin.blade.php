@@ -155,6 +155,15 @@
                         </x-nav-link>
                         @if(auth()->user()?->isMasterAdmin())
                             <x-nav-menu
+                                :href="route('admin.income.index')"
+                                routes="admin.income.*"
+                                label="Income"
+                            >
+                                <a href="{{ route('admin.income.index') }}" class="block {{ activeIf(request()->routeIs('admin.income.index')) }}">All income</a>
+                                <a href="{{ route('admin.income.create') }}" class="block {{ activeIf(request()->routeIs('admin.income.create')) }}">Add income</a>
+                                <a href="{{ route('admin.income.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.income.categories.*')) }}">Categories</a>
+                            </x-nav-menu>
+                            <x-nav-menu
                                 :href="route('admin.expenses.dashboard')"
                                 routes="admin.expenses.*"
                                 label="Expenses"
@@ -164,6 +173,20 @@
                                 <a href="{{ route('admin.expenses.recurring.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.recurring.*')) }}">Recurring</a>
                                 <a href="{{ route('admin.expenses.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.categories.*')) }}">Categories</a>
                             </x-nav-menu>
+                            <x-nav-link 
+                                :href="route('admin.finance.tax.index')"
+                                routes="admin.finance.tax.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Tax Settings
+                            </x-nav-link>
+                            <x-nav-link 
+                                :href="route('admin.finance.reports.index')"
+                                routes="admin.finance.reports.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Finance Reports
+                            </x-nav-link>
                         @endif
                         <x-nav-link 
                             :href="route('admin.payment-gateways.index')"

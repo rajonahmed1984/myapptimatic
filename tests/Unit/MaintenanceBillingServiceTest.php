@@ -7,9 +7,8 @@ use App\Models\Invoice;
 use App\Models\Project;
 use App\Models\ProjectMaintenance;
 use App\Models\Setting;
-use App\Services\AdminNotificationService;
 use App\Services\BillingService;
-use App\Services\ClientNotificationService;
+use App\Services\InvoiceTaxService;
 use App\Services\MaintenanceBillingService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -117,13 +116,9 @@ class MaintenanceBillingServiceTest extends TestCase
 
     private function makeService(): MaintenanceBillingService
     {
-        $adminNotifications = $this->createMock(AdminNotificationService::class);
-        $adminNotifications->method('sendInvoiceCreated');
+        $taxService = app(InvoiceTaxService::class);
 
-        $clientNotifications = $this->createMock(ClientNotificationService::class);
-        $clientNotifications->method('sendInvoiceCreated');
-
-        return new MaintenanceBillingService(new BillingService(), $adminNotifications, $clientNotifications);
+        return new MaintenanceBillingService(new BillingService($taxService), $taxService);
     }
 
     private function createMaintenance(array $overrides = []): ProjectMaintenance

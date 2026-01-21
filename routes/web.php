@@ -35,8 +35,12 @@ use App\Http\Controllers\Admin\ExpenseCategoryController as AdminExpenseCategory
 use App\Http\Controllers\Admin\RecurringExpenseController as AdminRecurringExpenseController;
 use App\Http\Controllers\Admin\ExpenseDashboardController as AdminExpenseDashboardController;
 use App\Http\Controllers\Admin\ExpenseInvoiceController as AdminExpenseInvoiceController;
+use App\Http\Controllers\Admin\FinanceReportController as AdminFinanceReportController;
+use App\Http\Controllers\Admin\FinanceTaxController as AdminFinanceTaxController;
 use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
 use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
+use App\Http\Controllers\Admin\IncomeCategoryController as AdminIncomeCategoryController;
+use App\Http\Controllers\Admin\IncomeController as AdminIncomeController;
 use App\Http\Controllers\Auth\RoleLoginController;
 use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\AuthController;
@@ -397,6 +401,36 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
             Route::post('/recurring/{recurringExpense}/resume', [AdminRecurringExpenseController::class, 'resume'])->name('recurring.resume');
             Route::post('/recurring/{recurringExpense}/stop', [AdminRecurringExpenseController::class, 'stop'])->name('recurring.stop');
             Route::post('/recurring/generate', [AdminRecurringExpenseController::class, 'generate'])->name('recurring.generate');
+        });
+
+    Route::middleware('admin.role:master_admin')
+        ->prefix('income')
+        ->name('income.')
+        ->group(function () {
+            Route::get('/', [AdminIncomeController::class, 'index'])->name('index');
+            Route::get('/create', [AdminIncomeController::class, 'create'])->name('create');
+            Route::post('/', [AdminIncomeController::class, 'store'])->name('store');
+            Route::get('/{income}/attachment', [AdminIncomeController::class, 'attachment'])->name('attachments.show');
+
+            Route::get('/categories', [AdminIncomeCategoryController::class, 'index'])->name('categories.index');
+            Route::post('/categories', [AdminIncomeCategoryController::class, 'store'])->name('categories.store');
+            Route::get('/categories/{category}/edit', [AdminIncomeCategoryController::class, 'edit'])->name('categories.edit');
+            Route::put('/categories/{category}', [AdminIncomeCategoryController::class, 'update'])->name('categories.update');
+            Route::delete('/categories/{category}', [AdminIncomeCategoryController::class, 'destroy'])->name('categories.destroy');
+        });
+
+    Route::middleware('admin.role:master_admin')
+        ->prefix('finance')
+        ->name('finance.')
+        ->group(function () {
+            Route::get('/reports', [AdminFinanceReportController::class, 'index'])->name('reports.index');
+
+            Route::get('/tax', [AdminFinanceTaxController::class, 'index'])->name('tax.index');
+            Route::put('/tax', [AdminFinanceTaxController::class, 'updateSettings'])->name('tax.update');
+            Route::post('/tax/rates', [AdminFinanceTaxController::class, 'storeRate'])->name('tax.rates.store');
+            Route::get('/tax/rates/{rate}/edit', [AdminFinanceTaxController::class, 'editRate'])->name('tax.rates.edit');
+            Route::put('/tax/rates/{rate}', [AdminFinanceTaxController::class, 'updateRate'])->name('tax.rates.update');
+            Route::delete('/tax/rates/{rate}', [AdminFinanceTaxController::class, 'destroyRate'])->name('tax.rates.destroy');
         });
 
     // Legacy route names for backward compatibility with old /admin/admins URLs.
