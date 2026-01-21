@@ -31,6 +31,11 @@
                                 {{ $taskTypeOptions[$task->task_type] ?? 'Task' }}
                             </span>
                         </div>
+                        @if($routePrefix === 'client' && $canEdit)
+                            <div class="mt-3">
+                                <a href="#task-edit" class="text-xs font-semibold text-teal-600 hover:text-teal-700">Edit task</a>
+                            </div>
+                        @endif
                         @if(!($routePrefix === 'admin' && $canEdit))
                             <div class="grid gap-4 md:grid-cols-3 pd-2 mt-4">
                                 <div>
@@ -205,6 +210,35 @@
                 </form>
             @endif
 
+            @if($routePrefix === 'client' && $canEdit)
+                <form method="POST" action="{{ $updateRoute }}" class="card p-6 space-y-6" id="task-edit">
+                    @csrf
+                    @method('PATCH')
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 block mb-2">Status</label>
+                            <select name="status" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900">
+                                <option value="pending" @selected($task->status === 'pending')>Pending</option>
+                                <option value="in_progress" @selected($task->status === 'in_progress')>In Progress</option>
+                                <option value="blocked" @selected($task->status === 'blocked')>Blocked</option>
+                                <option value="completed" @selected($task->status === 'completed')>Completed</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 block mb-2">Description</label>
+                            <textarea name="description" rows="3" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900">{{ old('description', $task->description) }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-4 border-t border-slate-200">
+                        <button type="submit" class="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition">
+                            Update Task
+                        </button>
+                    </div>
+                </form>
+            @endif
+
             <!-- Subtasks Section -->
             <div class="card p-6">
                 <div class="flex items-center justify-between mb-4">
@@ -216,7 +250,7 @@
                             </div>
                         @endif
                     </div>
-                    @if($canEdit)
+                    @if($canAddSubtask)
                         <button type="button" id="addSubtaskBtn" class="text-sm font-semibold text-teal-600 hover:text-teal-700">+ Add subtask</button>
                     @endif
                 </div>
@@ -234,22 +268,22 @@
                 @if($task->subtasks->isNotEmpty())
                     <div class="space-y-2 mb-6">
                         @foreach($task->subtasks as $subtask)
+                            @php
+                                $canEditSubtask = in_array($subtask->id, $editableSubtaskIds, true);
+                                $canInlineEdit = $canEditSubtask && in_array($routePrefix, ['client', 'employee'], true);
+                            @endphp
                             <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition group">
-                                @if($routePrefix === 'employee')
-                                    <select data-subtask-id="{{ $subtask->id }}" class="subtask-status-select mt-0.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
-                                        <option value="in_progress" @selected(! $subtask->is_completed)>In progress</option>
-                                        <option value="completed" @selected($subtask->is_completed)>Completed</option>
-                                    </select>
-                                @elseif($routePrefix === 'admin')
+                                @if($routePrefix !== 'employee' && $canEditSubtask && $routePrefix !== 'client')
                                     <input type="checkbox" data-subtask-id="{{ $subtask->id }}" @checked($subtask->is_completed) class="subtask-checkbox mt-1 rounded cursor-pointer" />
                                 @endif
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="text-sm {{ $subtask->is_completed ? 'line-through text-slate-400' : 'font-medium text-slate-900' }}">
+                                        <span class="subtask-title text-sm {{ $subtask->is_completed ? 'line-through text-slate-400' : 'font-medium text-slate-900' }}" data-subtask-id="{{ $subtask->id }}">
                                             {{ $subtask->title }}
                                         </span>
+                                        @php $incompleteLabel = $routePrefix === 'client' ? 'Open' : 'In progress'; @endphp
                                         <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $subtask->is_completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700' }}">
-                                            {{ $subtask->is_completed ? 'Completed' : 'In progress' }}
+                                            {{ $subtask->is_completed ? 'Completed' : $incompleteLabel }}
                                         </span>
                                         @if($subtask->due_date)
                                             <span class="text-xs text-slate-500 whitespace-nowrap">
@@ -262,32 +296,57 @@
                                     </div>
                                     <div class="text-xs text-slate-400 mt-1 space-x-2">
                                         <span>Created: {{ $subtask->created_at->format($globalDateFormat . ' H:i') }}</span>
+                                        @if($subtask->updated_at && $subtask->created_at && $subtask->updated_at->greaterThan($subtask->created_at))
+                                            <span>Edited: {{ $subtask->updated_at->format($globalDateFormat . ' H:i') }}</span>
+                                        @endif
                                         @if($subtask->is_completed)
                                             <span>• Completed: {{ $subtask->completed_at->format($globalDateFormat . ' H:i') }}</span>
                                         @endif
                                     </div>
+                                    @if($canInlineEdit)
+                                        <div class="subtask-edit-row mt-2 flex items-center gap-2" data-subtask-id="{{ $subtask->id }}" style="display: none;">
+                                            <input type="text" class="subtask-edit-input flex-1 min-w-0 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900" value="{{ $subtask->title }}" />
+                                            <button type="button" class="subtask-save-btn text-xs font-semibold text-teal-600 hover:text-teal-700" data-subtask-id="{{ $subtask->id }}">Save</button>
+                                            <button type="button" class="subtask-cancel-btn text-xs font-semibold text-slate-500 hover:text-slate-600" data-subtask-id="{{ $subtask->id }}">Cancel</button>
+                                        </div>
+                                    @endif
                                 </div>
+                                @if($canInlineEdit)
+                                    <div class="ml-auto shrink-0 flex items-center gap-2">
+                                        <button type="button" class="subtask-edit-btn text-xs font-semibold text-teal-600 hover:text-teal-700" data-subtask-id="{{ $subtask->id }}">Edit</button>
+                                        @if($routePrefix === 'employee')
+                                            <button type="button" class="subtask-status-btn rounded-full border border-amber-200 px-3 py-1 text-[10px] font-semibold text-amber-700 hover:border-amber-300" data-subtask-id="{{ $subtask->id }}" data-status="in_progress">
+                                                In progress
+                                            </button>
+                                            <button type="button" class="subtask-status-btn rounded-full border border-emerald-200 px-3 py-1 text-[10px] font-semibold text-emerald-700 hover:border-emerald-300" data-subtask-id="{{ $subtask->id }}" data-status="completed">
+                                                Completed
+                                            </button>
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
                         @endforeach
                     </div>
                 @endif
 
                 <!-- Add Subtask Form -->
-                @if($canEdit)
+                @if($canAddSubtask)
                     <div id="subtaskForm" style="display: none;" class="p-4 rounded-lg border-2 border-teal-200 bg-teal-50 space-y-3">
                         <div>
                             <textarea id="subtaskTitle" placeholder="What needs to be done?" class="w-full rounded-lg border border-teal-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 placeholder-slate-500"></textarea>
                         </div>
-                        <div class="grid gap-3 md:grid-cols-2">
-                            <div>
-                                <label class="text-xs text-slate-600 font-medium block mb-1">Due Date</label>
-                                <input type="date" id="subtaskDate" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                        @if($routePrefix !== 'client')
+                            <div class="grid gap-3 md:grid-cols-2">
+                                <div>
+                                    <label class="text-xs text-slate-600 font-medium block mb-1">Due Date</label>
+                                    <input type="date" id="subtaskDate" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-600 font-medium block mb-1">Due Time</label>
+                                    <input type="time" id="subtaskTime" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                </div>
                             </div>
-                            <div>
-                                <label class="text-xs text-slate-600 font-medium block mb-1">Due Time</label>
-                                <input type="time" id="subtaskTime" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
-                            </div>
-                        </div>
+                        @endif
                         <div class="flex gap-2 justify-end">
                             <button type="button" id="cancelSubtaskBtn" class="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition">
                                 Cancel
@@ -390,6 +449,8 @@
         const saveBtn = document.getElementById('saveSubtaskBtn');
         const form = document.getElementById('subtaskForm');
         const titleInput = document.getElementById('subtaskTitle');
+        const dateInput = document.getElementById('subtaskDate');
+        const timeInput = document.getElementById('subtaskTime');
 
         if (addBtn) {
             addBtn.addEventListener('click', () => {
@@ -402,16 +463,20 @@
             cancelBtn.addEventListener('click', () => {
                 form.style.display = 'none';
                 titleInput.value = '';
-                document.getElementById('subtaskDate').value = '';
-                document.getElementById('subtaskTime').value = '';
+                if (dateInput) {
+                    dateInput.value = '';
+                }
+                if (timeInput) {
+                    timeInput.value = '';
+                }
             });
         }
 
         if (saveBtn) {
             saveBtn.addEventListener('click', () => {
                 const title = titleInput.value.trim();
-                const date = document.getElementById('subtaskDate').value;
-                const time = document.getElementById('subtaskTime').value;
+                const date = dateInput ? dateInput.value : '';
+                const time = timeInput ? timeInput.value : '';
 
                 if (!title) {
                     alert('Please enter a subtask title');
@@ -420,8 +485,12 @@
 
                 const formData = new FormData();
                 formData.append('title', title);
-                formData.append('due_date', date || '');
-                formData.append('due_time', time || '');
+                if (dateInput) {
+                    formData.append('due_date', date || '');
+                }
+                if (timeInput) {
+                    formData.append('due_time', time || '');
+                }
                 formData.append('_token', csrfToken);
 
                 fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.store', [$project, $task]) }}`, {
@@ -431,6 +500,7 @@
                         'X-CSRF-TOKEN': csrfToken,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
+                    credentials: 'same-origin',
                     body: formData
                 })
                 .then(response => {
@@ -450,8 +520,8 @@
             });
         }
 
-        @if($routePrefix === 'admin')
-        // Handle subtask completion (admin)
+        @if($routePrefix !== 'employee')
+        // Handle subtask completion (non-employee)
         document.querySelectorAll('.subtask-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 const subtaskId = checkbox.getAttribute('data-subtask-id');
@@ -469,6 +539,7 @@
                         'X-CSRF-TOKEN': csrfToken,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
+                    credentials: 'same-origin',
                     body: formData
                 })
                 .then(response => {
@@ -489,11 +560,98 @@
         });
         @endif
 
+        @if(in_array($routePrefix, ['client', 'employee'], true))
+        document.querySelectorAll('.subtask-edit-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const subtaskId = button.getAttribute('data-subtask-id');
+                const editRow = document.querySelector(`.subtask-edit-row[data-subtask-id="${subtaskId}"]`);
+                const input = editRow?.querySelector('.subtask-edit-input');
+                const titleSpan = document.querySelector(`.subtask-title[data-subtask-id="${subtaskId}"]`);
+
+                if (!editRow || !input || !titleSpan) {
+                    return;
+                }
+
+                input.value = titleSpan.textContent.trim();
+                editRow.style.display = 'flex';
+                input.focus();
+                input.select();
+            });
+        });
+
+        document.querySelectorAll('.subtask-cancel-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const subtaskId = button.getAttribute('data-subtask-id');
+                const editRow = document.querySelector(`.subtask-edit-row[data-subtask-id="${subtaskId}"]`);
+                const input = editRow?.querySelector('.subtask-edit-input');
+                const titleSpan = document.querySelector(`.subtask-title[data-subtask-id="${subtaskId}"]`);
+
+                if (!editRow || !input || !titleSpan) {
+                    return;
+                }
+
+                input.value = titleSpan.textContent.trim();
+                editRow.style.display = 'none';
+            });
+        });
+
+        document.querySelectorAll('.subtask-save-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const subtaskId = button.getAttribute('data-subtask-id');
+                const editRow = document.querySelector(`.subtask-edit-row[data-subtask-id="${subtaskId}"]`);
+                const input = editRow?.querySelector('.subtask-edit-input');
+                const titleSpan = document.querySelector(`.subtask-title[data-subtask-id="${subtaskId}"]`);
+
+                if (!editRow || !input || !titleSpan) {
+                    return;
+                }
+
+                const title = input.value.trim();
+                if (!title) {
+                    alert('Please enter a subtask title');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('title', title);
+                formData.append('_token', csrfToken);
+                formData.append('_method', 'PATCH');
+
+                fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.update', [$project, $task, ':id']) }}`.replace(':id', subtaskId), {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        titleSpan.textContent = title;
+                        editRow.style.display = 'none';
+                    } else {
+                        return response.text().then(text => {
+                            console.error('Response:', text);
+                            alert('Error updating subtask: ' + (response.status || 'Unknown error'));
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating subtask: ' + error.message);
+                });
+            });
+        });
+        @endif
+
         @if($routePrefix === 'employee')
-        document.querySelectorAll('.subtask-status-select').forEach(select => {
-            select.addEventListener('change', () => {
-                const subtaskId = select.getAttribute('data-subtask-id');
-                const isCompleted = select.value === 'completed';
+        document.querySelectorAll('.subtask-status-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const subtaskId = button.getAttribute('data-subtask-id');
+                const status = button.getAttribute('data-status');
+                const isCompleted = status === 'completed';
 
                 const formData = new FormData();
                 formData.append('is_completed', isCompleted ? 1 : 0);
@@ -507,6 +665,7 @@
                         'X-CSRF-TOKEN': csrfToken,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
+                    credentials: 'same-origin',
                     body: formData
                 })
                 .then(response => {

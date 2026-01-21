@@ -35,7 +35,7 @@ class ProjectTaskSubtaskPolicy
      */
     public function create($actor, ProjectTask $task): bool
     {
-        return $this->canEditTask($actor, $task);
+        return $this->canViewTask($actor, $task);
     }
 
     /**
@@ -48,7 +48,18 @@ class ProjectTaskSubtaskPolicy
             return false;
         }
 
-        return $this->canEditTask($actor, $task);
+        if (! $this->canViewTask($actor, $task)) {
+            return false;
+        }
+
+        if ($this->isMasterAdmin($actor)) {
+            return true;
+        }
+
+        $actorId = $this->actorUserId($actor);
+        return $actorId !== null
+            && $projectTaskSubtask->created_by !== null
+            && $projectTaskSubtask->created_by === $actorId;
     }
 
     /**
@@ -61,11 +72,27 @@ class ProjectTaskSubtaskPolicy
             return false;
         }
 
+        if (! $this->canViewTask($actor, $task)) {
+            return false;
+        }
+
+        if ($this->isMasterAdmin($actor)) {
+            return true;
+        }
+
         if ($actor instanceof User && $actor->isSales()) {
             return false;
         }
 
-        return $this->canEditTask($actor, $task);
+        if ($actor instanceof Employee) {
+            return true;
+        }
+
+        if ($actor instanceof User) {
+            return $actor->isAdmin() || $actor->isEmployee();
+        }
+
+        return false;
     }
 
     /**
@@ -104,5 +131,23 @@ class ProjectTaskSubtaskPolicy
         }
 
         return false;
+    }
+
+    private function actorUserId($actor): ?int
+    {
+        if ($actor instanceof User) {
+            return $actor->id;
+        }
+
+        if ($actor instanceof Employee) {
+            return $actor->user_id;
+        }
+
+        return null;
+    }
+
+    private function isMasterAdmin($actor): bool
+    {
+        return $actor instanceof User && $actor->isMasterAdmin();
     }
 }

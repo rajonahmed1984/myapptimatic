@@ -113,8 +113,8 @@ class ProjectTaskController extends Controller
             return back()->withErrors(['dates' => 'Task dates cannot be changed after creation.']);
         }
 
-        if ($task->creatorEditWindowExpired($request->user()?->id)) {
-            return $this->forbiddenResponse($request, 'Task can only be edited within 24 hours of creation.');
+        if (! $request->user()?->isMasterAdmin() && $task->creatorEditWindowExpired($request->user()?->id)) {
+            return $this->forbiddenResponse($request, 'You can only edit this task within 24 hours of creation.');
         }
 
         $data = $request->validated();
@@ -206,8 +206,8 @@ class ProjectTaskController extends Controller
         $this->ensureTaskBelongsToProject($project, $task);
         $this->authorize('update', $task);
 
-        if ($task->creatorEditWindowExpired($request->user()?->id)) {
-            return $this->forbiddenResponse($request, 'Task can only be edited within 24 hours of creation.');
+        if (! $request->user()?->isMasterAdmin() && $task->creatorEditWindowExpired($request->user()?->id)) {
+            return $this->forbiddenResponse($request, 'You can only edit this task within 24 hours of creation.');
         }
 
         $data = $request->validated();
@@ -271,7 +271,7 @@ class ProjectTaskController extends Controller
         $this->ensureTaskBelongsToProject($project, $task);
         $this->authorize('delete', $task);
 
-        if ($task->status === 'completed') {
+        if (! request()->user()?->isMasterAdmin() && $task->status === 'completed') {
             return back()->withErrors(['task' => 'Completed tasks cannot be deleted.']);
         }
 

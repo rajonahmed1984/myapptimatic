@@ -158,8 +158,13 @@
                                 ];
                                 $statusLabel = $statusLabels[$currentStatus] ?? ucfirst(str_replace('_', ' ', $currentStatus));
                                 $statusClass = $statusClasses[$currentStatus] ?? 'bg-slate-100 text-slate-600';
-                                $canStartTask = in_array($currentStatus, ['pending', 'todo'], true)
-                                    && ! $task->creatorEditWindowExpired(auth()->id());
+                                $currentUser = auth()->user();
+                                $canEditTask = $currentUser?->isMasterAdmin()
+                                    || ($task->created_by
+                                        && $currentUser
+                                        && $task->created_by === $currentUser->id
+                                        && ! $task->creatorEditWindowExpired($currentUser->id));
+                                $canStartTask = in_array($currentStatus, ['pending', 'todo'], true) && $canEditTask;
                             @endphp
                             <tr class="border-t border-slate-100 align-top">
                                 <td class="px-3 py-2">
@@ -202,7 +207,7 @@
                                                 </button>
                                             </form>
                                         @endif
-                                        @if((int) ($task->subtasks_count ?? 0) === 0 && ! in_array($task->status, ['completed', 'done'], true) && ! $task->creatorEditWindowExpired(auth()->id()))
+                                        @if((int) ($task->subtasks_count ?? 0) === 0 && ! in_array($task->status, ['completed', 'done'], true) && $canEditTask)
                                             <form method="POST" action="{{ route('employee.projects.tasks.update', [$project, $task]) }}" class="mt-2 inline-block">
                                                 @csrf
                                                 @method('PATCH')

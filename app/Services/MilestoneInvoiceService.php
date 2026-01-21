@@ -13,6 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class MilestoneInvoiceService
 {
+    public function __construct(private InvoiceTaxService $taxService)
+    {
+    }
+
     /**
      * Generate two invoices (advance/final) for an order based on percentages.
      * Does not change existing invoices; creates new ones.
@@ -81,6 +85,8 @@ class MilestoneInvoiceService
             $currency = Currency::DEFAULT;
         }
 
+        $taxData = $this->taxService->calculateTotals($amount, 0.0, $today);
+
         $invoice = Invoice::create([
             'customer_id' => $order->customer_id,
             'subscription_id' => $order->subscription_id,
@@ -88,8 +94,11 @@ class MilestoneInvoiceService
             'issue_date' => $today->toDateString(),
             'due_date' => $dueDate->toDateString(),
             'subtotal' => $amount,
+            'tax_rate_percent' => $taxData['tax_rate_percent'],
+            'tax_mode' => $taxData['tax_mode'],
+            'tax_amount' => $taxData['tax_amount'],
             'late_fee' => 0,
-            'total' => $amount,
+            'total' => $taxData['total'],
             'currency' => $currency,
             'notes' => $description,
         ]);

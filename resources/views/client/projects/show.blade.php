@@ -160,6 +160,14 @@
                         </thead>
                         <tbody>
                         @foreach($tasks as $task)
+                            @php
+                                $currentUser = auth()->user();
+                                $canEditTask = $currentUser?->isMasterAdmin()
+                                    || ($task->created_by
+                                        && $currentUser
+                                        && $task->created_by === $currentUser->id
+                                        && ! $task->creatorEditWindowExpired($currentUser->id));
+                            @endphp
                             <tr class="border-t border-slate-100 align-top">
                                 <td class="px-3 py-2">
                                     <div class="font-semibold text-slate-900">
@@ -178,6 +186,10 @@
                                 </td>
                                 <td class="px-3 py-2 text-right align-top">
                                     <a href="{{ route('client.projects.tasks.show', [$project, $task]) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Open Task</a>
+                                    @if($canEditTask)
+                                        <span class="mx-2 text-slate-300">|</span>
+                                        <a href="{{ route('client.projects.tasks.show', [$project, $task]) }}#task-edit" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Edit</a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach

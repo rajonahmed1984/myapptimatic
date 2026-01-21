@@ -24,6 +24,7 @@ use App\Support\TaskCompletionManager;
 use App\Support\TaskSettings;
 use App\Services\CommissionService;
 use App\Services\BillingService;
+use App\Services\InvoiceTaxService;
 use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -121,7 +122,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function store(Request $request, BillingService $billingService, CommissionService $commissionService): RedirectResponse
+    public function store(Request $request, BillingService $billingService, InvoiceTaxService $taxService, CommissionService $commissionService): RedirectResponse
     {
         $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
         $priorityOptions = array_keys(TaskSettings::priorityOptions());
@@ -349,6 +350,8 @@ class ProjectController extends Controller
             $initialPayment = (float) $project->initial_payment_amount;
             $invoiceSubtotal = $initialPayment + $overheadTotal;
 
+            $taxData = $taxService->calculateTotals($invoiceSubtotal, 0.0, $issueDate);
+
             $invoice = Invoice::create([
                 'customer_id' => $project->customer_id,
                 'project_id' => $project->id,
@@ -357,8 +360,11 @@ class ProjectController extends Controller
                 'issue_date' => $issueDate->toDateString(),
                 'due_date' => $dueDate->toDateString(),
                 'subtotal' => $invoiceSubtotal,
+                'tax_rate_percent' => $taxData['tax_rate_percent'],
+                'tax_mode' => $taxData['tax_mode'],
+                'tax_amount' => $taxData['tax_amount'],
                 'late_fee' => 0,
-                'total' => $invoiceSubtotal,
+                'total' => $taxData['total'],
                 'currency' => $project->currency,
                 'type' => 'project_initial_payment',
             ]);
@@ -515,7 +521,8 @@ class ProjectController extends Controller
     public function invoiceRemainingBudget(
         Request $request,
         Project $project,
-        BillingService $billingService
+        BillingService $billingService,
+        InvoiceTaxService $taxService
     ): RedirectResponse {
         $this->authorize('view', $project);
 
@@ -538,6 +545,8 @@ class ProjectController extends Controller
         $dueDays = (int) Setting::getValue('invoice_due_days');
         $dueDate = $issueDate->copy()->addDays($dueDays);
 
+        $taxData = $taxService->calculateTotals($amount, 0.0, $issueDate);
+
         $invoice = Invoice::create([
             'customer_id' => $project->customer_id,
             'project_id' => $project->id,
@@ -546,8 +555,11 @@ class ProjectController extends Controller
             'issue_date' => $issueDate->toDateString(),
             'due_date' => $dueDate->toDateString(),
             'subtotal' => $amount,
+            'tax_rate_percent' => $taxData['tax_rate_percent'],
+            'tax_mode' => $taxData['tax_mode'],
+            'tax_amount' => $taxData['tax_amount'],
             'late_fee' => 0,
-            'total' => $amount,
+            'total' => $taxData['total'],
             'currency' => $project->currency,
             'type' => 'project_remaining_budget',
         ]);
@@ -796,9 +808,10 @@ class ProjectController extends Controller
     public function updateTask(Request $request, Project $project, ProjectTask $task): RedirectResponse|JsonResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
+        $this->authorize('update', $task);
 
-        if ($task->creatorEditWindowExpired($request->user()?->id)) {
-            $message = 'Task can only be edited within 24 hours of creation.';
+        if (! $request->user()?->isMasterAdmin() && $task->creatorEditWindowExpired($request->user()?->id)) {
+            $message = 'You can only edit this task within 24 hours of creation.';
             if ($request->expectsJson()) {
                 return response()->json(['ok' => false, 'message' => $message], 403);
             }

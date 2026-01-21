@@ -223,9 +223,9 @@ class RunBillingCycle extends Command
 
                     $invoice->update([
                         'late_fee' => $invoice->late_fee + $lateFee,
-                        'total' => $invoice->subtotal + $invoice->late_fee + $lateFee,
                         'late_fee_applied_at' => $now,
                     ]);
+                    app(\App\Services\InvoiceTaxService::class)->applyToInvoice($invoice);
                     $count++;
                 }
             });

@@ -70,11 +70,16 @@ class ProjectTaskPolicy
 
     public function update($actor, ProjectTask $task): bool
     {
-        if ($actor instanceof User && $actor->isAdmin()) {
-            return $actor->isMasterAdmin() && $this->view($actor, $task);
+        if (! $this->view($actor, $task)) {
+            return false;
         }
 
-        return $this->view($actor, $task);
+        if ($actor instanceof User && $actor->isAdmin() && $actor->isMasterAdmin()) {
+            return true;
+        }
+
+        $actorId = $this->actorUserId($actor);
+        return $actorId !== null && $task->created_by !== null && $task->created_by === $actorId;
     }
 
     public function delete($actor, ProjectTask $task): bool
@@ -87,11 +92,11 @@ class ProjectTaskPolicy
             return false;
         }
 
-        if (in_array($task->status, ['completed', 'done'], true)) {
-            return false;
+        if ($actor->isMasterAdmin()) {
+            return $this->view($actor, $task);
         }
 
-        return $actor->isMasterAdmin() && $this->view($actor, $task);
+        return false;
     }
 
     public function comment($actor, ProjectTask $task): bool
@@ -102,5 +107,18 @@ class ProjectTaskPolicy
     public function upload($actor, ProjectTask $task): bool
     {
         return $this->comment($actor, $task);
+    }
+
+    private function actorUserId($actor): ?int
+    {
+        if ($actor instanceof User) {
+            return $actor->id;
+        }
+
+        if ($actor instanceof Employee) {
+            return $actor->user_id;
+        }
+
+        return null;
     }
 }

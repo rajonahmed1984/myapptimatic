@@ -71,8 +71,30 @@
             </div>
         </form>
 
-        <div class="mt-4 text-right text-lg font-semibold text-teal-600">
-            Total: {{ $invoice->currency }} {{ $invoice->total }}
+        @php
+            $taxSetting = \App\Models\TaxSetting::current();
+            $taxLabel = $taxSetting->invoice_tax_label ?: 'Tax';
+            $taxNote = $taxSetting->renderNote($invoice->tax_rate_percent);
+            $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
+        @endphp
+        <div class="mt-4 text-sm text-slate-600">
+            <div class="flex items-center justify-end gap-6">
+                <span>Subtotal</span>
+                <span class="font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $invoice->subtotal, 2) }}</span>
+            </div>
+            @if($hasTax)
+                <div class="mt-2 flex items-center justify-end gap-6">
+                    <span>{{ $invoice->tax_mode === 'inclusive' ? 'Included '.$taxLabel : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</span>
+                    <span class="font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</span>
+                </div>
+            @endif
+            <div class="mt-2 flex items-center justify-end gap-6 text-lg font-semibold text-teal-600">
+                <span>Total</span>
+                <span>{{ $invoice->currency }} {{ number_format((float) $invoice->total, 2) }}</span>
+            </div>
+            @if($hasTax && $taxNote)
+                <div class="mt-2 text-right text-xs text-slate-500">{{ $taxNote }}</div>
+            @endif
         </div>
 
         @if($invoice->accountingEntries->isNotEmpty())

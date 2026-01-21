@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\ProjectTaskSubtask;
 use App\Models\SalesRepresentative;
+use App\Models\User;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -59,6 +61,13 @@ class ProjectTaskViewController extends Controller
             $taskTypeOptions[$task->task_type] = ucfirst(str_replace('_', ' ', $task->task_type));
         }
 
+        $canEditTask = $this->canEditTask($actor, $task, $request->user());
+        $canAddSubtask = Gate::forUser($actor)->check('create', [ProjectTaskSubtask::class, $task]);
+        $editableSubtaskIds = $task->subtasks
+            ->filter(fn ($subtask) => $this->canEditSubtask($actor, $subtask, $request->user()))
+            ->pluck('id')
+            ->all();
+
         return view('projects.task-detail-clickup', [
             'layout' => $this->layoutForPrefix($routePrefix),
             'routePrefix' => $routePrefix,
@@ -86,7 +95,9 @@ class ProjectTaskViewController extends Controller
             'salesReps' => $salesReps,
             'currentActorType' => $identity['type'],
             'currentActorId' => $identity['id'],
-            'canEdit' => $this->canEdit($actor, $task, $request->user()?->id),
+            'canEdit' => $canEditTask,
+            'canAddSubtask' => $canAddSubtask,
+            'editableSubtaskIds' => $editableSubtaskIds,
             'canPost' => Gate::forUser($actor)->check('comment', $task),
             'updateRoute' => route($routePrefix . '.projects.tasks.update', [$project, $task]),
             'activityRoute' => route($routePrefix . '.projects.tasks.activity', [$project, $task]),
@@ -169,13 +180,35 @@ class ProjectTaskViewController extends Controller
         };
     }
 
-    private function canEdit(object $actor, ProjectTask $task, ?int $userId = null): bool
+    private function canEditTask(object $actor, ProjectTask $task, ?User $user = null): bool
     {
+        if ($this->isMasterAdmin($user)) {
+            return true;
+        }
+
         if (! Gate::forUser($actor)->check('update', $task)) {
             return false;
         }
 
-        return ! $task->creatorEditWindowExpired($userId);
+        return ! $task->creatorEditWindowExpired($user?->id);
+    }
+
+    private function canEditSubtask(object $actor, ProjectTaskSubtask $subtask, ?User $user = null): bool
+    {
+        if ($this->isMasterAdmin($user)) {
+            return true;
+        }
+
+        if (! Gate::forUser($actor)->check('update', $subtask)) {
+            return false;
+        }
+
+        return ! $subtask->creatorEditWindowExpired($user?->id);
+    }
+
+    private function isMasterAdmin(?User $user): bool
+    {
+        return $user?->isMasterAdmin() ?? false;
     }
 
     private function assigneeEmployees(object $actor, Project $project)

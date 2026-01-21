@@ -106,6 +106,7 @@ class EmployeeTaskStartTest extends TestCase
             'project_id' => $project->id,
             'title' => 'Task One',
             'status' => 'pending',
+            'created_by' => $employeeUser->id,
         ]);
 
         return [$project, $task, $employeeUser];

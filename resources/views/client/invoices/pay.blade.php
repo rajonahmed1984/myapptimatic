@@ -9,6 +9,10 @@
         $creditTotal = $invoice->accountingEntries->where('type', 'credit')->sum('amount');
         $paidTotal = $invoice->accountingEntries->where('type', 'payment')->sum('amount');
         $balance = max(0, (float) $invoice->total - $paidTotal - $creditTotal);
+        $taxSetting = \App\Models\TaxSetting::current();
+        $taxLabel = $taxSetting->invoice_tax_label ?: 'Tax';
+        $taxNote = $taxSetting->renderNote($invoice->tax_rate_percent);
+        $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
     @endphp
 
     <div class="card p-6 md:p-8">
@@ -184,6 +188,14 @@
                             <td class="px-4 py-3 text-right font-semibold text-slate-600">Sub total</td>
                             <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $invoice->subtotal, 2) }}</td>
                         </tr>
+                        @if($hasTax)
+                            <tr class="border-t border-slate-200 bg-slate-50">
+                                <td class="px-4 py-3 text-right font-semibold text-slate-600">
+                                    {{ $invoice->tax_mode === 'inclusive' ? 'Included '.$taxLabel : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)
+                                </td>
+                                <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</td>
+                            </tr>
+                        @endif
                         <tr class="border-t border-slate-200 bg-slate-50">
                             <td class="px-4 py-3 text-right font-semibold text-slate-600">Credit</td>
                             <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $creditTotal, 2) }}</td>
@@ -199,6 +211,9 @@
                     </tbody>
                 </table>
             </div>
+            @if($hasTax && $taxNote)
+                <div class="mt-3 text-xs text-slate-500">{{ $taxNote }}</div>
+            @endif
         </div>
 
         <div class="mt-8">

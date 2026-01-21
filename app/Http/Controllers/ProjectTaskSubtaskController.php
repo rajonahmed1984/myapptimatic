@@ -25,6 +25,7 @@ class ProjectTaskSubtaskController extends Controller
             'due_time' => ['nullable', 'date_format:H:i'],
         ]);
 
+        $data['created_by'] = $request->user()?->id;
         $subtask = $task->subtasks()->create($data);
         TaskCompletionManager::syncFromSubtasks($task);
 
@@ -42,14 +43,23 @@ class ProjectTaskSubtaskController extends Controller
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('update', $subtask);
 
+        if (! $this->isMasterAdmin($request->user()) && $subtask->creatorEditWindowExpired($request->user()?->id)) {
+            return $this->forbiddenResponse($request, 'You can only edit this subtask within 24 hours of creation.');
+        }
+
         $data = $request->validate([
-            'is_completed' => ['required', 'boolean'],
+            'title' => ['sometimes', 'string', 'max:255'],
+            'due_date' => ['sometimes', 'nullable', 'date'],
+            'due_time' => ['sometimes', 'nullable', 'date_format:H:i'],
+            'is_completed' => ['sometimes', 'boolean'],
         ]);
 
-        if ($data['is_completed'] && !$subtask->completed_at) {
-            $data['completed_at'] = now();
-        } elseif (!$data['is_completed']) {
-            $data['completed_at'] = null;
+        if (array_key_exists('is_completed', $data)) {
+            if ($data['is_completed'] && !$subtask->completed_at) {
+                $data['completed_at'] = now();
+            } elseif (!$data['is_completed']) {
+                $data['completed_at'] = null;
+            }
         }
 
         $subtask->update($data);
@@ -106,5 +116,22 @@ class ProjectTaskSubtaskController extends Controller
         }
 
         abort(403, 'Authentication required.');
+    }
+
+    private function forbiddenResponse(Request $request, string $message): RedirectResponse|\Illuminate\Http\JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => false,
+                'message' => $message,
+            ], 403);
+        }
+
+        return back()->withErrors(['subtask' => $message]);
+    }
+
+    private function isMasterAdmin($user): bool
+    {
+        return $user instanceof \App\Models\User && $user->isMasterAdmin();
     }
 }

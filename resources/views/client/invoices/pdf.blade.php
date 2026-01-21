@@ -25,6 +25,10 @@
         $paymentEntries = $invoice->accountingEntries->where('type', 'payment');
         $paidTotal = $paymentEntries->sum('amount');
         $balance = max(0, (float) $invoice->total - $paidTotal - $creditTotal);
+        $taxSetting = \App\Models\TaxSetting::current();
+        $taxLabel = $taxSetting->invoice_tax_label ?: 'Tax';
+        $taxNote = $taxSetting->renderNote($invoice->tax_rate_percent);
+        $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
         $logoSrc = null;
         $logoUrl = $portalBranding['logo_url'] ?? null;
 
@@ -124,6 +128,12 @@
                     <td class="right"><strong>Sub total</strong></td>
                     <td class="right"><strong>{{ $invoice->currency }} {{ number_format((float) $invoice->subtotal, 2) }}</strong></td>
                 </tr>
+                @if($hasTax)
+                    <tr>
+                        <td class="right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included '.$taxLabel : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
+                        <td class="right"><strong>{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</strong></td>
+                    </tr>
+                @endif
                 <tr>
                     <td class="right"><strong>Credit</strong></td>
                     <td class="right"><strong>{{ $invoice->currency }} {{ number_format((float) $creditTotal, 2) }}</strong></td>
@@ -138,6 +148,9 @@
                 </tr>
             </tbody>
         </table>
+        @if($hasTax && $taxNote)
+            <div class="section muted">{{ $taxNote }}</div>
+        @endif
     </div>
 
     @if($invoice->status === 'paid')

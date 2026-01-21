@@ -45,10 +45,15 @@ class ClientTaskDetailViewTest extends TestCase
             'customer_visible' => true,
         ]);
 
+        $admin = User::factory()->create([
+            'role' => Role::ADMIN,
+        ]);
+
         ProjectTaskSubtask::create([
             'project_task_id' => $task->id,
             'title' => 'First Subtask',
             'is_completed' => false,
+            'created_by' => $admin->id,
         ]);
 
         $response = $this->actingAs($client)
@@ -56,7 +61,8 @@ class ClientTaskDetailViewTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('First Subtask');
-        $response->assertDontSee('subtask-checkbox');
-        $response->assertDontSee('subtask-status-select');
+        $response->assertDontSee('class="subtask-checkbox"', false);
+        $response->assertDontSee('class="subtask-status-select"', false);
+        $response->assertDontSee('id="task-edit"', false);
     }
 }

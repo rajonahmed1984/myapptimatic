@@ -28,7 +28,7 @@ class ProjectTaskEditWindowTest extends TestCase
             'initial_payment_amount' => 100,
             'currency' => 'USD',
         ]);
-        $admin = User::factory()->create(['role' => 'master_admin']);
+        $admin = User::factory()->create(['role' => 'sub_admin']);
 
         $task = ProjectTask::create([
             'project_id' => $project->id,
@@ -68,7 +68,7 @@ class ProjectTaskEditWindowTest extends TestCase
             'initial_payment_amount' => 100,
             'currency' => 'USD',
         ]);
-        $admin = User::factory()->create(['role' => 'master_admin']);
+        $admin = User::factory()->create(['role' => 'sub_admin']);
 
         $task = ProjectTask::create([
             'project_id' => $project->id,
@@ -90,7 +90,7 @@ class ProjectTaskEditWindowTest extends TestCase
         $response->assertStatus(403);
         $response->assertJson([
             'ok' => false,
-            'message' => 'Task can only be edited within 24 hours of creation.',
+            'message' => 'You can only edit this task within 24 hours of creation.',
         ]);
     }
 
@@ -133,7 +133,7 @@ class ProjectTaskEditWindowTest extends TestCase
             ->get(route('client.projects.tasks.show', [$project, $task]));
 
         $response->assertOk();
-        $response->assertDontSee('subtask-checkbox');
+        $response->assertDontSee('class="subtask-checkbox"', false);
     }
 
     #[Test]

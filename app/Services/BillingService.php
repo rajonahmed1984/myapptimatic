@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class BillingService
 {
+    public function __construct(private InvoiceTaxService $taxService)
+    {
+    }
+
     public function generateInvoiceForSubscription(Subscription $subscription, ?Carbon $issueDate = null): ?Invoice
     {
         if ($subscription->status !== 'active') {
@@ -31,6 +35,8 @@ class BillingService
         $currency = (string) Setting::getValue('currency');
         $dueDate = $this->resolveDueDate($subscription, $issueDate, $plan->interval, $dueDays);
 
+        $taxData = $this->taxService->calculateTotals($subtotal, 0.0, $issueDate);
+
         $invoice = Invoice::create([
             'customer_id' => $subscription->customer_id,
             'subscription_id' => $subscription->id,
@@ -39,8 +45,11 @@ class BillingService
             'issue_date' => $issueDate->toDateString(),
             'due_date' => $dueDate->toDateString(),
             'subtotal' => $subtotal,
+            'tax_rate_percent' => $taxData['tax_rate_percent'],
+            'tax_mode' => $taxData['tax_mode'],
+            'tax_amount' => $taxData['tax_amount'],
             'late_fee' => 0,
-            'total' => $subtotal,
+            'total' => $taxData['total'],
             'currency' => strtoupper($currency),
         ]);
 
@@ -97,9 +106,14 @@ class BillingService
         $subtotal = $this->calculateSubtotal($plan->interval, (float) $plan->price, $periodStart, $periodEnd);
         $currency = (string) Setting::getValue('currency');
 
+        $taxData = $this->taxService->calculateTotals($subtotal, (float) $invoice->late_fee, Carbon::parse($invoice->issue_date), $invoice);
+
         $invoice->update([
             'subtotal' => $subtotal,
-            'total' => $subtotal + (float) $invoice->late_fee,
+            'tax_rate_percent' => $taxData['tax_rate_percent'],
+            'tax_mode' => $taxData['tax_mode'],
+            'tax_amount' => $taxData['tax_amount'],
+            'total' => $taxData['total'],
             'currency' => strtoupper($currency),
         ]);
 

@@ -42,6 +42,7 @@ class EmployeeTaskCompletionTest extends TestCase
             'project_task_id' => $task->id,
             'title' => 'Subtask A',
             'is_completed' => false,
+            'created_by' => $employeeUser->id,
         ]);
 
         $response = $this->actingAs($employeeUser, 'employee')
@@ -65,12 +66,14 @@ class EmployeeTaskCompletionTest extends TestCase
             'project_task_id' => $task->id,
             'title' => 'Subtask A',
             'is_completed' => false,
+            'created_by' => $employeeUser->id,
         ]);
 
         $second = ProjectTaskSubtask::create([
             'project_task_id' => $task->id,
             'title' => 'Subtask B',
             'is_completed' => false,
+            'created_by' => $employeeUser->id,
         ]);
 
         $this->actingAs($employeeUser, 'employee')
@@ -98,6 +101,7 @@ class EmployeeTaskCompletionTest extends TestCase
             'title' => 'Subtask A',
             'is_completed' => true,
             'completed_at' => now(),
+            'created_by' => $employeeUser->id,
         ]);
 
         $second = ProjectTaskSubtask::create([
@@ -105,6 +109,7 @@ class EmployeeTaskCompletionTest extends TestCase
             'title' => 'Subtask B',
             'is_completed' => true,
             'completed_at' => now(),
+            'created_by' => $employeeUser->id,
         ]);
 
         $this->actingAs($employeeUser, 'employee')
@@ -146,17 +151,18 @@ class EmployeeTaskCompletionTest extends TestCase
             'currency' => 'USD',
         ]);
 
-        $task = ProjectTask::create([
-            'project_id' => $project->id,
-            'title' => 'Task One',
-            'status' => 'pending',
-        ]);
-
         $employeeUser = User::factory()->create();
         $employee = Employee::create([
             'user_id' => $employeeUser->id,
             'name' => 'Employee One',
             'status' => 'active',
+        ]);
+
+        $task = ProjectTask::create([
+            'project_id' => $project->id,
+            'title' => 'Task One',
+            'status' => 'pending',
+            'created_by' => $employeeUser->id,
         ]);
 
         $project->employees()->sync([$employee->id]);

@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
 class MaintenanceBillingService
 {
     public function __construct(
-        private BillingService $billingService
+        private BillingService $billingService,
+        private InvoiceTaxService $taxService
     )
     {
     }
@@ -114,6 +115,8 @@ class MaintenanceBillingService
             $dueDays = (int) Setting::getValue('invoice_due_days');
             $dueDate = $billingDate->copy()->addDays($dueDays);
 
+            $taxData = $this->taxService->calculateTotals($amount, 0.0, $billingDate);
+
             $invoice = Invoice::create([
                 'customer_id' => $maintenance->customer_id,
                 'project_id' => $maintenance->project_id,
@@ -123,8 +126,11 @@ class MaintenanceBillingService
                 'issue_date' => $billingDate->toDateString(),
                 'due_date' => $dueDate->toDateString(),
                 'subtotal' => $amount,
+                'tax_rate_percent' => $taxData['tax_rate_percent'],
+                'tax_mode' => $taxData['tax_mode'],
+                'tax_amount' => $taxData['tax_amount'],
                 'late_fee' => 0,
-                'total' => $amount,
+                'total' => $taxData['total'],
                 'currency' => strtoupper($currency),
                 'type' => 'project_maintenance',
             ]);

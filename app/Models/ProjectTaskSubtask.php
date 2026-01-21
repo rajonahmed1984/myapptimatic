@@ -16,6 +16,7 @@ class ProjectTaskSubtask extends Model
         'due_time',
         'is_completed',
         'completed_at',
+        'created_by',
     ];
 
     protected $casts = [
@@ -27,5 +28,18 @@ class ProjectTaskSubtask extends Model
     public function task(): BelongsTo
     {
         return $this->belongsTo(ProjectTask::class, 'project_task_id');
+    }
+
+    public function creatorEditWindowExpired(?int $userId): bool
+    {
+        if (! $userId || ! $this->created_by || $this->created_by !== $userId) {
+            return false;
+        }
+
+        if (! $this->created_at) {
+            return true;
+        }
+
+        return $this->created_at->copy()->addHours(24)->isPast();
     }
 }

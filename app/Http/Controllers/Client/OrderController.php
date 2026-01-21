@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\Subscription;
 use App\Models\Setting;
 use App\Services\BillingService;
+use App\Services\InvoiceTaxService;
 use App\Services\AdminNotificationService;
 use App\Services\ClientNotificationService;
 use App\Support\Currency;
@@ -94,6 +95,7 @@ class OrderController extends Controller
     public function store(
         Request $request,
         BillingService $billingService,
+        InvoiceTaxService $taxService,
         AdminNotificationService $adminNotifications,
         ClientNotificationService $clientNotifications
     ): RedirectResponse
@@ -140,6 +142,8 @@ class OrderController extends Controller
             $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
             $dueDate = $issueDate->copy();
 
+            $taxData = $taxService->calculateTotals($subtotal, 0.0, $issueDate);
+
             $invoice = Invoice::create([
                 'customer_id' => $subscription->customer_id,
                 'subscription_id' => $subscription->id,
@@ -148,8 +152,11 @@ class OrderController extends Controller
                 'issue_date' => $issueDate->toDateString(),
                 'due_date' => $dueDate->toDateString(),
                 'subtotal' => $subtotal,
+                'tax_rate_percent' => $taxData['tax_rate_percent'],
+                'tax_mode' => $taxData['tax_mode'],
+                'tax_amount' => $taxData['tax_amount'],
                 'late_fee' => 0,
-                'total' => $subtotal,
+                'total' => $taxData['total'],
                 'currency' => $currency,
             ]);
 

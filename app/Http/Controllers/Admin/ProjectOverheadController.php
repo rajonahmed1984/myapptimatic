@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Carbon\Carbon;
 use App\Services\BillingService;
+use App\Services\InvoiceTaxService;
 
 class ProjectOverheadController extends Controller
 {
@@ -57,7 +58,7 @@ class ProjectOverheadController extends Controller
             ->with('success', 'Overhead deleted successfully.');
     }
 
-    public function invoicePending(Request $request, Project $project, BillingService $billingService): RedirectResponse
+    public function invoicePending(Request $request, Project $project, BillingService $billingService, InvoiceTaxService $taxService): RedirectResponse
     {
         $this->authorize('view', $project);
 
@@ -73,6 +74,8 @@ class ProjectOverheadController extends Controller
         $dueDays = (int) Setting::getValue('invoice_due_days');
         $dueDate = $issueDate->copy()->addDays(max(0, $dueDays));
 
+        $taxData = $taxService->calculateTotals($subtotal, 0.0, $issueDate);
+
         $invoice = Invoice::create([
             'customer_id' => $project->customer_id,
             'project_id' => $project->id,
@@ -81,8 +84,11 @@ class ProjectOverheadController extends Controller
             'issue_date' => $issueDate->toDateString(),
             'due_date' => $dueDate->toDateString(),
             'subtotal' => $subtotal,
+            'tax_rate_percent' => $taxData['tax_rate_percent'],
+            'tax_mode' => $taxData['tax_mode'],
+            'tax_amount' => $taxData['tax_amount'],
             'late_fee' => 0,
-            'total' => $subtotal,
+            'total' => $taxData['total'],
             'currency' => $project->currency,
             'type' => 'project_overhead',
         ]);
