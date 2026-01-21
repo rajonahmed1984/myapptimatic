@@ -191,7 +191,7 @@ class CustomerController extends Controller
     public function show(Request $request, Customer $customer)
     {
         $tab = $request->query('tab', 'summary');
-        $allowedTabs = ['summary', 'services', 'projects', 'invoices', 'tickets', 'emails', 'log'];
+        $allowedTabs = ['summary', 'project-specific', 'services', 'projects', 'invoices', 'tickets', 'emails', 'log'];
 
         if (! in_array($tab, $allowedTabs, true)) {
             $tab = 'summary';
@@ -211,6 +211,8 @@ class CustomerController extends Controller
 
         $activityLogs = collect();
         $emailLogs = collect();
+        $projectClients = collect();
+        $projects = collect();
         if ($tab === 'log') {
             $userIds = $customer->users()->pluck('id');
             $activityLogs = SystemLog::query()
@@ -231,6 +233,10 @@ class CustomerController extends Controller
                 ->latest()
                 ->take(200)
                 ->get();
+        }
+        if ($tab === 'project-specific') {
+            $projectClients = $customer->projectUsers()->with('project')->get();
+            $projects = $customer->projects()->orderBy('name')->get(['id', 'name']);
         }
 
         $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
@@ -285,6 +291,8 @@ class CustomerController extends Controller
             'creditBalance' => $creditBalance,
             'currencyCode' => $currencyCode,
             'currencySymbol' => $currencySymbol,
+            'projectClients' => $projectClients,
+            'projects' => $projects,
         ]);
     }
 

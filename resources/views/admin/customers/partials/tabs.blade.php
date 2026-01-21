@@ -2,6 +2,7 @@
     $tabs = [
         ['key' => 'summary', 'label' => 'Summary', 'href' => route('admin.customers.show', $customer)],
         ['key' => 'profile', 'label' => 'Profile', 'href' => route('admin.customers.edit', $customer)],
+        ['key' => 'project-specific', 'label' => 'Project Logins', 'href' => route('admin.customers.show', ['customer' => $customer, 'tab' => 'project-specific'])],
         ['key' => 'services', 'label' => 'Products/Services', 'href' => route('admin.customers.show', ['customer' => $customer, 'tab' => 'services'])],
         ['key' => 'projects', 'label' => 'Projects', 'href' => route('admin.customers.show', ['customer' => $customer, 'tab' => 'projects'])],
         ['key' => 'invoices', 'label' => 'Invoices', 'href' => route('admin.customers.show', ['customer' => $customer, 'tab' => 'invoices'])],

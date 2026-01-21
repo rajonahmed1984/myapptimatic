@@ -40,7 +40,7 @@ class CustomerProjectUserController extends Controller
             'user_id' => $user->id,
         ], $request->user()?->id, $request->ip());
 
-        return redirect()->route('admin.customers.edit', $customer)
+        return redirect()->route('admin.customers.show', ['customer' => $customer, 'tab' => 'project-specific'])
             ->with('status', 'Project client user created.');
     }
 
@@ -101,7 +101,7 @@ class CustomerProjectUserController extends Controller
             ]);
         }
 
-        return redirect()->route('admin.customers.edit', $customer)
+        return redirect()->route('admin.customers.show', ['customer' => $customer, 'tab' => 'project-specific'])
             ->with('status', 'Project client user updated.');
     }
 
@@ -121,7 +121,7 @@ class CustomerProjectUserController extends Controller
 
         $user->delete();
 
-        return redirect()->route('admin.customers.edit', $customer)
+        return redirect()->route('admin.customers.show', ['customer' => $customer, 'tab' => 'project-specific'])
             ->with('status', 'Project client user deleted.');
     }
 
