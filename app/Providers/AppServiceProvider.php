@@ -10,6 +10,10 @@ use App\Models\SupportTicket;
 use App\Models\Employee;
 use App\Models\SalesRepresentative;
 use App\Models\Project;
+use App\Models\ProjectTask;
+use App\Models\ProjectTaskSubtask;
+use App\Observers\ProjectTaskObserver;
+use App\Observers\ProjectTaskSubtaskObserver;
 use App\Support\Branding;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
@@ -53,6 +57,8 @@ class AppServiceProvider extends ServiceProvider
         $this->registerRateLimiters();
         $this->registerEmailLogListener();
         $this->registerAutomationEventListeners();
+        ProjectTask::observe(ProjectTaskObserver::class);
+        ProjectTaskSubtask::observe(ProjectTaskSubtaskObserver::class);
 
         try {
             $portalUrl = UrlResolver::portalUrl();

@@ -23,6 +23,7 @@ use App\Support\TaskAssignees;
 use App\Support\Currency;
 use App\Support\TaskCompletionManager;
 use App\Support\TaskSettings;
+use App\Services\TaskStatusNotificationService;
 use App\Services\CommissionService;
 use App\Services\BillingService;
 use App\Services\InvoiceTaxService;
@@ -827,6 +828,8 @@ class ProjectController extends Controller
             'task_id' => $task->id,
             'status' => $task->status,
         ], $request->user()?->id, $request->ip());
+
+        app(TaskStatusNotificationService::class)->notifyTaskOpened($task);
 
         return back()->with('status', 'Task added.');
     }

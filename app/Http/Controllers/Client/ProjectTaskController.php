@@ -10,6 +10,7 @@ use App\Models\ProjectTask;
 use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskCompletionManager;
+use App\Services\TaskStatusNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -57,6 +58,8 @@ class ProjectTaskController extends Controller
             'actor_type' => 'client',
             'actor_id' => $request->user()->id,
         ]);
+
+        app(TaskStatusNotificationService::class)->notifyTaskOpened($task);
 
         return back()->with('status', 'Task added.');
     }
