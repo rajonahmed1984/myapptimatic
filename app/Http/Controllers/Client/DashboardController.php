@@ -7,19 +7,20 @@ use App\Models\LicenseDomain;
 use App\Models\Project;
 use App\Models\ProjectMaintenance;
 use App\Models\Setting;
+use App\Services\TaskQueryService;
 use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, TaskQueryService $taskQueryService)
     {
         $user = $request->user();
         
         // Show project-specific dashboard for project users
         if ($user->isClientProject() && $user->project_id) {
-            return $this->projectSpecificDashboard($request, $user);
+            return $this->projectSpecificDashboard($request, $user, $taskQueryService);
         }
 
         $customer = $user->customer;
@@ -103,6 +104,9 @@ class DashboardController extends Controller
                 ->first()
             : null;
 
+        $showTasksWidget = $taskQueryService->canViewTasks($user);
+        $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
+
         return view('client.dashboard', [
             'customer' => $customer,
             'subscriptions' => $subscriptions,
@@ -123,10 +127,14 @@ class DashboardController extends Controller
             'currency' => strtoupper((string) Setting::getValue('currency', Currency::DEFAULT)),
             'projects' => $projects,
             'maintenanceRenewal' => $maintenanceRenewal,
+            'showTasksWidget' => $showTasksWidget,
+            'taskSummary' => $tasksWidget['summary'] ?? null,
+            'openTasks' => $tasksWidget['openTasks'] ?? collect(),
+            'inProgressTasks' => $tasksWidget['inProgressTasks'] ?? collect(),
         ]);
     }
 
-    private function projectSpecificDashboard(Request $request, $user)
+    private function projectSpecificDashboard(Request $request, $user, TaskQueryService $taskQueryService)
     {
         $project = Project::with([
             'customer',
@@ -172,6 +180,9 @@ class DashboardController extends Controller
             ->limit(4)
             ->get() ?? collect();
 
+        $showTasksWidget = $taskQueryService->canViewTasks($user);
+        $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
+
         return view('client.project-dashboard', [
             'project' => $project,
             'user' => $user,
@@ -185,6 +196,10 @@ class DashboardController extends Controller
             'recentMessages' => $recentMessages,
             'openTicketsCount' => $openTicketsCount,
             'recentTickets' => $recentTickets,
+            'showTasksWidget' => $showTasksWidget,
+            'taskSummary' => $tasksWidget['summary'] ?? null,
+            'openTasks' => $tasksWidget['openTasks'] ?? collect(),
+            'inProgressTasks' => $tasksWidget['inProgressTasks'] ?? collect(),
         ]);
     }
 }

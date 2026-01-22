@@ -173,9 +173,6 @@ class DemoDataSeeder extends Seeder
                     'initial_payment_amount' => $initialPayment,
                     'currency' => 'USD',
                     'budget_amount' => $totalBudget,
-                    'planned_hours' => 120,
-                    'hourly_cost' => 40,
-                    'actual_hours' => 25,
                 ]
             );
 

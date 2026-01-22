@@ -147,9 +147,6 @@ class ProjectController extends Controller
             'initial_payment_amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['required', 'string', 'size:3', Rule::in(Currency::allowed())],
             'budget_amount' => ['nullable', 'numeric', 'min:0'],
-            'planned_hours' => ['nullable', 'numeric', 'min:0'],
-            'hourly_cost' => ['nullable', 'numeric', 'min:0'],
-            'actual_hours' => ['nullable', 'numeric', 'min:0'],
             'software_overhead' => ['nullable', 'numeric', 'min:0'],
             'website_overhead' => ['nullable', 'numeric', 'min:0'],
             'overheads' => ['array'],
@@ -277,9 +274,6 @@ class ProjectController extends Controller
                 'currency' => strtoupper($data['currency']),
                 'sales_rep_ids' => $data['sales_rep_ids'] ?? [],
                 'budget_amount' => $data['budget_amount'] ?? null,
-                'planned_hours' => $data['planned_hours'] ?? null,
-                'hourly_cost' => $data['hourly_cost'] ?? null,
-                'actual_hours' => $data['actual_hours'] ?? null,
                 'software_overhead' => $data['software_overhead'] ?? null,
                 'website_overhead' => $data['website_overhead'] ?? null,
                 'contract_amount' => $contractEmployeeTotal,
@@ -627,9 +621,6 @@ class ProjectController extends Controller
             'initial_payment_amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['required', 'string', 'size:3', Rule::in(Currency::allowed())],
             'budget_amount' => ['nullable', 'numeric', 'min:0'],
-            'planned_hours' => ['nullable', 'numeric', 'min:0'],
-            'hourly_cost' => ['nullable', 'numeric', 'min:0'],
-            'actual_hours' => ['nullable', 'numeric', 'min:0'],
             'software_overhead' => ['nullable', 'numeric', 'min:0'],
             'website_overhead' => ['nullable', 'numeric', 'min:0'],
             'contract_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:10240'],
@@ -922,12 +913,6 @@ class ProjectController extends Controller
     private function financials(Project $project): array
     {
         $budget = (float) ($project->total_budget ?? 0);
-        $plannedHours = (float) ($project->planned_hours ?? 0);
-        $actualHours = (float) ($project->actual_hours ?? $plannedHours);
-        $hourlyCost = (float) ($project->hourly_cost ?? 0);
-
-        $plannedCost = $hourlyCost * $plannedHours;
-        $actualCost = $hourlyCost * $actualHours;
         $overhead = $project->overhead_total;
         $budgetWithOverhead = $budget + $overhead;
         $salesRepTotal = (float) ($project->sales_rep_total ?? 0);
@@ -935,7 +920,7 @@ class ProjectController extends Controller
         $payoutsTotal = $salesRepTotal + $contractTotal;
         $initialPayment = (float) ($project->initial_payment_amount ?? 0);
         $remainingBudget = $budgetWithOverhead - $initialPayment;
-        $profit = ($budgetWithOverhead - $payoutsTotal) - $actualCost;
+        $profit = $budgetWithOverhead - $payoutsTotal;
 
         return [
             'budget' => $budget,
@@ -943,11 +928,6 @@ class ProjectController extends Controller
             'budget_with_overhead' => $budgetWithOverhead,
             'payouts_total' => $payoutsTotal,
             'remaining_budget' => $remainingBudget,
-            'planned_hours' => $plannedHours,
-            'actual_hours' => $actualHours,
-            'hourly_cost' => $hourlyCost,
-            'planned_cost' => $plannedCost,
-            'actual_cost' => $actualCost,
             'profit' => $profit,
             'profitable' => $profit >= 0,
         ];

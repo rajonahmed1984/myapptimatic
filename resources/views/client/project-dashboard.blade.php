@@ -122,6 +122,16 @@
             </div>
         </div>
 
+        @if(!empty($showTasksWidget))
+            @include('tasks.partials.dashboard-widget', [
+                'taskSummary' => $taskSummary,
+                'openTasks' => $openTasks,
+                'inProgressTasks' => $inProgressTasks,
+                'routePrefix' => 'client',
+                'usesStartRoute' => false,
+            ])
+        @endif
+
         <div class="grid gap-6 md:grid-cols-2">
             {{-- Recent Tasks --}}
             <div class="card p-6">

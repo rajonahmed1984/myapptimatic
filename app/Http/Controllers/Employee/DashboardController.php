@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Services\EmployeeWorkSummaryService;
+use App\Services\TaskQueryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, EmployeeWorkSummaryService $workSummaryService): View
+    public function __invoke(Request $request, EmployeeWorkSummaryService $workSummaryService, TaskQueryService $taskQueryService): View
     {
         $employee = $request->user()?->employee;
         $employeeId = $employee?->id;
@@ -88,6 +89,10 @@ class DashboardController extends Controller
             }
         }
 
+        $user = $request->user();
+        $showTasksWidget = $taskQueryService->canViewTasks($user);
+        $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
+
         return view('employee.dashboard', [
             'totalProjects' => $totalProjects,
             'projectStatusCounts' => $projectStatusCounts,
@@ -97,6 +102,10 @@ class DashboardController extends Controller
             'contractProjects' => $contractProjects,
             'workSessionEligible' => $workSessionEligible,
             'workSessionRequiredSeconds' => $workSessionRequiredSeconds,
+            'showTasksWidget' => $showTasksWidget,
+            'taskSummary' => $tasksWidget['summary'] ?? null,
+            'openTasks' => $tasksWidget['openTasks'] ?? collect(),
+            'inProgressTasks' => $tasksWidget['inProgressTasks'] ?? collect(),
         ]);
     }
 }

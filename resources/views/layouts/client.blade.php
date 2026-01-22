@@ -30,6 +30,7 @@
             <nav class="mt-10 space-y-4 text-sm">
                 @php
                     $isProjectSpecificUser = auth()->user()->isClientProject();
+                    $canViewTasks = app(\App\Services\TaskQueryService::class)->canViewTasks(auth()->user());
                 @endphp
                 
                 <div>
@@ -50,6 +51,12 @@
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Projects
                     </a>
+                    @if($canViewTasks)
+                        <a class="{{ request()->routeIs('client.tasks.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.tasks.index') }}">
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Tasks
+                        </a>
+                    @endif
                     <a class="{{ request()->routeIs('client.services.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.services.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Services
@@ -101,6 +108,12 @@
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Project Details
                     </a>
+                    @if($canViewTasks)
+                        <a class="{{ request()->routeIs('client.tasks.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.tasks.index') }}">
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Tasks
+                        </a>
+                    @endif
                     <a class="{{ request()->routeIs('client.projects.chat') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ auth()->user()->project_id ? route('client.projects.chat', auth()->user()->project_id) : '#' }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Project Chat

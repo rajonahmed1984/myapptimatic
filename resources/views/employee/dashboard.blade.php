@@ -144,6 +144,16 @@
             </div>
         </div>
 
+        @if(!empty($showTasksWidget))
+            @include('tasks.partials.dashboard-widget', [
+                'taskSummary' => $taskSummary,
+                'openTasks' => $openTasks,
+                'inProgressTasks' => $inProgressTasks,
+                'routePrefix' => 'employee',
+                'usesStartRoute' => true,
+            ])
+        @endif
+
         @if($contractSummary)
             <div class="card p-6">
                 <div class="section-label">Contract earnings</div>

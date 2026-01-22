@@ -12,6 +12,7 @@
                 $isAdminNav = request()->routeIs('admin.*');
                 $isEmployeeNav = request()->routeIs('employee.*');
                 $isSalesRepNav = request()->routeIs('rep.*');
+                $canViewTasks = app(\App\Services\TaskQueryService::class)->canViewTasks(auth()->user());
             @endphp
             <div class="flex items-center gap-3">
                 @if(!empty($sidebarImage))
@@ -104,6 +105,15 @@
                             <a href="{{ route('admin.projects.create') }}" class="block {{ activeIf(request()->routeIs('admin.projects.create')) }}">Create Project</a>
                             <a href="{{ route('admin.project-maintenances.index') }}" class="block {{ activeIf(request()->routeIs('admin.project-maintenances.*')) }}">Maintenance</a>
                         </x-nav-menu>
+                        @if($canViewTasks)
+                            <x-nav-link
+                                :href="route('admin.tasks.index')"
+                                routes="admin.tasks.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Tasks
+                            </x-nav-link>
+                        @endif
                         
                         <x-nav-link 
                             :href="route('admin.subscriptions.index')"
@@ -387,6 +397,15 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Projects
                         </x-nav-link>
+                        @if($canViewTasks)
+                            <x-nav-link
+                                :href="route('employee.tasks.index')"
+                                routes="employee.tasks.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Tasks
+                            </x-nav-link>
+                        @endif
                         <x-nav-link 
                             :href="route('employee.timesheets.index')"
                             routes="employee.timesheets.*"
@@ -468,6 +487,15 @@
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 Projects
                             </x-nav-link>
+                            @if($canViewTasks)
+                                <x-nav-link
+                                    :href="route('employee.tasks.index')"
+                                    routes="employee.tasks.*"
+                                >
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    Tasks
+                                </x-nav-link>
+                            @endif
                             <x-nav-link 
                                 :href="route('employee.timesheets.index')"
                                 routes="employee.timesheets.*"

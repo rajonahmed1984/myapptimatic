@@ -4,12 +4,12 @@
 @section('page-title', 'Admin Overview')
 
 @section('content')
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    {{-- <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <div class="section-label">Admin overview</div>
             <div class="text-2xl font-semibold text-slate-900">Snapshot</div>
         </div>
-    </div>
+    </div> --}}
 
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4 stagger">
         <a href="{{ route('admin.customers.index') }}" class="card px-4 py-3 leading-tight transition hover:border-teal-300 hover:shadow-sm">
@@ -67,6 +67,18 @@
         $periodDefault = 'month';
         $defaultMetrics = $periodMetrics[$periodDefault] ?? ['new_orders' => 0, 'active_orders' => 0, 'income' => 0];
     @endphp
+
+    @if(!empty($showTasksWidget))
+        <div class="mt-6">
+            @include('tasks.partials.dashboard-widget', [
+                'taskSummary' => $taskSummary,
+                'openTasks' => $openTasks,
+                'inProgressTasks' => $inProgressTasks,
+                'routePrefix' => 'admin',
+                'usesStartRoute' => false,
+            ])
+        </div>
+    @endif
 
     <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div class="card px-4 py-3 leading-tight">

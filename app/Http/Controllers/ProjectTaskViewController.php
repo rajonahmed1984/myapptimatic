@@ -23,7 +23,7 @@ class ProjectTaskViewController extends Controller
         $task->load([
             'assignments.employee',
             'assignments.salesRep',
-            'subtasks',
+            'subtasks.createdBy',
             'creator',
         ]);
 

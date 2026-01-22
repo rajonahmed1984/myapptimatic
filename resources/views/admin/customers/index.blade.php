@@ -16,10 +16,10 @@
                     <tr>
                         <th class="px-4 py-3">ID</th>
                         <th class="px-4 py-3">Name</th>
-                        <th class="px-4 py-3">Company Name</th>
+                        <th class="px-4 py-3">Company</th>
                         <th class="px-4 py-3">Email</th>
                         <th class="px-4 py-3">Services</th>
-                        <th class="px-4 py-3">Projects</th>
+                        <th class="px-4 py-3">Projects & Maintenance</th>
                         <th class="px-4 py-3">Created</th>
                         <th class="px-4 py-3">Status</th>
                         <th class="px-4 py-3">Login status</th>
@@ -31,12 +31,10 @@
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3 text-slate-500"><a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->id }}</a></td>
                             <td class="px-4 py-3">
-                                <div class="flex items-center gap-3">
+                                <a href="{{ route('admin.customers.show', $customer) }}" class="flex items-center gap-3 hover:text-teal-600">
                                     <x-avatar :path="$customer->avatar_path" :name="$customer->name" size="h-8 w-8" textSize="text-xs" />
-                                    <div class="font-medium text-slate-900">
-                                        <a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->name }}</a>
-                                    </div>
-                                </div>
+                                    <div class="font-medium text-slate-900">{{ $customer->name }}</div>
+                                </a>
                             </td>
                             <td class="px-4 py-3 text-slate-500">{{ $customer->company_name ?: '--' }}</td>
                             <td class="px-4 py-3 text-slate-500">{{ $customer->email }}</td>
@@ -44,7 +42,11 @@
                                 {{ $customer->active_subscriptions_count }} ({{ $customer->subscriptions_count }})
                             </td>
                             <td class="px-4 py-3 text-slate-500">
-                                <a href="{{ route('admin.projects.index') }}?customer_id={{ $customer->id }}" class="hover:text-teal-600">{{ $customer->projects_count ?? 0 }}</a>
+                                <a href="{{ route('admin.projects.index') }}?customer_id={{ $customer->id }}" class="hover:text-teal-600">
+                                    {{ $customer->projects_count ?? 0 }}
+                                </a>
+                                <span class="text-slate-400">/</span>
+                                <span>{{ $customer->project_maintenances_count ?? 0 }}</span>
                             </td>
                             <td class="px-4 py-3 text-slate-500">{{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</td>
                             <td class="px-4 py-3">
@@ -73,12 +75,17 @@
                                     {{ $loginLabel }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-right">
+                            <td class="px-4 py-3 text-right">                                
                                 <div class="flex items-center justify-end gap-3">
                                     <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}" onsubmit="return confirm('Delete this customer? This will remove related subscriptions and invoices.');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
+                                        <button type="submit" class="text-rose-600 hover:text-rose-500">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                                                <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                                            </svg>
+                                        </button>
                                     </form>
                                 </div>
                             </td>

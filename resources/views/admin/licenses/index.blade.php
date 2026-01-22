@@ -49,7 +49,8 @@
 
                         $customer = $license->subscription?->customer;
                         $isBlocked = $customer && ($accessBlockedCustomers[$customer->id] ?? false);
-                        $orderNumber = $license->subscription?->latestOrder?->order_number;
+                        $latestOrder = $license->subscription?->latestOrder;
+                        $orderNumber = $latestOrder?->order_number ?? $latestOrder?->id;
                     @endphp
                     <tr class="border-b border-slate-100">
                         <td class="px-4 py-3 text-slate-500">{{ $licenses->firstItem() ? $licenses->firstItem() + $loop->index : $license->id }}</td>
@@ -77,8 +78,20 @@
                             <br>
                             {{ $license->subscription?->plan?->name ?? '--' }}
                         </td>
-                        <td class="px-4 py-3 text-slate-500">{{ $customer?->name ?? '--' }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ $orderNumber ?? '--' }}</td>
+                        <td class="px-4 py-3 text-slate-500">
+                            @if($customer)
+                                <a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->name }}</a>
+                            @else
+                                --
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-slate-500">
+                            @if($latestOrder)
+                                <a href="{{ route('admin.orders.show', $latestOrder) }}" class="hover:text-teal-600">#{{ $orderNumber }}</a>
+                            @else
+                                --
+                            @endif
+                        </td>
                         <td class="px-4 py-3">
                             <x-status-badge :status="$license->status" />
                         </td>

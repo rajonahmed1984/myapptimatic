@@ -30,6 +30,11 @@ class ProjectTaskSubtask extends Model
         return $this->belongsTo(ProjectTask::class, 'project_task_id');
     }
 
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function creatorEditWindowExpired(?int $userId): bool
     {
         if (! $userId || ! $this->created_by || $this->created_by !== $userId) {

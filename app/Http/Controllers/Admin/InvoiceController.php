@@ -255,7 +255,7 @@ class InvoiceController extends Controller
         $maintenanceId = request()->query('maintenance_id');
 
         $query = Invoice::query()
-            ->with(['customer', 'paymentProofs', 'subscription.plan.product', 'maintenance.project'])
+            ->with(['customer', 'paymentProofs', 'subscription.plan.product', 'maintenance.project', 'accountingEntries'])
             ->latest('issue_date');
 
         if ($status) {

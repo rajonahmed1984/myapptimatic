@@ -10,7 +10,6 @@
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-            <div class="section-label">Delivery</div>
             <div class="text-2xl font-semibold text-slate-900">{{ $project->name }}</div>
             <div class="text-sm text-slate-500">Status: {{ ucfirst(str_replace('_', ' ', $project->status)) }}</div>
         </div>
@@ -147,6 +146,8 @@
             $overheadTotal = $financials['overhead_total'] ?? $project->overhead_total;
             $budgetWithOverhead = $financials['budget_with_overhead'] ?? ((float) ($project->total_budget ?? 0) + $overheadTotal);
             $remainingBudget = $financials['remaining_budget'] ?? $project->remaining_budget;
+            $hasContractEmployees = $project->employees->contains(fn ($employee) => $employee->employment_type === 'contract');
+            $contractAmount = $project->contract_amount ?? $project->contract_employee_total_earned;
         @endphp
 
         <div>
@@ -162,6 +163,9 @@
                         Remaining budget: {{ $remainingBudget !== null ? $project->currency.' '.number_format($remainingBudget, 2) : '--' }}<br>
                         Budget (legacy): {{ $project->budget_amount !== null ? $project->currency.' '.number_format($project->budget_amount, 2) : '--' }}<br>
                         Currency: {{ $project->currency ?? '--' }}<br>
+                        @if($hasContractEmployees)
+                            Employees Contract: {{ $project->currency ?? '' }}{{ number_format((float) ($contractAmount ?? 0), 2) }}<br>
+                        @endif
                         Sales rep total: {{ $project->sales_rep_total !== null ? $project->currency.' '.number_format($project->sales_rep_total, 2) : '--' }}<br>
                         Profit: {{ isset($financials['profit']) ? $project->currency.' '.number_format($financials['profit'], 2) : '--' }}
                     </div>

@@ -244,21 +244,6 @@
                 </div>
             </div>
 
-            <div class="grid gap-4 md:grid-cols-3">
-                <div>
-                    <label class="text-xs text-slate-500">Planned hours</label>
-                    <input name="planned_hours" type="number" step="0.01" value="{{ old('planned_hours') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Hourly cost</label>
-                    <input name="hourly_cost" type="number" step="0.01" value="{{ old('hourly_cost') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-                <div>
-                    <label class="text-xs text-slate-500">Actual hours</label>
-                    <input name="actual_hours" type="number" step="0.01" value="{{ old('actual_hours') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-            </div>
-
             <div class="rounded-2xl border border-slate-200 bg-white/60 p-4">
                 <div class="flex items-center justify-between">
                     <div>

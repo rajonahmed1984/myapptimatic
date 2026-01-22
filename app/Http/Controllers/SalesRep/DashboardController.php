@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
 use App\Services\CommissionService;
+use App\Services\TaskQueryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, CommissionService $commissionService)
+    public function __invoke(Request $request, CommissionService $commissionService, TaskQueryService $taskQueryService)
     {
         $rep = $request->attributes->get('salesRep');
         $balance = $commissionService->computeRepBalance($rep->id);
@@ -41,6 +42,10 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+        $user = $request->user();
+        $showTasksWidget = $taskQueryService->canViewTasks($user);
+        $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
+
         return view('rep.dashboard', [
             'rep' => $rep,
             'balance' => $balance,
@@ -48,6 +53,10 @@ class DashboardController extends Controller
             'paidThisMonth' => $paidThisMonth,
             'recentEarnings' => $recentEarnings,
             'recentPayouts' => $recentPayouts,
+            'showTasksWidget' => $showTasksWidget,
+            'taskSummary' => $tasksWidget['summary'] ?? null,
+            'openTasks' => $tasksWidget['openTasks'] ?? collect(),
+            'inProgressTasks' => $tasksWidget['inProgressTasks'] ?? collect(),
         ]);
     }
 }

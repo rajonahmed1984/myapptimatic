@@ -13,39 +13,33 @@
         ];
     @endphp
 
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <div class="section-label">Delivery</div>
-            <div class="text-2xl font-semibold text-slate-900">Projects</div>
-            <div class="text-sm text-slate-500">Track software/website projects and their tasks.</div>
-        </div>
-        <a href="{{ route('admin.projects.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">New project</a>
-    </div>
-
     <div class="card p-6 space-y-4">
-        <form method="GET" class="grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 md:grid-cols-4">
-            <div>
-                <label class="text-xs text-slate-500">Status</label>
-                <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                    <option value="">All</option>
-                    @foreach($statuses as $status)
-                        <option value="{{ $status }}" @selected($statusFilter === $status)>{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="text-xs text-slate-500">Type</label>
-                <select name="type" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                    <option value="">All</option>
-                    @foreach($types as $type)
-                        <option value="{{ $type }}" @selected($typeFilter === $type)>{{ ucfirst($type) }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="self-end">
-                <button type="submit" class="w-full rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Apply filters</button>
-            </div>
-        </form>
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3 border-b-1">
+            <form method="GET" class="grid gap-3 p-2 md:grid-cols-4">
+                <div>
+                    <label class="text-xs text-slate-500">Status</label>
+                    <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <option value="">All</option>
+                        @foreach($statuses as $status)
+                            <option value="{{ $status }}" @selected($statusFilter === $status)>{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Type</label>
+                    <select name="type" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <option value="">All</option>
+                        @foreach($types as $type)
+                            <option value="{{ $type }}" @selected($typeFilter === $type)>{{ ucfirst($type) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="self-end">
+                    <button type="submit" class="w-full rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Apply filters</button>
+                </div>
+            </form>
+            <a href="{{ route('admin.projects.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">New project</a>
+        </div>
 
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
             <div class="overflow-x-auto">

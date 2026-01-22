@@ -334,22 +334,8 @@ class DashboardMetricsService
 
     private function projectMaintenance(): array
     {
-        $projectsTable = (new Project())->getTable();
-        $profitColumns = ['budget_amount', 'hourly_cost', 'actual_hours', 'planned_hours'];
-        $hasProfitColumns = collect($profitColumns)->every(
-            fn (string $column) => Schema::hasColumn($projectsTable, $column)
-        );
         $projectsProfitable = 0;
         $projectsLoss = 0;
-
-        if ($hasProfitColumns) {
-            $projectsProfitable = Project::whereNotNull('budget_amount')
-                ->whereRaw('(budget_amount - COALESCE(hourly_cost * COALESCE(actual_hours, planned_hours, 0), 0)) >= 0')
-                ->count();
-            $projectsLoss = Project::whereNotNull('budget_amount')
-                ->whereRaw('(budget_amount - COALESCE(hourly_cost * COALESCE(actual_hours, planned_hours, 0), 0)) < 0')
-                ->count();
-        }
 
         return [
             'projects_active' => Project::where('status', 'ongoing')->count(),

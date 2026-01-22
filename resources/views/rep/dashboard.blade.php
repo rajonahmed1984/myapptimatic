@@ -34,6 +34,16 @@
             </div>
         </div>
 
+        @if(!empty($showTasksWidget))
+            @include('tasks.partials.dashboard-widget', [
+                'taskSummary' => $taskSummary,
+                'openTasks' => $openTasks,
+                'inProgressTasks' => $inProgressTasks,
+                'routePrefix' => 'rep',
+                'usesStartRoute' => false,
+            ])
+        @endif
+
         <div class="grid gap-4 lg:grid-cols-2">
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
                 <div class="flex items-center justify-between">

@@ -92,6 +92,16 @@
             </a>
         </div>
 
+        @if(!empty($showTasksWidget))
+            @include('tasks.partials.dashboard-widget', [
+                'taskSummary' => $taskSummary,
+                'openTasks' => $openTasks,
+                'inProgressTasks' => $inProgressTasks,
+                'routePrefix' => 'client',
+                'usesStartRoute' => false,
+            ])
+        @endif
+
         @php
             $maintenanceRenewal = $maintenanceRenewal ?? null;
             $hasMaintenance = !empty($maintenanceRenewal);

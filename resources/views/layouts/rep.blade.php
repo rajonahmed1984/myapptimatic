@@ -10,6 +10,7 @@
             <div class="flex items-center gap-3">
                 @php
                     $sidebarImage = $portalBranding['favicon_url'] ?? ($portalBranding['logo_url'] ?? null);
+                    $canViewTasks = app(\App\Services\TaskQueryService::class)->canViewTasks(auth()->user());
                 @endphp
                 @if(!empty($sidebarImage))
                     <img src="{{ $sidebarImage }}" alt="Brand mark" class="h-11 w-11 rounded-2xl bg-white p-1">
@@ -47,6 +48,15 @@
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Projects
                     </x-nav-link>
+                    @if($canViewTasks)
+                        <x-nav-link
+                            :href="route('rep.tasks.index')"
+                            routes="rep.tasks.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Tasks
+                        </x-nav-link>
+                    @endif
                 </div>
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>

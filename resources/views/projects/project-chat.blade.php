@@ -308,9 +308,10 @@
             if (!readUrl || !readId) {
                 return;
             }
-            const token = document.querySelector('[name="_token"]')?.value || '';
+            const token = document.querySelector('meta[name="csrf-token"]')?.content
+                || document.querySelector('[name="_token"]')?.value
+                || '';
             const formData = new FormData();
-            formData.append('_token', token);
             formData.append('last_read_id', readId);
 
             try {
@@ -318,6 +319,7 @@
                     method: 'PATCH',
                     headers: {
                         'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: formData,

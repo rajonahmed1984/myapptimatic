@@ -70,21 +70,48 @@
                                     if ($assigneeList->isEmpty() && $task->assigned_type && $task->assigned_id) {
                                         $assigneeList = collect([['name' => ucfirst(str_replace('_', ' ', $task->assigned_type)) . ' #' . $task->assigned_id, 'type' => $task->assigned_type]]);
                                     }
+                                    $selectedEmployeeIds = $task->assignments
+                                        ->where('assignee_type', 'employee')
+                                        ->pluck('assignee_id')
+                                        ->map(fn ($id) => (int) $id)
+                                        ->all();
                                 @endphp
                                 
-                                @if($assigneeList->isNotEmpty())
-                                    <div class="space-y-2">
-                                        @foreach($assigneeList as $assignee)
-                                            <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-50">
-                                                <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-xs font-bold text-teal-700">
-                                                    {{ substr($assignee['name'], 0, 1) }}
+                                <div id="assigneesList">
+                                    @if($assigneeList->isNotEmpty())
+                                        <div class="space-y-2">
+                                            @foreach($assigneeList as $assignee)
+                                                <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-50">
+                                                    <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-xs font-bold text-teal-700">
+                                                        {{ substr($assignee['name'], 0, 1) }}
+                                                    </div>
+                                                    <span class="text-xs font-medium text-slate-700 truncate">{{ $assignee['name'] }}</span>
                                                 </div>
-                                                <span class="text-xs font-medium text-slate-700 truncate">{{ $assignee['name'] }}</span>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <div class="text-xs text-slate-500">No assignees</div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="text-xs text-slate-500">No assignees</div>
+                                    @endif
+                                </div>
+
+                                @if($routePrefix === 'admin' && $canEdit)
+                                    <form id="assigneesForm" class="mt-4 space-y-2" data-assignees-url="{{ route($routePrefix . '.projects.tasks.assignees', [$project, $task]) }}">
+                                        @csrf
+                                        <label class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Assign employees</label>
+                                        <select name="employee_ids[]" multiple class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+                                            @foreach($employees as $employee)
+                                                <option value="{{ $employee->id }}" @selected(in_array($employee->id, $selectedEmployeeIds, true))>
+                                                    {{ $employee->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <div class="flex items-center justify-between">
+                                            <span id="assigneesNotice" class="text-[11px] text-slate-500"></span>
+                                            <button type="submit" class="rounded-full border border-teal-200 px-3 py-1 text-[11px] font-semibold text-teal-700 hover:border-teal-300">
+                                                Save assignees
+                                            </button>
+                                        </div>
+                                    </form>
                                 @endif
                             </div>
 
@@ -298,6 +325,9 @@
                                     </div>
                                     <div class="text-xs text-slate-400 mt-1 space-x-2">
                                         <span>Created: {{ $subtask->created_at->format($globalDateFormat . ' H:i') }}</span>
+                                        @if($routePrefix === 'admin')
+                                            <span>Added by: {{ $subtask->createdBy?->name ?? 'System' }}</span>
+                                        @endif
                                         @if($subtask->updated_at && $subtask->created_at && $subtask->updated_at->greaterThan($subtask->created_at))
                                             <span>Edited: {{ $subtask->updated_at->format($globalDateFormat . ' H:i') }}</span>
                                         @endif
@@ -432,6 +462,86 @@
     <script>
         const csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content')
             || @json(csrf_token());
+
+        const assigneesForm = document.getElementById('assigneesForm');
+        const assigneesList = document.getElementById('assigneesList');
+        const assigneesNotice = document.getElementById('assigneesNotice');
+
+        const renderAssignees = (assignees) => {
+            if (!assigneesList) {
+                return;
+            }
+
+            if (!assignees || assignees.length === 0) {
+                assigneesList.innerHTML = '<div class="text-xs text-slate-500">No assignees</div>';
+                return;
+            }
+
+            const items = assignees.map((assignee) => {
+                const initial = (assignee.name || 'U').substring(0, 1);
+                return `
+                    <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-50">
+                        <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-xs font-bold text-teal-700">
+                            ${initial}
+                        </div>
+                        <span class="text-xs font-medium text-slate-700 truncate">${assignee.name || 'Unknown'}</span>
+                    </div>
+                `;
+            }).join('');
+
+            assigneesList.innerHTML = `<div class="space-y-2">${items}</div>`;
+        };
+
+        if (assigneesForm) {
+            assigneesForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                if (!csrfToken) {
+                    if (assigneesNotice) {
+                        assigneesNotice.textContent = 'Unable to update assignees. Please refresh.';
+                    }
+                    return;
+                }
+
+                const url = assigneesForm.dataset.assigneesUrl;
+                const formData = new FormData(assigneesForm);
+                formData.append('_method', 'PATCH');
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    if (assigneesNotice) {
+                        assigneesNotice.textContent = 'Unable to update assignees.';
+                    }
+                    return;
+                }
+
+                const payload = await response.json().catch(() => null);
+                if (!payload?.ok) {
+                    if (assigneesNotice) {
+                        assigneesNotice.textContent = payload?.message || 'Unable to update assignees.';
+                    }
+                    return;
+                }
+
+                renderAssignees(payload.assignees || []);
+                if (assigneesNotice) {
+                    assigneesNotice.textContent = 'Assignees updated.';
+                    setTimeout(() => {
+                        assigneesNotice.textContent = '';
+                    }, 2000);
+                }
+            });
+        }
 
         // Initialize subtask form buttons
         const addBtn = document.getElementById('addSubtaskBtn');

@@ -198,6 +198,34 @@
         </div>
     </div>
 
+    @php
+        $trendIncomeValues = collect($trendIncome ?? [])->map(fn ($value) => (float) $value)->values()->all();
+        $trendExpenseValues = collect($trendExpense ?? [])->map(fn ($value) => (float) $value)->values()->all();
+        $trendWidth = 480;
+        $trendHeight = 200;
+        $trendPadding = 20;
+        $trendMax = max(1, ...$trendIncomeValues, ...$trendExpenseValues);
+        $buildTrendPoints = function (array $values) use ($trendWidth, $trendHeight, $trendPadding, $trendMax): string {
+            $count = count($values);
+            if ($count === 0) {
+                return '';
+            }
+
+            $points = [];
+            foreach ($values as $index => $value) {
+                $x = $count > 1
+                    ? $trendPadding + ($index / ($count - 1)) * ($trendWidth - $trendPadding * 2)
+                    : $trendWidth / 2;
+                $y = $trendHeight - $trendPadding - ((float) $value / $trendMax) * ($trendHeight - $trendPadding * 2);
+                $points[] = number_format($x, 2, '.', '').','.number_format($y, 2, '.', '');
+            }
+
+            return implode(' ', $points);
+        };
+        $trendIncomePoints = $buildTrendPoints($trendIncomeValues);
+        $trendExpensePoints = $buildTrendPoints($trendExpenseValues);
+    @endphp
+
     <div class="mt-6 card p-6">
         <div class="section-label">Income vs expense trend</div>
         <div class="mt-4" id="finance-trend" data-income='@json($trendIncome)' data-expense='@json($trendExpense)'>
@@ -212,8 +240,8 @@
                 </div>
             </div>
             <svg viewBox="0 0 480 200" class="mt-4 h-48 w-full">
-                <polyline id="finance-trend-income" fill="none" stroke="#10b981" stroke-width="2" points=""></polyline>
-                <polyline id="finance-trend-expense" fill="none" stroke="#f43f5e" stroke-width="2" points=""></polyline>
+                <polyline id="finance-trend-income" fill="none" stroke="#10b981" stroke-width="2" points="{{ $trendIncomePoints }}"></polyline>
+                <polyline id="finance-trend-expense" fill="none" stroke="#f43f5e" stroke-width="2" points="{{ $trendExpensePoints }}"></polyline>
             </svg>
         </div>
 
@@ -288,8 +316,26 @@
                 return;
             }
 
-            const income = JSON.parse(container.dataset.income || '[]');
-            const expense = JSON.parse(container.dataset.expense || '[]');
+            const parseSeries = (raw) => {
+                if (!raw) {
+                    return [];
+                }
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        return parsed;
+                    }
+                    if (parsed && typeof parsed === 'object') {
+                        return Object.values(parsed);
+                    }
+                } catch (e) {
+                    return [];
+                }
+                return [];
+            };
+
+            const income = parseSeries(container.dataset.income);
+            const expense = parseSeries(container.dataset.expense);
             const incomeLine = document.getElementById('finance-trend-income');
             const expenseLine = document.getElementById('finance-trend-expense');
             const width = 480;
@@ -299,7 +345,7 @@
 
             const toPoints = (values) => {
                 if (!values.length) {
-                    return '';
+                    return null;
                 }
                 return values.map((value, index) => {
                     const x = values.length > 1
@@ -311,10 +357,16 @@
             };
 
             if (incomeLine) {
-                incomeLine.setAttribute('points', toPoints(income));
+                const points = toPoints(income);
+                if (points) {
+                    incomeLine.setAttribute('points', points);
+                }
             }
             if (expenseLine) {
-                expenseLine.setAttribute('points', toPoints(expense));
+                const points = toPoints(expense);
+                if (points) {
+                    expenseLine.setAttribute('points', points);
+                }
             }
         });
     </script>

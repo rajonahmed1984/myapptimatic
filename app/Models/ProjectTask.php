@@ -66,6 +66,11 @@ class ProjectTask extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function messages(): HasMany
     {
         return $this->hasMany(ProjectTaskMessage::class, 'project_task_id');

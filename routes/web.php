@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\CommissionPayoutController;
 use App\Http\Controllers\Admin\CommissionExportController;
 use App\Http\Controllers\Admin\UserDocumentController;
 use App\Http\Controllers\Admin\SubscriptionController;
+use App\Http\Controllers\Admin\TasksController as AdminTasksController;
 use App\Http\Controllers\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\Admin\SystemLogController;
 use App\Http\Controllers\Admin\MilestoneController;
@@ -46,6 +47,7 @@ use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Employee\AuthController as EmployeeAuthController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
+use App\Http\Controllers\Employee\TasksController as EmployeeTasksController;
 use App\Http\Controllers\Employee\ProfileController as EmployeeProfileController;
 use App\Http\Controllers\Employee\TimesheetController as EmployeeTimesheetController;
 use App\Http\Controllers\Employee\LeaveRequestController as EmployeeLeaveRequestController;
@@ -54,6 +56,7 @@ use App\Http\Controllers\Employee\WorkSessionController as EmployeeWorkSessionCo
 use App\Http\Controllers\Client\AffiliateController as ClientAffiliateController;
 use App\Http\Controllers\Client\ClientRequestController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
+use App\Http\Controllers\Client\TasksController as ClientTasksController;
 use App\Http\Controllers\Client\DomainController as ClientDomainController;
 use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;
 use App\Http\Controllers\Client\ManualPaymentController;
@@ -66,8 +69,10 @@ use App\Http\Controllers\SalesRep\DashboardController as SalesRepDashboardContro
 use App\Http\Controllers\SalesRep\EarningController as SalesRepEarningController;
 use App\Http\Controllers\SalesRep\PayoutController as SalesRepPayoutController;
 use App\Http\Controllers\SalesRep\ProfileController as SalesRepProfileController;
+use App\Http\Controllers\SalesRep\TasksController as SalesRepTasksController;
 use App\Http\Controllers\Support\DashboardController as SupportDashboardController;
 use App\Http\Controllers\Support\SupportTicketController as SupportSupportTicketController;
+use App\Http\Controllers\Support\TasksController as SupportTasksController;
 use App\Http\Controllers\ProjectClient\AuthController as ProjectClientAuthController;
 use App\Models\PaymentAttempt;
 use App\Http\Controllers\BrandingAssetController;
@@ -254,6 +259,7 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
     ->group(function () {
         Route::post('/logout', [EmployeeAuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', EmployeeDashboardController::class)->name('dashboard');
+        Route::get('/tasks', [EmployeeTasksController::class, 'index'])->name('tasks.index');
         Route::post('/work-sessions/start', [EmployeeWorkSessionController::class, 'start'])->name('work-sessions.start');
         Route::post('/work-sessions/ping', [EmployeeWorkSessionController::class, 'ping'])->name('work-sessions.ping');
         Route::post('/work-sessions/stop', [EmployeeWorkSessionController::class, 'stop'])->name('work-sessions.stop');
@@ -322,6 +328,7 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
 
 Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/tasks', [AdminTasksController::class, 'index'])->name('tasks.index');
     Route::prefix('hr')->name('hr.')->group(function () {
         Route::get('/dashboard', HrDashboardController::class)->name('dashboard');
         Route::post('employees/{employee}/impersonate', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'impersonate'])->name('employees.impersonate');
@@ -483,6 +490,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         ->name('projects.overheads.invoice');
     Route::post('projects/{project}/tasks', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
     Route::patch('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
+    Route::patch('projects/{project}/tasks/{task}/assignees', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'updateAssignees'])
+        ->name('projects.tasks.assignees');
     Route::patch('projects/{project}/tasks/{task}/status', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'changeStatus'])->name('projects.tasks.changeStatus');
     Route::delete('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
     Route::get('projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
@@ -604,6 +613,7 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
     ->name('client.')
     ->group(function () {
         Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/tasks', [ClientTasksController::class, 'index'])->name('tasks.index');
         Route::post('/system/cache/clear', SystemCacheController::class)->name('system.cache.clear');
         Route::get('/orders', [ClientOrderController::class, 'index'])->middleware('project.financial')->name('orders.index');
         Route::get('/orders/review', [ClientOrderController::class, 'review'])->middleware('project.financial')->name('orders.review');
@@ -703,6 +713,7 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
     ->group(function () {
         Route::post('/logout', [RoleLoginController::class, 'logoutSales'])->name('logout');
         Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
+        Route::get('/tasks', [SalesRepTasksController::class, 'index'])->name('tasks.index');
         Route::get('/profile', [SalesRepProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [SalesRepProfileController::class, 'update'])->name('profile.update');
         Route::post('/system/cache/clear', SystemCacheController::class)
@@ -768,6 +779,7 @@ Route::middleware(['support', 'user.activity:support', 'nocache'])
     ->group(function () {
         Route::post('/logout', [RoleLoginController::class, 'logoutSupport'])->name('logout');
         Route::get('/dashboard', SupportDashboardController::class)->name('dashboard');
+        Route::get('/tasks', [SupportTasksController::class, 'index'])->name('tasks.index');
         Route::get('/support-tickets', [SupportSupportTicketController::class, 'index'])->name('support-tickets.index');
         Route::get('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'show'])->name('support-tickets.show');
         Route::post('/support-tickets/{ticket}/reply', [SupportSupportTicketController::class, 'reply'])->name('support-tickets.reply');

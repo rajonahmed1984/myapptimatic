@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\AutomationStatusService;
 use App\Services\DashboardMetricsService;
+use App\Services\TaskQueryService;
 
 class DashboardController extends Controller
 {
@@ -14,7 +15,7 @@ class DashboardController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(TaskQueryService $taskQueryService)
     {
         $automationStatusPayload = $this->automationStatusService->getStatusPayload();
         $automationSummary = [
@@ -33,6 +34,10 @@ class DashboardController extends Controller
 
         $metrics = $this->dashboardMetricsService->getMetrics();
 
+        $user = request()->user();
+        $showTasksWidget = $taskQueryService->canViewTasks($user);
+        $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
+
         return view('admin.dashboard', array_merge(
             $metrics['counts'],
             [
@@ -48,6 +53,10 @@ class DashboardController extends Controller
                 'clientActivity' => $metrics['clientActivity'],
                 'projectMaintenance' => $metrics['projectMaintenance'],
                 'hrStats' => $metrics['hrStats'],
+                'showTasksWidget' => $showTasksWidget,
+                'taskSummary' => $tasksWidget['summary'] ?? null,
+                'openTasks' => $tasksWidget['openTasks'] ?? collect(),
+                'inProgressTasks' => $tasksWidget['inProgressTasks'] ?? collect(),
             ]
         ));
     }

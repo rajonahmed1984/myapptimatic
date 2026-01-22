@@ -201,6 +201,59 @@ class ProjectTaskController extends Controller
         return back()->with('status', 'Task updated.');
     }
 
+    public function updateAssignees(Request $request, Project $project, ProjectTask $task): JsonResponse
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $this->authorize('update', $task);
+
+        if (! $request->user()?->isMasterAdmin() && $task->creatorEditWindowExpired($request->user()?->id)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'You can only edit this task within 24 hours of creation.',
+            ], 403);
+        }
+
+        $data = $request->validate([
+            'employee_ids' => ['nullable', 'array'],
+            'employee_ids.*' => ['integer', 'exists:employees,id'],
+        ]);
+
+        $employeeIds = array_values(array_unique($data['employee_ids'] ?? []));
+        $employeeAssignees = array_map(fn ($id) => ['type' => 'employee', 'id' => $id], $employeeIds);
+
+        $otherAssignees = $task->assignments()
+            ->where('assignee_type', '!=', 'employee')
+            ->get(['assignee_type', 'assignee_id'])
+            ->map(fn ($assignment) => ['type' => $assignment->assignee_type, 'id' => $assignment->assignee_id])
+            ->all();
+
+        $assignees = array_values(array_merge($employeeAssignees, $otherAssignees));
+
+        if (empty($assignees)) {
+            $task->assignments()->delete();
+            $task->assigned_type = null;
+            $task->assigned_id = null;
+            $task->save();
+        } else {
+            TaskAssignmentManager::sync($task, $assignees);
+        }
+
+        $task->load(['assignments.employee', 'assignments.salesRep']);
+
+        $payload = $task->assignments
+            ->map(fn ($assignment) => [
+                'type' => $assignment->assignee_type,
+                'id' => $assignment->assignee_id,
+                'name' => $assignment->assigneeName(),
+            ])
+            ->values();
+
+        return response()->json([
+            'ok' => true,
+            'assignees' => $payload,
+        ]);
+    }
+
     public function changeStatus(UpdateTaskStatusRequest $request, Project $project, ProjectTask $task): RedirectResponse|JsonResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);

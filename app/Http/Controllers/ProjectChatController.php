@@ -52,6 +52,10 @@ class ProjectChatController extends Controller
 
         $canPost = Gate::forUser($actor)->check('view', $project);
 
+        if (! $request->boolean('partial') && $latestMessageId > 0 && $identity['id']) {
+            $this->markProjectChatReadUpTo($project, $identity, $latestMessageId);
+        }
+
         if ($request->boolean('partial')) {
             return view('projects.partials.project-chat-messages', [
                 'messages' => $messages,
@@ -596,6 +600,36 @@ class ProjectChatController extends Controller
         }
 
         return $request->user();
+    }
+
+    private function markProjectChatReadUpTo(Project $project, array $identity, int $lastReadId): void
+    {
+        $read = ProjectMessageRead::query()
+            ->where('project_id', $project->id)
+            ->where('reader_type', $identity['type'])
+            ->where('reader_id', $identity['id'])
+            ->first();
+
+        $previous = $read?->last_read_message_id ?? 0;
+        $nextReadId = max($previous, $lastReadId);
+
+        if (! $read) {
+            ProjectMessageRead::create([
+                'project_id' => $project->id,
+                'reader_type' => $identity['type'],
+                'reader_id' => $identity['id'],
+                'last_read_message_id' => $nextReadId,
+                'read_at' => now(),
+            ]);
+            return;
+        }
+
+        if ($nextReadId !== $previous) {
+            $read->update([
+                'last_read_message_id' => $nextReadId,
+                'read_at' => now(),
+            ]);
+        }
     }
 
     private function findRecentDuplicate(Project $project, Request $request, ?string $message): ?ProjectMessage
