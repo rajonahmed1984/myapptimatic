@@ -54,9 +54,18 @@
                             routes="rep.tasks.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Tasks
+                            <span>Tasks</span>
+                            <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $repHeaderStats['task_badge'] ?? 0 }}</span>
                         </x-nav-link>
                     @endif
+                    <x-nav-link
+                        :href="route('rep.chats.index')"
+                        :routes="['rep.chats.*', 'rep.projects.chat']"
+                    >
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        <span>Chat</span>
+                        <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $repHeaderStats['unread_chat'] ?? 0 }}</span>
+                    </x-nav-link>
                 </div>
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
@@ -115,15 +124,7 @@
                             <div class="truncate text-sm font-semibold text-white">{{ $sidebarName }}</div>
                             <div class="text-[11px] text-slate-400">Sales Representative</div>
                         </div>
-                    </div>
-                    @if(session()->has('impersonator_id'))
-                        <form method="POST" action="{{ route('impersonate.stop') }}" class="mt-3">
-                            @csrf
-                            <button type="submit" class="w-full rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:border-amber-300">
-                                Return to Admin
-                            </button>
-                        </form>
-                    @endif
+                    </div>                    
                     <form method="POST" action="{{ route('rep.logout') }}" class="mt-3">
                         @csrf
                         <button type="submit" class="w-full rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/20">
@@ -164,7 +165,7 @@
 
                 @if(session()->has('impersonator_id'))
                 <div class="flex w-full px-6 pb-3">
-                        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                        <div class="flex w-full flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
                             <div class="text-[11px] uppercase tracking-[0.28em] text-amber-600">Impersonation</div>
                             <div class="text-sm text-amber-800">
                                 You are logged in as <span class="font-semibold">{{ auth()->user()->name ?? 'Sales Rep' }}</span>.

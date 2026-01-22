@@ -55,6 +55,10 @@
                                 'cancelled' => 'bg-slate-100 text-slate-600',
                                 default => 'bg-slate-100 text-slate-600',
                             };
+                            $creditTotal = $invoice->accountingEntries->where('type', 'credit')->sum('amount');
+                            $paidTotal = $invoice->accountingEntries->where('type', 'payment')->sum('amount');
+                            $paidAmount = (float) $paidTotal + (float) $creditTotal;
+                            $isPartial = $paidAmount > 0 && $paidAmount < (float) $invoice->total;
                         @endphp
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3 font-medium text-slate-900">
@@ -81,6 +85,12 @@
                                         {{ $statusLabel }}
                                     </span>
                                 </div>
+                                @if($isPartial)
+                                    <div class="mt-2">
+                                        <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Partial</span>
+                                    </div>
+                                    <div class="mt-1 text-xs text-slate-500">{{ $invoice->currency }} {{ number_format($paidAmount, 2) }} paid</div>
+                                @endif
                                 @php
                                     $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
                                     $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
@@ -129,6 +139,5 @@
         </div>
     @endif
 @endsection
-
 
 

@@ -70,6 +70,7 @@ use App\Http\Controllers\Client\ServiceController as ClientServiceController;
 use App\Http\Controllers\Client\SupportTicketController as ClientSupportTicketController;
 use App\Http\Controllers\SalesRep\DashboardController as SalesRepDashboardController;
 use App\Http\Controllers\SalesRep\EarningController as SalesRepEarningController;
+use App\Http\Controllers\SalesRep\ChatController as SalesRepChatController;
 use App\Http\Controllers\SalesRep\PayoutController as SalesRepPayoutController;
 use App\Http\Controllers\SalesRep\ProfileController as SalesRepProfileController;
 use App\Http\Controllers\SalesRep\TasksController as SalesRepTasksController;
@@ -394,7 +395,6 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         ->name('expenses.')
         ->group(function () {
             Route::get('/', [AdminExpenseController::class, 'index'])->name('index');
-            Route::get('/dashboard', [AdminExpenseDashboardController::class, 'index'])->name('dashboard');
             Route::get('/create', [AdminExpenseController::class, 'create'])->name('create');
             Route::post('/', [AdminExpenseController::class, 'store'])->name('store');
             Route::get('/{expense}/attachment', [AdminExpenseController::class, 'attachment'])->name('attachments.show');
@@ -723,6 +723,8 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
         Route::post('/logout', [RoleLoginController::class, 'logoutSales'])->name('logout');
         Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
         Route::get('/tasks', [SalesRepTasksController::class, 'index'])->name('tasks.index');
+        Route::get('/chats', [SalesRepChatController::class, 'index'])->name('chats.index');
+        Route::redirect('/chat', '/sales/chats');
         Route::get('/profile', [SalesRepProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [SalesRepProfileController::class, 'update'])->name('profile.update');
         Route::post('/system/cache/clear', SystemCacheController::class)

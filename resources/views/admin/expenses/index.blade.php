@@ -18,7 +18,6 @@
             <div class="mt-1 text-sm text-slate-500">Track manual expenses alongside salary and payout costs.</div>
         </div>
         <div class="flex flex-wrap items-center gap-3">
-            <a href="{{ route('admin.expenses.dashboard') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Dashboard</a>
             <a href="{{ route('admin.expenses.recurring.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Recurring</a>
             <a href="{{ route('admin.expenses.categories.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Categories</a>
             <a href="{{ route('admin.expenses.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Add Expense</a>

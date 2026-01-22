@@ -129,7 +129,13 @@ class InvoiceController extends Controller
 
         $query = $customer
             ? $customer->invoices()
-                ->with(['subscription.plan.product', 'project', 'clientRequests', 'paymentProofs.paymentAttempt'])
+                ->with([
+                    'subscription.plan.product',
+                    'project',
+                    'clientRequests',
+                    'paymentProofs.paymentAttempt',
+                    'accountingEntries',
+                ])
                 ->latest('issue_date')
             : null;
 

@@ -112,7 +112,7 @@
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 <span>Tasks</span>
-                                <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $adminHeaderStats['tasks_badge'] ?? 0 }}</span>
+                                <span class="ml-auto ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">{{ $adminHeaderStats['tasks_badge'] ?? 0 }}</span>
                             </x-nav-link>
                         @endif
                         
@@ -175,11 +175,10 @@
                                 <a href="{{ route('admin.income.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.income.categories.*')) }}">Categories</a>
                             </x-nav-menu>
                             <x-nav-menu
-                                :href="route('admin.expenses.dashboard')"
+                                :href="route('admin.expenses.index')"
                                 routes="admin.expenses.*"
                                 label="Expenses"
                             >
-                                <a href="{{ route('admin.expenses.dashboard') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.dashboard')) }}">Dashboard</a>
                                 <a href="{{ route('admin.expenses.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.index')) }}">All expenses</a>
                                 <a href="{{ route('admin.expenses.recurring.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.recurring.*')) }}">Recurring</a>
                                 <a href="{{ route('admin.expenses.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.categories.*')) }}">Categories</a>
@@ -309,7 +308,7 @@
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             <span>Chat</span>
-                            <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $adminHeaderStats['unread_chat'] ?? 0 }}</span>
+                            <span class="ml-auto ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">{{ $adminHeaderStats['unread_chat'] ?? 0 }}</span>
                         </x-nav-link>
                     </div>
 
@@ -512,7 +511,7 @@
                                 >
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
                                     <span>Tasks</span>
-                                    <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $employeeHeaderStats['task_badge'] ?? 0 }}</span>
+                                    <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{{ $employeeHeaderStats['task_badge'] ?? 0 }}</span>
                                 </x-nav-link>
                             @endif
                             <x-nav-link
@@ -521,7 +520,7 @@
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 <span>Chat</span>
-                                <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
+                                <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
                             </x-nav-link>
                             <x-nav-link 
                                 :href="route('employee.timesheets.index')"

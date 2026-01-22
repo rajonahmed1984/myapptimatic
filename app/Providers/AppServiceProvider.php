@@ -8,6 +8,7 @@ use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Models\SupportTicket;
 use App\Models\Employee;
+use App\Models\SalesRepresentative;
 use App\Models\Project;
 use App\Support\Branding;
 use App\Support\SystemLogger;
@@ -208,6 +209,44 @@ class AppServiceProvider extends ServiceProvider
                 ]);
             });
 
+            View::composer('layouts.rep', function ($view) {
+                $user = auth()->user();
+                $repHeaderStats = [
+                    'task_badge' => 0,
+                    'unread_chat' => 0,
+                ];
+
+                if ($user && $user->isSales()) {
+                    $salesRep = request()->attributes->get('salesRep');
+                    if (! ($salesRep instanceof SalesRepresentative)) {
+                        $salesRep = SalesRepresentative::where('user_id', $user->id)->first();
+                    }
+
+                    $taskQueryService = app(TaskQueryService::class);
+                    if ($taskQueryService->canViewTasks($user)) {
+                        $taskSummary = $taskQueryService->tasksSummaryForUser($user);
+                        $repHeaderStats['task_badge'] = (int) (($taskSummary['open'] ?? 0) + ($taskSummary['in_progress'] ?? 0));
+                    }
+
+                    if ($salesRep) {
+                        $projectIds = $salesRep->projects()->pluck('projects.id');
+                        if ($projectIds->isNotEmpty()) {
+                            $repHeaderStats['unread_chat'] = (int) DB::table('project_messages as pm')
+                                ->leftJoin('project_message_reads as pmr', function ($join) use ($salesRep) {
+                                    $join->on('pmr.project_id', '=', 'pm.project_id')
+                                        ->where('pmr.reader_type', 'sales_rep')
+                                        ->where('pmr.reader_id', $salesRep->id);
+                                })
+                                ->whereIn('pm.project_id', $projectIds->all())
+                                ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
+                                ->count();
+                        }
+                    }
+                }
+
+                $view->with('repHeaderStats', $repHeaderStats);
+            });
+
             if (! empty($brand['company_email'])) {
                 config(['mail.from.address' => $brand['company_email']]);
             }
@@ -238,6 +277,10 @@ class AppServiceProvider extends ServiceProvider
                 'pending_manual_payments' => 0,
             ]);
             View::share('employeeHeaderStats', [
+                'task_badge' => 0,
+                'unread_chat' => 0,
+            ]);
+            View::share('repHeaderStats', [
                 'task_badge' => 0,
                 'unread_chat' => 0,
             ]);

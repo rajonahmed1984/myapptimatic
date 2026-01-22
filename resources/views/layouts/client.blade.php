@@ -118,13 +118,13 @@
                         <a class="{{ request()->routeIs('client.tasks.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.tasks.index') }}">
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Tasks
-                            <span class="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $clientHeaderStats['task_badge'] ?? 0 }}</span>
+                            <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">{{ $clientHeaderStats['task_badge'] ?? 0 }}</span>
                         </a>
                     @endif
                     <a class="{{ request()->routeIs('client.chats.*', 'client.projects.chat') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.chats.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Chat
-                        <span class="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $clientHeaderStats['unread_chat'] ?? 0 }}</span>
+                        <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">{{ $clientHeaderStats['unread_chat'] ?? 0 }}</span>
                     </a>
                 </div>
 
