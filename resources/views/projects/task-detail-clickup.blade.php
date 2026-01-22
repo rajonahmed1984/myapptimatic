@@ -324,11 +324,11 @@
                         @foreach($task->subtasks as $subtask)
                             @php
                                 $canEditSubtask = in_array($subtask->id, $editableSubtaskIds, true);
-                                $canInlineEdit = $canEditSubtask && in_array($routePrefix, ['client', 'employee'], true);
+                                $canInlineEdit = $canEditSubtask && in_array($routePrefix, ['client', 'employee', 'admin'], true);
                                 $canChangeSubtaskStatus = in_array($subtask->id, $statusSubtaskIds ?? [], true);
                             @endphp
                             <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition group">
-                                @if($routePrefix !== 'employee' && $canEditSubtask && $routePrefix !== 'client')
+                                @if(!in_array($routePrefix, ['employee', 'client', 'admin'], true) && $canEditSubtask)
                                     <input type="checkbox" data-subtask-id="{{ $subtask->id }}" @checked($subtask->is_completed) class="subtask-checkbox mt-1 rounded cursor-pointer" />
                                 @endif
                                 <div class="flex-1 min-w-0">
@@ -371,7 +371,7 @@
                                             <span>• Completed: {{ $subtask->completed_at->format($globalDateFormat . ' H:i') }}</span>
                                         @endif
                                     </div>
-                                    @if($routePrefix === 'employee' && ($canChangeSubtaskStatus || $canInlineEdit))
+                                    @if(in_array($routePrefix, ['employee', 'admin'], true) && ($canChangeSubtaskStatus || $canInlineEdit))
                                         <div class="mt-2 flex flex-wrap items-center gap-2">
                                             @if($canInlineEdit)
                                                 <button type="button" class="subtask-edit-btn rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-700" data-subtask-id="{{ $subtask->id }}">Edit</button>
@@ -395,7 +395,7 @@
                                     @endif
                                 </div>
                                 @if($canInlineEdit)
-                                    @if($routePrefix !== 'employee')
+                                    @if($routePrefix === 'client')
                                         <div class="ml-auto shrink-0 flex items-center gap-2">
                                             <button type="button" class="subtask-edit-btn text-xs font-semibold text-teal-600 hover:text-teal-700" data-subtask-id="{{ $subtask->id }}">Edit</button>
                                         </div>
@@ -732,7 +732,7 @@
         });
         @endif
 
-        @if(in_array($routePrefix, ['client', 'employee'], true))
+        @if(in_array($routePrefix, ['client', 'employee', 'admin'], true))
         document.querySelectorAll('.subtask-edit-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const subtaskId = button.getAttribute('data-subtask-id');
@@ -818,7 +818,7 @@
         });
         @endif
 
-        @if($routePrefix === 'employee')
+        @if(in_array($routePrefix, ['employee', 'admin'], true))
         document.querySelectorAll('.subtask-status-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const subtaskId = button.getAttribute('data-subtask-id');
