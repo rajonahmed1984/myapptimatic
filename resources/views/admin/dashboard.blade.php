@@ -68,18 +68,6 @@
         $defaultMetrics = $periodMetrics[$periodDefault] ?? ['new_orders' => 0, 'active_orders' => 0, 'income' => 0];
     @endphp
 
-    @if(!empty($showTasksWidget))
-        <div class="mt-6">
-            @include('tasks.partials.dashboard-widget', [
-                'taskSummary' => $taskSummary,
-                'openTasks' => $openTasks,
-                'inProgressTasks' => $inProgressTasks,
-                'routePrefix' => 'admin',
-                'usesStartRoute' => false,
-            ])
-        </div>
-    @endif
-
     <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div class="card px-4 py-3 leading-tight">
             <a href="{{ route('admin.projects.index', ['status' => 'ongoing']) }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">

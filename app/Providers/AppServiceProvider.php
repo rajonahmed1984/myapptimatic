@@ -153,7 +153,7 @@ class AppServiceProvider extends ServiceProvider
                 $view->with('adminHeaderStats', [
                     'pending_orders' => Order::where('status', 'pending')->count(),
                     'overdue_invoices' => Invoice::where('status', 'overdue')->count(),
-                    'tickets_waiting' => SupportTicket::where('status', 'customer_reply')->count(),
+                    'tickets_waiting' => SupportTicket::whereIn('status', ['open', 'customer_reply'])->count(),
                     'pending_manual_payments' => PaymentProof::where('status', 'pending')->count(),
                     'tasks_badge' => $adminTaskBadge,
                     'unread_chat' => $adminUnreadChat,
