@@ -123,7 +123,7 @@ class OrderController extends Controller
             ? $startDate->copy()->endOfMonth()
             : $startDate->copy()->addYear();
 
-        $result = DB::transaction(function () use ($customer, $plan, $startDate, $periodEnd, $billingService, $request) {
+        $result = DB::transaction(function () use ($customer, $plan, $startDate, $periodEnd, $billingService, $taxService, $request) {
             $nextInvoiceAt = $this->nextInvoiceAt($plan->interval, $periodEnd);
             $subscription = Subscription::create([
                 'customer_id' => $customer->id,
