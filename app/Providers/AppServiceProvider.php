@@ -7,10 +7,13 @@ use App\Models\Order;
 use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Models\SupportTicket;
+use App\Models\Employee;
+use App\Models\Project;
 use App\Support\Branding;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use App\Services\SettingsService;
+use App\Services\TaskQueryService;
 use DateTimeZone;
 use Illuminate\Cache\RateLimiting\Limit;
 use App\Events\InvoiceOverdue;
@@ -25,6 +28,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use PHPUnit\Framework\Assert;
@@ -90,22 +94,117 @@ class AppServiceProvider extends ServiceProvider
             View::share('globalTimeZone', $timeZone);
 
             View::composer('layouts.admin', function ($view) {
+                $user = auth()->user();
+                $employeeHeaderStats = [
+                    'task_badge' => 0,
+                    'unread_chat' => 0,
+                ];
+                $adminTaskBadge = 0;
+                $adminUnreadChat = 0;
+
+                if ($user && $user->isEmployee()) {
+                    $employee = request()->attributes->get('employee');
+                    if (! ($employee instanceof Employee)) {
+                        $employee = $user->employee;
+                    }
+
+                    if ($employee) {
+                        $taskQueryService = app(TaskQueryService::class);
+                        if ($taskQueryService->canViewTasks($user)) {
+                            $taskSummary = $taskQueryService->tasksSummaryForUser($user);
+                            $employeeHeaderStats['task_badge'] = (int) (($taskSummary['open'] ?? 0) + ($taskSummary['in_progress'] ?? 0));
+                        }
+
+                        $projectIds = DB::table('employee_project')
+                            ->where('employee_id', $employee->id)
+                            ->pluck('project_id');
+
+                        if ($projectIds->isNotEmpty()) {
+                            $employeeHeaderStats['unread_chat'] = (int) DB::table('project_messages as pm')
+                                ->leftJoin('project_message_reads as pmr', function ($join) use ($employee) {
+                                    $join->on('pmr.project_id', '=', 'pm.project_id')
+                                        ->where('pmr.reader_type', 'employee')
+                                        ->where('pmr.reader_id', $employee->id);
+                                })
+                                ->whereIn('pm.project_id', $projectIds->all())
+                                ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
+                                ->count();
+                        }
+                    }
+                }
+
+                if ($user && $user->isAdmin()) {
+                    $taskQueryService = app(TaskQueryService::class);
+                    if ($taskQueryService->canViewTasks($user)) {
+                        $taskSummary = $taskQueryService->tasksSummaryForUser($user);
+                        $adminTaskBadge = (int) (($taskSummary['open'] ?? 0) + ($taskSummary['in_progress'] ?? 0));
+                    }
+
+                    $adminUnreadChat = (int) DB::table('project_messages as pm')
+                        ->leftJoin('project_message_reads as pmr', function ($join) use ($user) {
+                            $join->on('pmr.project_id', '=', 'pm.project_id')
+                                ->where('pmr.reader_type', 'user')
+                                ->where('pmr.reader_id', $user->id);
+                        })
+                        ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
+                        ->count();
+                }
+
                 $view->with('adminHeaderStats', [
                     'pending_orders' => Order::where('status', 'pending')->count(),
                     'overdue_invoices' => Invoice::where('status', 'overdue')->count(),
                     'tickets_waiting' => SupportTicket::where('status', 'customer_reply')->count(),
                     'pending_manual_payments' => PaymentProof::where('status', 'pending')->count(),
+                    'tasks_badge' => $adminTaskBadge,
+                    'unread_chat' => $adminUnreadChat,
                 ]);
+                $view->with('employeeHeaderStats', $employeeHeaderStats);
             });
 
             View::composer('layouts.client', function ($view) {
-                $customer = auth()->user()?->customer;
+                $user = auth()->user();
+                $customer = $user?->customer;
+                $unreadChatCount = 0;
+                $taskBadgeCount = 0;
+
+                if ($user) {
+                    $projectIds = collect();
+
+                    if ($user->isClientProject()) {
+                        if ($user->project_id) {
+                            $projectIds = collect([$user->project_id]);
+                        }
+                    } elseif ($user->isClient()) {
+                        $projectIds = Project::where('customer_id', $user->customer_id)->pluck('id');
+                    }
+
+                    if ($projectIds->isNotEmpty()) {
+                        $unreadChatCount = (int) DB::table('project_messages as pm')
+                            ->leftJoin('project_message_reads as pmr', function ($join) use ($user) {
+                                $join->on('pmr.project_id', '=', 'pm.project_id')
+                                    ->where('pmr.reader_type', 'user')
+                                    ->where('pmr.reader_id', $user->id);
+                            })
+                            ->whereIn('pm.project_id', $projectIds->all())
+                            ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
+                            ->count();
+                    }
+
+                    $taskQueryService = app(TaskQueryService::class);
+                    if ($taskQueryService->canViewTasks($user)) {
+                        $taskSummary = $taskQueryService->tasksSummaryForUser($user);
+                        $taskBadgeCount = (int) (($taskSummary['open'] ?? 0) + ($taskSummary['in_progress'] ?? 0));
+                    }
+                }
+
                 $view->with('clientHeaderStats', [
                     'pending_admin_replies' => $customer
                         ? SupportTicket::where('customer_id', $customer->id)
                             ->where('status', 'answered')
                             ->count()
                         : 0,
+                    'unread_chat' => $unreadChatCount,
+                    'task_badge' => $taskBadgeCount,
                 ]);
             });
 
@@ -137,6 +236,10 @@ class AppServiceProvider extends ServiceProvider
                 'overdue_invoices' => 0,
                 'tickets_waiting' => 0,
                 'pending_manual_payments' => 0,
+            ]);
+            View::share('employeeHeaderStats', [
+                'task_badge' => 0,
+                'unread_chat' => 0,
             ]);
         }
     }

@@ -111,7 +111,8 @@
                                 routes="admin.tasks.*"
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
-                                Tasks
+                                <span>Tasks</span>
+                                <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $adminHeaderStats['tasks_badge'] ?? 0 }}</span>
                             </x-nav-link>
                         @endif
                         
@@ -302,6 +303,14 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             <span>Support</span>
                         </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.chats.index')"
+                            :routes="['admin.chats.*', 'admin.projects.chat']"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            <span>Chat</span>
+                            <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $adminHeaderStats['unread_chat'] ?? 0 }}</span>
+                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
@@ -403,9 +412,18 @@
                                 routes="employee.tasks.*"
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
-                                Tasks
+                                <span>Tasks</span>
+                                <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $employeeHeaderStats['task_badge'] ?? 0 }}</span>
                             </x-nav-link>
                         @endif
+                        <x-nav-link
+                            :href="route('employee.chats.index')"
+                            :routes="['employee.chats.*', 'employee.projects.chat']"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            <span>Chat</span>
+                            <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
+                        </x-nav-link>
                         <x-nav-link 
                             :href="route('employee.timesheets.index')"
                             routes="employee.timesheets.*"
@@ -493,9 +511,18 @@
                                     routes="employee.tasks.*"
                                 >
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
-                                    Tasks
+                                    <span>Tasks</span>
+                                    <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $employeeHeaderStats['task_badge'] ?? 0 }}</span>
                                 </x-nav-link>
                             @endif
+                            <x-nav-link
+                                :href="route('employee.chats.index')"
+                                :routes="['employee.chats.*', 'employee.projects.chat']"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                <span>Chat</span>
+                                <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
+                            </x-nav-link>
                             <x-nav-link 
                                 :href="route('employee.timesheets.index')"
                                 routes="employee.timesheets.*"

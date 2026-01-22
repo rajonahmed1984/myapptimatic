@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AffiliateCommissionController;
 use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
 use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\AutomationStatusController;
+use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\Admin\ClientRequestController as AdminClientRequestController;
 use App\Http\Controllers\Admin\CustomerController;
@@ -47,6 +48,7 @@ use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Employee\AuthController as EmployeeAuthController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
+use App\Http\Controllers\Employee\ChatController as EmployeeChatController;
 use App\Http\Controllers\Employee\TasksController as EmployeeTasksController;
 use App\Http\Controllers\Employee\ProfileController as EmployeeProfileController;
 use App\Http\Controllers\Employee\TimesheetController as EmployeeTimesheetController;
@@ -56,6 +58,7 @@ use App\Http\Controllers\Employee\WorkSessionController as EmployeeWorkSessionCo
 use App\Http\Controllers\Client\AffiliateController as ClientAffiliateController;
 use App\Http\Controllers\Client\ClientRequestController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
+use App\Http\Controllers\Client\ChatController as ClientChatController;
 use App\Http\Controllers\Client\TasksController as ClientTasksController;
 use App\Http\Controllers\Client\DomainController as ClientDomainController;
 use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;
@@ -260,6 +263,8 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::post('/logout', [EmployeeAuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', EmployeeDashboardController::class)->name('dashboard');
         Route::get('/tasks', [EmployeeTasksController::class, 'index'])->name('tasks.index');
+        Route::get('/chats', [EmployeeChatController::class, 'index'])->name('chats.index');
+        Route::redirect('/chat', '/employee/chats');
         Route::post('/work-sessions/start', [EmployeeWorkSessionController::class, 'start'])->name('work-sessions.start');
         Route::post('/work-sessions/ping', [EmployeeWorkSessionController::class, 'ping'])->name('work-sessions.ping');
         Route::post('/work-sessions/stop', [EmployeeWorkSessionController::class, 'stop'])->name('work-sessions.stop');
@@ -329,6 +334,8 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
 Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/tasks', [AdminTasksController::class, 'index'])->name('tasks.index');
+    Route::get('/chats', [AdminChatController::class, 'index'])->name('chats.index');
+    Route::redirect('/chat', '/admin/chats');
     Route::prefix('hr')->name('hr.')->group(function () {
         Route::get('/dashboard', HrDashboardController::class)->name('dashboard');
         Route::post('employees/{employee}/impersonate', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'impersonate'])->name('employees.impersonate');
@@ -614,6 +621,8 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
     ->group(function () {
         Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
         Route::get('/tasks', [ClientTasksController::class, 'index'])->name('tasks.index');
+        Route::get('/chats', [ClientChatController::class, 'index'])->name('chats.index');
+        Route::redirect('/chat', '/client/chats');
         Route::post('/system/cache/clear', SystemCacheController::class)->name('system.cache.clear');
         Route::get('/orders', [ClientOrderController::class, 'index'])->middleware('project.financial')->name('orders.index');
         Route::get('/orders/review', [ClientOrderController::class, 'review'])->middleware('project.financial')->name('orders.review');

@@ -54,9 +54,15 @@
                     @if($canViewTasks)
                         <a class="{{ request()->routeIs('client.tasks.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.tasks.index') }}">
                             <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Tasks
+                            <span>Tasks</span>
+                            <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $clientHeaderStats['task_badge'] ?? 0 }}</span>
                         </a>
                     @endif
+                    <a class="{{ request()->routeIs('client.chats.*', 'client.projects.chat') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.chats.index') }}">
+                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                        <span>Chat</span>
+                        <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $clientHeaderStats['unread_chat'] ?? 0 }}</span>
+                    </a>
                     <a class="{{ request()->routeIs('client.services.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.services.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Services
@@ -112,11 +118,13 @@
                         <a class="{{ request()->routeIs('client.tasks.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.tasks.index') }}">
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Tasks
+                            <span class="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $clientHeaderStats['task_badge'] ?? 0 }}</span>
                         </a>
                     @endif
-                    <a class="{{ request()->routeIs('client.projects.chat') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ auth()->user()->project_id ? route('client.projects.chat', auth()->user()->project_id) : '#' }}">
+                    <a class="{{ request()->routeIs('client.chats.*', 'client.projects.chat') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.chats.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
-                        Project Chat
+                        Chat
+                        <span class="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $clientHeaderStats['unread_chat'] ?? 0 }}</span>
                     </a>
                 </div>
 
