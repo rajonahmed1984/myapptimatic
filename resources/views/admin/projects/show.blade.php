@@ -4,6 +4,10 @@
 @section('page-title', 'Project')
 
 @section('content')
+    @php
+        $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
+    @endphp
+
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <div class="section-label">Delivery</div>
