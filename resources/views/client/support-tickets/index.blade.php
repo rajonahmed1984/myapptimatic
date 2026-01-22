@@ -36,7 +36,9 @@
                         };
                     @endphp
                     <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 font-medium text-slate-900">TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</td>
+                        <td class="px-4 py-3 font-medium text-slate-900">
+                            <a href="{{ route('client.support-tickets.show', $ticket) }}" class="text-teal-600 hover:text-teal-500">TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</a>                            
+                        </td>
                         <td class="px-4 py-3 text-slate-700">{{ $ticket->subject }}</td>
                         <td class="px-4 py-3">
                             <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $label }}</span>

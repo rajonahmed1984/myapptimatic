@@ -463,6 +463,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::post('orders/{order}/milestones', [MilestoneController::class, 'store'])->name('orders.milestones.store');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::resource('projects', ProjectController::class);
+    Route::get('projects/{project}/tasks', [ProjectController::class, 'tasks'])->name('projects.tasks.index');
     Route::post('projects/{project}/invoice-remaining', [ProjectController::class, 'invoiceRemainingBudget'])
         ->name('projects.invoice-remaining');
     Route::get('projects/{project}/download/{type}', [ProjectController::class, 'downloadFile'])

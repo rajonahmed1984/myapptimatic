@@ -450,17 +450,6 @@ class ProjectController extends Controller
         ]);
 
         $user = $request->user();
-        $employeeId = $user?->employee?->id;
-        $salesRepId = SalesRepresentative::where('user_id', $user?->id)->value('id');
-
-        $tasksQuery = $project->tasks()
-            ->with(['assignments.employee', 'assignments.salesRep', 'creator'])
-            ->orderByDesc('created_at')
-            ->orderByDesc('id');
-
-        $tasksQuery->when($user?->isClient(), fn ($q) => $q->where('customer_visible', true));
-
-        $tasks = $tasksQuery->paginate(25)->withQueryString();
 
         $statusCounts = $project->tasks()
             ->selectRaw('status, COUNT(*) as aggregate')
@@ -501,12 +490,7 @@ class ProjectController extends Controller
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
             'taskStatuses' => self::TASK_STATUSES,
-            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
-            'priorityOptions' => TaskSettings::priorityOptions(),
-            'employees' => Employee::where('status', 'active')->orderBy('name')->get(['id', 'name', 'designation']),
-            'salesReps' => SalesRepresentative::where('status', 'active')->orderBy('name')->get(['id', 'name', 'email']),
             'financials' => $this->financials($project),
-            'tasks' => $tasks,
             'initialInvoice' => $initialInvoice,
             'remainingBudgetInvoices' => $remainingBudgetInvoices,
             'projectChatUnreadCount' => $projectChatUnreadCount,
@@ -516,6 +500,46 @@ class ProjectController extends Controller
                 'completed' => $completedTasks,
                 'unread' => (int) $projectChatUnreadCount,
             ],
+        ]);
+    }
+
+    public function tasks(Request $request, Project $project)
+    {
+        $this->authorize('view', $project);
+
+        $user = $request->user();
+        $tasksQuery = $project->tasks()
+            ->with(['assignments.employee', 'assignments.salesRep', 'creator'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        $tasksQuery->when($user?->isClient(), fn ($q) => $q->where('customer_visible', true));
+
+        $tasks = $tasksQuery->paginate(25)->withQueryString();
+
+        $readerType = 'user';
+        $readerId = $user?->id;
+        $lastReadId = null;
+        if ($readerId) {
+            $lastReadId = ProjectMessageRead::query()
+                ->where('project_id', $project->id)
+                ->where('reader_type', $readerType)
+                ->where('reader_id', $readerId)
+                ->value('last_read_message_id');
+        }
+
+        $projectChatUnreadCount = $project->messages()
+            ->when($lastReadId, fn ($query) => $query->where('id', '>', $lastReadId))
+            ->count();
+
+        return view('admin.projects.tasks', [
+            'project' => $project,
+            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+            'priorityOptions' => TaskSettings::priorityOptions(),
+            'employees' => Employee::where('status', 'active')->orderBy('name')->get(['id', 'name', 'designation']),
+            'salesReps' => SalesRepresentative::where('status', 'active')->orderBy('name')->get(['id', 'name', 'email']),
+            'tasks' => $tasks,
+            'projectChatUnreadCount' => $projectChatUnreadCount,
         ]);
     }
 
