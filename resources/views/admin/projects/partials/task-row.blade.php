@@ -7,6 +7,7 @@
         @if($task->description)
             <div class="text-xs text-slate-500">{{ $task->description }}</div>
         @endif
+        <div class="mt-1 text-xs text-slate-500">Opened by: {{ $task->creator?->name ?? '--' }}</div>
         @if($task->customer_visible)
             <div class="text-[11px] text-emerald-600 font-semibold">Customer visible</div>
         @endif

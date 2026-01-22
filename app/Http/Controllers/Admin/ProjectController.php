@@ -454,7 +454,7 @@ class ProjectController extends Controller
         $salesRepId = SalesRepresentative::where('user_id', $user?->id)->value('id');
 
         $tasksQuery = $project->tasks()
-            ->with(['assignments.employee', 'assignments.salesRep'])
+            ->with(['assignments.employee', 'assignments.salesRep', 'creator'])
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 

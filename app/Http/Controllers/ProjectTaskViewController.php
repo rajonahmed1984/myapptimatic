@@ -24,6 +24,7 @@ class ProjectTaskViewController extends Controller
             'assignments.employee',
             'assignments.salesRep',
             'subtasks',
+            'creator',
         ]);
 
         $activityPaginator = $task->activities()

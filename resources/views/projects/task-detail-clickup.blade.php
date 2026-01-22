@@ -96,6 +96,10 @@
                                         <div class="text-slate-500 mb-1">Created</div>
                                         <div class="font-medium text-slate-900">{{ $task->created_at->format($globalDateFormat . ' H:i') }}</div>
                                     </div>
+                                    <div>
+                                        <div class="text-slate-500 mb-1">Opened by</div>
+                                        <div class="font-medium text-slate-900">{{ $task->creator?->name ?? '--' }}</div>
+                                    </div>
                                     @if($task->status === 'completed')
                                         <div class="pt-3 border-t border-slate-200">
                                             <div class="text-slate-500 mb-1">Completed</div>

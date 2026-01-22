@@ -379,8 +379,11 @@
             </div>
         @endif
 
+    </div>
+
+    <div class="card p-6 space-y-6">
         @can('createTask', $project)
-            <div class="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Add Task</div>
@@ -516,7 +519,7 @@
         @endcan
 
         @if($tasks->count() > 0)
-            <div class="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Tasks</div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-left text-sm">
