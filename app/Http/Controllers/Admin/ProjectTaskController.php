@@ -119,7 +119,8 @@ class ProjectTaskController extends Controller
 
         $data = $request->validated();
 
-        if (in_array($data['status'], ['completed', 'done'], true)
+        if (! $request->user()?->isMasterAdmin()
+            && in_array($data['status'], ['completed', 'done'], true)
             && TaskCompletionManager::hasSubtasks($task)
             && ! TaskCompletionManager::allSubtasksCompleted($task)) {
             return $this->validationError($request, [
@@ -265,7 +266,8 @@ class ProjectTaskController extends Controller
 
         $data = $request->validated();
 
-        if (in_array($data['status'], ['completed', 'done'], true)
+        if (! $request->user()?->isMasterAdmin()
+            && in_array($data['status'], ['completed', 'done'], true)
             && TaskCompletionManager::hasSubtasks($task)
             && ! TaskCompletionManager::allSubtasksCompleted($task)) {
             return $this->validationError($request, [

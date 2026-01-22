@@ -15,6 +15,7 @@ use App\Models\ProjectMessageRead;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\TaskQueryService;
 use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskAssignmentManager;
@@ -479,11 +480,20 @@ class ProjectController extends Controller
             ->when($lastReadId, fn ($query) => $query->where('id', '>', $lastReadId))
             ->count();
 
+        $tasks = app(TaskQueryService::class)->visibleTasksForUser($user)
+            ->where('project_id', $project->id)
+            ->with(['assignments.employee', 'assignments.salesRep', 'creator'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
         return view('admin.projects.show', [
             'project' => $project,
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
             'taskStatuses' => self::TASK_STATUSES,
+            'tasks' => $tasks,
             'financials' => $this->financials($project),
             'initialInvoice' => $initialInvoice,
             'remainingBudgetInvoices' => $remainingBudgetInvoices,
@@ -842,7 +852,8 @@ class ProjectController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        if ($data['status'] === 'done'
+        if (! $request->user()?->isMasterAdmin()
+            && $data['status'] === 'done'
             && TaskCompletionManager::hasSubtasks($task)
             && ! TaskCompletionManager::allSubtasksCompleted($task)) {
             return back()->withErrors(['status' => 'Complete all subtasks before completing this task.']);
