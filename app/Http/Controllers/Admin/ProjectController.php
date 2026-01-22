@@ -56,6 +56,7 @@ class ProjectController extends Controller
             ->withCount([
                 'tasks as open_tasks_count' => fn ($q) => $q->whereIn('status', ['pending', 'in_progress', 'blocked', 'todo']),
                 'tasks as done_tasks_count' => fn ($q) => $q->whereIn('status', ['completed', 'done']),
+                'subtasks as open_subtasks_count' => fn ($q) => $q->where('is_completed', false),
             ])
             ->when($statusFilter, fn ($q) => $q->where('status', $statusFilter))
             ->when($typeFilter, fn ($q) => $q->where('type', $typeFilter))

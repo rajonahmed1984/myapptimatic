@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Enums\Role;
@@ -109,6 +110,18 @@ class Project extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(ProjectTask::class);
+    }
+
+    public function subtasks(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            ProjectTaskSubtask::class,
+            ProjectTask::class,
+            'project_id',
+            'project_task_id',
+            'id',
+            'id'
+        );
     }
 
     public function messages(): HasMany

@@ -4,6 +4,15 @@
 @section('page-title', 'Projects')
 
 @section('content')
+    @php
+        $statusStyles = [
+            'ongoing' => 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+            'hold' => 'bg-amber-100 text-amber-700 ring-amber-200',
+            'complete' => 'bg-blue-100 text-blue-700 ring-blue-200',
+            'cancel' => 'bg-rose-100 text-rose-700 ring-rose-200',
+        ];
+    @endphp
+
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <div class="section-label">Delivery</div>
@@ -83,13 +92,25 @@
                         </td>
                         <td class="px-4 py-3">{{ ucfirst($project->type) }}</td>
                         <td class="px-4 py-3">
-                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ ucfirst(str_replace('_', ' ', $project->status)) }}</span>
+                            @php
+                                $status = $project->status;
+                                $statusClass = $statusStyles[$status] ?? 'bg-slate-100 text-slate-700 ring-slate-200';
+                            @endphp
+                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset {{ $statusClass }}">
+                                {{ ucfirst(str_replace('_', ' ', $status)) }}
+                            </span>
                         </td>
                         <td class="px-4 py-3 text-sm text-slate-600">
                             {{ $project->due_date ? $project->due_date->format($globalDateFormat) : '--' }}
                         </td>
-                        <td class="px-4 py-3 text-right text-sm text-slate-600">
-                            {{ $project->done_tasks_count ?? 0 }}/{{ ($project->open_tasks_count ?? 0) + ($project->done_tasks_count ?? 0) }} done
+                        @php
+                            $openTasks = (int) ($project->open_tasks_count ?? 0);
+                            $doneTasks = (int) ($project->done_tasks_count ?? 0);
+                            $openSubtasks = (int) ($project->open_subtasks_count ?? 0);
+                            $hasOpenWork = ($openTasks > 0) || ($openSubtasks > 0);
+                        @endphp
+                        <td class="px-4 py-3 text-right text-sm {{ $hasOpenWork ? 'bg-amber-50 text-amber-700 font-semibold' : 'text-slate-600' }}">
+                            {{ $doneTasks }}/{{ $openTasks + $doneTasks }} done
                         </td>
                         <td class="px-4 py-3 text-right text-sm">
                             <div class="inline-flex items-center gap-2">
