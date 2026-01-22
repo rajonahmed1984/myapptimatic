@@ -63,9 +63,21 @@ class ProjectTaskViewController extends Controller
         }
 
         $canEditTask = $this->canEditTask($actor, $task, $request->user());
+        $canChangeStatus = $this->canChangeTaskStatus($actor, $task, $request->user());
+        $currentStatus = $task->status ?? 'pending';
+        $hasSubtasks = $task->relationLoaded('subtasks') ? $task->subtasks->isNotEmpty() : $task->subtasks()->exists();
+        $canStartTask = $canChangeStatus && in_array($currentStatus, ['pending', 'todo'], true);
+        $canCompleteTask = $canChangeStatus && ! in_array($currentStatus, ['completed', 'done'], true);
+        if ($routePrefix !== 'employee') {
+            $canCompleteTask = $canCompleteTask && ! $hasSubtasks;
+        }
         $canAddSubtask = Gate::forUser($actor)->check('create', [ProjectTaskSubtask::class, $task]);
         $editableSubtaskIds = $task->subtasks
             ->filter(fn ($subtask) => $this->canEditSubtask($actor, $subtask, $request->user()))
+            ->pluck('id')
+            ->all();
+        $statusSubtaskIds = $task->subtasks
+            ->filter(fn ($subtask) => $this->canChangeSubtaskStatus($actor, $task, $subtask, $request->user()))
             ->pluck('id')
             ->all();
 
@@ -97,8 +109,11 @@ class ProjectTaskViewController extends Controller
             'currentActorType' => $identity['type'],
             'currentActorId' => $identity['id'],
             'canEdit' => $canEditTask,
+            'canStartTask' => $canStartTask,
+            'canCompleteTask' => $canCompleteTask,
             'canAddSubtask' => $canAddSubtask,
             'editableSubtaskIds' => $editableSubtaskIds,
+            'statusSubtaskIds' => $statusSubtaskIds,
             'canPost' => Gate::forUser($actor)->check('comment', $task),
             'updateRoute' => route($routePrefix . '.projects.tasks.update', [$project, $task]),
             'activityRoute' => route($routePrefix . '.projects.tasks.activity', [$project, $task]),
@@ -194,6 +209,50 @@ class ProjectTaskViewController extends Controller
         return ! $task->creatorEditWindowExpired($user?->id);
     }
 
+    private function canChangeTaskStatus(object $actor, ProjectTask $task, ?User $user = null): bool
+    {
+        if ($this->isMasterAdmin($user)) {
+            return true;
+        }
+
+        $employeeId = null;
+        if ($actor instanceof Employee) {
+            $employeeId = $actor->id;
+        } elseif ($user && method_exists($user, 'isEmployee') && $user->isEmployee()) {
+            $employeeId = $user->employee?->id;
+        }
+
+        if ($employeeId) {
+            if ($task->assigned_type === 'employee' && (int) $task->assigned_id === (int) $employeeId) {
+                return true;
+            }
+
+            if ($user && method_exists($user, 'isEmployee') && $user->isEmployee()
+                && (int) $task->assignee_id === (int) $user->id) {
+                return true;
+            }
+
+            if ($task->relationLoaded('assignments')) {
+                return $task->assignments
+                    ->where('assignee_type', 'employee')
+                    ->pluck('assignee_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->contains((int) $employeeId);
+            }
+
+            return $task->assignments()
+                ->where('assignee_type', 'employee')
+                ->where('assignee_id', $employeeId)
+                ->exists();
+        }
+
+        if ($user && $task->created_by && $task->created_by === $user->id) {
+            return ! $task->creatorEditWindowExpired($user->id);
+        }
+
+        return false;
+    }
+
     private function canEditSubtask(object $actor, ProjectTaskSubtask $subtask, ?User $user = null): bool
     {
         if ($this->isMasterAdmin($user)) {
@@ -204,7 +263,55 @@ class ProjectTaskViewController extends Controller
             return false;
         }
 
-        return ! $subtask->creatorEditWindowExpired($user?->id);
+        if (! $user || $subtask->created_by !== $user->id) {
+            return false;
+        }
+
+        return ! $subtask->creatorEditWindowExpired($user->id);
+    }
+
+    private function canChangeSubtaskStatus(object $actor, ProjectTask $task, ProjectTaskSubtask $subtask, ?User $user = null): bool
+    {
+        if ($this->isMasterAdmin($user)) {
+            return true;
+        }
+
+        $employeeId = null;
+        if ($actor instanceof Employee) {
+            $employeeId = $actor->id;
+        } elseif ($user && method_exists($user, 'isEmployee') && $user->isEmployee()) {
+            $employeeId = $user->employee?->id;
+        }
+
+        if ($employeeId) {
+            if ($task->assigned_type === 'employee' && (int) $task->assigned_id === (int) $employeeId) {
+                return true;
+            }
+
+            if ($user && method_exists($user, 'isEmployee') && $user->isEmployee()
+                && (int) $task->assignee_id === (int) $user->id) {
+                return true;
+            }
+
+            if ($task->relationLoaded('assignments')) {
+                return $task->assignments
+                    ->where('assignee_type', 'employee')
+                    ->pluck('assignee_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->contains((int) $employeeId);
+            }
+
+            return $task->assignments()
+                ->where('assignee_type', 'employee')
+                ->where('assignee_id', $employeeId)
+                ->exists();
+        }
+
+        if ($user && $subtask->created_by === $user->id) {
+            return ! $subtask->creatorEditWindowExpired($user->id);
+        }
+
+        return false;
     }
 
     private function isMasterAdmin(?User $user): bool

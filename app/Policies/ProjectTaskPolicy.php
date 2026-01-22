@@ -78,6 +78,19 @@ class ProjectTaskPolicy
             return true;
         }
 
+        if ($actor instanceof Employee) {
+            if ($this->isEmployeeAssignee($task, $actor->id, $actor->user_id ?? null)) {
+                return true;
+            }
+        }
+
+        if ($actor instanceof User && $actor->isEmployee()) {
+            $employeeId = $actor->employee?->id;
+            if ($employeeId && $this->isEmployeeAssignee($task, $employeeId, $actor->id)) {
+                return true;
+            }
+        }
+
         $actorId = $this->actorUserId($actor);
         return $actorId !== null && $task->created_by !== null && $task->created_by === $actorId;
     }
@@ -120,5 +133,21 @@ class ProjectTaskPolicy
         }
 
         return null;
+    }
+
+    private function isEmployeeAssignee(ProjectTask $task, int $employeeId, ?int $userId = null): bool
+    {
+        if ($task->assigned_type === 'employee' && (int) $task->assigned_id === $employeeId) {
+            return true;
+        }
+
+        if ($userId && (int) $task->assignee_id === $userId) {
+            return true;
+        }
+
+        return $task->assignments()
+            ->where('assignee_type', 'employee')
+            ->where('assignee_id', $employeeId)
+            ->exists();
     }
 }

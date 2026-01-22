@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
+use App\Models\User;
 use App\Support\TaskCompletionManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,17 @@ class ProjectTaskSubtaskController extends Controller
             'due_time' => ['sometimes', 'nullable', 'date_format:H:i'],
         ]);
 
-        $data['created_by'] = $request->user()?->id;
+        $creatorId = null;
+        $user = $request->user();
+        if ($user instanceof User) {
+            $creatorId = $user->id;
+        } elseif ($user instanceof Employee) {
+            $creatorId = $user->user_id;
+        } elseif ($actor instanceof Employee) {
+            $creatorId = $actor->user_id;
+        }
+
+        $data['created_by'] = $creatorId;
         $subtask = $task->subtasks()->create($data);
         TaskCompletionManager::syncFromSubtasks($task);
 
@@ -43,7 +54,11 @@ class ProjectTaskSubtaskController extends Controller
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('update', $subtask);
 
-        if (! $this->isMasterAdmin($request->user()) && $subtask->creatorEditWindowExpired($request->user()?->id)) {
+        $user = $request->user();
+        $isAssigned = $this->isAssignedEmployee($task, $user);
+        $isCreator = $user && $subtask->created_by && $subtask->created_by === $user->id;
+
+        if (! $this->isMasterAdmin($user) && ! $isAssigned && $subtask->creatorEditWindowExpired($user?->id)) {
             return $this->forbiddenResponse($request, 'You can only edit this subtask within 24 hours of creation.');
         }
 
@@ -52,7 +67,27 @@ class ProjectTaskSubtaskController extends Controller
             'due_date' => ['sometimes', 'nullable', 'date'],
             'due_time' => ['sometimes', 'nullable', 'date_format:H:i'],
             'is_completed' => ['sometimes', 'boolean'],
+            'status' => ['sometimes', 'string', 'in:open,in_progress,completed'],
         ]);
+
+        if (! $this->isMasterAdmin($user) && $isAssigned && ! $isCreator) {
+            $extraFields = array_diff(array_keys($data), ['is_completed', 'status']);
+            if (! empty($extraFields)) {
+                return $this->forbiddenResponse($request, 'Only subtask status changes are allowed.');
+            }
+        }
+
+        if (array_key_exists('status', $data)) {
+            if ($data['status'] === 'completed') {
+                $data['is_completed'] = true;
+                $data['completed_at'] = $subtask->completed_at ?: now();
+            } else {
+                $data['is_completed'] = false;
+                $data['completed_at'] = null;
+            }
+        } elseif (array_key_exists('is_completed', $data)) {
+            $data['status'] = $data['is_completed'] ? 'completed' : 'open';
+        }
 
         if (array_key_exists('is_completed', $data)) {
             if ($data['is_completed'] && !$subtask->completed_at) {
@@ -133,5 +168,26 @@ class ProjectTaskSubtaskController extends Controller
     private function isMasterAdmin($user): bool
     {
         return $user instanceof \App\Models\User && $user->isMasterAdmin();
+    }
+
+    private function isAssignedEmployee(ProjectTask $task, $user): bool
+    {
+        $employeeId = $user?->employee?->id;
+        if (! $employeeId) {
+            return false;
+        }
+
+        if ($task->assigned_type === 'employee' && (int) $task->assigned_id === (int) $employeeId) {
+            return true;
+        }
+
+        if ($user && (int) $task->assignee_id === (int) $user->id) {
+            return true;
+        }
+
+        return $task->assignments()
+            ->where('assignee_type', 'employee')
+            ->where('assignee_id', $employeeId)
+            ->exists();
     }
 }

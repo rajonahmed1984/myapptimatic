@@ -52,6 +52,7 @@ class ProjectController extends Controller
         $project->load(['customer']);
 
         $tasks = $project->tasks()
+            ->with(['assignments'])
             ->withCount('subtasks')
             ->orderByDesc('created_at')
             ->orderByDesc('id')

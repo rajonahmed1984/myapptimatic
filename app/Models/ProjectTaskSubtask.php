@@ -15,6 +15,7 @@ class ProjectTaskSubtask extends Model
         'due_date',
         'due_time',
         'is_completed',
+        'status',
         'completed_at',
         'created_by',
     ];

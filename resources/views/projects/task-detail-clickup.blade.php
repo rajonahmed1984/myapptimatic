@@ -31,6 +31,29 @@
                                 {{ $taskTypeOptions[$task->task_type] ?? 'Task' }}
                             </span>
                         </div>
+                        @if($routePrefix === 'employee' && ($canStartTask || $canCompleteTask))
+                            <div class="mt-3 flex flex-wrap items-center gap-2">
+                                @if($canStartTask)
+                                    <form method="POST" action="{{ route('employee.projects.tasks.start', [$project, $task]) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300">
+                                            Inprogress
+                                        </button>
+                                    </form>
+                                @endif
+                                @if($canCompleteTask)
+                                    <form method="POST" action="{{ route('employee.projects.tasks.update', [$project, $task]) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="status" value="completed">
+                                        <button type="submit" class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300">
+                                            Complete
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        @endif
                         @if($routePrefix === 'client' && $canEdit)
                             <div class="mt-3">
                                 <a href="#task-edit" class="text-xs font-semibold text-teal-600 hover:text-teal-700">Edit task</a>
@@ -302,18 +325,31 @@
                             @php
                                 $canEditSubtask = in_array($subtask->id, $editableSubtaskIds, true);
                                 $canInlineEdit = $canEditSubtask && in_array($routePrefix, ['client', 'employee'], true);
+                                $canChangeSubtaskStatus = in_array($subtask->id, $statusSubtaskIds ?? [], true);
                             @endphp
                             <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition group">
                                 @if($routePrefix !== 'employee' && $canEditSubtask && $routePrefix !== 'client')
                                     <input type="checkbox" data-subtask-id="{{ $subtask->id }}" @checked($subtask->is_completed) class="subtask-checkbox mt-1 rounded cursor-pointer" />
                                 @endif
                                 <div class="flex-1 min-w-0">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="subtask-title text-sm {{ $subtask->is_completed ? 'line-through text-slate-400' : 'font-medium text-slate-900' }}" data-subtask-id="{{ $subtask->id }}">
+                                    <div class="flex items-center gap-2 flex-wrap justify-between">
+                                        <span class="subtask-title text-sm whitespace-pre-line {{ $subtask->is_completed ? 'line-through text-slate-400' : 'font-medium text-slate-900' }}" data-subtask-id="{{ $subtask->id }}">
                                             {{ $subtask->title }}
                                         </span>
-                                        @php $incompleteLabel = 'Open'; @endphp
-                                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $subtask->is_completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700' }}">{{ $subtask->is_completed ? 'Completed' : $incompleteLabel }}</span>
+                                        @php
+                                            $subtaskStatus = $subtask->status ?? ($subtask->is_completed ? 'completed' : 'open');
+                                            $statusLabels = [
+                                                'open' => 'Open',
+                                                'in_progress' => 'Inprogress',
+                                                'completed' => 'Completed',
+                                            ];
+                                            $statusClasses = [
+                                                'open' => 'border-amber-200 bg-amber-50 text-amber-700',
+                                                'in_progress' => 'border-amber-200 bg-amber-50 text-amber-700',
+                                                'completed' => 'border-emerald-200 bg-emerald-50 text-emerald-700',
+                                            ];
+                                        @endphp
+                                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $statusClasses[$subtaskStatus] ?? 'border-amber-200 bg-amber-50 text-amber-700' }}">{{ $statusLabels[$subtaskStatus] ?? 'Open' }}</span>
                                         @if($subtask->due_date)
                                             <span class="text-xs text-slate-500 whitespace-nowrap">
                                                 📅 {{ $subtask->due_date->format($globalDateFormat) }}
@@ -325,7 +361,7 @@
                                     </div>
                                     <div class="text-xs text-slate-400 mt-1 space-x-2">
                                         <span>Created: {{ $subtask->created_at->format($globalDateFormat . ' H:i') }}</span>
-                                        @if($routePrefix === 'admin')
+                                        @if(in_array($routePrefix, ['admin', 'employee'], true))
                                             <span>Added by: {{ $subtask->createdBy?->name ?? 'System' }}</span>
                                         @endif
                                         @if($subtask->updated_at && $subtask->created_at && $subtask->updated_at->greaterThan($subtask->created_at))
@@ -335,26 +371,35 @@
                                             <span>• Completed: {{ $subtask->completed_at->format($globalDateFormat . ' H:i') }}</span>
                                         @endif
                                     </div>
+                                    @if($routePrefix === 'employee' && ($canChangeSubtaskStatus || $canInlineEdit))
+                                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                                            @if($canInlineEdit)
+                                                <button type="button" class="subtask-edit-btn rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-700" data-subtask-id="{{ $subtask->id }}">Edit</button>
+                                            @endif
+                                            @if($canChangeSubtaskStatus)
+                                            <button type="button" class="subtask-status-btn rounded-full border border-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-700 hover:border-amber-300" data-subtask-id="{{ $subtask->id }}" data-status="in_progress">
+                                                Inprogress
+                                            </button>
+                                            <button type="button" class="subtask-status-btn rounded-full border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:border-emerald-300" data-subtask-id="{{ $subtask->id }}" data-status="completed">
+                                                Complete
+                                            </button>
+                                            @endif
+                                        </div>
+                                    @endif
                                     @if($canInlineEdit)
                                         <div class="subtask-edit-row mt-2 flex items-center gap-2" data-subtask-id="{{ $subtask->id }}" style="display: none;">
-                                            <input type="text" class="subtask-edit-input flex-1 min-w-0 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900" value="{{ $subtask->title }}" />
+                                            <textarea class="subtask-edit-input flex-1 min-w-0 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900">{{ $subtask->title }}</textarea>
                                             <button type="button" class="subtask-save-btn text-xs font-semibold text-teal-600 hover:text-teal-700" data-subtask-id="{{ $subtask->id }}">Save</button>
                                             <button type="button" class="subtask-cancel-btn text-xs font-semibold text-slate-500 hover:text-slate-600" data-subtask-id="{{ $subtask->id }}">Cancel</button>
                                         </div>
                                     @endif
                                 </div>
                                 @if($canInlineEdit)
-                                    <div class="ml-auto shrink-0 flex items-center gap-2">
-                                        <button type="button" class="subtask-edit-btn text-xs font-semibold text-teal-600 hover:text-teal-700" data-subtask-id="{{ $subtask->id }}">Edit</button>
-                                        @if($routePrefix === 'employee')
-                                            <button type="button" class="subtask-status-btn rounded-full border border-amber-200 px-3 py-1 text-[10px] font-semibold text-amber-700 hover:border-amber-300" data-subtask-id="{{ $subtask->id }}" data-status="in_progress">
-                                                In progress
-                                            </button>
-                                            <button type="button" class="subtask-status-btn rounded-full border border-emerald-200 px-3 py-1 text-[10px] font-semibold text-emerald-700 hover:border-emerald-300" data-subtask-id="{{ $subtask->id }}" data-status="completed">
-                                                Completed
-                                            </button>
-                                        @endif
-                                    </div>
+                                    @if($routePrefix !== 'employee')
+                                        <div class="ml-auto shrink-0 flex items-center gap-2">
+                                            <button type="button" class="subtask-edit-btn text-xs font-semibold text-teal-600 hover:text-teal-700" data-subtask-id="{{ $subtask->id }}">Edit</button>
+                                        </div>
+                                    @endif
                                 @endif
                             </div>
                         @endforeach
@@ -778,10 +823,9 @@
             button.addEventListener('click', () => {
                 const subtaskId = button.getAttribute('data-subtask-id');
                 const status = button.getAttribute('data-status');
-                const isCompleted = status === 'completed';
 
                 const formData = new FormData();
-                formData.append('is_completed', isCompleted ? 1 : 0);
+                formData.append('status', status || 'open');
                 formData.append('_token', csrfToken);
                 formData.append('_method', 'PATCH');
 
@@ -828,4 +872,3 @@
         }
     </style>
 @endsection
-

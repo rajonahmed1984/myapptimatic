@@ -82,11 +82,22 @@ class ProjectTaskController extends Controller
             return back()->withErrors(['dates' => 'Task dates cannot be changed after creation.']);
         }
 
-        if (! $request->user()?->isMasterAdmin() && $task->creatorEditWindowExpired($request->user()?->id)) {
+        $user = $request->user();
+        $isAssigned = $this->isAssignedEmployee($task, $user);
+        $isCreator = $user && $task->created_by && $task->created_by === $user->id;
+
+        if (! $user?->isMasterAdmin() && ! $isAssigned && $task->creatorEditWindowExpired($user?->id)) {
             return $this->forbiddenResponse($request, 'You can only edit this task within 24 hours of creation.');
         }
 
         $data = $request->validated();
+
+        if (! $user?->isMasterAdmin() && ! $isCreator && $isAssigned) {
+            $extraFields = array_diff(array_keys($data), ['status']);
+            if (! empty($extraFields)) {
+                return $this->forbiddenResponse($request, 'Only status changes are allowed for assigned tasks.');
+            }
+        }
 
         if (in_array($data['status'], ['completed', 'done'], true)
             && TaskCompletionManager::hasSubtasks($task)
@@ -175,7 +186,10 @@ class ProjectTaskController extends Controller
         $this->authorize('update', $task);
         $this->ensureTaskBelongsToProject($project, $task);
 
-        if (! $request->user()?->isMasterAdmin() && $task->creatorEditWindowExpired($request->user()?->id)) {
+        $user = $request->user();
+        $isAssigned = $this->isAssignedEmployee($task, $user);
+
+        if (! $user?->isMasterAdmin() && ! $isAssigned && $task->creatorEditWindowExpired($user?->id)) {
             return $this->forbiddenResponse($request, 'You can only edit this task within 24 hours of creation.');
         }
 
@@ -274,5 +288,26 @@ class ProjectTaskController extends Controller
         }
 
         return back()->with('status', $message);
+    }
+
+    private function isAssignedEmployee(ProjectTask $task, $user): bool
+    {
+        $employeeId = $user?->employee?->id;
+        if (! $employeeId) {
+            return false;
+        }
+
+        if ($task->assigned_type === 'employee' && (int) $task->assigned_id === (int) $employeeId) {
+            return true;
+        }
+
+        if ($user && (int) $task->assignee_id === (int) $user->id) {
+            return true;
+        }
+
+        return $task->assignments()
+            ->where('assignee_type', 'employee')
+            ->where('assignee_id', $employeeId)
+            ->exists();
     }
 }
