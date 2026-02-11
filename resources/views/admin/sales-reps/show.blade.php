@@ -17,7 +17,7 @@
                 </button>
             </form>
             <a href="{{ route('admin.sales-reps.edit', $rep) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Edit</a>
-            <a href="{{ route('admin.sales-reps.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to list</a>
+            <a href="{{ route('admin.sales-reps.index') }}" hx-boost="false" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to list</a>
         </div>
     </div>
 
