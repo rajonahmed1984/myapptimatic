@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SupportTicket;
 use App\Services\ClientNotificationService;
+use App\Services\GeminiService;
+use App\Services\SupportTicketAiService;
 use App\Support\SystemLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class SupportTicketController extends Controller
 {
@@ -49,7 +52,29 @@ class SupportTicketController extends Controller
 
         return view('admin.support-tickets.show', [
             'ticket' => $ticket,
+            'aiReady' => (bool) config('google_ai.api_key'),
         ]);
+    }
+
+    public function aiSummary(
+        Request $request,
+        SupportTicket $ticket,
+        SupportTicketAiService $aiService,
+        GeminiService $geminiService
+    ): JsonResponse {
+        if (! config('google_ai.api_key')) {
+            return response()->json(['error' => 'Missing GOOGLE_AI_API_KEY.'], 422);
+        }
+
+        $ticket->load(['customer', 'replies.user']);
+
+        try {
+            $result = $aiService->analyze($ticket, $geminiService);
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
     }
 
     public function reply(Request $request, SupportTicket $ticket, ClientNotificationService $clientNotifications)

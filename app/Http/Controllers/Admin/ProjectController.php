@@ -27,6 +27,8 @@ use App\Services\TaskStatusNotificationService;
 use App\Services\CommissionService;
 use App\Services\BillingService;
 use App\Services\InvoiceTaxService;
+use App\Services\GeminiService;
+use App\Services\ProjectStatusAiService;
 use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -499,6 +501,7 @@ class ProjectController extends Controller
             'initialInvoice' => $initialInvoice,
             'remainingBudgetInvoices' => $remainingBudgetInvoices,
             'projectChatUnreadCount' => $projectChatUnreadCount,
+            'aiReady' => (bool) config('google_ai.api_key'),
             'taskStats' => [
                 'total' => $totalTasks,
                 'in_progress' => $inProgressTasks,
@@ -506,6 +509,27 @@ class ProjectController extends Controller
                 'unread' => (int) $projectChatUnreadCount,
             ],
         ]);
+    }
+
+    public function aiSummary(
+        Request $request,
+        Project $project,
+        ProjectStatusAiService $aiService,
+        GeminiService $geminiService
+    ): JsonResponse {
+        $this->authorize('view', $project);
+
+        if (! config('google_ai.api_key')) {
+            return response()->json(['error' => 'Missing GOOGLE_AI_API_KEY.'], 422);
+        }
+
+        try {
+            $result = $aiService->analyze($project, $geminiService);
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
     }
 
     public function tasks(Request $request, Project $project)

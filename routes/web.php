@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AffiliateCommissionController;
 use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
 use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\AutomationStatusController;
+use App\Http\Controllers\Admin\AiBusinessStatusController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\Admin\ClientRequestController as AdminClientRequestController;
@@ -307,6 +308,7 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
         Route::get('/projects/{project}/chat/stream', [ProjectChatController::class, 'stream'])
             ->name('projects.chat.stream');
+        Route::post('/projects/{project}/chat/ai-summary', [ProjectChatController::class, 'aiSummary'])->name('projects.chat.ai');
         Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.messages.store');
@@ -321,6 +323,7 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
             ->name('projects.chat.messages.attachment');
         Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
         Route::get('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
+        Route::post('/projects/{project}/tasks/{task}/chat/ai-summary', [ProjectTaskChatController::class, 'aiSummary'])->name('projects.tasks.chat.ai');
         Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.chat.messages.store');
@@ -334,6 +337,8 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
 
 Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/ai/business-status', [AiBusinessStatusController::class, 'index'])->name('ai.business-status');
+    Route::post('/ai/business-status/generate', [AiBusinessStatusController::class, 'generate'])->name('ai.business-status.generate');
     Route::get('/tasks', [AdminTasksController::class, 'index'])->name('tasks.index');
     Route::get('/chats', [AdminChatController::class, 'index'])->name('chats.index');
     Route::redirect('/chat', '/admin/chats');
@@ -477,6 +482,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::post('orders/{order}/milestones', [MilestoneController::class, 'store'])->name('orders.milestones.store');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::resource('projects', ProjectController::class);
+    Route::post('projects/{project}/ai-summary', [ProjectController::class, 'aiSummary'])->name('projects.ai');
     Route::get('projects/{project}/tasks', [ProjectController::class, 'tasks'])->name('projects.tasks.index');
     Route::post('projects/{project}/invoice-remaining', [ProjectController::class, 'invoiceRemainingBudget'])
         ->name('projects.invoice-remaining');
@@ -523,6 +529,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         ->name('projects.chat.presence');
     Route::get('projects/{project}/chat/stream', [ProjectChatController::class, 'stream'])
         ->name('projects.chat.stream');
+    Route::post('projects/{project}/chat/ai-summary', [ProjectChatController::class, 'aiSummary'])->name('projects.chat.ai');
     Route::get('projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
     Route::post('projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
         ->middleware('throttle:10,1')
@@ -536,6 +543,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         ->name('projects.chat.messages.attachment');
     Route::get('projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
     Route::get('projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
+    Route::post('projects/{project}/tasks/{task}/chat/ai-summary', [ProjectTaskChatController::class, 'aiSummary'])->name('projects.tasks.chat.ai');
     Route::post('projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
         ->middleware('throttle:10,1')
         ->name('projects.tasks.chat.messages.store');
@@ -549,6 +557,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])->name('support-tickets.index');
     Route::get('support-tickets/{ticket}', [AdminSupportTicketController::class, 'show'])->name('support-tickets.show');
+    Route::post('support-tickets/{ticket}/ai-summary', [AdminSupportTicketController::class, 'aiSummary'])->name('support-tickets.ai');
     Route::post('support-tickets/{ticket}/reply', [AdminSupportTicketController::class, 'reply'])->name('support-tickets.reply');
     Route::patch('support-tickets/{ticket}/status', [AdminSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
     Route::patch('support-tickets/{ticket}', [AdminSupportTicketController::class, 'update'])->name('support-tickets.update');
@@ -675,6 +684,7 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
         Route::get('/projects/{project}/chat/stream', [ProjectChatController::class, 'stream'])
             ->name('projects.chat.stream');
+        Route::post('/projects/{project}/chat/ai-summary', [ProjectChatController::class, 'aiSummary'])->name('projects.chat.ai');
         Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.messages.store');
@@ -689,6 +699,7 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
             ->name('projects.chat.messages.attachment');
         Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
         Route::get('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
+        Route::post('/projects/{project}/tasks/{task}/chat/ai-summary', [ProjectTaskChatController::class, 'aiSummary'])->name('projects.tasks.chat.ai');
         Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.chat.messages.store');
@@ -759,6 +770,7 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
         Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
         Route::get('/projects/{project}/chat/stream', [ProjectChatController::class, 'stream'])
             ->name('projects.chat.stream');
+        Route::post('/projects/{project}/chat/ai-summary', [ProjectChatController::class, 'aiSummary'])->name('projects.chat.ai');
         Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.messages.store');
@@ -773,6 +785,7 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
             ->name('projects.chat.messages.attachment');
         Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
         Route::get('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
+        Route::post('/projects/{project}/tasks/{task}/chat/ai-summary', [ProjectTaskChatController::class, 'aiSummary'])->name('projects.tasks.chat.ai');
         Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.chat.messages.store');
@@ -793,6 +806,7 @@ Route::middleware(['support', 'user.activity:support', 'nocache'])
         Route::get('/tasks', [SupportTasksController::class, 'index'])->name('tasks.index');
         Route::get('/support-tickets', [SupportSupportTicketController::class, 'index'])->name('support-tickets.index');
         Route::get('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'show'])->name('support-tickets.show');
+        Route::post('/support-tickets/{ticket}/ai-summary', [SupportSupportTicketController::class, 'aiSummary'])->name('support-tickets.ai');
         Route::post('/support-tickets/{ticket}/reply', [SupportSupportTicketController::class, 'reply'])->name('support-tickets.reply');
         Route::patch('/support-tickets/{ticket}/status', [SupportSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
         Route::patch('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'update'])->name('support-tickets.update');

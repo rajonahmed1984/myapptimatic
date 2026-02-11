@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\Role;
 use App\Models\EmailTemplate;
 use App\Models\Invoice;
 use App\Models\Order;
@@ -169,6 +170,27 @@ class AdminNotificationService
         );
     }
 
+    public function sendChatSummaryDigest(string $title, array $items, ?string $note = null): void
+    {
+        $recipients = $this->adminDigestRecipients();
+        if (empty($recipients)) {
+            return;
+        }
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $subject = $title.' - '.$companyName;
+        $fromEmail = $this->resolveFromEmail(null);
+
+        if (empty($items)) {
+            $body = $note ?: 'No recent chat activity found.';
+            $this->sendGeneric($recipients, $subject, $this->formatEmailBody($body), $fromEmail, $companyName);
+            return;
+        }
+
+        $bodyHtml = $this->buildChatDigestHtml($items, $note);
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName);
+    }
+
     public function sendOrderAccepted(Order $order): void
     {
         $recipients = $this->adminRecipients();
@@ -317,6 +339,27 @@ class AdminNotificationService
         return $emails;
     }
 
+    private function adminDigestRecipients(): array
+    {
+        $emails = User::query()
+            ->whereIn('role', Role::adminRoles())
+            ->whereNotNull('email')
+            ->pluck('email')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($emails)) {
+            $fallback = Setting::getValue('company_email') ?: config('mail.from.address');
+            if ($fallback) {
+                $emails = [$fallback];
+            }
+        }
+
+        return $emails;
+    }
+
     private function resolveFromEmail(?EmailTemplate $template): ?string
     {
         $fromEmail = trim((string) ($template?->from_email ?? ''));
@@ -438,6 +481,46 @@ class AdminNotificationService
         }
 
         return nl2br(e($trimmed));
+    }
+
+    private function buildChatDigestHtml(array $items, ?string $note = null): string
+    {
+        $rows = [];
+        if ($note) {
+            $rows[] = '<p>'.e($note).'</p>';
+        }
+
+        $rows[] = '<ul>';
+        foreach ($items as $item) {
+            $label = e((string) ($item['label'] ?? 'Chat'));
+            $summary = e((string) ($item['summary'] ?? ''));
+            $summary = $summary !== '' ? nl2br($summary) : '--';
+            $sentiment = e((string) ($item['sentiment'] ?? '--'));
+            $priority = e((string) ($item['priority'] ?? '--'));
+            $generatedAt = e((string) ($item['generated_at'] ?? ''));
+            $url = $item['url'] ?? null;
+            $actions = is_array($item['action_items'] ?? null) ? $item['action_items'] : [];
+
+            $actionsHtml = '--';
+            if (! empty($actions)) {
+                $actionItems = array_map(fn ($action) => '<li>'.e((string) $action).'</li>', $actions);
+                $actionsHtml = '<ul>'.implode('', $actionItems).'</ul>';
+            }
+
+            $link = $url ? ' · <a href="'.e((string) $url).'">Open chat</a>' : '';
+            $timeLine = $generatedAt !== '' ? '<div><small>Pinned · '.$generatedAt.'</small></div>' : '';
+
+            $rows[] = '<li style="margin-bottom:12px;">'
+                .'<strong>'.$label.'</strong>'.$link
+                .'<div>'.$summary.'</div>'
+                .'<div>Sentiment: '.$sentiment.' · Priority: '.$priority.'</div>'
+                .'<div>Action items: '.$actionsHtml.'</div>'
+                .$timeLine
+                .'</li>';
+        }
+        $rows[] = '</ul>';
+
+        return implode('', $rows);
     }
 
     private function resolvePaymentMethod(Order $order): string

@@ -10,6 +10,9 @@ use App\Models\UserSession;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Http\Requests\StoreTaskChatMessageRequest;
+use App\Services\ChatAiService;
+use App\Services\GeminiService;
+use App\Services\ChatAiSummaryCache;
 use App\Support\ChatPresence;
 use App\Support\ChatMentions;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +26,7 @@ use Illuminate\Support\Str;
 
 class ProjectChatController extends Controller
 {
-    public function show(Request $request, Project $project)
+    public function show(Request $request, Project $project, ChatAiSummaryCache $summaryCache)
     {
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('view', $project);
@@ -84,6 +87,9 @@ class ProjectChatController extends Controller
             'readUrl' => route($routePrefix . '.projects.chat.read', $project),
             'participantsUrl' => route($routePrefix . '.projects.chat.participants', $project),
             'presenceUrl' => route($routePrefix . '.projects.chat.presence', $project),
+            'aiSummaryRoute' => route($routePrefix . '.projects.chat.ai', $project),
+            'aiReady' => (bool) config('google_ai.api_key'),
+            'pinnedSummary' => $summaryCache->getProject($project->id) ?? [],
             'currentAuthorType' => $identity['type'],
             'currentAuthorId' => $identity['id'],
             'canPost' => $canPost,
@@ -95,6 +101,33 @@ class ProjectChatController extends Controller
             'latestMessageId' => $latestMessageId,
             'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
         ]);
+    }
+
+    public function aiSummary(
+        Request $request,
+        Project $project,
+        ChatAiService $aiService,
+        GeminiService $geminiService,
+        ChatAiSummaryCache $summaryCache
+    ): JsonResponse {
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $project);
+
+        if (! config('google_ai.api_key')) {
+            return response()->json(['error' => 'Missing GOOGLE_AI_API_KEY.'], 422);
+        }
+
+        try {
+            $result = $aiService->analyzeProjectChat($project, $geminiService);
+            if (is_array($result['data'] ?? null)) {
+                $result['data']['generated_at'] = now()->toDateTimeString();
+                $summaryCache->putProject($project->id, $result['data']);
+            }
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
     }
 
     public function messages(Request $request, Project $project): JsonResponse

@@ -52,6 +52,13 @@ CronActivityLogger::track($workSummaries, 'employee-work-summaries:generate');
 $expensesRecurring = Schedule::command('expenses:generate-recurring')->dailyAt('00:15');
 CronActivityLogger::track($expensesRecurring, 'expenses:generate-recurring');
 
+// AI chat summaries (project daily, task weekly).
+$projectChatAi = Schedule::command('chat:ai-summary --type=project --days=7 --limit=200 --email --email-limit=30')->dailyAt('00:00');
+CronActivityLogger::track($projectChatAi, 'chat:ai-summary --type=project --days=7 --limit=200 --email --email-limit=30');
+
+$taskChatAi = Schedule::command('chat:ai-summary --type=task --days=14 --limit=200 --email --email-limit=30')->weeklyOn(5, '01:00');
+CronActivityLogger::track($taskChatAi, 'chat:ai-summary --type=task --days=14 --limit=200 --email --email-limit=30');
+
 // Daily license sync summary and automation reports.
 $licenseSyncLog = Schedule::command('licenses:sync-log')
     ->dailyAt($automationTime)

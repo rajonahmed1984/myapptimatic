@@ -54,6 +54,55 @@
         </div>
     </div>
 
+    <div class="card p-6 mb-6" id="project-ai-summary">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <div class="section-label">AI Project Summary</div>
+                <div class="mt-1 text-sm text-slate-500">Quick project health, risks, and next steps.</div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="project-ai-status" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Ready</span>
+                <button type="button" id="project-ai-generate" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800" @disabled(! $aiReady)>
+                    Generate AI
+                </button>
+            </div>
+        </div>
+
+        @if(! $aiReady)
+            <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                GOOGLE_AI_API_KEY is missing. Add it to .env to enable AI summaries.
+            </div>
+        @endif
+
+        <div class="mt-5 grid gap-4 md:grid-cols-2">
+            <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm md:col-span-2">
+                <div class="flex items-center justify-between">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Summary</div>
+                    <span id="project-ai-health" class="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">--</span>
+                </div>
+                <div id="project-ai-summary-text" class="mt-2 text-slate-700">Click Generate AI to analyze this project.</div>
+            </div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Highlights</div>
+                <ul id="project-ai-highlights" class="mt-2 list-disc space-y-1 pl-4 text-slate-700">
+                    <li>--</li>
+                </ul>
+            </div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Risks</div>
+                <ul id="project-ai-risks" class="mt-2 list-disc space-y-1 pl-4 text-slate-700">
+                    <li>--</li>
+                </ul>
+            </div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm md:col-span-2">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Next steps</div>
+                <ul id="project-ai-next-steps" class="mt-2 list-disc space-y-1 pl-4 text-slate-700">
+                    <li>--</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <div class="card p-6 space-y-6">
         <div>
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Project Info</div>
@@ -389,4 +438,92 @@
         @endif
 
     </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const button = document.getElementById('project-ai-generate');
+                const status = document.getElementById('project-ai-status');
+                const summary = document.getElementById('project-ai-summary-text');
+                const health = document.getElementById('project-ai-health');
+                const highlights = document.getElementById('project-ai-highlights');
+                const risks = document.getElementById('project-ai-risks');
+                const nextSteps = document.getElementById('project-ai-next-steps');
+
+                const setStatus = (label, cls) => {
+                    if (!status) return;
+                    status.textContent = label;
+                    status.className = `rounded-full px-3 py-1 text-xs font-semibold ${cls}`;
+                };
+
+                const setHealth = (value) => {
+                    if (!health) return;
+                    const normalized = (value || '').toLowerCase();
+                    let cls = 'bg-slate-100 text-slate-600';
+                    if (normalized === 'green') cls = 'bg-emerald-100 text-emerald-700';
+                    if (normalized === 'yellow') cls = 'bg-amber-100 text-amber-700';
+                    if (normalized === 'red') cls = 'bg-rose-100 text-rose-700';
+                    health.textContent = value || '--';
+                    health.className = `rounded-full px-3 py-1 text-[11px] font-semibold ${cls}`;
+                };
+
+                const renderList = (el, items) => {
+                    if (!el) return;
+                    el.innerHTML = '';
+                    if (!items || !items.length) {
+                        const li = document.createElement('li');
+                        li.textContent = '--';
+                        el.appendChild(li);
+                        return;
+                    }
+                    items.forEach((item) => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        el.appendChild(li);
+                    });
+                };
+
+                if (!button) return;
+
+                button.addEventListener('click', async () => {
+                    setStatus('Generating...', 'bg-amber-100 text-amber-700');
+                    if (summary) summary.textContent = 'Working on the AI summary...';
+                    setHealth('--');
+                    renderList(highlights, []);
+                    renderList(risks, []);
+                    renderList(nextSteps, []);
+
+                    try {
+                        const response = await fetch("{{ route('admin.projects.ai', $project) }}", {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').getAttribute('content'),
+                                'Accept': 'application/json',
+                            },
+                        });
+
+                        const payload = await response.json();
+                        if (!response.ok) {
+                            throw new Error(payload.error || 'Failed to generate AI summary.');
+                        }
+
+                        if (payload.data) {
+                            summary.textContent = payload.data.summary || payload.raw || '--';
+                            setHealth(payload.data.health || '--');
+                            renderList(highlights, Array.isArray(payload.data.highlights) ? payload.data.highlights : []);
+                            renderList(risks, Array.isArray(payload.data.risks) ? payload.data.risks : []);
+                            renderList(nextSteps, Array.isArray(payload.data.next_steps) ? payload.data.next_steps : []);
+                        } else {
+                            summary.textContent = payload.raw || '--';
+                        }
+
+                        setStatus('Updated', 'bg-emerald-100 text-emerald-700');
+                    } catch (error) {
+                        if (summary) summary.textContent = error.message;
+                        setStatus('Error', 'bg-rose-100 text-rose-700');
+                    }
+                });
+            });
+        </script>
+    @endpush
 @endsection

@@ -55,6 +55,67 @@
             </div>
         </div>
 
+        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">AI Assistant</div>
+                    <div class="text-xs text-slate-500">Auto summary, reply draft, sentiment & priority.</div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="task-chat-ai-status" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Ready</span>
+                    <button type="button" id="task-chat-ai-generate" class="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800" @disabled(! $aiReady)>
+                        Generate AI
+                    </button>
+                </div>
+            </div>
+
+            @if(! $aiReady)
+                <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    GOOGLE_AI_API_KEY is missing. Add it to .env to enable AI suggestions.
+                </div>
+            @endif
+
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm md:col-span-2">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Summary</div>
+                    <div id="task-chat-ai-summary" class="mt-2 text-slate-700">
+                        {{ $pinnedSummary['summary'] ?? 'Click Generate AI to analyze recent chat.' }}
+                    </div>
+                    <div id="task-chat-ai-generated-at" class="mt-2 text-[11px] text-slate-400">
+                        @if(!empty($pinnedSummary['generated_at']))
+                            Pinned · {{ $pinnedSummary['generated_at'] }}
+                        @endif
+                    </div>
+                </div>
+                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Signals</div>
+                    <div class="mt-2 text-slate-600">Sentiment: <span id="task-chat-ai-sentiment">{{ $pinnedSummary['sentiment'] ?? '--' }}</span></div>
+                    <div class="mt-1 text-slate-600">Priority: <span id="task-chat-ai-priority">{{ $pinnedSummary['priority'] ?? '--' }}</span></div>
+                </div>
+                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Action items</div>
+                    <ul id="task-chat-ai-actions" class="mt-2 list-disc space-y-1 pl-4 text-slate-700">
+                        @if(!empty($pinnedSummary['action_items']) && is_array($pinnedSummary['action_items']))
+                            @foreach($pinnedSummary['action_items'] as $item)
+                                <li>{{ $item }}</li>
+                            @endforeach
+                        @else
+                            <li>--</li>
+                        @endif
+                    </ul>
+                </div>
+                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm md:col-span-2">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Reply draft</div>
+                        <button type="button" id="task-chat-ai-insert" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
+                            Insert into reply
+                        </button>
+                    </div>
+                    <textarea id="task-chat-ai-reply" rows="4" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700" readonly>{{ $pinnedSummary['reply_draft'] ?? '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
         @if($canPost)
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Post a message</div>
@@ -62,7 +123,7 @@
                     @csrf
                     <div>
                         <label class="text-xs text-slate-500">Message</label>
-                        <textarea name="message" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Share an update...">{{ old('message') }}</textarea>
+                        <textarea id="taskChatMessageInput" name="message" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Share an update...">{{ old('message') }}</textarea>
                         @error('message')
                             <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
                         @enderror
@@ -85,14 +146,102 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const container = document.getElementById('task-chat-messages');
-            const form = document.getElementById('chatMessageForm');
-            const messagesUrl = @json($messagesUrl);
-            const readUrl = container?.dataset?.readUrl || @json($readUrl ?? '');
+        const container = document.getElementById('task-chat-messages');
+        const form = document.getElementById('chatMessageForm');
+        const messagesUrl = @json($messagesUrl);
+        const readUrl = container?.dataset?.readUrl || @json($readUrl ?? '');
+        const aiSummaryRoute = @json($aiSummaryRoute ?? '');
+        const aiButton = document.getElementById('task-chat-ai-generate');
+        const aiStatus = document.getElementById('task-chat-ai-status');
+        const aiSummary = document.getElementById('task-chat-ai-summary');
+        const aiSentiment = document.getElementById('task-chat-ai-sentiment');
+        const aiPriority = document.getElementById('task-chat-ai-priority');
+        const aiActions = document.getElementById('task-chat-ai-actions');
+        const aiReply = document.getElementById('task-chat-ai-reply');
+        const aiInsert = document.getElementById('task-chat-ai-insert');
+        const replyInput = document.getElementById('taskChatMessageInput');
+        const aiGeneratedAt = document.getElementById('task-chat-ai-generated-at');
 
-            if (!container || !messagesUrl) {
+        const setAiStatus = (label, cls) => {
+            if (!aiStatus) return;
+            aiStatus.textContent = label;
+            aiStatus.className = `rounded-full px-3 py-1 text-xs font-semibold ${cls}`;
+        };
+
+        const renderActions = (items) => {
+            if (!aiActions) return;
+            aiActions.innerHTML = '';
+            if (!items || !items.length) {
+                const li = document.createElement('li');
+                li.textContent = '--';
+                aiActions.appendChild(li);
                 return;
             }
+            items.forEach((item) => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                aiActions.appendChild(li);
+            });
+        };
+
+        if (aiInsert) {
+            aiInsert.addEventListener('click', () => {
+                if (!replyInput || !aiReply) return;
+                if (!aiReply.value.trim()) return;
+                replyInput.value = aiReply.value;
+                replyInput.focus();
+            });
+        }
+
+        if (aiButton && aiSummaryRoute) {
+            aiButton.addEventListener('click', async () => {
+                setAiStatus('Generating...', 'bg-amber-100 text-amber-700');
+                if (aiSummary) aiSummary.textContent = 'Working on the AI summary...';
+                if (aiReply) aiReply.value = '';
+                if (aiSentiment) aiSentiment.textContent = '--';
+                if (aiPriority) aiPriority.textContent = '--';
+                renderActions([]);
+
+                try {
+                    const response = await fetch(aiSummaryRoute, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                            'Accept': 'application/json',
+                        },
+                    });
+
+                    const payload = await response.json();
+                    if (!response.ok) {
+                        throw new Error(payload.error || 'Failed to generate AI summary.');
+                    }
+
+                    if (payload.data) {
+                        if (aiSummary) aiSummary.textContent = payload.data.summary || payload.raw || '--';
+                        if (aiSentiment) aiSentiment.textContent = payload.data.sentiment || '--';
+                        if (aiPriority) aiPriority.textContent = payload.data.priority || '--';
+                        if (aiReply) aiReply.value = payload.data.reply_draft || '';
+                        if (aiGeneratedAt) {
+                            aiGeneratedAt.textContent = payload.data.generated_at
+                                ? `Pinned · ${payload.data.generated_at}`
+                                : '';
+                        }
+                        renderActions(Array.isArray(payload.data.action_items) ? payload.data.action_items : []);
+                    } else if (aiSummary) {
+                        aiSummary.textContent = payload.raw || '--';
+                    }
+
+                    setAiStatus('Updated', 'bg-emerald-100 text-emerald-700');
+                } catch (error) {
+                    if (aiSummary) aiSummary.textContent = error.message;
+                    setAiStatus('Error', 'bg-rose-100 text-rose-700');
+                }
+            });
+        }
+
+        if (!container || !messagesUrl) {
+            return;
+        }
 
             let lastId = Number(container.dataset.lastId || {{ $lastMessageId }} || 0);
             let oldestId = Number(container.dataset.oldestId || {{ $oldestMessageId }} || 0);
