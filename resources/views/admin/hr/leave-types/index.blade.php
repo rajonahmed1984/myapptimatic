@@ -53,7 +53,14 @@
                         </td>
                         <td class="py-2 px-3">{{ $type->default_allocation ?? '∞' }}</td>
                         <td class="py-2 px-3 text-right">
-                            <form method="POST" action="{{ route('admin.hr.leave-types.destroy', $type) }}">
+                            <form
+                                method="POST"
+                                action="{{ route('admin.hr.leave-types.destroy', $type) }}"
+                                data-delete-confirm
+                                data-confirm-name="{{ $type->name }}"
+                                data-confirm-title="Delete leave type {{ $type->name }}?"
+                                data-confirm-description="This will permanently delete the leave type."
+                            >
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-xs font-semibold text-rose-600 hover:text-rose-500">Delete</button>

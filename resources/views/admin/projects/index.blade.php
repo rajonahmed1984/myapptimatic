@@ -110,7 +110,15 @@
                             <div class="inline-flex items-center gap-2">
                                 <a href="{{ route('admin.projects.show', $project) }}" class="text-slate-700 hover:text-teal-700 font-semibold">View</a>
                                 <a href="{{ route('admin.projects.edit', $project) }}" class="text-slate-700 hover:text-teal-700 font-semibold">Edit</a>
-                                <form method="POST" action="{{ route('admin.projects.destroy', $project) }}" onsubmit="return confirm('Delete this project?');" class="inline">
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.projects.destroy', $project) }}"
+                                    data-delete-confirm
+                                    data-confirm-name="{{ $project->name }}"
+                                    data-confirm-title="Delete project {{ $project->name }}?"
+                                    data-confirm-description="This will permanently delete the project and related data."
+                                    class="inline"
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-rose-600 hover:text-rose-700 font-semibold">Delete</button>

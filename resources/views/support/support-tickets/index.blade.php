@@ -65,7 +65,14 @@
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('support.support-tickets.show', $ticket) }}#replies" class="text-teal-600 hover:text-teal-500">Reply</a>
                                 <a href="{{ route('support.support-tickets.show', $ticket) }}" class="text-slate-600 hover:text-slate-500">View</a>
-                                <form method="POST" action="{{ route('support.support-tickets.destroy', $ticket) }}" onsubmit="return confirm('Delete this ticket and all replies?');">
+                                <form
+                                    method="POST"
+                                    action="{{ route('support.support-tickets.destroy', $ticket) }}"
+                                    data-delete-confirm
+                                    data-confirm-name="TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}"
+                                    data-confirm-title="Delete ticket TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}?"
+                                    data-confirm-description="This will delete the ticket and all replies."
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>

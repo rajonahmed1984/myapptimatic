@@ -28,7 +28,14 @@
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.admins.edit', $admin) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
-                                <form method="POST" action="{{ route('admin.admins.destroy', $admin) }}" onsubmit="return confirm('Delete this admin user?');">
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.admins.destroy', $admin) }}"
+                                    data-delete-confirm
+                                    data-confirm-name="{{ $admin->name }}"
+                                    data-confirm-title="Delete admin {{ $admin->name }}?"
+                                    data-confirm-description="This will permanently delete the admin user."
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>

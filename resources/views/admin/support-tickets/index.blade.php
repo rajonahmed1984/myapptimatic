@@ -9,6 +9,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">Support Tickets</h1>
             <p class="mt-1 text-sm text-slate-500">Track and reply to client support requests.</p>
         </div>
+        <a href="{{ route('admin.support-tickets.create') }}" class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800">Open Ticket</a>
     </div>
 
     <div class="card p-4">
@@ -65,7 +66,14 @@
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.support-tickets.show', $ticket) }}#replies" class="text-teal-600 hover:text-teal-500">Reply</a>
                                 <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="text-slate-600 hover:text-slate-500">View</a>
-                                <form method="POST" action="{{ route('admin.support-tickets.destroy', $ticket) }}" onsubmit="return confirm('Delete this ticket and all replies?');">
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.support-tickets.destroy', $ticket) }}"
+                                    data-delete-confirm
+                                    data-confirm-name="TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}"
+                                    data-confirm-title="Delete ticket TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}?"
+                                    data-confirm-description="This will delete the ticket and all replies."
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\SupportTicket;
 use App\Services\ClientNotificationService;
 use App\Services\GeminiService;
@@ -44,6 +45,79 @@ class SupportTicketController extends Controller
             'status' => $status,
             'statusCounts' => $statusCounts,
         ]);
+    }
+
+    public function create(Request $request)
+    {
+        $customers = Customer::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'company_name', 'email']);
+
+        return view('admin.support-tickets.create', [
+            'customers' => $customers,
+            'selectedCustomerId' => $request->query('customer_id'),
+        ]);
+    }
+
+    public function store(Request $request, ClientNotificationService $clientNotifications)
+    {
+        $data = $request->validate([
+            'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'subject' => ['required', 'string', 'max:255'],
+            'priority' => ['required', Rule::in(['low', 'medium', 'high'])],
+            'message' => ['required', 'string'],
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
+        ]);
+
+        $customer = Customer::findOrFail($data['customer_id']);
+
+        $ticket = SupportTicket::create([
+            'customer_id' => $customer->id,
+            'user_id' => $request->user()->id,
+            'subject' => $data['subject'],
+            'priority' => $data['priority'],
+            'status' => 'answered',
+            'last_reply_at' => now(),
+            'last_reply_by' => 'admin',
+        ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
+            $name = $name === '' ? 'attachment' : $name;
+            $fileName = $name.'-'.time().'.'.$file->getClientOriginalExtension();
+            $attachmentPath = $file->storeAs('support-ticket-replies', $fileName, 'public');
+        }
+
+        $reply = $ticket->replies()->create([
+            'user_id' => $request->user()->id,
+            'message' => $data['message'],
+            'is_admin' => true,
+            'attachment_path' => $attachmentPath,
+        ]);
+
+        SystemLogger::write('activity', 'Ticket created by admin.', [
+            'ticket_id' => $ticket->id,
+            'customer_id' => $customer->id,
+            'priority' => $ticket->priority,
+        ], $request->user()?->id, $request->ip());
+
+        SystemLogger::write('ticket_mail_import', 'Admin opened support ticket.', [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => 'TKT-' . str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+            'admin_name' => $request->user()->name,
+            'subject' => $ticket->subject,
+            'message' => substr($data['message'], 0, 100),
+        ]);
+
+        $clientNotifications->sendTicketReplyFromAdmin($ticket, $reply);
+
+        return redirect()
+            ->route('admin.support-tickets.show', $ticket)
+            ->with('status', 'Ticket created.');
     }
 
     public function show(SupportTicket $ticket)

@@ -68,7 +68,14 @@
             </div>
         </form>
         <div class="mt-4 flex justify-end">
-            <form method="POST" action="{{ route('admin.support-tickets.destroy', $ticket) }}" onsubmit="return confirm('Delete this ticket and all replies?');">
+            <form
+                method="POST"
+                action="{{ route('admin.support-tickets.destroy', $ticket) }}"
+                data-delete-confirm
+                data-confirm-name="TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}"
+                data-confirm-title="Delete ticket TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}?"
+                data-confirm-description="This will delete the ticket and all replies."
+            >
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="rounded-full border border-rose-200 px-5 py-2 text-sm font-semibold text-rose-600 hover:border-rose-300 hover:text-rose-500">Delete ticket</button>

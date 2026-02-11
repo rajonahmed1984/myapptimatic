@@ -70,7 +70,14 @@
         </form>
 
         <div class="mt-8 border-t border-slate-200 pt-6">
-            <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}" onsubmit="return confirm('Delete this customer? This will remove related subscriptions and invoices.');">
+            <form
+                method="POST"
+                action="{{ route('admin.customers.destroy', $customer) }}"
+                data-delete-confirm
+                data-confirm-name="{{ $customer->name }}"
+                data-confirm-title="Delete customer {{ $customer->name }}?"
+                data-confirm-description="This will remove related subscriptions and invoices."
+            >
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="rounded-full border border-rose-200 px-5 py-2 text-sm font-semibold text-rose-600 hover:border-rose-300 hover:text-rose-500">

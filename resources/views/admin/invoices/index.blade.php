@@ -92,7 +92,14 @@
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.invoices.show', $invoice) }}" class="text-teal-600 hover:text-teal-500">View</a>
-                                <form method="POST" action="{{ route('admin.invoices.destroy', $invoice) }}" onsubmit="return confirm('Delete this invoice?');">
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.invoices.destroy', $invoice) }}"
+                                    data-delete-confirm
+                                    data-confirm-name="{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}"
+                                    data-confirm-title="Delete invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}?"
+                                    data-confirm-description="This will permanently delete the invoice and related data."
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>

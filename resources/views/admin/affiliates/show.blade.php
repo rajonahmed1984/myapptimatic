@@ -13,7 +13,14 @@
             <a href="{{ route('admin.affiliates.edit', $affiliate) }}" class="rounded-full border border-slate-200 px-6 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
                 Edit
             </a>
-            <form method="POST" action="{{ route('admin.affiliates.destroy', $affiliate) }}" onsubmit="return confirm('Delete this affiliate?')">
+            <form
+                method="POST"
+                action="{{ route('admin.affiliates.destroy', $affiliate) }}"
+                data-delete-confirm
+                data-confirm-name="{{ $affiliate->customer->name }}"
+                data-confirm-title="Delete affiliate {{ $affiliate->customer->name }}?"
+                data-confirm-description="This will permanently delete the affiliate record."
+            >
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="rounded-full border border-rose-200 px-6 py-2 text-sm font-semibold text-rose-600 hover:border-rose-300">

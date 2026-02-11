@@ -23,6 +23,7 @@
             <div class="mt-3 flex flex-wrap items-center gap-3">
                 <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Customers</a>
                 <a href="{{ route('admin.invoices.create', ['customer_id' => $customer->id]) }}" class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800">Create Invoice</a>
+                <a href="{{ route('admin.support-tickets.create', ['customer_id' => $customer->id]) }}" class="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Open Ticket</a>
                 <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}">
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" title="Login as client">
@@ -61,8 +62,37 @@
                 </div>
                 <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                     <div>
-                        <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Profile</div>
-                        <div class="mt-2 text-sm text-slate-500">No customer images.</div>
+                        <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Sales Representatives</div>
+                        @if(!empty($salesRepSummaries) && $salesRepSummaries->isNotEmpty())
+                            <div class="mt-3 space-y-3 text-sm">
+                                @foreach($salesRepSummaries as $rep)
+                                    <div class="rounded-xl border border-slate-300 bg-white p-3">
+                                        <div class="font-semibold text-slate-900">{{ $rep['name'] ?? 'Sales Rep' }}</div>
+                                        <div class="text-xs text-slate-500">{{ $rep['phone'] ?? '--' }}</div>
+                                        <div class="mt-2 text-[11px] uppercase tracking-[0.2em] text-slate-400">Projects & Maintenance</div>
+                                        <div class="mt-2 space-y-1 text-xs text-slate-600">
+                                            @forelse(($rep['projects'] ?? []) as $project)
+                                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                                    <span class="font-medium text-slate-700">{{ $project['name'] ?? 'Project' }}</span>
+                                                    <span>
+                                                        Project: {{ $currencySymbol }}{{ number_format((float) ($project['project_amount'] ?? 0), 2) }}
+                                                        · Maintenance: {{ $currencySymbol }}{{ number_format((float) ($project['maintenance_amount'] ?? 0), 2) }}
+                                                    </span>
+                                                </div>
+                                            @empty
+                                                <div class="text-xs text-slate-500">No projects linked.</div>
+                                            @endforelse
+                                        </div>
+                                        <div class="mt-2 text-xs text-slate-500">
+                                            Total: {{ $currencySymbol }}{{ number_format((float) ($rep['total_project_amount'] ?? 0), 2) }}
+                                            · Maintenance: {{ $currencySymbol }}{{ number_format((float) ($rep['total_maintenance_amount'] ?? 0), 2) }}
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="mt-2 text-sm text-slate-500">No sales representatives linked to this customer.</div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -195,7 +225,10 @@
                                                 method="POST"
                                                 action="{{ route('admin.customers.project-users.destroy', [$customer, $clientUser]) }}"
                                                 class="inline"
-                                                onsubmit="return confirm('Are you sure you want to delete this project login? This action cannot be undone.');"
+                                                data-delete-confirm
+                                                data-confirm-name="{{ $clientUser->name ?: $clientUser->email }}"
+                                                data-confirm-title="Delete project login {{ $clientUser->name ?: $clientUser->email }}?"
+                                                data-confirm-description="This action cannot be undone."
                                             >
                                                 @csrf
                                                 @method('DELETE')
@@ -467,7 +500,11 @@
                 </table>
             </div>
         @elseif($tab === 'tickets')
-            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-300">
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+                <div class="text-sm text-slate-600">Support tickets for this customer.</div>
+                <a href="{{ route('admin.support-tickets.create', ['customer_id' => $customer->id]) }}" class="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Open Ticket</a>
+            </div>
+            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-300">
                 <table class="w-full min-w-[800px] text-left text-sm">
                     <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
@@ -535,7 +572,14 @@
                                                     @csrf
                                                     <button type="submit" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Resend Email</button>
                                                 </form>
-                                                <form method="POST" action="{{ route('admin.logs.email.delete', $log) }}" onsubmit="return confirm('Delete this email log?');">
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('admin.logs.email.delete', $log) }}"
+                                                    data-delete-confirm
+                                                    data-confirm-name="LOG-{{ $log->id }}"
+                                                    data-confirm-title="Delete email log LOG-{{ $log->id }}?"
+                                                    data-confirm-description="This will permanently delete the email log."
+                                                >
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300 hover:text-rose-700">Delete</button>

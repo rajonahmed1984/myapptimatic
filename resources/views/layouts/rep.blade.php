@@ -229,6 +229,7 @@
             });
         });
     </script>
+    @include('layouts.partials.delete-confirm-modal')
     @include('layouts.partials.table-responsive')
     @if(session('cache_cleared'))
         <script>

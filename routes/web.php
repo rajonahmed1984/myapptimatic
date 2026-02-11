@@ -587,6 +587,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::resource('sales-reps', \App\Http\Controllers\Admin\SalesRepresentativeController::class)->except(['destroy']);
     Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])->name('support-tickets.index');
+    Route::get('support-tickets/create', [AdminSupportTicketController::class, 'create'])->name('support-tickets.create');
+    Route::post('support-tickets', [AdminSupportTicketController::class, 'store'])->name('support-tickets.store');
     Route::get('support-tickets/{ticket}', [AdminSupportTicketController::class, 'show'])->name('support-tickets.show');
     Route::post('support-tickets/{ticket}/ai-summary', [AdminSupportTicketController::class, 'aiSummary'])->name('support-tickets.ai');
     Route::post('support-tickets/{ticket}/reply', [AdminSupportTicketController::class, 'reply'])->name('support-tickets.reply');

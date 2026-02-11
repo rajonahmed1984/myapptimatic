@@ -32,7 +32,14 @@
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.products.edit', $product) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
-                                <form method="POST" action="{{ route('admin.products.destroy', $product) }}" onsubmit="return confirm('Delete this product? Plans and subscriptions will also be removed.');">
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.products.destroy', $product) }}"
+                                    data-delete-confirm
+                                    data-confirm-name="{{ $product->name }}"
+                                    data-confirm-title="Delete {{ $product->name }}?"
+                                    data-confirm-description="Deleting this product will also remove related plans and subscriptions."
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>

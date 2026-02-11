@@ -73,7 +73,15 @@
                             </td>
                             <td class="py-2 px-3 text-right space-x-2">
                                 <a href="{{ route('admin.hr.employees.edit', $employee) }}" class="text-xs text-emerald-700 hover:underline">Edit</a>
-                                <form method="POST" action="{{ route('admin.hr.employees.destroy', $employee) }}" class="inline" onsubmit="return confirm('Delete this employee?');">
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.hr.employees.destroy', $employee) }}"
+                                    class="inline"
+                                    data-delete-confirm
+                                    data-confirm-name="{{ $employee->name }}"
+                                    data-confirm-title="Delete employee {{ $employee->name }}?"
+                                    data-confirm-description="This will permanently delete the employee."
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button class="text-xs text-rose-600 hover:underline">Delete</button>

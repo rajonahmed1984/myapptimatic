@@ -108,7 +108,15 @@
                                     >Sync</button>
                                 </form>
                                 <a href="{{ route('admin.licenses.edit', $license) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
-                                <form method="POST" action="{{ route('admin.licenses.destroy', $license) }}" onsubmit="return confirm('Delete this license?');" style="display: inline;">
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.licenses.destroy', $license) }}"
+                                    data-delete-confirm
+                                    data-confirm-name="{{ $license->license_key }}"
+                                    data-confirm-title="Delete license {{ $license->license_key }}?"
+                                    data-confirm-description="This will permanently delete the license and related data."
+                                    style="display: inline;"
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>

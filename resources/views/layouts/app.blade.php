@@ -65,5 +65,7 @@
 
         @yield('content')
     </main>
+
+    @include('layouts.partials.delete-confirm-modal')
 </body>
 </html>

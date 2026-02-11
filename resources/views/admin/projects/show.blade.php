@@ -24,7 +24,14 @@
                 </span>
             </a>
             <a href="{{ route('admin.projects.edit', $project) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Edit</a>
-            <form method="POST" action="{{ route('admin.projects.destroy', $project) }}" onsubmit="return confirm('Delete this project?');">
+            <form
+                method="POST"
+                action="{{ route('admin.projects.destroy', $project) }}"
+                data-delete-confirm
+                data-confirm-name="{{ $project->name }}"
+                data-confirm-title="Delete project {{ $project->name }}?"
+                data-confirm-description="This will permanently delete the project and related data."
+            >
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 hover:border-rose-300">Delete</button>

@@ -822,6 +822,7 @@
             })();
         </script>
     @endif
+    @include('layouts.partials.delete-confirm-modal')
     @include('layouts.partials.table-responsive')
     @stack('scripts')
 </body>

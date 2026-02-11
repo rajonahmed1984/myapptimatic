@@ -77,9 +77,19 @@
                                         @csrf
                                         <button type="submit" class="rounded-full border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-600 hover:border-rose-300">Cancel</button>
                                     </form>
-                                @else
-                                    <span class="text-xs text-slate-400">No actions</span>
-                                @endif
+                                @endif                                
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.orders.destroy', $order) }}"
+                                    data-delete-confirm
+                                    data-confirm-name="{{ $order->order_number ?? $order->id }}"
+                                    data-confirm-title="Delete order #{{ $order->order_number ?? $order->id }}?"
+                                    data-confirm-description="This will permanently delete the order and related data."
+                                >
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="rounded-full border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-600 hover:border-rose-300">Delete</button>
+                                </form>
                             </div>
                         </td>
                     </tr>

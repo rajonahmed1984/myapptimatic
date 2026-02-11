@@ -26,12 +26,12 @@
     <div class="card p-6">
 
         <div class="mt-6 grid gap-4 md:grid-cols-2 text-sm text-slate-600">
-            <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+            <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Service</div>
                 <div class="mt-2 font-semibold text-slate-900">{{ $service }}</div>
                 <div class="mt-2 text-xs text-slate-500">Subscription ID: {{ $order->subscription_id ?? '--' }}</div>
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+            <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Invoice</div>
                 <div class="mt-2 font-semibold text-slate-900">#{{ $invoiceNumber }}</div>
                 <div class="mt-2 text-xs text-slate-500">Invoice ID: {{ $order->invoice_id ?? '--' }}</div>
@@ -39,12 +39,17 @@
         </div>
 
         <div class="mt-6 grid gap-4 md:grid-cols-2 text-sm text-slate-600">
-            <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+            <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">License</div>
                 @if($order->subscription && $order->subscription->licenses->isNotEmpty())
                     @foreach($order->subscription->licenses as $license)
+                        @php
+                            $licenseDomains = $license->domains?->pluck('domain')->filter()->values() ?? collect();
+                            $licenseDomainLabel = $licenseDomains->isNotEmpty() ? $licenseDomains->implode(', ') : '--';
+                        @endphp
                         <div class="mt-2">
                             <div class="font-semibold text-slate-900">{{ $license->license_key }}</div>
+                            <div class="text-xs text-slate-500">Domain: {{ $licenseDomainLabel }}</div>
                             <div class="text-xs text-slate-500">Status: {{ ucfirst($license->status) }}</div>
                         </div>
                     @endforeach
@@ -52,7 +57,7 @@
                     <div class="mt-2 text-xs text-slate-500">No license created yet.</div>
                 @endif
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+            <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Interval</div>
                 <div class="mt-2 font-semibold text-slate-900">{{ ucfirst($order->plan?->interval ?? 'n/a') }}</div>
                 @if(in_array($order->status, ['pending', 'accepted'], true))
@@ -63,7 +68,7 @@
                             @csrf
                             @method('PATCH')
                             <label class="text-xs text-slate-500">Change interval</label>
-                            <select name="interval" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <select name="interval" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                                 @foreach($intervalOptions as $intervalOption)
                                     <option value="{{ $intervalOption }}" @selected($order->plan?->interval === $intervalOption)>
                                         {{ ucfirst($intervalOption) }}
@@ -84,14 +89,14 @@
 
         <div class="mt-6 flex flex-wrap items-start gap-3">
             @if($order->status === 'pending')
-                <form method="POST" action="{{ route('admin.orders.approve', $order) }}" class="w-full max-w-xl space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <form method="POST" action="{{ route('admin.orders.approve', $order) }}" class="w-full max-w-xl space-y-3 rounded-2xl border border-slate-300 bg-white/70 p-4">
                     @csrf
                     <div>
                         <label class="text-xs uppercase tracking-[0.2em] text-slate-400">License number</label>
                         <input
                             name="license_key"
                             value="{{ old('license_key', $primaryLicense?->license_key) }}"
-                            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                             placeholder="Enter license key"
                             required
                         />
@@ -101,7 +106,7 @@
                         <input
                             name="license_url"
                             value="{{ old('license_url', $primaryDomain) }}"
-                            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                             placeholder="https://example.com"
                             required
                         />
@@ -113,13 +118,19 @@
                     <button type="submit" class="rounded-full border border-rose-200 px-5 py-2 text-sm font-semibold text-rose-600 hover:border-rose-300">Cancel Order</button>
                 </form>
             @endif
-            <form method="POST" action="{{ route('admin.orders.destroy', $order) }}" onsubmit="return confirm('Delete this order?');">
+            <form
+                method="POST"
+                action="{{ route('admin.orders.destroy', $order) }}"
+                data-delete-confirm
+                data-confirm-name="{{ $order->order_number ?? $order->id }}"
+                data-confirm-title="Delete order #{{ $order->order_number ?? $order->id }}?"
+                data-confirm-description="This will permanently delete the order and related data."
+            >
                 @csrf
                 @method('DELETE')
-                <button type="submit" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-slate-300">Delete Order</button>
+                <button type="submit" class="rounded-full border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-600 hover:border-rose-300">Delete Order</button>
             </form>
-            <a href="{{ route('admin.orders.index') }}" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Orders</a>
+            <a href="{{ route('admin.orders.index') }}" class="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Orders</a>
         </div>
     </div>
 @endsection
-

@@ -55,7 +55,14 @@
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <a href="{{ route('admin.accounting.edit', $entry) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
-                                <form method="POST" action="{{ route('admin.accounting.destroy', $entry) }}" onsubmit="return confirm('Delete this entry?');">
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.accounting.destroy', $entry) }}"
+                                    data-delete-confirm
+                                    data-confirm-name="{{ $entry->reference ?: $entry->id }}"
+                                    data-confirm-title="Delete entry {{ $entry->reference ?: $entry->id }}?"
+                                    data-confirm-description="This will permanently delete the accounting entry."
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>

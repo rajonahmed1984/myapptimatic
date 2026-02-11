@@ -65,7 +65,14 @@
                             <td class="py-2 px-3 text-right">
                                 <div class="flex justify-end gap-3 text-xs font-semibold">
                                     <a href="{{ route('admin.income.categories.edit', $category) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
-                                    <form method="POST" action="{{ route('admin.income.categories.destroy', $category) }}">
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.income.categories.destroy', $category) }}"
+                                        data-delete-confirm
+                                        data-confirm-name="{{ $category->name }}"
+                                        data-confirm-title="Delete category {{ $category->name }}?"
+                                        data-confirm-description="This will permanently delete the income category."
+                                    >
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>

@@ -145,7 +145,14 @@
                             <td class="py-2 px-3 text-right">
                                 <div class="flex justify-end gap-3 text-xs font-semibold">
                                     <a href="{{ route('admin.finance.tax.rates.edit', $rate) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
-                                    <form method="POST" action="{{ route('admin.finance.tax.rates.destroy', $rate) }}">
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.finance.tax.rates.destroy', $rate) }}"
+                                        data-delete-confirm
+                                        data-confirm-name="{{ $rate->label ?? ('Rate #' . $rate->id) }}"
+                                        data-confirm-title="Delete tax rate {{ $rate->label ?? ('Rate #' . $rate->id) }}?"
+                                        data-confirm-description="This will permanently delete the tax rate."
+                                    >
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>

@@ -59,7 +59,16 @@
         <div class="flex flex-col items-end gap-2 text-xs font-semibold">
             <a href="{{ route('admin.projects.tasks.show', [$project, $task]) }}" class="text-teal-600 hover:text-teal-500">Open Task</a>
             @can('delete', $task)
-                <form id="delete-task-{{ $task->id }}" method="POST" action="{{ route('admin.projects.tasks.destroy', [$project, $task]) }}" onsubmit="return confirm('Delete this task?');" class="hidden">
+                <form
+                    id="delete-task-{{ $task->id }}"
+                    method="POST"
+                    action="{{ route('admin.projects.tasks.destroy', [$project, $task]) }}"
+                    data-delete-confirm
+                    data-confirm-name="{{ $task->title }}"
+                    data-confirm-title="Delete task {{ $task->title }}?"
+                    data-confirm-description="This will permanently delete the task and related activity."
+                    class="hidden"
+                >
                     @csrf
                     @method('DELETE')
                 </form>

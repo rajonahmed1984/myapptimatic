@@ -57,7 +57,14 @@
                                     <a href="{{ route('admin.users.edit', $user) }}" class="text-sm font-semibold text-teal-600 hover:text-teal-700">
                                         Edit
                                     </a>
-                                    <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Delete this user?');">
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.users.destroy', $user) }}"
+                                        data-delete-confirm
+                                        data-confirm-name="{{ $user->name }}"
+                                        data-confirm-title="Delete user {{ $user->name }}?"
+                                        data-confirm-description="This will permanently delete the user."
+                                    >
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-sm font-semibold text-rose-600 hover:text-rose-700">Delete</button>
