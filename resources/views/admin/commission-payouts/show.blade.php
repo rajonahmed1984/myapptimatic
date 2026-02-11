@@ -22,7 +22,9 @@
             </div>
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Details</div>
-                <div class="mt-2 text-sm text-slate-700">Method: {{ $payout->payout_method ?? '--' }}</div>
+                <div class="mt-2 text-sm text-slate-700">Type: {{ ucfirst($payout->type ?? 'regular') }}</div>
+                <div class="text-sm text-slate-700">Project: {{ $payout->project?->name ?? '--' }}</div>
+                <div class="text-sm text-slate-700">Method: {{ $payout->payout_method ?? '--' }}</div>
                 <div class="text-sm text-slate-700">Reference: {{ $payout->reference ?? '--' }}</div>
                 <div class="text-sm text-slate-700">Note: {{ $payout->note ?? '--' }}</div>
             </div>
@@ -49,7 +51,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($payout->earnings as $earning)
+                        @forelse($payout->earnings as $earning)
                             <tr class="border-t border-slate-200">
                                 <td class="px-2 py-2">#{{ $earning->id }}</td>
                                 <td class="px-2 py-2">
@@ -65,7 +67,11 @@
                                 <td class="px-2 py-2">{{ ucfirst($earning->status) }}</td>
                                 <td class="px-2 py-2">{{ $earning->earned_at?->format($globalDateFormat.' H:i') ?? '--' }}</td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-2 py-3 text-slate-500">No earnings linked (advance payment).</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>

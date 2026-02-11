@@ -20,6 +20,7 @@
                     <thead>
                         <tr class="text-xs uppercase text-slate-500">
                             <th class="px-2 py-2">ID</th>
+                            <th class="px-2 py-2">Type</th>
                             <th class="px-2 py-2">Amount</th>
                             <th class="px-2 py-2">Status</th>
                             <th class="px-2 py-2">Method</th>
@@ -30,6 +31,7 @@
                         @forelse($payouts as $payout)
                             <tr class="border-t border-slate-200">
                                 <td class="px-2 py-2">#{{ $payout->id }}</td>
+                                <td class="px-2 py-2">{{ ucfirst($payout->type ?? 'regular') }}</td>
                                 <td class="px-2 py-2">{{ number_format($payout->total_amount, 2) }} {{ $payout->currency }}</td>
                                 <td class="px-2 py-2">{{ ucfirst($payout->status) }}</td>
                                 <td class="px-2 py-2">{{ $payout->payout_method ?? '—' }}</td>
@@ -37,7 +39,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-2 py-3 text-slate-500">No payouts yet.</td>
+                                <td colspan="6" class="px-2 py-3 text-slate-500">No payouts yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

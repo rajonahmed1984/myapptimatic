@@ -16,7 +16,7 @@ class CommissionPayoutController extends Controller
     public function index()
     {
         $payouts = CommissionPayout::query()
-            ->with('salesRep')
+            ->with(['salesRep', 'project:id,name'])
             ->latest()
             ->paginate(25);
 
@@ -55,11 +55,17 @@ class CommissionPayoutController extends Controller
 
         $earnings = $payableQuery->get();
         $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
+        $repBalance = null;
+
+        if ($salesRepId) {
+            $repBalance = app(CommissionService::class)->computeRepBalance((int) $salesRepId);
+        }
 
         return view('admin.commission-payouts.create', [
             'earnings' => $earnings,
             'salesReps' => $salesReps,
             'selectedRep' => $salesRepId,
+            'repBalance' => $repBalance,
         ]);
     }
 
@@ -72,6 +78,28 @@ class CommissionPayoutController extends Controller
             'payout_method' => ['nullable', 'in:bank,mobile,cash'],
             'note' => ['nullable', 'string'],
         ]);
+
+        $balance = $commissionService->computeRepBalance((int) $data['sales_rep_id']);
+        $netPayable = (float) ($balance['payable_balance'] ?? 0);
+
+        if ($netPayable <= 0) {
+            return back()
+                ->withErrors(['payout' => 'Advance payments already cover earned commission. Net payable is 0.'])
+                ->withInput();
+        }
+
+        $selectedTotal = (float) CommissionEarning::query()
+            ->whereIn('id', $data['earning_ids'])
+            ->where('sales_representative_id', (int) $data['sales_rep_id'])
+            ->where('status', 'payable')
+            ->whereNull('commission_payout_id')
+            ->sum('commission_amount');
+
+        if ($selectedTotal > $netPayable) {
+            return back()
+                ->withErrors(['payout' => 'Selected payout exceeds net payable after advances.'])
+                ->withInput();
+        }
 
         try {
             $payout = $commissionService->createPayout(
@@ -91,7 +119,7 @@ class CommissionPayoutController extends Controller
 
     public function show(CommissionPayout $commissionPayout)
     {
-        $commissionPayout->load(['salesRep', 'earnings' => function ($query) {
+        $commissionPayout->load(['salesRep', 'project', 'earnings' => function ($query) {
             $query->with(['invoice', 'subscription', 'project', 'customer']);
         }]);
 

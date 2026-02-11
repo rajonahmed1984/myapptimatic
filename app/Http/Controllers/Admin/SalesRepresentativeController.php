@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommissionEarning;
+use App\Models\CommissionAuditLog;
+use App\Models\CommissionPayout;
 use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
@@ -19,14 +21,31 @@ use Illuminate\Validation\Rule;
 use App\Enums\Role;
 use Illuminate\Support\Facades\Log;
 use App\Services\CommissionService;
+use Illuminate\Support\Carbon;
 
 class SalesRepresentativeController extends Controller
 {
     public function index(CommissionService $commissionService)
     {
+        $search = trim((string) request()->query('search', ''));
+
         $reps = SalesRepresentative::query()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('email', 'like', '%' . $search . '%')
+                        ->orWhere('phone', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', '%' . $search . '%')
+                                ->orWhere('email', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('employee', function ($employeeQuery) use ($search) {
+                            $employeeQuery->where('name', 'like', '%' . $search . '%');
+                        });
+                });
+            })
             ->with(['user:id,name,email', 'employee:id,name'])
-            ->withCount('projects')
+            ->withCount(['projects', 'maintenances'])
             ->orderBy('name')
             ->get();
 
@@ -42,10 +61,19 @@ class SalesRepresentativeController extends Controller
 
         $loginStatuses = $this->resolveRepLoginStatuses($reps);
 
+        if (request()->boolean('partial') || request()->header('HX-Request')) {
+            return view('admin.sales-reps.partials.table', [
+                'reps' => $reps,
+                'totals' => $totals,
+                'loginStatuses' => $loginStatuses,
+            ]);
+        }
+
         return view('admin.sales-reps.index', [
             'reps' => $reps,
             'totals' => $totals,
             'loginStatuses' => $loginStatuses,
+            'search' => $search,
         ]);
     }
 
@@ -178,7 +206,11 @@ class SalesRepresentativeController extends Controller
         $summary = [
             'total_earned' => $balance['total_earned'] ?? 0,
             'payable' => $balance['payable_balance'] ?? 0,
+            'payable_gross' => $balance['payable_gross'] ?? 0,
             'paid' => $balance['total_paid'] ?? 0,
+            'advance_paid' => $balance['advance_paid'] ?? 0,
+            'overpaid' => $balance['overpaid'] ?? 0,
+            'outstanding' => $balance['outstanding'] ?? (($balance['total_earned'] ?? 0) - ($balance['total_paid'] ?? 0)),
         ];
 
         $recentEarnings = collect();
@@ -252,6 +284,12 @@ class SalesRepresentativeController extends Controller
             }
         }
 
+        $advanceProjects = Project::query()
+            ->with('customer:id,name')
+            ->whereHas('salesRepresentatives', fn ($query) => $query->whereKey($salesRep->id))
+            ->orderBy('name')
+            ->get(['id', 'name', 'customer_id', 'status']);
+
         return view('admin.sales-reps.show', [
             'rep' => $salesRep,
             'tab' => $tab,
@@ -263,7 +301,68 @@ class SalesRepresentativeController extends Controller
             'projects' => $projects,
             'projectStatusCounts' => $projectStatusCounts,
             'projectTaskStatusCounts' => $projectTaskStatusCounts,
+            'advanceProjects' => $advanceProjects,
         ]);
+    }
+
+    public function storeAdvancePayment(Request $request, SalesRepresentative $salesRep)
+    {
+        $data = $request->validate([
+            'project_id' => ['nullable', 'integer'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'currency' => ['nullable', 'string', 'max:10'],
+            'payout_method' => ['nullable', 'in:bank,mobile,cash'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $currency = $data['currency'] ?? 'BDT';
+        $project = null;
+
+        if (! empty($data['project_id'])) {
+            $project = Project::query()
+                ->with('customer:id,name')
+                ->whereKey((int) $data['project_id'])
+                ->whereHas('salesRepresentatives', fn ($query) => $query->whereKey($salesRep->id))
+                ->first();
+
+            if (! $project) {
+                return back()->withErrors(['project_id' => 'Select a valid project linked to this sales rep.'])->withInput();
+            }
+        }
+
+        DB::transaction(function () use ($data, $salesRep, $currency, $request, $project) {
+            $payout = CommissionPayout::create([
+                'sales_representative_id' => $salesRep->id,
+                'project_id' => $project?->id,
+                'type' => 'advance',
+                'total_amount' => (float) $data['amount'],
+                'currency' => $currency,
+                'payout_method' => $data['payout_method'] ?? null,
+                'reference' => $data['reference'] ?? null,
+                'note' => $data['note'] ?? null,
+                'status' => 'paid',
+                'paid_at' => now(),
+            ]);
+
+            CommissionAuditLog::create([
+                'sales_representative_id' => $salesRep->id,
+                'commission_payout_id' => $payout->id,
+                'action' => 'advance_payment',
+                'status_from' => null,
+                'status_to' => 'paid',
+                'description' => 'Advance payment recorded.',
+                'metadata' => [
+                    'amount' => (float) $data['amount'],
+                    'currency' => $currency,
+                    'project_id' => $project?->id,
+                    'project_name' => $project?->name,
+                ],
+                'created_by' => $request->user()?->id,
+            ]);
+        });
+
+        return back()->with('status', 'Advance payment recorded.');
     }
 
     public function impersonate(Request $request, SalesRepresentative $salesRep)
@@ -330,26 +429,50 @@ class SalesRepresentativeController extends Controller
             ->get()
             ->groupBy('user_id');
 
+        $lastLoginByUser = UserSession::query()
+            ->whereIn('user_id', $userIds)
+            ->where('guard', 'sales')
+            ->whereNotNull('login_at')
+            ->select('user_id', DB::raw('MAX(login_at) as last_login_at'))
+            ->groupBy('user_id')
+            ->get()
+            ->keyBy('user_id');
+
         $threshold = now()->subMinutes(2);
         $statuses = [];
 
         foreach ($reps as $rep) {
             $userId = $rep->user_id;
             if (! $userId) {
-                $statuses[$rep->id] = 'logout';
+                $statuses[$rep->id] = [
+                    'status' => 'logout',
+                    'last_login_at' => null,
+                ];
                 continue;
             }
 
             $session = $openSessions->get($userId)?->first();
             if (! $session) {
-                $statuses[$rep->id] = 'logout';
+                $candidate = $lastLoginByUser->get($userId)?->last_login_at;
+                if ($candidate && ! $candidate instanceof Carbon) {
+                    $candidate = Carbon::parse($candidate);
+                }
+                $statuses[$rep->id] = [
+                    'status' => 'logout',
+                    'last_login_at' => $candidate,
+                ];
                 continue;
             }
 
             $lastSeen = $session->last_seen_at;
-            $statuses[$rep->id] = $lastSeen && $lastSeen->greaterThanOrEqualTo($threshold)
-                ? 'login'
-                : 'idle';
+            $candidate = $lastLoginByUser->get($userId)?->last_login_at;
+            if ($candidate && ! $candidate instanceof Carbon) {
+                $candidate = Carbon::parse($candidate);
+            }
+            $statuses[$rep->id] = [
+                'status' => $lastSeen && $lastSeen->greaterThanOrEqualTo($threshold) ? 'login' : 'idle',
+                'last_login_at' => $candidate,
+            ];
         }
 
         return $statuses;

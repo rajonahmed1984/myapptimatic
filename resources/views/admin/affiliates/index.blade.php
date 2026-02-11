@@ -22,9 +22,9 @@
                 name="search" 
                 value="{{ request('search') }}" 
                 placeholder="Search by name, email, or code..." 
-                class="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                class="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
             />
-            <select name="status" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+            <select name="status" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                 <option value="">All statuses</option>
                 <option value="active" @selected(request('status') === 'active')>Active</option>
                 <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
@@ -34,20 +34,20 @@
                 Filter
             </button>
             @if(request()->hasAny(['search', 'status']))
-                <a href="{{ route('admin.affiliates.index') }}" class="rounded-full border border-slate-200 px-6 py-2 text-sm font-semibold text-slate-600">
+                <a href="{{ route('admin.affiliates.index') }}" class="rounded-full border border-slate-300 px-6 py-2 text-sm font-semibold text-slate-600">
                     Clear
                 </a>
             @endif
         </form>
 
         @if($affiliates->isEmpty())
-            <div class="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-600">
+            <div class="rounded-xl border border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">
                 No affiliates found.
             </div>
         @else
             <div class="overflow-x-auto">
                 <table class="w-full">
-                    <thead class="border-b border-slate-200 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <thead class="border-b border-slate-300 text-left text-xs uppercase tracking-wider text-slate-500">
                         <tr>
                             <th class="pb-3 font-semibold">Affiliate</th>
                             <th class="pb-3 font-semibold">Code</th>

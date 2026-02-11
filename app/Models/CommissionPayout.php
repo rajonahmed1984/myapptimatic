@@ -10,6 +10,8 @@ class CommissionPayout extends Model
 {
     protected $fillable = [
         'sales_representative_id',
+        'project_id',
+        'type',
         'total_amount',
         'currency',
         'payout_method',
@@ -29,6 +31,11 @@ class CommissionPayout extends Model
     public function salesRep(): BelongsTo
     {
         return $this->belongsTo(SalesRepresentative::class, 'sales_representative_id');
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     public function earnings(): HasMany

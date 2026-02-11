@@ -363,7 +363,7 @@ class CommissionService
             ->whereIn('status', ['pending', 'earned', 'payable', 'paid'])
             ->sum('commission_amount');
 
-        $totalPaid = (float) CommissionEarning::query()
+        $paidEarnings = (float) CommissionEarning::query()
             ->where('sales_representative_id', $salesRepId)
             ->where('status', 'paid')
             ->sum('commission_amount');
@@ -373,11 +373,25 @@ class CommissionService
             ->where('status', 'payable')
             ->sum('commission_amount');
 
+        $advancePaid = (float) CommissionPayout::query()
+            ->where('sales_representative_id', $salesRepId)
+            ->where('type', 'advance')
+            ->where('status', 'paid')
+            ->sum('total_amount');
+
+        $totalPaid = $paidEarnings + $advancePaid;
+        $overpaid = max(0, $totalPaid - $totalEarned);
+        $netPayable = max(0, $payable - $overpaid);
+        $outstanding = $totalEarned - $totalPaid;
+
         return [
             'total_earned' => $totalEarned,
             'total_paid' => $totalPaid,
-            'payable_balance' => $payable,
-            'outstanding' => max(0, $totalEarned - $totalPaid),
+            'payable_balance' => $netPayable,
+            'payable_gross' => $payable,
+            'advance_paid' => $advancePaid,
+            'overpaid' => $overpaid,
+            'outstanding' => $outstanding,
         ];
     }
 
@@ -403,6 +417,7 @@ class CommissionService
 
             $payout = CommissionPayout::create([
                 'sales_representative_id' => $salesRepId,
+                'type' => 'regular',
                 'total_amount' => $total,
                 'currency' => $currency ?? 'BDT',
                 'payout_method' => $payoutMethod,

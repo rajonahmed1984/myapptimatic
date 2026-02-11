@@ -9,12 +9,12 @@
             <div class="section-label">Commission Management</div>
             <h1 class="mt-2 text-2xl font-semibold text-slate-900">Affiliate commissions</h1>
         </div>
-        <a href="{{ route('admin.affiliates.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to affiliates</a>
+        <a href="{{ route('admin.affiliates.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to affiliates</a>
     </div>
 
     <div class="card p-6">
         <form method="GET" class="mb-6 flex flex-wrap gap-4">
-            <select name="affiliate_id" class="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+            <select name="affiliate_id" class="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                 <option value="">All affiliates</option>
                 @foreach($affiliates as $affiliate)
                     <option value="{{ $affiliate->id }}" @selected(request('affiliate_id') == $affiliate->id)>
@@ -22,7 +22,7 @@
                     </option>
                 @endforeach
             </select>
-            <select name="status" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+            <select name="status" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                 <option value="">All statuses</option>
                 <option value="pending" @selected(request('status') === 'pending')>Pending</option>
                 <option value="approved" @selected(request('status') === 'approved')>Approved</option>
@@ -33,20 +33,20 @@
                 Filter
             </button>
             @if(request()->hasAny(['affiliate_id', 'status']))
-                <a href="{{ route('admin.affiliates.commissions.index') }}" class="rounded-full border border-slate-200 px-6 py-2 text-sm font-semibold text-slate-600">
+                <a href="{{ route('admin.affiliates.commissions.index') }}" class="rounded-full border border-slate-300 px-6 py-2 text-sm font-semibold text-slate-600">
                     Clear
                 </a>
             @endif
         </form>
 
         @if($commissions->isEmpty())
-            <div class="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-600">
+            <div class="rounded-xl border border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">
                 No commissions found.
             </div>
         @else
             <div class="overflow-x-auto">
                 <table class="w-full">
-                    <thead class="border-b border-slate-200 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <thead class="border-b border-slate-300 text-left text-xs uppercase tracking-wider text-slate-500">
                         <tr>
                             <th class="pb-3 font-semibold">Date</th>
                             <th class="pb-3 font-semibold">Affiliate</th>

@@ -126,6 +126,8 @@ class CommissionExportController extends Controller
             fputcsv($handle, [
                 'id',
                 'sales_rep',
+                'type',
+                'project_id',
                 'total_amount',
                 'currency',
                 'status',
@@ -143,6 +145,8 @@ class CommissionExportController extends Controller
                     fputcsv($handle, [
                         $row->id,
                         $row->salesRep?->name,
+                        $row->type ?? 'regular',
+                        $row->project_id,
                         $row->total_amount,
                         $row->currency,
                         $row->status,
