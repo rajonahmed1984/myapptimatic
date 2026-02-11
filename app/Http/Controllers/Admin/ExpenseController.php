@@ -9,6 +9,7 @@ use App\Models\RecurringExpense;
 use App\Models\Setting;
 use App\Services\ExpenseEntryService;
 use App\Support\Currency;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +20,7 @@ use Illuminate\Support\Collection;
 
 class ExpenseController extends Controller
 {
-    public function index(Request $request, ExpenseEntryService $entryService): View
+    public function index(Request $request, ExpenseEntryService $entryService): View|JsonResponse
     {
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {

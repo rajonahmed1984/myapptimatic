@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\RecurringExpense;
+use App\Models\User;
 use App\Services\RecurringExpenseGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -18,6 +19,8 @@ class RecurringExpenseGeneratorTest extends TestCase
     #[Test]
     public function recurring_expense_generation_is_idempotent(): void
     {
+        $admin = User::factory()->create(['role' => 'master_admin']);
+
         $category = ExpenseCategory::create([
             'name' => 'Subscriptions',
             'description' => 'Recurring subscriptions',
@@ -33,6 +36,7 @@ class RecurringExpenseGeneratorTest extends TestCase
             'start_date' => '2026-04-01',
             'next_run_date' => '2026-04-01',
             'status' => 'active',
+            'created_by' => $admin->id,
         ]);
 
         $generator = app(RecurringExpenseGenerator::class);

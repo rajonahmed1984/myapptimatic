@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ActivityTrackingEventServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
+
         $middleware->validateCsrfTokens(except: [
             'payments/sslcommerz/*',
             'payments/bkash/*',

@@ -19,10 +19,21 @@
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3 text-slate-500"><a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->id }}</a></td>
                             <td class="px-4 py-3">
-                                <a href="{{ route('admin.customers.show', $customer) }}" class="font-medium text-slate-900 hover:text-teal-600">
-                                    {{ $customer->name }}
-                                </a>
-                                <div class="text-xs text-slate-500">{{ $customer->company_name ?: '--' }}</div>
+                                <div class="flex items-center gap-3">
+                                    @if($customer->avatar_path)
+                                        <img src="{{ Storage::disk('public')->url($customer->avatar_path) }}" alt="{{ $customer->name }}" class="h-10 w-10 rounded-full object-cover" />
+                                    @else
+                                        <div class="h-10 w-10 rounded-full overflow-hidden flex items-center justify-center bg-slate-100 text-slate-600 text-sm font-semibold">
+                                            <span>{{ substr($customer->name, 0, 2) }}</span>
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <a href="{{ route('admin.customers.show', $customer) }}" class="font-medium text-slate-900 hover:text-teal-600">
+                                            {{ $customer->name }}
+                                        </a>
+                                        <div class="text-xs text-slate-500">{{ $customer->company_name ?: '--' }}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-4 py-3 text-slate-500">{{ $customer->email }}</td>
                             <td class="px-4 py-3 text-slate-500">

@@ -187,7 +187,7 @@ class ExpenseManagementTest extends TestCase
         ]);
         $request->setUserResolver(fn () => $admin);
 
-        $view = app(ExpenseDashboardController::class)->index($request, app(ExpenseEntryService::class));
+        $view = app(ExpenseDashboardController::class)->index($request, app(ExpenseEntryService::class), app(\App\Services\GeminiService::class));
         $data = $view->getData();
 
         $this->assertTrue(abs(($data['expenseTotal'] ?? 0) - 3000.0) < 0.01);
