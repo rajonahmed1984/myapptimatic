@@ -9,7 +9,7 @@
             <div class="section-label">Subscriptions</div>
             <h1 class="text-2xl font-semibold text-slate-900">Edit Subscription</h1>
         </div>
-        <a href="{{ route('admin.subscriptions.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to subscriptions</a>
+        <a href="{{ route('admin.subscriptions.index') }}" hx-boost="false" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to subscriptions</a>
     </div>
 
     <div class="card p-6">
@@ -19,7 +19,7 @@
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label class="text-sm text-slate-600">Customer</label>
-                    <select name="customer_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    <select name="customer_id" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                         @foreach($customers as $customer)
                             <option value="{{ $customer->id }}" @selected($subscription->customer_id === $customer->id)>{{ $customer->name }}</option>
                         @endforeach
@@ -27,7 +27,7 @@
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Plan</label>
-                    <select name="plan_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    <select name="plan_id" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                         @foreach($plans as $plan)
                             <option value="{{ $plan->id }}" @selected($subscription->plan_id === $plan->id)>{{ $plan->name }} ({{ $plan->product->name }})</option>
                         @endforeach
@@ -35,7 +35,7 @@
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Sales rep</label>
-                    <select name="sales_rep_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    <select name="sales_rep_id" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                         <option value="">None</option>
                         @foreach($salesReps as $rep)
                             <option value="{{ $rep->id }}" @selected(old('sales_rep_id', $subscription->sales_rep_id) == $rep->id)>
@@ -46,23 +46,23 @@
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Start date</label>
-                    <input name="start_date" type="date" value="{{ old('start_date', optional($subscription->start_date)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <input name="start_date" type="date" value="{{ old('start_date', optional($subscription->start_date)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Current period start</label>
-                    <input name="current_period_start" type="date" value="{{ old('current_period_start', optional($subscription->current_period_start)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" required />
+                    <input name="current_period_start" type="date" value="{{ old('current_period_start', optional($subscription->current_period_start)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" required />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Current period end</label>
-                    <input name="current_period_end" type="date" value="{{ old('current_period_end', optional($subscription->current_period_end)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" required />
+                    <input name="current_period_end" type="date" value="{{ old('current_period_end', optional($subscription->current_period_end)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" required />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Next invoice at</label>
-                    <input name="next_invoice_at" type="date" value="{{ old('next_invoice_at', optional($subscription->next_invoice_at)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" required />
+                    <input name="next_invoice_at" type="date" value="{{ old('next_invoice_at', optional($subscription->next_invoice_at)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" required />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Status</label>
-                    <select name="status" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                    <select name="status" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                         <option value="active" @selected($subscription->status === 'active')>Active</option>
                         <option value="suspended" @selected($subscription->status === 'suspended')>Suspended</option>
                         <option value="cancelled" @selected($subscription->status === 'cancelled')>Cancelled</option>
@@ -80,7 +80,7 @@
                 </div>
                 <div class="md:col-span-2">
                     <label class="text-sm text-slate-600">Notes</label>
-                    <textarea name="notes" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $subscription->notes) }}</textarea>
+                    <textarea name="notes" rows="2" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">{{ old('notes', $subscription->notes) }}</textarea>
                 </div>
             </div>
 

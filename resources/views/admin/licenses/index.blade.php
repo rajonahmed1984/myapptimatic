@@ -5,137 +5,29 @@
 
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">Licenses</h1>
+        <div class="flex-1">
+            <form id="licensesSearchForm" method="GET" action="{{ route('admin.licenses.index') }}" class="flex items-center gap-3">
+                <div class="relative w-full max-w-sm">
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ $search ?? request('search') }}"
+                        placeholder="Search licenses..."
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                        hx-get="{{ route('admin.licenses.index') }}"
+                        hx-trigger="keyup changed delay:300ms"
+                        hx-target="#licensesTable"
+                        hx-swap="outerHTML"
+                        hx-push-url="true"
+                        hx-include="#licensesSearchForm"
+                    />
+                </div>
+            </form>
         </div>
         <a href="{{ route('admin.licenses.create') }}" class="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">New License</a>
     </div>
 
-    <div class="card overflow-x-auto">
-        <table class="w-full min-w-[1100px] text-left text-sm">
-            <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
-                <tr>
-                    <th class="px-4 py-3">SL</th>
-                    <th class="px-4 py-3">License &amp; URL</th>
-                    <th class="px-4 py-3">Sync status</th>
-                    <th class="px-4 py-3">Product &amp; Plan</th>
-                    <th class="px-4 py-3">Customer</th>
-                    <th class="px-4 py-3">Order number</th>
-                    <th class="px-4 py-3">Status</th>
-                    <th class="px-4 py-3 text-right">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($licenses as $license)
-                    @php
-                        $domain = $license->domains->first()?->domain;
-                        $syncAt = $license->last_check_at;
-                        $syncLabel = 'Never';
-                        $syncClass = 'bg-slate-100 text-slate-600';
-
-                        if ($syncAt) {
-                            $hours = $syncAt->diffInHours(now());
-                            if ($hours <= 24) {
-                                $syncLabel = 'Synced';
-                                $syncClass = 'bg-emerald-100 text-emerald-700';
-                            } elseif ($hours > 48) {
-                                $syncLabel = 'Stale';
-                                $syncClass = 'bg-amber-100 text-amber-700';
-                            } else {
-                                $syncLabel = 'Synced';
-                                $syncClass = 'bg-emerald-100 text-emerald-700';
-                            }
-                        }
-
-                        $customer = $license->subscription?->customer;
-                        $isBlocked = $customer && ($accessBlockedCustomers[$customer->id] ?? false);
-                        $latestOrder = $license->subscription?->latestOrder;
-                        $orderNumber = $latestOrder?->order_number ?? $latestOrder?->id;
-                    @endphp
-                    <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 text-slate-500">{{ $licenses->firstItem() ? $licenses->firstItem() + $loop->index : $license->id }}</td>
-                        <td class="px-4 py-3 font-mono text-xs text-teal-700">
-                            <div class="flex items-center gap-2">
-                                <span class="license-key-text">{{ $license->license_key }}</span>
-                                <button type="button" class="copy-license-btn text-slate-400 hover:text-teal-600 transition-colors" data-license-key="{{ $license->license_key }}" title="Copy license key">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                            <div class="mt-2 text-slate-900">{{ $domain ?? '--' }}</div>
-                        </td>
-                        <td class="px-4 py-3">
-                            <div class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $syncClass }}" data-sync-badge="{{ $license->id }}">
-                                {{ $syncLabel }}
-                            </div>
-                            <div class="mt-1 text-xs text-slate-500" data-sync-time="{{ $license->id }}">
-                                {{ $syncAt ? $syncAt->format($globalDateFormat.' H:i') : 'No sync yet' }}
-                            </div>
-                        </td>
-                        <td class="px-4 py-3 text-slate-900">
-                            {{ $license->product?->name ?? '--' }}
-                            <br>
-                            {{ $license->subscription?->plan?->name ?? '--' }}
-                        </td>
-                        <td class="px-4 py-3 text-slate-500">
-                            @if($customer)
-                                <a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->name }}</a>
-                            @else
-                                --
-                            @endif
-                        </td>
-                        <td class="px-4 py-3 text-slate-500">
-                            @if($latestOrder)
-                                <a href="{{ route('admin.orders.show', $latestOrder) }}" class="hover:text-teal-600">#{{ $orderNumber }}</a>
-                            @else
-                                --
-                            @endif
-                        </td>
-                        <td class="px-4 py-3">
-                            <x-status-badge :status="$license->status" />
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <div class="flex items-center justify-end gap-3">
-                                <form method="POST" action="{{ route('admin.licenses.sync', $license) }}" style="display: inline;">
-                                    @csrf
-                                    <button
-                                        type="submit"
-                                        class="text-blue-600 hover:text-blue-500 text-sm font-medium"
-                                        data-license-sync
-                                        data-license-id="{{ $license->id }}"
-                                        data-sync-status-url="{{ route('admin.licenses.sync-status', $license) }}"
-                                    >Sync</button>
-                                </form>
-                                <a href="{{ route('admin.licenses.edit', $license) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
-                                <form
-                                    method="POST"
-                                    action="{{ route('admin.licenses.destroy', $license) }}"
-                                    data-delete-confirm
-                                    data-confirm-name="{{ $license->license_key }}"
-                                    data-confirm-title="Delete license {{ $license->license_key }}?"
-                                    data-confirm-description="This will permanently delete the license and related data."
-                                    style="display: inline;"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" class="px-4 py-6 text-center text-slate-500">No licenses yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-
-    <div class="mt-4">
-        {{ $licenses->links() }}
-    </div>
+    @include('admin.licenses.partials.table', ['licenses' => $licenses])
 
     @push('scripts')
         <script>

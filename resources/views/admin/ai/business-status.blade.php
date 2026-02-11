@@ -14,17 +14,17 @@
                     <div>
                         <label class="text-xs uppercase tracking-[0.2em] text-slate-400">Start date</label>
                         <input type="date" name="start_date" value="{{ $filters['start_date'] }}"
-                               class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                               class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                     </div>
                     <div>
                         <label class="text-xs uppercase tracking-[0.2em] text-slate-400">End date</label>
                         <input type="date" name="end_date" value="{{ $filters['end_date'] }}"
-                               class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                               class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                     </div>
                     <div>
                         <label class="text-xs uppercase tracking-[0.2em] text-slate-400">Projection days</label>
                         <input type="number" min="7" max="120" name="projection_days" value="{{ $filters['projection_days'] }}"
-                               class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                               class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                         <div class="mt-1 text-xs text-slate-400">Future due window for income/expense projection.</div>
                     </div>
 
@@ -73,7 +73,7 @@
                     <span id="ai-status-badge" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Ready</span>
                 </div>
 
-                <div id="ai-summary" class="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-700">
+                <div id="ai-summary" class="mt-5 rounded-2xl border border-slate-300 bg-white p-5 text-sm text-slate-700">
                     <div class="text-slate-500">Click "Generate AI Summary" to create the report.</div>
                 </div>
             </div>

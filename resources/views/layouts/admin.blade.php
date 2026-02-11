@@ -141,6 +141,7 @@
                             :href="route('admin.invoices.index')"
                             routes="admin.invoices.*"
                             label="Invoices"
+                            :alwaysOpen="true"
                         >
                             <a href="{{ route('admin.invoices.index') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.index')) }}">All invoices</a>
                             <a href="{{ route('admin.invoices.paid') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.paid')) }}">Paid</a>

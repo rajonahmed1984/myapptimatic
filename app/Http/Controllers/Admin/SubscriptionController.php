@@ -15,12 +15,33 @@ use Illuminate\Validation\Rule;
 
 class SubscriptionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string) $request->input('search', ''));
+
         $subscriptions = Subscription::query()
             ->with(['customer', 'plan.product', 'latestOrder'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('status', 'like', '%' . $search . '%')
+                        ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                            $customerQuery->where('name', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('plan', function ($planQuery) use ($search) {
+                            $planQuery->where('name', 'like', '%' . $search . '%')
+                                ->orWhereHas('product', function ($productQuery) use ($search) {
+                                    $productQuery->where('name', 'like', '%' . $search . '%');
+                                });
+                        });
+
+                    if (is_numeric($search)) {
+                        $inner->orWhere('id', (int) $search);
+                    }
+                });
+            })
             ->latest()
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         $accessBlockService = app(AccessBlockService::class);
         $accessBlockedCustomers = [];
@@ -35,10 +56,17 @@ class SubscriptionController extends Controller
             $accessBlockedCustomers[$customerId] = $accessBlockService->isCustomerBlocked($customer);
         }
 
-        return view('admin.subscriptions.index', [
+        $payload = [
             'subscriptions' => $subscriptions,
             'accessBlockedCustomers' => $accessBlockedCustomers,
-        ]);
+            'search' => $search,
+        ];
+
+        if ($request->header('HX-Request')) {
+            return view('admin.subscriptions.partials.table', $payload);
+        }
+
+        return view('admin.subscriptions.index', $payload);
     }
 
     public function create()

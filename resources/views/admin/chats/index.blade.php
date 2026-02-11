@@ -17,7 +17,7 @@
 
         <div class="mt-6 overflow-x-auto">
             <table class="min-w-full text-left text-sm">
-                <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
+                <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
                     <tr>
                         <th class="px-4 py-3">Project</th>
                         <th class="px-4 py-3">Status</th>
@@ -37,7 +37,7 @@
                                 {{ $project->status ? ucfirst(str_replace('_', ' ', $project->status)) : '--' }}
                             </td>
                             <td class="px-4 py-3">
-                                <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $unread > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-50 text-slate-500' }}">
+                                <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $unread > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-300 bg-slate-50 text-slate-500' }}">
                                     {{ $unread }}
                                 </span>
                             </td>

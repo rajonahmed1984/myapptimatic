@@ -18,12 +18,42 @@ use App\Models\Setting;
 
 class LicenseController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string) $request->input('search', ''));
+
         $licenses = License::query()
             ->with(['product', 'subscription.customer', 'subscription.plan', 'subscription.latestOrder', 'domains'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('license_key', 'like', '%' . $search . '%')
+                        ->orWhere('status', 'like', '%' . $search . '%')
+                        ->orWhereHas('domains', function ($domainQuery) use ($search) {
+                            $domainQuery->where('domain', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('product', function ($productQuery) use ($search) {
+                            $productQuery->where('name', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('subscription', function ($subscriptionQuery) use ($search) {
+                            $subscriptionQuery->whereHas('plan', function ($planQuery) use ($search) {
+                                $planQuery->where('name', 'like', '%' . $search . '%')
+                                    ->orWhereHas('product', function ($planProductQuery) use ($search) {
+                                        $planProductQuery->where('name', 'like', '%' . $search . '%');
+                                    });
+                            })
+                            ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                                $customerQuery->where('name', 'like', '%' . $search . '%');
+                            });
+                        });
+
+                    if (is_numeric($search)) {
+                        $inner->orWhere('id', (int) $search);
+                    }
+                });
+            })
             ->latest()
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         $accessBlockService = app(AccessBlockService::class);
         $accessBlockedCustomers = [];
@@ -46,11 +76,18 @@ class LicenseController extends Controller
             ->groupBy('model_id')
             ->pluck('total', 'model_id');
 
-        return view('admin.licenses.index', [
+        $payload = [
             'licenses' => $licenses,
             'accessBlockedCustomers' => $accessBlockedCustomers,
             'anomalyCounts' => $anomalyCounts,
-        ]);
+            'search' => $search,
+        ];
+
+        if ($request->header('HX-Request')) {
+            return view('admin.licenses.partials.table', $payload);
+        }
+
+        return view('admin.licenses.index', $payload);
     }
 
     public function create()
