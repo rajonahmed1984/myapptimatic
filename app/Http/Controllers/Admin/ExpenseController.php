@@ -40,8 +40,14 @@ class ExpenseController extends Controller
             'person' => $request->query('person'),
         ];
 
-        $entries = $entryService->entries($filters)
-            ->sortByDesc(fn ($entry) => $entry['expense_date'] ?? now());
+        $entries = $entryService->entries($filters);
+
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            $entries = $entries->filter(fn ($entry) => $this->entryMatchesSearch($entry, $search));
+        }
+
+        $entries = $entries->sortByDesc(fn ($entry) => $entry['expense_date'] ?? now());
 
         $expenses = $this->paginateEntries($entries, 20, $request);
 
@@ -102,8 +108,12 @@ class ExpenseController extends Controller
             $currencyCode = Currency::DEFAULT;
         }
         $currencySymbol = Currency::symbol($currencyCode);
+        $formatCurrency = function ($amount) use ($currencyCode) {
+            $formatted = number_format((float) ($amount ?? 0), 2);
+            return "{$currencyCode} {$formatted}";
+        };
 
-        return view('admin.expenses.index', [
+        $payload = [
             'expenses' => $expenses,
             'categories' => $categories,
             'recurringTemplates' => $recurringTemplates,
@@ -114,9 +124,17 @@ class ExpenseController extends Controller
             'monthlyTotal' => $monthlyTotal,
             'yearlyTotal' => $yearlyTotal,
             'topCategories' => $topCategories,
+            'search' => $search,
             'currencySymbol' => $currencySymbol,
             'currencyCode' => $currencyCode,
-        ]);
+            'formatCurrency' => $formatCurrency,
+        ];
+
+        if ($request->header('HX-Request')) {
+            return view('admin.expenses.partials.table', $payload);
+        }
+
+        return view('admin.expenses.index', $payload);
     }
 
     public function create(): View
@@ -196,5 +214,26 @@ class ExpenseController extends Controller
                 'query' => $request->query(),
             ]
         );
+    }
+
+    private function entryMatchesSearch($entry, string $search): bool
+    {
+        $haystacks = [
+            (string) data_get($entry, 'title'),
+            (string) data_get($entry, 'notes'),
+            (string) data_get($entry, 'category_name'),
+            (string) data_get($entry, 'person_name'),
+            (string) data_get($entry, 'source_label'),
+            (string) data_get($entry, 'source_detail'),
+            (string) data_get($entry, 'invoice_no'),
+        ];
+
+        foreach ($haystacks as $value) {
+            if ($value !== '' && stripos($value, $search) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

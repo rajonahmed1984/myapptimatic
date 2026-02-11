@@ -18,7 +18,7 @@ use Illuminate\View\View;
 
 class IncomeController extends Controller
 {
-    public function index(Request $request, IncomeEntryService $entryService): View
+    public function dashboard(Request $request, IncomeEntryService $entryService): View
     {
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
@@ -34,6 +34,82 @@ class IncomeController extends Controller
 
         $entries = $entryService->entries($filters)
             ->sortByDesc(fn ($entry) => $entry['income_date'] ?? now());
+
+        $totalAmount = (float) $entries->sum('amount');
+
+        $categoryTotals = $entries
+            ->groupBy(fn ($entry) => $entry['category_id'] ?? 'system')
+            ->map(function ($items) {
+                $first = $items->first();
+                return [
+                    'category_id' => $first['category_id'],
+                    'name' => $first['category_name'] ?? 'System',
+                    'total' => (float) collect($items)->sum('amount'),
+                ];
+            })
+            ->values()
+            ->sortByDesc('total');
+
+        $categories = IncomeCategory::query()->orderBy('name')->get();
+
+        $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($currencyCode)) {
+            $currencyCode = Currency::DEFAULT;
+        }
+        $currencySymbol = Currency::symbol($currencyCode);
+
+        return view('admin.income.dashboard', [
+            'categories' => $categories,
+            'filters' => $filters,
+            'totalAmount' => $totalAmount,
+            'categoryTotals' => $categoryTotals,
+            'currencySymbol' => $currencySymbol,
+            'currencyCode' => $currencyCode,
+        ]);
+    }
+
+    public function index(Request $request, IncomeEntryService $entryService): View
+    {
+        $search = trim((string) $request->input('search', ''));
+        $sourceFilters = $request->input('sources', []);
+        if (! is_array($sourceFilters) || empty($sourceFilters)) {
+            $sourceFilters = ['manual', 'system'];
+        }
+
+        $filters = [
+            'start_date' => $request->query('start_date'),
+            'end_date' => $request->query('end_date'),
+            'category_id' => $request->query('category_id'),
+            'sources' => $sourceFilters,
+        ];
+
+        $entries = $entryService->entries($filters)
+            ->sortByDesc(fn ($entry) => $entry['income_date'] ?? now());
+
+        if ($search !== '') {
+            $entries = $entries->filter(function ($entry) use ($search) {
+                $haystacks = [
+                    $entry['title'] ?? '',
+                    $entry['notes'] ?? '',
+                    $entry['category_name'] ?? '',
+                    $entry['customer_name'] ?? '',
+                    $entry['project_name'] ?? '',
+                    $entry['source_label'] ?? '',
+                    $entry['source_type'] ?? '',
+                    (string) ($entry['income_date'] ?? ''),
+                    (string) ($entry['amount'] ?? ''),
+                    (string) ($entry['source_id'] ?? ''),
+                ];
+
+                foreach ($haystacks as $value) {
+                    if ($value !== '' && stripos((string) $value, $search) !== false) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+        }
 
         $incomes = $this->paginateEntries($entries, 20, $request);
 
@@ -60,7 +136,7 @@ class IncomeController extends Controller
         }
         $currencySymbol = Currency::symbol($currencyCode);
 
-        return view('admin.income.index', [
+        $payload = [
             'incomes' => $incomes,
             'categories' => $categories,
             'filters' => $filters,
@@ -68,7 +144,14 @@ class IncomeController extends Controller
             'categoryTotals' => $categoryTotals,
             'currencySymbol' => $currencySymbol,
             'currencyCode' => $currencyCode,
-        ]);
+            'search' => $search,
+        ];
+
+        if ($request->header('HX-Request')) {
+            return view('admin.income.partials.table', $payload);
+        }
+
+        return view('admin.income.index', $payload);
     }
 
     public function create(): View

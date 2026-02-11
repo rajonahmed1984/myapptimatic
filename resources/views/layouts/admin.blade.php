@@ -176,7 +176,10 @@
                                 :href="route('admin.income.index')"
                                 routes="admin.income.*"
                                 label="Income"
+                                :alwaysOpen="true"
                             >
+                                <a href="{{ route('admin.income.dashboard') }}" class="block {{ activeIf(request()->routeIs('admin.income.dashboard')) }}">Dashboard</a>
+                                <a href="{{ route('admin.income.carrothost') }}" class="block {{ activeIf(request()->routeIs('admin.income.carrothost')) }}">CarrotHost</a>
                                 <a href="{{ route('admin.income.index') }}" class="block {{ activeIf(request()->routeIs('admin.income.index')) }}">All income</a>
                                 <a href="{{ route('admin.income.create') }}" class="block {{ activeIf(request()->routeIs('admin.income.create')) }}">Add income</a>
                                 <a href="{{ route('admin.income.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.income.categories.*')) }}">Categories</a>
@@ -185,7 +188,9 @@
                                 :href="route('admin.expenses.index')"
                                 routes="admin.expenses.*"
                                 label="Expenses"
+                                :alwaysOpen="true"
                             >
+                                <a href="{{ route('admin.expenses.dashboard') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.dashboard')) }}">Dashboard</a>
                                 <a href="{{ route('admin.expenses.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.index')) }}">All expenses</a>
                                 <a href="{{ route('admin.expenses.recurring.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.recurring.*')) }}">Recurring</a>
                                 <a href="{{ route('admin.expenses.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.categories.*')) }}">Categories</a>

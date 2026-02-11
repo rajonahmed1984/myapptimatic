@@ -37,6 +37,7 @@ use App\Http\Controllers\Admin\ExpenseController as AdminExpenseController;
 use App\Http\Controllers\Admin\ExpenseCategoryController as AdminExpenseCategoryController;
 use App\Http\Controllers\Admin\RecurringExpenseController as AdminRecurringExpenseController;
 use App\Http\Controllers\Admin\ExpenseDashboardController as AdminExpenseDashboardController;
+use App\Http\Controllers\Admin\CarrotHostIncomeController as AdminCarrotHostIncomeController;
 use App\Http\Controllers\Admin\ExpenseInvoiceController as AdminExpenseInvoiceController;
 use App\Http\Controllers\Admin\FinanceReportController as AdminFinanceReportController;
 use App\Http\Controllers\Admin\FinanceTaxController as AdminFinanceTaxController;
@@ -430,13 +431,14 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
                 ->name('destroy');
     });
 
-    Route::middleware('admin.role:master_admin')
-        ->prefix('expenses')
-        ->name('expenses.')
-        ->group(function () {
-            Route::get('/', [AdminExpenseController::class, 'index'])->name('index');
-            Route::get('/create', [AdminExpenseController::class, 'create'])->name('create');
-            Route::post('/', [AdminExpenseController::class, 'store'])->name('store');
+      Route::middleware('admin.role:master_admin')
+          ->prefix('expenses')
+          ->name('expenses.')
+          ->group(function () {
+              Route::get('/dashboard', [AdminExpenseDashboardController::class, 'index'])->name('dashboard');
+              Route::get('/', [AdminExpenseController::class, 'index'])->name('index');
+              Route::get('/create', [AdminExpenseController::class, 'create'])->name('create');
+              Route::post('/', [AdminExpenseController::class, 'store'])->name('store');
             Route::get('/{expense}/attachment', [AdminExpenseController::class, 'attachment'])->name('attachments.show');
             Route::post('/invoices', [AdminExpenseInvoiceController::class, 'store'])->name('invoices.store');
 
@@ -457,12 +459,14 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
             Route::post('/recurring/generate', [AdminRecurringExpenseController::class, 'generate'])->name('recurring.generate');
         });
 
-    Route::middleware('admin.role:master_admin')
-        ->prefix('income')
-        ->name('income.')
-        ->group(function () {
-            Route::get('/', [AdminIncomeController::class, 'index'])->name('index');
-            Route::get('/create', [AdminIncomeController::class, 'create'])->name('create');
+      Route::middleware('admin.role:master_admin')
+          ->prefix('income')
+          ->name('income.')
+          ->group(function () {
+              Route::get('/dashboard', [AdminIncomeController::class, 'dashboard'])->name('dashboard');
+              Route::get('/carrothost', [AdminCarrotHostIncomeController::class, 'index'])->name('carrothost');
+              Route::get('/', [AdminIncomeController::class, 'index'])->name('index');
+              Route::get('/create', [AdminIncomeController::class, 'create'])->name('create');
             Route::post('/', [AdminIncomeController::class, 'store'])->name('store');
             Route::get('/{income}/attachment', [AdminIncomeController::class, 'attachment'])->name('attachments.show');
 

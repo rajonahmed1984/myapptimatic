@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AccountingEntry;
 use App\Models\ExpenseCategory;
+use App\Models\RecurringExpense;
 use App\Services\ExpenseEntryService;
 use App\Support\Currency;
 use Carbon\Carbon;
@@ -33,6 +34,8 @@ class ExpenseDashboardController extends Controller
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'category_id' => $request->query('category_id'),
+            'type' => $request->query('type'),
+            'recurring_expense_id' => $request->query('recurring_expense_id'),
             'sources' => $sourceFilters,
             'person_type' => $personType,
             'person_id' => $personId,
@@ -42,6 +45,7 @@ class ExpenseDashboardController extends Controller
         $entries = $entryService->entries($filters);
 
         $expenseTotal = (float) $entries->sum('amount');
+        $totalAmount = $expenseTotal;
 
         $incomeReceived = (float) AccountingEntry::query()
             ->where('type', 'payment')
@@ -82,9 +86,43 @@ class ExpenseDashboardController extends Controller
             ->values()
             ->sortByDesc('total');
 
+        $now = now();
+        $monthStart = $now->copy()->startOfMonth()->toDateString();
+        $yearStart = $now->copy()->startOfYear()->toDateString();
+
+        $monthlyTotal = (float) $entryService->entries([
+            'start_date' => $monthStart,
+            'end_date' => $now->toDateString(),
+            'sources' => ['manual', 'salary', 'contract_payout', 'sales_payout'],
+        ])->sum('amount');
+
+        $yearlyTotal = (float) $entryService->entries([
+            'start_date' => $yearStart,
+            'end_date' => $now->toDateString(),
+            'sources' => ['manual', 'salary', 'contract_payout', 'sales_payout'],
+        ])->sum('amount');
+
+        $topCategories = $entryService->entries([
+            'start_date' => $monthStart,
+            'end_date' => $now->toDateString(),
+            'sources' => ['manual', 'salary', 'contract_payout', 'sales_payout'],
+        ])->groupBy('category_id')
+            ->map(function ($items) {
+                $first = $items->first();
+                return [
+                    'category_id' => $first['category_id'],
+                    'name' => $first['category_name'],
+                    'total' => (float) collect($items)->sum('amount'),
+                ];
+            })
+            ->values()
+            ->sortByDesc('total')
+            ->take(5);
+
         [$labels, $expenseSeries, $incomeSeries] = $this->buildTrends($entries, $startDate, $endDate);
 
         $categories = ExpenseCategory::query()->orderBy('name')->get();
+        $recurringTemplates = RecurringExpense::query()->orderBy('title')->get();
         $peopleOptions = $entryService->peopleOptions();
         $currencyCode = strtoupper((string) \App\Models\Setting::getValue('currency', Currency::DEFAULT));
         if (! Currency::isAllowed($currencyCode)) {
@@ -101,10 +139,15 @@ class ExpenseDashboardController extends Controller
             'netCashflow' => $netCashflow,
             'categoryTotals' => $categoryTotals,
             'employeeTotals' => $employeeTotals,
+            'totalAmount' => $totalAmount,
+            'monthlyTotal' => $monthlyTotal,
+            'yearlyTotal' => $yearlyTotal,
+            'topCategories' => $topCategories,
             'trendLabels' => $labels,
             'trendExpenses' => $expenseSeries,
             'trendIncome' => $incomeSeries,
             'categories' => $categories,
+            'recurringTemplates' => $recurringTemplates,
             'peopleOptions' => $peopleOptions,
             'currencyCode' => $currencyCode,
             'currencySymbol' => $currencySymbol,
