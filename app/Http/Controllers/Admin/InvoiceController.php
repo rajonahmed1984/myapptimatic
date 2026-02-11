@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\ProjectMaintenance;
 use App\Support\SystemLogger;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
 use App\Services\CommissionService;
+use App\Services\InvoiceTaxService;
+use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +28,98 @@ class InvoiceController extends Controller
     public function index()
     {
         return $this->listByStatus(null, 'All Invoices');
+    }
+
+    public function create(Request $request)
+    {
+        $customers = Customer::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'company_name', 'email']);
+
+        $selectedCustomerId = $request->query('customer_id');
+        $issueDate = now()->toDateString();
+        $dueDays = (int) Setting::getValue('invoice_due_days', 0);
+        $dueDate = $dueDays > 0 ? now()->addDays($dueDays)->toDateString() : $issueDate;
+
+        return view('admin.invoices.create', [
+            'customers' => $customers,
+            'selectedCustomerId' => $selectedCustomerId,
+            'issueDate' => $issueDate,
+            'dueDate' => $dueDate,
+        ]);
+    }
+
+    public function store(Request $request, InvoiceTaxService $taxService): RedirectResponse
+    {
+        $data = $request->validate([
+            'customer_id' => ['required', 'exists:customers,id'],
+            'issue_date' => ['required', 'date'],
+            'due_date' => ['required', 'date', 'after_or_equal:issue_date'],
+            'notes' => ['nullable', 'string'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.description' => ['required', 'string', 'max:255'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $items = collect($data['items'])
+            ->map(function ($item) {
+                $quantity = (int) $item['quantity'];
+                $unitPrice = (float) $item['unit_price'];
+                return [
+                    'description' => $item['description'],
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'line_total' => round($quantity * $unitPrice, 2),
+                ];
+            })
+            ->values();
+
+        $subtotal = (float) $items->sum('line_total');
+        if ($subtotal <= 0) {
+            return back()->withErrors(['items' => 'Invoice total must be greater than zero.'])->withInput();
+        }
+
+        $issueDate = Carbon::parse($data['issue_date']);
+        $taxData = $taxService->calculateTotals($subtotal, 0.0, $issueDate);
+        $currency = strtoupper((string) Setting::getValue('currency'));
+
+        $invoice = Invoice::create([
+            'customer_id' => $data['customer_id'],
+            'number' => $this->billingService->nextInvoiceNumber(),
+            'status' => 'unpaid',
+            'issue_date' => $data['issue_date'],
+            'due_date' => $data['due_date'],
+            'subtotal' => $subtotal,
+            'tax_rate_percent' => $taxData['tax_rate_percent'],
+            'tax_mode' => $taxData['tax_mode'],
+            'tax_amount' => $taxData['tax_amount'],
+            'late_fee' => 0,
+            'total' => $taxData['total'],
+            'currency' => $currency,
+            'notes' => $data['notes'] ?? null,
+            'type' => 'manual',
+        ]);
+
+        foreach ($items as $item) {
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'description' => $item['description'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $item['unit_price'],
+                'line_total' => $item['line_total'],
+            ]);
+        }
+
+        SystemLogger::write('activity', 'Manual invoice created.', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+            'total' => $invoice->total,
+            'currency' => $invoice->currency,
+        ], $request->user()?->id, $request->ip());
+
+        return redirect()->route('admin.invoices.show', $invoice)
+            ->with('status', 'Invoice created.');
     }
 
     public function paid()

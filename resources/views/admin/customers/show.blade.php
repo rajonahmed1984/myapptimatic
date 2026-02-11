@@ -14,17 +14,18 @@
     @endphp
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-            <div class="section-label">Customer</div>
             <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $customer->name }}</div>
-            <div class="mt-1 text-sm text-slate-500">Client ID: {{ $customer->id }}</div>
+            <div class="mt-1 text-sm text-slate-500">
+                Client ID: {{ $customer->id }} | Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }} | Status: {{ ucfirst($effectiveStatus ?? $customer->status) }}
+            </div>
         </div>
         <div class="text-sm text-slate-600">
-            <div>Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }} | Status: {{ ucfirst($customer->status) }}</div>
             <div class="mt-3 flex flex-wrap items-center gap-3">
-                <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Customers</a>
+                <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Customers</a>
+                <a href="{{ route('admin.invoices.create', ['customer_id' => $customer->id]) }}" class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800">Create Invoice</a>
                 <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}">
                     @csrf
-                    <button type="submit" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" title="Login as client">
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" title="Login as client">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
                             <path d="M15 3h4a2 2 0 0 1 2 2v4"></path>
                             <path d="M10 14L21 3"></path>
@@ -43,14 +44,14 @@
 
         @if($tab === 'summary')
             <div class="mt-6 grid gap-4 md:grid-cols-3 text-sm text-slate-600">
-                <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Profile</div>
                     <div class="mt-2">Company: {{ $customer->company_name ?: '--' }}</div>
                     <div class="mt-1">Email: {{ $customer->email ?: '--' }}</div>
                     <div class="mt-1">Mobile: {{ $customer->phone ?: '--' }}</div>
                     <div class="mt-1">Address: {{ $customer->address ?: '--' }}</div>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Summary</div>
                     <div class="mt-2">Services: {{ $customer->subscriptions->count() }}</div>
                     <div class="mt-1">Active services: {{ $customer->subscriptions->where('status', 'active')->count() }}</div>
@@ -58,47 +59,16 @@
                     <div class="mt-1">Invoices: {{ $customer->invoices->count() }}</div>
                     <div class="mt-1">Tickets: {{ $customer->supportTickets->count() }}</div>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                     <div>
-                        <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Avatar</div>
-                        <div class="mt-2">
-                            <x-avatar :path="$customer->avatar_path" :name="$customer->name" size="h-16 w-16" textSize="text-sm" />
-                        </div>
+                        <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Profile</div>
+                        <div class="mt-2 text-sm text-slate-500">No customer images.</div>
                     </div>
-                    @if($customer->nid_path)
-                        @php
-                            $nidIsImage = \Illuminate\Support\Str::endsWith(strtolower($customer->nid_path), ['.jpg', '.jpeg', '.png', '.webp']);
-                            $nidUrl = route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'nid']);
-                        @endphp
-                        <div>
-                            <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">NID</div>
-                            <div class="mt-2 flex items-center gap-3">
-                                @if($nidIsImage)
-                                    <img src="{{ $nidUrl }}" alt="NID" class="h-16 w-20 rounded-lg object-cover border border-slate-200">
-                                @else
-                                    <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
-                                @endif
-                                <a href="{{ $nidUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
-                            </div>
-                        </div>
-                    @endif
-                    @if($customer->cv_path)
-                        @php
-                            $cvUrl = route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'cv']);
-                        @endphp
-                        <div>
-                            <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">CV</div>
-                            <div class="mt-2 flex items-center gap-3">
-                                <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
-                                <a href="{{ $cvUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
-                            </div>
-                        </div>
-                    @endif
                 </div>
             </div>
 
             <div class="mt-6 grid gap-4 md:grid-cols-2">                
-                <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Invoice status & Income</div>
                     <div class="mt-4 pb-4 space-y-3 text-sm text-slate-600">
                         @foreach($invoiceStatusSummary as $status)
@@ -128,11 +98,11 @@
                         </div>
                     </div>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/70 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Recent Tickets</div>
                     <div class="mt-3 space-y-2 text-sm">
                         @forelse($customer->supportTickets->take(5) as $ticket)
-                            <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                            <div class="flex items-center justify-between border-b border-slate-300 pb-2">
                                 <div>
                                     <div class="font-semibold text-slate-900">
                                         <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="hover:text-teal-600">
@@ -247,7 +217,7 @@
                     @csrf
                     <div>
                         <label class="text-sm text-slate-600">Project</label>
-                        <select name="project_id" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                        <select name="project_id" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                             <option value="">Select a project</option>
                             @foreach($projects as $projectOption)
                                 <option value="{{ $projectOption->id }}" @selected(old('project_id') == $projectOption->id)>{{ $projectOption->name }}</option>
@@ -259,28 +229,28 @@
                     </div>
                     <div>
                         <label class="text-sm text-slate-600">Name</label>
-                        <input name="name" value="{{ old('name') }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        <input name="name" value="{{ old('name') }}" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                         @error('name')
                             <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label class="text-sm text-slate-600">Email</label>
-                        <input name="email" type="email" value="{{ old('email') }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        <input name="email" type="email" value="{{ old('email') }}" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                         @error('email')
                             <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label class="text-sm text-slate-600">Password</label>
-                        <input name="password" type="password" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        <input name="password" type="password" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                         @error('password')
                             <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
                         @enderror
                     </div>
                     <div class="md:col-span-2">
                         <label class="text-sm text-slate-600">Confirm Password</label>
-                        <input name="password_confirmation" type="password" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                        <input name="password_confirmation" type="password" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                     </div>
                     <div class="md:col-span-2 flex justify-end">
                         <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Create project login</button>
@@ -302,7 +272,7 @@
 
                         <div>
                             <label class="text-sm text-slate-600">Project</label>
-                            <select name="project_id" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                            <select name="project_id" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                                 <option value="">Select a project</option>
                                 @foreach($projects as $projectOption)
                                     <option value="{{ $projectOption->id }}">{{ $projectOption->name }}</option>
@@ -312,17 +282,17 @@
                         </div>
                         <div>
                             <label class="text-sm text-slate-600">Name</label>
-                            <input name="name" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="name" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                             <p class="mt-1 text-xs text-rose-500 hidden" data-error-for="name"></p>
                         </div>
                         <div>
                             <label class="text-sm text-slate-600">Email</label>
-                            <input name="email" type="email" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="email" type="email" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                             <p class="mt-1 text-xs text-rose-500 hidden" data-error-for="email"></p>
                         </div>
                         <div>
                             <label class="text-sm text-slate-600">Status</label>
-                            <select name="status" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                            <select name="status" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
@@ -330,13 +300,13 @@
                         </div>
                         <div>
                             <label class="text-sm text-slate-600">Password</label>
-                            <input name="password" type="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="password" type="password" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                             <p class="mt-1 text-xs text-slate-500">Leave blank to keep current password</p>
                             <p class="mt-1 text-xs text-rose-500 hidden" data-error-for="password"></p>
                         </div>
                         <div class="md:col-span-2">
                             <label class="text-sm text-slate-600">Confirm Password</label>
-                            <input name="password_confirmation" type="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="password_confirmation" type="password" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                         </div>
                         <div class="md:col-span-2 flex items-center justify-end gap-3">
                             <button type="button" class="text-sm text-slate-600 hover:text-teal-600" data-edit-cancel>Cancel</button>
@@ -346,7 +316,7 @@
                     <p id="project-user-edit-status" class="mt-3 text-sm text-slate-500 hidden"></p>
                 </div>
 
-                <div id="project-user-details" class="mt-6 hidden rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <div id="project-user-details" class="mt-6 hidden rounded-2xl border border-slate-300 bg-slate-50 p-5">
                     <div class="section-label">Updated login details</div>
                     <div class="mt-3 flex flex-wrap items-center justify-between gap-6">
                         <div>
@@ -368,9 +338,9 @@
                 <a href="{{ route('admin.products.create') }}" class="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400">Create product/service</a>
             </div>
 
-            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
+            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-300">
                 <table class="w-full min-w-[800px] text-left text-sm">
-                    <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">SL</th>
                             <th class="px-4 py-3">Product</th>
@@ -410,9 +380,9 @@
                 <a href="{{ route('admin.projects.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Create project</a>
             </div>
 
-            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
+            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-300">
                 <table class="w-full min-w-[900px] text-left text-sm">
-                    <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">SL</th>
                             <th class="px-4 py-3">Project name</th>
@@ -462,9 +432,9 @@
                 </table>
             </div>
         @elseif($tab === 'invoices')
-            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-300">
                 <table class="w-full min-w-[800px] text-left text-sm">
-                    <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">Invoice</th>
                             <th class="px-4 py-3">Status</th>
@@ -497,9 +467,9 @@
                 </table>
             </div>
         @elseif($tab === 'tickets')
-            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-300">
                 <table class="w-full min-w-[800px] text-left text-sm">
-                    <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">Ticket</th>
                             <th class="px-4 py-3">Subject</th>
@@ -540,14 +510,14 @@
                 </table>
             </div>
         @elseif($tab === 'emails')
-            <div class="mt-6 rounded-2xl border border-slate-200 bg-white/70 p-5 text-sm text-slate-600">
+            <div class="mt-6 rounded-2xl border border-slate-300 bg-white/70 p-5 text-sm text-slate-600">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Client Email Log</div>
-                <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-300 bg-white">
                     @if($emailLogs->isEmpty())
                         <div class="px-4 py-6 text-sm text-slate-500">No emails sent to this client yet.</div>
                     @else
                         <table class="w-full min-w-[700px] text-left text-sm">
-                            <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                            <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                                 <tr>
                                     <th class="px-4 py-3">Date</th>
                                     <th class="px-4 py-3">Subject</th>
@@ -563,7 +533,7 @@
                                             <div class="flex flex-wrap items-center justify-end gap-2">
                                                 <form method="POST" action="{{ route('admin.logs.email.resend', $log) }}">
                                                     @csrf
-                                                    <button type="submit" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Resend Email</button>
+                                                    <button type="submit" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Resend Email</button>
                                                 </form>
                                                 <form method="POST" action="{{ route('admin.logs.email.delete', $log) }}" onsubmit="return confirm('Delete this email log?');">
                                                     @csrf
@@ -580,14 +550,14 @@
                 </div>
             </div>
         @elseif($tab === 'log')
-            <div class="mt-6 rounded-2xl border border-slate-200 bg-white/70 p-5 text-sm text-slate-600">
+            <div class="mt-6 rounded-2xl border border-slate-300 bg-white/70 p-5 text-sm text-slate-600">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Client Activity Log</div>
-                <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div class="mt-4 overflow-hidden rounded-2xl border border-slate-300 bg-white">
                     @if($activityLogs->isEmpty())
                         <div class="px-4 py-6 text-sm text-slate-500">No activity recorded yet.</div>
                     @else
                         <table class="w-full min-w-[700px] text-left text-sm">
-                            <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                            <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                                 <tr>
                                     <th class="px-4 py-3">Date</th>
                                     <th class="px-4 py-3">Category</th>

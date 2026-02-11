@@ -596,6 +596,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::get('requests', [AdminClientRequestController::class, 'index'])->name('requests.index');
     Route::patch('requests/{clientRequest}', [AdminClientRequestController::class, 'update'])->name('requests.update');
     Route::get('invoices', [AdminInvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('invoices/create', [AdminInvoiceController::class, 'create'])->name('invoices.create');
+    Route::post('invoices', [AdminInvoiceController::class, 'store'])->name('invoices.store');
     Route::get('invoices/paid', [AdminInvoiceController::class, 'paid'])->name('invoices.paid');
     Route::get('invoices/unpaid', [AdminInvoiceController::class, 'unpaid'])->name('invoices.unpaid');
     Route::get('invoices/overdue', [AdminInvoiceController::class, 'overdue'])->name('invoices.overdue');

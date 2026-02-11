@@ -7,6 +7,7 @@ use App\Models\AccountingEntry;
 use App\Models\Customer;
 use App\Models\EmailTemplate;
 use App\Models\SystemLog;
+use App\Models\ProjectMaintenance;
 use App\Models\SalesRepresentative;
 use App\Models\Employee;
 use App\Models\User;
@@ -20,18 +21,29 @@ use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+
         $customers = Customer::query()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('company_name', 'like', '%' . $search . '%')
+                        ->orWhere('email', 'like', '%' . $search . '%');
+                });
+            })
             ->with(['users:id,customer_id,role'])
             ->withCount('subscriptions')
             ->withCount(['subscriptions as active_subscriptions_count' => function ($query) {
@@ -42,12 +54,20 @@ class CustomerController extends Controller
                 $query->where('status', 'ongoing');
             }])
             ->withCount('projectMaintenances')
+            ->withCount(['projectMaintenances as active_project_maintenances_count' => function ($query) {
+                $query->where('status', 'active');
+            }])
             ->latest()
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         $loginStatuses = $this->resolveCustomerLoginStatuses($customers);
 
-        return view('admin.customers.index', compact('customers', 'loginStatuses'));
+        if ($request->boolean('partial') || $request->header('HX-Request')) {
+            return view('admin.customers.partials.table', compact('customers', 'loginStatuses'));
+        }
+
+        return view('admin.customers.index', compact('customers', 'loginStatuses', 'search'));
     }
 
     public function create()
@@ -72,11 +92,6 @@ class CustomerController extends Controller
             'notes' => $data['notes'] ?? null,
             'default_sales_rep_id' => $data['default_sales_rep_id'] ?? null,
         ]);
-
-        $uploadPaths = $this->handleUploads($request, $customer);
-        if (! empty($uploadPaths)) {
-            $customer->update($uploadPaths);
-        }
 
         if (! empty($data['user_password'])) {
             if (empty($customer->email)) {
@@ -280,6 +295,55 @@ class CustomerController extends Controller
             ->sum('amount');
         $netIncome = $grossRevenue - $clientExpenses;
 
+        $salesRepSummaries = collect();
+        $projectIds = $customer->projects->pluck('id')->filter()->values();
+        if ($projectIds->isNotEmpty()) {
+            $salesReps = SalesRepresentative::query()
+                ->whereHas('projects', fn ($query) => $query->whereIn('projects.id', $projectIds))
+                ->with(['projects' => function ($query) use ($projectIds) {
+                    $query->whereIn('projects.id', $projectIds)
+                        ->with(['maintenances' => fn ($maintenanceQuery) => $maintenanceQuery->where('sales_rep_visible', true)]);
+                }])
+                ->get();
+
+            $salesRepSummaries = $salesReps->map(function (SalesRepresentative $rep) {
+                $projects = $rep->projects->map(function ($project) {
+                    $projectAmount = (float) ($project->pivot?->amount ?? 0);
+                    $maintenanceAmount = (float) $project->maintenances
+                        ->where('sales_rep_visible', true)
+                        ->sum('amount');
+
+                    return [
+                        'id' => $project->id,
+                        'name' => $project->name,
+                        'project_amount' => $projectAmount,
+                        'maintenance_amount' => $maintenanceAmount,
+                    ];
+                })->values();
+
+                return [
+                    'id' => $rep->id,
+                    'name' => $rep->name,
+                    'phone' => $rep->phone,
+                    'projects' => $projects,
+                    'total_project_amount' => (float) $projects->sum('project_amount'),
+                    'total_maintenance_amount' => (float) $projects->sum('maintenance_amount'),
+                ];
+            })->values();
+        }
+
+        $activeServices = $customer->subscriptions->where('status', 'active')->count();
+        $activeProjects = $customer->projects
+            ->whereIn('status', ['ongoing', 'completed', 'done'])
+            ->count();
+        $activeMaintenances = ProjectMaintenance::query()
+            ->where('customer_id', $customer->id)
+            ->where('status', 'active')
+            ->count();
+        $effectiveStatus = ($activeServices > 0 || $activeProjects > 0 || $activeMaintenances > 0)
+            ? 'active'
+            : $customer->status;
+
         return view('admin.customers.show', [
             'customer' => $customer,
             'tab' => $tab,
@@ -294,6 +358,8 @@ class CustomerController extends Controller
             'currencySymbol' => $currencySymbol,
             'projectClients' => $projectClients,
             'projects' => $projects,
+            'salesRepSummaries' => $salesRepSummaries,
+            'effectiveStatus' => $effectiveStatus,
         ]);
     }
 
@@ -372,17 +438,12 @@ class CustomerController extends Controller
             'access_override_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
-            'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+            'avatar' => ['prohibited'],
+            'nid_file' => ['prohibited'],
+            'cv_file' => ['prohibited'],
         ]);
 
-        $customer->update(collect($data)->except(['avatar', 'nid_file', 'cv_file'])->all());
-
-        $uploadPaths = $this->handleUploads($request, $customer);
-        if (! empty($uploadPaths)) {
-            $customer->update($uploadPaths);
-        }
+        $customer->update($data);
 
         SystemLogger::write('activity', 'Customer updated.', [
             'customer_id' => $customer->id,
@@ -433,28 +494,6 @@ class CustomerController extends Controller
         return route('client.dashboard');
     }
 
-    private function handleUploads(Request $request, Customer $customer): array
-    {
-        $paths = [];
-
-        if ($request->hasFile('avatar')) {
-            $paths['avatar_path'] = $request->file('avatar')
-                ->store('avatars/customers/' . $customer->id, 'public');
-        }
-
-        if ($request->hasFile('nid_file')) {
-            $paths['nid_path'] = $request->file('nid_file')
-                ->store('nid/customers/' . $customer->id, 'public');
-        }
-
-        if ($request->hasFile('cv_file')) {
-            $paths['cv_path'] = $request->file('cv_file')
-                ->store('cv/customers/' . $customer->id, 'public');
-        }
-
-        return $paths;
-    }
-
     private function resolveCustomerLoginStatuses($customers): array
     {
         $userIds = $customers->pluck('users')
@@ -476,27 +515,61 @@ class CustomerController extends Controller
             ->get()
             ->groupBy('user_id');
 
+        $lastLoginByUser = UserSession::query()
+            ->whereIn('user_id', $userIds)
+            ->where('guard', 'web')
+            ->whereNotNull('login_at')
+            ->select('user_id', DB::raw('MAX(login_at) as last_login_at'))
+            ->groupBy('user_id')
+            ->get()
+            ->keyBy('user_id');
+
         $threshold = now()->subMinutes(2);
         $statuses = [];
 
         foreach ($customers as $customer) {
             $status = 'logout';
+            $lastLoginAt = null;
             foreach ($customer->users->where('role', Role::CLIENT) as $user) {
                 $session = $openSessions->get($user->id)?->first();
                 if (! $session) {
+                    $candidate = $lastLoginByUser->get($user->id)?->last_login_at;
+                    if ($candidate) {
+                        $candidate = $candidate instanceof Carbon ? $candidate : Carbon::parse($candidate);
+                        if (! $lastLoginAt || $candidate->greaterThan($lastLoginAt)) {
+                            $lastLoginAt = $candidate;
+                        }
+                    }
                     continue;
                 }
 
                 $lastSeen = $session->last_seen_at;
                 if ($lastSeen && $lastSeen->greaterThanOrEqualTo($threshold)) {
                     $status = 'login';
+                    $candidate = $lastLoginByUser->get($user->id)?->last_login_at;
+                    if ($candidate) {
+                        $candidate = $candidate instanceof Carbon ? $candidate : Carbon::parse($candidate);
+                        if (! $lastLoginAt || $candidate->greaterThan($lastLoginAt)) {
+                            $lastLoginAt = $candidate;
+                        }
+                    }
                     break;
                 }
 
                 $status = 'idle';
+                $candidate = $lastLoginByUser->get($user->id)?->last_login_at;
+                if ($candidate) {
+                    $candidate = $candidate instanceof Carbon ? $candidate : Carbon::parse($candidate);
+                    if (! $lastLoginAt || $candidate->greaterThan($lastLoginAt)) {
+                        $lastLoginAt = $candidate;
+                    }
+                }
             }
 
-            $statuses[$customer->id] = $status;
+            $statuses[$customer->id] = [
+                'status' => $status,
+                'last_login_at' => $lastLoginAt,
+            ];
         }
 
         return $statuses;
