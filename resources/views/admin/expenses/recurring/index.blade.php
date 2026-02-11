@@ -12,15 +12,15 @@
         <div class="flex flex-wrap items-center gap-3">
             <form method="POST" action="{{ route('admin.expenses.recurring.generate') }}">
                 @csrf
-                <button type="submit" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Generate now</button>
+                <button type="submit" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Generate now</button>
             </form>
             <a href="{{ route('admin.expenses.recurring.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Add recurring</a>
-            <a href="{{ route('admin.expenses.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
+            <a href="{{ route('admin.expenses.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
         </div>
     </div>
 
-    <div class="card p-6">
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white/80">
+    <div class="overflow-hidden">
+        <div class="px-3 py-3 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80">
             <table class="min-w-full text-sm text-slate-700">
                 <thead>
                     <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -44,7 +44,7 @@
                             </td>
                             <td class="py-2 px-3">{{ $recurring->next_run_date?->format($globalDateFormat) ?? '--' }}</td>
                             <td class="py-2 px-3">
-                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $recurring->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : ($recurring->status === 'paused' ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-slate-200 text-slate-600 bg-slate-50') }}">
+                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $recurring->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : ($recurring->status === 'paused' ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-slate-300 text-slate-600 bg-slate-50') }}">
                                     {{ ucfirst($recurring->status) }}
                                 </span>
                             </td>
