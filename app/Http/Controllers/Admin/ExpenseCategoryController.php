@@ -37,7 +37,7 @@ class ExpenseCategoryController extends Controller
 
     public function edit(ExpenseCategory $category): View
     {
-        return view('admin.expenses.categories.edit', compact('category'));
+        return redirect()->route('admin.expenses.categories.index', ['edit' => $category->id]);
     }
 
     public function update(Request $request, ExpenseCategory $category): RedirectResponse

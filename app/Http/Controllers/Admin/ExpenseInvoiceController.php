@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommissionPayout;
 use App\Models\EmployeePayout;
 use App\Models\Expense;
+use App\Models\ExpenseInvoice;
 use App\Models\PayrollItem;
 use App\Services\ExpenseInvoiceService;
 use Illuminate\Http\RedirectResponse;
@@ -93,5 +94,14 @@ class ExpenseInvoiceController extends Controller
         }
 
         return back()->with('status', 'Expense invoice generated.');
+    }
+
+    public function markPaid(Request $request, ExpenseInvoice $expenseInvoice): RedirectResponse
+    {
+        if ($expenseInvoice->status !== 'paid') {
+            $expenseInvoice->update(['status' => 'paid']);
+        }
+
+        return back()->with('status', 'Expense invoice marked as paid.');
     }
 }

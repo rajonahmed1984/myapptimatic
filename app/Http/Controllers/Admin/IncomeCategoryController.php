@@ -34,7 +34,7 @@ class IncomeCategoryController extends Controller
 
     public function edit(IncomeCategory $category): View
     {
-        return view('admin.income.categories.edit', compact('category'));
+        return redirect()->route('admin.income.categories.index', ['edit' => $category->id]);
     }
 
     public function update(Request $request, IncomeCategory $category): RedirectResponse

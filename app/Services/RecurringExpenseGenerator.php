@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class RecurringExpenseGenerator
 {
+    public function __construct(private ExpenseInvoiceService $invoiceService)
+    {
+    }
+
     public function generate(?Carbon $asOfDate = null, ?int $templateId = null): array
     {
         $asOf = ($asOfDate ?? now())->startOfDay();
@@ -67,7 +71,7 @@ class RecurringExpenseGenerator
                     ->exists();
 
                 if (! $exists) {
-                    Expense::create([
+                    $expense = Expense::create([
                         'category_id' => $template->category_id,
                         'recurring_expense_id' => $template->id,
                         'title' => $template->title,
@@ -77,6 +81,8 @@ class RecurringExpenseGenerator
                         'type' => 'recurring',
                         'created_by' => $template->created_by,
                     ]);
+                    $createdBy = (int) ($template->created_by ?? $expense->created_by ?? 1);
+                    $this->invoiceService->createForExpense($expense, $createdBy, 'unpaid', $nextRun);
                     $created++;
                 }
 

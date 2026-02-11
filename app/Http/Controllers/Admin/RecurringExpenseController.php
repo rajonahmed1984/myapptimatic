@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ExpenseCategory;
+use App\Models\ExpenseInvoice;
 use App\Models\RecurringExpense;
+use App\Services\ExpenseInvoiceService;
 use App\Services\RecurringExpenseGenerator;
+use App\Support\Currency;
+use App\Models\Setting;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -13,15 +18,31 @@ use Illuminate\View\View;
 
 class RecurringExpenseController extends Controller
 {
-    public function index(): View
+    public function index(ExpenseInvoiceService $invoiceService): View
     {
+        $invoiceService->syncOverdueStatuses();
+
         $recurringExpenses = RecurringExpense::query()
             ->with('category')
             ->orderByDesc('next_run_date')
             ->orderByDesc('id')
             ->paginate(20);
 
-        return view('admin.expenses.recurring.index', compact('recurringExpenses'));
+        $nextDueMap = [];
+        $recurringIds = $recurringExpenses->pluck('id')->filter()->values();
+        if ($recurringIds->isNotEmpty()) {
+            $nextDueMap = ExpenseInvoice::query()
+                ->selectRaw('expenses.recurring_expense_id as recurring_id, MIN(expense_invoices.due_date) as next_due')
+                ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
+                ->whereIn('expenses.recurring_expense_id', $recurringIds->all())
+                ->whereNotNull('expense_invoices.due_date')
+                ->where('expense_invoices.status', '!=', 'paid')
+                ->groupBy('expenses.recurring_expense_id')
+                ->pluck('next_due', 'recurring_id')
+                ->toArray();
+        }
+
+        return view('admin.expenses.recurring.index', compact('recurringExpenses', 'nextDueMap'));
     }
 
     public function create(): View
@@ -58,6 +79,58 @@ class RecurringExpenseController extends Controller
             ->get();
 
         return view('admin.expenses.recurring.edit', compact('recurringExpense', 'categories'));
+    }
+
+    public function show(RecurringExpense $recurringExpense, ExpenseInvoiceService $invoiceService): View
+    {
+        $recurringExpense->load('category');
+        $invoiceService->syncOverdueStatuses($recurringExpense->id);
+
+        $baseInvoices = ExpenseInvoice::query()
+            ->where('source_type', 'expense')
+            ->whereHas('expense', function ($query) use ($recurringExpense) {
+                $query->where('recurring_expense_id', $recurringExpense->id);
+            });
+
+        $invoices = (clone $baseInvoices)
+            ->with('expense')
+            ->orderByDesc('invoice_date')
+            ->orderByDesc('id')
+            ->paginate(20);
+
+        $today = Carbon::today()->toDateString();
+        $totalInvoices = (clone $baseInvoices)->count();
+        $paidCount = (clone $baseInvoices)->where('status', 'paid')->count();
+        $unpaidCount = (clone $baseInvoices)->where('status', '!=', 'paid')->count();
+        $overdueCount = (clone $baseInvoices)
+            ->where('status', '!=', 'paid')
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<', $today)
+            ->count();
+        $nextDueDate = (clone $baseInvoices)
+            ->where('status', '!=', 'paid')
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '>=', $today)
+            ->orderBy('due_date')
+            ->value('due_date');
+
+        $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($currencyCode)) {
+            $currencyCode = Currency::DEFAULT;
+        }
+        $currencySymbol = Currency::symbol($currencyCode);
+
+        return view('admin.expenses.recurring.show', [
+            'recurringExpense' => $recurringExpense,
+            'invoices' => $invoices,
+            'totalInvoices' => $totalInvoices,
+            'paidCount' => $paidCount,
+            'unpaidCount' => $unpaidCount,
+            'overdueCount' => $overdueCount,
+            'nextDueDate' => $nextDueDate,
+            'currencySymbol' => $currencySymbol,
+            'currencyCode' => $currencyCode,
+        ]);
     }
 
     public function update(Request $request, RecurringExpense $recurringExpense): RedirectResponse

@@ -441,16 +441,17 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
               Route::post('/', [AdminExpenseController::class, 'store'])->name('store');
             Route::get('/{expense}/attachment', [AdminExpenseController::class, 'attachment'])->name('attachments.show');
             Route::post('/invoices', [AdminExpenseInvoiceController::class, 'store'])->name('invoices.store');
+            Route::post('/invoices/{expenseInvoice}/pay', [AdminExpenseInvoiceController::class, 'markPaid'])->name('invoices.pay');
 
             Route::get('/categories', [AdminExpenseCategoryController::class, 'index'])->name('categories.index');
             Route::post('/categories', [AdminExpenseCategoryController::class, 'store'])->name('categories.store');
-            Route::get('/categories/{category}/edit', [AdminExpenseCategoryController::class, 'edit'])->name('categories.edit');
             Route::put('/categories/{category}', [AdminExpenseCategoryController::class, 'update'])->name('categories.update');
             Route::delete('/categories/{category}', [AdminExpenseCategoryController::class, 'destroy'])->name('categories.destroy');
 
             Route::get('/recurring', [AdminRecurringExpenseController::class, 'index'])->name('recurring.index');
             Route::get('/recurring/create', [AdminRecurringExpenseController::class, 'create'])->name('recurring.create');
             Route::post('/recurring', [AdminRecurringExpenseController::class, 'store'])->name('recurring.store');
+            Route::get('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'show'])->name('recurring.show');
             Route::get('/recurring/{recurringExpense}/edit', [AdminRecurringExpenseController::class, 'edit'])->name('recurring.edit');
             Route::put('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'update'])->name('recurring.update');
             Route::post('/recurring/{recurringExpense}/pause', [AdminRecurringExpenseController::class, 'pause'])->name('recurring.pause');
@@ -472,7 +473,6 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
 
             Route::get('/categories', [AdminIncomeCategoryController::class, 'index'])->name('categories.index');
             Route::post('/categories', [AdminIncomeCategoryController::class, 'store'])->name('categories.store');
-            Route::get('/categories/{category}/edit', [AdminIncomeCategoryController::class, 'edit'])->name('categories.edit');
             Route::put('/categories/{category}', [AdminIncomeCategoryController::class, 'update'])->name('categories.update');
             Route::delete('/categories/{category}', [AdminIncomeCategoryController::class, 'destroy'])->name('categories.destroy');
         });

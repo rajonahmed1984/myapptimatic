@@ -11,22 +11,32 @@ use Illuminate\Support\Facades\DB;
 
 class ExpenseInvoiceService
 {
-    public function createForExpense(Expense $expense, int $createdBy, string $status = 'issued'): ExpenseInvoice
+    public function createForExpense(
+        Expense $expense,
+        int $createdBy,
+        string $status = 'issued',
+        ?Carbon $dueDate = null
+    ): ExpenseInvoice
     {
         $expenseType = $expense->type === 'recurring' ? 'recurring' : 'manual';
+        $invoiceDate = $expense->expense_date ? Carbon::parse($expense->expense_date) : now();
+        $overrides = [
+            'expense_id' => $expense->id,
+            'notes' => $expense->notes,
+            'status' => $status,
+        ];
+        if ($dueDate) {
+            $overrides['due_date'] = $dueDate->toDateString();
+        }
 
         return $this->createForSource(
             'expense',
             $expense->id,
             $expenseType,
             $expense->amount,
-            $expense->expense_date ? Carbon::parse($expense->expense_date) : now(),
+            $invoiceDate,
             $createdBy,
-            [
-                'expense_id' => $expense->id,
-                'notes' => $expense->notes,
-                'status' => $status,
-            ]
+            $overrides
         );
     }
 
@@ -102,5 +112,35 @@ class ExpenseInvoiceService
         $next = $lastNumber + 1;
 
         return $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function syncOverdueStatuses(?int $recurringExpenseId = null): void
+    {
+        $today = Carbon::today()->toDateString();
+
+        $base = ExpenseInvoice::query()
+            ->whereNotNull('due_date')
+            ->whereIn('status', ['issued', 'unpaid', 'overdue']);
+
+        if ($recurringExpenseId) {
+            $base->whereHas('expense', function ($query) use ($recurringExpenseId) {
+                $query->where('recurring_expense_id', $recurringExpenseId);
+            });
+        }
+
+        (clone $base)
+            ->whereIn('status', ['issued', 'unpaid'])
+            ->whereDate('due_date', '<', $today)
+            ->update(['status' => 'overdue']);
+
+        (clone $base)
+            ->where('status', 'overdue')
+            ->whereDate('due_date', '>=', $today)
+            ->update(['status' => 'unpaid']);
+
+        (clone $base)
+            ->where('status', 'issued')
+            ->whereDate('due_date', '>=', $today)
+            ->update(['status' => 'unpaid']);
     }
 }
