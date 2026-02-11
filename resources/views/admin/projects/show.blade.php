@@ -14,16 +14,16 @@
             <div class="text-sm text-slate-500">Status: {{ ucfirst(str_replace('_', ' ', $project->status)) }}</div>
         </div>
         <div class="flex items-center gap-3">
-            <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
-            <a href="{{ route('admin.projects.tasks.index', $project) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Tasks</a>
-            <a href="{{ route('admin.projects.chat', $project) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">
+            <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
+            <a href="{{ route('admin.projects.tasks.index', $project) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Tasks</a>
+            <a href="{{ route('admin.projects.chat', $project) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">
                 Chat
                 @php $projectChatUnreadCount = (int) ($projectChatUnreadCount ?? 0); @endphp
                 <span class="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $projectChatUnreadCount > 0 ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-600' }}">
                     {{ $projectChatUnreadCount }}
                 </span>
             </a>
-            <a href="{{ route('admin.projects.edit', $project) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Edit</a>
+            <a href="{{ route('admin.projects.edit', $project) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Edit</a>
             <form
                 method="POST"
                 action="{{ route('admin.projects.destroy', $project) }}"
@@ -43,19 +43,19 @@
         $stats = $taskStats ?? ['total' => 0, 'in_progress' => 0, 'completed' => 0, 'unread' => 0];
     @endphp
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+        <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
             <div class="text-2xl font-semibold text-slate-900">{{ $stats['total'] }}</div>
             <div class="text-xs uppercase tracking-[0.25em] text-slate-500">Total Tasks</div>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+        <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
             <div class="text-2xl font-semibold text-slate-900">{{ $stats['in_progress'] }}</div>
             <div class="text-xs uppercase tracking-[0.25em] text-slate-500">In Progress</div>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+        <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
             <div class="text-2xl font-semibold text-slate-900">{{ $stats['completed'] }}</div>
             <div class="text-xs uppercase tracking-[0.25em] text-slate-500">Completed</div>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+        <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
             <div class="text-2xl font-semibold text-slate-900">{{ $stats['unread'] }}</div>
             <div class="text-xs uppercase tracking-[0.25em] text-slate-500">Unread</div>
         </div>
@@ -114,7 +114,7 @@
         <div>
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Project Info</div>
             <div class="mt-3 grid gap-4 md:grid-cols-3 text-sm text-slate-700">
-                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overview</div>
                     <div class="mt-2 font-semibold text-slate-900">{{ ucfirst($project->type) }}</div>
                     <div class="text-xs text-slate-500">
@@ -122,7 +122,7 @@
                         Status: {{ ucfirst(str_replace('_', ' ', $project->status)) }}
                     </div>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Dates</div>
                     <div class="mt-2 text-xs text-slate-500">
                         Start: {{ $project->start_date?->format($globalDateFormat) ?? '--' }}<br>
@@ -130,7 +130,7 @@
                         Due: {{ $project->due_date?->format($globalDateFormat) ?? '--' }}
                     </div>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Description</div>
                     <div class="mt-2 text-xs text-slate-600 whitespace-pre-wrap">
                         {{ $project->description ?? 'No description provided.' }}
@@ -142,12 +142,12 @@
         <div>
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">People</div>
             <div class="mt-3 grid gap-4 md:grid-cols-2 text-sm text-slate-700">
-                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Customer</div>
                     <div class="mt-2 font-semibold text-slate-900">{{ $project->customer?->name ?? '--' }}</div>
                     <div class="text-xs text-slate-500">Client ID: {{ $project->customer_id ?? '--' }}</div>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Team</div>
                     @php
                         $employeeNames = $project->employees->pluck('name')->filter()->implode(', ');
@@ -170,7 +170,7 @@
 
         <div>
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Documents</div>
-            <div class="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+            <div class="mt-3 rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
                 <div class="space-y-3">
                     @if($project->contract_file_path)
                         <div>
@@ -209,7 +209,7 @@
         <div>
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Budget & Currency</div>
             <div class="mt-3 grid gap-4 md:grid-cols-2 text-sm text-slate-700">
-                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Budget Summary</div>
                     <div class="mt-2 text-xs text-slate-600">
                         Total budget: {{ $project->total_budget !== null ? $project->currency.' '.number_format($project->total_budget, 2) : '--' }}<br>
@@ -226,7 +226,7 @@
                         Profit: {{ isset($financials['profit']) ? $project->currency.' '.number_format($financials['profit'], 2) : '--' }}
                     </div>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Initial Invoice</div>
                     @if(!empty($initialInvoice))
                         <div class="mt-2 text-xs text-slate-600">
@@ -247,7 +247,7 @@
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overhead fees</div>
                 <a href="{{ route('admin.projects.overheads.index', $project) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Manage overheads</a>
             </div>
-            <div class="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+            <div class="mt-3 rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
                 @if($project->overheads->isEmpty())
                     <div class="text-xs text-slate-500">No overhead line items added.</div>
                 @else
@@ -268,7 +268,7 @@
                                         <td class="px-3 py-2 text-right">{{ $project->currency }} {{ number_format((float) $overhead->amount, 2) }}</td>
                                         <td class="px-3 py-2">{{ $overhead->created_at?->format($globalDateFormat) ?? '--' }}</td>
                                         <td class="px-3 py-2">
-                                            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $overhead->invoice_id ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-600 bg-slate-50' }}">
+                                            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $overhead->invoice_id ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-300 text-slate-600 bg-slate-50' }}">
                                                 {{ $overhead->invoice_id ? 'Invoiced' : 'Pending' }}
                                             </span>
                                         </td>
@@ -283,11 +283,11 @@
                     @csrf
                     <div class="md:col-span-2">
                         <label class="text-xs text-slate-500">Details</label>
-                        <input name="short_details" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Feature fee or description">
+                        <input name="short_details" required class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Feature fee or description">
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Amount</label>
-                        <input name="amount" required type="number" step="0.01" min="0" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <input name="amount" required type="number" step="0.01" min="0" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                     </div>
                     <div class="md:col-span-3 flex justify-end">
                         <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Add overhead fee</button>
@@ -298,7 +298,7 @@
 
         <div>
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Remaining budget invoices</div>
-            <div class="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700 space-y-4">
+            <div class="mt-3 rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700 space-y-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="text-sm font-semibold text-slate-800">Remaining budget invoices</div>
                     <div class="text-xs text-slate-500">
@@ -361,7 +361,7 @@
                                     min="0.01"
                                     max="{{ $project->remaining_budget }}"
                                     value="{{ old('amount', $project->remaining_budget) }}"
-                                    class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-teal-400 focus:outline-none"
+                                    class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-400 focus:outline-none"
                                 >
                                 @error('amount')
                                     <p class="text-rose-500 text-[10px]">{{ $message }}</p>
@@ -383,7 +383,7 @@
         <div>
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Maintenance</div>
             <div class="mt-3 text-sm text-slate-700">
-                <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div class="rounded-2xl border border-slate-300 bg-white/80 p-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div class="text-sm font-semibold text-slate-800">Maintenance plans</div>
                         <a href="{{ route('admin.project-maintenances.create', ['project_id' => $project->id]) }}" class="rounded-full border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700 hover:border-teal-300 hover:text-teal-800">Add maintenance</a>
@@ -413,7 +413,7 @@
                                         <td class="px-3 py-2">{{ ucfirst($maintenance->billing_cycle) }}</td>
                                         <td class="px-3 py-2 text-xs text-slate-600">{{ $maintenance->next_billing_date?->format($globalDateFormat) ?? '--' }}</td>
                                         <td class="px-3 py-2">
-                                            <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $maintenance->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : ($maintenance->status === 'paused' ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-slate-200 text-slate-600 bg-slate-50') }}">
+                                            <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $maintenance->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : ($maintenance->status === 'paused' ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-slate-300 text-slate-600 bg-slate-50') }}">
                                                 {{ ucfirst($maintenance->status) }}
                                             </span>
                                         </td>
@@ -438,7 +438,7 @@
         </div>
 
         @if($project->notes)
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+            <div class="rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Notes</div>
                 <div class="mt-2 whitespace-pre-wrap">{{ $project->notes }}</div>
             </div>

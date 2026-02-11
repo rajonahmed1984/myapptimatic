@@ -640,10 +640,10 @@
         </aside>
 
         <div class="flex-1 flex flex-col w-full min-w-0">
-            <header class="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
+            <header class="sticky top-0 z-20 border-b border-slate-300/70 bg-white/80 backdrop-blur">
                 <div class="flex w-full items-center justify-between gap-6 px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <button type="button" id="sidebarToggle" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-teal-300 hover:text-teal-600 md:hidden" aria-label="Open menu">
+                        <button type="button" id="sidebarToggle" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-teal-300 hover:text-teal-600 md:hidden" aria-label="Open menu">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
@@ -683,7 +683,7 @@
                             @csrf
                             <button
                                 type="submit"
-                                class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
+                                class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
                                 title="Clears Laravel system caches and purges browser storage helpers"
                             >
                                 Clear caches

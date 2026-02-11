@@ -51,7 +51,7 @@ class CustomerController extends Controller
             }])
             ->withCount('projects')
             ->withCount(['projects as active_projects_count' => function ($query) {
-                $query->where('status', 'ongoing');
+                $query->whereIn('status', ['ongoing', 'complete']);
             }])
             ->withCount('projectMaintenances')
             ->withCount(['projectMaintenances as active_project_maintenances_count' => function ($query) {
@@ -196,11 +196,19 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer)
     {
+        $activeServices = $customer->subscriptions()->where('status', 'active')->count();
+        $activeProjects = $customer->projects()->whereIn('status', ['ongoing', 'complete'])->count();
+        $activeMaintenances = $customer->projectMaintenances()->where('status', 'active')->count();
+        $effectiveStatus = ($activeServices > 0 || $activeProjects > 0 || $activeMaintenances > 0)
+            ? 'active'
+            : $customer->status;
+
         return view('admin.customers.edit', [
             'customer' => $customer,
             'salesReps' => SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']),
             'projectClients' => $customer->projectUsers()->with('project')->get(),
             'projects' => $customer->projects()->orderBy('name')->get(['id', 'name']),
+            'effectiveStatus' => $effectiveStatus,
         ]);
     }
 
@@ -298,20 +306,29 @@ class CustomerController extends Controller
         $salesRepSummaries = collect();
         $projectIds = $customer->projects->pluck('id')->filter()->values();
         if ($projectIds->isNotEmpty()) {
-            $salesReps = SalesRepresentative::query()
-                ->whereHas('projects', fn ($query) => $query->whereIn('projects.id', $projectIds))
-                ->with(['projects' => function ($query) use ($projectIds) {
-                    $query->whereIn('projects.id', $projectIds)
-                        ->with(['maintenances' => fn ($maintenanceQuery) => $maintenanceQuery->where('sales_rep_visible', true)]);
-                }])
-                ->get();
+                $salesReps = SalesRepresentative::query()
+                    ->whereHas('projects', fn ($query) => $query->whereIn('projects.id', $projectIds))
+                    ->with(['projects' => function ($query) use ($projectIds) {
+                        $query->whereIn('projects.id', $projectIds)
+                            ->with(['maintenances' => fn ($maintenanceQuery) => $maintenanceQuery
+                                ->where('sales_rep_visible', true)
+                                ->with('salesRepresentatives')]);
+                    }])
+                    ->get();
 
             $salesRepSummaries = $salesReps->map(function (SalesRepresentative $rep) {
-                $projects = $rep->projects->map(function ($project) {
-                    $projectAmount = (float) ($project->pivot?->amount ?? 0);
-                    $maintenanceAmount = (float) $project->maintenances
-                        ->where('sales_rep_visible', true)
-                        ->sum('amount');
+                    $projects = $rep->projects->map(function ($project) use ($rep) {
+                        $projectAmount = (float) ($project->pivot?->amount ?? 0);
+                        $maintenanceAmount = (float) $project->maintenances
+                            ->where('sales_rep_visible', true)
+                            ->sum(function ($maintenance) use ($rep) {
+                                if ($maintenance->salesRepresentatives?->isNotEmpty()) {
+                                    $linked = $maintenance->salesRepresentatives->firstWhere('id', $rep->id);
+                                    return (float) ($linked?->pivot?->amount ?? 0);
+                                }
+
+                                return (float) ($maintenance->amount ?? 0);
+                            });
 
                     return [
                         'id' => $project->id,
@@ -334,7 +351,7 @@ class CustomerController extends Controller
 
         $activeServices = $customer->subscriptions->where('status', 'active')->count();
         $activeProjects = $customer->projects
-            ->whereIn('status', ['ongoing', 'completed', 'done'])
+            ->whereIn('status', ['ongoing', 'complete'])
             ->count();
         $activeMaintenances = ProjectMaintenance::query()
             ->where('customer_id', $customer->id)

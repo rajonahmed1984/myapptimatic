@@ -28,7 +28,7 @@
                     $active = ($status === $key) || ($key === 'all' && empty($status));
                     $url = $key === 'all' ? route('support.support-tickets.index') : route('support.support-tickets.index', ['status' => $key]);
                 @endphp
-                <a href="{{ $url }}" class="rounded-full border px-3 py-1 {{ $active ? 'border-teal-200 bg-teal-50 text-teal-600' : 'border-slate-200 text-slate-500 hover:text-teal-600' }}">
+                <a href="{{ $url }}" class="rounded-full border px-3 py-1 {{ $active ? 'border-teal-200 bg-teal-50 text-teal-600' : 'border-slate-300 text-slate-500 hover:text-teal-600' }}">
                     {{ $filter['label'] }} ({{ $filter['count'] }})
                 </a>
             @endforeach
@@ -37,7 +37,7 @@
 
     <div class="card mt-6 overflow-x-auto">
         <table class="w-full min-w-[800px] text-left text-sm">
-            <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+            <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
                     <th class="px-4 py-3">SL</th>
                     <th class="px-4 py-3">Ticket</th>

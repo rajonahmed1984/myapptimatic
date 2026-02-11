@@ -9,7 +9,7 @@
             <div class="section-label">Finance</div>
             <div class="text-2xl font-semibold text-slate-900">Expense categories</div>
         </div>
-        <a href="{{ route('admin.expenses.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Expenses</a>
+        <a href="{{ route('admin.expenses.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Expenses</a>
     </div>
 
     <div class="card p-6">
@@ -17,13 +17,13 @@
         <form method="POST" action="{{ route('admin.expenses.categories.store') }}" class="mt-4 grid gap-3 text-sm md:grid-cols-4">
             @csrf
             <div class="md:col-span-2">
-                <input name="name" value="{{ old('name') }}" placeholder="Category name" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <input name="name" value="{{ old('name') }}" placeholder="Category name" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                 @error('name')
                     <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
                 @enderror
             </div>
             <div class="md:col-span-1">
-                <select name="status" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <select name="status" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                     <option value="active" @selected(old('status', 'active') === 'active')>Active</option>
                     <option value="inactive" @selected(old('status') === 'inactive')>Inactive</option>
                 </select>
@@ -32,7 +32,7 @@
                 @enderror
             </div>
             <div class="md:col-span-4">
-                <textarea name="description" rows="2" placeholder="Description (optional)" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('description') }}</textarea>
+                <textarea name="description" rows="2" placeholder="Description (optional)" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">{{ old('description') }}</textarea>
                 @error('description')
                     <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
                 @enderror
@@ -42,7 +42,7 @@
             </div>
         </form>
 
-        <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white/80">
+        <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80">
             <table class="min-w-full text-sm text-slate-700">
                 <thead>
                     <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -57,7 +57,7 @@
                         <tr class="border-b border-slate-100">
                             <td class="py-2 px-3 font-semibold text-slate-900">{{ $category->name }}</td>
                             <td class="py-2 px-3">
-                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $category->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-600 bg-slate-50' }}">
+                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $category->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-300 text-slate-600 bg-slate-50' }}">
                                     {{ ucfirst($category->status) }}
                                 </span>
                             </td>

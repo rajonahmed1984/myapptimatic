@@ -11,7 +11,7 @@
             <div class="mt-1 text-sm text-slate-500">Client ID: {{ $customer->id }}</div>
         </div>
         <div class="text-sm text-slate-600">
-            <div>Status: {{ ucfirst($customer->status) }}</div>
+            <div>Status: {{ ucfirst($effectiveStatus ?? $customer->status) }}</div>
             <div>Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</div>
         </div>
     </div>
@@ -26,41 +26,53 @@
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label class="text-sm text-slate-600">Name</label>
-                    <input name="name" value="{{ old('name', $customer->name) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <input name="name" value="{{ old('name', $customer->name) }}" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Company Name</label>
-                    <input name="company_name" value="{{ old('company_name', $customer->company_name) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <input name="company_name" value="{{ old('company_name', $customer->company_name) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Email</label>
-                    <input name="email" type="email" value="{{ old('email', $customer->email) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <input name="email" type="email" value="{{ old('email', $customer->email) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Phone</label>
-                    <input name="phone" value="{{ old('phone', $customer->phone) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <input name="phone" value="{{ old('phone', $customer->phone) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Address</label>
-                    <textarea name="address" rows="2" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('address', $customer->address) }}</textarea>
+                    <textarea name="address" rows="2" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">{{ old('address', $customer->address) }}</textarea>
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Status</label>
-                    <select name="status" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                        <option value="active" {{ old('status', $customer->status) === 'active' ? 'selected' : '' }}>Active</option>
-                        <option value="inactive" {{ old('status', $customer->status) === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                    <select name="status" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
+                        <option value="active" {{ old('status', $effectiveStatus ?? $customer->status) === 'active' ? 'selected' : '' }}>Active</option>
+                        <option value="inactive" {{ old('status', $effectiveStatus ?? $customer->status) === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                    </select>
+                    <p class="mt-1 text-xs text-slate-500">Status is auto-active when services, projects, or maintenance are active.</p>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600">Default sales rep</label>
+                    <select name="default_sales_rep_id" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
+                        <option value="">None</option>
+                        @foreach($salesReps as $rep)
+                            <option value="{{ $rep->id }}" @selected((string) old('default_sales_rep_id', $customer->default_sales_rep_id) === (string) $rep->id)>
+                                {{ $rep->name }} @if($rep->status !== 'active') ({{ ucfirst($rep->status) }}) @endif
+                            </option>
+                        @endforeach
                     </select>
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Access Override Until</label>
-                    <input name="access_override_until" type="date" value="{{ old('access_override_until', $customer->access_override_until?->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <input name="access_override_until" type="date" value="{{ old('access_override_until', $customer->access_override_until?->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                     <p class="mt-1 text-xs text-slate-500">Grant temporary access even if status is inactive</p>
                 </div>
             </div>
 
             <div>
                 <label class="text-sm text-slate-600">Notes</label>
-                <textarea name="notes" rows="3" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('notes', $customer->notes) }}</textarea>
+                <textarea name="notes" rows="3" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">{{ old('notes', $customer->notes) }}</textarea>
             </div>
 
             <div class="flex items-center gap-3">
@@ -69,7 +81,7 @@
             </div>
         </form>
 
-        <div class="mt-8 border-t border-slate-200 pt-6">
+        <div class="mt-8 border-t border-slate-300 pt-6">
             <form
                 method="POST"
                 action="{{ route('admin.customers.destroy', $customer) }}"

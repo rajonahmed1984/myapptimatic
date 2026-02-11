@@ -30,7 +30,7 @@
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status" value="{{ $ticket->isClosed() ? 'open' : 'closed' }}" />
-                <button type="submit" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
+                <button type="submit" class="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
                     {{ $ticket->isClosed() ? 'Reopen ticket' : 'Close ticket' }}
                 </button>
             </form>
@@ -44,11 +44,11 @@
             @method('PATCH')
             <div class="md:col-span-2">
                 <label class="text-sm text-slate-600">Subject</label>
-                <input name="subject" value="{{ old('subject', $ticket->subject) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                <input name="subject" value="{{ old('subject', $ticket->subject) }}" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
             </div>
             <div>
                 <label class="text-sm text-slate-600">Priority</label>
-                <select name="priority" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                <select name="priority" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                     <option value="low" @selected(old('priority', $ticket->priority) === 'low')>Low</option>
                     <option value="medium" @selected(old('priority', $ticket->priority) === 'medium')>Medium</option>
                     <option value="high" @selected(old('priority', $ticket->priority) === 'high')>High</option>
@@ -56,7 +56,7 @@
             </div>
             <div>
                 <label class="text-sm text-slate-600">Status</label>
-                <select name="status" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
+                <select name="status" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                     <option value="open" @selected(old('status', $ticket->status) === 'open')>Open</option>
                     <option value="answered" @selected(old('status', $ticket->status) === 'answered')>Answered</option>
                     <option value="customer_reply" @selected(old('status', $ticket->status) === 'customer_reply')>Customer Reply</option>
@@ -122,9 +122,9 @@
             </div>
             <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Suggested reply</div>
-                <textarea id="ai-suggested-reply" rows="6" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700" readonly></textarea>
+                <textarea id="ai-suggested-reply" rows="6" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700" readonly></textarea>
                 <div class="mt-3 flex justify-end">
-                    <button type="button" id="ai-insert-reply" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Insert into reply</button>
+                    <button type="button" id="ai-insert-reply" class="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Insert into reply</button>
                 </div>
             </div>
         </div>
@@ -133,7 +133,7 @@
     <div class="mt-8 space-y-4">
         @forelse($ticket->replies as $reply)
             <div class="flex {{ $reply->is_admin ? 'justify-end' : 'justify-start' }}">
-                <div class="max-w-2xl rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm shadow-sm">
+                <div class="max-w-2xl rounded-2xl border border-slate-300 bg-white px-5 py-4 text-sm shadow-sm">
                     <div class="flex items-center justify-between text-xs text-slate-500">
                         <span>{{ $reply->user?->name ?? ($reply->is_admin ? 'Admin' : 'Client') }}</span>
                         <span>{{ $reply->created_at->format($globalDateFormat . ' H:i') }}</span>
@@ -158,7 +158,7 @@
         <div class="section-label">Post reply</div>
         <form method="POST" action="{{ route('admin.support-tickets.reply', $ticket) }}" class="mt-4 space-y-4" enctype="multipart/form-data">
             @csrf
-            <textarea id="ticket-reply-message" name="message" rows="5" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{{ old('message') }}</textarea>
+            <textarea id="ticket-reply-message" name="message" rows="5" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700">{{ old('message') }}</textarea>
             <div>
                 <label class="text-sm text-slate-600">Attachment (image/PDF)</label>
                 <input name="attachment" type="file" accept="image/*,.pdf" class="mt-2 block w-full text-sm text-slate-600" />

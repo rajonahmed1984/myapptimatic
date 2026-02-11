@@ -18,7 +18,7 @@
             <form method="GET" class="grid gap-3 p-2 md:grid-cols-4">
                 <div>
                     <label class="text-xs text-slate-500">Status</label>
-                    <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="status" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         <option value="">All</option>
                         @foreach($statuses as $status)
                             <option value="{{ $status }}" @selected($statusFilter === $status)>{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
@@ -27,7 +27,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Type</label>
-                    <select name="type" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="type" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         <option value="">All</option>
                         @foreach($types as $type)
                             <option value="{{ $type }}" @selected($typeFilter === $type)>{{ ucfirst($type) }}</option>
@@ -35,13 +35,13 @@
                     </select>
                 </div>
                 <div class="self-end">
-                    <button type="submit" class="w-full rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Apply filters</button>
+                    <button type="submit" class="w-full rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Apply filters</button>
                 </div>
             </form>
             <a href="{{ route('admin.projects.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">New project</a>
         </div>
 
-        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+        <div class="overflow-hidden rounded-2xl border border-slate-300 bg-white/80">
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[640px] text-left text-sm text-slate-700">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">

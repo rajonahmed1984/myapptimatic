@@ -11,7 +11,7 @@
 
     <div class="card overflow-x-auto">
         <table class="w-full min-w-[700px] text-left text-sm">
-            <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+            <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
                     <th class="px-4 py-3">Name</th>
                     <th class="px-4 py-3">Email</th>

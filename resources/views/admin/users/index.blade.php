@@ -24,7 +24,7 @@
         @foreach($roleLabels as $roleValue => $label)
             <a href="{{ route('admin.users.index', $roleValue) }}"
                class="rounded-full border px-3 py-1 text-sm font-semibold transition
-               {{ $selectedRole === $roleValue ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-200 text-slate-600 hover:border-teal-300 hover:text-teal-700' }}">
+               {{ $selectedRole === $roleValue ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-300 text-slate-600 hover:border-teal-300 hover:text-teal-700' }}">
                 {{ $label }}
             </a>
         @endforeach

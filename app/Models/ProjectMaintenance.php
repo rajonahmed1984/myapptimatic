@@ -4,8 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\SalesRepresentative;
 
 class ProjectMaintenance extends Model
 {
@@ -54,5 +56,16 @@ class ProjectMaintenance extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class, 'maintenance_id');
+    }
+
+    public function salesRepresentatives(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            SalesRepresentative::class,
+            'project_maintenance_sales_representative',
+            'project_maintenance_id',
+            'sales_representative_id'
+        )->withPivot('amount')
+            ->withTimestamps();
     }
 }

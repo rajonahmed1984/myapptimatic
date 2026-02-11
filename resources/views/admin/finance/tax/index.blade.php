@@ -10,7 +10,7 @@
             <div class="text-2xl font-semibold text-slate-900">Tax settings</div>
             <div class="mt-1 text-sm text-slate-500">Configure tax mode, default rates, and invoice notes.</div>
         </div>
-        <a href="{{ route('admin.finance.reports.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View Reports</a>
+        <a href="{{ route('admin.finance.reports.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View Reports</a>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -26,7 +26,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Default tax mode</label>
-                    <select name="tax_mode_default" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="tax_mode_default" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         <option value="exclusive" @selected(old('tax_mode_default', $settings->tax_mode_default) === 'exclusive')>Exclusive (add tax on top)</option>
                         <option value="inclusive" @selected(old('tax_mode_default', $settings->tax_mode_default) === 'inclusive')>Inclusive (included in total)</option>
                     </select>
@@ -36,7 +36,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Default tax rate</label>
-                    <select name="default_tax_rate_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="default_tax_rate_id" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         <option value="">No default</option>
                         @foreach($rates as $rate)
                             <option value="{{ $rate->id }}" @selected((string) old('default_tax_rate_id', $settings->default_tax_rate_id) === (string) $rate->id)>
@@ -50,14 +50,14 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Invoice tax label</label>
-                    <input name="invoice_tax_label" value="{{ old('invoice_tax_label', $settings->invoice_tax_label) }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <input name="invoice_tax_label" value="{{ old('invoice_tax_label', $settings->invoice_tax_label) }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                     @error('invoice_tax_label')
                         <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
                     @enderror
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Invoice tax note template</label>
-                    <textarea name="invoice_tax_note_template" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('invoice_tax_note_template', $settings->invoice_tax_note_template) }}</textarea>
+                    <textarea name="invoice_tax_note_template" rows="3" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">{{ old('invoice_tax_note_template', $settings->invoice_tax_note_template) }}</textarea>
                     <div class="mt-1 text-xs text-slate-500">Use {rate} to display the applied percentage.</div>
                     @error('invoice_tax_note_template')
                         <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
@@ -84,25 +84,25 @@
         <form method="POST" action="{{ route('admin.finance.tax.rates.store') }}" class="mt-4 grid gap-3 text-sm md:grid-cols-6">
             @csrf
             <div class="md:col-span-2">
-                <input name="name" value="{{ old('name') }}" placeholder="Rate name" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <input name="name" value="{{ old('name') }}" placeholder="Rate name" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                 @error('name')
                     <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
                 @enderror
             </div>
             <div class="md:col-span-1">
-                <input type="number" step="0.01" min="0" max="100" name="rate_percent" value="{{ old('rate_percent') }}" placeholder="Rate %" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <input type="number" step="0.01" min="0" max="100" name="rate_percent" value="{{ old('rate_percent') }}" placeholder="Rate %" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                 @error('rate_percent')
                     <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
                 @enderror
             </div>
             <div class="md:col-span-1">
-                <input type="date" name="effective_from" value="{{ old('effective_from') }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <input type="date" name="effective_from" value="{{ old('effective_from') }}" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                 @error('effective_from')
                     <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
                 @enderror
             </div>
             <div class="md:col-span-1">
-                <input type="date" name="effective_to" value="{{ old('effective_to') }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <input type="date" name="effective_to" value="{{ old('effective_to') }}" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                 @error('effective_to')
                     <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
                 @enderror
@@ -117,7 +117,7 @@
             </div>
         </form>
 
-        <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white/80">
+        <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80">
             <table class="min-w-full text-sm text-slate-700">
                 <thead>
                     <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -138,7 +138,7 @@
                                 <div class="text-xs text-slate-500">to {{ $rate->effective_to?->format($globalDateFormat) ?? 'Open' }}</div>
                             </td>
                             <td class="py-2 px-3">
-                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $rate->is_active ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-600 bg-slate-50' }}">
+                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $rate->is_active ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-300 text-slate-600 bg-slate-50' }}">
                                     {{ $rate->is_active ? 'Active' : 'Inactive' }}
                                 </span>
                             </td>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectMaintenance;
+use App\Models\SalesRepresentative;
 use App\Models\Setting;
 use App\Services\MaintenanceBillingService;
 use Illuminate\Http\RedirectResponse;
@@ -41,6 +42,9 @@ class ProjectMaintenanceController extends Controller
         return view('admin.project-maintenances.create', [
             'projects' => $projects,
             'selectedProjectId' => $request->integer('project_id') ?: null,
+            'salesReps' => SalesRepresentative::where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'email', 'status']),
         ]);
     }
 
@@ -55,6 +59,10 @@ class ProjectMaintenanceController extends Controller
             'auto_invoice' => ['nullable', 'boolean'],
             'sales_rep_visible' => ['nullable', 'boolean'],
             'status' => ['nullable', 'in:active,paused,cancelled'],
+            'sales_rep_ids' => ['nullable', 'array'],
+            'sales_rep_ids.*' => ['exists:sales_representatives,id'],
+            'sales_rep_amounts' => ['nullable', 'array'],
+            'sales_rep_amounts.*' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $project = Project::query()->findOrFail($data['project_id']);
@@ -75,6 +83,15 @@ class ProjectMaintenanceController extends Controller
             'created_by' => $request->user()?->id,
         ]);
 
+        $salesRepSync = [];
+        foreach ($data['sales_rep_ids'] ?? [] as $repId) {
+            $amount = (float) ($data['sales_rep_amounts'][$repId] ?? 0);
+            $salesRepSync[(int) $repId] = ['amount' => $amount];
+        }
+        if (! empty($salesRepSync)) {
+            $maintenance->salesRepresentatives()->sync($salesRepSync);
+        }
+
         $invoice = $this->maintenanceBillingService->createInvoiceForMaintenance($maintenance);
         $statusMessage = $invoice
             ? sprintf('Maintenance plan created. Invoice #%s generated.', $invoice->number ?? $invoice->id)
@@ -91,10 +108,14 @@ class ProjectMaintenanceController extends Controller
             'project:id,name,currency',
             'customer:id,name',
             'invoices' => fn ($query) => $query->latest('issue_date'),
+            'salesRepresentatives:id,name,email,status',
         ]);
 
         return view('admin.project-maintenances.edit', [
             'maintenance' => $projectMaintenance,
+            'salesReps' => SalesRepresentative::where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'email', 'status']),
         ]);
     }
 
@@ -139,6 +160,10 @@ class ProjectMaintenanceController extends Controller
             'auto_invoice' => ['nullable', 'boolean'],
             'sales_rep_visible' => ['nullable', 'boolean'],
             'status' => ['required', 'in:active,paused,cancelled'],
+            'sales_rep_ids' => ['nullable', 'array'],
+            'sales_rep_ids.*' => ['exists:sales_representatives,id'],
+            'sales_rep_amounts' => ['nullable', 'array'],
+            'sales_rep_amounts.*' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         if ($projectMaintenance->status === 'cancelled' && $data['status'] !== 'cancelled') {
@@ -166,6 +191,13 @@ class ProjectMaintenanceController extends Controller
             'auto_invoice' => (bool) ($data['auto_invoice'] ?? false),
             'sales_rep_visible' => (bool) ($data['sales_rep_visible'] ?? false),
         ]);
+
+        $salesRepSync = [];
+        foreach ($data['sales_rep_ids'] ?? [] as $repId) {
+            $amount = (float) ($data['sales_rep_amounts'][$repId] ?? 0);
+            $salesRepSync[(int) $repId] = ['amount' => $amount];
+        }
+        $projectMaintenance->salesRepresentatives()->sync($salesRepSync);
 
         return redirect()
             ->route('admin.project-maintenances.edit', $projectMaintenance)

@@ -2,12 +2,12 @@
     <div class="absolute inset-0 bg-slate-900/60" data-delete-confirm-backdrop></div>
     <div class="relative mx-auto flex min-h-full max-w-2xl items-center justify-center px-4 py-10">
         <div class="w-full rounded-2xl bg-white shadow-2xl">
-            <div class="flex items-start justify-between border-b border-slate-200 px-6 py-5">
+            <div class="flex items-start justify-between border-b border-slate-300 px-6 py-5">
                 <div>
                     <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Delete</div>
                     <div data-delete-confirm-title class="mt-2 text-lg font-semibold text-slate-900">Delete this item?</div>
                 </div>
-                <button type="button" data-delete-confirm-close class="rounded-full border border-slate-200 p-2 text-slate-400 hover:border-slate-300 hover:text-slate-600" aria-label="Close">
+                <button type="button" data-delete-confirm-close class="rounded-full border border-slate-300 p-2 text-slate-400 hover:border-slate-300 hover:text-slate-600" aria-label="Close">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -25,14 +25,14 @@
                         id="delete-confirm-input"
                         type="text"
                         autocomplete="off"
-                        class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-rose-300 focus:ring-0"
+                        class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 focus:border-rose-300 focus:ring-0"
                         placeholder="Type the confirmation text"
                     />
                     <div data-delete-confirm-hint class="mt-2 text-xs text-slate-400"></div>
                 </div>
             </div>
             <div class="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
-                <button type="button" data-delete-confirm-cancel class="rounded-full border border-slate-200 px-5 py-2 text-xs font-semibold text-slate-600 hover:border-slate-300">
+                <button type="button" data-delete-confirm-cancel class="rounded-full border border-slate-300 px-5 py-2 text-xs font-semibold text-slate-600 hover:border-slate-300">
                     Cancel
                 </button>
                 <button type="button" data-delete-confirm-submit class="rounded-full bg-rose-500 px-6 py-2 text-xs font-semibold text-white opacity-50" disabled>

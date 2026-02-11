@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
 use App\Models\Concerns\HasActivityTracking;
+use App\Models\ProjectMaintenance;
 
 class SalesRepresentative extends Model
 {
@@ -58,6 +59,17 @@ class SalesRepresentative extends Model
     {
         return $this->belongsToMany(Project::class, 'project_sales_representative')
             ->withPivot('amount')
+            ->withTimestamps();
+    }
+
+    public function maintenances(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ProjectMaintenance::class,
+            'project_maintenance_sales_representative',
+            'sales_representative_id',
+            'project_maintenance_id'
+        )->withPivot('amount')
             ->withTimestamps();
     }
 }

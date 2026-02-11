@@ -49,7 +49,7 @@
                             <td class="py-2 px-3">{{ ucfirst($employee->employment_type ?? '--') }}</td>
                             <td class="py-2 px-3">{{ $employee->manager?->name ?? '--' }}</td>
                             <td class="py-2 px-3">
-                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $employee->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-600 bg-slate-50' }}">
+                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $employee->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-300 text-slate-600 bg-slate-50' }}">
                                     {{ ucfirst($employee->status) }}
                                 </span>
                             </td>

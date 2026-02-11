@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">{{ $affiliate->customer->name }}</h1>
         </div>
         <div class="flex gap-3">
-            <a href="{{ route('admin.affiliates.edit', $affiliate) }}" class="rounded-full border border-slate-200 px-6 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
+            <a href="{{ route('admin.affiliates.edit', $affiliate) }}" class="rounded-full border border-slate-300 px-6 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
                 Edit
             </a>
             <form

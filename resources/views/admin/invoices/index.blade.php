@@ -10,7 +10,7 @@
         <form method="GET" action="" class="flex flex-nowrap items-end gap-3 text-sm">
             <div>
                 <label class="text-xs uppercase tracking-[0.2em] text-slate-400">Product</label>
-                <select name="product_id" class="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <select name="product_id" class="mt-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                     <option value="">All</option>
                     @foreach($products ?? [] as $product)
                         <option value="{{ $product->id }}" @selected((string)$productFilter === (string)$product->id)>
@@ -21,7 +21,7 @@
             </div>
             <div>
                 <label class="text-xs uppercase tracking-[0.2em] text-slate-400">Maintenance</label>
-                <select name="maintenance_id" class="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <select name="maintenance_id" class="mt-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                     <option value="">All</option>
                     @foreach($maintenances ?? [] as $maintenance)
                         <option value="{{ $maintenance->id }}" @selected((string)$maintenanceFilter === (string)$maintenance->id)>
@@ -39,7 +39,7 @@
 
     <div class="card overflow-x-auto">
         <table class="w-full min-w-[1050px] text-left text-sm">
-            <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+            <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
                     <th class="px-4 py-3">Invoice</th>
                     <th class="px-4 py-3">Customer</th>

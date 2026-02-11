@@ -11,23 +11,23 @@
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('admin.accounting.create', ['type' => 'payment']) }}" class="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">New Payment</a>
-            <a href="{{ route('admin.accounting.create', ['type' => 'refund']) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">New Refund</a>
-            <a href="{{ route('admin.accounting.create', ['type' => 'credit']) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">New Credit</a>
-            <a href="{{ route('admin.accounting.create', ['type' => 'expense']) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">New Expense</a>
+            <a href="{{ route('admin.accounting.create', ['type' => 'refund']) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">New Refund</a>
+            <a href="{{ route('admin.accounting.create', ['type' => 'credit']) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">New Credit</a>
+            <a href="{{ route('admin.accounting.create', ['type' => 'expense']) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">New Expense</a>
         </div>
     </div>
 
     <div class="mb-6 flex flex-wrap gap-2 text-sm">
-        <a href="{{ route('admin.accounting.index') }}" class="{{ $scope === 'ledger' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Ledger</a>
-        <a href="{{ route('admin.accounting.transactions') }}" class="{{ $scope === 'transactions' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Transactions</a>
-        <a href="{{ route('admin.accounting.refunds') }}" class="{{ $scope === 'refunds' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Refunds</a>
-        <a href="{{ route('admin.accounting.credits') }}" class="{{ $scope === 'credits' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Credits</a>
-        <a href="{{ route('admin.accounting.expenses') }}" class="{{ $scope === 'expenses' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Expenses</a>
+        <a href="{{ route('admin.accounting.index') }}" class="{{ $scope === 'ledger' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Ledger</a>
+        <a href="{{ route('admin.accounting.transactions') }}" class="{{ $scope === 'transactions' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Transactions</a>
+        <a href="{{ route('admin.accounting.refunds') }}" class="{{ $scope === 'refunds' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Refunds</a>
+        <a href="{{ route('admin.accounting.credits') }}" class="{{ $scope === 'credits' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Credits</a>
+        <a href="{{ route('admin.accounting.expenses') }}" class="{{ $scope === 'expenses' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Expenses</a>
     </div>
 
     <div class="card overflow-x-auto">
         <table class="w-full min-w-[900px] text-left text-sm">
-            <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+            <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                 <tr>
                     <th class="px-4 py-3">Date</th>
                     <th class="px-4 py-3">Type</th>
