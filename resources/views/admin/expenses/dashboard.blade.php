@@ -11,7 +11,29 @@
         };
     @endphp
 
-    <div class="card p-6">
+    <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div class="card px-4 py-3">
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Income (Received)</div>
+            <div class="mt-2 text-2xl font-semibold text-emerald-600">{{ $formatCurrency($incomeReceived) }}</div>
+        </div>
+        <div class="card px-4 py-3">
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Total Expenses</div>
+            <div class="mt-2 text-2xl font-semibold text-rose-600">{{ $formatCurrency($expenseTotal) }}</div>
+        </div>
+        <div class="card px-4 py-3">
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payout Expenses</div>
+            <div class="mt-2 text-2xl font-semibold text-amber-600">{{ $formatCurrency($payoutExpenseTotal) }}</div>
+        </div>
+        <div class="card px-4 py-3">
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Net (Income - Expense)</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $formatCurrency($netIncome) }}</div>
+        </div>
+        <div class="card px-4 py-3">
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Cashflow (Received - Payout)</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $formatCurrency($netCashflow) }}</div>
+        </div>
+    </div>
+    <div class="mt-6 card p-6">
         <div class="section-label">Filters</div>
         <form method="GET" action="{{ route('admin.expenses.dashboard') }}" class="mt-4 grid gap-3 text-sm md:grid-cols-5">
             <div>
@@ -40,6 +62,10 @@
                     @endforeach
                 </select>
             </div>
+            <div class="mt-7 md:col-span-5 flex flex-wrap items-center gap-3">
+                <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Apply</button>
+                <a href="{{ route('admin.expenses.dashboard') }}" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Reset</a>
+            </div>
             <div class="md:col-span-5">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Sources</div>
                 <div class="mt-2 flex flex-wrap gap-4 text-xs text-slate-600">
@@ -64,37 +90,10 @@
                     </label>
                 </div>
             </div>
-            <div class="md:col-span-5 flex flex-wrap items-center gap-3">
-                <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Apply</button>
-                <a href="{{ route('admin.expenses.dashboard') }}" class="text-xs font-semibold text-slate-500 hover:text-slate-700">Reset</a>
-            </div>
         </form>
     </div>
 
-    <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <div class="card px-4 py-3">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Income (Received)</div>
-            <div class="mt-2 text-2xl font-semibold text-emerald-600">{{ $formatCurrency($incomeReceived) }}</div>
-        </div>
-        <div class="card px-4 py-3">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Total Expenses</div>
-            <div class="mt-2 text-2xl font-semibold text-rose-600">{{ $formatCurrency($expenseTotal) }}</div>
-        </div>
-        <div class="card px-4 py-3">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payout Expenses</div>
-            <div class="mt-2 text-2xl font-semibold text-amber-600">{{ $formatCurrency($payoutExpenseTotal) }}</div>
-        </div>
-        <div class="card px-4 py-3">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Net (Income - Expense)</div>
-            <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $formatCurrency($netIncome) }}</div>
-        </div>
-        <div class="card px-4 py-3">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Cashflow (Received - Payout)</div>
-            <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $formatCurrency($netCashflow) }}</div>
-        </div>
-    </div>
-
-    <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <div class="mt-6 grid gap-6 lg:grid-cols-[2fr_2fr]">
         <div class="card p-6">
             <div class="section-label">Expense by category</div>
             <div class="mt-4 space-y-3 text-sm text-slate-600">
@@ -108,6 +107,42 @@
                 @endforelse
             </div>
         </div>
+
+        <div class="card relative overflow-hidden p-6">
+            <div class="pointer-events-none absolute -right-20 -top-24 h-44 w-44 rounded-full bg-emerald-100/70 blur-2xl"></div>
+            <div class="pointer-events-none absolute -bottom-24 -left-16 h-44 w-44 rounded-full bg-teal-100/70 blur-2xl"></div>
+            <div class="relative flex items-start justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-600">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2l1.7 3.7L18 7.4l-3 3 0.8 4.2L12 12.8 8.2 14.6 9 10.4l-3-3 4.3-1.7L12 2z"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="section-label">Google AI Summary</div>
+                        <div class="mt-1 text-[11px] text-slate-500">Quick signals for this period</div>
+                    </div>
+                </div>
+                <a href="{{ route('admin.expenses.dashboard', array_merge(request()->query(), ['ai' => 'refresh'])) }}" class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-800">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                    Refresh AI
+                </a>
+            </div>
+            <div class="relative mt-4 rounded-2xl bg-gradient-to-br from-emerald-200/60 via-teal-200/40 to-sky-200/40 p-[1px]">
+                <div class="rounded-[15px] border border-white/60 bg-white/80 p-4 text-[13px] text-slate-600 leading-relaxed">
+                    @if(!empty($aiSummary))
+                        {!! nl2br(e($aiSummary)) !!}
+                    @elseif(!empty($aiError))
+                        <div class="text-xs text-slate-500">AI summary unavailable: {{ $aiError }}</div>
+                    @else
+                        <div class="text-xs text-slate-500">AI summary is not available yet.</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-2">
         <div class="card p-6">
             <div class="section-label">Expense by employee</div>
             <div class="mt-4 space-y-3 text-sm text-slate-600">
@@ -121,97 +156,68 @@
                 @endforelse
             </div>
         </div>
-    </div>
-
-    <div class="mt-6 grid gap-4 lg:grid-cols-3">
         <div class="card p-6">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">This Month</div>
-            <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $formatCurrency($monthlyTotal) }}</div>
-        </div>
-        <div class="card p-6">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">This Year</div>
-            <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $formatCurrency($yearlyTotal) }}</div>
-        </div>
-        <div class="card p-6">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Filtered Total</div>
-            <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $formatCurrency($totalAmount) }}</div>
-        </div>
-    </div>
-
-    <div class="mt-6 card p-6">
-        <div class="flex items-center justify-between">
-            <div class="section-label">Top Categories (Month)</div>
-        </div>
-        <div class="mt-4 space-y-3 text-sm text-slate-600">
-            @forelse($topCategories as $summary)
-                <div class="flex items-center justify-between">
-                    <div>{{ $summary['name'] }}</div>
-                    <div class="font-semibold text-slate-900">{{ $formatCurrency($summary['total']) }}</div>
-                </div>
-            @empty
-                <div class="text-sm text-slate-500">No expenses yet.</div>
-            @endforelse
+            <div class="section-label">Expense by sales representatives</div>
+            <div class="mt-4 space-y-3 text-sm text-slate-600">
+                @forelse($salesRepTotals as $summary)
+                    <div class="flex items-center justify-between">
+                        <div>{{ $summary['label'] }}</div>
+                        <div class="font-semibold text-slate-900">{{ $formatCurrency($summary['total']) }}</div>
+                    </div>
+                @empty
+                    <div class="text-sm text-slate-500">No sales rep payouts in this range.</div>
+                @endforelse
+            </div>
         </div>
     </div>
-
-    <div class="mt-6 card p-6">
-        <div class="section-label">Category totals (filtered)</div>
-        <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80">
-            <table class="min-w-full text-left text-sm text-slate-700">
-                <thead>
-                    <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
-                        <th class="px-3 py-2">Category</th>
-                        <th class="px-3 py-2 text-right">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($categoryTotals as $summary)
-                        <tr class="border-t border-slate-100">
-                            <td class="px-3 py-2">{{ $summary['name'] }}</td>
-                            <td class="px-3 py-2 text-right font-semibold text-slate-900">{{ $formatCurrency($summary['total']) }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="2" class="px-3 py-4 text-center text-slate-500">No totals available.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
 
     <div class="mt-6 card p-6">
         <div class="section-label">Trend overview</div>
-        <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80">
-            <table class="min-w-full text-left text-sm text-slate-700">
-                <thead>
-                    <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
-                        <th class="px-3 py-2">Period</th>
-                        <th class="px-3 py-2">Income</th>
-                        <th class="px-3 py-2">Expense</th>
-                        <th class="px-3 py-2">Net</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($trendLabels as $index => $label)
-                        @php
-                            $income = $trendIncome[$index] ?? 0;
-                            $expense = $trendExpenses[$index] ?? 0;
-                        @endphp
-                        <tr class="border-t border-slate-100">
-                            <td class="px-3 py-2">{{ $label }}</td>
-                            <td class="px-3 py-2">{{ $formatCurrency($income) }}</td>
-                            <td class="px-3 py-2">{{ $formatCurrency($expense) }}</td>
-                            <td class="px-3 py-2">{{ $formatCurrency($income - $expense) }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="px-3 py-4 text-center text-slate-500">No data to display.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
+            @php
+                $trendCount = count($trendLabels ?? []);
+                $maxTrend = max([1, ...array_map('floatval', $trendIncome ?? []), ...array_map('floatval', $trendExpenses ?? [])]);
+                $incomePoints = [];
+                $expensePoints = [];
+                if ($trendCount > 1) {
+                    foreach (($trendIncome ?? []) as $index => $value) {
+                        $x = round(($index / ($trendCount - 1)) * 100, 2);
+                        $y = round(100 - (($maxTrend > 0 ? ($value / $maxTrend) : 0) * 100), 2);
+                        $incomePoints[] = "{$x},{$y}";
+                    }
+                    foreach (($trendExpenses ?? []) as $index => $value) {
+                        $x = round(($index / ($trendCount - 1)) * 100, 2);
+                        $y = round(100 - (($maxTrend > 0 ? ($value / $maxTrend) : 0) * 100), 2);
+                        $expensePoints[] = "{$x},{$y}";
+                    }
+                }
+            @endphp
+            @if($trendCount > 1)
+                <svg viewBox="0 0 100 100" class="h-40 w-full">
+                    <defs>
+                        <linearGradient id="expenseLine" x1="0" x2="1">
+                            <stop offset="0%" stop-color="#f87171" />
+                            <stop offset="100%" stop-color="#ef4444" />
+                        </linearGradient>
+                        <linearGradient id="incomeLine" x1="0" x2="1">
+                            <stop offset="0%" stop-color="#34d399" />
+                            <stop offset="100%" stop-color="#10b981" />
+                        </linearGradient>
+                    </defs>
+                    <polyline fill="none" stroke="url(#incomeLine)" stroke-width="2" points="{{ implode(' ', $incomePoints) }}" />
+                    <polyline fill="none" stroke="url(#expenseLine)" stroke-width="2" points="{{ implode(' ', $expensePoints) }}" />
+                </svg>
+                <div class="mt-2 flex flex-wrap items-center justify-between text-xs text-slate-500">
+                    <span>Start: {{ $trendLabels[0] ?? '' }}</span>
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Income</span>
+                        <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-rose-500"></span>Expense</span>
+                    </div>
+                    <span>End: {{ $trendLabels[$trendCount - 1] ?? '' }}</span>
+                </div>
+            @else
+                <div class="text-sm text-slate-500">Not enough data to plot trends.</div> 
+            @endif
         </div>
     </div>
 @endsection

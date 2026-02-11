@@ -7,18 +7,21 @@ use App\Models\Income;
 use App\Models\IncomeCategory;
 use App\Models\Setting;
 use App\Services\IncomeEntryService;
+use App\Services\GeminiService;
 use App\Support\Currency;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class IncomeController extends Controller
 {
-    public function dashboard(Request $request, IncomeEntryService $entryService): View
+    public function dashboard(Request $request, IncomeEntryService $entryService, GeminiService $geminiService): View
     {
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
@@ -36,6 +39,8 @@ class IncomeController extends Controller
             ->sortByDesc(fn ($entry) => $entry['income_date'] ?? now());
 
         $totalAmount = (float) $entries->sum('amount');
+        $manualTotal = (float) $entries->where('source_type', 'manual')->sum('amount');
+        $systemTotal = (float) $entries->where('source_type', 'system')->sum('amount');
 
         $categoryTotals = $entries
             ->groupBy(fn ($entry) => $entry['category_id'] ?? 'system')
@@ -58,13 +63,54 @@ class IncomeController extends Controller
         }
         $currencySymbol = Currency::symbol($currencyCode);
 
+        $topCustomers = $entries
+            ->filter(fn ($entry) => ! empty($entry['customer_name']))
+            ->groupBy(fn ($entry) => $entry['customer_name'])
+            ->map(fn ($items) => [
+                'name' => $items->first()['customer_name'],
+                'total' => (float) collect($items)->sum('amount'),
+            ])
+            ->values()
+            ->sortByDesc('total')
+            ->take(5);
+
+        $forceAiRefresh = $request->query('ai') === 'refresh';
+        [$aiSummary, $aiError] = $this->buildAiSummary(
+            $geminiService,
+            $filters,
+            $entries->count(),
+            $currencyCode,
+            $totalAmount,
+            $manualTotal,
+            $systemTotal,
+            $categoryTotals,
+            $topCustomers,
+            $forceAiRefresh
+        );
+
+        $trendStart = $filters['start_date']
+            ? Carbon::parse($filters['start_date'])->startOfDay()
+            : now()->startOfMonth();
+        $trendEnd = $filters['end_date']
+            ? Carbon::parse($filters['end_date'])->endOfDay()
+            : now()->endOfDay();
+
+        [$trendLabels, $trendTotals] = $this->buildTrends($entries, $trendStart, $trendEnd);
+
         return view('admin.income.dashboard', [
             'categories' => $categories,
             'filters' => $filters,
             'totalAmount' => $totalAmount,
+            'manualTotal' => $manualTotal,
+            'systemTotal' => $systemTotal,
             'categoryTotals' => $categoryTotals,
+            'topCustomers' => $topCustomers,
             'currencySymbol' => $currencySymbol,
             'currencyCode' => $currencyCode,
+            'aiSummary' => $aiSummary,
+            'aiError' => $aiError,
+            'trendLabels' => $trendLabels,
+            'trendTotals' => $trendTotals,
         ]);
     }
 
@@ -225,5 +271,109 @@ class IncomeController extends Controller
                 'query' => $request->query(),
             ]
         );
+    }
+
+    private function buildAiSummary(
+        GeminiService $geminiService,
+        array $filters,
+        int $count,
+        string $currencyCode,
+        float $totalAmount,
+        float $manualTotal,
+        float $systemTotal,
+        $categoryTotals,
+        $topCustomers,
+        bool $forceRefresh = false
+    ): array {
+        if (! config('google_ai.enabled')) {
+            return [null, 'Google AI is disabled.'];
+        }
+
+        $cacheKey = 'ai:income-dashboard:' . md5(json_encode($filters));
+
+        try {
+            $builder = function () use (
+                $geminiService,
+                $filters,
+                $count,
+                $currencyCode,
+                $totalAmount,
+                $manualTotal,
+                $systemTotal,
+                $categoryTotals,
+                $topCustomers
+            ) {
+                $startDate = $filters['start_date'] ?: 'all time';
+                $endDate = $filters['end_date'] ?: 'today';
+
+                $topCategories = collect($categoryTotals)->take(3)->map(function ($item) use ($currencyCode) {
+                    $amount = number_format((float) ($item['total'] ?? 0), 2);
+                    return "{$item['name']}: {$currencyCode} {$amount}";
+                })->implode(', ');
+
+                $topCustomerText = collect($topCustomers)->take(3)->map(function ($item) use ($currencyCode) {
+                    $amount = number_format((float) ($item['total'] ?? 0), 2);
+                    return "{$item['name']}: {$currencyCode} {$amount}";
+                })->implode(', ');
+
+                $prompt = <<<PROMPT
+You are a finance analyst. Summarize the income dashboard in Bengali.
+
+Period: {$startDate} to {$endDate}
+Totals:
+- Total income: {$currencyCode} {$totalAmount}
+- Manual income: {$currencyCode} {$manualTotal}
+- System income: {$currencyCode} {$systemTotal}
+- Entries: {$count}
+
+Top categories: {$topCategories}
+Top customers: {$topCustomerText}
+
+Return 4-6 bullet points, short and clear.
+PROMPT;
+
+                return $geminiService->generateText($prompt);
+            };
+
+            if ($forceRefresh) {
+                $summary = $builder();
+                Cache::put($cacheKey, $summary, now()->addMinutes(10));
+            } else {
+                $summary = Cache::remember($cacheKey, now()->addMinutes(10), $builder);
+            }
+
+            return [$summary, null];
+        } catch (\Throwable $e) {
+            return [null, $e->getMessage()];
+        }
+    }
+
+    private function buildTrends($entries, Carbon $startDate, Carbon $endDate): array
+    {
+        $days = $startDate->diffInDays($endDate);
+        $format = $days > 62 ? 'Y-m' : 'Y-m-d';
+
+        $groups = $entries->groupBy(function ($entry) use ($format) {
+            $date = $entry['income_date'] ? Carbon::parse($entry['income_date']) : now();
+            return $date->format($format);
+        });
+
+        $labels = [];
+        $totals = [];
+        $cursor = $startDate->copy();
+
+        while ($cursor->lessThanOrEqualTo($endDate)) {
+            $label = $cursor->format($format);
+            $labels[] = $label;
+            $totals[] = (float) collect($groups->get($label, []))->sum('amount');
+
+            if ($days > 62) {
+                $cursor->addMonth();
+            } else {
+                $cursor->addDay();
+            }
+        }
+
+        return [$labels, $totals];
     }
 }

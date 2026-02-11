@@ -7,14 +7,16 @@ use App\Models\AccountingEntry;
 use App\Models\ExpenseCategory;
 use App\Models\RecurringExpense;
 use App\Services\ExpenseEntryService;
+use App\Services\GeminiService;
 use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 class ExpenseDashboardController extends Controller
 {
-    public function index(Request $request, ExpenseEntryService $entryService): View
+    public function index(Request $request, ExpenseEntryService $entryService, GeminiService $geminiService): View
     {
         $startDate = $request->query('start_date')
             ? Carbon::parse($request->query('start_date'))->startOfDay()
@@ -86,6 +88,19 @@ class ExpenseDashboardController extends Controller
             ->values()
             ->sortByDesc('total');
 
+        $salesRepTotals = $entries
+            ->filter(fn ($entry) => ($entry['person_type'] ?? null) === 'sales_rep' && ! empty($entry['person_name']))
+            ->groupBy(fn ($entry) => (string) ($entry['person_id'] ?? ''))
+            ->map(function ($items) {
+                $first = $items->first();
+                return [
+                    'label' => $first['person_name'],
+                    'total' => (float) collect($items)->sum('amount'),
+                ];
+            })
+            ->values()
+            ->sortByDesc('total');
+
         $now = now();
         $monthStart = $now->copy()->startOfMonth()->toDateString();
         $yearStart = $now->copy()->startOfYear()->toDateString();
@@ -130,6 +145,23 @@ class ExpenseDashboardController extends Controller
         }
         $currencySymbol = Currency::symbol($currencyCode);
 
+        $forceAiRefresh = $request->query('ai') === 'refresh';
+        [$aiSummary, $aiError] = $this->buildAiSummary(
+            $geminiService,
+            $startDate,
+            $endDate,
+            $currencyCode,
+            $expenseTotal,
+            $incomeReceived,
+            $payoutExpenseTotal,
+            $netIncome,
+            $netCashflow,
+            $categoryTotals,
+            $employeeTotals,
+            $filters,
+            $forceAiRefresh
+        );
+
         return view('admin.expenses.dashboard', [
             'filters' => $filters,
             'expenseTotal' => $expenseTotal,
@@ -139,6 +171,7 @@ class ExpenseDashboardController extends Controller
             'netCashflow' => $netCashflow,
             'categoryTotals' => $categoryTotals,
             'employeeTotals' => $employeeTotals,
+            'salesRepTotals' => $salesRepTotals,
             'totalAmount' => $totalAmount,
             'monthlyTotal' => $monthlyTotal,
             'yearlyTotal' => $yearlyTotal,
@@ -151,6 +184,8 @@ class ExpenseDashboardController extends Controller
             'peopleOptions' => $peopleOptions,
             'currencyCode' => $currencyCode,
             'currencySymbol' => $currencySymbol,
+            'aiSummary' => $aiSummary,
+            'aiError' => $aiError,
         ]);
     }
 
@@ -190,5 +225,87 @@ class ExpenseDashboardController extends Controller
         }
 
         return [$labels, $expenseSeries, $incomeSeries];
+    }
+
+    private function buildAiSummary(
+        GeminiService $geminiService,
+        Carbon $startDate,
+        Carbon $endDate,
+        string $currencyCode,
+        float $expenseTotal,
+        float $incomeReceived,
+        float $payoutExpenseTotal,
+        float $netIncome,
+        float $netCashflow,
+        $categoryTotals,
+        $employeeTotals,
+        array $filters,
+        bool $forceRefresh = false
+    ): array {
+        if (! config('google_ai.enabled')) {
+            return [null, 'Google AI is disabled.'];
+        }
+
+        $cacheKey = 'ai:expense-dashboard:' . md5(json_encode([
+            'start' => $startDate->toDateString(),
+            'end' => $endDate->toDateString(),
+            'filters' => $filters,
+        ]));
+
+        try {
+            $builder = function () use (
+                $geminiService,
+                $startDate,
+                $endDate,
+                $currencyCode,
+                $expenseTotal,
+                $incomeReceived,
+                $payoutExpenseTotal,
+                $netIncome,
+                $netCashflow,
+                $categoryTotals,
+                $employeeTotals
+            ) {
+                $topCategories = collect($categoryTotals)->take(3)->map(function ($item) use ($currencyCode) {
+                    $amount = number_format((float) ($item['total'] ?? 0), 2);
+                    return "{$item['name']}: {$currencyCode} {$amount}";
+                })->implode(', ');
+
+                $topEmployees = collect($employeeTotals)->take(3)->map(function ($item) use ($currencyCode) {
+                    $amount = number_format((float) ($item['total'] ?? 0), 2);
+                    return "{$item['label']}: {$currencyCode} {$amount}";
+                })->implode(', ');
+
+                $prompt = <<<PROMPT
+You are a finance analyst. Summarize the expense dashboard in Bengali.
+
+Period: {$startDate->toDateString()} to {$endDate->toDateString()}
+Totals:
+- Total expenses: {$currencyCode} {$expenseTotal}
+- Income received: {$currencyCode} {$incomeReceived}
+- Payout expenses: {$currencyCode} {$payoutExpenseTotal}
+- Net (Income - Expense): {$currencyCode} {$netIncome}
+- Cashflow (Received - Payout): {$currencyCode} {$netCashflow}
+
+Top categories: {$topCategories}
+Top employees: {$topEmployees}
+
+Return 4-6 bullet points, short and clear.
+PROMPT;
+
+                return $geminiService->generateText($prompt);
+            };
+
+            if ($forceRefresh) {
+                $summary = $builder();
+                Cache::put($cacheKey, $summary, now()->addMinutes(10));
+            } else {
+                $summary = Cache::remember($cacheKey, now()->addMinutes(10), $builder);
+            }
+
+            return [$summary, null];
+        } catch (\Throwable $e) {
+            return [null, $e->getMessage()];
+        }
     }
 }
