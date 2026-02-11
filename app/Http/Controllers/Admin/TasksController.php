@@ -39,13 +39,19 @@ class TasksController extends Controller
         $tasks = $tasksQuery->paginate(25)->withQueryString();
         $tasks->setCollection($taskQueryService->actionableTasksForUser($user, $tasks->getCollection()));
 
-        return view('admin.tasks.index', [
+        $payload = [
             'tasks' => $tasks,
             'statusFilter' => $statusFilter,
             'search' => $search,
             'statusCounts' => $taskQueryService->tasksSummaryForUser($user),
             'routePrefix' => 'admin',
             'usesStartRoute' => false,
-        ]);
+        ];
+
+        if ($request->header('HX-Request')) {
+            return view('tasks.partials.index', $payload);
+        }
+
+        return view('admin.tasks.index', $payload);
     }
 }

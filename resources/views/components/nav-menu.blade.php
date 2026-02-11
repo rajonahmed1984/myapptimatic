@@ -3,6 +3,7 @@
     'routes' => [],
     'label' => '',
     'icon' => true,
+    'alwaysOpen' => false,
     'activeClass' => 'nav-link nav-link-active',
     'inactiveClass' => 'nav-link',
     'badge' => null,
@@ -29,8 +30,8 @@
         @endif
     </a>
     
-    @if($isActive && $slot->isNotEmpty())
-        <div class="ml-6 space-y-1 text-xs text-slate-400">
+    @if(($isActive || $alwaysOpen) && $slot->isNotEmpty())
+        <div class="ml-8 space-y-1 text-xs text-slate-400">
             {{ $slot }}
         </div>
     @endif

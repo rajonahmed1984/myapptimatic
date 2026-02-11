@@ -10,20 +10,20 @@
             <div class="text-2xl font-semibold text-slate-900">Create project</div>
             <div class="text-sm text-slate-500">Link to orders/invoices, assign teams, and create initial tasks.</div>
         </div>
-        <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to projects</a>
+        <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to projects</a>
     </div>
 
     <div class="card p-6">
-        <form method="POST" action="{{ route('admin.projects.store') }}" hx-boost="false" class="mt-2 grid gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('admin.projects.store') }}" hx-boost="false" class="mt-2 grid gap-4 rounded-2xl border border-slate-300 bg-white/80 p-5" enctype="multipart/form-data">
             @csrf
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label class="text-xs text-slate-500">Project name</label>
-                    <input name="name" value="{{ old('name') }}" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <input name="name" value="{{ old('name') }}" required class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Customer</label>
-                    <select name="customer_id" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="customer_id" required class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         <option value="">Select customer</option>
                         @foreach($customers as $customer)
                             <option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>{{ $customer->display_name }}</option>
@@ -37,7 +37,7 @@
             <div class="grid gap-4 md:grid-cols-3">
                 <div>
                     <label class="text-xs text-slate-500">Type</label>
-                    <select name="type" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="type" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         @foreach($types as $type)
                             <option value="{{ $type }}" @selected(old('type') === $type)>{{ ucfirst($type) }}</option>
                         @endforeach
@@ -45,7 +45,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Status</label>
-                    <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="status" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         @foreach($statuses as $status)
                             <option value="{{ $status }}" @selected(old('status') === $status)>{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
                         @endforeach
@@ -53,7 +53,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Sales representatives</label>
-                    <div class="mt-2 space-y-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
+                    <div class="mt-2 space-y-2 rounded-2xl border border-slate-300 bg-white/80 p-3">
                         @foreach($salesReps as $rep)
                             @php
                                 $selectedSalesReps = collect(old('sales_rep_ids', []));
@@ -66,7 +66,7 @@
                                 </label>
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs text-slate-500">Amount</span>
-                                    <input type="number" min="0" step="0.01" name="sales_rep_amounts[{{ $rep->id }}]" value="{{ $repAmount }}" class="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
+                                    <input type="number" min="0" step="0.01" name="sales_rep_amounts[{{ $rep->id }}]" value="{{ $repAmount }}" class="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs">
                                 </div>
                             </div>
                         @endforeach
@@ -75,25 +75,25 @@
                 </div>
             </div>
 
-            <div class="grid gap-4 md:grid-cols-2">
+            <div class="grid gap-4 md:grid-cols-3">
                 <div>
                     <label class="text-xs text-slate-500">Start date</label>
-                    <input name="start_date" type="date" value="{{ old('start_date') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <input name="start_date" type="date" value="{{ old('start_date') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Expected end date</label>
-                    <input name="expected_end_date" type="date" value="{{ old('expected_end_date') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <input name="expected_end_date" type="date" value="{{ old('expected_end_date') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500">Due date (internal)</label>
+                    <input name="due_date" type="date" value="{{ old('due_date') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                 </div>
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
-                    <label class="text-xs text-slate-500">Due date (internal)</label>
-                    <input name="due_date" type="date" value="{{ old('due_date') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-                <div>
                     <label class="text-xs text-slate-500">Assign employees</label>
-                    <div class="mt-2 space-y-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
+                    <div class="mt-2 space-y-2 rounded-2xl border border-slate-300 bg-white/80 p-3">
                         @foreach($employees as $employee)
                             @php
                                 $selectedEmployees = collect(old('employee_ids', []));
@@ -109,7 +109,7 @@
                                 @if($isContract)
                                     <div class="flex items-center gap-2 {{ $isAssigned ? '' : 'hidden' }}" data-contract-amount>
                                         <span class="text-xs text-slate-500">Amount</span>
-                                        <input type="number" min="0" step="0.01" name="contract_employee_amounts[{{ $employee->id }}]" value="{{ $contractAmount }}" class="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs" @disabled(! $isAssigned)>
+                                        <input type="number" min="0" step="0.01" name="contract_employee_amounts[{{ $employee->id }}]" value="{{ $contractAmount }}" class="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" @disabled(! $isAssigned)>
                                     </div>
                                 @endif
                             </div>
@@ -118,11 +118,10 @@
                     <p class="mt-1 text-xs text-slate-500">Select employees assigned to this project.</p>
                     <p class="mt-1 text-xs text-slate-500">Contract employee amounts apply only to selected contract employees.</p>
                 </div>
-            </div>
-
-            <div>
-                <label class="text-xs text-slate-500">Notes</label>
-                <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{{ old('notes') }}</textarea>
+                <div>
+                    <label class="text-xs text-slate-500">Notes</label>
+                    <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">{{ old('notes') }}</textarea>
+                </div>
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
@@ -138,13 +137,13 @@
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white/60 p-4">
+            <div class="rounded-2xl border border-slate-300 bg-white/60 p-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="section-label">Add Maintenance Plan</div>
                         <div class="text-sm text-slate-600">Optional recurring billing tied to this project.</div>
                     </div>
-                    <button type="button" id="addMaintenanceRow" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add plan</button>
+                    <button type="button" id="addMaintenanceRow" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add plan</button>
                 </div>
                 <div id="maintenanceRows" class="mt-4 space-y-3">
                     @php $maintenanceOld = old('maintenances', []); @endphp
@@ -152,22 +151,22 @@
                         <div class="maintenance-row grid gap-3 md:grid-cols-6 mb-2" data-index="{{ $index }}">
                             <div class="md:col-span-2">
                                 <label class="text-xs text-slate-500">Title</label>
-                                <input name="maintenances[{{ $index }}][title]" value="{{ $maintenance['title'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                <input name="maintenances[{{ $index }}][title]" value="{{ $maintenance['title'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                             </div>
                             <div>
                                 <label class="text-xs text-slate-500">Amount</label>
-                                <input name="maintenances[{{ $index }}][amount]" type="number" min="0.01" step="0.01" value="{{ $maintenance['amount'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                <input name="maintenances[{{ $index }}][amount]" type="number" min="0.01" step="0.01" value="{{ $maintenance['amount'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                             </div>
                             <div>
                                 <label class="text-xs text-slate-500">Billing cycle</label>
-                                <select name="maintenances[{{ $index }}][billing_cycle]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                <select name="maintenances[{{ $index }}][billing_cycle]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                                     <option value="monthly" @selected(($maintenance['billing_cycle'] ?? '') === 'monthly')>Monthly</option>
                                     <option value="yearly" @selected(($maintenance['billing_cycle'] ?? '') === 'yearly')>Yearly</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="text-xs text-slate-500">Start date</label>
-                                <input name="maintenances[{{ $index }}][start_date]" type="date" value="{{ $maintenance['start_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                <input name="maintenances[{{ $index }}][start_date]" type="date" value="{{ $maintenance['start_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                             </div>
                             <div class="flex items-end justify-between gap-2">
                                 <div class="space-y-2">
@@ -194,15 +193,15 @@
             <div class="grid gap-4 md:grid-cols-4">
                 <div>
                     <label class="text-xs text-slate-500">Total budget</label>
-                    <input name="total_budget" type="number" step="0.01" value="{{ old('total_budget') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    <input name="total_budget" type="number" step="0.01" value="{{ old('total_budget') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Initial payment</label>
-                    <input name="initial_payment_amount" type="number" step="0.01" value="{{ old('initial_payment_amount') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    <input name="initial_payment_amount" type="number" step="0.01" value="{{ old('initial_payment_amount') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Currency</label>
-                    <select name="currency" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                    <select name="currency" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                         @foreach($currencyOptions as $currency)
                             <option value="{{ $currency }}" @selected(old('currency', $defaultCurrency) === $currency)>{{ $currency }}</option>
                         @endforeach
@@ -210,17 +209,17 @@
                 </div>
                 <div>
                     <label class="text-xs text-slate-500">Budget (legacy)</label>
-                    <input name="budget_amount" type="number" step="0.01" value="{{ old('budget_amount') }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <input name="budget_amount" type="number" step="0.01" value="{{ old('budget_amount') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white/60 p-4">
+            <div class="rounded-2xl border border-slate-300 bg-white/60 p-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="section-label">Overhead fees (optional)</div>
                         <div class="text-sm text-slate-600">Add per-project overhead line items.</div>
                     </div>
-                    <button type="button" id="addOverheadRow" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add fee</button>
+                    <button type="button" id="addOverheadRow" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add fee</button>
                 </div>
                 <div id="overheadRows" class="mt-4 space-y-3">
                     @php
@@ -230,12 +229,12 @@
                         <div class="overhead-row grid gap-3 md:grid-cols-3 items-end" data-index="{{ $index }}">
                             <div class="md:col-span-2">
                                 <label class="text-xs text-slate-500">Details</label>
-                                <input name="overheads[{{ $index }}][short_details]" value="{{ $overhead['short_details'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="e.g. Payment gateway setup">
+                                <input name="overheads[{{ $index }}][short_details]" value="{{ $overhead['short_details'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="e.g. Payment gateway setup">
                             </div>
                             <div>
                                 <label class="text-xs text-slate-500">Amount</label>
                                 <div class="flex items-center gap-2">
-                                    <input name="overheads[{{ $index }}][amount]" type="number" step="0.01" min="0" value="{{ $overhead['amount'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                    <input name="overheads[{{ $index }}][amount]" type="number" step="0.01" min="0" value="{{ $overhead['amount'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                                     <button type="button" class="remove-overhead-row rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300">Remove</button>
                                 </div>
                             </div>
@@ -244,13 +243,13 @@
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white/60 p-4">
+            <div class="rounded-2xl border border-slate-300 bg-white/60 p-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="section-label">Initial tasks</div>
                         <div class="text-sm text-slate-600">Add at least one task with dates and assignee.</div>
                     </div>
-                    <button type="button" id="addTaskRow" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add task</button>
+                    <button type="button" id="addTaskRow" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add task</button>
                 </div>
                 <div id="taskRows" class="mt-4 space-y-3">
                     @php $taskOld = old('tasks', [ ['title' => '', 'task_type' => 'feature', 'priority' => 'medium', 'descriptions' => [''], 'start_date' => now()->toDateString(), 'due_date' => '', 'assignee' => '', 'customer_visible' => false] ]); @endphp
@@ -259,11 +258,11 @@
                             <div class="grid gap-3 md:grid-cols-5 mb-3">
                                 <div class="md:col-span-2">
                                     <label class="text-xs text-slate-500">Title</label>
-                                    <input name="tasks[{{ $index }}][title]" value="{{ $task['title'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm task-title" required>
+                                    <input name="tasks[{{ $index }}][title]" value="{{ $task['title'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm task-title" required>
                                 </div>
                                 <div>
                                     <label class="text-xs text-slate-500">Task type</label>
-                                    <select name="tasks[{{ $index }}][task_type]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                    <select name="tasks[{{ $index }}][task_type]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                                         @foreach($taskTypeOptions as $value => $label)
                                             <option value="{{ $value }}" @selected(($task['task_type'] ?? '') === $value)>{{ $label }}</option>
                                         @endforeach
@@ -271,7 +270,7 @@
                                 </div>
                                 <div>
                                     <label class="text-xs text-slate-500">Priority</label>
-                                    <select name="tasks[{{ $index }}][priority]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                    <select name="tasks[{{ $index }}][priority]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                                         @foreach($priorityOptions as $value => $label)
                                             <option value="{{ $value }}" @selected(($task['priority'] ?? '') === $value)>{{ $label }}</option>
                                         @endforeach
@@ -279,15 +278,15 @@
                                 </div>
                                 <div>
                                     <label class="text-xs text-slate-500">Start date</label>
-                                    <input type="date" name="tasks[{{ $index }}][start_date]" value="{{ $task['start_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                    <input type="date" name="tasks[{{ $index }}][start_date]" value="{{ $task['start_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                                 </div>
                                 <div>
                                     <label class="text-xs text-slate-500">Due date</label>
-                                    <input type="date" name="tasks[{{ $index }}][due_date]" value="{{ $task['due_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                    <input type="date" name="tasks[{{ $index }}][due_date]" value="{{ $task['due_date'] ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="text-xs text-slate-500">Assign to</label>
-                                    <select name="tasks[{{ $index }}][assignee]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                                    <select name="tasks[{{ $index }}][assignee]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                                         <option value="">Select assignee</option>
                                         @foreach($employees as $employee)
                                             @php $val = 'employee:'.$employee->id; @endphp
@@ -300,7 +299,7 @@
                                     </select>
                                 </div>
                                 <div class="flex items-end">
-                                    <label class="mt-1 flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 cursor-pointer focus-within:border-teal-300 focus-within:ring-2 focus-within:ring-teal-100">
+                                    <label class="mt-1 flex w-full items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-600 cursor-pointer focus-within:border-teal-300 focus-within:ring-2 focus-within:ring-teal-100">
                                         <input type="hidden" name="tasks[{{ $index }}][customer_visible]" value="0">
                                         <input type="checkbox" name="tasks[{{ $index }}][customer_visible]" value="1" @checked(!empty($task['customer_visible'])) class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-2 focus:ring-teal-200 focus:ring-offset-0">
                                         <span>Customer visible</span>
@@ -330,7 +329,7 @@
                                     <div class="description-group grid gap-3 md:grid-cols-4 mb-2">
                                         <div class="md:col-span-3">
                                             <label class="text-xs text-slate-500">{{ $descIndex === 0 ? 'Description' : '' }}</label>
-                                            <input type="text" name="tasks[{{ $index }}][descriptions][]" value="{{ $description ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Add description">
+                                            <input type="text" name="tasks[{{ $index }}][descriptions][]" value="{{ $description ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Add description">
                                         </div>
                                         <div class="flex items-end gap-1">
                                             <button type="button" class="add-task-description-btn rounded-full bg-teal-500 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600 flex-1">+ Add</button>
@@ -351,7 +350,7 @@
             </div>
 
             <div class="flex justify-end gap-3 pt-2">
-                <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Cancel</a>
+                <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Cancel</a>
                 <button type="submit" class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800">Save project</button>
             </div>
         </form>
@@ -410,7 +409,7 @@
                         group.className = 'description-group grid gap-3 md:grid-cols-4 mb-2';
                         group.innerHTML = `
                             <div class="md:col-span-3">
-                                <input type="text" name="tasks[${taskIndex}][descriptions][]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Add description">
+                                <input type="text" name="tasks[${taskIndex}][descriptions][]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Add description">
                             </div>
                             <div class="flex items-start gap-1">
                                 <button type="button" class="add-task-description-btn rounded-full bg-teal-500 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600 flex-1">+ Add</button>
@@ -440,22 +439,22 @@
                     <div class="grid gap-3 md:grid-cols-4 mb-3">
                         <div class="md:col-span-2">
                             <label class="text-xs text-slate-500">Title</label>
-                            <input name="tasks[${index}][title]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm task-title" required>
+                            <input name="tasks[${index}][title]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm task-title" required>
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Start date</label>
-                            <input type="date" name="tasks[${index}][start_date]" value="${defaultStartDate}" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            <input type="date" name="tasks[${index}][start_date]" value="${defaultStartDate}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Due date</label>
-                            <input type="date" name="tasks[${index}][due_date]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            <input type="date" name="tasks[${index}][due_date]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                         </div>
                     </div>
 
                     <div class="grid gap-3 md:grid-cols-4 mb-3">
                         <div>
                             <label class="text-xs text-slate-500">Task type</label>
-                            <select name="tasks[${index}][task_type]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            <select name="tasks[${index}][task_type]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                                 @foreach($taskTypeOptions as $value => $label)
                                     <option value="{{ $value }}">{{ $label }}</option>
                                 @endforeach
@@ -463,7 +462,7 @@
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Priority</label>
-                            <select name="tasks[${index}][priority]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <select name="tasks[${index}][priority]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                                 @foreach($priorityOptions as $value => $label)
                                     <option value="{{ $value }}">{{ $label }}</option>
                                 @endforeach
@@ -478,7 +477,7 @@
                     <div class="grid gap-3 md:grid-cols-3 mb-3">
                         <div class="md:col-span-2">
                             <label class="text-xs text-slate-500">Assign to</label>
-                            <select name="tasks[${index}][assignee]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                            <select name="tasks[${index}][assignee]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                                 <option value="">Select assignee</option>
                                 @foreach($employees as $employee)
                                     <option value="employee:{{ $employee->id }}">Employee: {{ $employee->name }}</option>
@@ -489,7 +488,7 @@
                             </select>
                         </div>
                         <div class="flex items-end">
-                            <label class="mt-1 flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 cursor-pointer focus-within:border-teal-300 focus-within:ring-2 focus-within:ring-teal-100">
+                            <label class="mt-1 flex w-full items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-600 cursor-pointer focus-within:border-teal-300 focus-within:ring-2 focus-within:ring-teal-100">
                                 <input type="hidden" name="tasks[${index}][customer_visible]" value="0">
                                 <input type="checkbox" name="tasks[${index}][customer_visible]" value="1" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-2 focus:ring-teal-200 focus:ring-offset-0">
                                 <span>Customer visible</span>
@@ -501,7 +500,7 @@
                         <div class="description-group grid gap-3 md:grid-cols-4 mb-2">
                             <div class="md:col-span-3">
                                 <label class="text-xs text-slate-500">Description</label>
-                                <input type="text" name="tasks[${index}][descriptions][]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Add description">
+                                <input type="text" name="tasks[${index}][descriptions][]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Add description">
                             </div>
                             <div class="flex items-end gap-1">
                                 <button type="button" class="add-task-description-btn rounded-full bg-teal-500 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600 flex-1">+ Add</button>
@@ -537,22 +536,22 @@
                 row.innerHTML = `
                     <div class="md:col-span-2">
                         <label class="text-xs text-slate-500">Title</label>
-                        <input name="maintenances[${index}][title]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        <input name="maintenances[${index}][title]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Amount</label>
-                        <input name="maintenances[${index}][amount]" type="number" min="0.01" step="0.01" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        <input name="maintenances[${index}][amount]" type="number" min="0.01" step="0.01" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Billing cycle</label>
-                        <select name="maintenances[${index}][billing_cycle]" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        <select name="maintenances[${index}][billing_cycle]" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                             <option value="monthly">Monthly</option>
                             <option value="yearly">Yearly</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Start date</label>
-                        <input name="maintenances[${index}][start_date]" type="date" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>
+                        <input name="maintenances[${index}][start_date]" type="date" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                     </div>
                     <div class="flex items-end justify-between gap-2">
                         <div class="space-y-2">

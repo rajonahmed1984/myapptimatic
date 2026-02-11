@@ -100,6 +100,7 @@
                             :href="route('admin.projects.index')"
                             :routes="['admin.projects.*', 'admin.project-maintenances.*']"
                             label="Projects"
+                            :alwaysOpen="true"
                         >
                             <a href="{{ route('admin.projects.index') }}" class="block {{ activeIf(request()->routeIs('admin.projects.index')) }}">All Projects</a>
                             <a href="{{ route('admin.projects.create') }}" class="block {{ activeIf(request()->routeIs('admin.projects.create')) }}">Create Project</a>

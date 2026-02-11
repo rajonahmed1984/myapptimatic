@@ -20,16 +20,43 @@ class ProjectMaintenanceController extends Controller
     {
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = trim((string) $request->input('search', ''));
+
         $maintenances = ProjectMaintenance::query()
             ->with(['project:id,name,currency', 'customer:id,name'])
-            ->orderByDesc('id')
-            ->paginate(25);
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('title', 'like', '%' . $search . '%')
+                        ->orWhere('billing_cycle', 'like', '%' . $search . '%')
+                        ->orWhere('status', 'like', '%' . $search . '%')
+                        ->orWhereHas('project', function ($projectQuery) use ($search) {
+                            $projectQuery->where('name', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                            $customerQuery->where('name', 'like', '%' . $search . '%');
+                        });
 
-        return view('admin.project-maintenances.index', [
+                    if (is_numeric($search)) {
+                        $inner->orWhere('id', (int) $search);
+                    }
+                });
+            })
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        $payload = [
             'maintenances' => $maintenances,
-        ]);
+            'search' => $search,
+        ];
+
+        if ($request->header('HX-Request')) {
+            return view('admin.project-maintenances.partials.table', $payload);
+        }
+
+        return view('admin.project-maintenances.index', $payload);
     }
 
     public function create(Request $request): View
