@@ -153,7 +153,7 @@
                                                     Complete
                                                 </button>
                                                 <button type="button" class="subtask-status-btn rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300" data-subtask-id="{{ $subtask->id }}" data-status="in_progress">
-                                                    In progress
+                                                    Inprogress
                                                 </button>
                                             </div>
                                         </div>
@@ -270,7 +270,7 @@
                                                     Complete
                                                 </button>
                                                 <button type="button" class="subtask-status-btn rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300" data-subtask-id="{{ $subtask->id }}" data-status="in_progress">
-                                                    In progress
+                                                    Inprogress
                                                 </button>
                                             </div>
                                         </div>

@@ -16,14 +16,14 @@
     $filters = [
         '' => ['label' => 'All', 'count' => $statusCounts['total'] ?? 0],
         'open' => ['label' => 'Open', 'count' => $statusCounts['open'] ?? 0],
-        'in_progress' => ['label' => 'In progress', 'count' => $statusCounts['in_progress'] ?? 0],
+        'in_progress' => ['label' => 'Inprogress', 'count' => $statusCounts['in_progress'] ?? 0],
         'completed' => ['label' => 'Completed', 'count' => $statusCounts['completed'] ?? 0],
     ];
 
     $statusLabels = [
         'pending' => 'Open',
         'todo' => 'Open',
-        'in_progress' => 'In Progress',
+        'in_progress' => 'Inprogress',
         'blocked' => 'Blocked',
         'completed' => 'Completed',
         'done' => 'Completed',

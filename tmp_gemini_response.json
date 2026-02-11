@@ -1,0 +1,30 @@
+{
+    "candidates": [
+        {
+            "content": {
+                "parts": [
+                    {
+                        "text": "```json\n{\n  \"summary\": \"গ্রাহক তাদের অর্ডার #789012 এর ডেলিভারি স্ট্যাটাস জানতে চেয়েছেন এবং উল্লেখ করেছেন যে পণ্যটি এখনও হাতে পাননি, যদিও ডেলিভারির নির্ধারিত সময় পেরিয়ে গেছে।\",\n  \"sentiment\": \"negative\",\n  \"priority\": \"high\",\n  \"reply_draft\": \"Dear Customer, Thank you for reaching out regarding your order #789012. We sincerely apologize for the delay in delivery. We are actively investigating the current"
+                    }
+                ],
+                "role": "model"
+            },
+            "finishReason": "MAX_TOKENS",
+            "index": 0
+        }
+    ],
+    "usageMetadata": {
+        "promptTokenCount": 24,
+        "candidatesTokenCount": 112,
+        "totalTokenCount": 620,
+        "promptTokensDetails": [
+            {
+                "modality": "TEXT",
+                "tokenCount": 24
+            }
+        ],
+        "thoughtsTokenCount": 484
+    },
+    "modelVersion": "gemini-2.5-flash",
+    "responseId": "ZBOMaeHeH73HjuMP5YGvyQ8"
+}

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Services;
 
@@ -179,7 +179,7 @@ You are a finance and operations analyst. Write a concise business status report
 
 Rules:
 - Use only the provided metrics. Do not assume or invent data.
-- Provide 4 sections with headings: "সারাংশ", "ঝুঁকি", "সুযোগ", "করণীয়".
+- Provide 4 sections with headings: "??????", "?????", "?????", "?????".
 - Each section should have 2-4 bullet points.
 - Keep it actionable and executive-friendly.
 - Mention the reporting period ($start to $end) and the projection window ($window days).

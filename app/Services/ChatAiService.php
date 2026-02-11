@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Services;
 
@@ -76,15 +76,15 @@ class ChatAiService
 
     private function buildPrompt(array $context, $messages): string
     {
-        if ($messages->count() > 20) {
-            $messages = $messages->slice($messages->count() - 20)->values();
+        if ($messages->count() > 12) {
+            $messages = $messages->slice($messages->count() - 12)->values();
         }
 
         $conversation = $messages->map(function ($message) {
             $text = (string) ($message->message ?? '');
             $text = Str::squish($text);
-            if (strlen($text) > 900) {
-                $text = Str::limit($text, 900, '...');
+            if (strlen($text) > 400) {
+                $text = Str::limit($text, 400, '...');
             }
 
             $attachment = $message->attachment_path ? '[attachment]' : null;
@@ -135,14 +135,14 @@ PROMPT;
         $start = strpos($clean, '{');
         $end = strrpos($clean, '}');
         if ($start === false || $end === false || $end <= $start) {
-            return null;
+            return $this->fallbackParse($clean);
         }
 
         $json = substr($clean, $start, $end - $start + 1);
         $decoded = json_decode($json, true);
 
         if (! is_array($decoded)) {
-            return null;
+            return $this->fallbackParse($clean);
         }
 
         return [
@@ -151,6 +151,43 @@ PROMPT;
             'priority' => Arr::get($decoded, 'priority'),
             'reply_draft' => Arr::get($decoded, 'reply_draft'),
             'action_items' => Arr::get($decoded, 'action_items'),
+        ];
+    }
+
+    private function fallbackParse(string $text): ?array
+    {
+        $summary = null;
+        if (preg_match('/\"summary\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"/s', $text, $summaryMatch)) {
+            $summary = json_decode('"' . $summaryMatch[1] . '"');
+        } elseif (preg_match('/\"summary\"\\s*:\\s*\"(.+)/s', $text, $summaryMatch)) {
+            $summary = stripcslashes(rtrim($summaryMatch[1], "`\r\n\t "));
+        }
+
+        if (! is_string($summary) || trim($summary) === '') {
+            return null;
+        }
+
+        $sentiment = null;
+        if (preg_match('/\"sentiment\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"/s', $text, $sentimentMatch)) {
+            $sentiment = json_decode('"' . $sentimentMatch[1] . '"');
+        }
+
+        $priority = null;
+        if (preg_match('/\"priority\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"/s', $text, $priorityMatch)) {
+            $priority = json_decode('"' . $priorityMatch[1] . '"');
+        }
+
+        $replyDraft = null;
+        if (preg_match('/\"reply_draft\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"/s', $text, $replyMatch)) {
+            $replyDraft = json_decode('"' . $replyMatch[1] . '"');
+        }
+
+        return [
+            'summary' => $summary,
+            'sentiment' => is_string($sentiment) ? $sentiment : null,
+            'priority' => is_string($priority) ? $priority : null,
+            'reply_draft' => is_string($replyDraft) ? $replyDraft : null,
+            'action_items' => [],
         ];
     }
 }

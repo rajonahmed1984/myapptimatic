@@ -198,7 +198,7 @@
                             <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 block mb-2">Status</label>
                             <select name="status" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900">
                                 <option value="pending" @selected($task->status === 'pending')>🔵 Pending</option>
-                                <option value="in_progress" @selected($task->status === 'in_progress')>⚡ In Progress</option>
+                                <option value="in_progress" @selected($task->status === 'in_progress')>⚡ Inprogress</option>
                                 <option value="blocked" @selected($task->status === 'blocked')>🚫 Blocked</option>
                                 <option value="completed" @selected($task->status === 'completed')>✓ Completed</option>
                             </select>
@@ -274,7 +274,7 @@
                             <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 block mb-2">Status</label>
                             <select name="status" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900">
                                 <option value="pending" @selected($task->status === 'pending')>Pending</option>
-                                <option value="in_progress" @selected($task->status === 'in_progress')>In Progress</option>
+                                <option value="in_progress" @selected($task->status === 'in_progress')>Inprogress</option>
                                 <option value="blocked" @selected($task->status === 'blocked')>Blocked</option>
                                 <option value="completed" @selected($task->status === 'completed')>Completed</option>
                             </select>

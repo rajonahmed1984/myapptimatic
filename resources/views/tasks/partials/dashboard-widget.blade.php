@@ -14,7 +14,7 @@
     $statusLabels = [
         'pending' => 'Open',
         'todo' => 'Open',
-        'in_progress' => 'In Progress',
+        'in_progress' => 'Inprogress',
         'blocked' => 'Blocked',
         'completed' => 'Completed',
         'done' => 'Completed',
@@ -44,7 +44,7 @@
             <div class="mt-1 text-lg font-semibold text-slate-900">{{ $taskSummary['open'] ?? 0 }}</div>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white/80 p-3">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">In Progress</div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Inprogress</div>
             <div class="mt-1 text-lg font-semibold text-amber-600">{{ $taskSummary['in_progress'] ?? 0 }}</div>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white/80 p-3">
@@ -151,7 +151,7 @@
                         </div>
                     </div>
                 @empty
-                    <div class="text-sm text-slate-500">No tasks in progress.</div>
+                    <div class="text-sm text-slate-500">No tasks in Inprogress.</div>
                 @endforelse
             </div>
         </div>

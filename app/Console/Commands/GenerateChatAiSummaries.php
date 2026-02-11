@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Console\Commands;
 
@@ -40,103 +40,107 @@ class GenerateChatAiSummaries extends Command
             return self::FAILURE;
         }
 
-        if ($type === 'project' || $type === 'all') {
+        if (in_array($type, ['project', 'all'], true)) {
             $this->line('Generating project chat summaries...');
-            $emailItems = [];
+
             $projectIds = ProjectMessage::query()
                 ->where('created_at', '>=', $cutoff)
-                ->select('project_id', DB::raw('MAX(created_at) as last_at'))
+                ->select('project_id')
                 ->groupBy('project_id')
-                ->orderByDesc('last_at')
+                ->orderByDesc(DB::raw('MAX(created_at)'))
                 ->limit($limit)
                 ->pluck('project_id');
 
-            $projects = Project::query()->whereIn('id', $projectIds)->get();
+            $projects = Project::query()
+                ->whereIn('id', $projectIds)
+                ->with('customer')
+                ->get()
+                ->sortBy(fn (Project $project) => array_search($project->id, $projectIds->all(), true))
+                ->values();
+
+            $emailItems = [];
             foreach ($projects as $project) {
-                try {
-                    $chatUrl = $this->safeUrl(fn () => route('admin.projects.chat', $project));
-                    $result = $aiService->analyzeProjectChat($project, $geminiService);
-                    if (is_array($result['data'] ?? null)) {
-                        $summaryCache->putProject($project->id, $result['data']);
-                        if ($sendEmail && count($emailItems) < $emailLimit) {
-                            $emailItems[] = [
-                                'label' => "Project #{$project->id} - {$project->name}",
-                                'summary' => $result['data']['summary'] ?? '',
-                                'sentiment' => $result['data']['sentiment'] ?? '--',
-                                'priority' => $result['data']['priority'] ?? '--',
-                                'action_items' => $result['data']['action_items'] ?? [],
-                                'generated_at' => $result['data']['generated_at'] ?? now()->toDateTimeString(),
-                                'url' => $chatUrl,
-                            ];
-                        }
+                $result = $aiService->analyzeProjectChat($project, $geminiService);
+                if (is_array($result['data'] ?? null)) {
+                    $summary = $result['data'];
+                    $summaryCache->putProject($project->id, $summary);
+
+                    if ($sendEmail) {
+                        $emailItems[] = [
+                            'title' => $project->name,
+                            'summary' => $summary['summary'] ?? '',
+                            'sentiment' => $summary['sentiment'] ?? null,
+                            'priority' => $summary['priority'] ?? null,
+                            'actions' => $summary['action_items'] ?? [],
+                            'url' => $this->safeUrl(fn () => route('admin.projects.chat', $project)),
+                        ];
                     }
-                    $this->line("- Project {$project->id} summarized");
-                } catch (\Throwable $e) {
-                    $this->warn("- Project {$project->id} failed: {$e->getMessage()}");
                 }
             }
 
-            if ($sendEmail) {
-                app(\App\Services\AdminNotificationService::class)
-                    ->sendChatSummaryDigest('Project chat AI summary', $emailItems);
+            if ($sendEmail && $emailItems) {
+                app('App\\Services\\AdminNotificationService')->sendChatSummaryDigest('Project chat AI summary', $emailItems, $emailLimit);
             }
         }
 
-        if ($type === 'task' || $type === 'all') {
+        if (in_array($type, ['task', 'all'], true)) {
             $this->line('Generating task chat summaries...');
-            $emailItems = [];
+
             $taskIds = ProjectTaskMessage::query()
                 ->where('created_at', '>=', $cutoff)
-                ->select('project_task_id', DB::raw('MAX(created_at) as last_at'))
+                ->select('project_task_id')
                 ->groupBy('project_task_id')
-                ->orderByDesc('last_at')
+                ->orderByDesc(DB::raw('MAX(created_at)'))
                 ->limit($limit)
                 ->pluck('project_task_id');
 
-            $tasks = ProjectTask::query()->with('project')->whereIn('id', $taskIds)->get();
+            $tasks = ProjectTask::query()
+                ->whereIn('id', $taskIds)
+                ->with('project.customer')
+                ->get()
+                ->sortBy(fn (ProjectTask $task) => array_search($task->id, $taskIds->all(), true))
+                ->values();
+
+            $emailItems = [];
             foreach ($tasks as $task) {
-                if (! $task->project) {
+                $project = $task->project;
+                if (! $project) {
                     continue;
                 }
-                try {
-                    $chatUrl = $this->safeUrl(fn () => route('admin.projects.tasks.chat', [$task->project, $task]));
-                    $result = $aiService->analyzeTaskChat($task->project, $task, $geminiService);
-                    if (is_array($result['data'] ?? null)) {
-                        $summaryCache->putTask($task->id, $result['data']);
-                        if ($sendEmail && count($emailItems) < $emailLimit) {
-                            $emailItems[] = [
-                                'label' => "Task #{$task->id} - {$task->title} (Project: {$task->project->name})",
-                                'summary' => $result['data']['summary'] ?? '',
-                                'sentiment' => $result['data']['sentiment'] ?? '--',
-                                'priority' => $result['data']['priority'] ?? '--',
-                                'action_items' => $result['data']['action_items'] ?? [],
-                                'generated_at' => $result['data']['generated_at'] ?? now()->toDateTimeString(),
-                                'url' => $chatUrl,
-                            ];
-                        }
+
+                $result = $aiService->analyzeTaskChat($project, $task, $geminiService);
+                if (is_array($result['data'] ?? null)) {
+                    $summary = $result['data'];
+                    $summaryCache->putTask($task->id, $summary);
+
+                    if ($sendEmail) {
+                        $emailItems[] = [
+                            'title' => $task->title,
+                            'summary' => $summary['summary'] ?? '',
+                            'sentiment' => $summary['sentiment'] ?? null,
+                            'priority' => $summary['priority'] ?? null,
+                            'actions' => $summary['action_items'] ?? [],
+                            'url' => $this->safeUrl(fn () => route('admin.projects.tasks.chat', [$project, $task])),
+                        ];
                     }
-                    $this->line("- Task {$task->id} summarized");
-                } catch (\Throwable $e) {
-                    $this->warn("- Task {$task->id} failed: {$e->getMessage()}");
                 }
             }
 
-            if ($sendEmail) {
-                app(\App\Services\AdminNotificationService::class)
-                    ->sendChatSummaryDigest('Task chat AI summary', $emailItems);
+            if ($sendEmail && $emailItems) {
+                app('App\\Services\\AdminNotificationService')->sendChatSummaryDigest('Task chat AI summary', $emailItems, $emailLimit);
             }
         }
 
+        $this->info('AI summaries updated.');
         return self::SUCCESS;
     }
 
-    private function safeUrl(callable $resolver): ?string
+    private function safeUrl(callable $callback): ?string
     {
         try {
-            return $resolver();
-        } catch (\Throwable) {
-            $base = config('app.url');
-            return $base ?: null;
+            return (string) $callback();
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 }

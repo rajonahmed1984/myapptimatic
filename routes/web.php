@@ -342,6 +342,37 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::get('/tasks', [AdminTasksController::class, 'index'])->name('tasks.index');
     Route::get('/chats', [AdminChatController::class, 'index'])->name('chats.index');
     Route::redirect('/chat', '/admin/chats');
+    Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
+    Route::get('/projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
+        ->name('projects.chat.participants');
+    Route::get('/projects/{project}/chat/messages', [ProjectChatController::class, 'messages'])->name('projects.chat.messages');
+    Route::get('/projects/{project}/chat/stream', [ProjectChatController::class, 'stream'])
+        ->name('projects.chat.stream');
+    Route::post('/projects/{project}/chat/ai-summary', [ProjectChatController::class, 'aiSummary'])->name('projects.chat.ai');
+    Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
+        ->middleware('throttle:10,1')
+        ->name('projects.chat.messages.store');
+    Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
+        ->name('projects.chat.read');
+    Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
+        ->name('projects.chat.presence');
+    Route::post('/projects/{project}/chat', [ProjectChatController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('projects.chat.store');
+    Route::get('/projects/{project}/chat/messages/{message}/attachment', [ProjectChatController::class, 'attachment'])
+        ->name('projects.chat.messages.attachment');
+    Route::get('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'show'])->name('projects.tasks.chat');
+    Route::get('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'messages'])->name('projects.tasks.chat.messages');
+    Route::post('/projects/{project}/tasks/{task}/chat/ai-summary', [ProjectTaskChatController::class, 'aiSummary'])->name('projects.tasks.chat.ai');
+    Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
+        ->middleware('throttle:10,1')
+        ->name('projects.tasks.chat.messages.store');
+    Route::patch('/projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
+        ->name('projects.tasks.chat.read');
+    Route::post('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('projects.tasks.chat.store');
+    Route::get('/projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
     Route::prefix('hr')->name('hr.')->group(function () {
         Route::get('/dashboard', HrDashboardController::class)->name('dashboard');
         Route::post('employees/{employee}/impersonate', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'impersonate'])->name('employees.impersonate');
