@@ -8,6 +8,7 @@ use App\Models\IncomeCategory;
 use App\Models\Setting;
 use App\Services\IncomeEntryService;
 use App\Services\GeminiService;
+use App\Services\WhmcsClient;
 use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -21,11 +22,15 @@ use Illuminate\View\View;
 
 class IncomeController extends Controller
 {
-    public function dashboard(Request $request, IncomeEntryService $entryService, GeminiService $geminiService): View
+    private const WHMCS_DEFAULT_START = '2026-01-01';
+    private const WHMCS_PAGE_SIZE = 100;
+    private const WHMCS_MAX_PAGES = 50;
+
+    public function dashboard(Request $request, IncomeEntryService $entryService, GeminiService $geminiService, WhmcsClient $whmcsClient): View
     {
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
-            $sourceFilters = ['manual', 'system'];
+            $sourceFilters = ['manual', 'system', 'carrothost'];
         }
 
         $filters = [
@@ -37,6 +42,21 @@ class IncomeController extends Controller
 
         $entries = $entryService->entries($filters)
             ->sortByDesc(fn ($entry) => $entry['income_date'] ?? now());
+
+        $whmcsErrors = [];
+        if (in_array('carrothost', $sourceFilters, true)) {
+            $carrotHostEntries = $this->carrotHostEntries(
+                $whmcsClient,
+                $filters['start_date'],
+                $filters['end_date'],
+                $whmcsErrors
+            );
+            if ($carrotHostEntries->isNotEmpty()) {
+                $entries = $entries->merge($carrotHostEntries);
+            }
+        }
+
+        $entries = $entries->sortByDesc(fn ($entry) => $entry['income_date'] ?? now());
 
         $totalAmount = (float) $entries->sum('amount');
         $manualTotal = (float) $entries->where('source_type', 'manual')->sum('amount');
@@ -111,6 +131,7 @@ class IncomeController extends Controller
             'aiError' => $aiError,
             'trendLabels' => $trendLabels,
             'trendTotals' => $trendTotals,
+            'whmcsErrors' => $whmcsErrors,
         ]);
     }
 
@@ -375,5 +396,162 @@ PROMPT;
         }
 
         return [$labels, $totals];
+    }
+
+    private function carrotHostEntries(
+        WhmcsClient $client,
+        ?string $startDate,
+        ?string $endDate,
+        array &$errors
+    ): Collection {
+        $start = $startDate ? Carbon::parse($startDate)->toDateString() : self::WHMCS_DEFAULT_START;
+        $end = $endDate ? Carbon::parse($endDate)->toDateString() : now()->toDateString();
+
+        $cacheKey = 'whmcs:carrothost:transactions:' . $start . ':' . $end;
+
+        $payload = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($client, $start, $end) {
+            $whmcsErrors = [];
+            $transactions = $this->fetchAllWhmcs(
+                $client,
+                'GetTransactions',
+                [
+                    'startdate' => $start,
+                    'enddate' => $end,
+                    'orderby' => 'date',
+                    'order' => 'desc',
+                ],
+                'transactions',
+                'transaction',
+                $whmcsErrors
+            );
+
+            $transactions = $this->filterWhmcsByDate($transactions, 'date', $start, $end);
+
+            return [
+                'transactions' => $transactions,
+                'errors' => $whmcsErrors,
+            ];
+        });
+
+        $errors = array_merge($errors, $payload['errors'] ?? []);
+
+        $transactions = $payload['transactions'] ?? [];
+        if (empty($transactions)) {
+            return collect();
+        }
+
+        return collect($transactions)->map(function ($row) {
+            $amount = (float) ($row['amountin'] ?? 0);
+            $invoiceId = $row['invoiceid'] ?? null;
+            $transId = $row['transid'] ?? ($row['id'] ?? null);
+            $clientName = $row['clientname'] ?? ($row['userid'] ?? null);
+            $gateway = $row['gateway'] ?? null;
+            $title = $invoiceId ? "WHMCS payment (Invoice #{$invoiceId})" : 'WHMCS payment';
+
+            return [
+                'key' => 'carrothost:transaction:'.($transId ?: uniqid()),
+                'source_type' => 'carrothost',
+                'source_label' => 'CarrotHost',
+                'source_id' => $transId,
+                'title' => $title,
+                'amount' => $amount,
+                'income_date' => $row['date'] ?? null,
+                'category_id' => 'carrothost',
+                'category_name' => 'CarrotHost',
+                'notes' => $gateway ? "Gateway: {$gateway}" : null,
+                'attachment_path' => null,
+                'customer_id' => null,
+                'customer_name' => $clientName,
+                'project_id' => null,
+                'project_name' => null,
+            ];
+        });
+    }
+
+    private function fetchAllWhmcs(
+        WhmcsClient $client,
+        string $action,
+        array $params,
+        string $rootKey,
+        ?string $itemKey,
+        array &$errors
+    ): array {
+        $items = [];
+        $offset = 0;
+
+        for ($page = 0; $page < self::WHMCS_MAX_PAGES; $page++) {
+            $result = $client->call($action, array_merge($params, [
+                'limitstart' => $offset,
+                'limitnum' => self::WHMCS_PAGE_SIZE,
+            ]));
+
+            if (! $result['ok']) {
+                $errors[] = $action . ': ' . $result['error'];
+                break;
+            }
+
+            $data = $result['data'] ?? [];
+            $container = $data[$rootKey] ?? [];
+            $batch = $this->normalizeWhmcsList($container, $itemKey);
+
+            if (empty($batch)) {
+                break;
+            }
+
+            $items = array_merge($items, $batch);
+
+            $total = (int) ($data['totalresults'] ?? 0);
+            $offset += self::WHMCS_PAGE_SIZE;
+
+            if ($total > 0 && count($items) >= $total) {
+                break;
+            }
+
+            if (count($batch) < self::WHMCS_PAGE_SIZE) {
+                break;
+            }
+        }
+
+        return $items;
+    }
+
+    private function normalizeWhmcsList($container, ?string $itemKey): array
+    {
+        if (! is_array($container)) {
+            return [];
+        }
+
+        $items = $container;
+        if ($itemKey && array_key_exists($itemKey, $container)) {
+            $items = $container[$itemKey];
+        }
+
+        if ($items === null || $items === '') {
+            return [];
+        }
+
+        if (is_array($items) && array_is_list($items)) {
+            return $items;
+        }
+
+        return is_array($items) ? [$items] : [];
+    }
+
+    private function filterWhmcsByDate(array $items, string $dateKey, string $start, string $end): array
+    {
+        return array_values(array_filter($items, function ($item) use ($dateKey, $start, $end) {
+            $value = $item[$dateKey] ?? null;
+            if (! $value) {
+                return true;
+            }
+
+            try {
+                $date = Carbon::parse($value)->toDateString();
+            } catch (\Throwable $e) {
+                return true;
+            }
+
+            return $date >= $start && $date <= $end;
+        }));
     }
 }

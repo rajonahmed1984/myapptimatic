@@ -33,8 +33,9 @@ class EmployeeController extends Controller
             ->paginate(20);
 
         $loginStatuses = $this->resolveEmployeeLoginStatuses($employees);
+        $lastLoginByEmployee = $this->resolveEmployeeLastLogins($employees);
 
-        return view('admin.hr.employees.index', compact('employees', 'loginStatuses'));
+        return view('admin.hr.employees.index', compact('employees', 'loginStatuses', 'lastLoginByEmployee'));
     }
 
     public function create(): View
@@ -276,8 +277,11 @@ class EmployeeController extends Controller
             'currency' => $comp?->currency,
         ];
 
-        $tab = request()->query('tab', 'summary');
-        $allowedTabs = ['summary', 'profile', 'compensation', 'timesheets', 'leave', 'payroll', 'projects'];
+        $tab = request()->query('tab', 'profile');
+        if ($tab === 'profile') {
+            $tab = 'profile';
+        }
+        $allowedTabs = ['profile', 'compensation', 'timesheets', 'leave', 'payroll', 'projects'];
         $isProjectBase = ($summary['salary_type'] ?? null) === 'project_base';
         if ($isProjectBase) {
             $allowedTabs[] = 'earnings';
@@ -297,11 +301,18 @@ class EmployeeController extends Controller
         $recentEarnings = collect();
         $recentPayouts = collect();
         $contractProjectsQuery = null;
+        $advanceProjects = collect();
 
         if ($isProjectBase) {
             $contractProjectsQuery = Project::query()
                 ->whereHas('employees', fn ($query) => $query->whereKey($employee->id))
                 ->whereNotNull('contract_employee_total_earned');
+
+            $advanceProjects = Project::query()
+                ->with('customer:id,name')
+                ->whereHas('employees', fn ($query) => $query->whereKey($employee->id))
+                ->orderBy('name')
+                ->get(['id', 'name', 'customer_id', 'status']);
         }
 
         if ($tab === 'summary') {
@@ -358,11 +369,16 @@ class EmployeeController extends Controller
                 $paid = (float) EmployeePayout::query()
                     ->where('employee_id', $employee->id)
                     ->sum('amount');
+                $advancePaid = (float) EmployeePayout::query()
+                    ->where('employee_id', $employee->id)
+                    ->where('metadata->type', 'advance')
+                    ->sum('amount');
 
                 $projectBaseEarnings = [
                     'total_earned' => $totalEarned,
                     'payable' => max(0, $payableRaw - $paid),
                     'paid' => $paid,
+                    'advance_paid' => $advancePaid,
                 ];
             }
         }
@@ -463,6 +479,7 @@ class EmployeeController extends Controller
             'projectBaseEarnings' => $projectBaseEarnings,
             'recentEarnings' => $recentEarnings,
             'recentPayouts' => $recentPayouts,
+            'advanceProjects' => $advanceProjects,
         ]);
     }
 
@@ -555,5 +572,20 @@ class EmployeeController extends Controller
         }
 
         return $statuses;
+    }
+
+    private function resolveEmployeeLastLogins($employees): array
+    {
+        $employeeIds = $employees->pluck('id')->all();
+        if (empty($employeeIds)) {
+            return [];
+        }
+
+        return EmployeeSession::query()
+            ->select('employee_id', DB::raw('MAX(login_at) as last_login_at'))
+            ->whereIn('employee_id', $employeeIds)
+            ->groupBy('employee_id')
+            ->pluck('last_login_at', 'employee_id')
+            ->all();
     }
 }

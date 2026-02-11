@@ -131,4 +131,54 @@ class EmployeePayoutController extends Controller
             ->route('admin.hr.employees.show', ['employee' => $employee->id, 'tab' => 'payouts'])
             ->with('status', 'Employee payout recorded.');
     }
+
+    public function storeAdvance(Request $request, Employee $employee): RedirectResponse
+    {
+        $employee->loadMissing('activeCompensation');
+
+        if (($employee->activeCompensation?->salary_type ?? null) !== 'project_base') {
+            return back()->withErrors(['amount' => 'Advance payouts are available only for project-based employees.']);
+        }
+
+        $data = $request->validate([
+            'project_id' => ['nullable', 'integer'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'currency' => ['nullable', 'string', 'max:10'],
+            'payout_method' => ['nullable', 'in:bank,mobile,cash'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $currency = $data['currency'] ?? ($employee->activeCompensation?->currency ?? 'BDT');
+        $project = null;
+
+        if (! empty($data['project_id'])) {
+            $project = Project::query()
+                ->with('customer:id,name')
+                ->whereKey((int) $data['project_id'])
+                ->whereHas('employees', fn ($query) => $query->whereKey($employee->id))
+                ->first();
+
+            if (! $project) {
+                return back()->withErrors(['project_id' => 'Select a valid project linked to this employee.'])->withInput();
+            }
+        }
+
+        EmployeePayout::create([
+            'employee_id' => $employee->id,
+            'amount' => (float) $data['amount'],
+            'currency' => $currency,
+            'payout_method' => $data['payout_method'] ?? null,
+            'reference' => $data['reference'] ?? null,
+            'note' => $data['note'] ?? null,
+            'metadata' => [
+                'type' => 'advance',
+                'project_id' => $project?->id,
+                'project_name' => $project?->name,
+            ],
+            'paid_at' => now(),
+        ]);
+
+        return back()->with('status', 'Advance payout recorded.');
+    }
 }

@@ -78,12 +78,16 @@
                         <input type="checkbox" name="sources[]" value="system" class="h-4 w-4 rounded border-slate-300 text-emerald-600" @checked(in_array('system', $sourceSelections, true))>
                         System
                     </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="sources[]" value="carrothost" class="h-4 w-4 rounded border-slate-300 text-emerald-600" @checked(in_array('carrothost', $sourceSelections, true))>
+                        CarrotHost (WHMCS)
+                    </label>
                 </div>
             </div>            
         </form>
     </div>
 
-    <div class="mt-6 grid gap-6 lg:grid-cols-[2fr_2fr]">
+    <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_2fr]">
         <div class="card p-6">
             <div class="section-label">Category totals</div>
             <div class="mt-4 space-y-3 text-sm text-slate-600">
@@ -131,6 +135,17 @@
             </div>
         </div>
     </div>
+
+    @if(!empty($whmcsErrors))
+        <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div class="font-semibold text-amber-900">WHMCS warnings</div>
+            <ul class="mt-2 list-disc pl-5">
+                @foreach($whmcsErrors as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
     <div class="mt-6 card p-6">
         <div class="section-label">Trend overview</div>

@@ -382,6 +382,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         Route::get('/dashboard', HrDashboardController::class)->name('dashboard');
         Route::post('employees/{employee}/impersonate', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'impersonate'])->name('employees.impersonate');
         Route::resource('employees', \App\Http\Controllers\Admin\Hr\EmployeeController::class);
+        Route::post('employees/{employee}/advance-payout', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'storeAdvance'])
+            ->name('employees.advance-payout');
         Route::get('employee-payouts/create', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'create'])->name('employee-payouts.create');
         Route::post('employee-payouts', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'store'])->name('employee-payouts.store');
         Route::get('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'index'])->name('leave-types.index');

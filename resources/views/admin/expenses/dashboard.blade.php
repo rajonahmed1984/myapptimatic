@@ -93,7 +93,7 @@
         </form>
     </div>
 
-    <div class="mt-6 grid gap-6 lg:grid-cols-[2fr_2fr]">
+    <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_2fr]">
         <div class="card p-6">
             <div class="section-label">Expense by category</div>
             <div class="mt-4 space-y-3 text-sm text-slate-600">

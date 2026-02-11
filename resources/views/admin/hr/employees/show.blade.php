@@ -17,38 +17,40 @@
                     Login as Employee
                 </button>
             </form>
-            <a href="{{ route('admin.hr.employees.edit', $employee) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Edit</a>
-            <a href="{{ route('admin.hr.employees.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
+            <a href="{{ route('admin.hr.employees.edit', $employee) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Edit</a>
+            <a href="{{ route('admin.hr.employees.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
         </div>
     </div>
 
     <div class="mb-6 flex flex-wrap gap-3 text-sm font-semibold text-slate-700">
         @php
+            $salaryType = $summary['salary_type'] ?? null;
+            $isProjectBase = ($salaryType === 'project_base');
+            $isMonthly = ($salaryType === 'monthly');
             $tabs = [
-                'summary' => 'Summary',
                 'profile' => 'Profile',
                 'compensation' => 'Compensation',
             ];
-            if (($summary['salary_type'] ?? null) === 'project_base') {
+            if ($isProjectBase) {
                 $tabs['earnings'] = 'Recent Earnings';
                 $tabs['payouts'] = 'Recent Payouts';
             }
-            $tabs += [
-                'projects' => 'Projects',
-                'timesheets' => 'Timesheets',
-                'leave' => 'Leave',
-                'payroll' => 'Payroll',
-            ];
+            $tabs['projects'] = 'Projects';
+            if ($isMonthly) {
+                $tabs['timesheets'] = 'Timesheets';
+                $tabs['leave'] = 'Leave';
+                $tabs['payroll'] = 'Payroll';
+            }
         @endphp
         @foreach($tabs as $key => $label)
             <a href="{{ route('admin.hr.employees.show', ['employee' => $employee->id, 'tab' => $key]) }}"
-               class="rounded-full border px-3 py-1 {{ $tab === $key ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-200 text-slate-700 hover:border-teal-300 hover:text-teal-700' }}">
+               class="rounded-full border px-3 py-1 {{ $tab === $key ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-700' }}">
                 {{ $label }}
             </a>
         @endforeach
     </div>
 
-    @if($tab === 'summary')
+    @if($tab === 'profile')
         <div class="grid gap-4 md:grid-cols-3">
             <div class="card p-4">
                 <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Status</div>
@@ -65,7 +67,7 @@
         </div>
 
         @if($projectBaseEarnings)
-            <div class="mt-4 grid gap-4 md:grid-cols-3">
+            <div class="mt-4 grid gap-4 md:grid-cols-4">
                 <div class="card p-4">
                     <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Total Earned</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-900">{{ number_format($projectBaseEarnings['total_earned'] ?? 0, 2) }}</div>
@@ -78,7 +80,103 @@
                     <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Paid</div>
                     <div class="mt-2 text-2xl font-semibold text-emerald-700">{{ number_format($projectBaseEarnings['paid'] ?? 0, 2) }}</div>
                 </div>
+                <div class="card p-4">
+                    <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Advance Paid</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-900">{{ number_format($projectBaseEarnings['advance_paid'] ?? 0, 2) }}</div>
+                </div>
             </div>
+        @endif
+
+        @if(($summary['salary_type'] ?? null) === 'project_base')
+            <div class="mt-4 card p-4">
+                <div class="text-sm font-semibold text-slate-800">Record advance payout</div>
+                <div class="text-xs text-slate-500">Advance payments are deducted from future project payouts.</div>
+                <form method="POST" action="{{ route('admin.hr.employees.advance-payout', $employee) }}" class="mt-3 grid gap-3 md:grid-cols-8">
+                    @csrf
+                    <div class="md:col-span-2">
+                        <label class="text-xs text-slate-500">Project filter</label>
+                        <select id="employeeAdvanceProjectFilter" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                            <option value="all">All projects</option>
+                            <option value="active">Active projects</option>
+                            <option value="complete">Completed projects</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-xs text-slate-500">Project</label>
+                        <select id="employeeAdvanceProjectSelect" name="project_id" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                            <option value="">Select project</option>
+                            @foreach($advanceProjects ?? [] as $projectOption)
+                                <option value="{{ $projectOption->id }}" data-status="{{ $projectOption->status ?? '' }}" @selected(old('project_id') == $projectOption->id)>
+                                    {{ $projectOption->name }} @if($projectOption->customer) ({{ $projectOption->customer->name }}) @endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Amount</label>
+                        <input name="amount" type="number" step="0.01" min="0" required value="{{ old('amount') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Currency</label>
+                        <input name="currency" value="{{ old('currency', $summary['currency'] ?? 'BDT') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="BDT">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Method</label>
+                        <select name="payout_method" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                            <option value="">Select</option>
+                            <option value="bank">Bank</option>
+                            <option value="mobile">Mobile</option>
+                            <option value="cash">Cash</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Reference</label>
+                        <input name="reference" value="{{ old('reference') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Txn / Note">
+                    </div>
+                    <div class="md:col-span-8">
+                        <label class="text-xs text-slate-500">Note</label>
+                        <input name="note" value="{{ old('note') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Optional note">
+                    </div>
+                    <div class="md:col-span-8 flex items-center gap-3">
+                        <button type="submit" class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Save advance payout</button>
+                    </div>
+                </form>
+            </div>
+            @push('scripts')
+                <script>
+                    document.addEventListener('DOMContentLoaded', () => {
+                        const filter = document.getElementById('employeeAdvanceProjectFilter');
+                        const select = document.getElementById('employeeAdvanceProjectSelect');
+
+                        if (!filter || !select) return;
+
+                        const applyFilter = () => {
+                            const value = filter.value;
+                            const activeStatuses = ['ongoing'];
+                            const completeStatuses = ['complete'];
+
+                            [...select.options].forEach((option) => {
+                                const status = option.dataset.status || '';
+                                if (!status) {
+                                    option.hidden = false;
+                                    option.disabled = false;
+                                    return;
+                                }
+
+                                const show = value === 'all'
+                                    || (value === 'active' && activeStatuses.includes(status))
+                                    || (value === 'complete' && completeStatuses.includes(status));
+
+                                option.hidden = !show;
+                                option.disabled = !show;
+                            });
+                        };
+
+                        filter.addEventListener('change', applyFilter);
+                        applyFilter();
+                    });
+                </script>
+            @endpush
         @endif
 
         <div class="mt-4 grid gap-4 md:grid-cols-3">
@@ -86,13 +184,13 @@
                 <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Project Tasks</div>
                 <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $taskSummary['total'] ?? 0 }}</div>
                 <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-                    <span class="rounded-full border border-slate-200 bg-white px-2 py-1">Projects: {{ $taskSummary['projects'] ?? 0 }}</span>
-                    <span class="rounded-full border border-slate-200 bg-white px-2 py-1">Pending: {{ $taskSummary['pending'] ?? 0 }}</span>
-                    <span class="rounded-full border border-slate-200 bg-white px-2 py-1">In progress: {{ $taskSummary['in_progress'] ?? 0 }}</span>
-                    <span class="rounded-full border border-slate-200 bg-white px-2 py-1">Blocked: {{ $taskSummary['blocked'] ?? 0 }}</span>
-                    <span class="rounded-full border border-slate-200 bg-white px-2 py-1">Completed: {{ $taskSummary['completed'] ?? 0 }}</span>
+                    <span class="rounded-full border border-slate-300 bg-white px-2 py-1">Projects: {{ $taskSummary['projects'] ?? 0 }}</span>
+                    <span class="rounded-full border border-slate-300 bg-white px-2 py-1">Pending: {{ $taskSummary['pending'] ?? 0 }}</span>
+                    <span class="rounded-full border border-slate-300 bg-white px-2 py-1">In progress: {{ $taskSummary['in_progress'] ?? 0 }}</span>
+                    <span class="rounded-full border border-slate-300 bg-white px-2 py-1">Blocked: {{ $taskSummary['blocked'] ?? 0 }}</span>
+                    <span class="rounded-full border border-slate-300 bg-white px-2 py-1">Completed: {{ $taskSummary['completed'] ?? 0 }}</span>
                     @if(($taskSummary['other'] ?? 0) > 0)
-                        <span class="rounded-full border border-slate-200 bg-white px-2 py-1">Other: {{ $taskSummary['other'] }}</span>
+                        <span class="rounded-full border border-slate-300 bg-white px-2 py-1">Other: {{ $taskSummary['other'] }}</span>
                     @endif
                 </div>
             </div>
@@ -101,8 +199,8 @@
                 <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Subtasks</div>
                 <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $subtaskSummary['total'] ?? 0 }}</div>
                 <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-                    <span class="rounded-full border border-slate-200 bg-white px-2 py-1">Completed: {{ $subtaskSummary['completed'] ?? 0 }}</span>
-                    <span class="rounded-full border border-slate-200 bg-white px-2 py-1">Pending: {{ $subtaskSummary['pending'] ?? 0 }}</span>
+                    <span class="rounded-full border border-slate-300 bg-white px-2 py-1">Completed: {{ $subtaskSummary['completed'] ?? 0 }}</span>
+                    <span class="rounded-full border border-slate-300 bg-white px-2 py-1">Pending: {{ $subtaskSummary['pending'] ?? 0 }}</span>
                 </div>
             </div>
 
@@ -117,7 +215,7 @@
                 </div>
             </div>
         </div>
-    @elseif($tab === 'profile')
+
         <div class="card p-6">
             <div class="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
                 <div><span class="font-semibold text-slate-900">Department:</span> {{ $employee->department ?? '--' }}</div>
@@ -152,9 +250,9 @@
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-500">NID</div>
                         <div class="mt-2 flex items-center gap-3">
                             @if($nidIsImage)
-                                <img src="{{ $nidUrl }}" alt="NID" class="h-16 w-20 rounded-lg object-cover border border-slate-200">
+                                <img src="{{ $nidUrl }}" alt="NID" class="h-16 w-20 rounded-lg object-cover border border-slate-300">
                             @else
-                                <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                                <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
                             @endif
                             <a href="{{ $nidUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
                         </div>
@@ -162,12 +260,17 @@
                 @endif
                 @if($employee->cv_path)
                     @php
+                        $cvIsImage = \Illuminate\Support\Str::endsWith(strtolower($employee->cv_path), ['.jpg', '.jpeg', '.png', '.webp']);
                         $cvUrl = route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'cv']);
                     @endphp
                     <div>
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-500">CV</div>
                         <div class="mt-2 flex items-center gap-3">
-                            <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                            @if($cvIsImage)
+                                <img src="{{ $cvUrl }}" alt="CV" class="h-16 w-20 rounded-lg object-cover border border-slate-300">
+                            @else
+                                <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
+                            @endif
                             <a href="{{ $cvUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
                         </div>
                     </div>
@@ -222,7 +325,7 @@
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[640px] text-sm text-slate-700">
-                    <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
+                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
                         <tr>
                             <th class="py-2 text-left">Date</th>
                             <th class="py-2 text-left">Status</th>
@@ -258,7 +361,7 @@
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[500px] text-sm text-slate-700">
-                    <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
+                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
                         <tr>
                             <th class="py-2 text-left">Date</th>
                             <th class="py-2 text-left">Reference</th>
@@ -297,7 +400,7 @@
                 <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $projects->count() }}</div>
                 <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
                     @foreach($projectStatusLabels as $status => $label)
-                        <span class="rounded-full border border-slate-200 bg-white px-2 py-1">
+                        <span class="rounded-full border border-slate-300 bg-white px-2 py-1">
                             {{ $label }}: {{ $projectStatusCounts[$status] ?? 0 }}
                         </span>
                     @endforeach
@@ -336,7 +439,7 @@
                                     <div class="text-xs text-slate-500">Project ID: {{ $project->id }}</div>
                                 </td>
                                 <td class="px-3 py-2">
-                                    <span class="rounded-full border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700 bg-slate-50">
+                                    <span class="rounded-full border border-slate-300 px-2 py-0.5 text-xs font-semibold text-slate-700 bg-slate-50">
                                         {{ ucfirst(str_replace('_', ' ', $project->status)) }}
                                     </span>
                                 </td>
@@ -347,12 +450,12 @@
                                     <div class="font-semibold text-slate-700">Assigned tasks: {{ $taskTotal }}</div>
                                     <div class="mt-2 flex flex-wrap gap-2">
                                         @foreach($taskStatusOrder as $status)
-                                            <span class="rounded-full border border-slate-200 bg-white px-2 py-1">
+                                            <span class="rounded-full border border-slate-300 bg-white px-2 py-1">
                                                 {{ ucfirst(str_replace('_', ' ', $status)) }}: {{ $taskCounts[$status] ?? 0 }}
                                             </span>
                                         @endforeach
                                         @foreach($extraTaskCounts as $status => $count)
-                                            <span class="rounded-full border border-slate-200 bg-white px-2 py-1">
+                                            <span class="rounded-full border border-slate-300 bg-white px-2 py-1">
                                                 {{ ucfirst(str_replace('_', ' ', $status)) }}: {{ $count }}
                                             </span>
                                         @endforeach
