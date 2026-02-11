@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use App\Enums\Role;
 use Illuminate\Support\Facades\Log;
@@ -102,7 +103,7 @@ class SalesRepresentativeController extends Controller
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'user_password' => ['nullable', 'string', 'min:8'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ];
 
@@ -172,7 +173,7 @@ class SalesRepresentativeController extends Controller
             'phone' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ]);
 
@@ -184,7 +185,7 @@ class SalesRepresentativeController extends Controller
         }
 
         return redirect()
-            ->route('admin.sales-reps.index')
+            ->route('admin.sales-reps.edit', $salesRep)
             ->with('status', 'Sales representative updated.');
     }
 
@@ -307,6 +308,10 @@ class SalesRepresentativeController extends Controller
 
     public function storeAdvancePayment(Request $request, SalesRepresentative $salesRep)
     {
+        if (! Schema::hasColumn('commission_payouts', 'type')) {
+            return back()->withErrors(['amount' => 'Advance payments require the latest commission payout migration. Run database migrations first.']);
+        }
+
         $data = $request->validate([
             'project_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -332,9 +337,8 @@ class SalesRepresentativeController extends Controller
         }
 
         DB::transaction(function () use ($data, $salesRep, $currency, $request, $project) {
-            $payout = CommissionPayout::create([
+            $payload = [
                 'sales_representative_id' => $salesRep->id,
-                'project_id' => $project?->id,
                 'type' => 'advance',
                 'total_amount' => (float) $data['amount'],
                 'currency' => $currency,
@@ -343,7 +347,13 @@ class SalesRepresentativeController extends Controller
                 'note' => $data['note'] ?? null,
                 'status' => 'paid',
                 'paid_at' => now(),
-            ]);
+            ];
+
+            if (Schema::hasColumn('commission_payouts', 'project_id')) {
+                $payload['project_id'] = $project?->id;
+            }
+
+            $payout = CommissionPayout::create($payload);
 
             CommissionAuditLog::create([
                 'sales_representative_id' => $salesRep->id,

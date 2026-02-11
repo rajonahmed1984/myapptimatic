@@ -17,9 +17,19 @@
     }
 @endphp
 
+@php
+    $cleanPath = $path ? ltrim($path, '/') : null;
+    if ($cleanPath && str_starts_with($cleanPath, 'avatars/')) {
+        $cleanPath = substr($cleanPath, strlen('avatars/'));
+    }
+    $basePath = rtrim(request()->getBasePath(), '/');
+    $prefix = $basePath === '' ? '' : $basePath;
+    $avatarUrl = $cleanPath ? $prefix . '/storage/avatars/' . $cleanPath : null;
+@endphp
+
 <div {{ $attributes->merge(['class' => $size . ' rounded-full overflow-hidden flex items-center justify-center bg-slate-100 text-slate-600 ' . $textSize . ' font-semibold']) }}>
-    @if($path)
-        <img src="{{ Storage::disk('public')->url($path) }}" alt="{{ $label }}" class="h-full w-full object-cover" loading="lazy">
+    @if($avatarUrl)
+        <img src="{{ $avatarUrl }}" alt="{{ $label }}" class="h-full w-full object-cover" loading="lazy">
     @else
         <span>{{ $initials !== '' ? $initials : '?' }}</span>
     @endif

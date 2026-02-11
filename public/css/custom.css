@@ -33,9 +33,7 @@ body.bg-guest {
 }
 
 body.bg-dashboard {
-    background: radial-gradient(circle at 15% 15%, rgba(20, 184, 166, 0.2), transparent 55%),
-        radial-gradient(circle at 85% 10%, rgba(59, 130, 246, 0.12), transparent 45%),
-        linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    background: #f8fafc;
 }
 
 .card {

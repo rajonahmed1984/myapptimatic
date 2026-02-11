@@ -13,6 +13,7 @@ use App\Models\SalesRepresentative;
 use App\Models\Subscription;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CommissionService
 {
@@ -373,11 +374,14 @@ class CommissionService
             ->where('status', 'payable')
             ->sum('commission_amount');
 
-        $advancePaid = (float) CommissionPayout::query()
-            ->where('sales_representative_id', $salesRepId)
-            ->where('type', 'advance')
-            ->where('status', 'paid')
-            ->sum('total_amount');
+        $advancePaid = 0.0;
+        if ($this->commissionPayoutHasColumn('type')) {
+            $advancePaid = (float) CommissionPayout::query()
+                ->where('sales_representative_id', $salesRepId)
+                ->where('type', 'advance')
+                ->where('status', 'paid')
+                ->sum('total_amount');
+        }
 
         $totalPaid = $paidEarnings + $advancePaid;
         $overpaid = max(0, $totalPaid - $totalEarned);
@@ -415,15 +419,20 @@ class CommissionService
 
             $total = (float) $earnings->sum('commission_amount');
 
-            $payout = CommissionPayout::create([
+            $payload = [
                 'sales_representative_id' => $salesRepId,
-                'type' => 'regular',
                 'total_amount' => $total,
                 'currency' => $currency ?? 'BDT',
                 'payout_method' => $payoutMethod,
                 'note' => $note,
                 'status' => 'draft',
-            ]);
+            ];
+
+            if ($this->commissionPayoutHasColumn('type')) {
+                $payload['type'] = 'regular';
+            }
+
+            $payout = CommissionPayout::create($payload);
 
             CommissionEarning::query()
                 ->whereIn('id', $earnings->pluck('id'))
@@ -437,6 +446,17 @@ class CommissionService
 
             return $payout;
         });
+    }
+
+    private function commissionPayoutHasColumn(string $column): bool
+    {
+        static $cache = [];
+
+        if (! array_key_exists($column, $cache)) {
+            $cache[$column] = Schema::hasColumn('commission_payouts', $column);
+        }
+
+        return $cache[$column];
     }
 
     /**

@@ -107,7 +107,7 @@
                     @if($rep->nid_path)
                         @php
                             $nidIsImage = \Illuminate\Support\Str::endsWith(strtolower($rep->nid_path), ['.jpg', '.jpeg', '.png', '.webp']);
-                            $nidUrl = route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $rep->id, 'doc' => 'nid']);
+                            $nidUrl = route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $rep->id, 'doc' => 'nid'], false);
                         @endphp
                         <div>
                             <div class="text-xs uppercase tracking-[0.2em] text-slate-500">NID</div>
@@ -123,7 +123,7 @@
                     @endif
                     @if($rep->cv_path)
                         @php
-                            $cvUrl = route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $rep->id, 'doc' => 'cv']);
+                            $cvUrl = route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $rep->id, 'doc' => 'cv'], false);
                         @endphp
                         <div>
                             <div class="text-xs uppercase tracking-[0.2em] text-slate-500">CV</div>

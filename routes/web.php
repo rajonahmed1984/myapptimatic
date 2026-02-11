@@ -86,6 +86,7 @@ use App\Http\Controllers\SupportTicketAttachmentController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\PublicProductController;
+use App\Http\Controllers\PublicMediaController;
 use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskActivityController;
@@ -103,6 +104,9 @@ Route::redirect('/admin', '/admin/login');
 Route::get('/employee', fn () => redirect()->route('employee.login'))->name('employee.home');
 Route::get('/sales', fn () => redirect()->route('sales.login'))->name('sales.home');
 Route::get('/support', fn () => redirect()->route('support.login'))->name('support.home');
+Route::get('media/avatars/{path}', [PublicMediaController::class, 'avatar'])
+    ->where('path', '.*')
+    ->name('media.avatars');
 
 Route::get('storage/avatars/{category}/{entity}/{filename}', function (string $category, string $entity, string $filename) {
     $allowed = ['customers', 'users', 'sales-reps'];
