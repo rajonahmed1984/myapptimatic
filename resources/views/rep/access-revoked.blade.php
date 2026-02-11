@@ -10,7 +10,7 @@
             Your sales representative access is currently inactive. If you believe this is an error, please contact an administrator.
         </p>
         <div class="mt-6 flex justify-center gap-3">
-            <a href="{{ route('login') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to login</a>
+            <a href="{{ route('login') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to login</a>
         </div>
     </div>
 @endsection

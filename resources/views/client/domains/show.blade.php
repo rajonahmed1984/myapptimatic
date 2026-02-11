@@ -9,7 +9,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">Domain Details</h1>
             <p class="mt-1 text-sm text-slate-500">Review domain status and submit change requests.</p>
         </div>
-        <a href="{{ route('client.domains.index') }}" class="text-sm text-slate-500 hover:text-teal-600">Back to domains</a>
+        <a href="{{ route('client.domains.index') }}" class="text-sm text-slate-500 hover:text-teal-600" hx-boost="false">Back to domains</a>
     </div>
 
     @php

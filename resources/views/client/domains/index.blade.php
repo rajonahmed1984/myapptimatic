@@ -9,7 +9,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">Domains</h1>
             <p class="mt-1 text-sm text-slate-500">Manage licensed domains and submit domain change requests.</p>
         </div>
-        <a href="{{ route('client.dashboard') }}" class="text-sm text-slate-500 hover:text-teal-600">Back to dashboard</a>
+        <a href="{{ route('client.dashboard') }}" class="text-sm text-slate-500 hover:text-teal-600" hx-boost="false">Back to dashboard</a>
     </div>
 
     @if(! $customer)

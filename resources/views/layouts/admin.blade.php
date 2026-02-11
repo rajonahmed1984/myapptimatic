@@ -159,13 +159,18 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             <span>Manual Payments</span>
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-menu
                             :href="route('admin.accounting.index')"
                             routes="admin.accounting.*"
+                            label="Accounting"
+                            :alwaysOpen="true"
                         >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Accounting
-                        </x-nav-link>
+                            <a href="{{ route('admin.accounting.index') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.index')) }}">Ledger</a>
+                            <a href="{{ route('admin.accounting.transactions') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.transactions')) }}">Transactions</a>
+                            <a href="{{ route('admin.accounting.refunds') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.refunds')) }}">Refunds</a>
+                            <a href="{{ route('admin.accounting.credits') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.credits')) }}">Credits</a>
+                            <a href="{{ route('admin.accounting.expenses') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.expenses')) }}">Expenses</a>
+                        </x-nav-menu>
                         @if(auth()->user()?->isMasterAdmin())
                             <x-nav-menu
                                 :href="route('admin.income.index')"
@@ -712,7 +717,7 @@
                 @endif
             </header>
 
-            <main id="main-content" class="w-full px-6 py-10 fade-in" hx-boost="true">
+            <main id="main-content" class="w-full px-6 py-10 fade-in" hx-boost="false">
                 @if ($errors->any())
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                         <ul class="space-y-1">
@@ -738,11 +743,64 @@
          - Page header: .mb-6 .flex .items-center .justify-between .gap-4 with title on the left and actions on the right
          - Primary sections: cards with consistent padding (p-6/8), tables using w-full text-left text-sm, and overflow-x-auto if a table needs extra width --}}
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const sidebar = document.getElementById('adminSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            const openBtn = document.getElementById('sidebarToggle');
-            const closeBtn = document.getElementById('sidebarClose');
+          const bindInvoiceItems = (root = document) => {
+              const container = root.querySelector('#invoiceItems');
+              const addBtn = root.querySelector('#addInvoiceItem');
+
+              if (!container || !addBtn) return;
+              if (container.dataset.itemsBound === 'true') return;
+
+              container.dataset.itemsBound = 'true';
+
+              const renumber = () => {
+                  container.querySelectorAll('.invoice-item').forEach((row, index) => {
+                      row.querySelectorAll('input').forEach((input) => {
+                          const name = input.getAttribute('name') || '';
+                          const updated = name.replace(/items\[\d+\]/, `items[${index}]`);
+                          input.setAttribute('name', updated);
+                      });
+                  });
+              };
+
+              const addRow = () => {
+                  const template = container.querySelector('.invoice-item');
+                  if (!template) return;
+                  const clone = template.cloneNode(true);
+                  clone.querySelectorAll('input').forEach((input) => {
+                      if (input.type === 'number') {
+                          input.value = input.name.includes('[quantity]') ? '1' : '0';
+                      } else {
+                          input.value = '';
+                      }
+                  });
+                  container.appendChild(clone);
+                  renumber();
+              };
+
+              addBtn.addEventListener('click', addRow);
+              container.addEventListener('click', (event) => {
+                  const btn = event.target.closest('.removeInvoiceItem');
+                  if (!btn) return;
+                  const row = btn.closest('.invoice-item');
+                  if (!row) return;
+                  if (container.querySelectorAll('.invoice-item').length === 1) {
+                      row.querySelectorAll('input').forEach((input) => {
+                          input.value = input.type === 'number' && input.name.includes('[quantity]') ? '1' : '';
+                      });
+                      return;
+                  }
+                  row.remove();
+                  renumber();
+              });
+          };
+
+          window.bindInvoiceItems = bindInvoiceItems;
+
+          document.addEventListener('DOMContentLoaded', () => {
+              const sidebar = document.getElementById('adminSidebar');
+              const overlay = document.getElementById('sidebarOverlay');
+              const openBtn = document.getElementById('sidebarToggle');
+              const closeBtn = document.getElementById('sidebarClose');
 
             const openSidebar = () => {
                 sidebar?.classList.remove('-translate-x-full');
@@ -757,20 +815,26 @@
             openBtn?.addEventListener('click', openSidebar);
             closeBtn?.addEventListener('click', closeSidebar);
             overlay?.addEventListener('click', closeSidebar);
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape') {
-                    closeSidebar();
-                }
-            });
+              document.addEventListener('keydown', (event) => {
+                  if (event.key === 'Escape') {
+                      closeSidebar();
+                  }
+              });
 
-            // HTMX configuration: Update active sidebar state after content loads
-            document.addEventListener('htmx:afterSwap', function(event) {
-                // Reload page to ensure sidebar active states are updated
-                // This is a safeguard; the server-side route detection should already handle it
-                // For pure HTMX without reload, you could update active classes here
-            });
-        });
-    </script>
+              bindInvoiceItems();
+
+              // HTMX configuration: Update active sidebar state after content loads
+              document.addEventListener('htmx:afterSwap', function(event) {
+                  // Reload page to ensure sidebar active states are updated
+                  // This is a safeguard; the server-side route detection should already handle it
+                  // For pure HTMX without reload, you could update active classes here
+              });
+
+              document.addEventListener('htmx:load', (event) => {
+                  bindInvoiceItems(event.target);
+              });
+          });
+      </script>
     @if(session('cache_cleared'))
         <script>
             (async function () {

@@ -5,9 +5,24 @@
 
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">{{ $pageTitle }}</h1>
-            <p class="mt-1 text-sm text-slate-500">Track payments, refunds, credits, and expenses.</p>
+        <div class="flex-1">
+            <form id="accountingSearchForm" method="GET" action="{{ url()->current() }}" class="flex items-center gap-3">
+                <div class="relative w-full max-w-sm">
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ $search ?? request('search') }}"
+                        placeholder="Search entries..."
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                        hx-get="{{ url()->current() }}"
+                        hx-trigger="keyup changed delay:300ms"
+                        hx-target="#accountingTable"
+                        hx-swap="outerHTML"
+                        hx-push-url="true"
+                        hx-include="#accountingSearchForm"
+                    />
+                </div>
+            </form>
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('admin.accounting.create', ['type' => 'payment']) }}" class="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">New Payment</a>
@@ -16,67 +31,14 @@
             <a href="{{ route('admin.accounting.create', ['type' => 'expense']) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">New Expense</a>
         </div>
     </div>
-
+{{-- 
     <div class="mb-6 flex flex-wrap gap-2 text-sm">
         <a href="{{ route('admin.accounting.index') }}" class="{{ $scope === 'ledger' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Ledger</a>
         <a href="{{ route('admin.accounting.transactions') }}" class="{{ $scope === 'transactions' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Transactions</a>
         <a href="{{ route('admin.accounting.refunds') }}" class="{{ $scope === 'refunds' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Refunds</a>
         <a href="{{ route('admin.accounting.credits') }}" class="{{ $scope === 'credits' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Credits</a>
         <a href="{{ route('admin.accounting.expenses') }}" class="{{ $scope === 'expenses' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Expenses</a>
-    </div>
+    </div> --}}
 
-    <div class="card overflow-x-auto">
-        <table class="w-full min-w-[900px] text-left text-sm">
-            <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
-                <tr>
-                    <th class="px-4 py-3">Date</th>
-                    <th class="px-4 py-3">Type</th>
-                    <th class="px-4 py-3">Customer</th>
-                    <th class="px-4 py-3">Invoice</th>
-                    <th class="px-4 py-3">Gateway</th>
-                    <th class="px-4 py-3">Amount</th>
-                    <th class="px-4 py-3">Reference</th>
-                    <th class="px-4 py-3"></th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($entries as $entry)
-                    @php($isOutflow = $entry->isOutflow())
-                    <tr class="border-b border-slate-100">
-                        <td class="px-4 py-3 text-slate-600">{{ $entry->entry_date->format($globalDateFormat) }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ ucfirst($entry->type) }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ $entry->customer?->name ?? '-' }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ $entry->invoice?->number ?? '-' }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ $entry->paymentGateway?->name ?? '-' }}</td>
-                        <td class="px-4 py-3 font-semibold {{ $isOutflow ? 'text-rose-600' : 'text-emerald-600' }}">
-                            {{ $isOutflow ? '-' : '+' }}{{ $entry->currency }} {{ number_format((float) $entry->amount, 2) }}
-                        </td>
-                        <td class="px-4 py-3 text-slate-500">{{ $entry->reference ?: '-' }}</td>
-                        <td class="px-4 py-3 text-right">
-                            <div class="flex items-center justify-end gap-3">
-                                <a href="{{ route('admin.accounting.edit', $entry) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
-                                <form
-                                    method="POST"
-                                    action="{{ route('admin.accounting.destroy', $entry) }}"
-                                    data-delete-confirm
-                                    data-confirm-name="{{ $entry->reference ?: $entry->id }}"
-                                    data-confirm-title="Delete entry {{ $entry->reference ?: $entry->id }}?"
-                                    data-confirm-description="This will permanently delete the accounting entry."
-                                >
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" class="px-4 py-6 text-center text-slate-500">No entries yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    @include('admin.accounting.partials.table', ['entries' => $entries])
 @endsection
-

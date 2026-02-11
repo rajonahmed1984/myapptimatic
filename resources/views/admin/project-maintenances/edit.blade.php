@@ -10,7 +10,7 @@
             <div class="text-2xl font-semibold text-slate-900">Edit maintenance</div>
             <div class="text-sm text-slate-500">Update plan details or pause/cancel billing.</div>
         </div>
-        <a href="{{ route('admin.project-maintenances.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to maintenance</a>
+        <a href="{{ route('admin.project-maintenances.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to maintenance</a>
     </div>
 
     <div class="grid gap-4 md:grid-cols-3">

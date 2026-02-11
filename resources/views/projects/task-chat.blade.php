@@ -10,7 +10,7 @@
             <div class="text-2xl font-semibold text-slate-900">{{ $task->title }}</div>
             <div class="text-sm text-slate-500">Project: {{ $project->name }}</div>
         </div>
-        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to project</a>
+        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to project</a>
     </div>
 
     <div class="card p-6 space-y-6">

@@ -9,7 +9,7 @@
             <div class="section-label">Affiliates</div>
             <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ $affiliate->customer->name }}</h1>
         </div>
-        <a href="{{ route('admin.affiliates.show', $affiliate) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to affiliate</a>
+        <a href="{{ route('admin.affiliates.show', $affiliate) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to affiliate</a>
     </div>
 
     <div class="card p-8">

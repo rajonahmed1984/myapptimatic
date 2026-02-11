@@ -9,7 +9,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">Service Details</h1>
             <p class="mt-1 text-sm text-slate-500">Review the service and submit requests.</p>
         </div>
-        <a href="{{ route('client.services.index') }}" class="text-sm text-slate-500 hover:text-teal-600">Back to services</a>
+        <a href="{{ route('client.services.index') }}" class="text-sm text-slate-500 hover:text-teal-600" hx-boost="false">Back to services</a>
     </div>
 
     @php

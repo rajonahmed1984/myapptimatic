@@ -21,7 +21,7 @@
                     <button class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Finalize</button>
                 </form>
             @endif
-            <a href="{{ route('admin.hr.payroll.index') }}" class="text-sm text-slate-600 hover:text-slate-800">Back</a>
+            <a href="{{ route('admin.hr.payroll.index') }}" class="text-sm text-slate-600 hover:text-slate-800" hx-boost="false">Back</a>
         </div>
     </div>
 

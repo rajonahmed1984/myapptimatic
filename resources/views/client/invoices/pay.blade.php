@@ -251,7 +251,7 @@
                 Download PDF
             </a>
             <div class="flex items-center gap-2">
-                <a href="{{ route('client.dashboard') }}" class="text-xs font-semibold text-slate-500 hover:text-teal-600">Back to client area</a>
+                <a href="{{ route('client.dashboard') }}" class="text-xs font-semibold text-slate-500 hover:text-teal-600" hx-boost="false">Back to client area</a>
                 <button type="button" onclick="window.print()" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
                     Print
                 </button>

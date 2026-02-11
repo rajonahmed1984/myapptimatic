@@ -17,7 +17,7 @@
             <div class="text-2xl font-semibold text-slate-900">Expense dashboard</div>
             <div class="mt-1 text-sm text-slate-500">Compare income and expenses across manual and system payouts.</div>
         </div>
-        <a href="{{ route('admin.expenses.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Expenses</a>
+        <a href="{{ route('admin.expenses.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to Expenses</a>
     </div>
 
     <div class="card p-6">

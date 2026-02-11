@@ -11,7 +11,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">Edit {{ $gateway->name }}</h1>
             <p class="mt-1 text-sm text-slate-500">Update credentials and instructions for this gateway.</p>
         </div>
-        <a href="{{ route('admin.payment-gateways.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to gateways</a>
+        <a href="{{ route('admin.payment-gateways.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to gateways</a>
     </div>
 
     <form method="POST" action="{{ route('admin.payment-gateways.update', $gateway) }}" class="card grid gap-4 p-6 md:grid-cols-2">

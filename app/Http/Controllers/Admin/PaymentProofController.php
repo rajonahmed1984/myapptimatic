@@ -16,23 +16,51 @@ class PaymentProofController extends Controller
     public function index(Request $request)
     {
         $status = $request->query('status');
-        $allowed = ['pending', 'approved', 'rejected'];
+        $allowed = ['pending', 'approved', 'rejected', 'all'];
+        $search = trim((string) $request->input('search', ''));
 
         $query = PaymentProof::query()
             ->with(['invoice.customer', 'paymentGateway', 'reviewer'])
             ->latest();
 
-        if ($status && in_array($status, $allowed, true)) {
+        if ($status && in_array($status, $allowed, true) && $status !== 'all') {
             $query->where('status', $status);
         } else {
-            $status = 'pending';
-            $query->where('status', $status);
+            $status = $status === 'all' || $status === null ? 'all' : $status;
         }
 
-        return view('admin.payment-proofs.index', [
+        if ($search !== '') {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('reference', 'like', '%' . $search . '%')
+                    ->orWhereHas('invoice', function ($invoiceQuery) use ($search) {
+                        $invoiceQuery->where('number', 'like', '%' . $search . '%')
+                            ->orWhere('id', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                        $customerQuery->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('paymentGateway', function ($gatewayQuery) use ($search) {
+                        $gatewayQuery->where('name', 'like', '%' . $search . '%');
+                    });
+
+                if (is_numeric($search)) {
+                    $inner->orWhere('id', (int) $search)
+                        ->orWhere('amount', (float) $search);
+                }
+            });
+        }
+
+        $payload = [
             'paymentProofs' => $query->get(),
             'status' => $status,
-        ]);
+            'search' => $search,
+        ];
+
+        if ($request->header('HX-Request')) {
+            return view('admin.payment-proofs.partials.table', $payload);
+        }
+
+        return view('admin.payment-proofs.index', $payload);
     }
 
     public function approve(Request $request, PaymentProof $paymentProof, PaymentService $paymentService): RedirectResponse

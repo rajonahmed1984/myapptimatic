@@ -9,7 +9,7 @@
             <div class="section-label">Finance</div>
             <div class="text-2xl font-semibold text-slate-900">Edit category</div>
         </div>
-        <a href="{{ route('admin.expenses.categories.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back</a>
+        <a href="{{ route('admin.expenses.categories.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
     </div>
 
     <div class="card p-6 max-w-3xl">

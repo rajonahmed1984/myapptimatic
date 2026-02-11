@@ -10,7 +10,7 @@
             <div class="text-2xl font-semibold text-slate-900">Edit project</div>
             <div class="text-sm text-slate-500">Update project details, links, and budget fields.</div>
         </div>
-        <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to projects</a>
+        <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to projects</a>
     </div>
 
     <div class="card p-6">

@@ -9,7 +9,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">Review & Checkout</h1>
             <p class="mt-1 text-sm text-slate-500">Confirm your plan details before placing the order.</p>
         </div>
-        <a href="{{ route('client.orders.index') }}" class="text-sm text-slate-500 hover:text-teal-600">Back to products</a>
+        <a href="{{ route('client.orders.index') }}" class="text-sm text-slate-500 hover:text-teal-600" hx-boost="false">Back to products</a>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-3">

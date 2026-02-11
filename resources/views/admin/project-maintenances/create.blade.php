@@ -10,7 +10,7 @@
             <div class="text-2xl font-semibold text-slate-900">Create maintenance</div>
             <div class="text-sm text-slate-500">Set up recurring billing for a project.</div>
         </div>
-        <a href="{{ route('admin.project-maintenances.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to maintenance</a>
+        <a href="{{ route('admin.project-maintenances.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to maintenance</a>
     </div>
 
     <div class="card p-6 max-w-full">

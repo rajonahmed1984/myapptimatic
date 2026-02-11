@@ -9,7 +9,7 @@
             <div class="section-label">Invoice</div>
             <div class="text-2xl font-semibold text-slate-900">Invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
         </div>
-        <a href="{{ route('admin.invoices.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to invoices</a>
+        <a href="{{ route('admin.invoices.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to invoices</a>
     </div>
 
     <div class="card p-6">

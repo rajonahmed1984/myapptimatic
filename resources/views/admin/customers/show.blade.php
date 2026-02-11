@@ -21,7 +21,7 @@
         </div>
         <div class="text-sm text-slate-600">
             <div class="mt-3 flex flex-wrap items-center gap-3">
-                <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to Customers</a>
+                <a href="{{ route('admin.customers.index') }}" class="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to Customers</a>
                 <a href="{{ route('admin.invoices.create', ['customer_id' => $customer->id]) }}" class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800">Create Invoice</a>
                 <a href="{{ route('admin.support-tickets.create', ['customer_id' => $customer->id]) }}" class="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Open Ticket</a>
                 <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}">

@@ -19,29 +19,29 @@ class AccountingController extends Controller
 {
     private const TYPES = ['payment', 'refund', 'credit', 'expense'];
 
-    public function index()
+    public function index(Request $request)
     {
-        return $this->renderIndex('ledger', 'Ledger', null);
+        return $this->renderIndex($request, 'ledger', 'Ledger', null);
     }
 
-    public function transactions()
+    public function transactions(Request $request)
     {
-        return $this->renderIndex('transactions', 'Transactions', ['payment', 'refund']);
+        return $this->renderIndex($request, 'transactions', 'Transactions', ['payment', 'refund']);
     }
 
-    public function refunds()
+    public function refunds(Request $request)
     {
-        return $this->renderIndex('refunds', 'Refunds', ['refund']);
+        return $this->renderIndex($request, 'refunds', 'Refunds', ['refund']);
     }
 
-    public function credits()
+    public function credits(Request $request)
     {
-        return $this->renderIndex('credits', 'Credits', ['credit']);
+        return $this->renderIndex($request, 'credits', 'Credits', ['credit']);
     }
 
-    public function expenses()
+    public function expenses(Request $request)
     {
-        return $this->renderIndex('expenses', 'Expenses', ['expense']);
+        return $this->renderIndex($request, 'expenses', 'Expenses', ['expense']);
     }
 
     public function create(Request $request)
@@ -106,8 +106,9 @@ class AccountingController extends Controller
             ->with('status', 'Accounting entry deleted.');
     }
 
-    private function renderIndex(string $scope, string $pageTitle, ?array $types)
+    private function renderIndex(Request $request, string $scope, string $pageTitle, ?array $types)
     {
+        $search = trim((string) $request->input('search', ''));
         $query = AccountingEntry::query()
             ->with(['customer', 'invoice', 'paymentGateway'])
             ->latest('entry_date')
@@ -117,11 +118,40 @@ class AccountingController extends Controller
             $query->whereIn('type', $types);
         }
 
-        return view('admin.accounting.index', [
+        if ($search !== '') {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('reference', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%')
+                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                        $customerQuery->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('invoice', function ($invoiceQuery) use ($search) {
+                        $invoiceQuery->where('number', 'like', '%' . $search . '%')
+                            ->orWhere('id', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('paymentGateway', function ($gatewayQuery) use ($search) {
+                        $gatewayQuery->where('name', 'like', '%' . $search . '%');
+                    });
+
+                if (is_numeric($search)) {
+                    $inner->orWhere('id', (int) $search)
+                        ->orWhere('amount', (float) $search);
+                }
+            });
+        }
+
+        $payload = [
             'entries' => $query->get(),
             'pageTitle' => $pageTitle,
             'scope' => $scope,
-        ]);
+            'search' => $search,
+        ];
+
+        if ($request->header('HX-Request')) {
+            return view('admin.accounting.partials.table', $payload);
+        }
+
+        return view('admin.accounting.index', $payload);
     }
 
     private function formData(string $type, ?Invoice $selectedInvoice = null, ?AccountingEntry $entry = null): array

@@ -347,8 +347,7 @@ class InvoiceController extends Controller
 
     private function listByStatus(?string $status, string $title)
     {
-        $productId = request()->query('product_id');
-        $maintenanceId = request()->query('maintenance_id');
+        $search = trim((string) request()->query('search', ''));
 
         $query = Invoice::query()
             ->with(['customer', 'paymentProofs', 'subscription.plan.product', 'maintenance.project', 'accountingEntries'])
@@ -358,28 +357,40 @@ class InvoiceController extends Controller
             $query->where('status', $status);
         }
 
-        if ($productId) {
-            $query->whereHas('subscription.plan', function ($q) use ($productId) {
-                $q->where('product_id', $productId);
+        if ($search !== '') {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('number', 'like', '%' . $search . '%')
+                    ->orWhere('status', 'like', '%' . $search . '%')
+                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                        $customerQuery->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('subscription.plan', function ($planQuery) use ($search) {
+                        $planQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhereHas('product', function ($productQuery) use ($search) {
+                                $productQuery->where('name', 'like', '%' . $search . '%');
+                            });
+                    })
+                    ->orWhereHas('maintenance', function ($maintenanceQuery) use ($search) {
+                        $maintenanceQuery->where('title', 'like', '%' . $search . '%');
+                    });
+
+                if (is_numeric($search)) {
+                    $inner->orWhere('id', (int) $search);
+                }
             });
         }
 
-        if ($maintenanceId) {
-            $query->where('maintenance_id', $maintenanceId);
-        }
-
-        return view('admin.invoices.index', [
+        $payload = [
             'invoices' => $query->paginate(25)->withQueryString(),
             'title' => $title,
             'statusFilter' => $status,
-            'products' => Product::orderBy('name')->get(),
-            'productFilter' => $productId,
-            'maintenances' => ProjectMaintenance::query()
-                ->with('project:id,name')
-                ->orderByDesc('id')
-                ->take(200)
-                ->get(['id', 'title', 'project_id']),
-            'maintenanceFilter' => $maintenanceId,
-        ]);
+            'search' => $search,
+        ];
+
+        if (request()->header('HX-Request')) {
+            return view('admin.invoices.partials.table', $payload);
+        }
+
+        return view('admin.invoices.index', $payload);
     }
 }

@@ -180,6 +180,13 @@ class StatusColorHelper
                 'dot' => 'bg-emerald-500',
                 'icon' => '✓',
             ],
+            'approved' => [
+                'bg' => 'bg-emerald-100',
+                'text' => 'text-emerald-700',
+                'color' => 'emerald',
+                'dot' => 'bg-emerald-500',
+                'icon' => 'check',
+            ],
 
             // Ticket statuses
             'open' => [

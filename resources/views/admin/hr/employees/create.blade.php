@@ -10,7 +10,7 @@
             <div class="text-2xl font-semibold text-slate-900">Add employee</div>
             <div class="text-sm text-slate-500">Create a new employee record.</div>
         </div>
-        <a href="{{ route('admin.hr.employees.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to employees</a>
+        <a href="{{ route('admin.hr.employees.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to employees</a>
     </div>
 
     <div class="card p-6">
