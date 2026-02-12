@@ -8,7 +8,7 @@
         <div>
             <div class="section-label">Income Sync</div>
             <div class="text-2xl font-semibold text-slate-900">CarrotHost</div>
-            <div class="mt-1 text-sm text-slate-500">Transactions, invoices, and paid invoice payments (from {{ $startDate }}).</div>
+            <div class="mt-1 text-sm text-slate-500">Transactions (from {{ $startDate }}).</div>
         </div>
         <div class="text-xs text-slate-500">Last refreshed: {{ now()->format($globalDateFormat.' H:i') }}</div>
     </div>
@@ -61,66 +61,5 @@
             </div>
         </div>
 
-        <div class="card p-6">
-            <div class="text-sm font-semibold text-slate-700">Paid Invoices</div>
-            <div class="mt-4 overflow-x-auto">
-                <table class="min-w-full text-left text-sm text-slate-700">
-                    <thead class="text-xs uppercase tracking-[0.2em] text-slate-500">
-                        <tr>
-                            <th class="px-3 py-2">Invoice</th>
-                            <th class="px-3 py-2">Client</th>
-                            <th class="px-3 py-2">Total</th>
-                            <th class="px-3 py-2">Status</th>
-                            <th class="px-3 py-2 whitespace-nowrap">Date Paid</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($invoices as $row)
-                            <tr class="border-t border-slate-100">
-                                <td class="px-3 py-2">{{ $row['id'] ?? ($row['invoiceid'] ?? '--') }}</td>
-                                <td class="px-3 py-2">{{ $row['clientname'] ?? ($row['userid'] ?? '--') }}</td>
-                                <td class="px-3 py-2">{{ $row['total'] ?? '--' }}</td>
-                                <td class="px-3 py-2">{{ $row['status'] ?? 'Paid' }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap">{{ $row['datepaid'] ?? '--' }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-3 py-4 text-center text-slate-500">No paid invoices found.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card p-6">
-            <div class="text-sm font-semibold text-slate-700">Invoice Payments</div>
-            <div class="mt-4 overflow-x-auto">
-                <table class="min-w-full text-left text-sm text-slate-700">
-                    <thead class="text-xs uppercase tracking-[0.2em] text-slate-500">
-                        <tr>
-                            <th class="px-3 py-2">Invoice</th>
-                            <th class="px-3 py-2">Amount</th>
-                            <th class="px-3 py-2">Method</th>
-                            <th class="px-3 py-2 whitespace-nowrap">Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($invoicePayments as $row)
-                            <tr class="border-t border-slate-100">
-                                <td class="px-3 py-2">{{ $row['invoiceid'] ?? '--' }}</td>
-                                <td class="px-3 py-2">{{ $row['amount'] ?? '--' }}</td>
-                                <td class="px-3 py-2">{{ $row['paymentmethod'] ?? ($row['gateway'] ?? '--') }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap">{{ $row['date'] ?? '--' }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-3 py-4 text-center text-slate-500">No invoice payments found.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 @endsection

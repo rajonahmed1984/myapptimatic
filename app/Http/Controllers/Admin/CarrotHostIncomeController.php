@@ -31,25 +31,10 @@ class CarrotHostIncomeController extends Controller
                 'order' => 'desc',
             ], 'transactions', 'transaction', $whmcsErrors);
 
-            $invoices = $this->fetchAll($client, 'GetInvoices', [
-                'status' => 'Paid',
-                'orderby' => 'datepaid',
-                'order' => 'desc',
-            ], 'invoices', 'invoice', $whmcsErrors);
-
-            $invoicePayments = $this->fetchAll($client, 'GetInvoicePayments', [
-                'orderby' => 'date',
-                'order' => 'desc',
-            ], 'payments', 'payment', $whmcsErrors);
-
             $transactions = $this->filterByDate($transactions, 'date', $startDate, $endDate);
-            $invoices = $this->filterByDate($invoices, 'datepaid', $startDate, $endDate);
-            $invoicePayments = $this->filterByDate($invoicePayments, 'date', $startDate, $endDate);
 
             return [
                 'transactions' => $transactions,
-                'invoices' => $invoices,
-                'invoicePayments' => $invoicePayments,
                 'whmcsErrors' => $whmcsErrors,
                 'startDate' => $startDate,
                 'endDate' => $endDate,
