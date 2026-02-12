@@ -195,7 +195,7 @@ Route::match(['GET', 'POST'], '/payments/bkash/{attempt}/callback', [PaymentCall
     ->middleware('throttle:payment-callbacks')
     ->name('payments.bkash.callback');
 
-Route::middleware('guest')->group(function () {
+Route::middleware(['guest:web', 'nocache'])->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
     Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])->name('project-client.login');
@@ -212,7 +212,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
 });
 
-Route::middleware('guest:employee')
+Route::middleware(['guest:employee', 'nocache'])
     ->prefix('employee')
     ->name('employee.')
     ->group(function () {
@@ -226,7 +226,7 @@ Route::middleware('guest:employee')
         Route::post('/reset-password', [RolePasswordResetController::class, 'resetEmployee'])->name('password.update');
     });
 
-Route::middleware('guest:sales')
+Route::middleware(['guest:sales', 'nocache'])
     ->prefix('sales')
     ->name('sales.')
     ->group(function () {
@@ -240,7 +240,7 @@ Route::middleware('guest:sales')
         Route::post('/reset-password', [RolePasswordResetController::class, 'resetSales'])->name('password.update');
     });
 
-Route::middleware('guest:support')
+Route::middleware(['guest:support', 'nocache'])
     ->prefix('support')
     ->name('support.')
     ->group(function () {

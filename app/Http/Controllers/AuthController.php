@@ -43,8 +43,9 @@ class AuthController extends Controller
         ]);
 
         $remember = $request->boolean('remember');
+        $webGuard = Auth::guard('web');
 
-        if (! Auth::attempt($credentials, $remember)) {
+        if (! $webGuard->attempt($credentials, $remember)) {
             SystemLogger::write('admin', 'Login failed.', [
                 'login_type' => 'client',
                 'email' => $credentials['email'],
@@ -55,7 +56,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $user = $request->user();
+        $user = $webGuard->user();
 
         if ($user && $user->isClientProject() && $user->status === 'inactive') {
             SystemLogger::write('admin', 'Project client login denied (inactive).', [
@@ -64,7 +65,7 @@ class AuthController extends Controller
                 'user_id' => $user->id,
             ], $user->id, $request->ip(), 'warning');
 
-            Auth::logout();
+            $webGuard->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
@@ -113,14 +114,21 @@ class AuthController extends Controller
     {
         $recaptcha->assertValid($request, 'ADMIN_LOGIN');
 
+        $sessionCookieName = config('session.cookie');
+        $incomingCookieSessionId = is_string($sessionCookieName)
+            ? $request->cookie($sessionCookieName)
+            : null;
+        $incomingSessionId = $request->hasSession() ? $request->session()->getId() : null;
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
         $remember = $request->boolean('remember');
+        $webGuard = Auth::guard('web');
 
-        if (! Auth::attempt($credentials, $remember)) {
+        if (! $webGuard->attempt($credentials, $remember)) {
             SystemLogger::write('admin', 'Admin login failed.', [
                 'login_type' => 'admin',
                 'email' => $credentials['email'],
@@ -133,7 +141,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        $user = $request->user();
+        $user = $webGuard->user();
 
         if (! $user || ! $user->isAdmin()) {
             SystemLogger::write('admin', 'Admin login denied.', [
@@ -142,7 +150,7 @@ class AuthController extends Controller
                 'user_id' => $user?->id,
             ], $user?->id, $request->ip(), 'warning');
 
-            Auth::logout();
+            $webGuard->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
@@ -151,8 +159,22 @@ class AuthController extends Controller
             ]);
         }
 
+        $sessionLoginKeys = array_values(array_filter(
+            array_keys($request->session()->all()),
+            static fn (string $key): bool => str_starts_with($key, 'login_')
+        ));
+
         SystemLogger::write('admin', 'Admin login.', [
             'email' => $user->email,
+            'user_id' => $user->id,
+            'incoming_session_id' => $incomingSessionId,
+            'incoming_cookie_session_id' => $incomingCookieSessionId,
+            'post_login_session_id' => $request->session()->getId(),
+            'session_login_keys' => $sessionLoginKeys,
+            'session_driver' => config('session.driver'),
+            'session_domain' => config('session.domain'),
+            'app_url' => config('app.url'),
+            'app_key_sha1' => sha1((string) config('app.key')),
         ], $user->id, $request->ip());
 
         return redirect()->route('admin.dashboard');
@@ -241,14 +263,14 @@ class AuthController extends Controller
         $admin = User::find($impersonatorId);
 
         if (! $admin || ! $admin->isAdmin()) {
-            Auth::logout();
+            Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
             return redirect()->route('admin.login');
         }
 
-        Auth::login($admin);
+        Auth::guard('web')->login($admin);
         Auth::guard('sales')->logout();
         Auth::guard('support')->logout();
         $request->session()->regenerate();

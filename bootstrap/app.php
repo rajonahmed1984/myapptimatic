@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use App\Providers\AuthServiceProvider;
 use App\Providers\EventServiceProvider;
@@ -26,6 +27,28 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->trustProxies(at: '*');
+
+        // Use active guard + role to prevent cross-panel guest redirects.
+        $middleware->redirectUsersTo(function (Request $request) {
+            if (Auth::guard('employee')->check()) {
+                return route('employee.dashboard');
+            }
+
+            if (Auth::guard('sales')->check()) {
+                return route('rep.dashboard');
+            }
+
+            if (Auth::guard('support')->check()) {
+                return route('support.dashboard');
+            }
+
+            $user = Auth::guard('web')->user();
+            if ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) {
+                return route('admin.dashboard');
+            }
+
+            return route('client.dashboard');
+        });
 
         $middleware->validateCsrfTokens(except: [
             'payments/sslcommerz/*',
