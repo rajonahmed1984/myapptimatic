@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\WhmcsClient;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class CarrotHostIncomeController extends Controller
@@ -14,10 +15,24 @@ class CarrotHostIncomeController extends Controller
     private const PAGE_SIZE = 100;
     private const MAX_PAGES = 50;
 
-    public function index(WhmcsClient $client): View
+    public function index(Request $request, WhmcsClient $client): View
     {
-        $startDate = Carbon::parse(self::DEFAULT_START)->toDateString();
-        $endDate = now()->toDateString();
+        $selectedMonth = $this->resolveMonth($request->query('month'));
+        $monthStart = $selectedMonth->copy()->startOfMonth();
+        $monthEnd = $selectedMonth->copy()->endOfMonth();
+        $today = now()->startOfDay();
+        if ($monthEnd->greaterThan($today)) {
+            $monthEnd = $today;
+        }
+
+        $startDate = $monthStart->toDateString();
+        $endDate = $monthEnd->toDateString();
+
+        $earliestMonth = Carbon::parse(self::DEFAULT_START)->startOfMonth();
+        $prevMonth = $selectedMonth->copy()->subMonth();
+        $nextMonth = $selectedMonth->copy()->addMonth();
+        $hasPrev = $prevMonth->greaterThanOrEqualTo($earliestMonth);
+        $hasNext = $selectedMonth->lt(now()->startOfMonth());
 
         $cacheKey = 'whmcs:carrothost:' . $startDate . ':' . $endDate;
 
@@ -32,9 +47,15 @@ class CarrotHostIncomeController extends Controller
             ], 'transactions', 'transaction', $whmcsErrors);
 
             $transactions = $this->filterByDate($transactions, 'date', $startDate, $endDate);
+            $amountInSubtotal = $this->sumField($transactions, 'amountin');
+            $feesSubtotal = $this->sumField($transactions, 'fees');
 
             return [
                 'transactions' => $transactions,
+                'amountInSubtotal' => $amountInSubtotal,
+                'feesSubtotal' => $feesSubtotal,
+                'amountInSubtotalDisplay' => $this->formatMoney($amountInSubtotal),
+                'feesSubtotalDisplay' => $this->formatMoney($feesSubtotal),
                 'whmcsErrors' => $whmcsErrors,
                 'startDate' => $startDate,
                 'endDate' => $endDate,
@@ -45,6 +66,13 @@ class CarrotHostIncomeController extends Controller
             $payload['whmcsErrors'] = $payload['errors'];
         }
         unset($payload['errors']);
+
+        $payload['month'] = $selectedMonth->format('Y-m');
+        $payload['monthLabel'] = $selectedMonth->format('F Y');
+        $payload['prevMonth'] = $hasPrev ? $prevMonth->format('Y-m') : null;
+        $payload['prevMonthLabel'] = $hasPrev ? $prevMonth->format('F Y') : null;
+        $payload['nextMonth'] = $hasNext ? $nextMonth->format('Y-m') : null;
+        $payload['nextMonthLabel'] = $hasNext ? $nextMonth->format('F Y') : null;
 
         return view('admin.income.carrothost', $payload);
     }
@@ -134,5 +162,48 @@ class CarrotHostIncomeController extends Controller
 
             return $date >= $start && $date <= $end;
         }));
+    }
+
+    private function resolveMonth(?string $month): Carbon
+    {
+        if (! is_string($month) || trim($month) === '') {
+            return now()->startOfMonth();
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+        } catch (\Throwable $e) {
+            return now()->startOfMonth();
+        }
+    }
+
+    private function sumField(array $rows, string $key): float
+    {
+        $total = 0.0;
+
+        foreach ($rows as $row) {
+            $total += $this->normalizeMoney($row[$key] ?? null);
+        }
+
+        return $total;
+    }
+
+    private function normalizeMoney($value): float
+    {
+        if ($value === null) {
+            return 0.0;
+        }
+
+        $clean = preg_replace('/[^\d\.\-]/', '', (string) $value);
+        if ($clean === '' || $clean === '-' || $clean === '.') {
+            return 0.0;
+        }
+
+        return (float) $clean;
+    }
+
+    private function formatMoney(float $value): string
+    {
+        return number_format($value, 2);
     }
 }

@@ -48,6 +48,7 @@ class DashboardController extends Controller
                 'systemOverview' => $systemOverview,
                 'periodMetrics' => $metrics['periodMetrics'],
                 'periodSeries' => $metrics['periodSeries'],
+                'incomeStatement' => $metrics['incomeStatement'],
                 'billingAmounts' => $metrics['billingAmounts'],
                 'currency' => $metrics['currency'],
                 'clientActivity' => $metrics['clientActivity'],

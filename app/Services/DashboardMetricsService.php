@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AccountingEntry;
 use App\Models\Customer;
 use App\Models\Employee;
+use App\Models\Income;
 use App\Models\Invoice;
 use App\Models\License;
 use App\Models\Order;
@@ -42,6 +43,7 @@ class DashboardMetricsService
                 'automationMetrics' => $this->automationMetricCards(),
                 'periodMetrics' => $this->periodMetrics(),
                 'periodSeries' => $this->periodSeries(),
+                'incomeStatement' => $this->incomeStatementMetrics(),
                 'billingAmounts' => $this->billingAmounts(),
                 'currency' => $currency,
                 'clientActivity' => $this->clientActivity(),
@@ -127,7 +129,7 @@ class DashboardMetricsService
             $metrics[$key] = [
                 'new_orders' => Order::whereBetween('created_at', [$start, $end])->count(),
                 'active_orders' => Order::where('status', 'accepted')->whereBetween('created_at', [$start, $end])->count(),
-                'income' => (float) Invoice::where('status', 'paid')->whereBetween('paid_at', [$start, $end])->sum('total'),
+                'income' => $this->incomeTotalBetween($start, $end),
             ];
         }
 
@@ -149,12 +151,16 @@ class DashboardMetricsService
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
-        $hourlyIncome = Invoice::selectRaw('HOUR(paid_at) as bucket, SUM(total) as total')
-            ->where('status', 'paid')
-            ->whereBetween('paid_at', [$todayStart, $todayEnd])
+        $hourlyIncome = AccountingEntry::selectRaw('HOUR(entry_date) as bucket, SUM(amount) as total')
+            ->where('type', 'payment')
+            ->whereBetween('entry_date', [$todayStart, $todayEnd])
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
+        $manualTodayIncome = (float) Income::whereDate('income_date', $todayStart->toDateString())->sum('amount');
+        if ($manualTodayIncome !== 0.0) {
+            $hourlyIncome[0] = (float) ($hourlyIncome[0] ?? 0) + $manualTodayIncome;
+        }
 
         $todayLabels = [];
         $todayNew = [];
@@ -180,9 +186,14 @@ class DashboardMetricsService
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
-        $dailyIncome = Invoice::selectRaw('DATE(paid_at) as bucket, SUM(total) as total')
-            ->where('status', 'paid')
-            ->whereBetween('paid_at', [$monthStart, $monthEnd])
+        $dailyIncomeSystem = AccountingEntry::selectRaw('DATE(entry_date) as bucket, SUM(amount) as total')
+            ->where('type', 'payment')
+            ->whereBetween('entry_date', [$monthStart, $monthEnd])
+            ->groupBy('bucket')
+            ->pluck('total', 'bucket')
+            ->all();
+        $dailyIncomeManual = Income::selectRaw('DATE(income_date) as bucket, SUM(amount) as total')
+            ->whereBetween('income_date', [$monthStart, $monthEnd])
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
@@ -197,7 +208,7 @@ class DashboardMetricsService
             $monthLabels[] = $date->format('d M');
             $monthNew[] = (int) ($dailyOrders[$key] ?? 0);
             $monthActive[] = (int) ($dailyActiveOrders[$key] ?? 0);
-            $monthIncome[] = (float) ($dailyIncome[$key] ?? 0);
+            $monthIncome[] = (float) ($dailyIncomeSystem[$key] ?? 0) + (float) ($dailyIncomeManual[$key] ?? 0);
         }
 
         $yearStart = now()->startOfMonth()->subMonths(11);
@@ -213,9 +224,14 @@ class DashboardMetricsService
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
-        $monthlyIncome = Invoice::selectRaw("DATE_FORMAT(paid_at, '%Y-%m') as bucket, SUM(total) as total")
-            ->where('status', 'paid')
-            ->whereBetween('paid_at', [$yearStart, $yearEnd])
+        $monthlyIncomeSystem = AccountingEntry::selectRaw("DATE_FORMAT(entry_date, '%Y-%m') as bucket, SUM(amount) as total")
+            ->where('type', 'payment')
+            ->whereBetween('entry_date', [$yearStart, $yearEnd])
+            ->groupBy('bucket')
+            ->pluck('total', 'bucket')
+            ->all();
+        $monthlyIncomeManual = Income::selectRaw("DATE_FORMAT(income_date, '%Y-%m') as bucket, SUM(amount) as total")
+            ->whereBetween('income_date', [$yearStart, $yearEnd])
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
@@ -230,7 +246,7 @@ class DashboardMetricsService
             $yearLabels[] = $date->format('M');
             $yearNew[] = (int) ($monthlyOrders[$key] ?? 0);
             $yearActive[] = (int) ($monthlyActiveOrders[$key] ?? 0);
-            $yearIncome[] = (float) ($monthlyIncome[$key] ?? 0);
+            $yearIncome[] = (float) ($monthlyIncomeSystem[$key] ?? 0) + (float) ($monthlyIncomeManual[$key] ?? 0);
         }
 
         return [
@@ -253,6 +269,58 @@ class DashboardMetricsService
                 'income' => $yearIncome,
             ],
         ];
+    }
+
+    private function incomeStatementMetrics(): array
+    {
+        $periods = [
+            'today' => [now()->startOfDay(), now()->endOfDay()],
+            'month' => [now()->subDays(29)->startOfDay(), now()->endOfDay()],
+            'year' => [now()->subYear()->startOfDay(), now()->endOfDay()],
+        ];
+
+        $statement = [];
+
+        foreach ($periods as $key => [$start, $end]) {
+            $totals = AccountingEntry::query()
+                ->select('type', DB::raw('SUM(amount) as total'))
+                ->whereBetween('entry_date', [$start->toDateString(), $end->toDateString()])
+                ->whereIn('type', ['payment', 'refund', 'credit', 'expense'])
+                ->groupBy('type')
+                ->pluck('total', 'type')
+                ->all();
+
+            $manualIncome = (float) Income::whereDate('income_date', '>=', $start->toDateString())
+                ->whereDate('income_date', '<=', $end->toDateString())
+                ->sum('amount');
+            $payments = (float) ($totals['payment'] ?? 0) + $manualIncome;
+            $refunds = (float) ($totals['refund'] ?? 0);
+            $credits = (float) ($totals['credit'] ?? 0);
+            $expenses = (float) ($totals['expense'] ?? 0);
+
+            $statement[$key] = [
+                'payments' => $payments,
+                'refunds' => $refunds,
+                'credits' => $credits,
+                'expenses' => $expenses,
+                'net' => $payments - $refunds - $credits - $expenses,
+            ];
+        }
+
+        return $statement;
+    }
+
+    private function incomeTotalBetween(Carbon $start, Carbon $end): float
+    {
+        $manual = (float) Income::whereDate('income_date', '>=', $start->toDateString())
+            ->whereDate('income_date', '<=', $end->toDateString())
+            ->sum('amount');
+        $system = (float) AccountingEntry::where('type', 'payment')
+            ->whereDate('entry_date', '>=', $start->toDateString())
+            ->whereDate('entry_date', '<=', $end->toDateString())
+            ->sum('amount');
+
+        return $manual + $system;
     }
 
     private function billingAmounts(): array
