@@ -6,41 +6,68 @@ use App\Models\Setting;
 
 class UrlResolver
 {
+    public static function normalizeRootUrl(mixed $url): ?string
+    {
+        if (! is_string($url)) {
+            return null;
+        }
+
+        $url = trim($url);
+        if ($url === '') {
+            return null;
+        }
+
+        $parts = parse_url($url);
+        if (! is_array($parts)) {
+            return null;
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+
+        if ($scheme === '' || $host === '' || ! in_array($scheme, ['http', 'https'], true)) {
+            return null;
+        }
+
+        $port = isset($parts['port']) ? (int) $parts['port'] : null;
+
+        return $port !== null
+            ? sprintf('%s://%s:%d', $scheme, $host, $port)
+            : sprintf('%s://%s', $scheme, $host);
+    }
+
     public static function portalUrl(): string
     {
-        $url = '';
-        $settingUrl = Setting::getValue('app_url');
+        $url = null;
+        $settingUrl = self::normalizeRootUrl(Setting::getValue('app_url'));
+        $requestRoot = app()->bound('request')
+            ? self::normalizeRootUrl(request()->root())
+            : null;
 
         if (app()->environment('local')) {
-            if (app()->bound('request')) {
-                $root = request()->root();
-                if (is_string($root) && $root !== '') {
-                    $url = $root;
-                }
+            if ($requestRoot !== null) {
+                $url = $requestRoot;
             }
 
-            if ($url === '' && is_string($settingUrl) && $settingUrl !== '') {
+            if ($url === null && $settingUrl !== null) {
                 $url = $settingUrl;
             }
         } else {
-            if (is_string($settingUrl) && $settingUrl !== '') {
+            if ($settingUrl !== null) {
                 $url = $settingUrl;
-            } elseif (app()->bound('request')) {
-                $root = request()->root();
-                if (is_string($root) && $root !== '') {
-                    $url = $root;
-                }
+            } elseif ($requestRoot !== null) {
+                $url = $requestRoot;
             }
         }
 
-        if (! is_string($url) || $url === '') {
-            $url = config('app.url');
+        if ($url === null) {
+            $url = self::normalizeRootUrl(config('app.url'));
         }
 
-        if (! is_string($url) || $url === '') {
+        if ($url === null) {
             $url = 'http://localhost';
         }
 
-        return rtrim($url, '/');
+        return $url;
     }
 }

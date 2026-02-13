@@ -14,7 +14,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -51,9 +50,10 @@ class AuthController extends Controller
                 'email' => $credentials['email'],
             ], null, $request->ip(), 'warning');
 
-            throw ValidationException::withMessages([
-                'email' => 'The provided credentials are incorrect.',
-            ]);
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => 'The provided credentials are incorrect.'])
+                ->withInput($request->only('email'));
         }
 
         $user = $webGuard->user();
@@ -69,9 +69,10 @@ class AuthController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            throw ValidationException::withMessages([
-                'email' => 'Your account is inactive. Please contact support.',
-            ]);
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => 'Your account is inactive. Please contact support.'])
+                ->withInput($request->only('email'));
         }
 
         $request->session()->regenerate();
@@ -134,9 +135,10 @@ class AuthController extends Controller
                 'email' => $credentials['email'],
             ], null, $request->ip(), 'warning');
 
-            throw ValidationException::withMessages([
-                'email' => 'The provided credentials are incorrect.',
-            ]);
+            return redirect()
+                ->route('admin.login')
+                ->withErrors(['email' => 'The provided credentials are incorrect.'])
+                ->withInput($request->only('email'));
         }
 
         $request->session()->regenerate();
@@ -154,9 +156,10 @@ class AuthController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            throw ValidationException::withMessages([
-                'email' => 'This account does not have admin access.',
-            ]);
+            return redirect()
+                ->route('admin.login')
+                ->withErrors(['email' => 'This account does not have admin access.'])
+                ->withInput($request->only('email'));
         }
 
         $sessionLoginKeys = array_values(array_filter(

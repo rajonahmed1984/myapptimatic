@@ -202,8 +202,8 @@ class SettingController extends Controller
         Setting::setValue('company_email', $data['company_email'] ?? '');
         Setting::setValue('pay_to_text', $data['pay_to_text'] ?? '');
         Setting::setValue('company_country', $data['company_country'] ?? '');
-        $appUrl = $data['app_url'] ?? '';
-        $appUrl = is_string($appUrl) ? rtrim($appUrl, '/') : '';
+        $appUrl = UrlResolver::normalizeRootUrl($data['app_url'] ?? '');
+        $appUrl = $appUrl ?? '';
         Setting::setValue('app_url', $appUrl);
 
         if ($request->hasFile('company_logo')) {

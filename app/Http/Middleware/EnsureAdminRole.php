@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureAdminRole
@@ -15,7 +16,7 @@ class EnsureAdminRole
      */
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        $user = $request->user();
+        $user = Auth::guard('web')->user();
 
         if (! $user) {
             return redirect()->route('admin.login');
@@ -33,6 +34,7 @@ class EnsureAdminRole
         }
 
         if (! in_array($user->role, $allowedRoles, true)) {
+            // Authenticated but unauthorized admin role should receive 403.
             abort(403);
         }
 

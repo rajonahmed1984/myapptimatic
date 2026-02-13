@@ -64,10 +64,14 @@ class AppServiceProvider extends ServiceProvider
             $portalUrl = UrlResolver::portalUrl();
             if ($portalUrl !== '') {
                 config(['app.url' => $portalUrl]);
-                URL::forceRootUrl($portalUrl);
-                $scheme = parse_url($portalUrl, PHP_URL_SCHEME);
-                if (is_string($scheme) && $scheme !== '') {
-                    URL::forceScheme($scheme);
+                // Avoid forcing HTTP request URL roots from DB setting to prevent
+                // accidental path-prefixed route generation (e.g. /admin/login).
+                if ($this->app->runningInConsole()) {
+                    URL::forceRootUrl($portalUrl);
+                    $scheme = parse_url($portalUrl, PHP_URL_SCHEME);
+                    if (is_string($scheme) && $scheme !== '') {
+                        URL::forceScheme($scheme);
+                    }
                 }
                 config(['filesystems.disks.public.url' => $portalUrl . '/storage']);
             }

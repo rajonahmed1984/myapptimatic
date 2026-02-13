@@ -29,7 +29,10 @@ class AuthController extends Controller
         $remember = (bool) $request->boolean('remember');
 
         if (! Auth::guard('employee')->attempt($credentials, $remember)) {
-            return back()->withErrors(['email' => 'Invalid credentials'])->withInput();
+            return redirect()
+                ->route('employee.login')
+                ->withErrors(['email' => 'Invalid credentials'])
+                ->withInput($request->only('email'));
         }
 
         $request->session()->regenerate();
@@ -42,7 +45,10 @@ class AuthController extends Controller
 
         if (! $employee || $employee->status !== 'active') {
             Auth::guard('employee')->logout();
-            return back()->withErrors(['email' => 'Access restricted for this account.'])->withInput();
+            return redirect()
+                ->route('employee.login')
+                ->withErrors(['email' => 'Access restricted for this account.'])
+                ->withInput($request->only('email'));
         }
 
         return redirect()->route('employee.dashboard');

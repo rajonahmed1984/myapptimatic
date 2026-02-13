@@ -50,6 +50,14 @@ return Application::configure(basePath: dirname(__DIR__))
             return route('client.dashboard');
         });
 
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('admin') || $request->is('admin/*')) return route('admin.login');
+            if ($request->is('employee') || $request->is('employee/*')) return route('employee.login');
+            if ($request->is('sales') || $request->is('sales/*')) return route('sales.login');
+            if ($request->is('support') || $request->is('support/*')) return route('support.login');
+            return route('login');
+        });
+
         $middleware->validateCsrfTokens(except: [
             'payments/sslcommerz/*',
             'payments/bkash/*',

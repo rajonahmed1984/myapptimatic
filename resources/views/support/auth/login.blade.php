@@ -7,7 +7,7 @@
     <h2 class="mt-3 text-2xl font-semibold text-slate-900">Sign in to your workspace</h2>
     <p class="mt-2 text-sm text-slate-600">Use the credentials linked to your support account.</p>
 
-    <form class="mt-8 space-y-5" method="POST" action="{{ route('support.login.attempt') }}">
+    <form class="mt-8 space-y-5" method="POST" action="{{ route('support.login.attempt', [], false) }}">
         @csrf
         <div>
             <label class="text-sm text-slate-600">Email</label>

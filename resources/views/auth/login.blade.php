@@ -13,7 +13,7 @@
         </div>
     @endif
 
-    <form class="mt-8 space-y-5" method="POST" action="{{ route('login.attempt') }}">
+    <form class="mt-8 space-y-5" method="POST" action="{{ route('login.attempt', [], false) }}">
         @csrf
         @if(request('redirect'))
             <input type="hidden" name="redirect" value="{{ request('redirect') }}" />

@@ -13,7 +13,7 @@
         </div>
     @endif
 
-    <form class="mt-8 space-y-5" method="POST" action="{{ route('project-client.login.attempt') }}">
+    <form class="mt-8 space-y-5" method="POST" action="{{ route('project-client.login.attempt', [], false) }}">
         @csrf
         <div>
             <label class="text-sm text-slate-600">Email</label>

@@ -8,7 +8,6 @@ use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -34,9 +33,10 @@ class AuthController extends Controller
                 'email' => $credentials['email'],
             ], null, $request->ip(), 'warning');
 
-            throw ValidationException::withMessages([
-                'email' => 'The provided credentials are incorrect.',
-            ]);
+            return redirect()
+                ->route('project-client.login')
+                ->withErrors(['email' => 'The provided credentials are incorrect.'])
+                ->withInput($request->only('email'));
         }
 
         $user = $request->user();
@@ -52,9 +52,10 @@ class AuthController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            throw ValidationException::withMessages([
-                'email' => 'Your account is inactive. Please contact support.',
-            ]);
+            return redirect()
+                ->route('project-client.login')
+                ->withErrors(['email' => 'Your account is inactive. Please contact support.'])
+                ->withInput($request->only('email'));
         }
 
         if (! $user || ! $user->isClientProject() || ! $user->project_id) {
@@ -68,9 +69,10 @@ class AuthController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            throw ValidationException::withMessages([
-                'email' => 'This account cannot access project tasks.',
-            ]);
+            return redirect()
+                ->route('project-client.login')
+                ->withErrors(['email' => 'This account cannot access project tasks.'])
+                ->withInput($request->only('email'));
         }
 
         $request->session()->regenerate();

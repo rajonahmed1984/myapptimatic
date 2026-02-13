@@ -30,7 +30,10 @@ class RoleLoginController extends Controller
         $remember = (bool) $request->boolean('remember');
 
         if (! Auth::guard('sales')->attempt($credentials, $remember)) {
-            return back()->withErrors(['email' => 'Invalid credentials'])->withInput();
+            return redirect()
+                ->route('sales.login')
+                ->withErrors(['email' => 'Invalid credentials'])
+                ->withInput($request->only('email'));
         }
 
         $request->session()->regenerate();
@@ -39,7 +42,10 @@ class RoleLoginController extends Controller
 
         if (! $user || $user->role !== Role::SALES) {
             Auth::guard('sales')->logout();
-            return back()->withErrors(['email' => 'Access restricted for this account.'])->withInput();
+            return redirect()
+                ->route('sales.login')
+                ->withErrors(['email' => 'Access restricted for this account.'])
+                ->withInput($request->only('email'));
         }
 
         $rep = SalesRepresentative::query()
@@ -49,7 +55,10 @@ class RoleLoginController extends Controller
 
         if (! $rep) {
             Auth::guard('sales')->logout();
-            return back()->withErrors(['email' => 'Access restricted for this account.'])->withInput();
+            return redirect()
+                ->route('sales.login')
+                ->withErrors(['email' => 'Access restricted for this account.'])
+                ->withInput($request->only('email'));
         }
 
         return redirect()->route('rep.dashboard');
@@ -81,7 +90,10 @@ class RoleLoginController extends Controller
         $remember = (bool) $request->boolean('remember');
 
         if (! Auth::guard('support')->attempt($credentials, $remember)) {
-            return back()->withErrors(['email' => 'Invalid credentials'])->withInput();
+            return redirect()
+                ->route('support.login')
+                ->withErrors(['email' => 'Invalid credentials'])
+                ->withInput($request->only('email'));
         }
 
         $request->session()->regenerate();
@@ -90,7 +102,10 @@ class RoleLoginController extends Controller
 
         if (! $user || $user->role !== Role::SUPPORT) {
             Auth::guard('support')->logout();
-            return back()->withErrors(['email' => 'Access restricted for this account.'])->withInput();
+            return redirect()
+                ->route('support.login')
+                ->withErrors(['email' => 'Access restricted for this account.'])
+                ->withInput($request->only('email'));
         }
 
         return redirect()->route('support.dashboard');

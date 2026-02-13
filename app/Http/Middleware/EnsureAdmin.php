@@ -38,6 +38,7 @@ class EnsureAdmin
         }
 
         if (! in_array($user->role, Role::adminPanelRoles(), true)) {
+            // Authenticated users without admin role should receive 403, not login redirect.
             abort(403);
         }
 

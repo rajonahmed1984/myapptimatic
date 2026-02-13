@@ -22,7 +22,7 @@
         </div>
     @endif
 
-    <form class="mt-8 space-y-5" method="POST" action="{{ route('admin.login.attempt') }}">
+    <form class="mt-8 space-y-5" method="POST" action="{{ route('admin.login.attempt', [], false) }}">
         @csrf
         <div>
             <label class="text-sm text-slate-600">Email</label>
