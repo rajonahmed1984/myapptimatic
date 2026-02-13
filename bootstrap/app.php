@@ -94,7 +94,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
             auth()->logout();
 
-            $loginRoute = $request->is('admin/*') ? 'admin.login' : 'login';
+            $loginRoute = match (true) {
+                $request->is('admin') || $request->is('admin/*') => 'admin.login',
+                $request->is('employee') || $request->is('employee/*') => 'employee.login',
+                $request->is('sales') || $request->is('sales/*') => 'sales.login',
+                $request->is('support') || $request->is('support/*') => 'support.login',
+                default => 'login',
+            };
 
             return redirect()
                 ->route($loginRoute)
@@ -117,7 +123,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
             auth()->logout();
 
-            $loginRoute = $request->is('admin/*') ? 'admin.login' : 'login';
+            $loginRoute = match (true) {
+                $request->is('admin') || $request->is('admin/*') => 'admin.login',
+                $request->is('employee') || $request->is('employee/*') => 'employee.login',
+                $request->is('sales') || $request->is('sales/*') => 'sales.login',
+                $request->is('support') || $request->is('support/*') => 'support.login',
+                default => 'login',
+            };
 
             return redirect()
                 ->route($loginRoute)

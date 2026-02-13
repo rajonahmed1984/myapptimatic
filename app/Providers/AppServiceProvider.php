@@ -45,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->loadRouteHelpers();
         $this->app->singleton(\App\Services\CommissionService::class);
     }
 
@@ -434,5 +435,19 @@ class AppServiceProvider extends ServiceProvider
                 }
             }
         });
+    }
+
+    private function loadRouteHelpers(): void
+    {
+        $primaryPath = app_path('Helpers/RouteHelper.php');
+        if (is_file($primaryPath)) {
+            require_once $primaryPath;
+            return;
+        }
+
+        $fallbackPath = app_path('Support/RouteHelperFunctions.php');
+        if (is_file($fallbackPath)) {
+            require_once $fallbackPath;
+        }
     }
 }
