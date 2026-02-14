@@ -13,6 +13,7 @@ use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
@@ -34,6 +35,12 @@ class AuthController extends Controller
 
     public function login(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
+        $this->loginTrace('ControllerHit', [
+            'method' => __METHOD__,
+            'email' => (string) $request->input('email', ''),
+            'guard' => 'web',
+        ]);
+
         $recaptcha->assertValid($request, 'LOGIN');
 
         $credentials = $request->validate([
@@ -44,11 +51,31 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
         $webGuard = Auth::guard('web');
 
-        if (! $webGuard->attempt($credentials, $remember)) {
+        $this->loginTrace('Attempting', [
+            'guard' => 'web',
+            'email' => $credentials['email'],
+            'remember' => $remember,
+        ]);
+
+        $attempted = $webGuard->attempt($credentials, $remember);
+
+        $this->loginTrace('AttemptResult', [
+            'guard' => 'web',
+            'result' => $attempted,
+            'user_id' => $webGuard->id(),
+        ]);
+
+        if (! $attempted) {
             SystemLogger::write('admin', 'Login failed.', [
                 'login_type' => 'client',
                 'email' => $credentials['email'],
             ], null, $request->ip(), 'warning');
+
+            $this->loginTrace('Response', [
+                'guard' => 'web',
+                'type' => 'redirect',
+                'target_route' => 'login',
+            ]);
 
             return redirect()
                 ->route('login')
@@ -69,6 +96,13 @@ class AuthController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
+            $this->loginTrace('Response', [
+                'guard' => 'web',
+                'type' => 'redirect',
+                'target_route' => 'login',
+                'reason' => 'inactive_project_client',
+            ]);
+
             return redirect()
                 ->route('login')
                 ->withErrors(['email' => 'Your account is inactive. Please contact support.'])
@@ -85,10 +119,21 @@ class AuthController extends Controller
 
         // Handle project-specific clients
         if ($user && $user->isClientProject() && $user->project_id) {
+            $this->loginTrace('Response', [
+                'guard' => 'web',
+                'type' => 'redirect',
+                'target_route' => 'client.projects.show',
+                'project_id' => $user->project_id,
+            ]);
             return redirect()->route('client.projects.show', $user->project_id);
         }
 
         if ($user && $user->isAdmin()) {
+            $this->loginTrace('Response', [
+                'guard' => 'web',
+                'type' => 'redirect',
+                'target_route' => 'admin.dashboard',
+            ]);
             return redirect()->route('admin.dashboard');
         }
 
@@ -101,18 +146,44 @@ class AuthController extends Controller
 
         if ($activeRep) {
             Auth::guard('sales')->login($user, $remember);
+            $this->loginTrace('Response', [
+                'guard' => 'web',
+                'type' => 'redirect',
+                'target_route' => 'rep.dashboard',
+                'sales_user_id' => $user?->id,
+            ]);
             return redirect()->route('rep.dashboard');
         }
 
         $redirect = $this->redirectTarget($request);
 
-        return $redirect
-            ? redirect($redirect)
-            : redirect()->route('client.dashboard');
+        if ($redirect) {
+            $this->loginTrace('Response', [
+                'guard' => 'web',
+                'type' => 'redirect',
+                'target_url' => $redirect,
+            ]);
+
+            return redirect($redirect);
+        }
+
+        $this->loginTrace('Response', [
+            'guard' => 'web',
+            'type' => 'redirect',
+            'target_route' => 'client.dashboard',
+        ]);
+
+        return redirect()->route('client.dashboard');
     }
 
     public function adminLogin(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
+        $this->loginTrace('ControllerHit', [
+            'method' => __METHOD__,
+            'email' => (string) $request->input('email', ''),
+            'guard' => 'web',
+        ]);
+
         $recaptcha->assertValid($request, 'ADMIN_LOGIN');
 
         $sessionCookieName = config('session.cookie');
@@ -129,11 +200,34 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
         $webGuard = Auth::guard('web');
 
-        if (! $webGuard->attempt($credentials, $remember)) {
+        $this->loginTrace('Attempting', [
+            'guard' => 'web',
+            'email' => $credentials['email'],
+            'remember' => $remember,
+            'panel' => 'admin',
+        ]);
+
+        $attempted = $webGuard->attempt($credentials, $remember);
+
+        $this->loginTrace('AttemptResult', [
+            'guard' => 'web',
+            'result' => $attempted,
+            'user_id' => $webGuard->id(),
+            'panel' => 'admin',
+        ]);
+
+        if (! $attempted) {
             SystemLogger::write('admin', 'Admin login failed.', [
                 'login_type' => 'admin',
                 'email' => $credentials['email'],
             ], null, $request->ip(), 'warning');
+
+            $this->loginTrace('Response', [
+                'guard' => 'web',
+                'type' => 'redirect',
+                'target_route' => 'admin.login',
+                'panel' => 'admin',
+            ]);
 
             return redirect()
                 ->route('admin.login')
@@ -155,6 +249,14 @@ class AuthController extends Controller
             $webGuard->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+
+            $this->loginTrace('Response', [
+                'guard' => 'web',
+                'type' => 'redirect',
+                'target_route' => 'admin.login',
+                'panel' => 'admin',
+                'reason' => 'not_admin',
+            ]);
 
             return redirect()
                 ->route('admin.login')
@@ -179,6 +281,13 @@ class AuthController extends Controller
             'app_url' => config('app.url'),
             'app_key_sha1' => sha1((string) config('app.key')),
         ], $user->id, $request->ip());
+
+        $this->loginTrace('Response', [
+            'guard' => 'web',
+            'type' => 'redirect',
+            'target_route' => 'admin.dashboard',
+            'panel' => 'admin',
+        ]);
 
         return redirect()->route('admin.dashboard');
     }
@@ -294,6 +403,15 @@ class AuthController extends Controller
         }
 
         return null;
+    }
+
+    private function loginTrace(string $event, array $context = []): void
+    {
+        if (! config('app.login_trace')) {
+            return;
+        }
+
+        Log::info('[LOGIN_TRACE] ' . $event, $context);
     }
 
 }

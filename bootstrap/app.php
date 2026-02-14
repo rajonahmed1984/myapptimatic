@@ -26,7 +26,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ActivityTrackingEventServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->trustProxies(at: '*');
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO
+                | Request::HEADER_X_FORWARDED_PREFIX
+        );
 
         // Use active guard + role to prevent cross-panel guest redirects.
         $middleware->redirectUsersTo(function (Request $request) {
@@ -79,6 +86,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'support' => \App\Http\Middleware\EnsureSupport::class,
             'user.activity' => \App\Http\Middleware\TrackAuthenticatedUserActivity::class,
             'nocache' => \App\Http\Middleware\NoCacheHeaders::class,
+            'login.trace' => \App\Http\Middleware\LoginTrace::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

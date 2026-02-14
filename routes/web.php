@@ -197,13 +197,13 @@ Route::match(['GET', 'POST'], '/payments/bkash/{attempt}/callback', [PaymentCall
 
 Route::middleware(['guest:web', 'nocache'])->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('login.trace')->name('login.attempt');
     Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])->name('project-client.login');
     Route::post('/project-login', [ProjectClientAuthController::class, 'login'])->name('project-client.login.attempt');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
     Route::get('/admin/login', [AuthController::class, 'showAdminLogin'])->name('admin.login');
-    Route::post('/admin/login', [AuthController::class, 'adminLogin'])->name('admin.login.attempt');
+    Route::post('/admin/login', [AuthController::class, 'adminLogin'])->middleware('login.trace')->name('admin.login.attempt');
     Route::get('/admin/forgot-password', [PasswordResetController::class, 'requestAdmin'])->name('admin.password.request');
     Route::post('/admin/forgot-password', [PasswordResetController::class, 'emailAdmin'])->name('admin.password.email');
     Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
@@ -217,7 +217,7 @@ Route::middleware(['guest:employee', 'nocache'])
     ->name('employee.')
     ->group(function () {
         Route::get('/login', [EmployeeAuthController::class, 'showLogin'])->name('login');
-        Route::post('/login', [EmployeeAuthController::class, 'login'])->name('login.attempt');
+        Route::post('/login', [EmployeeAuthController::class, 'login'])->middleware('login.trace')->name('login.attempt');
         Route::get('/forgot-password', [RolePasswordResetController::class, 'showEmployeeForgot'])->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendEmployeeResetLink'])
             ->middleware('throttle:3,10')
@@ -231,7 +231,7 @@ Route::middleware(['guest:sales', 'nocache'])
     ->name('sales.')
     ->group(function () {
         Route::get('/login', [RoleLoginController::class, 'showSalesLogin'])->name('login');
-        Route::post('/login', [RoleLoginController::class, 'loginSales'])->name('login.attempt');
+        Route::post('/login', [RoleLoginController::class, 'loginSales'])->middleware('login.trace')->name('login.attempt');
         Route::get('/forgot-password', [RolePasswordResetController::class, 'showSalesForgot'])->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSalesResetLink'])
             ->middleware('throttle:3,10')
@@ -245,7 +245,7 @@ Route::middleware(['guest:support', 'nocache'])
     ->name('support.')
     ->group(function () {
         Route::get('/login', [RoleLoginController::class, 'showSupportLogin'])->name('login');
-        Route::post('/login', [RoleLoginController::class, 'loginSupport'])->name('login.attempt');
+        Route::post('/login', [RoleLoginController::class, 'loginSupport'])->middleware('login.trace')->name('login.attempt');
         Route::get('/forgot-password', [RolePasswordResetController::class, 'showSupportForgot'])->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSupportResetLink'])
             ->middleware('throttle:3,10')
@@ -253,6 +253,37 @@ Route::middleware(['guest:support', 'nocache'])
         Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showSupportReset'])->name('password.reset');
         Route::post('/reset-password', [RolePasswordResetController::class, 'resetSupport'])->name('password.update');
     });
+
+if (app()->environment(['local', 'testing']) || config('app.login_trace')) {
+    Route::get('/_debug/login-trace', function (Request $request) {
+        $sessionCookieName = (string) config('session.cookie');
+        $guard = (string) $request->query('guard', 'web');
+
+        if (! in_array($guard, ['web', 'employee', 'sales', 'support'], true)) {
+            $guard = 'web';
+        }
+
+        return response()->json([
+            'cookie_name' => $sessionCookieName,
+            'session_cookie' => $sessionCookieName !== '' ? $request->cookie($sessionCookieName) : null,
+            'session_id' => $request->hasSession() ? $request->session()->getId() : null,
+            'auth_check' => Auth::check(),
+            'auth_user_id' => Auth::id(),
+            'guard' => $guard,
+            'guard_check' => Auth::guard($guard)->check(),
+            'guard_user_id' => Auth::guard($guard)->id(),
+            'guard_checks' => [
+                'web' => Auth::guard('web')->check(),
+                'employee' => Auth::guard('employee')->check(),
+                'sales' => Auth::guard('sales')->check(),
+                'support' => Auth::guard('support')->check(),
+            ],
+            'host' => $request->getHost(),
+            'scheme' => $request->getScheme(),
+            'is_secure' => $request->isSecure(),
+        ]);
+    })->name('debug.login-trace');
+}
 
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout')

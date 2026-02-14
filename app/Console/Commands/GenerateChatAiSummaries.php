@@ -23,6 +23,11 @@ class GenerateChatAiSummaries extends Command
         GeminiService $geminiService,
         ChatAiSummaryCache $summaryCache
     ): int {
+        if (! config('google_ai.enabled')) {
+            $this->warn('Google AI is disabled. Skipping chat summary generation.');
+            return self::SUCCESS;
+        }
+
         if (! config('google_ai.api_key')) {
             $this->error('Missing GOOGLE_AI_API_KEY.');
             return self::FAILURE;

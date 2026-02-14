@@ -9,6 +9,7 @@ use App\Services\RecaptchaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class RoleLoginController extends Controller
@@ -20,6 +21,12 @@ class RoleLoginController extends Controller
 
     public function loginSales(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
+        $this->loginTrace('ControllerHit', [
+            'method' => __METHOD__,
+            'email' => (string) $request->input('email', ''),
+            'guard' => 'sales',
+        ]);
+
         $recaptcha->assertValid($request, 'SALES_LOGIN');
 
         $credentials = $request->validate([
@@ -29,7 +36,29 @@ class RoleLoginController extends Controller
 
         $remember = (bool) $request->boolean('remember');
 
-        if (! Auth::guard('sales')->attempt($credentials, $remember)) {
+        $salesGuard = Auth::guard('sales');
+
+        $this->loginTrace('Attempting', [
+            'guard' => 'sales',
+            'email' => $credentials['email'],
+            'remember' => $remember,
+        ]);
+
+        $attempted = $salesGuard->attempt($credentials, $remember);
+
+        $this->loginTrace('AttemptResult', [
+            'guard' => 'sales',
+            'result' => $attempted,
+            'user_id' => $salesGuard->id(),
+        ]);
+
+        if (! $attempted) {
+            $this->loginTrace('Response', [
+                'guard' => 'sales',
+                'type' => 'redirect',
+                'target_route' => 'sales.login',
+            ]);
+
             return redirect()
                 ->route('sales.login')
                 ->withErrors(['email' => 'Invalid credentials'])
@@ -38,10 +67,17 @@ class RoleLoginController extends Controller
 
         $request->session()->regenerate();
 
-        $user = Auth::guard('sales')->user();
+        $user = $salesGuard->user();
 
         if (! $user || $user->role !== Role::SALES) {
-            Auth::guard('sales')->logout();
+            $salesGuard->logout();
+
+            $this->loginTrace('Response', [
+                'guard' => 'sales',
+                'type' => 'redirect',
+                'target_route' => 'sales.login',
+                'reason' => 'role_mismatch',
+            ]);
             return redirect()
                 ->route('sales.login')
                 ->withErrors(['email' => 'Access restricted for this account.'])
@@ -54,12 +90,25 @@ class RoleLoginController extends Controller
             ->first();
 
         if (! $rep) {
-            Auth::guard('sales')->logout();
+            $salesGuard->logout();
+
+            $this->loginTrace('Response', [
+                'guard' => 'sales',
+                'type' => 'redirect',
+                'target_route' => 'sales.login',
+                'reason' => 'rep_inactive_or_missing',
+            ]);
             return redirect()
                 ->route('sales.login')
                 ->withErrors(['email' => 'Access restricted for this account.'])
                 ->withInput($request->only('email'));
         }
+
+        $this->loginTrace('Response', [
+            'guard' => 'sales',
+            'type' => 'redirect',
+            'target_route' => 'rep.dashboard',
+        ]);
 
         return redirect()->route('rep.dashboard');
     }
@@ -80,6 +129,12 @@ class RoleLoginController extends Controller
 
     public function loginSupport(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
+        $this->loginTrace('ControllerHit', [
+            'method' => __METHOD__,
+            'email' => (string) $request->input('email', ''),
+            'guard' => 'support',
+        ]);
+
         $recaptcha->assertValid($request, 'SUPPORT_LOGIN');
 
         $credentials = $request->validate([
@@ -89,7 +144,29 @@ class RoleLoginController extends Controller
 
         $remember = (bool) $request->boolean('remember');
 
-        if (! Auth::guard('support')->attempt($credentials, $remember)) {
+        $supportGuard = Auth::guard('support');
+
+        $this->loginTrace('Attempting', [
+            'guard' => 'support',
+            'email' => $credentials['email'],
+            'remember' => $remember,
+        ]);
+
+        $attempted = $supportGuard->attempt($credentials, $remember);
+
+        $this->loginTrace('AttemptResult', [
+            'guard' => 'support',
+            'result' => $attempted,
+            'user_id' => $supportGuard->id(),
+        ]);
+
+        if (! $attempted) {
+            $this->loginTrace('Response', [
+                'guard' => 'support',
+                'type' => 'redirect',
+                'target_route' => 'support.login',
+            ]);
+
             return redirect()
                 ->route('support.login')
                 ->withErrors(['email' => 'Invalid credentials'])
@@ -98,15 +175,28 @@ class RoleLoginController extends Controller
 
         $request->session()->regenerate();
 
-        $user = Auth::guard('support')->user();
+        $user = $supportGuard->user();
 
         if (! $user || $user->role !== Role::SUPPORT) {
-            Auth::guard('support')->logout();
+            $supportGuard->logout();
+
+            $this->loginTrace('Response', [
+                'guard' => 'support',
+                'type' => 'redirect',
+                'target_route' => 'support.login',
+                'reason' => 'role_mismatch',
+            ]);
             return redirect()
                 ->route('support.login')
                 ->withErrors(['email' => 'Access restricted for this account.'])
                 ->withInput($request->only('email'));
         }
+
+        $this->loginTrace('Response', [
+            'guard' => 'support',
+            'type' => 'redirect',
+            'target_route' => 'support.dashboard',
+        ]);
 
         return redirect()->route('support.dashboard');
     }
@@ -118,5 +208,14 @@ class RoleLoginController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('support.login');
+    }
+
+    private function loginTrace(string $event, array $context = []): void
+    {
+        if (! config('app.login_trace')) {
+            return;
+        }
+
+        Log::info('[LOGIN_TRACE] ' . $event, $context);
     }
 }

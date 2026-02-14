@@ -42,6 +42,18 @@ return [
     'debug' => (bool) env('APP_DEBUG', false),
 
     /*
+    |----------------------------------------------------------------------
+    | Login Trace
+    |----------------------------------------------------------------------
+    |
+    | Temporary request/auth/session tracing for login troubleshooting.
+    | Keep this disabled in normal operation.
+    |
+    */
+
+    'login_trace' => (bool) env('LOGIN_TRACE', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
