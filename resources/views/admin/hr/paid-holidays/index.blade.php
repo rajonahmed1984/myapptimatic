@@ -85,6 +85,18 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Month Summary ({{ $selectedMonth }})</div>
+            <div class="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-5">
+                <div><span class="font-semibold text-slate-900">Total month days:</span> {{ $totalDaysInMonth }}</div>
+                <div><span class="font-semibold text-slate-900">Paid holidays:</span> {{ $paidHolidayCount }}</div>
+                <div><span class="font-semibold text-slate-900">Working days:</span> {{ $workingDays }}</div>
+                <div><span class="font-semibold text-slate-900">8 hrs/day:</span> {{ $expectedHoursFullTime }} hrs</div>
+                <div><span class="font-semibold text-slate-900">4 hrs/day:</span> {{ $expectedHoursPartTime }} hrs</div>
+            </div>
+        </div>
+
         <div class="mt-4">{{ $holidays->links() }}</div>
     </div>
 @endsection

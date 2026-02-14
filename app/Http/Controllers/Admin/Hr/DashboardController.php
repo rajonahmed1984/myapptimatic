@@ -4,68 +4,109 @@ namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
-use App\Models\EmployeeWorkSummary;
+use App\Models\EmployeeAttendance;
+use App\Models\EmployeeWorkSession;
 use App\Models\LeaveRequest;
+use App\Models\PaidHoliday;
 use App\Models\PayrollItem;
 use App\Models\PayrollPeriod;
+use App\Services\EmployeeWorkSummaryService;
+use Carbon\Carbon;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(EmployeeWorkSummaryService $workSummaryService): View
     {
         $activeEmployees = Employee::query()->where('status', 'active')->count();
-        $newHires30 = Employee::query()
-            ->whereNotNull('join_date')
-            ->whereDate('join_date', '>=', now()->subDays(30))
+        $activeFullTimeEmployees = Employee::query()
+            ->where('status', 'active')
+            ->where('employment_type', 'full_time')
             ->count();
+
         $onLeaveToday = LeaveRequest::query()
             ->where('status', 'approved')
             ->whereDate('start_date', '<=', today())
             ->whereDate('end_date', '>=', today())
             ->distinct('employee_id')
             ->count('employee_id');
+
         $pendingLeaveRequests = LeaveRequest::query()->where('status', 'pending')->count();
 
-        $workSummaryWindowStart = now()->subDays(6)->toDateString();
-        $workSummariesQuery = EmployeeWorkSummary::query()
-            ->whereDate('work_date', '>=', $workSummaryWindowStart);
-
-        $pendingTimesheets = (clone $workSummariesQuery)->count();
-        $approvedTimesheets = (clone $workSummariesQuery)
-            ->whereColumn('active_seconds', '>=', 'required_seconds')
+        $today = today()->toDateString();
+        $attendanceMarkedToday = EmployeeAttendance::query()
+            ->whereDate('date', $today)
             ->count();
-        $lockedTimesheets = max(0, $pendingTimesheets - $approvedTimesheets);
+        $attendanceMissingToday = max(0, $activeFullTimeEmployees - $attendanceMarkedToday);
+
+        $monthStart = now()->startOfMonth()->toDateString();
+        $monthEnd = now()->endOfMonth()->toDateString();
+
+        $workLogsThisMonth = EmployeeWorkSession::query()
+            ->whereBetween('work_date', [$monthStart, $monthEnd])
+            ->selectRaw('employee_id, work_date')
+            ->groupBy('employee_id', 'work_date')
+            ->get();
+        $workLogDaysThisMonth = $workLogsThisMonth->count();
+
+        $workLogRows = EmployeeWorkSession::query()
+            ->with('employee:id,employment_type,work_mode,status')
+            ->whereBetween('work_date', [$monthStart, $monthEnd])
+            ->selectRaw('employee_id, work_date, SUM(active_seconds) as active_seconds')
+            ->groupBy('employee_id', 'work_date')
+            ->get();
+
+        $onTargetDaysThisMonth = $workLogRows->filter(function ($row) use ($workSummaryService) {
+            if (! $row->employee || ! $workSummaryService->isEligible($row->employee)) {
+                return false;
+            }
+
+            return (int) ($row->active_seconds ?? 0) >= $workSummaryService->requiredSeconds($row->employee);
+        })->count();
 
         $draftPeriods = PayrollPeriod::query()->where('status', 'draft')->count();
-        $finalizedPeriods = PayrollPeriod::query()->where('status', 'finalized')->count();
         $payrollToPay = PayrollItem::query()->where('status', 'approved')->count();
+        $paidHolidaysThisMonth = PaidHoliday::query()
+            ->where('is_paid', true)
+            ->whereBetween('holiday_date', [$monthStart, $monthEnd])
+            ->count();
 
-        $recentTimesheets = EmployeeWorkSummary::query()
+        $recentWorkLogs = EmployeeWorkSession::query()
             ->with('employee')
             ->orderByDesc('work_date')
-            ->orderByDesc('updated_at')
-            ->limit(5)
+            ->orderByDesc('last_activity_at')
+            ->limit(8)
             ->get();
+
         $recentLeaveRequests = LeaveRequest::query()
             ->with(['employee', 'leaveType'])
             ->orderByDesc('created_at')
-            ->limit(5)
+            ->limit(8)
+            ->get();
+
+        $recentAttendance = EmployeeAttendance::query()
+            ->with(['employee', 'recorder'])
+            ->orderByDesc('date')
+            ->orderByDesc('updated_at')
+            ->limit(8)
             ->get();
 
         return view('admin.hr.dashboard', [
             'activeEmployees' => $activeEmployees,
-            'newHires30' => $newHires30,
+            'activeFullTimeEmployees' => $activeFullTimeEmployees,
             'onLeaveToday' => $onLeaveToday,
             'pendingLeaveRequests' => $pendingLeaveRequests,
+            'attendanceMarkedToday' => $attendanceMarkedToday,
+            'attendanceMissingToday' => $attendanceMissingToday,
+            'workLogDaysThisMonth' => $workLogDaysThisMonth,
+            'onTargetDaysThisMonth' => $onTargetDaysThisMonth,
+            'paidHolidaysThisMonth' => $paidHolidaysThisMonth,
             'draftPeriods' => $draftPeriods,
-            'finalizedPeriods' => $finalizedPeriods,
             'payrollToPay' => $payrollToPay,
-            'pendingTimesheets' => $pendingTimesheets,
-            'approvedTimesheets' => $approvedTimesheets,
-            'lockedTimesheets' => $lockedTimesheets,
-            'recentTimesheets' => $recentTimesheets,
+            'recentWorkLogs' => $recentWorkLogs,
             'recentLeaveRequests' => $recentLeaveRequests,
+            'recentAttendance' => $recentAttendance,
+            'currentMonth' => Carbon::now()->format('Y-m'),
         ]);
     }
 }

@@ -23,6 +23,14 @@
                     {{ $projectChatUnreadCount }}
                 </span>
             </a>
+            @if($project->status !== 'complete')
+                <form method="POST" action="{{ route('admin.projects.complete', $project) }}" onsubmit="return confirm('Mark this project as complete?');">
+                    @csrf
+                    <button type="submit" class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">
+                        Project Complete
+                    </button>
+                </form>
+            @endif
             <a href="{{ route('admin.projects.edit', $project) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Edit</a>
             <form
                 method="POST"

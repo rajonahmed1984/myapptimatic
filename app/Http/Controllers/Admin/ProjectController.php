@@ -797,6 +797,53 @@ class ProjectController extends Controller
         return back()->with('status', 'Project updated.');
     }
 
+    public function markComplete(Request $request, Project $project, CommissionService $commissionService): RedirectResponse
+    {
+        if ($project->status === 'complete') {
+            return back()->with('status', 'Project is already completed.');
+        }
+
+        $previousStatus = $project->status;
+        $project->update(['status' => 'complete']);
+
+        SystemLogger::write('activity', 'Project marked complete.', [
+            'project_id' => $project->id,
+            'previous_status' => $previousStatus,
+            'status' => $project->status,
+        ], $request->user()?->id, $request->ip());
+
+        if ($previousStatus !== 'complete') {
+            if ($project->contract_employee_total_earned !== null) {
+                $totalEarned = (float) $project->contract_employee_total_earned;
+                $currentPayable = (float) ($project->contract_employee_payable ?? 0);
+                $updates = [];
+
+                if ($currentPayable < $totalEarned) {
+                    $updates['contract_employee_payable'] = $totalEarned;
+                }
+
+                if ($project->contract_employee_payout_status !== 'payable') {
+                    $updates['contract_employee_payout_status'] = 'payable';
+                }
+
+                if (! empty($updates)) {
+                    $project->update($updates);
+                }
+            }
+
+            try {
+                $commissionService->markEarningPayableOnProjectCompleted($project);
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Commission payable transition failed on project completion.', [
+                    'project_id' => $project->id,
+                    'error' => $e->getMessage(),
+                ], level: 'error');
+            }
+        }
+
+        return back()->with('status', 'Project marked as complete.');
+    }
+
     public function downloadFile(Project $project, string $type)
     {
         $this->authorize('view', $project);

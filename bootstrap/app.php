@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use App\Providers\AuthServiceProvider;
 use App\Providers\EventServiceProvider;
 use App\Providers\ActivityTrackingEventServiceProvider;
@@ -95,6 +96,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->render(function (NotFoundHttpException $exception, Request $request) {
+            if (config('app.debug')) {
+                return null;
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Not found.'], 404);
+            }
+
+            return response()->view('errors.404', [], 404);
+        });
+
         $exceptions->render(function (TokenMismatchException $exception, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Session expired. Please log in again.'], 419);

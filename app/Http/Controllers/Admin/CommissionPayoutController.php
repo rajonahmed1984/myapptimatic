@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
+use App\Models\PaymentMethod;
 use App\Models\SalesRepresentative;
 use App\Services\CommissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CommissionPayoutController extends Controller
 {
@@ -75,7 +77,7 @@ class CommissionPayoutController extends Controller
             'sales_rep_id' => ['required', 'exists:sales_representatives,id'],
             'earning_ids' => ['required', 'array', 'min:1'],
             'earning_ids.*' => ['integer', 'distinct'],
-            'payout_method' => ['nullable', 'in:bank,mobile,cash'],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
             'note' => ['nullable', 'string'],
         ]);
 
@@ -133,7 +135,7 @@ class CommissionPayoutController extends Controller
         $data = $request->validate([
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
-            'payout_method' => ['nullable', 'in:bank,mobile,cash'],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
         ]);
 
         try {

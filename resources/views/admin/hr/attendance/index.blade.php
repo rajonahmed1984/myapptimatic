@@ -74,7 +74,13 @@
                                 >
                             </td>
                             <td class="py-2 px-3 text-xs text-slate-500">
-                                {{ $entry?->recorder?->name ?? '--' }}
+                                @if($entry?->recorder?->name)
+                                    {{ $entry->recorder->name }}
+                                @elseif(!empty($isPaidHoliday) && $defaultStatus === 'present')
+                                    Paid holiday (System)
+                                @else
+                                    --
+                                @endif
                                 @if($entry?->updated_at)
                                     <div>{{ $entry->updated_at->format(($globalDateFormat ?? 'Y-m-d').' H:i') }}</div>
                                 @endif

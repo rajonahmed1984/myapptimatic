@@ -45,8 +45,6 @@
                 // Nested menu: Invoices
                 $invoiceMenuActive = isActive('admin.invoices.*');
 
-                // Nested menu: Logs
-                $logMenuActive = isActive('admin.logs.*');
             @endphp
             <nav class="mt-10 space-y-4 text-sm">
                 @if($isAdminNav)
@@ -208,6 +206,13 @@
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 Tax Settings
+                            </x-nav-link>
+                            <x-nav-link
+                                :href="route('admin.finance.payment-methods.index')"
+                                routes="admin.finance.payment-methods.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Payment Methods
                             </x-nav-link>
                             <x-nav-link 
                                 :href="route('admin.finance.reports.index')"
@@ -392,18 +397,13 @@
                             Automation Status
                         </x-nav-link>
                         
-                        {{-- Nested menu: Logs --}}
-                        <x-nav-menu
+                        <x-nav-link
                             :href="route('admin.logs.activity')"
                             routes="admin.logs.*"
-                            label="Logs"
                         >
-                            <a href="{{ route('admin.logs.activity') }}" class="block {{ activeIf(request()->routeIs('admin.logs.activity')) }}">Activity</a>
-                            <a href="{{ route('admin.logs.admin') }}" class="block {{ activeIf(request()->routeIs('admin.logs.admin')) }}">Admin</a>
-                            <a href="{{ route('admin.logs.module') }}" class="block {{ activeIf(request()->routeIs('admin.logs.module')) }}">Module</a>
-                            <a href="{{ route('admin.logs.email') }}" class="block {{ activeIf(request()->routeIs('admin.logs.email')) }}">Email</a>
-                            <a href="{{ route('admin.logs.ticket-mail-import') }}" class="block {{ activeIf(request()->routeIs('admin.logs.ticket-mail-import')) }}">Ticket Mail Import</a>
-                        </x-nav-menu>
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Logs
+                        </x-nav-link>
                         
                         <x-nav-link 
                             :href="route('admin.settings.edit')"

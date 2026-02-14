@@ -34,9 +34,27 @@ class PaidHolidayController extends Controller
             ->paginate(31)
             ->withQueryString();
 
+        $totalDaysInMonth = (int) $monthEnd->day;
+        $paidHolidayCount = PaidHoliday::query()
+            ->where('is_paid', true)
+            ->whereBetween('holiday_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->count();
+        $workingDays = max(0, $totalDaysInMonth - $paidHolidayCount);
+        $expectedHoursFullTime = $workingDays * 8;
+        $expectedHoursPartTime = $workingDays * 4;
+
         $holidayTypes = self::HOLIDAY_TYPES;
 
-        return view('admin.hr.paid-holidays.index', compact('holidays', 'selectedMonth', 'holidayTypes'));
+        return view('admin.hr.paid-holidays.index', compact(
+            'holidays',
+            'selectedMonth',
+            'holidayTypes',
+            'totalDaysInMonth',
+            'paidHolidayCount',
+            'workingDays',
+            'expectedHoursFullTime',
+            'expectedHoursPartTime'
+        ));
     }
 
     public function store(Request $request): RedirectResponse

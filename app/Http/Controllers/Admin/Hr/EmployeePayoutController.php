@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Models\PaymentMethod;
 use App\Models\EmployeePayout;
 use App\Models\Project;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class EmployeePayoutController extends Controller
@@ -77,7 +81,7 @@ class EmployeePayoutController extends Controller
             'employee_id' => ['required', 'exists:employees,id'],
             'project_ids' => ['required', 'array', 'min:1'],
             'project_ids.*' => ['integer', 'distinct'],
-            'payout_method' => ['nullable', 'in:bank,mobile,cash'],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
             'reference' => ['nullable', 'string', 'max:100'],
             'note' => ['nullable', 'string'],
         ]);
@@ -145,9 +149,11 @@ class EmployeePayoutController extends Controller
             'project_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'currency' => ['nullable', 'string', 'max:10'],
-            'payout_method' => ['nullable', 'in:bank,mobile,cash'],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
+            'paid_at' => ['nullable', 'date_format:Y-m-d'],
+            'payment_proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ]);
 
         $currency = $data['currency'] ?? ($employee->activeCompensation?->currency ?? 'BDT');
@@ -165,6 +171,21 @@ class EmployeePayoutController extends Controller
             }
         }
 
+        $metadata = [
+            'type' => 'advance',
+            'salary_type' => $salaryType,
+            'advance_scope' => $salaryType === 'project_base' ? 'project_payout' : 'payroll',
+            'project_id' => $project?->id,
+            'project_name' => $project?->name,
+        ];
+
+        if ($request->hasFile('payment_proof')) {
+            $file = $request->file('payment_proof');
+            $metadata['payment_proof_path'] = $file->store('employee-payout-proofs', 'public');
+            $metadata['payment_proof_name'] = $file->getClientOriginalName();
+            $metadata['payment_proof_mime'] = $file->getClientMimeType();
+        }
+
         EmployeePayout::create([
             'employee_id' => $employee->id,
             'amount' => (float) $data['amount'],
@@ -172,16 +193,27 @@ class EmployeePayoutController extends Controller
             'payout_method' => $data['payout_method'] ?? null,
             'reference' => $data['reference'] ?? null,
             'note' => $data['note'] ?? null,
-            'metadata' => [
-                'type' => 'advance',
-                'salary_type' => $salaryType,
-                'advance_scope' => $salaryType === 'project_base' ? 'project_payout' : 'payroll',
-                'project_id' => $project?->id,
-                'project_name' => $project?->name,
-            ],
-            'paid_at' => now(),
+            'metadata' => $metadata,
+            'paid_at' => ! empty($data['paid_at']) ? Carbon::parse((string) $data['paid_at'])->startOfDay() : now(),
         ]);
 
         return back()->with('status', 'Advance payout recorded.');
+    }
+
+    public function proof(EmployeePayout $employeePayout)
+    {
+        $path = (string) ($employeePayout->metadata['payment_proof_path'] ?? '');
+
+        if ($path === '' || str_contains($path, '..') || ! str_starts_with($path, 'employee-payout-proofs/')) {
+            abort(404);
+        }
+
+        if (! Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        $filename = (string) ($employeePayout->metadata['payment_proof_name'] ?? basename($path));
+
+        return Storage::disk('public')->response($path, $filename);
     }
 }

@@ -90,7 +90,7 @@
             <div class="mt-4 card p-4">
                 <div class="text-sm font-semibold text-slate-800">Record advance payout</div>
                 <div class="text-xs text-slate-500">Advance payments are deducted from future project payouts.</div>
-                <form method="POST" action="{{ route('admin.hr.employees.advance-payout', $employee) }}" class="mt-3 grid gap-3 md:grid-cols-8">
+                <form method="POST" action="{{ route('admin.hr.employees.advance-payout', $employee) }}" enctype="multipart/form-data" class="mt-3 grid gap-3 md:grid-cols-8">
                     @csrf
                     <div class="md:col-span-2">
                         <label class="text-xs text-slate-500">Project filter</label>
@@ -121,16 +121,27 @@
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Method</label>
+                        @php
+                            $paymentMethods = \App\Models\PaymentMethod::dropdownOptions();
+                        @endphp
                         <select name="payout_method" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                             <option value="">Select</option>
-                            <option value="bank">Bank</option>
-                            <option value="mobile">Mobile</option>
-                            <option value="cash">Cash</option>
+                            @foreach($paymentMethods as $method)
+                                <option value="{{ $method->code }}" @selected(old('payout_method') === $method->code)>{{ $method->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Reference</label>
                         <input name="reference" value="{{ old('reference') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Txn / Note">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500">Payment Date</label>
+                        <input name="paid_at" type="date" value="{{ old('paid_at', now()->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-xs text-slate-500">Payment Proof</label>
+                        <input name="payment_proof" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                     </div>
                     <div class="md:col-span-8">
                         <label class="text-xs text-slate-500">Note</label>
@@ -346,7 +357,7 @@
                 @if(in_array($summary['salary_type'] ?? null, ['monthly', 'hourly'], true))
                     <div class="text-sm font-semibold text-slate-800">Record salary advance</div>
                     <div class="mt-1 text-xs text-slate-500">This creates an advance payout entry for payroll tracking.</div>
-                    <form method="POST" action="{{ route('admin.hr.employees.advance-payout', $employee) }}" class="mt-4 grid gap-3 md:grid-cols-6">
+                    <form method="POST" action="{{ route('admin.hr.employees.advance-payout', $employee) }}" enctype="multipart/form-data" class="mt-4 grid gap-3 md:grid-cols-6">
                         @csrf
                         <div>
                             <label class="text-xs text-slate-500">Amount</label>
@@ -358,16 +369,27 @@
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Method</label>
+                            @php
+                                $paymentMethods = \App\Models\PaymentMethod::dropdownOptions();
+                            @endphp
                             <select name="payout_method" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                                 <option value="">Select</option>
-                                <option value="bank" @selected(old('payout_method') === 'bank')>Bank</option>
-                                <option value="mobile" @selected(old('payout_method') === 'mobile')>Mobile</option>
-                                <option value="cash" @selected(old('payout_method') === 'cash')>Cash</option>
+                                @foreach($paymentMethods as $method)
+                                    <option value="{{ $method->code }}" @selected(old('payout_method') === $method->code)>{{ $method->name }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Reference</label>
                             <input name="reference" value="{{ old('reference') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Txn / Note">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">Payment Date</label>
+                            <input name="paid_at" type="date" value="{{ old('paid_at', now()->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs text-slate-500">Payment Proof</label>
+                            <input name="payment_proof" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         </div>
                         <div class="md:col-span-2">
                             <label class="text-xs text-slate-500">Note</label>
@@ -383,71 +405,119 @@
             </div>
         @endif
         
-        <div class="mt-4 card p-4">
-            <div class="mb-3 text-sm font-semibold text-slate-800">Recent Work Sessions</div>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[680px] text-sm text-slate-700">
-                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
-                        <tr>
-                            <th class="py-2 text-left">Date</th>
-                            <th class="py-2 text-left">Started</th>
-                            <th class="py-2 text-left">Ended</th>
-                            <th class="py-2 text-left">Last Activity</th>
-                            <th class="py-2 text-right">Active Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($recentWorkSessions as $session)
-                            <tr class="border-b border-slate-100">
-                                <td class="py-2">{{ $session->work_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
-                                <td class="py-2">{{ $session->started_at?->format('H:i:s') ?? '--' }}</td>
-                                <td class="py-2">{{ $session->ended_at?->format('H:i:s') ?? '--' }}</td>
-                                <td class="py-2">{{ $session->last_activity_at?->format('H:i:s') ?? '--' }}</td>
-                                <td class="py-2 text-right">{{ $formatDuration((int) ($session->active_seconds ?? 0)) }}</td>
-                            </tr>
-                        @empty
+        @if($tab === 'timesheets')
+            <div class="mt-4 card p-4">
+                <div class="mb-3 text-sm font-semibold text-slate-800">Recent Work Sessions</div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[680px] text-sm text-slate-700">
+                        <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
                             <tr>
-                                <td colspan="5" class="py-4 text-center text-slate-500">No work session data yet.</td>
+                                <th class="py-2 text-left">Date</th>
+                                <th class="py-2 text-left">Started</th>
+                                <th class="py-2 text-left">Ended</th>
+                                <th class="py-2 text-left">Last Activity</th>
+                                <th class="py-2 text-right">Active Time</th>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @forelse($recentWorkSessions as $session)
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-2">{{ $session->work_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
+                                    <td class="py-2">{{ $session->started_at?->format('H:i:s') ?? '--' }}</td>
+                                    <td class="py-2">{{ $session->ended_at?->format('H:i:s') ?? '--' }}</td>
+                                    <td class="py-2">{{ $session->last_activity_at?->format('H:i:s') ?? '--' }}</td>
+                                    <td class="py-2 text-right">{{ $formatDuration((int) ($session->active_seconds ?? 0)) }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="py-4 text-center text-slate-500">No work session data yet.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
 
-        <div class="mt-4 card p-4">
-            <div class="mb-3 text-sm font-semibold text-slate-800">Daily Work Summaries</div>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[680px] text-sm text-slate-700">
-                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
-                        <tr>
-                            <th class="py-2 text-left">Date</th>
-                            <th class="py-2 text-right">Active</th>
-                            <th class="py-2 text-right">Required</th>
-                            <th class="py-2 text-right">Generated Salary</th>
-                            <th class="py-2 text-left">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($recentWorkSummaries as $summaryRow)
-                            <tr class="border-b border-slate-100">
-                                <td class="py-2">{{ $summaryRow->work_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
-                                <td class="py-2 text-right">{{ $formatDuration((int) ($summaryRow->active_seconds ?? 0)) }}</td>
-                                <td class="py-2 text-right">{{ $formatDuration((int) ($summaryRow->required_seconds ?? 0)) }}</td>
-                                <td class="py-2 text-right">{{ $summary['currency'] ?? 'BDT' }} {{ number_format((float) ($summaryRow->generated_salary_amount ?? 0), 2) }}</td>
-                                <td class="py-2">{{ ucfirst((string) ($summaryRow->status ?? 'generated')) }}</td>
-                            </tr>
-                        @empty
+            <div class="mt-4 card p-4">
+                <div class="mb-3 text-sm font-semibold text-slate-800">Daily Work Summaries</div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[680px] text-sm text-slate-700">
+                        <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
                             <tr>
-                                <td colspan="5" class="py-4 text-center text-slate-500">No work summaries generated yet.</td>
+                                <th class="py-2 text-left">Date</th>
+                                <th class="py-2 text-right">Active</th>
+                                <th class="py-2 text-right">Required</th>
+                                <th class="py-2 text-right">Generated Salary</th>
+                                <th class="py-2 text-left">Status</th>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @forelse($recentWorkSummaries as $summaryRow)
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-2">{{ $summaryRow->work_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
+                                    <td class="py-2 text-right">{{ $formatDuration((int) ($summaryRow->active_seconds ?? 0)) }}</td>
+                                    <td class="py-2 text-right">{{ $formatDuration((int) ($summaryRow->required_seconds ?? 0)) }}</td>
+                                    <td class="py-2 text-right">{{ $summary['currency'] ?? 'BDT' }} {{ number_format((float) ($summaryRow->generated_salary_amount ?? 0), 2) }}</td>
+                                    <td class="py-2">{{ ucfirst((string) ($summaryRow->status ?? 'generated')) }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="py-4 text-center text-slate-500">No work summaries generated yet.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+        @endif
 
         @if($tab === 'payroll')
+            @if(in_array($summary['salary_type'] ?? null, ['monthly', 'hourly'], true))
+                <div class="mt-4 card p-4">
+                    <div class="mb-3 text-sm font-semibold text-slate-800">Salary Advance Transactions</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[900px] text-sm text-slate-700">
+                            <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
+                                <tr>
+                                    <th class="py-2 text-left">Date</th>
+                                    <th class="py-2 text-left">Amount</th>
+                                    <th class="py-2 text-left">Method</th>
+                                    <th class="py-2 text-left">Reference</th>
+                                    <th class="py-2 text-left">Proof</th>
+                                    <th class="py-2 text-left">Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($recentSalaryAdvances as $advance)
+                                    @php
+                                        $proofPath = $advance->metadata['payment_proof_path'] ?? null;
+                                        $proofUrl = $proofPath ? route('admin.hr.employee-payouts.proof', $advance) : null;
+                                    @endphp
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-2">{{ $advance->paid_at?->format(($globalDateFormat ?? 'Y-m-d') . ' H:i') ?? '--' }}</td>
+                                        <td class="py-2">{{ $advance->currency ?? 'BDT' }} {{ number_format((float) ($advance->amount ?? 0), 2) }}</td>
+                                        <td class="py-2">{{ $advance->payout_method ? ucfirst(str_replace('_', ' ', (string) $advance->payout_method)) : '--' }}</td>
+                                        <td class="py-2">{{ $advance->reference ?? '--' }}</td>
+                                        <td class="py-2">
+                                            @if($proofUrl)
+                                                <a href="{{ $proofUrl }}" target="_blank" rel="noopener" class="text-teal-700 hover:text-teal-600">View/Download</a>
+                                            @else
+                                                <span class="text-slate-400">--</span>
+                                            @endif
+                                        </td>
+                                        <td class="py-2">{{ $advance->note ?? '--' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="py-4 text-center text-slate-500">No salary advance transaction found.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+
             <div class="mt-4 card p-4">
                 <div class="mb-3 text-sm font-semibold text-slate-800">Recent Payroll Items</div>
                 <div class="overflow-x-auto">
@@ -564,19 +634,80 @@
                         <tr>
                             <th class="py-2 text-left">Date</th>
                             <th class="py-2 text-left">Reference</th>
+                            <th class="py-2 text-left">Proof</th>
                             <th class="py-2 text-right">Amount</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($recentPayouts as $payout)
+                            @php
+                                $proofPath = $payout->metadata['payment_proof_path'] ?? null;
+                                $proofUrl = $proofPath ? route('admin.hr.employee-payouts.proof', $payout) : null;
+                            @endphp
                             <tr class="border-b border-slate-100">
                                 <td class="py-2">{{ $payout->paid_at?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
                                 <td class="py-2">{{ $payout->reference ?? 'Employee payout' }}</td>
+                                <td class="py-2">
+                                    @if($proofUrl)
+                                        <a href="{{ $proofUrl }}" target="_blank" rel="noopener" class="text-teal-700 hover:text-teal-600">View/Download</a>
+                                    @else
+                                        <span class="text-slate-400">--</span>
+                                    @endif
+                                </td>
                                 <td class="py-2 text-right">{{ $payout->currency ?? '' }} {{ number_format($payout->amount ?? 0, 2) }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="py-4 text-center text-slate-500">No payouts yet.</td>
+                                <td colspan="4" class="py-4 text-center text-slate-500">No payouts yet.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-4 card p-4">
+            <div class="mb-3 flex items-center justify-between">
+                <div class="text-sm font-semibold text-slate-800">Advance Transactions</div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[900px] text-sm text-slate-700">
+                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
+                        <tr>
+                            <th class="py-2 text-left">Date</th>
+                            <th class="py-2 text-left">Amount</th>
+                            <th class="py-2 text-left">Method</th>
+                            <th class="py-2 text-left">Reference</th>
+                            <th class="py-2 text-left">Scope</th>
+                            <th class="py-2 text-left">Proof</th>
+                            <th class="py-2 text-left">Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recentAdvanceTransactions as $advance)
+                            @php
+                                $proofPath = $advance->metadata['payment_proof_path'] ?? null;
+                                $proofUrl = $proofPath ? route('admin.hr.employee-payouts.proof', $advance) : null;
+                                $scope = $advance->metadata['advance_scope'] ?? null;
+                            @endphp
+                            <tr class="border-b border-slate-100">
+                                <td class="py-2">{{ $advance->paid_at?->format(($globalDateFormat ?? 'Y-m-d') . ' H:i') ?? '--' }}</td>
+                                <td class="py-2">{{ $advance->currency ?? 'BDT' }} {{ number_format((float) ($advance->amount ?? 0), 2) }}</td>
+                                <td class="py-2">{{ $advance->payout_method ? ucfirst(str_replace('_', ' ', (string) $advance->payout_method)) : '--' }}</td>
+                                <td class="py-2">{{ $advance->reference ?? '--' }}</td>
+                                <td class="py-2">{{ $scope ? ucfirst(str_replace('_', ' ', (string) $scope)) : '--' }}</td>
+                                <td class="py-2">
+                                    @if($proofUrl)
+                                        <a href="{{ $proofUrl }}" target="_blank" rel="noopener" class="text-teal-700 hover:text-teal-600">View/Download</a>
+                                    @else
+                                        <span class="text-slate-400">--</span>
+                                    @endif
+                                </td>
+                                <td class="py-2">{{ $advance->note ?? '--' }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="py-4 text-center text-slate-500">No advance transactions found.</td>
                             </tr>
                         @endforelse
                     </tbody>

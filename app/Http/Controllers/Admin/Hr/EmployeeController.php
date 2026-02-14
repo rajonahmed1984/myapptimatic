@@ -310,6 +310,9 @@ class EmployeeController extends Controller
         $recentWorkSessions = collect();
         $recentWorkSummaries = collect();
         $recentPayrollItems = collect();
+        $recentSalaryAdvances = collect();
+        $recentAdvanceTransactions = collect();
+        $draftPayrollItem = null;
         $workSessionStats = [
             'eligible' => false,
             'today_active_seconds' => 0,
@@ -447,11 +450,30 @@ class EmployeeController extends Controller
                 ->orderByDesc('paid_at')
                 ->limit(10)
                 ->get([
+                    'id',
                     'paid_at',
                     'reference',
                     'amount',
                     'currency',
                     'payout_method',
+                    'metadata',
+                ]);
+
+            $recentAdvanceTransactions = EmployeePayout::query()
+                ->where('employee_id', $employee->id)
+                ->where('metadata->type', 'advance')
+                ->whereNotNull('paid_at')
+                ->orderByDesc('paid_at')
+                ->limit(20)
+                ->get([
+                    'id',
+                    'paid_at',
+                    'amount',
+                    'currency',
+                    'payout_method',
+                    'reference',
+                    'note',
+                    'metadata',
                 ]);
         }
 
@@ -584,10 +606,39 @@ class EmployeeController extends Controller
                     'pay_type',
                     'currency',
                     'timesheet_hours',
+                    'overtime_enabled',
+                    'overtime_hours',
+                    'overtime_rate',
+                    'bonuses',
+                    'penalties',
+                    'advances',
+                    'deductions',
                     'gross_pay',
                     'net_pay',
                     'paid_at',
                 ]);
+
+            $draftPayrollItem = $recentPayrollItems->firstWhere('status', 'draft');
+
+            if ($tab === 'payroll' && in_array($summary['salary_type'] ?? null, ['monthly', 'hourly'], true)) {
+                $recentSalaryAdvances = EmployeePayout::query()
+                    ->where('employee_id', $employee->id)
+                    ->where('metadata->type', 'advance')
+                    ->where('metadata->advance_scope', 'payroll')
+                    ->whereNotNull('paid_at')
+                    ->orderByDesc('paid_at')
+                    ->limit(20)
+                    ->get([
+                        'id',
+                        'paid_at',
+                        'amount',
+                        'currency',
+                        'payout_method',
+                        'reference',
+                        'note',
+                        'metadata',
+                    ]);
+            }
         }
 
         return view('admin.hr.employees.show', [
@@ -607,6 +658,9 @@ class EmployeeController extends Controller
             'recentWorkSessions' => $recentWorkSessions,
             'recentWorkSummaries' => $recentWorkSummaries,
             'recentPayrollItems' => $recentPayrollItems,
+            'recentSalaryAdvances' => $recentSalaryAdvances,
+            'recentAdvanceTransactions' => $recentAdvanceTransactions,
+            'draftPayrollItem' => $draftPayrollItem,
             'workSessionStats' => $workSessionStats,
             'payrollSourceNote' => $payrollSourceNote,
         ]);

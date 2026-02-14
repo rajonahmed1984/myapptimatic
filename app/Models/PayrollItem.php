@@ -28,6 +28,7 @@ class PayrollItem extends Model
         'deductions',
         'gross_pay',
         'net_pay',
+        'paid_amount',
         'payment_reference',
         'paid_at',
         'locked_at',
@@ -39,6 +40,7 @@ class PayrollItem extends Model
         'advances' => 'array',
         'deductions' => 'array',
         'overtime_enabled' => 'boolean',
+        'paid_amount' => 'decimal:2',
         'paid_at' => 'datetime',
         'locked_at' => 'datetime',
     ];

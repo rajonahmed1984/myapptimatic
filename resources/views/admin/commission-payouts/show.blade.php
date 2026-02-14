@@ -88,11 +88,14 @@
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Payout method</label>
+                        @php
+                            $paymentMethods = \App\Models\PaymentMethod::dropdownOptions();
+                        @endphp
                         <select name="payout_method" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                             <option value="">Keep</option>
-                            <option value="bank">Bank</option>
-                            <option value="mobile">Mobile</option>
-                            <option value="cash">Cash</option>
+                            @foreach($paymentMethods as $method)
+                                <option value="{{ $method->code }}" @selected(old('payout_method') === $method->code)>{{ $method->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="md:col-span-3">

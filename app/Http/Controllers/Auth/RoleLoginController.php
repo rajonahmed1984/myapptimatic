@@ -216,7 +216,7 @@ class RoleLoginController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('support.login');
+        return redirect()->route('admin.login');
     }
 
     private function loginTrace(string $event, array $context = []): void

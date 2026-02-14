@@ -370,6 +370,7 @@ class AuthController extends Controller
     public function logoutAdmin(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
+        Auth::guard('support')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

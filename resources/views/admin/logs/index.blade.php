@@ -4,13 +4,13 @@
 @section('page-title', $pageTitle)
 
 @section('content')
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    {{-- <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <div class="section-label">System Logs</div>
             <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ $pageTitle }}</h1>
             <p class="mt-1 text-sm text-slate-500">Track recent events and notifications.</p>
         </div>
-    </div>
+    </div> --}}
 
     <div class="card p-6">
         <div class="flex flex-wrap gap-2 text-sm">

@@ -9,6 +9,7 @@ use App\Models\CommissionPayout;
 use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\PaymentMethod;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
 use App\Models\UserSession;
@@ -312,7 +313,7 @@ class SalesRepresentativeController extends Controller
             'project_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'currency' => ['nullable', 'string', 'max:10'],
-            'payout_method' => ['nullable', 'in:bank,mobile,cash'],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
         ]);

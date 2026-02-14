@@ -40,6 +40,7 @@ use App\Http\Controllers\Admin\CarrotHostIncomeController as AdminCarrotHostInco
 use App\Http\Controllers\Admin\ExpenseInvoiceController as AdminExpenseInvoiceController;
 use App\Http\Controllers\Admin\FinanceReportController as AdminFinanceReportController;
 use App\Http\Controllers\Admin\FinanceTaxController as AdminFinanceTaxController;
+use App\Http\Controllers\Admin\Finance\PaymentMethodController as AdminPaymentMethodController;
 use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
 use App\Http\Controllers\Admin\Hr\AttendanceController as HrAttendanceController;
 use App\Http\Controllers\Admin\Hr\PaidHolidayController as HrPaidHolidayController;
@@ -535,6 +536,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
             ->name('employees.advance-payout');
         Route::get('employee-payouts/create', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'create'])->name('employee-payouts.create');
         Route::post('employee-payouts', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'store'])->name('employee-payouts.store');
+        Route::get('employee-payouts/{employeePayout}/proof', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'proof'])->name('employee-payouts.proof');
         Route::get('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'index'])->name('leave-types.index');
         Route::post('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'store'])->name('leave-types.store');
         Route::put('leave-types/{leaveType}', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'update'])->name('leave-types.update');
@@ -551,9 +553,14 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         Route::redirect('timesheets', 'work-logs');
         Route::get('payroll', [HrPayrollController::class, 'index'])->name('payroll.index');
         Route::post('payroll/generate', [HrPayrollController::class, 'generate'])->name('payroll.generate');
+        Route::get('payroll/{payrollPeriod}/edit', [HrPayrollController::class, 'edit'])->name('payroll.edit');
+        Route::put('payroll/{payrollPeriod}', [HrPayrollController::class, 'update'])->name('payroll.update');
+        Route::delete('payroll/{payrollPeriod}', [HrPayrollController::class, 'destroy'])->name('payroll.destroy');
         Route::get('payroll/{payrollPeriod}', [HrPayrollController::class, 'show'])->name('payroll.show');
         Route::post('payroll/{payrollPeriod}/items/{payrollItem}/adjustments', [HrPayrollController::class, 'updateAdjustments'])
             ->name('payroll.items.adjustments');
+        Route::post('payroll/{payrollPeriod}/items/{payrollItem}/pay', [HrPayrollController::class, 'markPaid'])
+            ->name('payroll.items.pay');
         Route::post('payroll/{payrollPeriod}/finalize', [HrPayrollController::class, 'finalize'])->name('payroll.finalize');
         Route::get('payroll/{payrollPeriod}/export', [HrPayrollController::class, 'export'])->name('payroll.export');
     });
@@ -639,6 +646,11 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         ->name('finance.')
         ->group(function () {
             Route::get('/reports', [AdminFinanceReportController::class, 'index'])->name('reports.index');
+            Route::get('/payment-methods', [AdminPaymentMethodController::class, 'index'])->name('payment-methods.index');
+            Route::get('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'show'])->name('payment-methods.show');
+            Route::post('/payment-methods', [AdminPaymentMethodController::class, 'store'])->name('payment-methods.store');
+            Route::put('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'update'])->name('payment-methods.update');
+            Route::delete('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 
             Route::get('/tax', [AdminFinanceTaxController::class, 'index'])->name('tax.index');
             Route::put('/tax', [AdminFinanceTaxController::class, 'updateSettings'])->name('tax.update');
@@ -678,6 +690,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::post('orders/{order}/milestones', [MilestoneController::class, 'store'])->name('orders.milestones.store');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::resource('projects', ProjectController::class);
+    Route::post('projects/{project}/complete', [ProjectController::class, 'markComplete'])->name('projects.complete');
     Route::post('projects/{project}/ai-summary', [ProjectController::class, 'aiSummary'])->name('projects.ai');
     Route::get('projects/{project}/tasks', [ProjectController::class, 'tasks'])->name('projects.tasks.index');
     Route::post('projects/{project}/invoice-remaining', [ProjectController::class, 'invoiceRemainingBudget'])
