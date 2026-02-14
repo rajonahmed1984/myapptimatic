@@ -5,7 +5,6 @@
 
 @section('content')
     @php
-        $employee = auth()->user()?->employee;
         $employeeName = $employee?->name ?? auth()->user()?->name ?? 'Employee';
         $completedProjects = ($projectStatusCounts['complete'] ?? 0)
             + ($projectStatusCounts['completed'] ?? 0)
@@ -18,7 +17,7 @@
                 <div>
                     <div class="section-label">Welcome</div>
                     <div class="text-2xl font-semibold text-slate-900">{{ $employeeName }}</div>
-                    <div class="text-sm text-slate-500">Access your timesheets, leave requests, payroll, and project assignments from one place.</div>
+                    <div class="text-sm text-slate-500">Access your work logs, leave requests, payroll, and project assignments from one place.</div>
                 </div>
                 <form method="POST" action="{{ route('employee.logout') }}">
                     @csrf
@@ -27,22 +26,21 @@
                     </button>
                 </form>
             </div>
-        </div>
-        <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Timesheets</div>
-                <div class="mt-2 text-slate-900 font-semibold">Submit your weekly hours.</div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Leave</div>
-                <div class="mt-2 text-slate-900 font-semibold">Request time off and track approvals.</div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payroll</div>
-                <div class="mt-2 text-slate-900 font-semibold">View payroll history and payslip data.</div>
-            </div>
-        </div>
 
+            <div class="mt-5 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 md:grid-cols-2">
+                <div><span class="font-semibold text-slate-900">Employee ID:</span> {{ $employee?->id ?? '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Email:</span> {{ $employee?->email ?? $employee?->user?->email ?? auth()->user()?->email ?? '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Phone:</span> {{ $employee?->phone ?? '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Status:</span> {{ $employee?->status ? ucfirst($employee->status) : '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Department:</span> {{ $employee?->department ?? '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Designation:</span> {{ $employee?->designation ?? '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Manager:</span> {{ $employee?->manager?->name ?? '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Employment Type:</span> {{ $employee?->employment_type ? ucwords(str_replace('_', ' ', $employee->employment_type)) : '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Work Mode:</span> {{ $employee?->work_mode ? ucwords(str_replace('_', ' ', $employee->work_mode)) : '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Join Date:</span> {{ $employee?->join_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</div>
+                <div class="md:col-span-2"><span class="font-semibold text-slate-900">Address:</span> {{ $employee?->address ?? '--' }}</div>
+            </div>
+        </div>
         @if($workSessionEligible)
             @php
                 $requiredSeconds = (int) ($workSessionRequiredSeconds ?? 0);
@@ -297,6 +295,7 @@
                         salaryEl.textContent = Number(data.salary_estimate || 0).toFixed(2);
                         updateStatus(data.status || 'stopped');
                         updateButtons(data.is_active);
+                        window.dispatchEvent(new CustomEvent('employee-work-session:update', { detail: data }));
                     };
 
                     const postJson = async (url) => {
@@ -374,11 +373,18 @@
                         }
                     });
 
-                    fetchSummary().then((data) => {
+                    fetchSummary().then(async (data) => {
                         updateUI(data);
-                        if (data?.is_active) {
-                            startPing();
+                        if (!data?.is_active) {
+                            return;
                         }
+
+                        const pingData = await postJson(pingUrl);
+                        if (pingData) {
+                            updateUI(pingData);
+                        }
+
+                        startPing();
                     });
                 });
             </script>

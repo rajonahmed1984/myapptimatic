@@ -4,15 +4,14 @@ namespace App\Services;
 
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
+use App\Models\EmployeeWorkSession;
 use App\Models\LeaveRequest;
+use App\Models\PaidHoliday;
 use App\Models\PayrollItem;
 use App\Models\PayrollPeriod;
-use App\Models\Timesheet;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class PayrollService
 {
@@ -54,7 +53,9 @@ class PayrollService
                 $payType = $comp->salary_type ?? 'monthly';
                 $currency = $comp->currency ?? 'BDT';
                 $basePay = (float) ($comp->basic_pay ?? 0);
-                $timesheetHours = $this->approvedHours($employee->id, $period->start_date, $period->end_date);
+                $timesheetHours = $payType === 'hourly'
+                    ? $this->workSessionHours($employee, $period->start_date, $period->end_date)
+                    : 0.0;
 
                 $gross = $payType === 'hourly'
                     ? $this->computeHourlyGross($timesheetHours, (float) ($comp->overtime_rate ?? $basePay))
@@ -198,25 +199,8 @@ class PayrollService
     public function finalizePeriod(PayrollPeriod $period): PayrollPeriod
     {
         DB::transaction(function () use ($period) {
-            // Prevent finalization while timesheets are still pending in the window.
-            $pending = Timesheet::query()
-                ->whereBetween('period_start', [$period->start_date, $period->end_date])
-                ->whereBetween('period_end', [$period->start_date, $period->end_date])
-                ->whereIn('status', ['draft', 'submitted'])
-                ->exists();
-
-            if ($pending) {
-                throw new RuntimeException('Cannot finalize payroll: pending timesheets exist in this period.');
-            }
-
             $period->payrollItems()->update(['status' => 'approved', 'locked_at' => now()]);
             $period->update(['status' => 'finalized', 'finalized_at' => now()]);
-
-            Timesheet::query()
-                ->whereBetween('period_start', [$period->start_date, $period->end_date])
-                ->whereBetween('period_end', [$period->start_date, $period->end_date])
-                ->where('status', 'approved')
-                ->update(['status' => 'locked', 'locked_at' => now()]);
 
             SystemLogger::write('payroll', 'Payroll finalized.', [
                 'period_id' => $period->id,
@@ -248,19 +232,49 @@ class PayrollService
     }
 
     /**
-     * Sum approved/locked timesheet hours for an employee within a period.
+     * Fallback hours from work sessions for eligible remote full-time/part-time employees.
      */
-    private function approvedHours(int $employeeId, Carbon $start, Carbon $end): float
+    private function workSessionHours(Employee $employee, Carbon $start, Carbon $end): float
     {
-        /** @var Collection<int, Timesheet> $timesheets */
-        $timesheets = Timesheet::query()
-            ->where('employee_id', $employeeId)
-            ->whereIn('status', ['approved', 'locked'])
-            ->whereDate('period_start', '>=', $start)
-            ->whereDate('period_end', '<=', $end)
-            ->get();
+        if (! in_array($employee->employment_type, ['full_time', 'part_time'], true)
+            || $employee->work_mode !== 'remote') {
+            return 0.0;
+        }
 
-        return (float) $timesheets->sum('total_hours');
+        $secondsByDate = EmployeeWorkSession::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('work_date', '>=', $start->toDateString())
+            ->whereDate('work_date', '<=', $end->toDateString())
+            ->selectRaw('work_date, SUM(active_seconds) as total_seconds')
+            ->groupBy('work_date')
+            ->pluck('total_seconds', 'work_date');
+
+        $seconds = (int) $secondsByDate->sum();
+
+        $requiredSecondsPerDay = $employee->employment_type === 'part_time'
+            ? 4 * 3600
+            : 8 * 3600;
+
+        if ($requiredSecondsPerDay > 0) {
+            $holidayDates = PaidHoliday::query()
+                ->where('is_paid', true)
+                ->whereBetween('holiday_date', [$start->toDateString(), $end->toDateString()])
+                ->pluck('holiday_date');
+
+            foreach ($holidayDates as $holidayDate) {
+                $holidayKey = Carbon::parse((string) $holidayDate)->toDateString();
+                $loggedSeconds = (int) ($secondsByDate[$holidayKey] ?? 0);
+                if ($loggedSeconds < $requiredSecondsPerDay) {
+                    $seconds += ($requiredSecondsPerDay - $loggedSeconds);
+                }
+            }
+        }
+
+        if ($seconds <= 0) {
+            return 0.0;
+        }
+
+        return $this->roundMoney($seconds / 3600);
     }
 
     /**
@@ -268,6 +282,13 @@ class PayrollService
      */
     private function unpaidLeaveDays(int $employeeId, Carbon $periodStart, Carbon $periodEnd): float
     {
+        $paidHolidayDates = PaidHoliday::query()
+            ->where('is_paid', true)
+            ->whereBetween('holiday_date', [$periodStart->toDateString(), $periodEnd->toDateString()])
+            ->pluck('holiday_date')
+            ->map(fn ($date) => Carbon::parse((string) $date)->toDateString())
+            ->flip();
+
         $requests = LeaveRequest::query()
             ->where('employee_id', $employeeId)
             ->where('status', 'approved')
@@ -286,7 +307,15 @@ class PayrollService
             if ($start->greaterThan($end)) {
                 continue;
             }
-            $days += ($start->diffInDays($end) + 1);
+
+            $cursor = $start->copy()->startOfDay();
+            $last = $end->copy()->startOfDay();
+            while ($cursor->lessThanOrEqualTo($last)) {
+                if (! isset($paidHolidayDates[$cursor->toDateString()])) {
+                    $days += 1;
+                }
+                $cursor->addDay();
+            }
         }
 
         return $days;

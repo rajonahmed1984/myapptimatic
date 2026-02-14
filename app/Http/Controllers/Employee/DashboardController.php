@@ -15,7 +15,14 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request, EmployeeWorkSummaryService $workSummaryService, TaskQueryService $taskQueryService): View
     {
-        $employee = $request->user()?->employee;
+        $employee = $request->attributes->get('employee') ?: $request->user()?->employee;
+        if ($employee) {
+            $employee->loadMissing([
+                'manager:id,name',
+                'user:id,name,email',
+            ]);
+        }
+
         $employeeId = $employee?->id;
 
         $projectRelation = $employeeId
@@ -94,6 +101,7 @@ class DashboardController extends Controller
         $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
 
         return view('employee.dashboard', [
+            'employee' => $employee,
             'totalProjects' => $totalProjects,
             'projectStatusCounts' => $projectStatusCounts,
             'recentProjects' => $recentProjects,

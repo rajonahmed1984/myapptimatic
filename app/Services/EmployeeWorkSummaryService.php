@@ -4,10 +4,13 @@ namespace App\Services;
 
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
+use App\Models\PaidHoliday;
 use Carbon\Carbon;
 
 class EmployeeWorkSummaryService
 {
+    private array $paidHolidayDateCache = [];
+
     public function isEligible(Employee $employee): bool
     {
         return in_array($employee->employment_type, ['full_time', 'part_time'], true)
@@ -28,11 +31,16 @@ class EmployeeWorkSummaryService
 
         $requiredSeconds = $this->requiredSeconds($employee);
         if ($requiredSeconds <= 0 || $activeSeconds <= 0) {
-            return 0.0;
+            if (! $this->isPaidHoliday($date)) {
+                return 0.0;
+            }
         }
 
         $requiredHours = $requiredSeconds / 3600;
-        $activeHours = min($activeSeconds, $requiredSeconds) / 3600;
+        $isPaidHoliday = $this->isPaidHoliday($date);
+        $activeHours = $isPaidHoliday
+            ? $requiredHours
+            : min($activeSeconds, $requiredSeconds) / 3600;
 
         if (($compensation->salary_type ?? 'monthly') === 'hourly') {
             $rate = (float) ($compensation->overtime_rate ?? $compensation->basic_pay ?? 0);
@@ -48,6 +56,20 @@ class EmployeeWorkSummaryService
         $ratio = $requiredHours > 0 ? ($activeHours / $requiredHours) : 0;
 
         return $this->roundMoney($dailyRate * $ratio);
+    }
+
+    private function isPaidHoliday(Carbon $date): bool
+    {
+        $key = $date->toDateString();
+
+        if (! array_key_exists($key, $this->paidHolidayDateCache)) {
+            $this->paidHolidayDateCache[$key] = PaidHoliday::query()
+                ->whereDate('holiday_date', $key)
+                ->where('is_paid', true)
+                ->exists();
+        }
+
+        return $this->paidHolidayDateCache[$key];
     }
 
     private function sumArray($value): float

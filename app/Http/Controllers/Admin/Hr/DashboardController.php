@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Models\EmployeeWorkSummary;
 use App\Models\LeaveRequest;
 use App\Models\PayrollItem;
 use App\Models\PayrollPeriod;
-use App\Models\Timesheet;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -27,18 +27,23 @@ class DashboardController extends Controller
             ->count('employee_id');
         $pendingLeaveRequests = LeaveRequest::query()->where('status', 'pending')->count();
 
-        $pendingTimesheets = Timesheet::query()->where('status', 'submitted')->count();
-        $approvedTimesheets = Timesheet::query()->where('status', 'approved')->count();
-        $lockedTimesheets = Timesheet::query()->where('status', 'locked')->count();
+        $workSummaryWindowStart = now()->subDays(6)->toDateString();
+        $workSummariesQuery = EmployeeWorkSummary::query()
+            ->whereDate('work_date', '>=', $workSummaryWindowStart);
+
+        $pendingTimesheets = (clone $workSummariesQuery)->count();
+        $approvedTimesheets = (clone $workSummariesQuery)
+            ->whereColumn('active_seconds', '>=', 'required_seconds')
+            ->count();
+        $lockedTimesheets = max(0, $pendingTimesheets - $approvedTimesheets);
 
         $draftPeriods = PayrollPeriod::query()->where('status', 'draft')->count();
         $finalizedPeriods = PayrollPeriod::query()->where('status', 'finalized')->count();
         $payrollToPay = PayrollItem::query()->where('status', 'approved')->count();
 
-        $recentTimesheets = Timesheet::query()
+        $recentTimesheets = EmployeeWorkSummary::query()
             ->with('employee')
-            ->whereIn('status', ['submitted', 'approved', 'locked'])
-            ->orderByDesc('submitted_at')
+            ->orderByDesc('work_date')
             ->orderByDesc('updated_at')
             ->limit(5)
             ->get();

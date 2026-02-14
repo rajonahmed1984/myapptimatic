@@ -19,6 +19,7 @@
             <table class="min-w-full text-left text-sm">
                 <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
                     <tr>
+                        <th class="px-4 py-3">ID</th>
                         <th class="px-4 py-3">Project</th>
                         <th class="px-4 py-3">Status</th>
                         <th class="px-4 py-3">Unread</th>
@@ -30,10 +31,12 @@
                         @php $unread = (int) ($unreadCounts[$project->id] ?? 0); @endphp
                         <tr class="align-top">
                             <td class="px-4 py-3">
-                                <div class="font-semibold text-slate-900">{{ $project->name }}</div>
                                 <div class="text-xs text-slate-500">#{{ $project->id }}</div>
                             </td>
-                            <td class="px-4 py-3 text-slate-600">
+                            <td class="px-4 py-3">
+                                <div class="font-semibold text-slate-900">{{ $project->name }}</div>
+                            </td>
+                            <td class="px-4 py-3 text-slate-600 {{ $unread > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-300 bg-slate-50 text-slate-500' }}">
                                 {{ $project->status ? ucfirst(str_replace('_', ' ', $project->status)) : '--' }}
                             </td>
                             <td class="px-4 py-3">
@@ -41,8 +44,8 @@
                                     {{ $unread }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-right">
-                                <a href="{{ route('admin.projects.chat', $project) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">
+                            <td class="px-4 py-3 text-right {{ $unread > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-300 bg-slate-50 text-slate-500' }}">
+                                <a href="{{ route('admin.projects.chat', $project) }}" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
                                     Open Chat
                                 </a>
                             </td>

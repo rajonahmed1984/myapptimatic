@@ -18,13 +18,29 @@
 @endphp
 
 @php
-    $cleanPath = $path ? ltrim($path, '/') : null;
-    if ($cleanPath && str_starts_with($cleanPath, 'avatars/')) {
-        $cleanPath = substr($cleanPath, strlen('avatars/'));
-    }
     $basePath = rtrim(request()->getBasePath(), '/');
     $prefix = $basePath === '' ? '' : $basePath;
-    $avatarUrl = $cleanPath ? $prefix . '/storage/avatars/' . $cleanPath : null;
+    $avatarUrl = null;
+
+    if (is_string($path) && trim($path) !== '') {
+        $cleanPath = ltrim(trim($path), '/');
+
+        if (preg_match('/^https?:\/\//i', $cleanPath)) {
+            $avatarUrl = $cleanPath;
+        } elseif (str_starts_with($cleanPath, 'employees/photos/')) {
+            $avatarUrl = $prefix . '/storage/' . $cleanPath;
+        } elseif (str_starts_with($cleanPath, 'avatars/')) {
+            $avatarUrl = $prefix . '/storage/' . $cleanPath;
+        } elseif (str_starts_with($cleanPath, 'users/')
+            || str_starts_with($cleanPath, 'customers/')
+            || str_starts_with($cleanPath, 'sales-reps/')) {
+            $avatarUrl = $prefix . '/storage/avatars/' . $cleanPath;
+        } elseif (str_starts_with($cleanPath, 'storage/')) {
+            $avatarUrl = $prefix . '/' . $cleanPath;
+        } else {
+            $avatarUrl = $prefix . '/storage/' . $cleanPath;
+        }
+    }
 @endphp
 
 <div {{ $attributes->merge(['class' => $size . ' rounded-full overflow-hidden flex items-center justify-center bg-slate-100 text-slate-600 ' . $textSize . ' font-semibold']) }}>

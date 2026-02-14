@@ -44,3 +44,17 @@ Then clear config cache:
 ```bash
 php artisan config:clear
 ```
+
+## Local AI license-risk mock (optional)
+
+For local/testing only, this app exposes:
+
+```text
+POST /v1/license-risk
+```
+
+If you want to test AI risk callbacks locally, set:
+
+```env
+AI_LICENSE_RISK_URL=http://127.0.0.1:8000/v1/license-risk
+```

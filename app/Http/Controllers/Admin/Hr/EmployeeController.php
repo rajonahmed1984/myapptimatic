@@ -7,13 +7,18 @@ use App\Models\Employee;
 use App\Models\EmployeeCompensation;
 use App\Models\EmployeeSession;
 use App\Models\EmployeePayout;
+use App\Models\EmployeeWorkSession;
+use App\Models\EmployeeWorkSummary;
+use App\Models\PayrollItem;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\User;
+use App\Services\EmployeeWorkSummaryService;
 use App\Enums\Role;
 use App\Http\Requests\StoreEmployeeUserRequest;
 use App\Support\Currency;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -266,7 +271,7 @@ class EmployeeController extends Controller
             ->with('status', 'Employee removed.');
     }
 
-    public function show(Employee $employee): View
+    public function show(Employee $employee, EmployeeWorkSummaryService $workSummaryService): View
     {
         $employee->load(['manager:id,name', 'user:id,name,email,avatar_path', 'activeCompensation']);
 
@@ -278,17 +283,17 @@ class EmployeeController extends Controller
         ];
 
         $tab = request()->query('tab', 'profile');
-        if ($tab === 'profile') {
+        if ($tab === 'profile' || $tab === 'compensation') {
             $tab = 'profile';
         }
-        $allowedTabs = ['profile', 'compensation', 'timesheets', 'leave', 'payroll', 'projects'];
+        $allowedTabs = ['profile', 'timesheets', 'leave', 'payroll', 'projects'];
         $isProjectBase = ($summary['salary_type'] ?? null) === 'project_base';
         if ($isProjectBase) {
             $allowedTabs[] = 'earnings';
             $allowedTabs[] = 'payouts';
         }
         if (! in_array($tab, $allowedTabs, true)) {
-            $tab = 'summary';
+            $tab = 'profile';
         }
 
         $projects = collect();
@@ -302,6 +307,20 @@ class EmployeeController extends Controller
         $recentPayouts = collect();
         $contractProjectsQuery = null;
         $advanceProjects = collect();
+        $recentWorkSessions = collect();
+        $recentWorkSummaries = collect();
+        $recentPayrollItems = collect();
+        $workSessionStats = [
+            'eligible' => false,
+            'today_active_seconds' => 0,
+            'month_active_seconds' => 0,
+            'month_required_seconds' => 0,
+            'coverage_percent' => 0,
+            'today_salary_projection' => 0.0,
+            'month_salary_projection' => 0.0,
+            'currency' => $summary['currency'] ?? 'BDT',
+        ];
+        $payrollSourceNote = null;
 
         if ($isProjectBase) {
             $contractProjectsQuery = Project::query()
@@ -315,7 +334,7 @@ class EmployeeController extends Controller
                 ->get(['id', 'name', 'customer_id', 'status']);
         }
 
-        if ($tab === 'summary') {
+        if (in_array($tab, ['profile', 'summary'], true)) {
             $taskBaseQuery = ProjectTask::query()
                 ->where(function ($query) use ($employee) {
                     $query->where(function ($inner) use ($employee) {
@@ -466,6 +485,111 @@ class EmployeeController extends Controller
             }
         }
 
+        if (in_array($tab, ['payroll', 'timesheets'], true)) {
+            $now = now();
+            $today = $now->toDateString();
+            $monthStart = $now->copy()->startOfMonth()->toDateString();
+            $monthEnd = $now->copy()->endOfMonth()->toDateString();
+
+            $workSessionQuery = EmployeeWorkSession::query()
+                ->where('employee_id', $employee->id);
+
+            $todayActiveSeconds = (int) (clone $workSessionQuery)
+                ->whereDate('work_date', $today)
+                ->sum('active_seconds');
+
+            $monthActiveSeconds = (int) (clone $workSessionQuery)
+                ->whereBetween('work_date', [$monthStart, $monthEnd])
+                ->sum('active_seconds');
+
+            $dailyActiveSeconds = (clone $workSessionQuery)
+                ->selectRaw('work_date, SUM(active_seconds) as total_seconds')
+                ->whereBetween('work_date', [$monthStart, $monthEnd])
+                ->groupBy('work_date')
+                ->pluck('total_seconds', 'work_date');
+
+            $eligible = $workSummaryService->isEligible($employee);
+            $requiredPerDay = $eligible ? $workSummaryService->requiredSeconds($employee) : 0;
+            $monthRequiredSeconds = 0;
+            $monthSalaryProjection = 0.0;
+            $todaySalaryProjection = 0.0;
+
+            foreach ($dailyActiveSeconds as $workDate => $seconds) {
+                $seconds = (int) $seconds;
+                $date = Carbon::parse((string) $workDate);
+
+                if ($requiredPerDay > 0) {
+                    $monthRequiredSeconds += $requiredPerDay;
+                    $calculated = $workSummaryService->calculateAmount($employee, $date, $seconds);
+                    $monthSalaryProjection += $calculated;
+
+                    if ($date->toDateString() === $today) {
+                        $todaySalaryProjection = $calculated;
+                    }
+                }
+            }
+
+            $coveragePercent = $monthRequiredSeconds > 0
+                ? (int) round(min(100, ($monthActiveSeconds / $monthRequiredSeconds) * 100))
+                : 0;
+
+            $workSessionStats = [
+                'eligible' => $eligible,
+                'today_active_seconds' => $todayActiveSeconds,
+                'month_active_seconds' => $monthActiveSeconds,
+                'month_required_seconds' => $monthRequiredSeconds,
+                'coverage_percent' => $coveragePercent,
+                'today_salary_projection' => round($todaySalaryProjection, 2),
+                'month_salary_projection' => round($monthSalaryProjection, 2),
+                'currency' => $summary['currency'] ?? 'BDT',
+            ];
+
+            $payrollSourceNote = ($summary['salary_type'] ?? null) === 'hourly'
+                ? 'Hourly payroll is generated from remote work-session hours for the selected payroll period.'
+                : 'Monthly payroll uses compensation, pro-rata rules, and unpaid leave. Work-session data is shown for monitoring and projection.';
+
+            $recentWorkSessions = (clone $workSessionQuery)
+                ->orderByDesc('work_date')
+                ->orderByDesc('started_at')
+                ->limit(20)
+                ->get([
+                    'work_date',
+                    'started_at',
+                    'ended_at',
+                    'last_activity_at',
+                    'active_seconds',
+                ]);
+
+            $recentWorkSummaries = EmployeeWorkSummary::query()
+                ->where('employee_id', $employee->id)
+                ->orderByDesc('work_date')
+                ->limit(15)
+                ->get([
+                    'work_date',
+                    'active_seconds',
+                    'required_seconds',
+                    'generated_salary_amount',
+                    'status',
+                ]);
+
+            $recentPayrollItems = PayrollItem::query()
+                ->with('period:id,period_key,start_date,end_date')
+                ->where('employee_id', $employee->id)
+                ->orderByDesc('id')
+                ->limit(10)
+                ->get([
+                    'id',
+                    'payroll_period_id',
+                    'status',
+                    'pay_type',
+                    'currency',
+                    'timesheet_hours',
+                    'gross_pay',
+                    'net_pay',
+                    'paid_at',
+                ]);
+        }
+
         return view('admin.hr.employees.show', [
             'employee' => $employee,
             'tab' => $tab,
@@ -480,6 +604,11 @@ class EmployeeController extends Controller
             'recentEarnings' => $recentEarnings,
             'recentPayouts' => $recentPayouts,
             'advanceProjects' => $advanceProjects,
+            'recentWorkSessions' => $recentWorkSessions,
+            'recentWorkSummaries' => $recentWorkSummaries,
+            'recentPayrollItems' => $recentPayrollItems,
+            'workSessionStats' => $workSessionStats,
+            'payrollSourceNote' => $payrollSourceNote,
         ]);
     }
 

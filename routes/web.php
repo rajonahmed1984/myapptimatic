@@ -14,7 +14,6 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerProjectUserController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\InvoiceController as AdminInvoiceController;
-use App\Http\Controllers\Admin\EmployeeSummaryController;
 use App\Http\Controllers\Admin\UserActivitySummaryController;
 use App\Http\Controllers\Admin\PaymentProofController as AdminPaymentProofController;
 use App\Http\Controllers\Admin\LicenseController;
@@ -42,6 +41,8 @@ use App\Http\Controllers\Admin\ExpenseInvoiceController as AdminExpenseInvoiceCo
 use App\Http\Controllers\Admin\FinanceReportController as AdminFinanceReportController;
 use App\Http\Controllers\Admin\FinanceTaxController as AdminFinanceTaxController;
 use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
+use App\Http\Controllers\Admin\Hr\AttendanceController as HrAttendanceController;
+use App\Http\Controllers\Admin\Hr\PaidHolidayController as HrPaidHolidayController;
 use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
 use App\Http\Controllers\Admin\IncomeCategoryController as AdminIncomeCategoryController;
 use App\Http\Controllers\Admin\IncomeController as AdminIncomeController;
@@ -50,6 +51,7 @@ use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Employee\AuthController as EmployeeAuthController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
+use App\Http\Controllers\Employee\AttendanceController as EmployeeAttendanceController;
 use App\Http\Controllers\Employee\ChatController as EmployeeChatController;
 use App\Http\Controllers\Employee\TasksController as EmployeeTasksController;
 use App\Http\Controllers\Employee\ProfileController as EmployeeProfileController;
@@ -312,6 +314,93 @@ if (config('app.login_trace')) {
     })->name('debug.login-check');
 }
 
+if (app()->environment(['local', 'testing'])) {
+    Route::get('/v1/license-risk', function () {
+        return response()->json([
+            'ok' => true,
+            'message' => 'Local AI license-risk mock is reachable. Use POST for risk checks.',
+        ]);
+    })->name('mock.ai.license-risk.health')
+        ->middleware('throttle:60,1');
+
+    Route::post('/v1/license-risk', function (Request $request) {
+        $rawBody = $request->getContent() ?? '';
+        $timestamp = $request->header('X-Timestamp');
+        $signature = $request->header('X-Signature');
+        $authHeader = (string) $request->header('Authorization', '');
+
+        $configuredToken = (string) config('ai.token', '');
+        if ($configuredToken !== '') {
+            $expectedAuth = 'Bearer ' . $configuredToken;
+            if (! hash_equals($expectedAuth, $authHeader)) {
+                return response()->json([
+                    'risk_score' => 0.0,
+                    'decision' => 'allow',
+                    'reason' => 'mock_unauthorized_token',
+                    'details' => [],
+                ], 401);
+            }
+        }
+
+        $configuredSecret = (string) config('ai.hmac_secret', '');
+        if ($configuredSecret !== '') {
+            if (! is_string($timestamp) || ! is_string($signature)) {
+                return response()->json([
+                    'risk_score' => 0.0,
+                    'decision' => 'allow',
+                    'reason' => 'mock_missing_signature',
+                    'details' => [],
+                ], 401);
+            }
+
+            $expectedSignature = hash_hmac('sha256', $timestamp . '.' . $rawBody, $configuredSecret);
+            if (! hash_equals($expectedSignature, $signature)) {
+                return response()->json([
+                    'risk_score' => 0.0,
+                    'decision' => 'allow',
+                    'reason' => 'mock_invalid_signature',
+                    'details' => [],
+                ], 401);
+            }
+        }
+
+        $payload = $request->json()->all();
+        $incomingDecision = strtolower((string) ($payload['decision'] ?? 'allow'));
+        $incomingReason = strtolower((string) ($payload['reason'] ?? ''));
+        $domain = strtolower((string) ($payload['domain'] ?? ''));
+
+        $riskScore = 0.05;
+        $decision = 'allow';
+        $reason = 'mock_allow';
+
+        if ($incomingDecision === 'block' || $incomingReason === 'domain_not_allowed') {
+            $riskScore = 0.95;
+            $decision = 'block';
+            $reason = 'mock_domain_risk';
+        } elseif ($incomingDecision === 'warn' || $incomingReason === 'invoice_due') {
+            $riskScore = 0.65;
+            $decision = 'warn';
+            $reason = 'mock_billing_risk';
+        } elseif ($domain !== '' && str_contains($domain, 'suspicious')) {
+            $riskScore = 0.8;
+            $decision = 'warn';
+            $reason = 'mock_suspicious_domain';
+        }
+
+        return response()->json([
+            'risk_score' => $riskScore,
+            'decision' => $decision,
+            'reason' => $reason,
+            'details' => [
+                'mock' => true,
+                'received_request_id' => $payload['request_id'] ?? null,
+            ],
+        ]);
+    })->name('mock.ai.license-risk')
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+        ->middleware('throttle:60,1');
+}
+
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout')
     ->middleware('auth:web');
@@ -337,10 +426,11 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::get('/work-summaries/today', [EmployeeWorkSessionController::class, 'today'])->name('work-summaries.today');
         Route::get('/profile', [EmployeeProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [EmployeeProfileController::class, 'update'])->name('profile.update');
-        Route::get('/timesheets', [EmployeeTimesheetController::class, 'index'])->name('timesheets.index');
-        Route::post('/timesheets', [EmployeeTimesheetController::class, 'store'])->name('timesheets.store');
+        Route::get('/work-logs', [EmployeeTimesheetController::class, 'index'])->name('timesheets.index');
+        Route::redirect('/timesheets', '/employee/work-logs');
         Route::get('/leave-requests', [EmployeeLeaveRequestController::class, 'index'])->name('leave-requests.index');
         Route::post('/leave-requests', [EmployeeLeaveRequestController::class, 'store'])->name('leave-requests.store');
+        Route::get('/attendance', [EmployeeAttendanceController::class, 'index'])->name('attendance.index');
         Route::get('/payroll', [EmployeePayrollController::class, 'index'])->name('payroll.index');
         Route::get('/projects', [\App\Http\Controllers\Employee\ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/{project}', [\App\Http\Controllers\Employee\ProjectController::class, 'show'])->name('projects.show');
@@ -447,21 +537,27 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
         Route::post('employee-payouts', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'store'])->name('employee-payouts.store');
         Route::get('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'index'])->name('leave-types.index');
         Route::post('leave-types', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'store'])->name('leave-types.store');
+        Route::put('leave-types/{leaveType}', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'update'])->name('leave-types.update');
         Route::delete('leave-types/{leaveType}', [\App\Http\Controllers\Admin\Hr\LeaveTypeController::class, 'destroy'])->name('leave-types.destroy');
         Route::get('leave-requests', [\App\Http\Controllers\Admin\Hr\LeaveRequestController::class, 'index'])->name('leave-requests.index');
         Route::post('leave-requests/{leaveRequest}/approve', [\App\Http\Controllers\Admin\Hr\LeaveRequestController::class, 'approve'])->name('leave-requests.approve');
         Route::post('leave-requests/{leaveRequest}/reject', [\App\Http\Controllers\Admin\Hr\LeaveRequestController::class, 'reject'])->name('leave-requests.reject');
-        Route::get('timesheets', [\App\Http\Controllers\Admin\Hr\TimesheetController::class, 'index'])->name('timesheets.index');
-        Route::post('timesheets/{timesheet}/approve', [\App\Http\Controllers\Admin\Hr\TimesheetController::class, 'approve'])->name('timesheets.approve');
-        Route::post('timesheets/{timesheet}/lock', [\App\Http\Controllers\Admin\Hr\TimesheetController::class, 'lock'])->name('timesheets.lock');
+        Route::get('paid-holidays', [HrPaidHolidayController::class, 'index'])->name('paid-holidays.index');
+        Route::post('paid-holidays', [HrPaidHolidayController::class, 'store'])->name('paid-holidays.store');
+        Route::delete('paid-holidays/{paidHoliday}', [HrPaidHolidayController::class, 'destroy'])->name('paid-holidays.destroy');
+        Route::get('attendance', [HrAttendanceController::class, 'index'])->name('attendance.index');
+        Route::post('attendance', [HrAttendanceController::class, 'store'])->name('attendance.store');
+        Route::get('work-logs', [\App\Http\Controllers\Admin\Hr\TimesheetController::class, 'index'])->name('timesheets.index');
+        Route::redirect('timesheets', 'work-logs');
         Route::get('payroll', [HrPayrollController::class, 'index'])->name('payroll.index');
         Route::post('payroll/generate', [HrPayrollController::class, 'generate'])->name('payroll.generate');
         Route::get('payroll/{payrollPeriod}', [HrPayrollController::class, 'show'])->name('payroll.show');
+        Route::post('payroll/{payrollPeriod}/items/{payrollItem}/adjustments', [HrPayrollController::class, 'updateAdjustments'])
+            ->name('payroll.items.adjustments');
         Route::post('payroll/{payrollPeriod}/finalize', [HrPayrollController::class, 'finalize'])->name('payroll.finalize');
         Route::get('payroll/{payrollPeriod}/export', [HrPayrollController::class, 'export'])->name('payroll.export');
     });
 
-    Route::get('employees/summary', [EmployeeSummaryController::class, 'index'])->name('employees.summary');
     Route::get('users/activity-summary', [UserActivitySummaryController::class, 'index'])->name('users.activity-summary');
     Route::get('/automation-status', [AutomationStatusController::class, 'index'])->name('automation-status');
     Route::post('/system/cache/clear', SystemCacheController::class)

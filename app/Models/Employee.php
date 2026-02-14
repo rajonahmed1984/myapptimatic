@@ -96,6 +96,11 @@ class Employee extends Authenticatable
         return $this->hasMany(EmployeeWorkSummary::class);
     }
 
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(EmployeeAttendance::class);
+    }
+
     // Activity tracking uses polymorphic UserSession/UserActivityDaily via HasActivityTracking trait
     // These methods override the trait to explicitly define the relations
     public function sessions(): MorphMany

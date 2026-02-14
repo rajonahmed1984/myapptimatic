@@ -135,9 +135,10 @@ class EmployeePayoutController extends Controller
     public function storeAdvance(Request $request, Employee $employee): RedirectResponse
     {
         $employee->loadMissing('activeCompensation');
+        $salaryType = $employee->activeCompensation?->salary_type;
 
-        if (($employee->activeCompensation?->salary_type ?? null) !== 'project_base') {
-            return back()->withErrors(['amount' => 'Advance payouts are available only for project-based employees.']);
+        if (! $salaryType) {
+            return back()->withErrors(['amount' => 'Employee compensation setup is required before recording an advance.']);
         }
 
         $data = $request->validate([
@@ -152,7 +153,7 @@ class EmployeePayoutController extends Controller
         $currency = $data['currency'] ?? ($employee->activeCompensation?->currency ?? 'BDT');
         $project = null;
 
-        if (! empty($data['project_id'])) {
+        if ($salaryType === 'project_base' && ! empty($data['project_id'])) {
             $project = Project::query()
                 ->with('customer:id,name')
                 ->whereKey((int) $data['project_id'])
@@ -173,6 +174,8 @@ class EmployeePayoutController extends Controller
             'note' => $data['note'] ?? null,
             'metadata' => [
                 'type' => 'advance',
+                'salary_type' => $salaryType,
+                'advance_scope' => $salaryType === 'project_base' ? 'project_payout' : 'payroll',
                 'project_id' => $project?->id,
                 'project_name' => $project?->name,
             ],

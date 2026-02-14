@@ -25,7 +25,7 @@
     {{ $attributes->merge(['class' => $isActive ? $activeClass : $inactiveClass]) }}
 >
     {{ $slot }}
-    @if($badge)
+    @if(! is_null($badge))
         <span class="{{ $badgeClass }}">{{ $badge }}</span>
     @endif
 </a>

@@ -25,6 +25,13 @@
                     <div class="text-lg font-semibold text-white">{{ $portalBranding['company_name'] ?? 'License Portal' }}</div>
                 </div>
             </div>
+            @if($isEmployeeNav)
+                <div id="global-work-timer" class="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-100" data-summary-url="{{ route('employee.work-summaries.today') }}" data-ping-url="{{ route('employee.work-sessions.ping') }}">
+                    <div class="text-[11px] uppercase tracking-[0.25em] text-slate-300">Work Session</div>
+                    <div class="mt-1 text-2xl font-semibold leading-none" data-global-work-time>00:00:00</div>
+                    <div class="mt-1 text-xs text-slate-300" data-global-work-status>Stopped</div>
+                </div>
+            @endif
             <button type="button" id="sidebarClose" class="absolute right-4 top-4 rounded-full border border-white/10 bg-white/10 p-2 text-slate-200 transition hover:bg-white/20 md:hidden" aria-label="Close menu">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -261,13 +268,6 @@
                             Employees
                         </x-nav-link>
                         <x-nav-link 
-                            :href="route('admin.employees.summary')"
-                            routes="admin.employees.summary"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Employee Summary
-                        </x-nav-link>
-                        <x-nav-link 
                             :href="route('admin.users.activity-summary')"
                             routes="admin.users.activity-summary"
                         >
@@ -279,7 +279,7 @@
                             routes="admin.hr.timesheets.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Timesheets
+                            Work Logs
                         </x-nav-link>
                         <x-nav-link 
                             :href="route('admin.hr.leave-types.index')"
@@ -291,9 +291,24 @@
                         <x-nav-link 
                             :href="route('admin.hr.leave-requests.index')"
                             routes="admin.hr.leave-requests.*"
+                            :badge="$adminHeaderStats['pending_leave_requests'] ?? 0"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Leave Requests
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.hr.attendance.index')"
+                            routes="admin.hr.attendance.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Attendance
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.hr.paid-holidays.index')"
+                            routes="admin.hr.paid-holidays.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Paid Holidays
                         </x-nav-link>
                         <x-nav-link 
                             :href="route('admin.hr.payroll.index')"
@@ -309,7 +324,7 @@
                         <x-nav-link 
                             :href="route('admin.support-tickets.index')"
                             routes="admin.support-tickets.*"
-                            :badge="($adminHeaderStats['tickets_waiting'] ?? 0) > 0 ? $adminHeaderStats['tickets_waiting'] : null"
+                            :badge="$adminHeaderStats['open_support_tickets'] ?? 0"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             <span>Support</span>
@@ -440,7 +455,7 @@
                             routes="employee.timesheets.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Timesheets
+                            Work Logs
                         </x-nav-link>
                         <x-nav-link 
                             :href="route('employee.leave-requests.index')"
@@ -448,6 +463,13 @@
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Leave Requests
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('employee.attendance.index')"
+                            routes="employee.attendance.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Attendance
                         </x-nav-link>
                     </div>
                     <div class="space-y-2">
@@ -539,7 +561,7 @@
                                 routes="employee.timesheets.*"
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
-                                Timesheets
+                                Work Logs
                             </x-nav-link>
                             <x-nav-link 
                                 :href="route('employee.leave-requests.index')"
@@ -547,6 +569,13 @@
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 Leave Requests
+                            </x-nav-link>
+                            <x-nav-link
+                                :href="route('employee.attendance.index')"
+                                routes="employee.attendance.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Attendance
                             </x-nav-link>
                         </div>
                         <div class="space-y-2">
@@ -806,6 +835,7 @@
               const overlay = document.getElementById('sidebarOverlay');
               const openBtn = document.getElementById('sidebarToggle');
               const closeBtn = document.getElementById('sidebarClose');
+              const globalWorkTimerCard = document.getElementById('global-work-timer');
 
             const openSidebar = () => {
                 sidebar?.classList.remove('-translate-x-full');
@@ -827,6 +857,121 @@
               });
 
               bindInvoiceItems();
+
+              const setupGlobalWorkTimer = () => {
+                  if (!globalWorkTimerCard) {
+                      return;
+                  }
+
+                  const summaryUrl = globalWorkTimerCard.dataset.summaryUrl;
+                  const pingUrl = globalWorkTimerCard.dataset.pingUrl;
+                  const timeEl = globalWorkTimerCard.querySelector('[data-global-work-time]');
+                  const statusEl = globalWorkTimerCard.querySelector('[data-global-work-status]');
+                  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+                  if (!summaryUrl || !timeEl || !statusEl) {
+                      return;
+                  }
+
+                  const formatSeconds = (seconds) => {
+                      const total = Math.max(0, Number(seconds || 0));
+                      const hours = Math.floor(total / 3600);
+                      const minutes = Math.floor((total % 3600) / 60);
+                      const secs = Math.floor(total % 60);
+                      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                  };
+
+                  let activeSeconds = 0;
+                  let isActive = false;
+
+                  const setStatus = (status, active) => {
+                      if (!active) {
+                          statusEl.textContent = 'Stopped';
+                          return;
+                      }
+
+                      statusEl.textContent = status === 'idle' ? 'Idle' : 'Working';
+                  };
+
+                  const applyPayload = (payload) => {
+                      activeSeconds = Number(payload?.active_seconds || 0);
+                      isActive = Boolean(payload?.is_active);
+                      timeEl.textContent = formatSeconds(activeSeconds);
+                      setStatus(payload?.status || 'stopped', isActive);
+                  };
+
+                  const fetchSummary = async () => {
+                      try {
+                          const response = await fetch(summaryUrl, {
+                              headers: {
+                                  'Accept': 'application/json',
+                                  'X-Requested-With': 'XMLHttpRequest',
+                              },
+                          });
+                          if (!response.ok) {
+                              return;
+                          }
+                          const json = await response.json();
+                          applyPayload(json?.data || null);
+                      } catch (error) {
+                          // Silent fail for sidebar widget
+                      }
+                  };
+
+                  const pingSession = async () => {
+                      if (!pingUrl || !csrfToken) {
+                          return null;
+                      }
+
+                      const formData = new FormData();
+                      formData.append('_token', csrfToken);
+
+                      try {
+                          const response = await fetch(pingUrl, {
+                              method: 'POST',
+                              headers: {
+                                  'Accept': 'application/json',
+                                  'X-Requested-With': 'XMLHttpRequest',
+                              },
+                              body: formData,
+                          });
+                          if (!response.ok) {
+                              return null;
+                          }
+                          const json = await response.json();
+                          return json?.data || null;
+                      } catch (error) {
+                          return null;
+                      }
+                  };
+
+                  window.addEventListener('employee-work-session:update', (event) => {
+                      applyPayload(event.detail || null);
+                  });
+
+                  setInterval(() => {
+                      if (!isActive) {
+                          return;
+                      }
+                      activeSeconds += 1;
+                      timeEl.textContent = formatSeconds(activeSeconds);
+                  }, 1000);
+
+                  setInterval(async () => {
+                      if (!isActive || document.visibilityState !== 'visible') {
+                          return;
+                      }
+                      const data = await pingSession();
+                      if (data) {
+                          applyPayload(data);
+                      }
+                  }, 60000);
+
+                  setInterval(fetchSummary, 10000);
+                  fetchSummary();
+              };
+
+              setupGlobalWorkTimer();
 
               // HTMX configuration: Update active sidebar state after content loads
               document.addEventListener('htmx:afterSwap', function(event) {

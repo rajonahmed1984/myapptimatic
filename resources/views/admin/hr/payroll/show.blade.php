@@ -55,6 +55,7 @@
                         <th class="py-2 px-3">Penalty</th>
                         <th class="py-2 px-3">Advance</th>
                         <th class="py-2 px-3">Deduction</th>
+                        <th class="py-2 px-3">Work Logs Est. Subtotal</th>
                         <th class="py-2 px-3">Gross</th>
                         <th class="py-2 px-3">Net</th>
                         <th class="py-2 px-3">Status</th>
@@ -82,10 +83,31 @@
                                     <div class="text-[11px] text-slate-500">@ {{ number_format((float) $item->overtime_rate, 2) }}</div>
                                 @endif
                             </td>
-                            <td class="py-2 px-3">{{ number_format($bonus, 2) }}</td>
-                            <td class="py-2 px-3">{{ number_format($penalty, 2) }}</td>
+                            <td class="py-2 px-3">
+                                @if($period->status === 'draft')
+                                    <form method="POST" action="{{ route('admin.hr.payroll.items.adjustments', [$period, $item]) }}" class="flex items-center gap-2">
+                                        @csrf
+                                        <input type="number" name="bonuses" step="0.01" min="0" value="{{ number_format($bonus, 2, '.', '') }}" class="w-24 rounded-lg border border-slate-300 px-2 py-1 text-xs">
+                                        <input type="number" name="penalties" step="0.01" min="0" value="{{ number_format($penalty, 2, '.', '') }}" class="w-24 rounded-lg border border-slate-300 px-2 py-1 text-xs">
+                                        <button type="submit" class="rounded-full border border-emerald-300 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">Save</button>
+                                    </form>
+                                @else
+                                    {{ number_format($bonus, 2) }}
+                                @endif
+                            </td>
+                            <td class="py-2 px-3">
+                                {{ number_format($penalty, 2) }}
+                            </td>
                             <td class="py-2 px-3">{{ number_format($advance, 2) }}</td>
                             <td class="py-2 px-3">{{ number_format($deduction, 2) }}</td>
+                            <td class="py-2 px-3">
+                                @php($workLog = $workLogSubtotalByEmployee[$item->employee_id] ?? null)
+                                @if($workLog && ($workLog['eligible'] ?? false))
+                                    {{ number_format((float) ($workLog['amount'] ?? 0), 2) }} {{ $workLog['currency'] ?? $item->currency }}
+                                @else
+                                    --
+                                @endif
+                            </td>
                             <td class="py-2 px-3">{{ number_format((float) $item->gross_pay, 2) }}</td>
                             <td class="py-2 px-3">{{ number_format((float) $item->net_pay, 2) }}</td>
                             <td class="py-2 px-3">{{ ucfirst($item->status) }}</td>
@@ -94,7 +116,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="15" class="py-3 px-3 text-center text-slate-500">No payroll items found.</td>
+                            <td colspan="16" class="py-3 px-3 text-center text-slate-500">No payroll items found.</td>
                         </tr>
                     @endforelse
                 </tbody>

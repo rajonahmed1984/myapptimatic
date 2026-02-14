@@ -3,73 +3,69 @@
 namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
-use App\Models\Timesheet;
-use Illuminate\Http\RedirectResponse;
+use App\Models\EmployeeWorkSession;
+use App\Services\EmployeeWorkSummaryService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Carbon\Carbon;
 
 class TimesheetController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, EmployeeWorkSummaryService $workSummaryService): View
     {
-        $employee = $request->attributes->get('employee');
-
-        $timesheets = Timesheet::query()
-            ->where('employee_id', $employee->id)
-            ->orderByDesc('id')
-            ->paginate(15);
-
-        return view('employee.timesheets.index', compact('timesheets'));
-    }
-
-    public function store(Request $request): RedirectResponse
-    {
-        $employee = $request->attributes->get('employee');
-
-        $data = $request->validate([
-            'period_start' => ['required', 'date'],
-            'period_end' => ['required', 'date', 'after_or_equal:period_start'],
-            'total_hours' => ['required', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string', 'max:500'],
-            'submit' => ['sometimes', 'boolean'],
+        $filters = $request->validate([
+            'month' => ['nullable', 'date_format:Y-m'],
         ]);
 
-        $start = Carbon::parse($data['period_start'])->startOfDay();
-        $end = Carbon::parse($data['period_end'])->startOfDay();
+        $selectedMonth = $filters['month'] ?? now()->format('Y-m');
+        [$year, $month] = explode('-', $selectedMonth);
+        $monthStart = Carbon::createFromDate((int) $year, (int) $month, 1)->startOfMonth()->toDateString();
+        $monthEnd = Carbon::createFromDate((int) $year, (int) $month, 1)->endOfMonth()->toDateString();
 
-        if (! $start->isMonday()) {
-            return back()->withErrors(['period_start' => 'Timesheet must start on Monday.'])->withInput();
-        }
+        $employee = $request->attributes->get('employee');
+        $employee->loadMissing('activeCompensation');
 
-        $expectedEnd = $start->copy()->endOfWeek();
-        if (! $end->isSameDay($expectedEnd)) {
-            return back()->withErrors(['period_end' => 'Timesheet must end on Sunday (same week as start).'])->withInput();
-        }
-
-        $alreadyExists = Timesheet::query()
+        $dailyLogs = EmployeeWorkSession::query()
             ->where('employee_id', $employee->id)
-            ->whereDate('period_start', $start)
-            ->whereDate('period_end', $expectedEnd)
-            ->whereIn('status', ['draft', 'submitted', 'approved', 'locked'])
-            ->exists();
+            ->whereBetween('work_date', [$monthStart, $monthEnd])
+            ->selectRaw('work_date, COUNT(*) as sessions_count, SUM(active_seconds) as active_seconds, MIN(started_at) as first_started_at, MAX(COALESCE(ended_at, last_activity_at)) as last_activity_at')
+            ->groupBy('work_date')
+            ->orderByDesc('work_date')
+            ->paginate(15)
+            ->withQueryString();
 
-        if ($alreadyExists) {
-            return back()->withErrors(['period_start' => 'A timesheet for this week already exists.'])->withInput();
-        }
+        $isEligible = $workSummaryService->isEligible($employee);
+        $requiredSeconds = $isEligible ? $workSummaryService->requiredSeconds($employee) : 0;
+        $currency = $employee->activeCompensation?->currency ?? 'BDT';
 
-        $status = $request->boolean('submit') ? 'submitted' : 'draft';
+        $dailyLogs->setCollection(
+            $dailyLogs->getCollection()->map(function ($row) use ($employee, $workSummaryService, $requiredSeconds, $currency) {
+                $workDate = Carbon::parse((string) $row->work_date);
+                $activeSeconds = (int) ($row->active_seconds ?? 0);
+                $estimatedAmount = $requiredSeconds > 0
+                    ? $workSummaryService->calculateAmount($employee, $workDate, $activeSeconds)
+                    : 0.0;
 
-        Timesheet::create([
-            'employee_id' => $employee->id,
-            'period_start' => $start->toDateString(),
-            'period_end' => $expectedEnd->toDateString(),
-            'total_hours' => $data['total_hours'],
-            'notes' => $data['notes'] ?? null,
-            'status' => $status,
-            'submitted_at' => $status === 'submitted' ? now() : null,
+                $coveragePercent = $requiredSeconds > 0
+                    ? (int) round(min(100, ($activeSeconds / $requiredSeconds) * 100))
+                    : 0;
+
+                $row->work_date = $workDate;
+                $row->active_seconds = $activeSeconds;
+                $row->required_seconds = $requiredSeconds;
+                $row->coverage_percent = $coveragePercent;
+                $row->estimated_amount = $estimatedAmount;
+                $row->currency = $currency;
+
+                return $row;
+            })
+        );
+
+        return view('employee.work-logs.index', [
+            'dailyLogs' => $dailyLogs,
+            'isEligible' => $isEligible,
+            'requiredSeconds' => $requiredSeconds,
+            'selectedMonth' => $selectedMonth,
         ]);
-
-        return back()->with('status', $status === 'submitted' ? 'Timesheet submitted.' : 'Timesheet saved as draft.');
     }
 }

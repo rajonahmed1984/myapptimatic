@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AccountingEntry;
 use App\Models\Customer;
 use App\Models\Employee;
+use App\Models\EmployeeWorkSummary;
 use App\Models\Income;
 use App\Models\Invoice;
 use App\Models\License;
@@ -16,7 +17,6 @@ use App\Models\Project;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\SupportTicket;
-use App\Models\Timesheet;
 use App\Models\User;
 use App\Support\Currency;
 use Carbon\Carbon;
@@ -420,10 +420,18 @@ class DashboardMetricsService
 
     private function hrStats(): array
     {
+        $windowStart = now()->subDays(6)->toDateString();
+        $workSummaryQuery = EmployeeWorkSummary::query()
+            ->whereDate('work_date', '>=', $windowStart);
+        $workLogDays = (clone $workSummaryQuery)->count();
+        $onTargetDays = (clone $workSummaryQuery)
+            ->whereColumn('active_seconds', '>=', 'required_seconds')
+            ->count();
+
         return [
             'active_employees' => Employee::where('status', 'active')->count(),
-            'pending_timesheets' => Timesheet::where('status', 'submitted')->count(),
-            'approved_timesheets' => Timesheet::where('status', 'approved')->count(),
+            'pending_timesheets' => $workLogDays,
+            'approved_timesheets' => $onTargetDays,
             'draft_payroll_periods' => PayrollPeriod::where('status', 'draft')->count(),
             'finalized_payroll_periods' => PayrollPeriod::where('status', 'finalized')->count(),
             'payroll_items_to_pay' => PayrollItem::where('status', 'approved')->count(),

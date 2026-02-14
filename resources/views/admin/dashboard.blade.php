@@ -121,12 +121,12 @@
         </div>
         <div class="card px-4 py-3 leading-tight">
             <a href="{{ route('admin.hr.timesheets.index') }}" class="flex items-center justify-between gap-3 transition hover:text-teal-600">
-                <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Timesheets</div>
+                <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Work Logs (7d)</div>
                 <div class="text-xl font-semibold text-amber-600">{{ $hrStats['pending_timesheets'] }}</div>
             </a>
             <a href="{{ route('admin.hr.timesheets.index') }}" class="mt-1 flex items-center justify-between text-[11px] text-slate-500 transition hover:text-teal-600">
-                <span>Awaiting approval</span>
-                <span class="text-emerald-600">Approved: {{ $hrStats['approved_timesheets'] }}</span>
+                <span>Generated from work sessions</span>
+                <span class="text-emerald-600">On-target: {{ $hrStats['approved_timesheets'] }}</span>
             </a>
         </div>
         <div class="card px-4 py-3 leading-tight">

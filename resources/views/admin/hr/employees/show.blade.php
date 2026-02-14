@@ -29,7 +29,6 @@
             $isMonthly = ($salaryType === 'monthly');
             $tabs = [
                 'profile' => 'Profile',
-                'compensation' => 'Compensation',
             ];
             if ($isProjectBase) {
                 $tabs['earnings'] = 'Recent Earnings';
@@ -37,7 +36,7 @@
             }
             $tabs['projects'] = 'Projects';
             if ($isMonthly) {
-                $tabs['timesheets'] = 'Timesheets';
+                $tabs['timesheets'] = 'Work Logs';
                 $tabs['leave'] = 'Leave';
                 $tabs['payroll'] = 'Payroll';
             }
@@ -216,8 +215,11 @@
             </div>
         </div>
 
-        <div class="card p-6">
+        <div class="card p-6 mt-5">
             <div class="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
+                <div><span class="font-semibold text-slate-900">Salary Type:</span> {{ ucwords(str_replace('_', ' ', $summary['salary_type'] ?? '--')) }}</div>
+                <div><span class="font-semibold text-slate-900">Basic Pay:</span> {{ $summary['currency'] ?? '' }} {{ number_format($summary['basic_pay'] ?? 0, 2) }}</div>
+                <div><span class="font-semibold text-slate-900">Effective From:</span> {{ $employee->activeCompensation?->effective_from?->format('Y-m-d') ?? '--' }}</div>
                 <div><span class="font-semibold text-slate-900">Department:</span> {{ $employee->department ?? '--' }}</div>
                 <div><span class="font-semibold text-slate-900">Designation:</span> {{ $employee->designation ?? '--' }}</div>
                 <div><span class="font-semibold text-slate-900">Manager:</span> {{ $employee->manager?->name ?? '--' }}</div>
@@ -231,6 +233,27 @@
 
         <div class="mt-4 card p-6">
             <div class="text-sm font-semibold text-slate-800 mb-3">Documents</div>
+            @php
+                $nidPath = $employee->nid_path ?: $employee->user?->nid_path;
+                $nidOwnerType = $employee->nid_path ? 'employee' : ($employee->user?->nid_path ? 'user' : null);
+                $nidOwnerId = $employee->nid_path ? $employee->id : $employee->user?->id;
+                $nidUrl = ($nidOwnerType && $nidOwnerId)
+                    ? route('admin.user-documents.show', ['type' => $nidOwnerType, 'id' => $nidOwnerId, 'doc' => 'nid'])
+                    : null;
+                $nidIsImage = $nidPath
+                    ? \Illuminate\Support\Str::endsWith(strtolower($nidPath), ['.jpg', '.jpeg', '.png', '.webp'])
+                    : false;
+
+                $cvPath = $employee->cv_path ?: $employee->user?->cv_path;
+                $cvOwnerType = $employee->cv_path ? 'employee' : ($employee->user?->cv_path ? 'user' : null);
+                $cvOwnerId = $employee->cv_path ? $employee->id : $employee->user?->id;
+                $cvUrl = ($cvOwnerType && $cvOwnerId)
+                    ? route('admin.user-documents.show', ['type' => $cvOwnerType, 'id' => $cvOwnerId, 'doc' => 'cv'])
+                    : null;
+                $cvIsImage = $cvPath
+                    ? \Illuminate\Support\Str::endsWith(strtolower($cvPath), ['.jpg', '.jpeg', '.png', '.webp'])
+                    : false;
+            @endphp
             <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
                 <div>
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Avatar</div>
@@ -241,51 +264,227 @@
                         <x-avatar :path="$avatarPath" :name="$employee->name" size="h-16 w-16" textSize="text-sm" />
                     </div>
                 </div>
-                @if($employee->nid_path)
-                    @php
-                        $nidIsImage = \Illuminate\Support\Str::endsWith(strtolower($employee->nid_path), ['.jpg', '.jpeg', '.png', '.webp']);
-                        $nidUrl = route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'nid']);
-                    @endphp
-                    <div>
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-500">NID</div>
-                        <div class="mt-2 flex items-center gap-3">
+                <div>
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-500">NID</div>
+                    <div class="mt-2 flex items-center gap-3">
+                        @if($nidUrl)
                             @if($nidIsImage)
                                 <img src="{{ $nidUrl }}" alt="NID" class="h-16 w-20 rounded-lg object-cover border border-slate-300">
                             @else
                                 <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
                             @endif
                             <a href="{{ $nidUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
-                        </div>
+                        @else
+                            <div class="text-xs text-slate-500">Not uploaded</div>
+                        @endif
                     </div>
-                @endif
-                @if($employee->cv_path)
-                    @php
-                        $cvIsImage = \Illuminate\Support\Str::endsWith(strtolower($employee->cv_path), ['.jpg', '.jpeg', '.png', '.webp']);
-                        $cvUrl = route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'cv']);
-                    @endphp
-                    <div>
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-500">CV</div>
-                        <div class="mt-2 flex items-center gap-3">
+                </div>
+                <div>
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-500">CV</div>
+                    <div class="mt-2 flex items-center gap-3">
+                        @if($cvUrl)
                             @if($cvIsImage)
                                 <img src="{{ $cvUrl }}" alt="CV" class="h-16 w-20 rounded-lg object-cover border border-slate-300">
                             @else
                                 <div class="flex h-16 w-20 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-xs font-semibold text-slate-500">PDF</div>
                             @endif
                             <a href="{{ $cvUrl }}" class="text-sm text-teal-600 hover:text-teal-500">View/Download</a>
-                        </div>
+                        @else
+                            <div class="text-xs text-slate-500">Not uploaded</div>
+                        @endif
                     </div>
+                </div>
+            </div>
+        </div>
+    @elseif(in_array($tab, ['payroll', 'timesheets'], true))
+        @php
+            $formatDuration = function (int $seconds): string {
+                $hours = (int) floor($seconds / 3600);
+                $minutes = (int) floor(($seconds % 3600) / 60);
+
+                return sprintf('%02d:%02d', $hours, $minutes);
+            };
+        @endphp
+        <div class="grid gap-4 md:grid-cols-3">
+            <div class="card p-4">
+                <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Worked Today</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $formatDuration((int) ($workSessionStats['today_active_seconds'] ?? 0)) }}</div>
+            </div>
+            <div class="card p-4">
+                <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Worked This Month</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $formatDuration((int) ($workSessionStats['month_active_seconds'] ?? 0)) }}</div>
+            </div>
+            <div class="card p-4">
+                <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Work Coverage</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">{{ (int) ($workSessionStats['coverage_percent'] ?? 0) }}%</div>
+                <div class="mt-2 text-xs text-slate-500">
+                    Required: {{ $formatDuration((int) ($workSessionStats['month_required_seconds'] ?? 0)) }}
+                </div>
+            </div>
+            <div class="card p-4">
+                <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Today Salary Projection</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">
+                    {{ $workSessionStats['currency'] ?? 'BDT' }} {{ number_format((float) ($workSessionStats['today_salary_projection'] ?? 0), 2) }}
+                </div>
+            </div>
+            <div class="card p-4">
+                <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Month Salary Projection</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">
+                    {{ $workSessionStats['currency'] ?? 'BDT' }} {{ number_format((float) ($workSessionStats['month_salary_projection'] ?? 0), 2) }}
+                </div>
+            </div>
+            <div class="card p-4">
+                <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Payroll Source</div>
+                <div class="mt-2 text-sm text-slate-700">
+                    {{ $payrollSourceNote ?? '--' }}
+                </div>
+            </div>
+        </div>
+
+        @if($tab === 'payroll')
+            <div class="card p-6 mt-5">
+                @if(in_array($summary['salary_type'] ?? null, ['monthly', 'hourly'], true))
+                    <div class="text-sm font-semibold text-slate-800">Record salary advance</div>
+                    <div class="mt-1 text-xs text-slate-500">This creates an advance payout entry for payroll tracking.</div>
+                    <form method="POST" action="{{ route('admin.hr.employees.advance-payout', $employee) }}" class="mt-4 grid gap-3 md:grid-cols-6">
+                        @csrf
+                        <div>
+                            <label class="text-xs text-slate-500">Amount</label>
+                            <input name="amount" type="number" step="0.01" min="0" required value="{{ old('amount') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">Currency</label>
+                            <input name="currency" value="{{ old('currency', $summary['currency'] ?? 'BDT') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="BDT">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">Method</label>
+                            <select name="payout_method" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                                <option value="">Select</option>
+                                <option value="bank" @selected(old('payout_method') === 'bank')>Bank</option>
+                                <option value="mobile" @selected(old('payout_method') === 'mobile')>Mobile</option>
+                                <option value="cash" @selected(old('payout_method') === 'cash')>Cash</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">Reference</label>
+                            <input name="reference" value="{{ old('reference') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Txn / Note">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs text-slate-500">Note</label>
+                            <input name="note" value="{{ old('note') }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Optional note">
+                        </div>
+                        <div class="md:col-span-6 flex items-center gap-3">
+                            <button type="submit" class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Save salary advance</button>
+                        </div>
+                    </form>
+                @else
+                    <div class="text-sm text-slate-600">Payroll advance applies to monthly/hourly employees.</div>
                 @endif
             </div>
-        </div>
-    @elseif($tab === 'compensation')
-        <div class="card p-6">
-            <div class="text-sm text-slate-700">
-                <div class="font-semibold text-slate-900 mb-2">Current Compensation</div>
-                <div>Salary Type: {{ ucwords(str_replace('_', ' ', $summary['salary_type'] ?? '--')) }}</div>
-                <div>Basic Pay: {{ $summary['currency'] ?? '' }} {{ number_format($summary['basic_pay'] ?? 0, 2) }}</div>
-                <div>Effective From: {{ $employee->activeCompensation?->effective_from?->format('Y-m-d') ?? '--' }}</div>
+        @endif
+        
+        <div class="mt-4 card p-4">
+            <div class="mb-3 text-sm font-semibold text-slate-800">Recent Work Sessions</div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[680px] text-sm text-slate-700">
+                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
+                        <tr>
+                            <th class="py-2 text-left">Date</th>
+                            <th class="py-2 text-left">Started</th>
+                            <th class="py-2 text-left">Ended</th>
+                            <th class="py-2 text-left">Last Activity</th>
+                            <th class="py-2 text-right">Active Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recentWorkSessions as $session)
+                            <tr class="border-b border-slate-100">
+                                <td class="py-2">{{ $session->work_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
+                                <td class="py-2">{{ $session->started_at?->format('H:i:s') ?? '--' }}</td>
+                                <td class="py-2">{{ $session->ended_at?->format('H:i:s') ?? '--' }}</td>
+                                <td class="py-2">{{ $session->last_activity_at?->format('H:i:s') ?? '--' }}</td>
+                                <td class="py-2 text-right">{{ $formatDuration((int) ($session->active_seconds ?? 0)) }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="py-4 text-center text-slate-500">No work session data yet.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
+
+        <div class="mt-4 card p-4">
+            <div class="mb-3 text-sm font-semibold text-slate-800">Daily Work Summaries</div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[680px] text-sm text-slate-700">
+                    <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
+                        <tr>
+                            <th class="py-2 text-left">Date</th>
+                            <th class="py-2 text-right">Active</th>
+                            <th class="py-2 text-right">Required</th>
+                            <th class="py-2 text-right">Generated Salary</th>
+                            <th class="py-2 text-left">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recentWorkSummaries as $summaryRow)
+                            <tr class="border-b border-slate-100">
+                                <td class="py-2">{{ $summaryRow->work_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
+                                <td class="py-2 text-right">{{ $formatDuration((int) ($summaryRow->active_seconds ?? 0)) }}</td>
+                                <td class="py-2 text-right">{{ $formatDuration((int) ($summaryRow->required_seconds ?? 0)) }}</td>
+                                <td class="py-2 text-right">{{ $summary['currency'] ?? 'BDT' }} {{ number_format((float) ($summaryRow->generated_salary_amount ?? 0), 2) }}</td>
+                                <td class="py-2">{{ ucfirst((string) ($summaryRow->status ?? 'generated')) }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="py-4 text-center text-slate-500">No work summaries generated yet.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if($tab === 'payroll')
+            <div class="mt-4 card p-4">
+                <div class="mb-3 text-sm font-semibold text-slate-800">Recent Payroll Items</div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[760px] text-sm text-slate-700">
+                        <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <tr>
+                                <th class="py-2 text-left">Period</th>
+                                <th class="py-2 text-left">Pay Type</th>
+                                <th class="py-2 text-right">Hours</th>
+                                <th class="py-2 text-right">Gross</th>
+                                <th class="py-2 text-right">Net</th>
+                                <th class="py-2 text-left">Status</th>
+                                <th class="py-2 text-left">Paid At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($recentPayrollItems as $payrollItem)
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-2">{{ $payrollItem->period?->period_key ?? '--' }}</td>
+                                    <td class="py-2">{{ ucfirst((string) ($payrollItem->pay_type ?? '--')) }}</td>
+                                    <td class="py-2 text-right">{{ number_format((float) ($payrollItem->timesheet_hours ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->gross_pay ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->net_pay ?? 0), 2) }}</td>
+                                    <td class="py-2">{{ ucfirst((string) ($payrollItem->status ?? '--')) }}</td>
+                                    <td class="py-2">{{ $payrollItem->paid_at?->format(($globalDateFormat ?? 'Y-m-d') . ' H:i') ?? '--' }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="py-4 text-center text-slate-500">No payroll item yet.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
     @elseif($tab === 'earnings')
         @php
             $totalEarned = (float) ($projectBaseEarnings['total_earned'] ?? 0);

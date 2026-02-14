@@ -8,6 +8,7 @@ use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Models\SupportTicket;
 use App\Models\Employee;
+use App\Models\LeaveRequest;
 use App\Models\SalesRepresentative;
 use App\Models\Project;
 use App\Models\ProjectTask;
@@ -165,8 +166,10 @@ class AppServiceProvider extends ServiceProvider
                 $view->with('adminHeaderStats', [
                     'pending_orders' => Order::where('status', 'pending')->count(),
                     'overdue_invoices' => Invoice::where('status', 'overdue')->count(),
-                    'tickets_waiting' => SupportTicket::whereIn('status', ['open', 'customer_reply'])->count(),
+                    'tickets_waiting' => SupportTicket::where('status', 'customer_reply')->count(),
+                    'open_support_tickets' => SupportTicket::where('status', 'open')->count(),
                     'pending_manual_payments' => PaymentProof::where('status', 'pending')->count(),
+                    'pending_leave_requests' => LeaveRequest::where('status', 'pending')->count(),
                     'tasks_badge' => $adminTaskBadge,
                     'unread_chat' => $adminUnreadChat,
                 ]);
@@ -285,7 +288,9 @@ class AppServiceProvider extends ServiceProvider
                 'pending_orders' => 0,
                 'overdue_invoices' => 0,
                 'tickets_waiting' => 0,
+                'open_support_tickets' => 0,
                 'pending_manual_payments' => 0,
+                'pending_leave_requests' => 0,
             ]);
             View::share('employeeHeaderStats', [
                 'task_badge' => 0,
