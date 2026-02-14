@@ -23,6 +23,14 @@ class UrlResolverTest extends TestCase
         );
     }
 
+    public function test_normalize_root_url_strips_query_and_fragment(): void
+    {
+        $this->assertSame(
+            'https://example.com',
+            UrlResolver::normalizeRootUrl('https://example.com/admin/login?foo=bar#frag')
+        );
+    }
+
     public function test_normalize_root_url_returns_null_for_invalid_values(): void
     {
         $this->assertNull(UrlResolver::normalizeRootUrl(''));

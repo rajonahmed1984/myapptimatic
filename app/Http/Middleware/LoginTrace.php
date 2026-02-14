@@ -17,14 +17,11 @@ class LoginTrace
         }
 
         $route = $request->route();
-        $routeMiddleware = $route?->gatherMiddleware() ?? [];
-        $resolvedGuard = $this->resolveGuard($routeMiddleware);
         $sessionCookieName = (string) config('session.cookie');
-        $incomingSessionCookie = $sessionCookieName !== ''
-            ? $request->cookie($sessionCookieName)
-            : null;
+        $sessionIdBefore = $request->hasSession() ? $request->session()->getId() : null;
+        $requestHasSessionCookie = $sessionCookieName !== '' && $request->cookies->has($sessionCookieName);
 
-        Log::info('[LOGIN_TRACE] Request', [
+        Log::info('[LOGIN_TRACE] RouteProbeBefore', [
             'route_name' => $route?->getName(),
             'path' => $request->path(),
             'method' => $request->method(),
@@ -32,80 +29,40 @@ class LoginTrace
             'scheme' => $request->getScheme(),
             'is_secure' => $request->isSecure(),
             'x_forwarded_proto' => $request->headers->get('x-forwarded-proto'),
+            'x_forwarded_for' => $request->headers->get('x-forwarded-for'),
             'x_forwarded_host' => $request->headers->get('x-forwarded-host'),
-            'x_forwarded_port' => $request->headers->get('x-forwarded-port'),
-            'session_id' => $request->hasSession() ? $request->session()->getId() : null,
             'session_cookie_name' => $sessionCookieName,
-            'incoming_session_cookie' => $incomingSessionCookie,
-            'session_has_old_input' => $request->hasSession() ? $request->session()->hasOldInput() : null,
-            'session_has_errors' => $request->hasSession() ? $request->session()->has('errors') : null,
-            'route_middleware' => $routeMiddleware,
-            'resolved_guard' => $resolvedGuard,
-            'auth_default_check' => Auth::check(),
+            'request_has_session_cookie' => $requestHasSessionCookie,
+            'session_id' => $sessionIdBefore,
+            'csrf_token_present' => $request->has('_token'),
             'guard_checks' => $this->guardChecks(),
         ]);
 
         $response = $next($request);
 
-        $sessionCookie = null;
-        foreach ($response->headers->getCookies() as $cookie) {
-            if ($cookie->getName() === $sessionCookieName) {
-                $sessionCookie = $cookie;
-                break;
-            }
-        }
+        $sessionIdAfter = $request->hasSession() ? $request->session()->getId() : null;
 
-        Log::info('[LOGIN_TRACE] Response', [
+        Log::info('[LOGIN_TRACE] RouteProbeAfter', [
             'route_name' => $route?->getName(),
+            'path' => $request->path(),
+            'method' => $request->method(),
             'status' => $response->getStatusCode(),
-            'redirect_to' => $response->headers->get('Location'),
-            'session_id' => $request->hasSession() ? $request->session()->getId() : null,
-            'session_has_old_input' => $request->hasSession() ? $request->session()->hasOldInput() : null,
-            'session_has_errors' => $request->hasSession() ? $request->session()->has('errors') : null,
-            'set_session_cookie' => $sessionCookie !== null,
-            'set_session_cookie_name' => $sessionCookie?->getName(),
-            'set_session_cookie_value' => $sessionCookie?->getValue(),
-            'set_session_cookie_domain' => $sessionCookie?->getDomain(),
-            'set_session_cookie_secure' => $sessionCookie?->isSecure(),
-            'auth_default_check' => Auth::check(),
+            'host' => $request->getHost(),
+            'scheme' => $request->getScheme(),
+            'is_secure' => $request->isSecure(),
+            'x_forwarded_proto' => $request->headers->get('x-forwarded-proto'),
+            'x_forwarded_for' => $request->headers->get('x-forwarded-for'),
+            'x_forwarded_host' => $request->headers->get('x-forwarded-host'),
+            'session_cookie_name' => $sessionCookieName,
+            'request_has_session_cookie' => $requestHasSessionCookie,
+            'session_id_before' => $sessionIdBefore,
+            'session_id_after' => $sessionIdAfter,
+            'csrf_token_present' => $request->has('_token'),
             'guard_checks' => $this->guardChecks(),
+            'redirect_to' => $response->headers->get('Location'),
         ]);
 
         return $response;
-    }
-
-    /**
-     * @param  list<string>  $routeMiddleware
-     */
-    private function resolveGuard(array $routeMiddleware): string
-    {
-        foreach ($routeMiddleware as $middleware) {
-            if (str_starts_with($middleware, 'guest:') || str_starts_with($middleware, 'auth:')) {
-                $guards = explode(',', explode(':', $middleware, 2)[1]);
-                $guard = trim((string) ($guards[0] ?? ''));
-                if ($guard !== '') {
-                    return $guard;
-                }
-            }
-
-            if ($middleware === 'employee') {
-                return 'employee';
-            }
-
-            if ($middleware === 'salesrep') {
-                return 'sales';
-            }
-
-            if ($middleware === 'support') {
-                return 'support';
-            }
-
-            if ($middleware === 'admin' || $middleware === 'client') {
-                return 'web';
-            }
-        }
-
-        return Auth::getDefaultDriver();
     }
 
     /**
@@ -113,8 +70,11 @@ class LoginTrace
      */
     private function guardChecks(): array
     {
+        $webUser = Auth::guard('web')->user();
+
         return [
             'web' => Auth::guard('web')->check(),
+            'admin' => $webUser !== null && method_exists($webUser, 'isAdmin') && $webUser->isAdmin(),
             'employee' => Auth::guard('employee')->check(),
             'sales' => Auth::guard('sales')->check(),
             'support' => Auth::guard('support')->check(),

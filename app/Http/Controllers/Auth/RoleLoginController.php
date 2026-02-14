@@ -22,6 +22,7 @@ class RoleLoginController extends Controller
     public function loginSales(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
         $this->loginTrace('ControllerHit', [
+            'route' => $request->route()?->getName(),
             'method' => __METHOD__,
             'email' => (string) $request->input('email', ''),
             'guard' => 'sales',
@@ -56,6 +57,7 @@ class RoleLoginController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'sales',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'sales.login',
             ]);
 
@@ -75,6 +77,7 @@ class RoleLoginController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'sales',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'sales.login',
                 'reason' => 'role_mismatch',
             ]);
@@ -95,6 +98,7 @@ class RoleLoginController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'sales',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'sales.login',
                 'reason' => 'rep_inactive_or_missing',
             ]);
@@ -107,6 +111,7 @@ class RoleLoginController extends Controller
         $this->loginTrace('Response', [
             'guard' => 'sales',
             'type' => 'redirect',
+            'status' => 302,
             'target_route' => 'rep.dashboard',
         ]);
 
@@ -130,6 +135,7 @@ class RoleLoginController extends Controller
     public function loginSupport(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
         $this->loginTrace('ControllerHit', [
+            'route' => $request->route()?->getName(),
             'method' => __METHOD__,
             'email' => (string) $request->input('email', ''),
             'guard' => 'support',
@@ -164,6 +170,7 @@ class RoleLoginController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'support',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'support.login',
             ]);
 
@@ -183,6 +190,7 @@ class RoleLoginController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'support',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'support.login',
                 'reason' => 'role_mismatch',
             ]);
@@ -195,6 +203,7 @@ class RoleLoginController extends Controller
         $this->loginTrace('Response', [
             'guard' => 'support',
             'type' => 'redirect',
+            'status' => 302,
             'target_route' => 'support.dashboard',
         ]);
 

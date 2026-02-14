@@ -6,6 +6,7 @@ Set these environment values on production:
 
 ```env
 APP_URL=https://my.apptimatic.com
+TRUSTED_PROXIES=*
 SESSION_DRIVER=file
 SESSION_COOKIE=apptimatic_session
 SESSION_DOMAIN=my.apptimatic.com
@@ -21,6 +22,8 @@ Notes:
 - Keep a unique `SESSION_COOKIE` per app to avoid collisions with other apps on the same parent domain.
 - `SESSION_SAME_SITE=lax` is the recommended default for login/session flows.
 - `APP_URL` should be the root URL only (scheme + host + optional port), without paths like `/admin`.
+- Set `TRUSTED_PROXIES` to your proxy CIDR/IP list when possible (keep `*` only if the proxy chain is dynamic and cannot be pinned).
+- After changing `SESSION_DOMAIN` or `SESSION_COOKIE`, clear old browser cookies for the site before re-testing login.
 
 For temporary login/session diagnostics only:
 

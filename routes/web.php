@@ -254,35 +254,62 @@ Route::middleware(['guest:support', 'nocache'])
         Route::post('/reset-password', [RolePasswordResetController::class, 'resetSupport'])->name('password.update');
     });
 
-if (app()->environment(['local', 'testing']) || config('app.login_trace')) {
-    Route::get('/_debug/login-trace', function (Request $request) {
+if (config('app.login_trace')) {
+    Route::get('/__debug/auth', function (Request $request) {
         $sessionCookieName = (string) config('session.cookie');
-        $guard = (string) $request->query('guard', 'web');
+        $sessionCookiePresent = $sessionCookieName !== '' && $request->cookies->has($sessionCookieName);
+        $guards = ['web', 'employee', 'sales', 'support'];
+        $auth = [];
 
-        if (! in_array($guard, ['web', 'employee', 'sales', 'support'], true)) {
-            $guard = 'web';
+        foreach ($guards as $guard) {
+            $auth[$guard] = [
+                'check' => Auth::guard($guard)->check(),
+                'user_id' => Auth::guard($guard)->id(),
+            ];
         }
 
         return response()->json([
-            'cookie_name' => $sessionCookieName,
-            'session_cookie' => $sessionCookieName !== '' ? $request->cookie($sessionCookieName) : null,
-            'session_id' => $request->hasSession() ? $request->session()->getId() : null,
-            'auth_check' => Auth::check(),
-            'auth_user_id' => Auth::id(),
-            'guard' => $guard,
-            'guard_check' => Auth::guard($guard)->check(),
-            'guard_user_id' => Auth::guard($guard)->id(),
-            'guard_checks' => [
-                'web' => Auth::guard('web')->check(),
-                'employee' => Auth::guard('employee')->check(),
-                'sales' => Auth::guard('sales')->check(),
-                'support' => Auth::guard('support')->check(),
-            ],
             'host' => $request->getHost(),
             'scheme' => $request->getScheme(),
             'is_secure' => $request->isSecure(),
+            'session_cookie_name' => $sessionCookieName,
+            'request_cookie_value_present' => $sessionCookiePresent,
+            'session_id' => $request->hasSession() ? $request->session()->getId() : null,
+            'session_driver' => config('session.driver'),
+            'session_domain' => config('session.domain'),
+            'session_secure' => config('session.secure'),
+            'session_same_site' => config('session.same_site'),
+            'auth' => $auth,
         ]);
-    })->name('debug.login-trace');
+    })->name('debug.auth');
+
+    Route::post('/__debug/login-check', function (Request $request) {
+        $data = $request->validate([
+            'guard' => ['required', 'in:web,employee,sales,support'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+            'remember' => ['nullable', 'boolean'],
+        ]);
+
+        $guard = (string) $data['guard'];
+        $remember = (bool) ($data['remember'] ?? false);
+        $authGuard = Auth::guard($guard);
+        $sessionIdBefore = $request->hasSession() ? $request->session()->getId() : null;
+
+        $attempted = $authGuard->attempt([
+            'email' => $data['email'],
+            'password' => $data['password'],
+        ], $remember);
+
+        return response()->json([
+            'guard' => $guard,
+            'attempt_success' => $attempted,
+            'attempt_user_id' => $authGuard->id(),
+            'guard_check_after_attempt' => $authGuard->check(),
+            'session_id_before' => $sessionIdBefore,
+            'session_id_after' => $request->hasSession() ? $request->session()->getId() : null,
+        ]);
+    })->name('debug.login-check');
 }
 
 Route::post('/logout', [AuthController::class, 'logout'])

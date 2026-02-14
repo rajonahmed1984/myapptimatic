@@ -101,12 +101,8 @@ class LoginSessionPersistenceTest extends TestCase
 
         $response->assertRedirect(route('client.dashboard'));
         $response->assertCookie(config('session.cookie'));
-
-        $debug = $this->get(route('debug.login-trace', ['guard' => 'web']));
-        $debug->assertOk();
-        $debug->assertJsonPath('guard', 'web');
-        $debug->assertJsonPath('guard_check', true);
-        $debug->assertJsonPath('guard_user_id', $user->id);
+        $this->assertAuthenticatedAs($user, 'web');
+        $this->get(route('login'))->assertRedirect(route('client.dashboard'));
     }
 
     public function test_successful_login_persists_session_for_admin_login(): void
@@ -123,12 +119,8 @@ class LoginSessionPersistenceTest extends TestCase
 
         $response->assertRedirect(route('admin.dashboard'));
         $response->assertCookie(config('session.cookie'));
-
-        $debug = $this->get(route('debug.login-trace', ['guard' => 'web']));
-        $debug->assertOk();
-        $debug->assertJsonPath('guard', 'web');
-        $debug->assertJsonPath('guard_check', true);
-        $debug->assertJsonPath('guard_user_id', $user->id);
+        $this->assertAuthenticatedAs($user, 'web');
+        $this->get(route('admin.login'))->assertRedirect(route('admin.dashboard'));
     }
 
     public function test_successful_login_persists_session_for_employee_guard(): void
@@ -152,12 +144,8 @@ class LoginSessionPersistenceTest extends TestCase
 
         $response->assertRedirect(route('employee.dashboard'));
         $response->assertCookie(config('session.cookie'));
-
-        $debug = $this->get(route('debug.login-trace', ['guard' => 'employee']));
-        $debug->assertOk();
-        $debug->assertJsonPath('guard', 'employee');
-        $debug->assertJsonPath('guard_check', true);
-        $debug->assertJsonPath('guard_user_id', $user->id);
+        $this->assertAuthenticatedAs($user, 'employee');
+        $this->get(route('employee.login'))->assertRedirect(route('employee.dashboard'));
     }
 
     public function test_successful_login_persists_session_for_sales_guard(): void
@@ -181,12 +169,8 @@ class LoginSessionPersistenceTest extends TestCase
 
         $response->assertRedirect(route('rep.dashboard'));
         $response->assertCookie(config('session.cookie'));
-
-        $debug = $this->get(route('debug.login-trace', ['guard' => 'sales']));
-        $debug->assertOk();
-        $debug->assertJsonPath('guard', 'sales');
-        $debug->assertJsonPath('guard_check', true);
-        $debug->assertJsonPath('guard_user_id', $user->id);
+        $this->assertAuthenticatedAs($user, 'sales');
+        $this->get(route('sales.login'))->assertRedirect(route('rep.dashboard'));
     }
 
     public function test_successful_login_persists_session_for_support_guard(): void
@@ -203,11 +187,7 @@ class LoginSessionPersistenceTest extends TestCase
 
         $response->assertRedirect(route('support.dashboard'));
         $response->assertCookie(config('session.cookie'));
-
-        $debug = $this->get(route('debug.login-trace', ['guard' => 'support']));
-        $debug->assertOk();
-        $debug->assertJsonPath('guard', 'support');
-        $debug->assertJsonPath('guard_check', true);
-        $debug->assertJsonPath('guard_user_id', $user->id);
+        $this->assertAuthenticatedAs($user, 'support');
+        $this->get(route('support.login'))->assertRedirect(route('support.dashboard'));
     }
 }

@@ -21,6 +21,7 @@ class AuthController extends Controller
     public function login(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
         $this->loginTrace('ControllerHit', [
+            'route' => $request->route()?->getName(),
             'method' => __METHOD__,
             'email' => (string) $request->input('email', ''),
             'guard' => 'employee',
@@ -55,6 +56,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'employee',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'employee.login',
             ]);
 
@@ -78,6 +80,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'employee',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'employee.login',
                 'reason' => 'employee_inactive_or_missing',
             ]);
@@ -91,6 +94,7 @@ class AuthController extends Controller
         $this->loginTrace('Response', [
             'guard' => 'employee',
             'type' => 'redirect',
+            'status' => 302,
             'target_route' => 'employee.dashboard',
         ]);
 

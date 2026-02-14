@@ -36,6 +36,7 @@ class AuthController extends Controller
     public function login(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
         $this->loginTrace('ControllerHit', [
+            'route' => $request->route()?->getName(),
             'method' => __METHOD__,
             'email' => (string) $request->input('email', ''),
             'guard' => 'web',
@@ -74,6 +75,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'web',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'login',
             ]);
 
@@ -99,6 +101,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'web',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'login',
                 'reason' => 'inactive_project_client',
             ]);
@@ -122,6 +125,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'web',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'client.projects.show',
                 'project_id' => $user->project_id,
             ]);
@@ -132,6 +136,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'web',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'admin.dashboard',
             ]);
             return redirect()->route('admin.dashboard');
@@ -149,6 +154,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'web',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'rep.dashboard',
                 'sales_user_id' => $user?->id,
             ]);
@@ -161,6 +167,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'web',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_url' => $redirect,
             ]);
 
@@ -170,6 +177,7 @@ class AuthController extends Controller
         $this->loginTrace('Response', [
             'guard' => 'web',
             'type' => 'redirect',
+            'status' => 302,
             'target_route' => 'client.dashboard',
         ]);
 
@@ -179,6 +187,7 @@ class AuthController extends Controller
     public function adminLogin(Request $request, RecaptchaService $recaptcha): RedirectResponse
     {
         $this->loginTrace('ControllerHit', [
+            'route' => $request->route()?->getName(),
             'method' => __METHOD__,
             'email' => (string) $request->input('email', ''),
             'guard' => 'web',
@@ -225,6 +234,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'web',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'admin.login',
                 'panel' => 'admin',
             ]);
@@ -253,6 +263,7 @@ class AuthController extends Controller
             $this->loginTrace('Response', [
                 'guard' => 'web',
                 'type' => 'redirect',
+                'status' => 302,
                 'target_route' => 'admin.login',
                 'panel' => 'admin',
                 'reason' => 'not_admin',
@@ -285,6 +296,7 @@ class AuthController extends Controller
         $this->loginTrace('Response', [
             'guard' => 'web',
             'type' => 'redirect',
+            'status' => 302,
             'target_route' => 'admin.dashboard',
             'panel' => 'admin',
         ]);

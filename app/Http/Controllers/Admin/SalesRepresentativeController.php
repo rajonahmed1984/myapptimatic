@@ -20,7 +20,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use App\Enums\Role;
-use Illuminate\Support\Facades\Log;
 use App\Services\CommissionService;
 use Illuminate\Support\Carbon;
 
@@ -89,7 +88,6 @@ class SalesRepresentativeController extends Controller
 
     public function store(Request $request)
     {
-        Log::info('sales rep store request', $request->all());
         $rules = [
             'employee_id' => ['nullable', 'exists:employees,id'],
             'user_id' => ['nullable', 'exists:users,id'],
@@ -115,7 +113,6 @@ class SalesRepresentativeController extends Controller
         $data = $request->validate($rules);
 
         $user = null;
-        Log::info('user_id filled check', ['filled' => $request->filled('user_id'), 'user_id' => $request->input('user_id')]);
         if ($request->filled('user_id')) {
             $user = User::findOrFail($request->input('user_id'));
         }
@@ -129,7 +126,6 @@ class SalesRepresentativeController extends Controller
         ]);
 
         if ($user) {
-            Log::info('Assigning sales role to existing user', ['user_id' => $user->id]);
             $user->update(['role' => Role::SALES]);
         } elseif (! empty($data['user_password'])) {
             $user = User::create([
