@@ -47,10 +47,10 @@ use App\Http\Controllers\Admin\Hr\PaidHolidayController as HrPaidHolidayControll
 use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
 use App\Http\Controllers\Admin\IncomeCategoryController as AdminIncomeCategoryController;
 use App\Http\Controllers\Admin\IncomeController as AdminIncomeController;
-use App\Http\Controllers\Auth\RoleLoginController;
+use App\Http\Controllers\Auth\PortalLoginController;
+use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\Employee\AuthController as EmployeeAuthController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
 use App\Http\Controllers\Employee\AttendanceController as EmployeeAttendanceController;
 use App\Http\Controllers\Employee\ChatController as EmployeeChatController;
@@ -96,7 +96,6 @@ use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskActivityController;
 use App\Http\Controllers\ProjectTaskViewController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
@@ -199,14 +198,24 @@ Route::match(['GET', 'POST'], '/payments/bkash/{attempt}/callback', [PaymentCall
     ->name('payments.bkash.callback');
 
 Route::middleware(['guest:web', 'nocache'])->group(function () {
-    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->middleware('login.trace')->name('login.attempt');
+    Route::get('/login', [PortalLoginController::class, 'showLogin'])
+        ->defaults('portal', 'web')
+        ->name('login');
+    Route::post('/login', [PortalLoginController::class, 'login'])
+        ->defaults('portal', 'web')
+        ->middleware(['throttle:portal-login', 'login.trace'])
+        ->name('login.attempt');
     Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])->name('project-client.login');
     Route::post('/project-login', [ProjectClientAuthController::class, 'login'])->name('project-client.login.attempt');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
-    Route::get('/admin/login', [AuthController::class, 'showAdminLogin'])->name('admin.login');
-    Route::post('/admin/login', [AuthController::class, 'adminLogin'])->middleware('login.trace')->name('admin.login.attempt');
+    Route::get('/admin/login', [PortalLoginController::class, 'showLogin'])
+        ->defaults('portal', 'admin')
+        ->name('admin.login');
+    Route::post('/admin/login', [PortalLoginController::class, 'login'])
+        ->defaults('portal', 'admin')
+        ->middleware(['throttle:portal-login', 'login.trace'])
+        ->name('admin.login.attempt');
     Route::get('/admin/forgot-password', [PasswordResetController::class, 'requestAdmin'])->name('admin.password.request');
     Route::post('/admin/forgot-password', [PasswordResetController::class, 'emailAdmin'])->name('admin.password.email');
     Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
@@ -219,8 +228,13 @@ Route::middleware(['guest:employee', 'nocache'])
     ->prefix('employee')
     ->name('employee.')
     ->group(function () {
-        Route::get('/login', [EmployeeAuthController::class, 'showLogin'])->name('login');
-        Route::post('/login', [EmployeeAuthController::class, 'login'])->middleware('login.trace')->name('login.attempt');
+        Route::get('/login', [PortalLoginController::class, 'showLogin'])
+            ->defaults('portal', 'employee')
+            ->name('login');
+        Route::post('/login', [PortalLoginController::class, 'login'])
+            ->defaults('portal', 'employee')
+            ->middleware(['throttle:portal-login', 'login.trace'])
+            ->name('login.attempt');
         Route::get('/forgot-password', [RolePasswordResetController::class, 'showEmployeeForgot'])->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendEmployeeResetLink'])
             ->middleware('throttle:3,10')
@@ -233,8 +247,13 @@ Route::middleware(['guest:sales', 'nocache'])
     ->prefix('sales')
     ->name('sales.')
     ->group(function () {
-        Route::get('/login', [RoleLoginController::class, 'showSalesLogin'])->name('login');
-        Route::post('/login', [RoleLoginController::class, 'loginSales'])->middleware('login.trace')->name('login.attempt');
+        Route::get('/login', [PortalLoginController::class, 'showLogin'])
+            ->defaults('portal', 'sales')
+            ->name('login');
+        Route::post('/login', [PortalLoginController::class, 'login'])
+            ->defaults('portal', 'sales')
+            ->middleware(['throttle:portal-login', 'login.trace'])
+            ->name('login.attempt');
         Route::get('/forgot-password', [RolePasswordResetController::class, 'showSalesForgot'])->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSalesResetLink'])
             ->middleware('throttle:3,10')
@@ -247,8 +266,13 @@ Route::middleware(['guest:support', 'nocache'])
     ->prefix('support')
     ->name('support.')
     ->group(function () {
-        Route::get('/login', [RoleLoginController::class, 'showSupportLogin'])->name('login');
-        Route::post('/login', [RoleLoginController::class, 'loginSupport'])->middleware('login.trace')->name('login.attempt');
+        Route::get('/login', [PortalLoginController::class, 'showLogin'])
+            ->defaults('portal', 'support')
+            ->name('login');
+        Route::post('/login', [PortalLoginController::class, 'login'])
+            ->defaults('portal', 'support')
+            ->middleware(['throttle:portal-login', 'login.trace'])
+            ->name('login.attempt');
         Route::get('/forgot-password', [RolePasswordResetController::class, 'showSupportForgot'])->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSupportResetLink'])
             ->middleware('throttle:3,10')
@@ -256,64 +280,6 @@ Route::middleware(['guest:support', 'nocache'])
         Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showSupportReset'])->name('password.reset');
         Route::post('/reset-password', [RolePasswordResetController::class, 'resetSupport'])->name('password.update');
     });
-
-if (config('app.login_trace')) {
-    Route::get('/__debug/auth', function (Request $request) {
-        $sessionCookieName = (string) config('session.cookie');
-        $sessionCookiePresent = $sessionCookieName !== '' && $request->cookies->has($sessionCookieName);
-        $guards = ['web', 'employee', 'sales', 'support'];
-        $auth = [];
-
-        foreach ($guards as $guard) {
-            $auth[$guard] = [
-                'check' => Auth::guard($guard)->check(),
-                'user_id' => Auth::guard($guard)->id(),
-            ];
-        }
-
-        return response()->json([
-            'host' => $request->getHost(),
-            'scheme' => $request->getScheme(),
-            'is_secure' => $request->isSecure(),
-            'session_cookie_name' => $sessionCookieName,
-            'request_cookie_value_present' => $sessionCookiePresent,
-            'session_id' => $request->hasSession() ? $request->session()->getId() : null,
-            'session_driver' => config('session.driver'),
-            'session_domain' => config('session.domain'),
-            'session_secure' => config('session.secure'),
-            'session_same_site' => config('session.same_site'),
-            'auth' => $auth,
-        ]);
-    })->name('debug.auth');
-
-    Route::post('/__debug/login-check', function (Request $request) {
-        $data = $request->validate([
-            'guard' => ['required', 'in:web,employee,sales,support'],
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-            'remember' => ['nullable', 'boolean'],
-        ]);
-
-        $guard = (string) $data['guard'];
-        $remember = (bool) ($data['remember'] ?? false);
-        $authGuard = Auth::guard($guard);
-        $sessionIdBefore = $request->hasSession() ? $request->session()->getId() : null;
-
-        $attempted = $authGuard->attempt([
-            'email' => $data['email'],
-            'password' => $data['password'],
-        ], $remember);
-
-        return response()->json([
-            'guard' => $guard,
-            'attempt_success' => $attempted,
-            'attempt_user_id' => $authGuard->id(),
-            'guard_check_after_attempt' => $authGuard->check(),
-            'session_id_before' => $sessionIdBefore,
-            'session_id_after' => $request->hasSession() ? $request->session()->getId() : null,
-        ]);
-    })->name('debug.login-check');
-}
 
 if (app()->environment(['local', 'testing'])) {
     Route::get('/v1/license-risk', function () {
@@ -402,10 +368,11 @@ if (app()->environment(['local', 'testing'])) {
         ->middleware('throttle:60,1');
 }
 
-Route::post('/logout', [AuthController::class, 'logout'])
+Route::post('/logout', [LogoutController::class, 'logout'])
     ->name('logout')
     ->middleware('auth:web');
-Route::post('/admin/logout', [AuthController::class, 'logoutAdmin'])
+Route::post('/admin/logout', [LogoutController::class, 'logout'])
+    ->defaults('portal', 'admin')
     ->name('admin.logout')
     ->middleware('auth:web');
 Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
@@ -416,7 +383,9 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
     ->prefix('employee')
     ->name('employee.')
     ->group(function () {
-        Route::post('/logout', [EmployeeAuthController::class, 'logout'])->name('logout');
+        Route::post('/logout', [LogoutController::class, 'logout'])
+            ->defaults('portal', 'employee')
+            ->name('logout');
         Route::get('/dashboard', EmployeeDashboardController::class)->name('dashboard');
         Route::get('/tasks', [EmployeeTasksController::class, 'index'])->name('tasks.index');
         Route::get('/chats', [EmployeeChatController::class, 'index'])->name('chats.index');
@@ -490,7 +459,7 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::get('/projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
     });
 
-Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/ai/business-status', [AiBusinessStatusController::class, 'index'])->name('ai.business-status');
     Route::post('/ai/business-status/generate', [AiBusinessStatusController::class, 'generate'])->name('ai.business-status.generate');
@@ -948,7 +917,9 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
     ->prefix('sales')
     ->name('rep.')
     ->group(function () {
-        Route::post('/logout', [RoleLoginController::class, 'logoutSales'])->name('logout');
+        Route::post('/logout', [LogoutController::class, 'logout'])
+            ->defaults('portal', 'sales')
+            ->name('logout');
         Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
         Route::get('/tasks', [SalesRepTasksController::class, 'index'])->name('tasks.index');
         Route::get('/chats', [SalesRepChatController::class, 'index'])->name('chats.index');
@@ -1018,7 +989,9 @@ Route::middleware(['support', 'user.activity:support', 'nocache'])
     ->prefix('support')
     ->name('support.')
     ->group(function () {
-        Route::post('/logout', [RoleLoginController::class, 'logoutSupport'])->name('logout');
+        Route::post('/logout', [LogoutController::class, 'logout'])
+            ->defaults('portal', 'support')
+            ->name('logout');
         Route::get('/dashboard', SupportDashboardController::class)->name('dashboard');
         Route::get('/tasks', [SupportTasksController::class, 'index'])->name('tasks.index');
         Route::get('/support-tickets', [SupportSupportTicketController::class, 'index'])->name('support-tickets.index');

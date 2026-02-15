@@ -9,9 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use App\Providers\AuthServiceProvider;
-use App\Providers\EventServiceProvider;
-use App\Providers\ActivityTrackingEventServiceProvider;
 use App\Providers\AppServiceProvider;
+use App\Support\Auth\Portal;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -24,7 +23,6 @@ return Application::configure(basePath: dirname(__DIR__))
         AppServiceProvider::class,
         AuthServiceProvider::class,
         App\Providers\EventServiceProvider::class,
-        ActivityTrackingEventServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         $trustedProxies = env('TRUSTED_PROXIES', '*');
@@ -56,7 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $user = Auth::guard('web')->user();
-            if ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) {
+            if (Portal::isAdminAuthorized($user)) {
                 return route('admin.dashboard');
             }
 
@@ -64,11 +62,8 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $middleware->redirectGuestsTo(function (Request $request) {
-            if ($request->is('admin') || $request->is('admin/*')) return route('admin.login');
-            if ($request->is('employee') || $request->is('employee/*')) return route('employee.login');
-            if ($request->is('sales') || $request->is('sales/*')) return route('sales.login');
-            if ($request->is('support') || $request->is('support/*')) return route('support.login');
-            return route('login');
+            $portal = Portal::fromRequestPath($request->path());
+            return route(Portal::loginRouteName($portal));
         });
 
         $middleware->validateCsrfTokens(except: [
@@ -77,7 +72,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            'admin' => \App\Http\Middleware\EnsureAdminPanelAccess::class,
+            'admin.panel' => \App\Http\Middleware\EnsureAdminPanelAccess::class,
             'admin.role' => \App\Http\Middleware\EnsureAdminRole::class,
             'client' => \App\Http\Middleware\EnsureClient::class,
             'client.block' => \App\Http\Middleware\PreventBlockedClientAccess::class,
@@ -120,13 +116,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
             auth()->logout();
 
-            $loginRoute = match (true) {
-                $request->is('admin') || $request->is('admin/*') => 'admin.login',
-                $request->is('employee') || $request->is('employee/*') => 'employee.login',
-                $request->is('sales') || $request->is('sales/*') => 'sales.login',
-                $request->is('support') || $request->is('support/*') => 'support.login',
-                default => 'login',
-            };
+            $portal = Portal::fromRequestPath($request->path());
+            $loginRoute = Portal::loginRouteName($portal);
 
             return redirect()
                 ->route($loginRoute)
@@ -149,13 +140,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
             auth()->logout();
 
-            $loginRoute = match (true) {
-                $request->is('admin') || $request->is('admin/*') => 'admin.login',
-                $request->is('employee') || $request->is('employee/*') => 'employee.login',
-                $request->is('sales') || $request->is('sales/*') => 'sales.login',
-                $request->is('support') || $request->is('support/*') => 'support.login',
-                default => 'login',
-            };
+            $portal = Portal::fromRequestPath($request->path());
+            $loginRoute = Portal::loginRouteName($portal);
 
             return redirect()
                 ->route($loginRoute)

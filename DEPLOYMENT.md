@@ -12,6 +12,7 @@ SESSION_COOKIE=apptimatic_session
 SESSION_DOMAIN=my.apptimatic.com
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
+ADMIN_PANEL_ROLES=master_admin,sub_admin,sales,support
 LOGIN_TRACE=false
 ```
 
@@ -23,6 +24,7 @@ Notes:
 - `SESSION_SAME_SITE=lax` is the recommended default for login/session flows.
 - `APP_URL` should be the root URL only (scheme + host + optional port), without paths like `/admin`.
 - Set `TRUSTED_PROXIES` to your proxy CIDR/IP list when possible (keep `*` only if the proxy chain is dynamic and cannot be pinned).
+- Behind reverse proxies, ensure forwarded headers are passed through (`X-Forwarded-Proto`, `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Port`).
 - After changing `SESSION_DOMAIN` or `SESSION_COOKIE`, clear old browser cookies for the site before re-testing login.
 
 For temporary login/session diagnostics only:
