@@ -13,3 +13,8 @@
 @if (request()->routeIs('register'))
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/12.1.13/css/intlTelInput.css">
 @endif
+@if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+    @vite(['resources/js/app.js'])
+@elseif (file_exists(resource_path('js/ajax-nav.js')))
+    <script>{!! file_get_contents(resource_path('js/ajax-nav.js')) !!}</script>
+@endif

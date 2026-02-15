@@ -86,6 +86,11 @@ body.bg-dashboard {
     color: #5eead4;
 }
 
+.ajax-nav-active {
+    color: #5eead4;
+    font-weight: 600;
+}
+
 .pill {
     border-radius: 999px;
     padding: 0.15rem 0.65rem;

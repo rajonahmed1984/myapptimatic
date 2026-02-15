@@ -182,23 +182,29 @@
             </header>
 
             <main class="w-full px-6 py-10 fade-in">
-                @if ($errors->any())
-                    <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                        <ul class="space-y-1">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
+                <div
+                    id="appContent"
+                    data-page-title="@yield('title', config('app.name', 'MyApptimatic'))"
+                    data-page-key="{{ request()->route()?->getName() ?? '' }}"
+                >
+                    @if ($errors->any())
+                        <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                            <ul class="space-y-1">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
-                @if (session('status'))
-                    <div class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
-                        {{ session('status') }}
-                    </div>
-                @endif
+                    @if (session('status'))
+                        <div class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
+                            {{ session('status') }}
+                        </div>
+                    @endif
 
-                @yield('content')
+                    @yield('content')
+                </div>
             </main>
         </div>
     </div>
@@ -231,6 +237,9 @@
     </script>
     @include('layouts.partials.delete-confirm-modal')
     @include('layouts.partials.table-responsive')
+    <div id="pageScriptStack" hidden aria-hidden="true">
+        @stack('scripts')
+    </div>
     @if(session('cache_cleared'))
         <script>
             (async function () {

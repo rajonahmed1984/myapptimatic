@@ -215,51 +215,57 @@
             </header>
 
             <main class="w-full px-6 py-10 fade-in">
-                @if(!empty($clientInvoiceNotice) && $clientInvoiceNotice['has_due'] && !auth()->user()->isClientProject())
-                    @include('partials.overdue-banner', ['notice' => $clientInvoiceNotice])
-                @endif
+                <div
+                    id="appContent"
+                    data-page-title="@yield('title', config('app.name', 'MyApptimatic'))"
+                    data-page-key="{{ request()->route()?->getName() ?? '' }}"
+                >
+                    @if(!empty($clientInvoiceNotice) && $clientInvoiceNotice['has_due'] && !auth()->user()->isClientProject())
+                        @include('partials.overdue-banner', ['notice' => $clientInvoiceNotice])
+                    @endif
 
-                @if(!empty($clientAccessBlock['blocked']) && !auth()->user()->isClientProject())
-                    @php
-                        $graceEnds = $clientAccessBlock['grace_ends_at']
-                            ? \Illuminate\Support\Carbon::parse($clientAccessBlock['grace_ends_at'])->format($globalDateFormat . ' H:i')
-                            : null;
-                        $invoiceLabel = $clientAccessBlock['invoice_number'] ? "Invoice #{$clientAccessBlock['invoice_number']}" : 'your outstanding invoice';
-                        $accessMessage = "Please pay {$invoiceLabel} to restore access" . ($graceEnds ? " before {$graceEnds}" : '') . '.';
-                    @endphp
-                    <div class="mb-6 rounded-3xl border border-rose-200 bg-rose-50 px-6 py-4 text-rose-800">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <div class="text-xs uppercase tracking-[0.35em] text-rose-500">Account blocked</div>
-                            <div class="flex-1 text-sm text-rose-700">
-                                <span class="font-semibold">Access to most areas is restricted.</span>
-                                <span class="ml-1">{{ $accessMessage }}</span>
+                    @if(!empty($clientAccessBlock['blocked']) && !auth()->user()->isClientProject())
+                        @php
+                            $graceEnds = $clientAccessBlock['grace_ends_at']
+                                ? \Illuminate\Support\Carbon::parse($clientAccessBlock['grace_ends_at'])->format($globalDateFormat . ' H:i')
+                                : null;
+                            $invoiceLabel = $clientAccessBlock['invoice_number'] ? "Invoice #{$clientAccessBlock['invoice_number']}" : 'your outstanding invoice';
+                            $accessMessage = "Please pay {$invoiceLabel} to restore access" . ($graceEnds ? " before {$graceEnds}" : '') . '.';
+                        @endphp
+                        <div class="mb-6 rounded-3xl border border-rose-200 bg-rose-50 px-6 py-4 text-rose-800">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <div class="text-xs uppercase tracking-[0.35em] text-rose-500">Account blocked</div>
+                                <div class="flex-1 text-sm text-rose-700">
+                                    <span class="font-semibold">Access to most areas is restricted.</span>
+                                    <span class="ml-1">{{ $accessMessage }}</span>
+                                </div>
+                                @if(!empty($clientAccessBlock['payment_url']))
+                                    <a href="{{ $clientAccessBlock['payment_url'] }}" class="inline-flex items-center rounded-full border border-rose-300 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">
+                                        Pay invoice
+                                    </a>
+                                @endif
                             </div>
-                            @if(!empty($clientAccessBlock['payment_url']))
-                                <a href="{{ $clientAccessBlock['payment_url'] }}" class="inline-flex items-center rounded-full border border-rose-300 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">
-                                    Pay invoice
-                                </a>
-                            @endif
                         </div>
-                    </div>
-                @endif
+                    @endif
 
-                @if ($errors->any())
-                    <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                        <ul class="space-y-1">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
+                    @if ($errors->any())
+                        <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                            <ul class="space-y-1">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
-                @if (session('status'))
-                    <div class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
-                        {{ session('status') }}
-                    </div>
-                @endif
+                    @if (session('status'))
+                        <div class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
+                            {{ session('status') }}
+                        </div>
+                    @endif
 
-                @yield('content')
+                    @yield('content')
+                </div>
             </main>
         </div>
     </div>
@@ -320,5 +326,8 @@
     @endif
     @include('layouts.partials.delete-confirm-modal')
     @include('layouts.partials.table-responsive')
+    <div id="pageScriptStack" hidden aria-hidden="true">
+        @stack('scripts')
+    </div>
 </body>
 </html>

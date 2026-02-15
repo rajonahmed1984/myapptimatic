@@ -106,6 +106,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'nocache' => \App\Http\Middleware\NoCacheHeaders::class,
             'login.trace' => \App\Http\Middleware\LoginTrace::class,
         ]);
+
+        $middleware->web(append: [
+            \App\Http\Middleware\HandlePartialResponse::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (NotFoundHttpException $exception, Request $request) {
