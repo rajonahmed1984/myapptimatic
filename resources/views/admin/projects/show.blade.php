@@ -15,6 +15,7 @@
         </div>
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
+            <a href="{{ route('admin.projects.invoices', $project) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">All Invoices</a>
             <a href="{{ route('admin.projects.tasks.index', $project) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Tasks</a>
             <a href="{{ route('admin.projects.chat', $project) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">
                 Chat
@@ -210,8 +211,11 @@
             $overheadTotal = $financials['overhead_total'] ?? $project->overhead_total;
             $budgetWithOverhead = $financials['budget_with_overhead'] ?? ((float) ($project->total_budget ?? 0) + $overheadTotal);
             $remainingBudget = $financials['remaining_budget'] ?? $project->remaining_budget;
+            $remainingBudgetInvoiceable = (float) ($financials['remaining_budget_invoiceable'] ?? $remainingBudget);
+            $paidPayment = (float) ($financials['paid_payment'] ?? 0);
+            $employeeSalaryTotal = (float) ($financials['employee_salary_total'] ?? ($project->contract_amount ?? $project->contract_employee_total_earned ?? 0));
+            $salesRepTotal = (float) ($financials['sales_rep_total'] ?? $project->sales_rep_total);
             $hasContractEmployees = $project->employees->contains(fn ($employee) => $employee->employment_type === 'contract');
-            $contractAmount = $project->contract_amount ?? $project->contract_employee_total_earned;
         @endphp
 
         <div>
@@ -221,16 +225,17 @@
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Budget Summary</div>
                     <div class="mt-2 text-xs text-slate-600">
                         Total budget: {{ $project->total_budget !== null ? $project->currency.' '.number_format($project->total_budget, 2) : '--' }}<br>
-                        Overhead total: {{ $project->currency ?? '' }}{{ number_format($overheadTotal, 2) }}<br>
-                        Budget with overhead: {{ $project->currency ?? '' }}{{ number_format($budgetWithOverhead, 2) }}<br>
-                        Initial payment: {{ $project->initial_payment_amount !== null ? $project->currency.' '.number_format($project->initial_payment_amount, 2) : '--' }}<br>                        
+                        Overhead total: {{ $project->currency.' '.number_format($overheadTotal, 2) }}<br>
+                        Budget with overhead: {{ $project->currency.' '.number_format($budgetWithOverhead, 2) }}<br>
+                        Initial payment: {{ $project->initial_payment_amount !== null ? $project->currency.' '.number_format($project->initial_payment_amount, 2) : '--' }}<br>
+                        Paid payment: {{ $project->currency.' '.number_format($paidPayment, 2) }}<br>
                         Remaining budget: {{ $remainingBudget !== null ? $project->currency.' '.number_format($remainingBudget, 2) : '--' }}<br>
                         Budget (legacy): {{ $project->budget_amount !== null ? $project->currency.' '.number_format($project->budget_amount, 2) : '--' }}<br>
                         Currency: {{ $project->currency ?? '--' }}<br>
-                        @if($hasContractEmployees)
-                            Employees Contract: {{ $project->currency ?? '' }}{{ number_format((float) ($contractAmount ?? 0), 2) }}<br>
+                        @if($hasContractEmployees || $employeeSalaryTotal > 0)
+                            Employee salary total: {{ $project->currency.' '.number_format($employeeSalaryTotal, 2) }}<br>
                         @endif
-                        Sales rep total: {{ $project->sales_rep_total !== null ? $project->currency.' '.number_format($project->sales_rep_total, 2) : '--' }}<br>
+                        Sales rep total: {{ $project->currency.' '.number_format($salesRepTotal, 2) }}<br>
                         Profit: {{ isset($financials['profit']) ? $project->currency.' '.number_format($financials['profit'], 2) : '--' }}
                     </div>
                 </div>
@@ -263,22 +268,50 @@
                         <table class="min-w-full text-left text-sm">
                             <thead>
                                 <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    <th class="px-3 py-2">Invoice</th>
                                     <th class="px-3 py-2">Details</th>
                                     <th class="px-3 py-2">Amount</th>
                                     <th class="px-3 py-2">Date</th>
                                     <th class="px-3 py-2">Status</th>
+                                    <th class="px-3 py-2">View</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($project->overheads as $overhead)
                                     <tr class="border-t border-slate-100">
+                                        <td class="px-3 py-2">
+                                            @if($overhead->invoice)
+                                                <a href="{{ route('admin.invoices.show', $overhead->invoice) }}" class="text-teal-700 hover:text-teal-600">
+                                                    #{{ is_numeric($overhead->invoice->number) ? $overhead->invoice->number : $overhead->invoice->id }}
+                                                </a>
+                                            @else
+                                                --
+                                            @endif
+                                        </td>
                                         <td class="px-3 py-2 w-2/5">{{ $overhead->short_details }}</td>
                                         <td class="px-3 py-2 text-right">{{ $project->currency }} {{ number_format((float) $overhead->amount, 2) }}</td>
                                         <td class="px-3 py-2">{{ $overhead->created_at?->format($globalDateFormat) ?? '--' }}</td>
+                                        
                                         <td class="px-3 py-2">
-                                            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $overhead->invoice_id ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-300 text-slate-600 bg-slate-50' }}">
-                                                {{ $overhead->invoice_id ? 'Invoiced' : 'Pending' }}
+                                            @php
+                                                $overheadInvoiceStatus = strtolower((string) ($overhead->invoice->status ?? ''));
+                                                $overheadStatusLabel = 'Unpaid';
+                                                $overheadStatusClass = 'border-amber-200 text-amber-700 bg-amber-50';
+
+                                                if ($overheadInvoiceStatus === 'paid') {
+                                                    $overheadStatusLabel = 'Paid';
+                                                    $overheadStatusClass = 'border-emerald-200 text-emerald-700 bg-emerald-50';
+                                                } elseif ($overheadInvoiceStatus === 'cancelled') {
+                                                    $overheadStatusLabel = 'Cancelled';
+                                                    $overheadStatusClass = 'border-slate-300 text-slate-600 bg-slate-100';
+                                                }
+                                            @endphp
+                                            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $overheadStatusClass }}">
+                                                {{ $overheadStatusLabel }}
                                             </span>
+                                        </td>
+                                        <td class="px-3 py-2 text-right">
+                                            <a href="{{ route('admin.invoices.show', $overhead->invoice) }}" class="text-xs font-semibold text-slate-700 hover:text-teal-600">View</a>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -310,7 +343,7 @@
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="text-sm font-semibold text-slate-800">Remaining budget invoices</div>
                     <div class="text-xs text-slate-500">
-                        Remaining: {{ $project->remaining_budget !== null ? $project->currency.' '.number_format($project->remaining_budget, 2) : '--' }}
+                        Remaining: {{ $project->currency.' '.number_format($remainingBudgetInvoiceable, 2) }}
                     </div>
                 </div>
 
@@ -325,6 +358,7 @@
                                     <th class="px-3 py-2">Amount</th>
                                     <th class="px-3 py-2">Issue</th>
                                     <th class="px-3 py-2">Due</th>
+                                    <th class="px-3 py-2">Paid at</th>
                                     <th class="px-3 py-2">Status</th>
                                     <th class="px-3 py-2 text-right">Action</th>
                                 </tr>
@@ -340,6 +374,7 @@
                                         <td class="px-3 py-2 text-slate-700">{{ $invoice->currency }} {{ $invoice->total }}</td>
                                         <td class="px-3 py-2 text-slate-500">{{ $invoice->issue_date?->format($globalDateFormat) ?? '--' }}</td>
                                         <td class="px-3 py-2 text-slate-500">{{ $invoice->due_date?->format($globalDateFormat) ?? '--' }}</td>
+                                        <td class="px-3 py-2 text-slate-500">{{ $invoice->paid_at?->format($globalDateFormat) ?? '--' }}</td>
                                         <td class="px-3 py-2">
                                             <x-status-badge :status="$invoice->status" />
                                         </td>
@@ -354,21 +389,21 @@
                 @endif
 
                 <div class="border-t border-slate-100 pt-4">
-                    @if($project->remaining_budget !== null && $project->remaining_budget > 0)
+                    @if($remainingBudgetInvoiceable > 0)
                         <form method="POST" action="{{ route('admin.projects.invoice-remaining', $project) }}" class="space-y-3 text-xs text-slate-500">
                             @csrf
                             <div class="space-y-1">
                                 <label class="text-[10px] uppercase tracking-[0.2em] text-slate-400 flex justify-between">
                                     <span>Amount</span>
-                                    <span class="text-slate-500">Available: {{ $project->currency }} {{ number_format($project->remaining_budget, 2) }}</span>
+                                    <span class="text-slate-500">Available: {{ $project->currency }} {{ number_format($remainingBudgetInvoiceable, 2) }}</span>
                                 </label>
                                 <input
                                     name="amount"
                                     type="number"
                                     step="0.01"
                                     min="0.01"
-                                    max="{{ $project->remaining_budget }}"
-                                    value="{{ old('amount', $project->remaining_budget) }}"
+                                    max="{{ $remainingBudgetInvoiceable }}"
+                                    value="{{ old('amount', $remainingBudgetInvoiceable) }}"
                                     class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-400 focus:outline-none"
                                 >
                                 @error('amount')

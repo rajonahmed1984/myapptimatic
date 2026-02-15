@@ -1,34 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-US">
 <head>
-    <meta charset="utf-8">
-    <title>Invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Apptimatic - {{ ucfirst($invoice->status) }} Invoice</title>
     <style>
-        body { font-family: DejaVu Sans, Arial, sans-serif; color: #0f172a; font-size: 12px; }
-        h1 { font-size: 20px; margin: 0; }
-        .muted { color: #64748b; }
-        .section { margin-top: 16px; }
-        .row { display: flex; justify-content: space-between; }
-        .logo-block { display: flex; flex-direction: column; gap: 6px; }
-        .logo { width: 56px; height: 56px; object-fit: contain; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; padding: 6px; }
-        .logo-fallback { width: 56px; height: 56px; border-radius: 12px; background: #0f172a; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #e2e8f0; padding: 8px; }
-        th { background: #f8fafc; text-align: left; }
-        .right { text-align: right; }
+        @page { size: auto; margin: 0; padding: 0; }
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.42857143;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #fff;
+        }
+        * { box-sizing: border-box; }
+        .container-fluid { width: 100%; margin: 0 auto; }
+        .invoice-container { max-width: 1800px; padding: 14px 20px 0; }
+        .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
+        .invoice-col { width: 50%; padding: 0 15px; }
+        .invoice-col.right { text-align: right; }
+        .invoice-col img { width: 300px; max-width: 100%; }
+        .invoice-status { margin: 20px 0 0; font-size: 24px; font-weight: bold; }
+        .invoice-status h3 { margin: 0; font-size: 18px; font-weight: 600; }
+        .small-text { font-size: 0.9em; }
+        hr { margin: 20px 0; border: 0; border-top: 1px solid #eee; }
+        address { margin-bottom: 20px; font-style: normal; line-height: 1.42857143; }
+        .panel { margin-bottom: 20px; background-color: #fff; }
+        .panel-default > .panel-heading {
+            color: #333;
+            background-color: #f5f5f5;
+            border-top: 1px solid #ddd;
+            border-right: 1px solid #ddd;
+            border-left: 1px solid #ddd;
+            padding: 10px 15px;
+        }
+        .panel-title { margin: 0; font-size: 16px; }
+        .table-responsive { width: 100%; overflow-x: auto; }
+        .table { width: 100%; max-width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+        .table > thead > tr > td,
+        .table > tbody > tr > td { padding: 8px; line-height: 1.42857143; vertical-align: top; border: 1px solid #ddd; }
+        .text-right { text-align: right !important; }
+        .text-center { text-align: center !important; }
+        .mt-5 { margin-top: 50px; }
+        .mb-3 { margin-bottom: 30px; }
+        .unpaid, .overdue { color: #cc0000; }
+        .paid { color: #779500; }
+        .refunded { color: #224488; }
+        .cancelled { color: #888; }
     </style>
 </head>
 <body>
     @php
         $displayNumber = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
-        $creditTotal = $invoice->accountingEntries->where('type', 'credit')->sum('amount');
-        $paymentEntries = $invoice->accountingEntries->where('type', 'payment');
-        $paidTotal = $paymentEntries->sum('amount');
-        $balance = max(0, (float) $invoice->total - $paidTotal - $creditTotal);
+        $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
         $taxSetting = \App\Models\TaxSetting::current();
         $taxLabel = $taxSetting->invoice_tax_label ?: 'Tax';
         $taxNote = $taxSetting->renderNote($invoice->tax_rate_percent);
         $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
+        $discountAmount = $creditTotal;
+        $payableAmount = max(0, (float) $invoice->total - $discountAmount);
+        $statusClass = strtolower((string) $invoice->status);
+
+        $companyName = $portalBranding['company_name'] ?? config('app.name', 'Apptimatic');
+        $companyEmail = $portalBranding['email'] ?? ($companyEmail ?? 'support@example.com');
+        $payToLine = $payToText ?? 'Billing Department';
+
         $logoSrc = null;
         $logoUrl = $portalBranding['logo_url'] ?? null;
 
@@ -63,125 +102,108 @@
         }
     @endphp
 
-    <div class="row">
-        <div class="logo-block">
-            @if(!empty($logoSrc))
-                <img src="{{ $logoSrc }}" alt="Logo" class="logo">
-            @else
-                <div class="logo-fallback">Apptimatic</div>
-            @endif
-            <div class="muted">Invoice #{{ $displayNumber }}</div>
-            <div class="muted">{{ $portalBranding['company_name'] ?? 'License Portal' }}</div>
-        </div>
-        <div class="right">
-            <div class="muted">Status</div>
-            <div>{{ ucfirst($invoice->status) }}</div>
-            <div class="muted">Due {{ $invoice->due_date->format($globalDateFormat) }}</div>
-        </div>
-    </div>
-
-    <div class="section row">
-        <div>
-            <div class="muted">Invoiced to</div>
-            <div><strong>{{ $invoice->customer?->name }}</strong></div>
-            <div>{{ $invoice->customer?->email }}</div>
-            <div class="muted">{{ $invoice->customer?->address ?: 'Address not provided.' }}</div>
-        </div>
-        <div>
-            <div class="muted">Pay to</div>
-            <div><strong>{{ $portalBranding['company_name'] ?? 'License Portal' }}</strong></div>
-            <div>{{ $payToText ?: 'Billing Department' }}</div>
-            <div class="muted">{{ $companyEmail ?: 'support@example.com' }}</div>
-        </div>
-    </div>
-
-    <div class="section row">
-        <div>
-            <span class="muted">Invoice date:</span>
-            <strong>{{ $invoice->issue_date->format($globalDateFormat) }}</strong>
-        </div>
-        <div>
-            <span class="muted">Service:</span>
-            <strong>
-                {{ $invoice->subscription?->plan?->product?->name ?? 'Service' }}
-                {{ $invoice->subscription?->plan?->name ? ' - '.$invoice->subscription->plan->name : '' }}
-            </strong>
-        </div>
-    </div>
-
-    <div class="section">
-        <table>
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th class="right">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($invoice->items as $item)
-                    <tr>
-                        <td>{{ $item->description }}</td>
-                        <td class="right">{{ $invoice->currency }} {{ $item->line_total }}</td>
-                    </tr>
-                @endforeach
-                <tr>
-                    <td class="right"><strong>Sub total</strong></td>
-                    <td class="right"><strong>{{ $invoice->currency }} {{ number_format((float) $invoice->subtotal, 2) }}</strong></td>
-                </tr>
-                @if($hasTax)
-                    <tr>
-                        <td class="right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included '.$taxLabel : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
-                        <td class="right"><strong>{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</strong></td>
-                    </tr>
+    <div class="container-fluid invoice-container">
+        <div class="row invoice-header">
+            <div class="invoice-col" style="display: flex;align-items: center;">
+                @if($logoSrc)
+                    <img src="{{ $logoSrc }}" title="{{ $companyName }}" />
+                @else
+                    <div style="font-size: 54px; font-weight: 800; color: #211f75; letter-spacing: -1px;">{{ strtolower($companyName) }}</div>
                 @endif
-                <tr>
-                    <td class="right"><strong>Credit</strong></td>
-                    <td class="right"><strong>{{ $invoice->currency }} {{ number_format((float) $creditTotal, 2) }}</strong></td>
-                </tr>
-                <tr>
-                    <td class="right"><strong>Total</strong></td>
-                    <td class="right"><strong>{{ $invoice->currency }} {{ number_format((float) $invoice->total, 2) }}</strong></td>
-                </tr>
-                <tr>
-                    <td class="right"><strong>Balance</strong></td>
-                    <td class="right"><strong>{{ $invoice->currency }} {{ number_format((float) $balance, 2) }}</strong></td>
-                </tr>
-            </tbody>
-        </table>
-        @if($hasTax && $taxNote)
-            <div class="section muted">{{ $taxNote }}</div>
-        @endif
-    </div>
-
-    @if($invoice->status === 'paid')
-        <div class="section">
-            <div class="muted section-label">Transactions</div>
-            @if($paymentEntries->isEmpty())
-                <div class="muted text-sm">No payment transactions recorded.</div>
-            @else
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Gateway</th>
-                            <th>Reference</th>
-                            <th class="right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($paymentEntries as $entry)
-                            <tr>
-                                <td>{{ $entry->entry_date ? $entry->entry_date->format($globalDateFormat) : ($entry->created_at ? $entry->created_at->format($globalDateFormat) : '-') }}</td>
-                                <td>{{ $entry->paymentGateway?->name ?? 'Manual' }}</td>
-                                <td>{{ $entry->reference ?: '-' }}</td>
-                                <td class="right">{{ $entry->currency }} {{ number_format((float) $entry->amount, 2) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            @endif
+            </div>
+            <div class="invoice-col text-right">
+                <div class="invoice-status">
+                    <span class="{{ $statusClass }}" style="text-transform: uppercase;">{{ strtoupper($invoice->status) }}</span>
+                    <h3>Invoice: #{{ $displayNumber }}</h3>
+                    <div style="margin-top: 0; font-size: 12px;">Invoice Date: <span class="small-text">{{ $invoice->issue_date->format($globalDateFormat) }}</span></div>
+                    <div style="margin-top: 0; font-size: 12px;">Invoice Due Date: <span class="small-text">{{ $invoice->due_date->format($globalDateFormat) }}</span></div>
+                    @if($invoice->paid_at)
+                        <div style="margin-top: 0; font-size: 12px;">Paid Date: <span class="small-text">{{ $invoice->paid_at->format($globalDateFormat) }}</span></div>
+                    @endif
+                </div>
+            </div>
         </div>
-    @endif
+
+        <hr />
+
+        <div class="row">
+            <div class="invoice-col">
+                <strong>Invoiced To</strong>
+                <address class="small-text">
+                    {{ $invoice->customer?->name ?? '--' }}<br />
+                    {{ $invoice->customer?->email ?? '--' }}<br />
+                    {{ $invoice->customer?->address ?? '--' }}
+                </address>
+            </div>
+            <div class="invoice-col right">
+                <strong>Pay To</strong>
+                <address class="small-text">
+                    {{ $companyName }}<br />
+                    {{ $payToLine }}<br />
+                    {{ $companyEmail }}
+                </address>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><strong>Invoice Items</strong></h3>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table class="table table-condensed">
+                        <thead>
+                            <tr>
+                                <td><strong>Description</strong></td>
+                                <td width="20%" class="text-center"><strong>Amount</strong></td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($invoice->items as $item)
+                                <tr>
+                                    <td>{{ $item->description }}</td>
+                                    <td class="text-center">{{ $invoice->currency }} {{ number_format((float) $item->line_total, 2) }}</td>
+                                </tr>
+                            @endforeach
+                            <tr>
+                                <td class="total-row text-right"><strong>Sub Total</strong></td>
+                                <td class="total-row text-center">{{ $invoice->currency }} {{ number_format((float) $invoice->subtotal, 2) }}</td>
+                            </tr>
+                            @if($hasTax)
+                                <tr>
+                                    <td class="total-row text-right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included '.$taxLabel : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
+                                    <td class="total-row text-center">{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</td>
+                                </tr>
+                            @endif
+                            <tr>
+                                <td class="total-row text-right"><strong>Discount</strong></td>
+                                <td class="total-row text-center">{{ $discountAmount > 0 ? '- '.$invoice->currency.' '.number_format($discountAmount, 2) : '- '.$invoice->currency.' 0.00' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="total-row text-right"><strong>Payable Amount</strong></td>
+                                <td class="total-row text-center">{{ $invoice->currency }} {{ number_format($payableAmount, 2) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        @if($hasTax && $taxNote)
+            <div class="text-right small-text" style="margin-top: -6px; margin-bottom: 18px;">{{ $taxNote }}</div>
+        @endif
+
+        <div class="container-fluid invoice-container" style="padding: 0;">
+            <div class="row mt-5" style="display: flex !important; justify-content: center;">
+                <div class="invoice-col" style="width: 100%; text-align: center;">
+                    <div class="mb-3">
+                        <p>This is system generated invoice no signature required</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
-

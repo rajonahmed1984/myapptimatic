@@ -7,7 +7,9 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
+use App\Models\Project;
 use App\Models\ProjectMaintenance;
+use App\Models\PaymentGateway;
 use App\Support\SystemLogger;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
@@ -17,6 +19,7 @@ use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 
 class InvoiceController extends Controller
@@ -28,6 +31,11 @@ class InvoiceController extends Controller
     public function index()
     {
         return $this->listByStatus(null, 'All Invoices');
+    }
+
+    public function projectInvoices(Project $project)
+    {
+        return $this->listByStatus(null, 'Project Invoices: '.$project->name, $project);
     }
 
     public function create(Request $request)
@@ -158,6 +166,39 @@ class InvoiceController extends Controller
                 'paymentProofs.reviewer',
             ]),
         ]);
+    }
+
+    public function clientView(Invoice $invoice)
+    {
+        return view('client.invoices.pay', [
+            'invoice' => $invoice->load([
+                'items',
+                'customer',
+                'subscription.plan.product',
+                'accountingEntries.paymentGateway',
+                'paymentProofs.paymentGateway',
+                'paymentProofs.paymentAttempt',
+            ]),
+            'paymentInstructions' => Setting::getValue('payment_instructions'),
+            'gateways' => PaymentGateway::query()->where('is_active', true)->orderBy('sort_order')->get(),
+            'payToText' => Setting::getValue('pay_to_text'),
+            'companyEmail' => Setting::getValue('company_email'),
+        ]);
+    }
+
+    public function download(Invoice $invoice): Response
+    {
+        $invoice->load(['items', 'customer', 'subscription.plan.product', 'accountingEntries.paymentGateway']);
+
+        $html = view('client.invoices.pdf', [
+            'invoice' => $invoice,
+            'payToText' => Setting::getValue('pay_to_text'),
+            'companyEmail' => Setting::getValue('company_email'),
+        ])->render();
+
+        $pdf = app('dompdf.wrapper')->loadHTML($html);
+
+        return $pdf->download('invoice-'.($invoice->number ?? $invoice->id).'.pdf');
     }
 
     public function markPaid(
@@ -345,13 +386,17 @@ class InvoiceController extends Controller
             ->with('status', 'Invoice deleted.');
     }
 
-    private function listByStatus(?string $status, string $title)
+    private function listByStatus(?string $status, string $title, ?Project $project = null)
     {
         $search = trim((string) request()->query('search', ''));
 
         $query = Invoice::query()
             ->with(['customer', 'paymentProofs', 'subscription.plan.product', 'maintenance.project', 'accountingEntries'])
             ->latest('issue_date');
+
+        if ($project) {
+            $query->where('project_id', $project->id);
+        }
 
         if ($status) {
             $query->where('status', $status);
@@ -385,6 +430,7 @@ class InvoiceController extends Controller
             'title' => $title,
             'statusFilter' => $status,
             'search' => $search,
+            'project' => $project,
         ];
 
         if (request()->header('HX-Request')) {

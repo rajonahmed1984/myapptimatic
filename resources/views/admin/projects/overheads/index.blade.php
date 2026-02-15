@@ -47,8 +47,21 @@
                                 <td class="px-3 py-2 text-right">{{ $project->currency }} {{ number_format((float) $overhead->amount, 2) }}</td>
                                 <td class="px-3 py-2">{{ $overhead->created_at?->format($globalDateFormat) ?? '--' }}</td>
                                 <td class="px-3 py-2">
-                                    <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $overhead->invoice_id ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-600 bg-slate-50' }}">
-                                        {{ $overhead->invoice_id ? 'Invoiced' : 'Pending' }}
+                                    @php
+                                        $overheadInvoiceStatus = strtolower((string) ($overhead->invoice->status ?? ''));
+                                        $overheadStatusLabel = 'Unpaid';
+                                        $overheadStatusClass = 'border-amber-200 text-amber-700 bg-amber-50';
+
+                                        if ($overheadInvoiceStatus === 'paid') {
+                                            $overheadStatusLabel = 'Paid';
+                                            $overheadStatusClass = 'border-emerald-200 text-emerald-700 bg-emerald-50';
+                                        } elseif ($overheadInvoiceStatus === 'cancelled') {
+                                            $overheadStatusLabel = 'Cancelled';
+                                            $overheadStatusClass = 'border-slate-300 text-slate-600 bg-slate-100';
+                                        }
+                                    @endphp
+                                    <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $overheadStatusClass }}">
+                                        {{ $overheadStatusLabel }}
                                     </span>
                                 </td>
                             </tr>
@@ -59,13 +72,13 @@
         @endif
 
         <div class="border-t border-slate-100 pt-4">
-            @php($pendingCount = $overheads->where('invoice_id', null)->count())
-            @if($pendingCount > 0)
+            @php($unpaidCount = $overheads->where('invoice_id', null)->count())
+            @if($unpaidCount > 0)
                 <div class="mb-3 flex items-center justify-between gap-3">
-                    <div class="text-xs text-slate-500">{{ $pendingCount }} pending overhead{{ $pendingCount > 1 ? 's' : '' }} can be invoiced.</div>
+                    <div class="text-xs text-slate-500">{{ $unpaidCount }} unpaid overhead{{ $unpaidCount > 1 ? 's' : '' }} can be invoiced.</div>
                     <form method="POST" action="{{ route('admin.projects.overheads.invoice', $project) }}">
                         @csrf
-                        <button type="submit" class="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-500">Invoice pending overheads</button>
+                        <button type="submit" class="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-500">Invoice unpaid overheads</button>
                     </form>
                 </div>
             @endif

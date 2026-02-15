@@ -7,14 +7,15 @@ use App\Models\ProjectTask;
 use App\Support\Currency;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ProjectStatusAiService
 {
     public function analyze(Project $project, GeminiService $geminiService): array
     {
         $prompt = $this->buildPrompt($project);
-        $raw = $geminiService->generateText($prompt);
+        $raw = $geminiService->generateText($prompt, [
+            'max_output_tokens' => 4096,
+        ]);
         $data = $this->extractJson($raw);
 
         return [
@@ -139,31 +140,163 @@ PROMPT;
 
     private function extractJson(string $text): ?array
     {
-        $clean = trim($text);
+        $clean = $this->stripCodeFences(trim($text));
 
-        if (Str::startsWith($clean, '```')) {
-            $clean = preg_replace('/^```[a-zA-Z]*\n|```$/m', '', $clean);
-            $clean = trim((string) $clean);
-        }
+        $decoded = $this->decodeObject($clean);
 
-        $start = strpos($clean, '{');
-        $end = strrpos($clean, '}');
-        if ($start === false || $end === false || $end <= $start) {
-            return null;
-        }
-
-        $json = substr($clean, $start, $end - $start + 1);
-        $decoded = json_decode($json, true);
         if (! is_array($decoded)) {
-            return null;
+            $start = strpos($clean, '{');
+            $end = strrpos($clean, '}');
+            if ($start === false || $end === false || $end <= $start) {
+                return $this->fallbackParse($clean);
+            }
+
+            $json = substr($clean, $start, $end - $start + 1);
+            $decoded = $this->decodeObject($json);
         }
 
-        return [
+        if (! is_array($decoded)) {
+            return $this->fallbackParse($clean);
+        }
+
+        $normalized = $this->normalizePayload($decoded);
+
+        if ($normalized['summary'] === null && empty($normalized['highlights']) && empty($normalized['risks']) && empty($normalized['next_steps'])) {
+            return $this->fallbackParse($clean);
+        }
+
+        return $normalized;
+    }
+
+    private function stripCodeFences(string $text): string
+    {
+        $clean = preg_replace('/^\s*```[a-zA-Z0-9_-]*\s*[\r\n]?/u', '', $text);
+        $clean = preg_replace('/[\r\n]?\s*```\s*$/u', '', (string) $clean);
+
+        return trim((string) $clean);
+    }
+
+    private function decodeObject(string $json): ?array
+    {
+        $decoded = json_decode($json, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    private function normalizePayload(array $decoded): array
+    {
+        $payload = [
             'summary' => Arr::get($decoded, 'summary'),
             'health' => Arr::get($decoded, 'health'),
             'highlights' => Arr::get($decoded, 'highlights'),
             'risks' => Arr::get($decoded, 'risks'),
             'next_steps' => Arr::get($decoded, 'next_steps'),
+        ];
+
+        $nestedData = Arr::get($decoded, 'data');
+        if (is_array($nestedData)) {
+            foreach (array_keys($payload) as $key) {
+                if (($payload[$key] === null || $payload[$key] === '') && Arr::has($nestedData, $key)) {
+                    $payload[$key] = Arr::get($nestedData, $key);
+                }
+            }
+        }
+
+        $nestedFromSummary = $this->extractNestedPayload($payload['summary']);
+        if (is_array($nestedFromSummary)) {
+            foreach (array_keys($payload) as $key) {
+                if (($payload[$key] === null || $payload[$key] === '') && Arr::has($nestedFromSummary, $key)) {
+                    $payload[$key] = Arr::get($nestedFromSummary, $key);
+                }
+            }
+        }
+
+        $summary = is_string($payload['summary']) ? trim($payload['summary']) : null;
+        if ($summary === '') {
+            $summary = null;
+        }
+
+        $health = is_string($payload['health']) ? strtolower(trim($payload['health'])) : null;
+        if (! in_array($health, ['green', 'yellow', 'red'], true)) {
+            $health = null;
+        }
+
+        return [
+            'summary' => $summary,
+            'health' => $health,
+            'highlights' => $this->normalizeList($payload['highlights']),
+            'risks' => $this->normalizeList($payload['risks']),
+            'next_steps' => $this->normalizeList($payload['next_steps']),
+        ];
+    }
+
+    private function extractNestedPayload(mixed $value): ?array
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $candidate = trim($value);
+        $candidate = $this->stripCodeFences($candidate);
+
+        $decoded = $this->decodeObject($candidate);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        $start = strpos($candidate, '{');
+        $end = strrpos($candidate, '}');
+        if ($start === false || $end === false || $end <= $start) {
+            return null;
+        }
+
+        $json = substr($candidate, $start, $end - $start + 1);
+
+        return $this->decodeObject($json);
+    }
+
+    private function normalizeList(mixed $value): array
+    {
+        if (is_array($value)) {
+            return collect($value)
+                ->map(fn ($item) => is_string($item) ? trim($item) : '')
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        if (is_string($value)) {
+            $parts = preg_split('/\r\n|\r|\n/u', $value) ?: [];
+
+            return collect($parts)
+                ->map(fn ($item) => trim((string) preg_replace('/^[-*•]\s*/u', '', $item)))
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        return [];
+    }
+
+    private function fallbackParse(string $text): ?array
+    {
+        $summary = null;
+        if (preg_match('/\"summary\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"/s', $text, $summaryMatch)) {
+            $summary = json_decode('"' . $summaryMatch[1] . '"');
+        } elseif (preg_match('/\"summary\"\\s*:\\s*\"(.+)/s', $text, $summaryMatch)) {
+            $summary = stripcslashes(rtrim($summaryMatch[1], "`\r\n\t "));
+        }
+
+        if (! is_string($summary) || trim($summary) === '') {
+            return null;
+        }
+
+        return [
+            'summary' => trim($summary),
+            'health' => null,
+            'highlights' => [],
+            'risks' => [],
+            'next_steps' => [],
         ];
     }
 }

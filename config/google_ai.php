@@ -8,4 +8,5 @@ return [
     'timeout' => (int) env('GOOGLE_AI_TIMEOUT', 15),
     'max_output_tokens' => (int) env('GOOGLE_AI_MAX_OUTPUT_TOKENS', 600),
     'temperature' => (float) env('GOOGLE_AI_TEMPERATURE', 0.4),
+    'thinking_budget' => (int) env('GOOGLE_AI_THINKING_BUDGET', 0),
 ];

@@ -692,6 +692,7 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::resource('projects', ProjectController::class);
     Route::post('projects/{project}/complete', [ProjectController::class, 'markComplete'])->name('projects.complete');
     Route::post('projects/{project}/ai-summary', [ProjectController::class, 'aiSummary'])->name('projects.ai');
+    Route::get('projects/{project}/invoices', [AdminInvoiceController::class, 'projectInvoices'])->name('projects.invoices');
     Route::get('projects/{project}/tasks', [ProjectController::class, 'tasks'])->name('projects.tasks.index');
     Route::post('projects/{project}/invoice-remaining', [ProjectController::class, 'invoiceRemainingBudget'])
         ->name('projects.invoice-remaining');
@@ -784,6 +785,8 @@ Route::middleware(['admin', 'user.activity:web', 'nocache'])->prefix('admin')->n
     Route::get('invoices/overdue', [AdminInvoiceController::class, 'overdue'])->name('invoices.overdue');
     Route::get('invoices/cancelled', [AdminInvoiceController::class, 'cancelled'])->name('invoices.cancelled');
     Route::get('invoices/refunded', [AdminInvoiceController::class, 'refunded'])->name('invoices.refunded');
+    Route::get('invoices/{invoice}/client-view', [AdminInvoiceController::class, 'clientView'])->name('invoices.client-view');
+    Route::get('invoices/{invoice}/download', [AdminInvoiceController::class, 'download'])->name('invoices.download');
     Route::get('invoices/{invoice}', [AdminInvoiceController::class, 'show'])->name('invoices.show');
     Route::post('invoices/{invoice}/mark-paid', [AdminInvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
     Route::post('invoices/{invoice}/recalculate', [AdminInvoiceController::class, 'recalculate'])->name('invoices.recalculate');

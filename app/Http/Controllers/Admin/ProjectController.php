@@ -441,7 +441,7 @@ class ProjectController extends Controller
             'subscription',
             'advanceInvoice',
             'finalInvoice',
-            'overheads',
+            'overheads.invoice',
             'employees',
             'salesRepresentatives',
             'maintenances' => fn ($query) => $query->withCount('invoices')->orderBy('next_billing_date'),
@@ -580,7 +580,7 @@ class ProjectController extends Controller
     ): RedirectResponse {
         $this->authorize('view', $project);
 
-        $remainingBudget = (float) ($project->remaining_budget ?? 0);
+        $remainingBudget = (float) ($this->financials($project)['remaining_budget_invoiceable'] ?? 0);
         if ($remainingBudget <= 0) {
             return back()->with('status', 'No remaining budget available to invoice.');
         }
@@ -1001,18 +1001,33 @@ class ProjectController extends Controller
         $overhead = $project->overhead_total;
         $budgetWithOverhead = $budget + $overhead;
         $salesRepTotal = (float) ($project->sales_rep_total ?? 0);
-        $contractTotal = (float) ($project->contract_amount ?? $project->contract_employee_total_earned ?? 0);
-        $payoutsTotal = $salesRepTotal + $contractTotal;
+        $employeeSalaryTotal = (float) ($project->contract_amount ?? $project->contract_employee_total_earned ?? 0);
+        $payoutsTotal = $salesRepTotal + $employeeSalaryTotal;
         $initialPayment = (float) ($project->initial_payment_amount ?? 0);
-        $remainingBudget = $budgetWithOverhead - $initialPayment;
-        $profit = $budgetWithOverhead - $payoutsTotal;
+        $paidPayment = (float) $project->invoices()
+            ->whereIn('type', ['project_initial_payment', 'project_remaining_budget'])
+            ->where('status', 'paid')
+            ->sum('total');
+        $pendingRemainingBudgetInvoiced = (float) $project->invoices()
+            ->where('type', 'project_remaining_budget')
+            ->whereIn('status', ['unpaid', 'overdue'])
+            ->sum('total');
+        $remainingBudget = $budgetWithOverhead - $paidPayment;
+        $remainingBudgetInvoiceable = max(0, $remainingBudget - $pendingRemainingBudgetInvoiced);
+        $profit = $budgetWithOverhead - $salesRepTotal - $employeeSalaryTotal;
 
         return [
             'budget' => $budget,
             'overhead_total' => $overhead,
             'budget_with_overhead' => $budgetWithOverhead,
+            'initial_payment' => $initialPayment,
+            'paid_payment' => $paidPayment,
+            'employee_salary_total' => $employeeSalaryTotal,
+            'sales_rep_total' => $salesRepTotal,
             'payouts_total' => $payoutsTotal,
             'remaining_budget' => $remainingBudget,
+            'pending_remaining_budget_invoiced' => $pendingRemainingBudgetInvoiced,
+            'remaining_budget_invoiceable' => $remainingBudgetInvoiceable,
             'profit' => $profit,
             'profitable' => $profit >= 0,
         ];
