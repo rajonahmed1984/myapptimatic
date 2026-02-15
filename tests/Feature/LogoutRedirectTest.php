@@ -21,8 +21,10 @@ class LogoutRedirectTest extends TestCase
             'role' => Role::MASTER_ADMIN,
         ]);
 
+        $this->get(route('admin.login'));
+
         $response = $this->actingAs($admin, 'web')
-            ->post(route('admin.logout'));
+            ->post(route('logout'));
 
         $response->assertRedirect(route('admin.login'));
         $this->assertGuest('web');
@@ -33,6 +35,8 @@ class LogoutRedirectTest extends TestCase
         $client = User::factory()->create([
             'role' => Role::CLIENT,
         ]);
+
+        $this->get(route('login'));
 
         $response = $this->actingAs($client, 'web')
             ->post(route('logout'));
@@ -54,11 +58,13 @@ class LogoutRedirectTest extends TestCase
             'status' => 'active',
         ]);
 
+        $this->get(route('employee.login'));
+
         $response = $this->withoutMiddleware([
             TrackEmployeeActivity::class,
             TrackAuthenticatedUserActivity::class,
         ])->actingAs($user, 'employee')
-            ->post(route('employee.logout'));
+            ->post(route('logout'));
 
         $response->assertRedirect(route('employee.login'));
         $this->assertGuest('employee');
@@ -77,10 +83,12 @@ class LogoutRedirectTest extends TestCase
             'status' => 'active',
         ]);
 
+        $this->get(route('sales.login'));
+
         $response = $this->withoutMiddleware([
             TrackAuthenticatedUserActivity::class,
         ])->actingAs($user, 'sales')
-            ->post(route('rep.logout'));
+            ->post(route('logout'));
 
         $response->assertRedirect(route('sales.login'));
         $this->assertGuest('sales');
@@ -92,10 +100,12 @@ class LogoutRedirectTest extends TestCase
             'role' => Role::SUPPORT,
         ]);
 
+        $this->get(route('support.login'));
+
         $response = $this->withoutMiddleware([
             TrackAuthenticatedUserActivity::class,
         ])->actingAs($user, 'support')
-            ->post(route('support.logout'));
+            ->post(route('logout'));
 
         $response->assertRedirect(route('support.login'));
         $this->assertGuest('support');

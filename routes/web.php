@@ -47,8 +47,8 @@ use App\Http\Controllers\Admin\Hr\PaidHolidayController as HrPaidHolidayControll
 use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
 use App\Http\Controllers\Admin\IncomeCategoryController as AdminIncomeCategoryController;
 use App\Http\Controllers\Admin\IncomeController as AdminIncomeController;
-use App\Http\Controllers\Auth\PortalLoginController;
-use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\AuthFresh\PortalLoginController;
+use App\Http\Controllers\AuthFresh\LogoutController;
 use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
@@ -198,23 +198,23 @@ Route::match(['GET', 'POST'], '/payments/bkash/{attempt}/callback', [PaymentCall
     ->name('payments.bkash.callback');
 
 Route::middleware(['guest:web', 'nocache'])->group(function () {
-    Route::get('/login', [PortalLoginController::class, 'showLogin'])
+    Route::get('/login', [PortalLoginController::class, 'show'])
         ->defaults('portal', 'web')
         ->name('login');
     Route::post('/login', [PortalLoginController::class, 'login'])
         ->defaults('portal', 'web')
-        ->middleware(['throttle:portal-login', 'login.trace'])
+        ->middleware(['throttle:login', 'login.trace'])
         ->name('login.attempt');
     Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])->name('project-client.login');
     Route::post('/project-login', [ProjectClientAuthController::class, 'login'])->name('project-client.login.attempt');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
-    Route::get('/admin/login', [PortalLoginController::class, 'showLogin'])
+    Route::get('/admin/login', [PortalLoginController::class, 'show'])
         ->defaults('portal', 'admin')
         ->name('admin.login');
     Route::post('/admin/login', [PortalLoginController::class, 'login'])
         ->defaults('portal', 'admin')
-        ->middleware(['throttle:portal-login', 'login.trace'])
+        ->middleware(['throttle:login', 'login.trace'])
         ->name('admin.login.attempt');
     Route::get('/admin/forgot-password', [PasswordResetController::class, 'requestAdmin'])->name('admin.password.request');
     Route::post('/admin/forgot-password', [PasswordResetController::class, 'emailAdmin'])->name('admin.password.email');
@@ -228,12 +228,12 @@ Route::middleware(['guest:employee', 'nocache'])
     ->prefix('employee')
     ->name('employee.')
     ->group(function () {
-        Route::get('/login', [PortalLoginController::class, 'showLogin'])
+        Route::get('/login', [PortalLoginController::class, 'show'])
             ->defaults('portal', 'employee')
             ->name('login');
         Route::post('/login', [PortalLoginController::class, 'login'])
             ->defaults('portal', 'employee')
-            ->middleware(['throttle:portal-login', 'login.trace'])
+            ->middleware(['throttle:login', 'login.trace'])
             ->name('login.attempt');
         Route::get('/forgot-password', [RolePasswordResetController::class, 'showEmployeeForgot'])->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendEmployeeResetLink'])
@@ -247,12 +247,12 @@ Route::middleware(['guest:sales', 'nocache'])
     ->prefix('sales')
     ->name('sales.')
     ->group(function () {
-        Route::get('/login', [PortalLoginController::class, 'showLogin'])
+        Route::get('/login', [PortalLoginController::class, 'show'])
             ->defaults('portal', 'sales')
             ->name('login');
         Route::post('/login', [PortalLoginController::class, 'login'])
             ->defaults('portal', 'sales')
-            ->middleware(['throttle:portal-login', 'login.trace'])
+            ->middleware(['throttle:login', 'login.trace'])
             ->name('login.attempt');
         Route::get('/forgot-password', [RolePasswordResetController::class, 'showSalesForgot'])->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSalesResetLink'])
@@ -266,12 +266,12 @@ Route::middleware(['guest:support', 'nocache'])
     ->prefix('support')
     ->name('support.')
     ->group(function () {
-        Route::get('/login', [PortalLoginController::class, 'showLogin'])
+        Route::get('/login', [PortalLoginController::class, 'show'])
             ->defaults('portal', 'support')
             ->name('login');
         Route::post('/login', [PortalLoginController::class, 'login'])
             ->defaults('portal', 'support')
-            ->middleware(['throttle:portal-login', 'login.trace'])
+            ->middleware(['throttle:login', 'login.trace'])
             ->name('login.attempt');
         Route::get('/forgot-password', [RolePasswordResetController::class, 'showSupportForgot'])->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSupportResetLink'])
@@ -370,11 +370,7 @@ if (app()->environment(['local', 'testing'])) {
 
 Route::post('/logout', [LogoutController::class, 'logout'])
     ->name('logout')
-    ->middleware('auth:web');
-Route::post('/admin/logout', [LogoutController::class, 'logout'])
-    ->defaults('portal', 'admin')
-    ->name('admin.logout')
-    ->middleware('auth:web');
+    ->middleware('auth:web,employee,sales,support');
 Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
     ->name('impersonate.stop')
     ->middleware('auth');
@@ -383,9 +379,6 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
     ->prefix('employee')
     ->name('employee.')
     ->group(function () {
-        Route::post('/logout', [LogoutController::class, 'logout'])
-            ->defaults('portal', 'employee')
-            ->name('logout');
         Route::get('/dashboard', EmployeeDashboardController::class)->name('dashboard');
         Route::get('/tasks', [EmployeeTasksController::class, 'index'])->name('tasks.index');
         Route::get('/chats', [EmployeeChatController::class, 'index'])->name('chats.index');
@@ -917,9 +910,6 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
     ->prefix('sales')
     ->name('rep.')
     ->group(function () {
-        Route::post('/logout', [LogoutController::class, 'logout'])
-            ->defaults('portal', 'sales')
-            ->name('logout');
         Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
         Route::get('/tasks', [SalesRepTasksController::class, 'index'])->name('tasks.index');
         Route::get('/chats', [SalesRepChatController::class, 'index'])->name('chats.index');
@@ -989,9 +979,6 @@ Route::middleware(['support', 'user.activity:support', 'nocache'])
     ->prefix('support')
     ->name('support.')
     ->group(function () {
-        Route::post('/logout', [LogoutController::class, 'logout'])
-            ->defaults('portal', 'support')
-            ->name('logout');
         Route::get('/dashboard', SupportDashboardController::class)->name('dashboard');
         Route::get('/tasks', [SupportTasksController::class, 'index'])->name('tasks.index');
         Route::get('/support-tickets', [SupportSupportTicketController::class, 'index'])->name('support-tickets.index');

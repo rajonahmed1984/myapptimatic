@@ -12,7 +12,7 @@ SESSION_COOKIE=apptimatic_session
 SESSION_DOMAIN=my.apptimatic.com
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
-ADMIN_PANEL_ROLES=master_admin,sub_admin,sales,support
+ADMIN_PANEL_ROLES=admin,master_admin,sub_admin
 LOGIN_TRACE=false
 ```
 

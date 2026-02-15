@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Enums\Role;
 use App\Models\Employee;
 use App\Models\SalesRepresentative;
+use App\Services\AuthFresh\LoginService;
 use App\Models\User;
-use App\Support\Auth\RateLimiters;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -75,14 +75,14 @@ class AuthHardCutoverTest extends TestCase
         ]);
 
         $cases = [
-            [$client, 'login.attempt', 'client.dashboard', 'web', 'logout'],
-            [$admin, 'admin.login.attempt', 'admin.dashboard', 'web', 'admin.logout'],
-            [$employee, 'employee.login.attempt', 'employee.dashboard', 'employee', 'employee.logout'],
-            [$sales, 'sales.login.attempt', 'rep.dashboard', 'sales', 'rep.logout'],
-            [$support, 'support.login.attempt', 'support.dashboard', 'support', 'support.logout'],
+            [$client, 'login.attempt', 'client.dashboard', 'web'],
+            [$admin, 'admin.login.attempt', 'admin.dashboard', 'web'],
+            [$employee, 'employee.login.attempt', 'employee.dashboard', 'employee'],
+            [$sales, 'sales.login.attempt', 'rep.dashboard', 'sales'],
+            [$support, 'support.login.attempt', 'support.dashboard', 'support'],
         ];
 
-        foreach ($cases as [$user, $attemptRoute, $targetRoute, $guard, $logoutRoute]) {
+        foreach ($cases as [$user, $attemptRoute, $targetRoute, $guard]) {
             $response = $this->post(route($attemptRoute), [
                 'email' => $user->email,
                 'password' => 'secret-pass',
@@ -90,7 +90,7 @@ class AuthHardCutoverTest extends TestCase
 
             $response->assertRedirect(route($targetRoute, [], false));
             $this->assertAuthenticatedAs($user, $guard);
-            $this->post(route($logoutRoute));
+            $this->post(route('logout'));
         }
     }
 
@@ -109,18 +109,18 @@ class AuthHardCutoverTest extends TestCase
         ]);
 
         $cases = [
-            ['login', $client, 'web', 'logout', 'login'],
-            ['admin.login', $admin, 'web', 'admin.logout', 'admin.login'],
-            ['employee.login', $employee, 'employee', 'employee.logout', 'employee.login'],
-            ['sales.login', $sales, 'sales', 'rep.logout', 'sales.login'],
-            ['support.login', $support, 'support', 'support.logout', 'support.login'],
+            ['login', $client, 'web', 'login'],
+            ['admin.login', $admin, 'web', 'admin.login'],
+            ['employee.login', $employee, 'employee', 'employee.login'],
+            ['sales.login', $sales, 'sales', 'sales.login'],
+            ['support.login', $support, 'support', 'support.login'],
         ];
 
-        foreach ($cases as [$loginRoute, $user, $guard, $logoutRoute, $expectedLoginRoute]) {
+        foreach ($cases as [$loginRoute, $user, $guard, $expectedLoginRoute]) {
             $this->get(route($loginRoute));
 
             $response = $this->actingAs($user, $guard)
-                ->post(route($logoutRoute));
+                ->post(route('logout'));
 
             $response->assertRedirect(route($expectedLoginRoute));
             $this->assertGuest($guard);
@@ -131,7 +131,7 @@ class AuthHardCutoverTest extends TestCase
     {
         $user = $this->createEmployeeUser('secret-pass');
 
-        for ($attempt = 1; $attempt <= RateLimiters::LOGIN_MAX_ATTEMPTS; $attempt++) {
+        for ($attempt = 1; $attempt <= LoginService::LOGIN_MAX_ATTEMPTS; $attempt++) {
             $response = $this->from(route('employee.login'))->post(route('employee.login.attempt'), [
                 'email' => $user->email,
                 'password' => 'wrong-password',
@@ -160,6 +160,38 @@ class AuthHardCutoverTest extends TestCase
             ->get(route('admin.dashboard'));
 
         $response->assertForbidden();
+    }
+
+    public function test_role_must_use_its_own_login_portal_url(): void
+    {
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+            'password' => 'secret-pass',
+        ]);
+        $support = User::factory()->create([
+            'role' => Role::SUPPORT,
+            'password' => 'secret-pass',
+        ]);
+        $sales = $this->createSalesUser('secret-pass');
+        $employee = $this->createEmployeeUser('secret-pass');
+
+        $cases = [
+            ['login', 'login.attempt', $admin->email],
+            ['login', 'login.attempt', $support->email],
+            ['admin.login', 'admin.login.attempt', $support->email],
+            ['support.login', 'support.login.attempt', $sales->email],
+            ['sales.login', 'sales.login.attempt', $employee->email],
+        ];
+
+        foreach ($cases as [$loginRoute, $attemptRoute, $email]) {
+            $response = $this->from(route($loginRoute))->post(route($attemptRoute), [
+                'email' => $email,
+                'password' => 'secret-pass',
+            ]);
+
+            $response->assertRedirect(route($loginRoute));
+            $response->assertSessionHasErrors(['email']);
+        }
     }
 
     private function createEmployeeUser(string $password = 'password'): User

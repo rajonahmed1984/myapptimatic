@@ -75,7 +75,7 @@
                             <div class="font-semibold text-slate-900">{{ auth()->user()->name }}</div>
                             <div class="text-xs text-slate-500">Support</div>
                         </div>
-                        <form method="POST" action="{{ route('support.logout') }}">
+                        <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button type="submit" class="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
                                 Sign out

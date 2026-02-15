@@ -10,7 +10,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use App\Providers\AuthServiceProvider;
 use App\Providers\AppServiceProvider;
-use App\Support\Auth\Portal;
+use App\Support\AuthFresh\AdminAccess;
+use App\Support\AuthFresh\Portal;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -54,7 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $user = Auth::guard('web')->user();
-            if (Portal::isAdminAuthorized($user)) {
+            if (AdminAccess::canAccess($user)) {
                 return route('admin.dashboard');
             }
 
@@ -62,8 +63,23 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $middleware->redirectGuestsTo(function (Request $request) {
-            $portal = Portal::fromRequestPath($request->path());
-            return route(Portal::loginRouteName($portal));
+            if ($request->is('admin') || $request->is('admin/*')) {
+                return '/admin/login';
+            }
+
+            if ($request->is('employee') || $request->is('employee/*')) {
+                return '/employee/login';
+            }
+
+            if ($request->is('sales') || $request->is('sales/*')) {
+                return '/sales/login';
+            }
+
+            if ($request->is('support') || $request->is('support/*')) {
+                return '/support/login';
+            }
+
+            return '/login';
         });
 
         $middleware->validateCsrfTokens(except: [
@@ -116,11 +132,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
             auth()->logout();
 
-            $portal = Portal::fromRequestPath($request->path());
-            $loginRoute = Portal::loginRouteName($portal);
+            $portal = Portal::fromRequest($request);
 
             return redirect()
-                ->route($loginRoute)
+                ->to(Portal::portalLoginUrl($portal))
                 ->with('status', 'Session expired. Please log in again.');
         });
 
@@ -140,11 +155,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
             auth()->logout();
 
-            $portal = Portal::fromRequestPath($request->path());
-            $loginRoute = Portal::loginRouteName($portal);
+            $portal = Portal::fromRequest($request);
 
             return redirect()
-                ->route($loginRoute)
+                ->to(Portal::portalLoginUrl($portal))
                 ->with('status', 'Session expired. Please log in again.');
         });
     })->create();

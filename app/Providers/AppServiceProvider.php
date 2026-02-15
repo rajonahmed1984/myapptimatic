@@ -15,7 +15,7 @@ use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Observers\ProjectTaskObserver;
 use App\Observers\ProjectTaskSubtaskObserver;
-use App\Support\Auth\RateLimiters as AuthRateLimiters;
+use App\Services\AuthFresh\LoginService;
 use App\Support\Branding;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
@@ -323,7 +323,7 @@ class AppServiceProvider extends ServiceProvider
 
     private function registerRateLimiters(): void
     {
-        AuthRateLimiters::register();
+        LoginService::registerRateLimiter();
 
         RateLimiter::for('license-verify', function ($request) {
             $ip = $request->ip() ?? 'unknown';

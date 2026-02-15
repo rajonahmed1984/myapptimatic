@@ -19,7 +19,7 @@
                     <div class="text-2xl font-semibold text-slate-900">{{ $employeeName }}</div>
                     <div class="text-sm text-slate-500">Access your work logs, leave requests, payroll, and project assignments from one place.</div>
                 </div>
-                <form method="POST" action="{{ route('employee.logout') }}">
+                <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-600">
                         Logout

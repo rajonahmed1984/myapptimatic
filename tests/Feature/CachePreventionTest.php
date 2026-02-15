@@ -122,8 +122,8 @@ class CachePreventionTest extends TestCase
      */
     public function test_sales_logout_requires_authentication(): void
     {
-        $response = $this->post(route('rep.logout'));
-        $response->assertRedirect(route('sales.login'));
+        $response = $this->post(route('logout'));
+        $response->assertRedirect(route('login'));
     }
 
     /**
@@ -131,8 +131,8 @@ class CachePreventionTest extends TestCase
      */
     public function test_support_logout_requires_authentication(): void
     {
-        $response = $this->post(route('support.logout'));
-        $response->assertRedirect(route('support.login'));
+        $response = $this->post(route('logout'));
+        $response->assertRedirect(route('login'));
     }
 
     /**
