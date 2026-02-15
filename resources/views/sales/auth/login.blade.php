@@ -43,12 +43,6 @@
             </div>
         @endif
 
-        @if($errors->any())
-            <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {{ $errors->first() }}
-            </div>
-        @endif
-
         <button
             type="submit"
             class="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"

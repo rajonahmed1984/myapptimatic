@@ -7,17 +7,6 @@
     <h2 class="mt-3 text-2xl font-semibold text-slate-900">Sign in to view your project</h2>
     <p class="mt-2 text-sm text-slate-600">Add tasks and monitor status for your assigned project.</p>
 
-    @if(session('status'))
-        <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            {{ session('status') }}
-        </div>
-    @endif
-    @if($errors->any())
-        <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {{ $errors->first() }}
-        </div>
-    @endif
-
     <form class="mt-8 space-y-5" method="POST" action="{{ route('project-client.login.attempt', [], false) }}">
         @csrf
         <div>
