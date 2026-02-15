@@ -6,107 +6,137 @@
 @section('content')
     @php
         $displayNumber = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
-        $creditTotal = $invoice->accountingEntries->where('type', 'credit')->sum('amount');
-        $paidTotal = $invoice->accountingEntries->where('type', 'payment')->sum('amount');
-        $balance = max(0, (float) $invoice->total - $paidTotal - $creditTotal);
+        $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
         $taxSetting = \App\Models\TaxSetting::current();
         $taxLabel = $taxSetting->invoice_tax_label ?: 'Tax';
         $taxNote = $taxSetting->renderNote($invoice->tax_rate_percent);
         $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
+        $discountAmount = $creditTotal;
+        $payableAmount = max(0, (float) $invoice->total - $discountAmount);
+        $statusClass = strtolower((string) $invoice->status);
+
+        $companyName = $portalBranding['company_name'] ?? config('app.name', 'Apptimatic');
+        $companyEmail = $companyEmail ?? 'support@example.com';
+        $payToLine = $payToText ?? 'Billing Department';
+        $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
+        $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
     @endphp
 
-    <div class="card p-6 md:p-8">
-        <div class="flex flex-wrap items-start justify-between gap-6">
-            <div class="flex items-center gap-4">
-                <div class="flex flex-col">
-                    @if(!empty($portalBranding['logo_url']))
-                        <img src="{{ $portalBranding['logo_url'] }}" alt="Logo" class="h-14 w-max rounded-2xl bg-white p-2">
-                    @else
-                        <div class="grid h-14 w-max place-items-center rounded-2xl bg-slate-900 text-lg font-semibold text-white p-2">Apptimatic</div>
-                    @endif
-                    <div class="text-2xl font-semibold text-slate-900 p-2">Invoice #{{ $displayNumber }}</div>
-                </div>
-            </div>
-            <div class="text-right">
-                <div class="text-xs uppercase tracking-[0.3em] text-slate-400">Status</div>
-                <div class="mt-2 inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] {{ $invoice->status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                    {{ ucfirst($invoice->status) }}
-                </div>
-                <div class="mt-2 text-xs text-slate-500">Invoice date: {{ $invoice->issue_date->format($globalDateFormat) }}</div>
-                <div class="mt-2 text-xs text-slate-500">Due date: {{ $invoice->due_date->format($globalDateFormat) }}</div>
-            </div>
-        </div>
-
-        <div class="mt-8 grid gap-6 md:grid-cols-2">
-            <div class="card-muted p-4 text-sm text-slate-600">
-                <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Invoiced to</div>
-                <div class="mt-2 text-base font-semibold text-slate-900">{{ $invoice->customer?->name }}</div>
-                <div class="mt-1">{{ $invoice->customer?->email }}</div>
-                <div class="mt-2 text-xs text-slate-500">{{ $invoice->customer?->address ?: 'Address not provided.' }}</div>
-            </div>
-            <div class="card-muted p-4 text-sm text-slate-600">
-                <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Pay to</div>
-                <div class="mt-2 text-base font-semibold text-slate-900">{{ $portalBranding['company_name'] ?? 'License Portal' }}</div>
-                <div class="mt-1">{{ $payToText ?: 'Billing Department' }}</div>
-                <div class="mt-2 text-xs text-slate-500">{{ $companyEmail ?: 'support@example.com' }}</div>
-            </div>
-        </div>
-
-        <div class="mt-8 grid gap-6 md:grid-cols-2">
-            <div class="text-sm text-slate-600">                
-                <div class="mt-2">
-                    <span class="text-slate-500">Service:</span>
-                    <span class="font-semibold text-slate-900">
-                        {{ $invoice->subscription?->plan?->product?->name ?? 'Service' }}
-                        {{ $invoice->subscription?->plan?->name ? ' - '.$invoice->subscription->plan->name : '' }}
-                    </span>
-                </div>
-            </div>
-            @if($invoice->status !== 'paid')
-                <div class="text-sm text-slate-600 no-print">
-                <div class="text-xs uppercase tracking-[0.25em] text-slate-400">Payment method</div>
-                @php
-                    $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
-                    $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
-                @endphp
-                @if($pendingProof)
-                    <div class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-                        Manual payment submitted and pending review.
-                        @if($pendingProof->paymentGateway)
-                            <div class="mt-1">Gateway: {{ $pendingProof->paymentGateway->name }}</div>
-                        @endif
-                        <div class="mt-1">Amount: {{ $invoice->currency }} {{ number_format((float) $pendingProof->amount, 2) }}</div>
-                        @if($pendingProof->reference)
-                            <div class="mt-1">Reference: {{ $pendingProof->reference }}</div>
-                        @endif
-                    </div>
-                @elseif($rejectedProof)
-                    <div class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
-                        Manual payment was rejected. Please submit a new transfer.
-                    </div>
-                @endif
-                @if($gateways->isEmpty())
-                    <div class="mt-3 text-xs text-slate-500">No active payment gateways configured.</div>
+    <div class="invoice-container">
+        <div class="row invoice-header">
+            <div class="invoice-col logo-wrap">
+                @if(!empty($portalBranding['logo_url']))
+                    <img src="{{ $portalBranding['logo_url'] }}" title="{{ $companyName }}" class="invoice-logo" />
                 @else
-                    <form method="POST" action="{{ route('client.invoices.checkout', $invoice) }}" id="gateway-form" class="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                    <div class="invoice-logo-fallback">{{ strtolower($companyName) }}</div>
+                @endif
+            </div>
+            <div class="invoice-col text-right">
+                <div class="invoice-status">
+                    <span class="{{ $statusClass }}" style="text-transform: uppercase;">{{ strtoupper($invoice->status) }}</span>
+                    <h3>Invoice: #{{ $displayNumber }}</h3>
+                    <div style="margin-top: 0; font-size: 12px;">Invoice Date: <span class="small-text">{{ $invoice->issue_date->format($globalDateFormat) }}</span></div>
+                    <div style="margin-top: 0; font-size: 12px;">Invoice Due Date: <span class="small-text">{{ $invoice->due_date->format($globalDateFormat) }}</span></div>
+                    @if($invoice->paid_at)
+                        <div style="margin-top: 0; font-size: 12px;">Paid Date: <span class="small-text">{{ $invoice->paid_at->format($globalDateFormat) }}</span></div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <hr />
+
+        <div class="row">
+            <div class="invoice-col">
+                <strong>Invoiced To</strong>
+                <address class="small-text">
+                    {{ $invoice->customer?->name ?? '--' }}<br />
+                    {{ $invoice->customer?->email ?? '--' }}<br />
+                    {{ $invoice->customer?->address ?? '--' }}
+                </address>
+            </div>
+            <div class="invoice-col right">
+                <strong>Pay To</strong>
+                <address class="small-text">
+                    {{ $companyName }}<br />
+                    {{ $payToLine }}<br />
+                    {{ $companyEmail }}
+                </address>
+            </div>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><strong>Invoice Items</strong></h3>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table class="table table-condensed">
+                        <thead>
+                            <tr>
+                                <td><strong>Description</strong></td>
+                                <td width="20%" class="text-center"><strong>Amount</strong></td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($invoice->items as $item)
+                                <tr>
+                                    <td>{{ $item->description }}</td>
+                                    <td class="text-center">{{ $invoice->currency }} {{ number_format((float) $item->line_total, 2) }}</td>
+                                </tr>
+                            @endforeach
+                            <tr>
+                                <td class="total-row text-right"><strong>Sub Total</strong></td>
+                                <td class="total-row text-center">{{ $invoice->currency }} {{ number_format((float) $invoice->subtotal, 2) }}</td>
+                            </tr>
+                            @if($hasTax)
+                                <tr>
+                                    <td class="total-row text-right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included '.$taxLabel : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
+                                    <td class="total-row text-center">{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</td>
+                                </tr>
+                            @endif
+                            <tr>
+                                <td class="total-row text-right"><strong>Discount</strong></td>
+                                <td class="total-row text-center">{{ $discountAmount > 0 ? '- '.$invoice->currency.' '.number_format($discountAmount, 2) : '- '.$invoice->currency.' 0.00' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="total-row text-right"><strong>Payable Amount</strong></td>
+                                <td class="total-row text-center">{{ $invoice->currency }} {{ number_format($payableAmount, 2) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        @if($hasTax && $taxNote)
+            <div class="text-right small-text" style="margin-top: -6px; margin-bottom: 18px;">{{ $taxNote }}</div>
+        @endif
+
+        @if($invoice->status !== 'paid')
+            <div class="payment-panel no-print">
+                <div class="payment-heading">Payment Method</div>
+                @if($pendingProof)
+                    <div class="alert amber">Manual payment submitted and pending review.</div>
+                @elseif($rejectedProof)
+                    <div class="alert rose">Manual payment was rejected. Please submit a new transfer.</div>
+                @endif
+
+                @if($gateways->isEmpty())
+                    <div class="small-text text-muted">No active payment gateways configured.</div>
+                @else
+                    <form method="POST" action="{{ route('client.invoices.checkout', $invoice) }}" id="gateway-form" class="gateway-form">
                         @csrf
-                        <label for="gateway-select" class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Select gateway</label>
-                        <select id="gateway-select" name="payment_gateway_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                        <label for="gateway-select" class="small-text"><strong>Select gateway</strong></label>
+                        <select id="gateway-select" name="payment_gateway_id" class="form-control">
                             @foreach($gateways as $gateway)
                                 <option value="{{ $gateway->id }}">{{ $gateway->name }}</option>
                             @endforeach
                         </select>
-
-                        <div id="gateway-instructions" class="mt-3 text-xs text-slate-500"></div>
-
-                        @if($invoice->status !== 'paid')
-                            <button type="submit" id="gateway-submit" class="mt-4 w-full rounded-full bg-teal-500 px-4 py-2 text-xs font-semibold text-white">
-                                Pay now
-                            </button>
-                        @else
-                            <div class="mt-4 text-xs text-slate-400">Paid</div>
-                        @endif
+                        <div id="gateway-instructions" class="small-text text-muted" style="margin-top: 10px;"></div>
+                        <button type="submit" id="gateway-submit" class="btn-primary">Pay now</button>
                     </form>
+
                     @php
                         $gatewayData = $gateways->map(function ($gateway) {
                             return [
@@ -132,9 +162,7 @@
 
                             if (!selected) {
                                 gatewayInstructions.textContent = '';
-                                if (gatewaySubmit) {
-                                    gatewaySubmit.textContent = 'Pay now';
-                                }
+                                if (gatewaySubmit) gatewaySubmit.textContent = 'Pay now';
                                 return;
                             }
 
@@ -158,105 +186,79 @@
                         syncGatewayDetails();
                     </script>
                 @endif
+
                 @if(!empty($paymentInstructions))
-                    <div class="mt-4 text-xs text-slate-500">
+                    <div class="small-text text-muted" style="margin-top: 12px;">
                         {!! nl2br(e($paymentInstructions)) !!}
                     </div>
                 @endif
             </div>
-            @endif
-        </div>
+        @endif
 
-        <div class="mt-8">
-            <div class="section-label">Invoice items</div>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 text-xs uppercase tracking-[0.2em] text-slate-500">
-                        <tr>
-                            <th class="px-4 py-3">Description</th>
-                            <th class="px-4 py-3 text-right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($invoice->items as $item)
-                            <tr class="border-t border-slate-200">
-                                <td class="px-4 py-3 text-slate-600">{{ $item->description }}</td>
-                                <td class="px-4 py-3 text-right text-slate-700">{{ $invoice->currency }} {{ $item->line_total }}</td>
-                            </tr>
-                        @endforeach
-                        <tr class="border-t border-slate-200 bg-slate-50">
-                            <td class="px-4 py-3 text-right font-semibold text-slate-600">Sub total</td>
-                            <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $invoice->subtotal, 2) }}</td>
-                        </tr>
-                        @if($hasTax)
-                            <tr class="border-t border-slate-200 bg-slate-50">
-                                <td class="px-4 py-3 text-right font-semibold text-slate-600">
-                                    {{ $invoice->tax_mode === 'inclusive' ? 'Included '.$taxLabel : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)
-                                </td>
-                                <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</td>
-                            </tr>
-                        @endif
-                        <tr class="border-t border-slate-200 bg-slate-50">
-                            <td class="px-4 py-3 text-right font-semibold text-slate-600">Credit</td>
-                            <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $creditTotal, 2) }}</td>
-                        </tr>
-                        <tr class="border-t border-slate-200 bg-slate-50">
-                            <td class="px-4 py-3 text-right font-semibold text-slate-600">Total</td>
-                            <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $invoice->total, 2) }}</td>
-                        </tr>
-                        <tr class="border-t border-slate-200 bg-slate-50">
-                            <td class="px-4 py-3 text-right font-semibold text-slate-600">Balance</td>
-                            <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $invoice->currency }} {{ number_format((float) $balance, 2) }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            @if($hasTax && $taxNote)
-                <div class="mt-3 text-xs text-slate-500">{{ $taxNote }}</div>
-            @endif
-        </div>
-
-        <div class="mt-8">
-            <div class="section-label">Transactions</div>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 text-xs uppercase tracking-[0.2em] text-slate-500">
-                        <tr>
-                            <th class="px-4 py-3">Date</th>
-                            <th class="px-4 py-3">Gateway</th>
-                            <th class="px-4 py-3">Reference</th>
-                            <th class="px-4 py-3 text-right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($invoice->accountingEntries as $entry)
-                            <tr class="border-t border-slate-200">
-                                <td class="px-4 py-3 text-slate-500">{{ $entry->entry_date->format($globalDateFormat) }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ $entry->paymentGateway?->name ?? '-' }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $entry->reference ?? '-' }}</td>
-                                <td class="px-4 py-3 text-right text-slate-700">{{ $entry->currency }} {{ number_format((float) $entry->amount, 2) }}</td>
-                            </tr>
-                        @empty
-                            <tr class="border-t border-slate-200">
-                                <td colspan="4" class="px-4 py-4 text-center text-sm text-slate-500">No related transactions found.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="mt-8 flex flex-wrap items-center justify-between gap-3 no-print">
-            <a href="{{ route('client.invoices.download', $invoice) }}" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
-                Download PDF
-            </a>
-            <div class="flex items-center gap-2">
-                <a href="{{ route('client.dashboard') }}" class="text-xs font-semibold text-slate-500 hover:text-teal-600" hx-boost="false">Back to client area</a>
-                <button type="button" onclick="window.print()" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
-                    Print
-                </button>
+        <div class="container-fluid invoice-container">
+            <div class="row mt-5" style="display: flex !important; justify-content: center;">
+                <div class="invoice-col full no-print" style="text-align: center;">
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ route('client.invoices.download', $invoice) }}" class="btn btn-default">Download</a>
+                        <a href="javascript:window.print()" class="btn btn-default">Print</a>
+                    </div>
+                </div>
+                <div class="invoice-col full" style="text-align: center;">
+                    <div class="mb-3">
+                        <p>This is system generated invoice no signature required</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 @endsection
 
+@push('styles')
+    <style>
+        .invoice-container { width: 100%; background: #fff; padding: 10px; color: #333; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+        .invoice-container .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
+        .invoice-container .invoice-col { width: 50%; padding: 0 15px; }
+        .invoice-container .invoice-col.full { width: 100%; }
+        .invoice-container .invoice-col.right { text-align: right; }
+        .invoice-container .logo-wrap { display: flex; align-items: center; }
+        .invoice-container .invoice-logo { width: 300px; max-width: 100%; height: auto; }
+        .invoice-container .invoice-logo-fallback { font-size: 54px; font-weight: 800; color: #211f75; letter-spacing: -1px; line-height: 1; }
+        .invoice-container .invoice-status { margin: 20px 0 0; font-size: 24px; font-weight: bold; }
+        .invoice-container .invoice-status h3 { margin: 0; font-size: 18px; font-weight: 600; }
+        .invoice-container .small-text { font-size: 0.92em; }
+        .invoice-container hr { margin: 20px 0; border: 0; border-top: 1px solid #eee; }
+        .invoice-container address { margin: 8px 0 0; font-style: normal; line-height: 1.5; }
+        .invoice-container .panel { margin-top: 14px; background: #fff; }
+        .invoice-container .panel-heading { padding: 10px 15px; background: #f5f5f5; border: 1px solid #ddd; }
+        .invoice-container .panel-title { margin: 0; font-size: 16px; }
+        .invoice-container .table-responsive { width: 100%; overflow-x: auto; }
+        .invoice-container .table { width: 100%; max-width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+        .invoice-container .table > thead > tr > td,
+        .invoice-container .table > tbody > tr > td { padding: 8px; line-height: 1.42857143; vertical-align: top; border: 1px solid #ddd; }
+        .invoice-container .text-right { text-align: right !important; }
+        .invoice-container .text-center { text-align: center !important; }
+        .invoice-container .mt-5 { margin-top: 50px; }
+        .invoice-container .mb-3 { margin-bottom: 30px; }
+        .invoice-container .unpaid, .invoice-container .overdue { color: #cc0000; }
+        .invoice-container .paid { color: #779500; }
+        .invoice-container .refunded { color: #224488; }
+        .invoice-container .cancelled { color: #888; }
+        .invoice-container .text-muted { color: #666; }
+        .payment-panel { border: 1px solid #ddd; padding: 12px; margin-top: 18px; }
+        .payment-heading { font-weight: 700; margin-bottom: 8px; }
+        .gateway-form .form-control { width: 100%; border: 1px solid #ccc; padding: 8px; margin-top: 6px; }
+        .btn-primary { margin-top: 10px; border: 1px solid #0f766e; background: #0f766e; color: #fff; padding: 8px 14px; border-radius: 3px; cursor: pointer; }
+        .btn-default { border: 1px solid #ccc; background: #fff; color: #333; padding: 6px 12px; text-decoration: none; display: inline-block; }
+        .btn-group .btn-default + .btn-default { margin-left: -1px; }
+        .alert { padding: 8px 10px; margin-bottom: 10px; border: 1px solid transparent; }
+        .alert.amber { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
+        .alert.rose { border-color: #fecdd3; background: #fff1f2; color: #9f1239; }
+        @media (max-width: 767px) {
+            .invoice-container .invoice-col { width: 100%; }
+            .invoice-container .invoice-col.right { text-align: left; margin-top: 14px; }
+        }
+        @media print {
+            .no-print, .no-print * { display: none !important; }
+        }
+    </style>
+@endpush
