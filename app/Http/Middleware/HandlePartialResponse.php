@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use DOMDocument;
+use DOMNode;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -60,13 +61,25 @@ class HandlePartialResponse
             return false;
         }
 
+        if ($response->isRedirection()) {
+            return false;
+        }
+
         $xPartial = $request->headers->get('X-Partial');
         $isPartial = filter_var($xPartial, FILTER_VALIDATE_BOOLEAN) || $request->ajax();
         if (! $isPartial) {
             return false;
         }
 
-        if (! $response->isSuccessful()) {
+        $acceptHeader = strtolower((string) $request->headers->get('Accept', ''));
+        if (
+            $acceptHeader === ''
+            || (! str_contains($acceptHeader, 'text/html') && ! str_contains($acceptHeader, '*/*'))
+        ) {
+            return false;
+        }
+
+        if ($response->getStatusCode() !== 200) {
             return false;
         }
 
@@ -84,11 +97,12 @@ class HandlePartialResponse
             return null;
         }
 
-        $dom = new DOMDocument();
+        $dom = new DOMDocument('1.0', 'UTF-8');
         $internalErrors = libxml_use_internal_errors(true);
+        $encodedHtml = mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8');
 
         try {
-            $loaded = $dom->loadHTML($html);
+            $loaded = $dom->loadHTML('<?xml encoding="UTF-8">' . $encodedHtml);
         } finally {
             libxml_clear_errors();
             libxml_use_internal_errors($internalErrors);
@@ -136,7 +150,7 @@ class HandlePartialResponse
         ];
     }
 
-    private function innerHtml(DOMDocument $dom, \DOMNode $node): string
+    private function innerHtml(DOMDocument $dom, DOMNode $node): string
     {
         $html = '';
 

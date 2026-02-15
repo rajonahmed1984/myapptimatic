@@ -167,7 +167,7 @@
     const looksLikeFullDocument = (html) => /<html[\s>]|<!doctype/i.test(html);
 
     const init = () => {
-        if (window.__ajaxSidebarNavigationBooted) {
+        if (window.__ajaxNavInit) {
             return;
         }
 
@@ -178,7 +178,7 @@
             return;
         }
 
-        window.__ajaxSidebarNavigationBooted = true;
+        window.__ajaxNavInit = true;
         window.PageInit = window.PageInit || {};
 
         let activeRequestController = null;
