@@ -6,8 +6,7 @@
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-            <div class="section-label">Invoice</div>
-            <div class="text-2xl font-semibold text-slate-900">Invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}</div>
+            <div class="section-label text-2xl">Invoice</div>
         </div>
         <div class="flex items-center gap-2">
             <a href="{{ route('admin.invoices.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to invoices</a>
@@ -83,9 +82,6 @@
             </div>
 
             <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title"><strong>Invoice Items</strong></h3>
-                </div>
                 <div class="panel-body">
                     <div class="table-responsive">
                         <table class="table table-condensed">
@@ -125,10 +121,6 @@
                     </div>
                 </div>
             </div>
-
-            @if($hasTax && $taxNote)
-                <div class="mt-2 text-right text-xs text-slate-500">{{ $taxNote }}</div>
-            @endif
 
             <div class="row mt-5">
                 <div class="invoice-col full text-center">
@@ -273,7 +265,7 @@
         .invoice-container address { margin: 8px 0 0; font-style: normal; line-height: 1.5; }
         .invoice-container .small-text { font-size: 0.92em; }
         .invoice-container .panel { margin-top: 14px; background: #fff; }
-        .invoice-container .panel-heading { padding: 10px 15px; background: #f5f5f5; border: 1px solid #ddd; }
+        .invoice-container .panel-heading { padding: 0 0 8px; background: transparent; border: 0; }
         .invoice-container .panel-title { margin: 0; font-size: 16px; }
         .invoice-container .table-responsive { width: 100%; overflow-x: auto; }
         .invoice-container .table { width: 100%; border-collapse: collapse; }

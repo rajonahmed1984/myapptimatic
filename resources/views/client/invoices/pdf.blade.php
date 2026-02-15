@@ -6,50 +6,49 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Apptimatic - {{ ucfirst($invoice->status) }} Invoice</title>
     <style>
-        @page { size: auto; margin: 0; padding: 0; }
+        @page { size: auto; margin: 20px; padding: 0; }
+        * { box-sizing: border-box; }
+
         body {
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
             font-size: 14px;
             line-height: 1.42857143;
             color: #333;
             margin: 0;
-            padding: 0;
-            background-color: #fff;
+            padding: 10px;
+            background: #fff;
         }
-        * { box-sizing: border-box; }
-        .container-fluid { width: 100%; margin: 0 auto; }
-        .invoice-container { max-width: 1800px; padding: 14px 20px 0; }
-        .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
-        .invoice-col { width: 50%; padding: 0 15px; }
-        .invoice-col.right { text-align: right; }
-        .invoice-col img { width: 300px; max-width: 100%; }
-        .invoice-status { margin: 20px 0 0; font-size: 24px; font-weight: bold; }
-        .invoice-status h3 { margin: 0; font-size: 18px; font-weight: 600; }
-        .small-text { font-size: 0.9em; }
-        hr { margin: 20px 0; border: 0; border-top: 1px solid #eee; }
-        address { margin-bottom: 20px; font-style: normal; line-height: 1.42857143; }
-        .panel { margin-bottom: 20px; background-color: #fff; }
-        .panel-default > .panel-heading {
-            color: #333;
-            background-color: #f5f5f5;
-            border-top: 1px solid #ddd;
-            border-right: 1px solid #ddd;
-            border-left: 1px solid #ddd;
-            padding: 10px 15px;
-        }
-        .panel-title { margin: 0; font-size: 16px; }
-        .table-responsive { width: 100%; overflow-x: auto; }
-        .table { width: 100%; max-width: 100%; margin-bottom: 20px; border-collapse: collapse; }
-        .table > thead > tr > td,
-        .table > tbody > tr > td { padding: 8px; line-height: 1.42857143; vertical-align: top; border: 1px solid #ddd; }
-        .text-right { text-align: right !important; }
-        .text-center { text-align: center !important; }
-        .mt-5 { margin-top: 50px; }
-        .mb-3 { margin-bottom: 30px; }
-        .unpaid, .overdue { color: #cc0000; }
-        .paid { color: #779500; }
-        .refunded { color: #224488; }
-        .cancelled { color: #888; }
+
+        .invoice-container { width: 100%; background: #fff; padding: 0; color: #333; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+        .invoice-container .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
+        .invoice-container .invoice-grid { display: table; width: 100%; table-layout: fixed; }
+        .invoice-container .invoice-grid > .invoice-col { display: table-cell; width: 50%; vertical-align: top; }
+        .invoice-container .invoice-col { width: 50%; padding: 0 15px; }
+        .invoice-container .invoice-col.full { width: 100%; }
+        .invoice-container .logo-wrap { display: flex; align-items: center; }
+        .invoice-container .invoice-logo { width: 300px; max-width: 100%; height: auto; }
+        .invoice-container .invoice-logo-fallback { font-size: 54px; font-weight: 800; color: #211f75; letter-spacing: -1px; line-height: 1; }
+        .invoice-container .invoice-col.right { text-align: right; }
+        .invoice-container .invoice-status { margin: 20px 0 0; font-size: 24px; font-weight: bold; }
+        .invoice-container .invoice-status h3 { margin: 0; font-size: 18px; font-weight: 600; }
+        .invoice-container .invoice-status .small-text { font-size: 0.92em; }
+        .invoice-container hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+        .invoice-container address { margin: 8px 0 0; font-style: normal; line-height: 1.5; }
+        .invoice-container .small-text { font-size: 0.92em; }
+        .invoice-container .panel { margin-top: 14px; background: #fff; }
+        .invoice-container .panel-heading { padding: 0 0 8px; background: transparent; border: 0; }
+        .invoice-container .panel-body { padding: 0; border: 0; }
+        .invoice-container .panel-title { margin: 0; font-size: 16px; }
+        .invoice-container .table-responsive { width: 100%; overflow-x: auto; }
+        .invoice-container .table { width: 100%; max-width: 100%; margin-bottom: 0; border-collapse: collapse; }
+        .invoice-container .table > thead > tr > td,
+        .invoice-container .table > tbody > tr > td { border: 1px solid #ddd; padding: 8px; line-height: 1.42857143; vertical-align: top; }
+        .invoice-container .text-right { text-align: right; }
+        .invoice-container .text-center { text-align: center; }
+        .invoice-container .unpaid, .invoice-container .overdue { color: #cc0000; text-transform: uppercase; }
+        .invoice-container .paid { color: #779500; text-transform: uppercase; }
+        .invoice-container .cancelled, .invoice-container .refunded { color: #888; text-transform: uppercase; }
+        .invoice-container .mt-5 { margin-top: 50px; }
     </style>
 </head>
 <body>
@@ -58,14 +57,13 @@
         $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
         $taxSetting = \App\Models\TaxSetting::current();
         $taxLabel = $taxSetting->invoice_tax_label ?: 'Tax';
-        $taxNote = $taxSetting->renderNote($invoice->tax_rate_percent);
         $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
         $discountAmount = $creditTotal;
         $payableAmount = max(0, (float) $invoice->total - $discountAmount);
         $statusClass = strtolower((string) $invoice->status);
 
         $companyName = $portalBranding['company_name'] ?? config('app.name', 'Apptimatic');
-        $companyEmail = $portalBranding['email'] ?? ($companyEmail ?? 'support@example.com');
+        $companyEmail = $companyEmail ?? 'support@example.com';
         $payToLine = $payToText ?? 'Billing Department';
 
         $logoSrc = null;
@@ -102,13 +100,13 @@
         }
     @endphp
 
-    <div class="container-fluid invoice-container">
-        <div class="row invoice-header">
-            <div class="invoice-col" style="display: flex;align-items: center;">
+    <div class="invoice-container">
+        <div class="invoice-grid invoice-header">
+            <div class="invoice-col logo-wrap">
                 @if($logoSrc)
-                    <img src="{{ $logoSrc }}" title="{{ $companyName }}" />
+                    <img src="{{ $logoSrc }}" title="{{ $companyName }}" class="invoice-logo" />
                 @else
-                    <div style="font-size: 54px; font-weight: 800; color: #211f75; letter-spacing: -1px;">{{ strtolower($companyName) }}</div>
+                    <div class="invoice-logo-fallback">{{ strtolower($companyName) }}</div>
                 @endif
             </div>
             <div class="invoice-col text-right">
@@ -126,7 +124,7 @@
 
         <hr />
 
-        <div class="row">
+        <div class="invoice-grid invoice-addresses">
             <div class="invoice-col">
                 <strong>Invoiced To</strong>
                 <address class="small-text">
@@ -145,12 +143,7 @@
             </div>
         </div>
 
-        <br />
-
         <div class="panel panel-default">
-            <div class="panel-heading">
-                <h3 class="panel-title"><strong>Invoice Items</strong></h3>
-            </div>
             <div class="panel-body">
                 <div class="table-responsive">
                     <table class="table table-condensed">
@@ -191,17 +184,9 @@
             </div>
         </div>
 
-        @if($hasTax && $taxNote)
-            <div class="text-right small-text" style="margin-top: -6px; margin-bottom: 18px;">{{ $taxNote }}</div>
-        @endif
-
-        <div class="container-fluid invoice-container" style="padding: 0;">
-            <div class="row mt-5" style="display: flex !important; justify-content: center;">
-                <div class="invoice-col" style="width: 100%; text-align: center;">
-                    <div class="mb-3">
-                        <p>This is system generated invoice no signature required</p>
-                    </div>
-                </div>
+        <div class="row mt-5">
+            <div class="invoice-col full text-center">
+                <p>This is system generated invoice no signature required</p>
             </div>
         </div>
     </div>

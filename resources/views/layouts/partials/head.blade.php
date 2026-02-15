@@ -14,3 +14,4 @@
 @if (request()->routeIs('register'))
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/12.1.13/css/intlTelInput.css">
 @endif
+@stack('styles')

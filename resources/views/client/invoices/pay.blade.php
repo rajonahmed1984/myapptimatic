@@ -20,10 +20,13 @@
         $payToLine = $payToText ?? 'Billing Department';
         $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
         $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
+        $downloadRoute = request()->routeIs('admin.invoices.client-view')
+            ? route('admin.invoices.download', $invoice)
+            : route('client.invoices.download', $invoice);
     @endphp
 
     <div class="invoice-container">
-        <div class="row invoice-header">
+        <div class="invoice-grid invoice-header">
             <div class="invoice-col logo-wrap">
                 @if(!empty($portalBranding['logo_url']))
                     <img src="{{ $portalBranding['logo_url'] }}" title="{{ $companyName }}" class="invoice-logo" />
@@ -46,7 +49,7 @@
 
         <hr />
 
-        <div class="row">
+        <div class="invoice-grid invoice-addresses">
             <div class="invoice-col">
                 <strong>Invoiced To</strong>
                 <address class="small-text">
@@ -66,9 +69,6 @@
         </div>
 
         <div class="panel panel-default">
-            <div class="panel-heading">
-                <h3 class="panel-title"><strong>Invoice Items</strong></h3>
-            </div>
             <div class="panel-body">
                 <div class="table-responsive">
                     <table class="table table-condensed">
@@ -108,10 +108,6 @@
                 </div>
             </div>
         </div>
-
-        @if($hasTax && $taxNote)
-            <div class="text-right small-text" style="margin-top: -6px; margin-bottom: 18px;">{{ $taxNote }}</div>
-        @endif
 
         @if($invoice->status !== 'paid')
             <div class="payment-panel no-print">
@@ -199,7 +195,7 @@
             <div class="row mt-5" style="display: flex !important; justify-content: center;">
                 <div class="invoice-col full no-print" style="text-align: center;">
                     <div class="btn-group btn-group-sm">
-                        <a href="{{ route('client.invoices.download', $invoice) }}" class="btn btn-default">Download</a>
+                        <a href="{{ $downloadRoute }}" class="btn btn-default">Download</a>
                         <a href="javascript:window.print()" class="btn btn-default">Print</a>
                     </div>
                 </div>
@@ -215,8 +211,11 @@
 
 @push('styles')
     <style>
+        * { box-sizing: border-box; }
         .invoice-container { width: 100%; background: #fff; padding: 10px; color: #333; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
         .invoice-container .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
+        .invoice-container .invoice-grid { display: table; width: 100%; table-layout: fixed; }
+        .invoice-container .invoice-grid > .invoice-col { display: table-cell; width: 50%; vertical-align: top; }
         .invoice-container .invoice-col { width: 50%; padding: 0 15px; }
         .invoice-container .invoice-col.full { width: 100%; }
         .invoice-container .invoice-col.right { text-align: right; }
@@ -229,7 +228,7 @@
         .invoice-container hr { margin: 20px 0; border: 0; border-top: 1px solid #eee; }
         .invoice-container address { margin: 8px 0 0; font-style: normal; line-height: 1.5; }
         .invoice-container .panel { margin-top: 14px; background: #fff; }
-        .invoice-container .panel-heading { padding: 10px 15px; background: #f5f5f5; border: 1px solid #ddd; }
+        .invoice-container .panel-heading { padding: 0 0 8px; background: transparent; border: 0; }
         .invoice-container .panel-title { margin: 0; font-size: 16px; }
         .invoice-container .table-responsive { width: 100%; overflow-x: auto; }
         .invoice-container .table { width: 100%; max-width: 100%; margin-bottom: 20px; border-collapse: collapse; }
@@ -254,10 +253,12 @@
         .alert.amber { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
         .alert.rose { border-color: #fecdd3; background: #fff1f2; color: #9f1239; }
         @media (max-width: 767px) {
-            .invoice-container .invoice-col { width: 100%; }
-            .invoice-container .invoice-col.right { text-align: left; margin-top: 14px; }
+            .invoice-container .invoice-col { padding: 0 10px; }
+            .invoice-container .invoice-logo { width: 220px; }
         }
         @media print {
+            .invoice-container .invoice-grid { display: table !important; width: 100% !important; table-layout: fixed !important; }
+            .invoice-container .invoice-grid > .invoice-col { display: table-cell !important; width: 50% !important; vertical-align: top !important; }
             .no-print, .no-print * { display: none !important; }
         }
     </style>
