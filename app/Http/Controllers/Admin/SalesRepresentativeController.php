@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use App\Enums\Role;
 use App\Services\CommissionService;
+use App\Services\SalesRepBalanceService;
 use Illuminate\Support\Carbon;
 
 class SalesRepresentativeController extends Controller
@@ -186,7 +187,12 @@ class SalesRepresentativeController extends Controller
             ->with('status', 'Sales representative updated.');
     }
 
-    public function show(Request $request, SalesRepresentative $salesRep, CommissionService $commissionService)
+    public function show(
+        Request $request,
+        SalesRepresentative $salesRep,
+        CommissionService $commissionService,
+        SalesRepBalanceService $salesRepBalanceService
+    )
     {
         $salesRep->load(['user:id,name,email', 'employee:id,name']);
         $tab = $request->query('tab', 'profile');
@@ -196,19 +202,30 @@ class SalesRepresentativeController extends Controller
         }
 
         $commissionService->ensureProjectEarningsForRepIds([$salesRep->id]);
-        $balance = $commissionService->computeRepBalance($salesRep->id);
+        $balance = $salesRepBalanceService->breakdown($salesRep->id);
+        $payableNet = (float) ($balance['payable_net'] ?? 0);
+        $payableLabel = $payableNet > 0
+            ? 'Company owes rep'
+            : ($payableNet < 0 ? 'Rep overpaid / advance taken' : 'Settled');
 
         $earningsQuery = $salesRep->earnings();
         $payoutsQuery = $salesRep->payouts();
 
         $summary = [
             'total_earned' => $balance['total_earned'] ?? 0,
-            'payable' => $balance['payable_balance'] ?? 0,
-            'payable_gross' => $balance['payable_gross'] ?? 0,
-            'paid' => $balance['total_paid'] ?? 0,
-            'advance_paid' => $balance['advance_paid'] ?? 0,
-            'overpaid' => $balance['overpaid'] ?? 0,
-            'outstanding' => $balance['outstanding'] ?? (($balance['total_earned'] ?? 0) - ($balance['total_paid'] ?? 0)),
+            'payable' => $payableNet,
+            'payable_gross' => $payableNet,
+            'paid' => $balance['total_paid_incl_advance'] ?? 0,
+            'advance_paid' => CommissionPayout::query()
+                ->where('sales_representative_id', $salesRep->id)
+                ->where('type', 'advance')
+                ->where('status', 'paid')
+                ->sum('total_amount'),
+            'overpaid' => max(0, -$payableNet),
+            'outstanding' => max(0, $payableNet),
+            'payable_label' => $payableLabel,
+            'project_earned' => $balance['project_earned'] ?? 0,
+            'maintenance_earned' => $balance['maintenance_earned'] ?? 0,
         ];
 
         $recentEarnings = collect();

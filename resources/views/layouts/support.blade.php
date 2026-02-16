@@ -157,6 +157,7 @@
             });
         });
     </script>
+    @include('partials.ajax-modal')
     @include('layouts.partials.delete-confirm-modal')
     @include('layouts.partials.table-responsive')
     <div id="pageScriptStack" hidden aria-hidden="true">
@@ -164,3 +165,4 @@
     </div>
 </body>
 </html>
+

@@ -6,30 +6,38 @@ use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Support\AjaxResponse;
 use App\Support\SystemLogger;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class PlanController extends Controller
 {
     public function index()
     {
-        return view('admin.plans.index', [
-            'plans' => Plan::query()->with('product')->latest()->get(),
-            'defaultCurrency' => Setting::getValue('currency'),
-        ]);
+        $plans = Plan::query()->with('product')->latest()->get();
+        $defaultCurrency = Setting::getValue('currency');
+
+        return view('admin.plans.index', compact('plans', 'defaultCurrency'));
     }
 
-    public function create()
+    public function create(Request $request): View
     {
-        return view('admin.plans.create', [
-            'products' => Product::query()->orderBy('name')->get(),
-            'defaultCurrency' => Setting::getValue('currency'),
-        ]);
+        $products = Product::query()->orderBy('name')->get();
+        $defaultCurrency = Setting::getValue('currency');
+
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return view('admin.plans.partials.form', compact('products', 'defaultCurrency'));
+        }
+
+        return view('admin.plans.create', compact('products', 'defaultCurrency'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
@@ -55,20 +63,27 @@ class PlanController extends Controller
             'is_active' => $plan->is_active,
         ], $request->user()?->id, $request->ip());
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Plan created.', $this->patches());
+        }
+
         return redirect()->route('admin.plans.index')
             ->with('status', 'Plan created.');
     }
 
-    public function edit(Plan $plan)
+    public function edit(Request $request, Plan $plan): View
     {
-        return view('admin.plans.edit', [
-            'plan' => $plan,
-            'products' => Product::query()->orderBy('name')->get(),
-            'defaultCurrency' => Setting::getValue('currency'),
-        ]);
+        $products = Product::query()->orderBy('name')->get();
+        $defaultCurrency = Setting::getValue('currency');
+
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return view('admin.plans.partials.form', compact('plan', 'products', 'defaultCurrency'));
+        }
+
+        return view('admin.plans.edit', compact('plan', 'products', 'defaultCurrency'));
     }
 
-    public function update(Request $request, Plan $plan)
+    public function update(Request $request, Plan $plan): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
@@ -94,11 +109,15 @@ class PlanController extends Controller
             'is_active' => $plan->is_active,
         ], $request->user()?->id, $request->ip());
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Plan updated.', $this->patches());
+        }
+
         return redirect()->route('admin.plans.edit', $plan)
             ->with('status', 'Plan updated.');
     }
 
-    public function destroy(Plan $plan)
+    public function destroy(Request $request, Plan $plan): RedirectResponse|JsonResponse
     {
         SystemLogger::write('activity', 'Plan deleted.', [
             'plan_id' => $plan->id,
@@ -110,6 +129,10 @@ class PlanController extends Controller
         ], auth()->id(), request()->ip());
 
         $plan->delete();
+
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Plan deleted.', $this->patches(), closeModal: false);
+        }
 
         return redirect()->route('admin.plans.index')
             ->with('status', 'Plan deleted.');
@@ -136,5 +159,19 @@ class PlanController extends Controller
         }
 
         return $slug;
+    }
+
+    private function patches(): array
+    {
+        return [
+            [
+                'action' => 'replace',
+                'selector' => '#plansTableWrap',
+                'html' => view('admin.plans.partials.table', [
+                    'plans' => Plan::query()->with('product')->latest()->get(),
+                    'defaultCurrency' => Setting::getValue('currency'),
+                ])->render(),
+            ],
+        ];
     }
 }

@@ -49,7 +49,22 @@
                         </td>
                         <td class="px-4 py-3 text-slate-500">{{ $subscription->next_invoice_at?->format($globalDateFormat) ?? '--' }}</td>
                         <td class="px-4 py-3">
-                            <a href="{{ route('admin.subscriptions.edit', $subscription) }}" class="text-teal-600 hover:text-teal-500">Manage</a>
+                            <div class="flex items-center gap-3">
+                                <a
+                                    href="{{ route('admin.subscriptions.edit', $subscription) }}"
+                                    data-ajax-modal="true"
+                                    data-modal-title="Manage Subscription"
+                                    data-url="{{ route('admin.subscriptions.edit', $subscription) }}"
+                                    class="text-teal-600 hover:text-teal-500"
+                                >
+                                    Manage
+                                </a>
+                                <form method="POST" action="{{ route('admin.subscriptions.destroy', $subscription) }}" data-ajax-form="true" onsubmit="return confirm('Delete this subscription?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty

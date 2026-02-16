@@ -6,5 +6,5 @@ return [
     'username' => env('WHMCS_ADMIN_USERNAME', ''),
     'identifier' => env('WHMCS_API_IDENTIFIER', ''),
     'secret' => env('WHMCS_API_SECRET', ''),
-    'timeout' => env('WHMCS_TIMEOUT', 10),
+    'timeout' => env('WHMCS_TIMEOUT', 30),
 ];
