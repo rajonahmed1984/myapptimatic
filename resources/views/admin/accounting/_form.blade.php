@@ -51,7 +51,7 @@
 
     <div>
         <label class="text-sm text-slate-600">Invoice</label>
-        <select name="invoice_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" onchange="updateDueAmount(this)">
+        <select name="invoice_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
             <option value="">Select invoice</option>
             @foreach($invoices as $invoiceOption)
                 <option value="{{ $invoiceOption->id }}" @selected((string) $selectedInvoiceId === (string) $invoiceOption->id)>
@@ -85,25 +85,3 @@
         <p class="mt-2 text-xs text-slate-500">Payments require a customer and invoice. Credits require a customer.</p>
     </div>
 </div>
-
-<script>
-function updateDueAmount(selectElement) {
-    const invoiceId = selectElement.value;
-    const amountInput = document.querySelector('input[name="amount"]');
-    const amountLabel = document.querySelector('label:has(+ input[name="amount"])');
-    
-    if (!invoiceId) {
-        amountLabel.innerHTML = 'Amount';
-        return;
-    }
-    
-    // Fetch invoice data to get due amount
-    fetch(`{{ route('admin.invoices.index') }}?invoice_id=${invoiceId}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .catch(error => console.log('Could not fetch invoice data'));
-}
-</script>

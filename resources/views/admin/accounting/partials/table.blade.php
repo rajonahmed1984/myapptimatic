@@ -1,4 +1,4 @@
-<div id="accountingTable">
+<div id="accountingTableWrap">
     <div class="card overflow-x-auto">
         <table class="w-full min-w-[900px] text-left text-sm">
             <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
@@ -44,10 +44,17 @@
                         <td class="px-4 py-3 text-slate-500">{{ $entry->reference ?: '-' }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
-                                <a href="{{ route('admin.accounting.edit', $entry) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
+                                <a
+                                    href="{{ route('admin.accounting.edit', ['entry' => $entry, 'scope' => $scope ?? 'ledger', 'search' => $search ?? '']) }}"
+                                    data-ajax-modal="true"
+                                    data-url="{{ route('admin.accounting.edit', ['entry' => $entry, 'scope' => $scope ?? 'ledger', 'search' => $search ?? '']) }}"
+                                    data-modal-title="Edit Accounting Entry"
+                                    class="text-teal-600 hover:text-teal-500"
+                                >Edit</a>
                                 <form
                                     method="POST"
                                     action="{{ route('admin.accounting.destroy', $entry) }}"
+                                    data-ajax-form="true"
                                     data-delete-confirm
                                     data-confirm-name="{{ $entry->reference ?: $entry->id }}"
                                     data-confirm-title="Delete entry {{ $entry->reference ?: $entry->id }}?"
@@ -55,6 +62,8 @@
                                 >
                                     @csrf
                                     @method('DELETE')
+                                    <input type="hidden" name="scope" value="{{ $scope ?? 'ledger' }}">
+                                    <input type="hidden" name="search" value="{{ $search ?? '' }}">
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
                                 </form>
                             </div>

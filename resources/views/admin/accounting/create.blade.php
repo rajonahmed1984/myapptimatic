@@ -13,6 +13,8 @@
 
     <form method="POST" action="{{ route('admin.accounting.store') }}" class="card p-6">
         @csrf
+        <input type="hidden" name="scope" value="{{ request('scope', 'ledger') }}">
+        <input type="hidden" name="search" value="{{ request('search', '') }}">
         @include('admin.accounting._form')
         <div class="mt-6 flex justify-end">
             <button type="submit" class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white">Save entry</button>
