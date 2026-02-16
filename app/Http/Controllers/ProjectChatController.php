@@ -83,6 +83,7 @@ class ProjectChatController extends Controller
 
         return view('projects.project-chat', [
             'layout' => $this->layoutForPrefix($routePrefix),
+            'routePrefix' => $routePrefix,
             'project' => $project,
             'messages' => $messages,
             'postRoute' => route($routePrefix . '.projects.chat.store', $project),

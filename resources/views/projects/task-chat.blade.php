@@ -1,7 +1,18 @@
-@extends($layout)
+@extends($layout ?? 'layouts.admin')
 
 @section('title', 'Task Chat')
 @section('page-title', 'Task Chat')
+
+@php
+    $routePrefix = $routePrefix ?? (function () {
+        $routeName = request()->route()?->getName();
+        if (! is_string($routeName) || $routeName === '') {
+            return 'admin';
+        }
+
+        return explode('.', $routeName)[0] ?: 'admin';
+    })();
+@endphp
 
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">

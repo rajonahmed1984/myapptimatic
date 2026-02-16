@@ -61,6 +61,7 @@ class ProjectTaskChatController extends Controller
 
         return view('projects.task-chat', [
             'layout' => $this->layoutForPrefix($routePrefix),
+            'routePrefix' => $routePrefix,
             'project' => $project,
             'task' => $task,
             'messages' => $messages,
