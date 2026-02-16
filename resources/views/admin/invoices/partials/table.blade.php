@@ -1,4 +1,4 @@
-<div id="invoicesTable">
+<div id="invoicesTableWrap">
     <div class="card overflow-x-auto">
         <table class="w-full min-w-[1050px] text-left text-sm">
             <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
@@ -60,6 +60,7 @@
                                 <form
                                     method="POST"
                                     action="{{ route('admin.invoices.destroy', $invoice) }}"
+                                    data-ajax-form="true"
                                     data-delete-confirm
                                     data-confirm-name="{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}"
                                     data-confirm-title="Delete invoice #{{ is_numeric($invoice->number) ? $invoice->number : $invoice->id }}?"
@@ -67,6 +68,9 @@
                                 >
                                     @csrf
                                     @method('DELETE')
+                                    <input type="hidden" name="status_filter" value="{{ $statusFilter ?? '' }}">
+                                    <input type="hidden" name="search" value="{{ $search ?? '' }}">
+                                    <input type="hidden" name="project_id" value="{{ $project?->id ?? '' }}">
                                     <button type="submit" class="text-rose-600 hover:text-rose-500">Delete</button>
                                 </form>
                             </div>
