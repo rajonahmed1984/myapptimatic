@@ -378,9 +378,15 @@
         </div>
     </div>
 
-    <script>
+    <script data-script-key="{{ $routePrefix }}-task-detail">
         // Subtask management
-        document.addEventListener('DOMContentLoaded', () => {
+        (() => {
+        const pageKey = @json($routePrefix . '.projects.tasks.show');
+        window.PageInit = window.PageInit || {};
+        window.PageInit[pageKey] = () => {
+            if (typeof window.__taskDetailCleanup === 'function') {
+                window.__taskDetailCleanup();
+            }
             const addSubtaskBtn = document.getElementById('addSubtaskBtn');
             const subtaskForm = document.getElementById('subtaskForm');
             const cancelSubtaskBtn = document.getElementById('cancelSubtaskBtn');
@@ -594,7 +600,7 @@
                 }
             });
 
-            setInterval(async () => {
+            let liveUpdateTimer = setInterval(async () => {
                 const keepAtBottom = isNearBottom();
                 const items = await fetchItems({ after_id: lastId, limit: 30 });
                 if (items.length) {
@@ -604,6 +610,21 @@
                     }
                 }
             }, 5000);
-        });
+
+            const cleanup = () => {
+                if (liveUpdateTimer) {
+                    clearInterval(liveUpdateTimer);
+                    liveUpdateTimer = null;
+                }
+            };
+
+            window.__taskDetailCleanup = cleanup;
+            window.addEventListener('beforeunload', cleanup);
+        };
+
+        if (document.querySelector('#appContent')?.dataset?.pageKey === pageKey) {
+            window.PageInit[pageKey]();
+        }
+        })();
     </script>
 @endsection

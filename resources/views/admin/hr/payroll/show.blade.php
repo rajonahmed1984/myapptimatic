@@ -19,6 +19,7 @@
                 <form
                     method="POST"
                     action="{{ route('admin.hr.payroll.destroy', $period) }}"
+                    data-ajax-form="true"
                     data-delete-confirm
                     data-confirm-name="{{ $period->period_key }}"
                     data-confirm-title="Delete payroll period {{ $period->period_key }}?"
@@ -30,7 +31,7 @@
                 </form>
             @endif
             @if($period->status === 'draft' && $period->end_date?->lt(today()))
-                <form method="POST" action="{{ route('admin.hr.payroll.finalize', $period) }}">
+                <form method="POST" action="{{ route('admin.hr.payroll.finalize', $period) }}" data-ajax-form="true">
                     @csrf
                     <button class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Finalize</button>
                 </form>
@@ -303,7 +304,7 @@
                 <button type="button" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900" data-adjust-close>Close</button>
             </div>
 
-            <form id="adjustModalForm" method="POST" action="" class="mt-5 grid gap-4">
+            <form id="adjustModalForm" method="POST" action="" class="mt-5 grid gap-4" data-ajax-form="true">
                 @csrf
                 <div class="grid gap-3 md:grid-cols-2">
                     <div>
@@ -356,7 +357,7 @@
                 <button type="button" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900" data-payment-close>Close</button>
             </div>
 
-            <form id="paymentModalForm" method="POST" action="" enctype="multipart/form-data" class="mt-5 grid gap-4">
+            <form id="paymentModalForm" method="POST" action="" enctype="multipart/form-data" class="mt-5 grid gap-4" data-ajax-form="true">
                 @csrf
                 <div>
                     <label for="paymentAmount" class="text-xs uppercase tracking-[0.2em] text-slate-500">Amount</label>
@@ -399,6 +400,7 @@
     <script>
         (() => {
             const setupAdjustModal = () => {
+                const root = document.getElementById('appContent');
                 const modal = document.getElementById('payrollAdjustModal');
                 const form = document.getElementById('adjustModalForm');
                 const employeeEl = document.getElementById('adjustModalEmployee');
@@ -409,7 +411,7 @@
                 const deductionEl = document.getElementById('adjustDeduction');
                 const deductionReferenceEl = document.getElementById('adjustDeductionReference');
                 const deductionNoteEl = document.getElementById('adjustDeductionNote');
-                if (!modal || !form || !employeeEl || !overtimeHoursEl || !overtimeRateEl || !bonusEl || !penaltyEl || !deductionEl || !deductionReferenceEl || !deductionNoteEl) return;
+                if (!root || !modal || !form || !employeeEl || !overtimeHoursEl || !overtimeRateEl || !bonusEl || !penaltyEl || !deductionEl || !deductionReferenceEl || !deductionNoteEl) return;
 
                 const openModal = (btn) => {
                     form.setAttribute('action', btn.getAttribute('data-adjust-action') || '');
@@ -428,7 +430,7 @@
                     modal.classList.add('hidden');
                 };
 
-                document.addEventListener('click', (event) => {
+                root.addEventListener('click', (event) => {
                     const openBtn = event.target.closest('[data-adjust-open]');
                     if (openBtn) {
                         event.preventDefault();
@@ -443,19 +445,20 @@
                     }
                 });
 
-                document.addEventListener('keydown', (event) => {
+                root.addEventListener('keydown', (event) => {
                     if (event.key === 'Escape') closeModal();
                 });
             };
 
             const setupPaymentModal = () => {
+                const root = document.getElementById('appContent');
                 const modal = document.getElementById('payrollPaymentModal');
                 const form = document.getElementById('paymentModalForm');
                 const employeeEl = document.getElementById('paymentModalEmployee');
                 const amountEl = document.getElementById('paymentModalAmount');
                 const amountInputEl = document.getElementById('paymentAmount');
                 const amountHintEl = document.getElementById('paymentAmountHint');
-                if (!modal || !form || !employeeEl || !amountEl || !amountInputEl || !amountHintEl) return;
+                if (!root || !modal || !form || !employeeEl || !amountEl || !amountInputEl || !amountHintEl) return;
 
                 const openModal = (btn) => {
                     const action = btn.getAttribute('data-payment-action') || '';
@@ -483,7 +486,7 @@
                     modal.classList.add('hidden');
                 };
 
-                document.addEventListener('click', (event) => {
+                root.addEventListener('click', (event) => {
                     const openBtn = event.target.closest('[data-payment-open]');
                     if (openBtn) {
                         event.preventDefault();
@@ -498,7 +501,7 @@
                     }
                 });
 
-                document.addEventListener('keydown', (event) => {
+                root.addEventListener('keydown', (event) => {
                     if (event.key === 'Escape') closeModal();
                 });
             };

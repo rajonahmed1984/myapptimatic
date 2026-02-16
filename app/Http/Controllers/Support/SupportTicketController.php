@@ -7,10 +7,13 @@ use App\Models\SupportTicket;
 use App\Services\ClientNotificationService;
 use App\Services\GeminiService;
 use App\Services\SupportTicketAiService;
+use App\Support\AjaxResponse;
 use App\Support\SystemLogger;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Illuminate\Validation\Rule;
 
 class SupportTicketController extends Controller
@@ -46,7 +49,7 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    public function show(SupportTicket $ticket)
+    public function show(SupportTicket $ticket): View
     {
         $ticket->load(['customer', 'replies.user']);
 
@@ -77,7 +80,7 @@ class SupportTicketController extends Controller
         }
     }
 
-    public function reply(Request $request, SupportTicket $ticket, ClientNotificationService $clientNotifications)
+    public function reply(Request $request, SupportTicket $ticket, ClientNotificationService $clientNotifications): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'message' => ['required', 'string'],
@@ -125,12 +128,16 @@ class SupportTicketController extends Controller
 
         $clientNotifications->sendTicketReplyFromAdmin($ticket, $reply);
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Reply sent.', $this->mainPatches($ticket), closeModal: false);
+        }
+
         return redirect()
             ->route('support.support-tickets.show', $ticket)
             ->with('status', 'Reply sent.');
     }
 
-    public function updateStatus(Request $request, SupportTicket $ticket)
+    public function updateStatus(Request $request, SupportTicket $ticket): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'status' => ['required', Rule::in(['open', 'answered', 'customer_reply', 'closed'])],
@@ -149,12 +156,16 @@ class SupportTicketController extends Controller
             'to_status' => $data['status'],
         ], $request->user()?->id, $request->ip());
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Ticket updated.', $this->mainPatches($ticket), closeModal: false);
+        }
+
         return redirect()
             ->route('support.support-tickets.show', $ticket)
             ->with('status', 'Ticket updated.');
     }
 
-    public function update(Request $request, SupportTicket $ticket)
+    public function update(Request $request, SupportTicket $ticket): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'subject' => ['required', 'string', 'max:255'],
@@ -178,12 +189,16 @@ class SupportTicketController extends Controller
             'priority' => $data['priority'],
         ], $request->user()?->id, $request->ip());
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Ticket updated.', $this->mainPatches($ticket), closeModal: false);
+        }
+
         return redirect()
             ->route('support.support-tickets.show', $ticket)
             ->with('status', 'Ticket updated.');
     }
 
-    public function destroy(SupportTicket $ticket)
+    public function destroy(Request $request, SupportTicket $ticket): RedirectResponse|JsonResponse
     {
         SystemLogger::write('activity', 'Ticket deleted.', [
             'ticket_id' => $ticket->id,
@@ -193,8 +208,27 @@ class SupportTicketController extends Controller
 
         $ticket->delete();
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Ticket deleted.', [], route('support.support-tickets.index'), false);
+        }
+
         return redirect()
             ->route('support.support-tickets.index')
             ->with('status', 'Ticket deleted.');
+    }
+
+    private function mainPatches(SupportTicket $ticket): array
+    {
+        $ticket->refresh()->load(['customer', 'replies.user']);
+
+        return [
+            [
+                'action' => 'replace',
+                'selector' => '#ticketMainWrap',
+                'html' => view('support.support-tickets.partials.main', [
+                    'ticket' => $ticket,
+                ])->render(),
+            ],
+        ];
     }
 }

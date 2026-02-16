@@ -265,8 +265,15 @@
         @endif
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    <script data-script-key="{{ $routePrefix }}-project-chat">
+    (() => {
+    const pageKey = @json($routePrefix . '.projects.chat');
+    window.PageInit = window.PageInit || {};
+    window.PageInit[pageKey] = () => {
+        if (typeof window.__projectChatCleanup === 'function') {
+            window.__projectChatCleanup();
+        }
+
         const container = document.getElementById('project-chat-messages');
         const form = document.getElementById('chatMessageForm');
         const textarea = document.getElementById('chatMessageInput');
@@ -295,6 +302,10 @@
         if (!container || !messagesUrl) {
             return;
         }
+        if (container.dataset.chatBound === '1') {
+            return;
+        }
+        container.dataset.chatBound = '1';
 
         let lastId = Number(container.dataset.lastId || {{ $lastMessageId }} || 0);
         let oldestId = Number(container.dataset.oldestId || {{ $oldestMessageId }} || 0);
@@ -859,10 +870,10 @@
             }
         });
 
-        setInterval(() => {
+        let presenceHeartbeatTimer = setInterval(() => {
             sendPresence(presenceState);
         }, 15000);
-        setInterval(() => {
+        let editWindowTimer = setInterval(() => {
             refreshMessageActionAvailability();
         }, 1000);
 
@@ -1465,15 +1476,41 @@
             }
         });
 
-        window.addEventListener('beforeunload', () => {
+        const cleanup = () => {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+            if (presenceHeartbeatTimer) {
+                clearInterval(presenceHeartbeatTimer);
+                presenceHeartbeatTimer = null;
+            }
+            if (editWindowTimer) {
+                clearInterval(editWindowTimer);
+                editWindowTimer = null;
+            }
+            if (idleTimer) {
+                clearTimeout(idleTimer);
+                idleTimer = null;
+            }
             if (attachmentPreviewUrl) {
                 URL.revokeObjectURL(attachmentPreviewUrl);
+                attachmentPreviewUrl = null;
             }
             if (eventSource) {
                 eventSource.close();
+                eventSource = null;
             }
-        });
-    });
+        };
+
+        window.__projectChatCleanup = cleanup;
+        window.addEventListener('beforeunload', cleanup);
+    };
+
+    if (document.querySelector('#appContent')?.dataset?.pageKey === pageKey) {
+        window.PageInit[pageKey]();
+    }
+    })();
 </script>
 @endsection
 

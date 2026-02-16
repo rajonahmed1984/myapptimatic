@@ -43,15 +43,25 @@
     </div>
 
     @if($tab === 'profile')
+        @php
+            $payableNet = (float) ($summary['payable'] ?? 0);
+            $payableClass = $payableNet > 0
+                ? 'text-amber-700'
+                : ($payableNet < 0 ? 'text-rose-700' : 'text-slate-900');
+        @endphp
         <div class="grid gap-4 md:grid-cols-4">
             <div class="card p-4">
                 <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Total Earned</div>
                 <div class="mt-2 text-2xl font-semibold text-slate-900">{{ number_format($summary['total_earned'] ?? 0, 2) }}</div>
+                <div class="text-xs text-slate-500">
+                    Projects: {{ number_format($summary['project_earned'] ?? 0, 2) }}
+                    | Maintenances: {{ number_format($summary['maintenance_earned'] ?? 0, 2) }}
+                </div>
             </div>
             <div class="card p-4">
                 <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Payable (Net)</div>
-                <div class="mt-2 text-2xl font-semibold text-amber-700">{{ number_format($summary['payable'] ?? 0, 2) }}</div>
-                <div class="text-xs text-slate-500">Gross: {{ number_format($summary['payable_gross'] ?? 0, 2) }}</div>
+                <div class="mt-2 text-2xl font-semibold {{ $payableClass }}">{{ number_format($summary['payable'] ?? 0, 2) }}</div>
+                <div class="text-xs text-slate-500">{{ $summary['payable_label'] ?? 'Settled' }}</div>
             </div>
             <div class="card p-4">
                 <div class="text-xs uppercase tracking-[0.28em] text-slate-500">Paid (Incl. Advance)</div>

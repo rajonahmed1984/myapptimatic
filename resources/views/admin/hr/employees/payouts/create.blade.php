@@ -14,7 +14,7 @@
     </div>
 
     <div class="card p-6 space-y-6">
-        <form method="GET" action="{{ route('admin.hr.employee-payouts.create') }}" class="grid gap-3 md:grid-cols-3">
+        <form method="GET" action="{{ route('admin.hr.employee-payouts.create') }}" class="grid gap-3 md:grid-cols-3" data-ajax-form="true">
             <div>
                 <label class="text-xs text-slate-500">Employee</label>
                 <select name="employee_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" onchange="this.form.submit()">
@@ -43,7 +43,7 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('admin.hr.employee-payouts.store') }}" class="space-y-4">
+        <form method="POST" action="{{ route('admin.hr.employee-payouts.store') }}" class="space-y-4" data-ajax-form="true">
             @csrf
             <input type="hidden" name="employee_id" value="{{ $selectedEmployee }}">
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">

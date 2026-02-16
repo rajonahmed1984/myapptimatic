@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Project;
 use App\Models\ProjectMaintenance;
 use App\Models\PaymentGateway;
+use App\Support\AjaxResponse;
 use App\Support\SystemLogger;
 use App\Services\BillingService;
 use App\Services\AdminNotificationService;
@@ -17,6 +18,7 @@ use App\Services\CommissionService;
 use App\Services\InvoiceTaxService;
 use App\Models\Setting;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -206,7 +208,7 @@ class InvoiceController extends Controller
         Invoice $invoice,
         AdminNotificationService $adminNotifications,
         CommissionService $commissionService
-    )
+    ): RedirectResponse|JsonResponse
     {
         $wasPaid = $invoice->status === 'paid';
         $previousStatus = $invoice->status;
@@ -257,13 +259,24 @@ class InvoiceController extends Controller
             ], level: 'error');
         }
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Invoice marked as paid.', $this->showPatches($invoice), closeModal: false);
+        }
+
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice marked as paid.');
     }
 
-    public function recalculate(Invoice $invoice): RedirectResponse
+    public function recalculate(Request $request, Invoice $invoice): RedirectResponse|JsonResponse
     {
         if (! in_array($invoice->status, ['unpaid', 'overdue'], true)) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Only unpaid or overdue invoices can be recalculated.',
+                ], 422);
+            }
+
             return redirect()->route('admin.invoices.show', $invoice)
                 ->with('status', 'Only unpaid or overdue invoices can be recalculated.');
         }
@@ -275,6 +288,10 @@ class InvoiceController extends Controller
             'customer_id' => $invoice->customer_id,
         ]);
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Invoice recalculated.', $this->showPatches($invoice), closeModal: false);
+        }
+
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice recalculated.');
     }
@@ -284,7 +301,7 @@ class InvoiceController extends Controller
         Invoice $invoice,
         AdminNotificationService $adminNotifications,
         CommissionService $commissionService
-    ): RedirectResponse
+    ): RedirectResponse|JsonResponse
     {
         $wasPaid = $invoice->status === 'paid';
         $previousStatus = $invoice->status;
@@ -368,11 +385,15 @@ class InvoiceController extends Controller
             ], level: 'error');
         }
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Invoice updated.', $this->showPatches($invoice), closeModal: false);
+        }
+
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice updated.');
     }
 
-    public function destroy(Invoice $invoice): RedirectResponse
+    public function destroy(Request $request, Invoice $invoice): RedirectResponse|JsonResponse
     {
         SystemLogger::write('activity', 'Invoice deleted.', [
             'invoice_id' => $invoice->id,
@@ -381,6 +402,10 @@ class InvoiceController extends Controller
         ]);
 
         $invoice->delete();
+
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Invoice deleted.', $this->listPatchesFromRequest($request), closeModal: false);
+        }
 
         return redirect()->route('admin.invoices.index')
             ->with('status', 'Invoice deleted.');
@@ -433,10 +458,125 @@ class InvoiceController extends Controller
             'project' => $project,
         ];
 
-        if (request()->header('HX-Request')) {
-            return view('admin.invoices.partials.table', $payload);
+        return view('admin.invoices.index', $payload);
+    }
+
+    private function showPatches(Invoice $invoice): array
+    {
+        $invoice = $invoice->fresh([
+            'customer',
+            'items',
+            'accountingEntries.paymentGateway',
+            'paymentProofs.paymentGateway',
+            'paymentProofs.reviewer',
+        ]);
+
+        return [
+            [
+                'action' => 'replace',
+                'selector' => '#invoiceShowWrap',
+                'html' => view('admin.invoices.partials.show-main', [
+                    'invoice' => $invoice,
+                ])->render(),
+            ],
+        ];
+    }
+
+    private function listPatchesFromRequest(Request $request): array
+    {
+        $statusFilter = trim((string) $request->input('status_filter', ''));
+        $status = in_array($statusFilter, ['paid', 'unpaid', 'overdue', 'cancelled', 'refunded'], true)
+            ? $statusFilter
+            : null;
+        $search = trim((string) $request->input('search', ''));
+        $project = null;
+        $projectId = (int) $request->input('project_id', 0);
+        if ($projectId > 0) {
+            $project = Project::query()->find($projectId);
         }
 
-        return view('admin.invoices.index', $payload);
+        $query = Invoice::query()
+            ->with(['customer', 'paymentProofs', 'subscription.plan.product', 'maintenance.project', 'accountingEntries'])
+            ->latest('issue_date');
+
+        if ($project) {
+            $query->where('project_id', $project->id);
+        }
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('number', 'like', '%' . $search . '%')
+                    ->orWhere('status', 'like', '%' . $search . '%')
+                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                        $customerQuery->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('subscription.plan', function ($planQuery) use ($search) {
+                        $planQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhereHas('product', function ($productQuery) use ($search) {
+                                $productQuery->where('name', 'like', '%' . $search . '%');
+                            });
+                    })
+                    ->orWhereHas('maintenance', function ($maintenanceQuery) use ($search) {
+                        $maintenanceQuery->where('title', 'like', '%' . $search . '%');
+                    });
+
+                if (is_numeric($search)) {
+                    $inner->orWhere('id', (int) $search);
+                }
+            });
+        }
+
+        $listUrl = $this->statusListUrl($status, $project);
+        $paginator = $query->paginate(25);
+        $paginator->withPath($listUrl);
+        if ($search !== '') {
+            $paginator->appends(['search' => $search]);
+        }
+
+        return [
+            [
+                'action' => 'replace',
+                'selector' => '#invoicesTableWrap',
+                'html' => view('admin.invoices.partials.table', [
+                    'invoices' => $paginator,
+                    'statusFilter' => $status,
+                    'search' => $search,
+                    'project' => $project,
+                    'title' => $this->statusTitle($status),
+                ])->render(),
+            ],
+        ];
+    }
+
+    private function statusTitle(?string $status): string
+    {
+        return match ($status) {
+            'paid' => 'Paid Invoices',
+            'unpaid' => 'Unpaid Invoices',
+            'overdue' => 'Overdue Invoices',
+            'cancelled' => 'Cancelled Invoices',
+            'refunded' => 'Refunded Invoices',
+            default => 'All Invoices',
+        };
+    }
+
+    private function statusListUrl(?string $status, ?Project $project = null): string
+    {
+        if ($project) {
+            return route('admin.projects.invoices', $project);
+        }
+
+        return match ($status) {
+            'paid' => route('admin.invoices.paid'),
+            'unpaid' => route('admin.invoices.unpaid'),
+            'overdue' => route('admin.invoices.overdue'),
+            'cancelled' => route('admin.invoices.cancelled'),
+            'refunded' => route('admin.invoices.refunded'),
+            default => route('admin.invoices.index'),
+        };
     }
 }

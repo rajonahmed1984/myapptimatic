@@ -546,6 +546,21 @@ class ProjectController extends Controller
 
         $tasks = $tasksQuery->paginate(25)->withQueryString();
 
+        $baseSummary = $project->tasks()
+            ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count")
+            ->selectRaw("SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_count")
+            ->selectRaw("SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END) as blocked_count")
+            ->selectRaw("SUM(CASE WHEN status IN ('completed', 'done') THEN 1 ELSE 0 END) as completed_count")
+            ->first();
+
+        $summary = [
+            'total' => (int) $project->tasks()->count(),
+            'pending' => (int) ($baseSummary->pending_count ?? 0),
+            'in_progress' => (int) ($baseSummary->in_progress_count ?? 0),
+            'blocked' => (int) ($baseSummary->blocked_count ?? 0),
+            'completed' => (int) ($baseSummary->completed_count ?? 0),
+        ];
+
         $readerType = 'user';
         $readerId = $user?->id;
         $lastReadId = null;
@@ -568,6 +583,7 @@ class ProjectController extends Controller
             'employees' => Employee::where('status', 'active')->orderBy('name')->get(['id', 'name', 'designation']),
             'salesReps' => SalesRepresentative::where('status', 'active')->orderBy('name')->get(['id', 'name', 'email']),
             'tasks' => $tasks,
+            'summary' => $summary,
             'projectChatUnreadCount' => $projectChatUnreadCount,
         ]);
     }

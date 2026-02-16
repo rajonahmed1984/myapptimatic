@@ -699,6 +699,8 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
         ->name('projects.overheads.invoice');
     Route::post('projects/{project}/tasks', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
     Route::patch('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
+    Route::get('projects/{project}/tasks/create', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'create'])->name('projects.tasks.create');
+    Route::get('projects/{project}/tasks/{task}/edit', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'edit'])->name('projects.tasks.edit');
     Route::patch('projects/{project}/tasks/{task}/assignees', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'updateAssignees'])
         ->name('projects.tasks.assignees');
     Route::patch('projects/{project}/tasks/{task}/status', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'changeStatus'])->name('projects.tasks.changeStatus');

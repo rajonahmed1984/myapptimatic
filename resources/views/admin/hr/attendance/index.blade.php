@@ -18,7 +18,7 @@
     </div>
 
     <div class="card p-6">
-        <form method="GET" action="{{ route('admin.hr.attendance.index') }}" class="mb-5 flex flex-wrap items-end gap-2">
+        <form method="GET" action="{{ route('admin.hr.attendance.index') }}" class="mb-5 flex flex-wrap items-end gap-2" data-ajax-form="true">
             <div>
                 <label for="attendanceDate" class="text-xs uppercase tracking-[0.2em] text-slate-500">Date</label>
                 <input id="attendanceDate" type="date" name="date" value="{{ $selectedDate }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
@@ -27,7 +27,7 @@
             <a href="{{ route('admin.hr.attendance.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Today</a>
         </form>
 
-        <form method="POST" action="{{ route('admin.hr.attendance.store') }}">
+        <form method="POST" action="{{ route('admin.hr.attendance.store') }}" data-ajax-form="true">
             @csrf
             <input type="hidden" name="date" value="{{ $selectedDate }}">
 
