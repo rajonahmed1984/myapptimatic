@@ -3,6 +3,32 @@
     const CONTENT_SELECTOR = '#appContent';
     const LOADING_HTML = '<div class="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading...</div>';
 
+    const state = {
+        initialized: false,
+        sidebar: null,
+        content: null,
+        activeRequestController: null,
+    };
+
+    const ensureRanScriptsSet = () => {
+        if (!(window.__ranScripts instanceof Set)) {
+            window.__ranScripts = new Set();
+        }
+
+        return window.__ranScripts;
+    };
+
+    const hashString = (value) => {
+        const input = String(value || '');
+        let hash = 0;
+        for (let index = 0; index < input.length; index += 1) {
+            hash = ((hash << 5) - hash) + input.charCodeAt(index);
+            hash |= 0;
+        }
+
+        return (hash >>> 0).toString(36);
+    };
+
     const normalizePath = (path) => {
         if (!path) {
             return '/';
@@ -75,6 +101,10 @@
     };
 
     const updateSidebarActiveState = (sidebar, currentUrl) => {
+        if (!sidebar) {
+            return;
+        }
+
         const allLinks = Array.from(sidebar.querySelectorAll('a[href]'));
         const currentPath = normalizePath(currentUrl.pathname);
 
@@ -140,10 +170,41 @@
         };
     };
 
-    const runEmbeddedScripts = (root) => {
-        const scripts = Array.from(root.querySelectorAll('script'));
+    const scriptRuntimeKey = (script, pageKey = '', index = 0) => {
+        const fromPartialScriptStack = Boolean(script.closest('[data-partial-scripts]'));
+        const explicitKey = (script.getAttribute('data-script-key') || '').trim();
+        if (explicitKey !== '') {
+            return `key:${explicitKey}`;
+        }
 
-        scripts.forEach((script) => {
+        if (script.src) {
+            const srcUrl = toUrl(script.src);
+            return `src:${srcUrl ? srcUrl.href : script.src}`;
+        }
+
+        if (!fromPartialScriptStack) {
+            return null;
+        }
+
+        const inlineSource = (script.textContent || '').trim();
+        if (inlineSource === '') {
+            return `inline-empty:${pageKey}:${index}`;
+        }
+
+        return `inline:${pageKey}:${hashString(inlineSource)}`;
+    };
+
+    const runEmbeddedScripts = (root, pageKey = '') => {
+        const scripts = Array.from(root.querySelectorAll('script'));
+        const ranScripts = ensureRanScriptsSet();
+
+        scripts.forEach((script, index) => {
+            const runtimeKey = scriptRuntimeKey(script, pageKey, index);
+            if (runtimeKey && ranScripts.has(runtimeKey)) {
+                script.remove();
+                return;
+            }
+
             const replacement = document.createElement('script');
             Array.from(script.attributes).forEach((attribute) => {
                 replacement.setAttribute(attribute.name, attribute.value);
@@ -155,143 +216,171 @@
                 replacement.textContent = script.textContent || '';
             }
 
+            if (runtimeKey && !replacement.getAttribute('data-script-key')) {
+                replacement.setAttribute('data-script-key', runtimeKey.replace(/^key:/, ''));
+            }
+
             const restoreDomContentLoadedPatch = patchDomContentLoadedHandlers();
             try {
                 script.replaceWith(replacement);
             } finally {
                 restoreDomContentLoadedPatch();
             }
+
+            if (runtimeKey) {
+                ranScripts.add(runtimeKey);
+            }
         });
     };
 
     const looksLikeFullDocument = (html) => /<html[\s>]|<!doctype/i.test(html);
 
+    const applyPageMetadata = (response, content) => {
+        const headerTitle = (response.headers.get('X-Page-Title') || '').trim();
+        const headerPageKey = (response.headers.get('X-Page-Key') || '').trim();
+
+        const inlineTitle = (content.querySelector('[data-page-title]')?.getAttribute('data-page-title') || '').trim();
+        const inlinePageKey = (content.querySelector('[data-page-key]')?.getAttribute('data-page-key') || '').trim();
+
+        const title = headerTitle || inlineTitle;
+        const pageKey = headerPageKey || inlinePageKey;
+
+        if (title !== '') {
+            document.title = title;
+            content.dataset.pageTitle = title;
+        }
+
+        if (pageKey !== '') {
+            content.dataset.pageKey = pageKey;
+        }
+
+        return pageKey;
+    };
+
+    const runPageInitializers = (pageKey) => {
+        const detail = {
+            pageKey: pageKey || '',
+            url: window.location.href,
+            content: state.content,
+        };
+
+        if (typeof window.bindInvoiceItems === 'function') {
+            window.bindInvoiceItems(state.content);
+        }
+
+        if (window.htmx && typeof window.htmx.process === 'function') {
+            window.htmx.process(state.content);
+        }
+
+        if (window.PageInit && pageKey && typeof window.PageInit[pageKey] === 'function') {
+            window.PageInit[pageKey](detail, state.content);
+        }
+
+        document.dispatchEvent(new CustomEvent('ajax-nav:loaded', { detail }));
+        document.dispatchEvent(new CustomEvent('ajax:nav:loaded', { detail }));
+    };
+
+    const fetchPartial = async (url, signal) => {
+        return fetch(url, {
+            method: 'GET',
+            credentials: 'same-origin',
+            signal,
+            headers: {
+                Accept: 'text/html,application/xhtml+xml',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-Partial': 'true',
+            },
+        });
+    };
+
+    const navigateWithPartial = async (url, { pushToHistory = true, replaceHistory = false } = {}) => {
+        if (!state.content) {
+            window.location.assign(url);
+            return;
+        }
+
+        if (state.activeRequestController) {
+            state.activeRequestController.abort();
+        }
+
+        const controller = new AbortController();
+        state.activeRequestController = controller;
+
+        state.content.setAttribute('aria-busy', 'true');
+        state.content.innerHTML = LOADING_HTML;
+
+        try {
+            const response = await fetchPartial(url, controller.signal);
+            if (!response.ok) {
+                throw new Error(`Unexpected status: ${response.status}`);
+            }
+
+            const html = await response.text();
+            const isPartial = response.headers.get('X-Partial-Response') === 'true';
+
+            if (!isPartial || looksLikeFullDocument(html)) {
+                throw new Error('Fallback to full navigation');
+            }
+
+            state.content.innerHTML = html;
+            const pageKey = applyPageMetadata(response, state.content);
+
+            runEmbeddedScripts(state.content, pageKey);
+            runPageInitializers(pageKey);
+
+            if (pushToHistory) {
+                if (replaceHistory) {
+                    history.replaceState({ ajaxNav: true, url }, '', url);
+                } else {
+                    history.pushState({ ajaxNav: true, url }, '', url);
+                }
+            }
+
+            updateSidebarActiveState(state.sidebar, new URL(url, window.location.origin));
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        } catch (error) {
+            if (error && error.name === 'AbortError') {
+                return;
+            }
+
+            window.location.assign(url);
+        } finally {
+            if (state.activeRequestController === controller) {
+                state.activeRequestController = null;
+            }
+
+            state.content.removeAttribute('aria-busy');
+        }
+    };
+
     const init = () => {
-        if (window.__ajaxNavInit) {
+        if (state.initialized) {
             return;
         }
 
         const sidebar = document.querySelector(SIDEBAR_SELECTOR);
         const content = document.querySelector(CONTENT_SELECTOR);
-
         if (!sidebar || !content) {
             return;
         }
 
-        window.__ajaxNavInit = true;
-        window.PageInit = window.PageInit || {};
+        state.sidebar = sidebar;
+        state.content = content;
+        state.initialized = true;
 
-        let activeRequestController = null;
+        window.PageInit = window.PageInit || {};
+        window.AjaxNav = {
+            navigate: (url, options = {}) => navigateWithPartial(url, options),
+            refresh: () => navigateWithPartial(window.location.href, { pushToHistory: false, replaceHistory: true }),
+            isEnabled: () => Boolean(state.initialized && state.content),
+        };
 
         if (!history.state || history.state.ajaxNav !== true) {
             history.replaceState({ ajaxNav: true, url: window.location.href }, '', window.location.href);
         }
 
         updateSidebarActiveState(sidebar, new URL(window.location.href));
-
-        const applyPageMetadata = (response) => {
-            const headerTitle = (response.headers.get('X-Page-Title') || '').trim();
-            const headerPageKey = (response.headers.get('X-Page-Key') || '').trim();
-
-            const inlineTitle = (content.querySelector('[data-page-title]')?.getAttribute('data-page-title') || '').trim();
-            const inlinePageKey = (content.querySelector('[data-page-key]')?.getAttribute('data-page-key') || '').trim();
-
-            const title = headerTitle || inlineTitle;
-            const pageKey = headerPageKey || inlinePageKey;
-
-            if (title !== '') {
-                document.title = title;
-                content.dataset.pageTitle = title;
-            }
-
-            if (pageKey !== '') {
-                content.dataset.pageKey = pageKey;
-            }
-
-            return pageKey;
-        };
-
-        const runPageInitializers = (pageKey) => {
-            if (typeof window.bindInvoiceItems === 'function') {
-                window.bindInvoiceItems(content);
-            }
-
-            if (window.htmx && typeof window.htmx.process === 'function') {
-                window.htmx.process(content);
-            }
-
-            if (pageKey && typeof window.PageInit[pageKey] === 'function') {
-                window.PageInit[pageKey](content);
-            }
-
-            document.dispatchEvent(new CustomEvent('ajax-nav:loaded', {
-                detail: {
-                    pageKey,
-                    url: window.location.href,
-                },
-            }));
-        };
-
-        const navigateWithPartial = async (url, { pushToHistory = true } = {}) => {
-            if (activeRequestController) {
-                activeRequestController.abort();
-            }
-
-            const controller = new AbortController();
-            activeRequestController = controller;
-
-            content.setAttribute('aria-busy', 'true');
-            content.innerHTML = LOADING_HTML;
-
-            try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    credentials: 'same-origin',
-                    signal: controller.signal,
-                    headers: {
-                        Accept: 'text/html,application/xhtml+xml',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-Partial': 'true',
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Unexpected status: ${response.status}`);
-                }
-
-                const html = await response.text();
-                const isPartial = response.headers.get('X-Partial-Response') === 'true';
-
-                if (!isPartial || looksLikeFullDocument(html)) {
-                    throw new Error('Fallback to full navigation');
-                }
-
-                content.innerHTML = html;
-                const pageKey = applyPageMetadata(response);
-
-                runEmbeddedScripts(content);
-                runPageInitializers(pageKey);
-
-                if (pushToHistory) {
-                    history.pushState({ ajaxNav: true, url }, '', url);
-                }
-
-                updateSidebarActiveState(sidebar, new URL(url, window.location.origin));
-                window.scrollTo({ top: 0, behavior: 'auto' });
-            } catch (error) {
-                if (error && error.name === 'AbortError') {
-                    return;
-                }
-
-                window.location.assign(url);
-            } finally {
-                if (activeRequestController === controller) {
-                    activeRequestController = null;
-                }
-
-                content.removeAttribute('aria-busy');
-            }
-        };
+        runPageInitializers(content.dataset.pageKey || '');
 
         document.addEventListener('click', (event) => {
             if (
@@ -325,7 +414,7 @@
         });
 
         window.addEventListener('popstate', () => {
-            navigateWithPartial(window.location.href, { pushToHistory: false });
+            navigateWithPartial(window.location.href, { pushToHistory: false, replaceHistory: true });
         });
     };
 
