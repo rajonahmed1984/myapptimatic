@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\SupportTicket;
 use App\Services\AdminNotificationService;
 use App\Services\ClientNotificationService;
+use App\Support\AjaxResponse;
 use App\Support\SystemLogger;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -47,7 +50,7 @@ class SupportTicketController extends Controller
         Request $request,
         AdminNotificationService $adminNotifications,
         ClientNotificationService $clientNotifications
-    ) {
+    ): RedirectResponse|JsonResponse {
         $customer = $request->user()?->customer;
 
         if (! $customer) {
@@ -97,6 +100,10 @@ class SupportTicketController extends Controller
         $clientNotifications->sendTicketOpened($ticket);
         $adminNotifications->sendTicketCreated($ticket);
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Ticket created.', [], route('client.support-tickets.show', $ticket), false);
+        }
+
         return redirect()
             ->route('client.support-tickets.show', $ticket)
             ->with('status', 'Ticket created.');
@@ -117,7 +124,7 @@ class SupportTicketController extends Controller
         Request $request,
         SupportTicket $ticket,
         AdminNotificationService $adminNotifications
-    ) {
+    ): RedirectResponse|JsonResponse {
         $this->ensureOwnership($request, $ticket);
 
         $data = $request->validate([
@@ -156,12 +163,16 @@ class SupportTicketController extends Controller
 
         $adminNotifications->sendTicketReplyFromClient($ticket, $reply);
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Reply sent.', $this->mainPatches($ticket), closeModal: false);
+        }
+
         return redirect()
             ->route('client.support-tickets.show', $ticket)
             ->with('status', 'Reply sent.');
     }
 
-    public function updateStatus(Request $request, SupportTicket $ticket)
+    public function updateStatus(Request $request, SupportTicket $ticket): RedirectResponse|JsonResponse
     {
         $this->ensureOwnership($request, $ticket);
 
@@ -179,6 +190,10 @@ class SupportTicketController extends Controller
             'customer_id' => $ticket->customer_id,
             'status' => $ticket->status,
         ], $request->user()?->id, $request->ip());
+
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxOk('Ticket updated.', $this->mainPatches($ticket), closeModal: false);
+        }
 
         return redirect()
             ->route('client.support-tickets.show', $ticket)
@@ -208,5 +223,20 @@ class SupportTicketController extends Controller
         $fileName = $name.'-'.time().'.'.$file->getClientOriginalExtension();
 
         return $file->storeAs('support-ticket-replies', $fileName, 'public');
+    }
+
+    private function mainPatches(SupportTicket $ticket): array
+    {
+        $ticket->refresh()->load(['replies.user', 'customer']);
+
+        return [
+            [
+                'action' => 'replace',
+                'selector' => '#ticketMainWrap',
+                'html' => view('client.support-tickets.partials.main', [
+                    'ticket' => $ticket,
+                ])->render(),
+            ],
+        ];
     }
 }
