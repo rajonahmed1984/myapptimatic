@@ -10,7 +10,7 @@
             <div class="text-2xl font-semibold text-slate-900">Payroll periods</div>
             <div class="text-sm text-slate-500">Generate, review, and finalize payroll based on work logs and compensation rules.</div>
         </div>
-        <form method="POST" action="{{ route('admin.hr.payroll.generate') }}" class="flex items-center gap-2">
+        <form method="POST" action="{{ route('admin.hr.payroll.generate') }}" class="flex items-center gap-2" data-ajax-form="true">
             @csrf
             @php
                 $selectedGeneratePeriod = old('period_key', now()->format('Y-m'));
@@ -57,7 +57,7 @@
     </div>
 
     <div class="card p-6">
-        <form method="GET" action="{{ route('admin.hr.payroll.index') }}" class="mb-5 grid gap-3 md:grid-cols-4">
+        <form method="GET" action="{{ route('admin.hr.payroll.index') }}" class="mb-5 grid gap-3 md:grid-cols-4" data-ajax-form="true">
             <div>
                 <label for="periodKeyFilter" class="text-xs uppercase tracking-[0.2em] text-slate-500">Period</label>
                 <input id="periodKeyFilter" type="month" name="period_key" value="{{ $selectedPeriodKey ?? '' }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
@@ -110,6 +110,7 @@
                                     method="POST"
                                     action="{{ route('admin.hr.payroll.destroy', $period) }}"
                                     class="inline"
+                                    data-ajax-form="true"
                                     data-delete-confirm
                                     data-confirm-name="{{ $period->period_key }}"
                                     data-confirm-title="Delete payroll period {{ $period->period_key }}?"
@@ -121,7 +122,7 @@
                                 </form>
                             @endif
                             @if($period->status === 'draft' && $period->end_date?->lt(today()))
-                                <form method="POST" action="{{ route('admin.hr.payroll.finalize', $period) }}" class="inline">
+                                <form method="POST" action="{{ route('admin.hr.payroll.finalize', $period) }}" class="inline" data-ajax-form="true">
                                     @csrf
                                     <button class="text-xs text-emerald-700 hover:underline">Finalize</button>
                                 </form>
