@@ -479,6 +479,14 @@
                                 $taskCounts = $projectTaskStatusCounts->get($project->id, collect());
                                 $taskTotal = $taskCounts->sum();
                                 $extraTaskCounts = $taskCounts->except($taskStatusOrder);
+                                $projectStatus = strtolower((string) ($project->status ?? ''));
+                                $projectStatusClasses = match ($projectStatus) {
+                                    'complete' => 'border-emerald-200 text-emerald-700 bg-emerald-50',
+                                    'ongoing' => 'border-amber-200 text-amber-700 bg-amber-50',
+                                    'hold' => 'border-slate-300 text-slate-700 bg-slate-100',
+                                    'cancel', 'cancelled' => 'border-rose-200 text-rose-700 bg-rose-50',
+                                    default => 'border-slate-300 text-slate-700 bg-slate-50',
+                                };
                             @endphp
                             <tr class="border-t border-slate-100 align-top">
                                 <td class="px-3 py-2">
@@ -490,7 +498,7 @@
                                     <div class="text-xs text-slate-500">Project ID: {{ $project->id }}</div>
                                 </td>
                                 <td class="px-3 py-2">
-                                    <span class="rounded-full border border-slate-300 px-2 py-0.5 text-xs font-semibold text-slate-700 bg-slate-50">
+                                    <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $projectStatusClasses }}">
                                         {{ ucfirst(str_replace('_', ' ', $project->status)) }}
                                     </span>
                                 </td>
