@@ -27,9 +27,11 @@
             </div>
             @if($isEmployeeNav)
                 <div id="global-work-timer" class="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-100" data-summary-url="{{ route('employee.work-summaries.today') }}" data-ping-url="{{ route('employee.work-sessions.ping') }}">
-                    <div class="text-[11px] uppercase tracking-[0.25em] text-slate-300">Work Session</div>
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="text-[11px] uppercase tracking-[0.25em] text-slate-300">Session</div>
+                        <div class="text-xs text-slate-300" data-global-work-status>Stopped</div>
+                    </div>
                     <div class="mt-1 text-2xl font-semibold leading-none" data-global-work-time>00:00:00</div>
-                    <div class="mt-1 text-xs text-slate-300" data-global-work-status>Stopped</div>
                 </div>
             @endif
             <button type="button" id="sidebarClose" class="absolute right-4 top-4 rounded-full border border-white/10 bg-white/10 p-2 text-slate-200 transition hover:bg-white/20 md:hidden" aria-label="Close menu">

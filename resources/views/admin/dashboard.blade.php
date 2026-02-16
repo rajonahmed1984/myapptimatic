@@ -4,12 +4,6 @@
 @section('page-title', 'Admin Overview')
 
 @section('content')
-    {{-- <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <div class="section-label">Admin overview</div>
-            <div class="text-2xl font-semibold text-slate-900">Snapshot</div>
-        </div>
-    </div> --}}
 
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4 stagger">
         <a href="{{ route('admin.customers.index') }}" class="card px-4 py-3 leading-tight transition hover:border-teal-300 hover:shadow-sm">
@@ -283,46 +277,48 @@
         <div class="flex items-center justify-between">
             <div>
                 <a href="{{ route('admin.customers.index') }}" class="text-xs uppercase tracking-[0.25em] text-slate-400 hover:text-teal-600 transition">Client Activity</a>
-                <div class="text-xl font-semibold text-slate-900">Sessions from the last 30 logins</div>
+                <div class="text-xl font-semibold text-slate-900">Last 30 clients login (all time)</div>
             </div>
             <a href="{{ route('admin.customers.index') }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">View customers</a>
         </div>
         <div class="mt-4 text-sm text-slate-700">
             @if($recentClients->isNotEmpty())
                 <div class="overflow-x-auto">
-                    <table class="min-w-full text-left text-sm">
-                        <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
-                            <tr>
-                                <th class="py-2 pr-4">User</th>
-                                <th class="py-2 pr-4">Last login</th>
-                                <th class="py-2 pr-4">IP</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach($recentClients as $session)
+                    <div class="max-h-[250px] overflow-y-auto">
+                        <table class="min-w-full text-left text-sm">
+                            <thead class="sticky top-0 z-10 border-b border-slate-200 bg-white text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <tr>
-                                    <td class="py-2 pr-4">
-                                        @if(!empty($session['user_id']))
-                                            <a href="{{ route('admin.users.edit', $session['user_id']) }}" class="hover:text-teal-600">
-                                                {{ $session['name'] ?? '--' }}
-                                            </a>
-                                        @elseif(!empty($session['customer_id']))
-                                            <a href="{{ route('admin.customers.show', $session['customer_id']) }}" class="hover:text-teal-600">
-                                                {{ $session['name'] ?? '--' }}
-                                            </a>
-                                        @else
-                                            {{ $session['name'] ?? '--' }}
-                                        @endif
-                                    </td>
-                                    <td class="py-2 pr-4">{{ $session['last_login'] ?? '--' }}</td>
-                                    <td class="py-2 pr-4">{{ $session['ip'] ?? '--' }}</td>
+                                    <th class="py-2 pr-4">User</th>
+                                    <th class="py-2 pr-4">Last login</th>
+                                    <th class="py-2 pr-4">IP</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @foreach($recentClients as $session)
+                                    <tr>
+                                        <td class="py-2 pr-4">
+                                            @if(!empty($session['user_id']))
+                                                <a href="{{ route('admin.users.edit', $session['user_id']) }}" class="hover:text-teal-600">
+                                                    {{ $session['name'] ?? '--' }}
+                                                </a>
+                                            @elseif(!empty($session['customer_id']))
+                                                <a href="{{ route('admin.customers.show', $session['customer_id']) }}" class="hover:text-teal-600">
+                                                    {{ $session['name'] ?? '--' }}
+                                                </a>
+                                            @else
+                                                {{ $session['name'] ?? '--' }}
+                                            @endif
+                                        </td>
+                                        <td class="py-2 pr-4">{{ $session['last_login'] ?? '--' }}</td>
+                                        <td class="py-2 pr-4">{{ $session['ip'] ?? '--' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             @else
-                <div class="text-slate-500">No recent login sessions to show.</div>
+                <div class="text-slate-500">No login sessions to show.</div>
             @endif
         </div>
     </div>

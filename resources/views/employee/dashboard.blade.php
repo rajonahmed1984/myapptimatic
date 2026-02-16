@@ -62,7 +62,11 @@
                         <div class="section-label">Work Session</div>
                         <div class="text-sm text-slate-500">Track your remote hours. Idle 15+ minutes are not counted.</div>
                     </div>
-                    <span data-work-session-status class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Stopped</span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span data-work-session-status class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Stopped</span>
+                        <button type="button" data-work-session-start class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Start</button>
+                        <button type="button" data-work-session-stop class="hidden rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:text-rose-600">Stop</button>
+                    </div>
                 </div>
 
                 <div class="mt-6 grid gap-4 md:grid-cols-3">
@@ -80,10 +84,6 @@
                     </div>
                 </div>
 
-                <div class="mt-4 flex flex-wrap gap-3">
-                    <button type="button" data-work-session-start class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Start</button>
-                    <button type="button" data-work-session-stop class="hidden rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:text-rose-600">Stop</button>
-                </div>
             </div>
         @endif
 

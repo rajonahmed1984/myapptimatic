@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\Role;
 use App\Models\AccountingEntry;
 use App\Models\Customer;
 use App\Models\Employee;
@@ -18,6 +19,7 @@ use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\SupportTicket;
 use App\Models\User;
+use App\Models\UserSession;
 use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -348,8 +350,12 @@ class DashboardMetricsService
     private function clientActivity(): array
     {
         $activeCustomerCount = Customer::where('status', 'active')->count();
+        $clientRoleValues = [Role::CLIENT, Role::CLIENT_PROJECT];
+        $clientUserIds = User::query()
+            ->whereIn('role', $clientRoleValues)
+            ->pluck('id');
 
-        if (! Schema::hasTable('sessions')) {
+        if (! Schema::hasTable('sessions') && ! Schema::hasTable('user_sessions')) {
             return [
                 'activeCount' => $activeCustomerCount,
                 'onlineCount' => 0,
@@ -357,41 +363,114 @@ class DashboardMetricsService
             ];
         }
 
-        $onlineThreshold = Carbon::now()->subHour()->timestamp;
-        $onlineUsersCount = (int) DB::table('sessions')
-            ->whereNotNull('user_id')
-            ->where('last_activity', '>=', $onlineThreshold)
-            ->distinct('user_id')
-            ->count('user_id');
+        $onlineUsersCount = 0;
+        if (Schema::hasTable('sessions')) {
+            $onlineThreshold = Carbon::now()->subHour()->timestamp;
+            $onlineUsersCount = (int) DB::table('sessions')
+                ->whereIn('user_id', $clientUserIds)
+                ->where('last_activity', '>=', $onlineThreshold)
+                ->distinct('user_id')
+                ->count('user_id');
+        }
 
-        $latestSessions = DB::table('sessions as s')
-            ->select('s.user_id', 's.ip_address', 's.last_activity')
-            ->join(DB::raw('(select user_id, max(last_activity) as last_activity from sessions where user_id is not null group by user_id) as latest'), function ($join) {
-                $join->on('s.user_id', '=', 'latest.user_id')
-                    ->on('s.last_activity', '=', 'latest.last_activity');
-            })
-            ->orderByDesc('s.last_activity')
-            ->limit(30)
-            ->get();
+        $recentClients = collect();
+        if (Schema::hasTable('user_sessions')) {
+            $latestSessionPerUser = UserSession::query()
+                ->selectRaw('user_id, MAX(id) as latest_id')
+                ->where('user_type', User::class)
+                ->whereIn('user_id', $clientUserIds)
+                ->where('guard', 'web')
+                ->whereNotNull('login_at')
+                ->groupBy('user_id');
 
-        $userIds = array_filter(array_map(fn ($row) => $row->user_id, $latestSessions->all()));
-        $users = User::with('customer')->whereIn('id', $userIds)->get()->keyBy('id');
+            $latestLoginRows = UserSession::query()
+                ->from('user_sessions as us')
+                ->joinSub($latestSessionPerUser, 'latest', function ($join) {
+                    $join->on('us.id', '=', 'latest.latest_id');
+                })
+                ->orderByDesc('us.login_at')
+                ->limit(300)
+                ->get(['us.user_id', 'us.ip_address', 'us.login_at']);
 
-        $recentClients = $latestSessions->map(function ($sessionRow) use ($users) {
-            $user = $users[$sessionRow->user_id] ?? null;
-            $customerName = $user?->customer?->name;
-            $displayName = $customerName ?: ($user->name ?? 'Unknown User');
+            $users = User::query()
+                ->with('customer:id,name')
+                ->whereIn('id', $latestLoginRows->pluck('user_id')->unique()->values())
+                ->get()
+                ->keyBy('id');
 
-            return [
-                'user_id' => $user?->id,
-                'name' => $displayName,
-                'customer_id' => $user?->customer?->id,
-                'last_login' => $sessionRow->last_activity
-                    ? Carbon::createFromTimestamp($sessionRow->last_activity)->diffForHumans()
-                    : 'Unknown',
-                'ip' => $sessionRow->ip_address,
-            ];
-        });
+            $recentClients = $latestLoginRows
+                ->map(function (UserSession $sessionRow) use ($users) {
+                    $user = $users->get((int) $sessionRow->user_id);
+                    $customerId = $user?->customer?->id;
+                    $customerName = $user?->customer?->name;
+                    $displayName = $customerName ?: ($user->name ?? 'Unknown User');
+                    $loginTimestamp = $sessionRow->login_at?->timestamp ?? 0;
+
+                    return [
+                        'user_id' => $user?->id,
+                        'name' => $displayName,
+                        'customer_id' => $customerId,
+                        'last_login' => $sessionRow->login_at?->diffForHumans() ?? 'Unknown',
+                        'ip' => $sessionRow->ip_address,
+                        '_login_ts' => $loginTimestamp,
+                        '_client_key' => $customerId ? ('customer:'.$customerId) : ('user:'.($user?->id ?? '0')),
+                    ];
+                })
+                ->sortByDesc('_login_ts')
+                ->unique('_client_key')
+                ->take(30)
+                ->values()
+                ->map(function (array $row) {
+                    unset($row['_login_ts'], $row['_client_key']);
+                    return $row;
+                });
+        } elseif (Schema::hasTable('sessions')) {
+            $latestSessions = DB::table('sessions as s')
+                ->select('s.user_id', 's.ip_address', 's.last_activity')
+                ->join(DB::raw('(select user_id, max(last_activity) as last_activity from sessions where user_id is not null group by user_id) as latest'), function ($join) {
+                    $join->on('s.user_id', '=', 'latest.user_id')
+                        ->on('s.last_activity', '=', 'latest.last_activity');
+                })
+                ->whereIn('s.user_id', $clientUserIds)
+                ->orderByDesc('s.last_activity')
+                ->limit(300)
+                ->get();
+
+            $users = User::query()
+                ->with('customer:id,name')
+                ->whereIn('id', $latestSessions->pluck('user_id')->filter()->unique()->values())
+                ->get()
+                ->keyBy('id');
+
+            $recentClients = $latestSessions
+                ->map(function ($sessionRow) use ($users) {
+                    $user = $users->get((int) $sessionRow->user_id);
+                    $customerId = $user?->customer?->id;
+                    $customerName = $user?->customer?->name;
+                    $displayName = $customerName ?: ($user->name ?? 'Unknown User');
+                    $loginTimestamp = (int) ($sessionRow->last_activity ?? 0);
+
+                    return [
+                        'user_id' => $user?->id,
+                        'name' => $displayName,
+                        'customer_id' => $customerId,
+                        'last_login' => $sessionRow->last_activity
+                            ? Carbon::createFromTimestamp($sessionRow->last_activity)->diffForHumans()
+                            : 'Unknown',
+                        'ip' => $sessionRow->ip_address,
+                        '_login_ts' => $loginTimestamp,
+                        '_client_key' => $customerId ? ('customer:'.$customerId) : ('user:'.($user?->id ?? '0')),
+                    ];
+                })
+                ->sortByDesc('_login_ts')
+                ->unique('_client_key')
+                ->take(30)
+                ->values()
+                ->map(function (array $row) {
+                    unset($row['_login_ts'], $row['_client_key']);
+                    return $row;
+                });
+        }
 
         return [
             'activeCount' => $activeCustomerCount,
