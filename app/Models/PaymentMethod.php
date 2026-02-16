@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Schema;
 
 class PaymentMethod extends Model
 {
+    private static ?bool $commissionPayoutMethodIsEnum = null;
+
     protected $fillable = [
         'name',
         'code',
@@ -56,6 +58,49 @@ class PaymentMethod extends Model
             'code' => (string) $method->code,
             'name' => (string) $method->name,
         ])->map(fn (array $row) => (object) $row);
+    }
+
+    /**
+     * Allowed payout codes for commission payouts.
+     * Supports legacy enum columns and modern string columns.
+     */
+    public static function allowedCommissionPayoutCodes(): array
+    {
+        $codes = static::allowedCodes();
+
+        if (! static::commissionPayoutMethodUsesEnum()) {
+            return $codes;
+        }
+
+        $legacy = ['bank', 'mobile', 'cash'];
+
+        return array_values(array_intersect($codes, $legacy));
+    }
+
+    public static function commissionPayoutDropdownOptions(): Collection
+    {
+        $allowed = static::allowedCommissionPayoutCodes();
+
+        return static::dropdownOptions()
+            ->filter(fn (object $method) => in_array((string) $method->code, $allowed, true))
+            ->values();
+    }
+
+    private static function commissionPayoutMethodUsesEnum(): bool
+    {
+        if (static::$commissionPayoutMethodIsEnum !== null) {
+            return static::$commissionPayoutMethodIsEnum;
+        }
+
+        if (! Schema::hasTable('commission_payouts') || ! Schema::hasColumn('commission_payouts', 'payout_method')) {
+            return static::$commissionPayoutMethodIsEnum = false;
+        }
+
+        try {
+            return static::$commissionPayoutMethodIsEnum = Schema::getColumnType('commission_payouts', 'payout_method') === 'enum';
+        } catch (\Throwable) {
+            return static::$commissionPayoutMethodIsEnum = false;
+        }
     }
 
     private static function defaultOptions(): Collection

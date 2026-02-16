@@ -329,7 +329,7 @@ class SalesRepresentativeController extends Controller
             'project_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'currency' => ['nullable', 'string', 'max:10'],
-            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCommissionPayoutCodes())],
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
         ]);

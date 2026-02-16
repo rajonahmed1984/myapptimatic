@@ -117,7 +117,7 @@
                 <div>
                     <label class="text-xs text-slate-500">Payout method</label>
                     @php
-                        $paymentMethods = \App\Models\PaymentMethod::dropdownOptions();
+                        $paymentMethods = \App\Models\PaymentMethod::commissionPayoutDropdownOptions();
                     @endphp
                     <select name="payout_method" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         <option value="">Not set</option>

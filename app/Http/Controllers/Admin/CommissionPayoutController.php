@@ -77,7 +77,7 @@ class CommissionPayoutController extends Controller
             'sales_rep_id' => ['required', 'exists:sales_representatives,id'],
             'earning_ids' => ['required', 'array', 'min:1'],
             'earning_ids.*' => ['integer', 'distinct'],
-            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCommissionPayoutCodes())],
             'note' => ['nullable', 'string'],
         ]);
 
@@ -135,7 +135,7 @@ class CommissionPayoutController extends Controller
         $data = $request->validate([
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
-            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCommissionPayoutCodes())],
         ]);
 
         try {
