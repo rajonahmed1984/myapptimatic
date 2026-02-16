@@ -27,7 +27,7 @@ use Illuminate\Support\Carbon;
 
 class SalesRepresentativeController extends Controller
 {
-    public function index(CommissionService $commissionService)
+    public function index(CommissionService $commissionService, SalesRepBalanceService $salesRepBalanceService)
     {
         $search = trim((string) request()->query('search', ''));
 
@@ -53,13 +53,12 @@ class SalesRepresentativeController extends Controller
 
         $commissionService->ensureProjectEarningsForRepIds($reps->pluck('id')->all());
 
-        $totals = CommissionEarning::query()
-            ->selectRaw('sales_representative_id, SUM(CASE WHEN status != "reversed" THEN commission_amount ELSE 0 END) as total_earned')
-            ->selectRaw('SUM(CASE WHEN status = "payable" THEN commission_amount ELSE 0 END) as total_payable')
-            ->selectRaw('SUM(CASE WHEN status = "paid" THEN commission_amount ELSE 0 END) as total_paid')
-            ->groupBy('sales_representative_id')
-            ->get()
-            ->keyBy('sales_representative_id');
+        $totals = collect($salesRepBalanceService->breakdownMany($reps->pluck('id')->all()))
+            ->map(fn (array $row) => (object) [
+                'total_earned' => (float) ($row['total_earned'] ?? 0),
+                'total_payable' => (float) ($row['payable_net'] ?? 0),
+                'total_paid' => (float) ($row['total_paid_incl_advance'] ?? 0),
+            ]);
 
         $loginStatuses = $this->resolveRepLoginStatuses($reps);
 

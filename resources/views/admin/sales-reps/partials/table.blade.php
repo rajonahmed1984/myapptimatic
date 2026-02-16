@@ -10,8 +10,8 @@
                         <th class="px-4 py-3 text-right">Projects & Maintenance</th>
                         <th class="px-4 py-3 text-left">Login</th>
                         <th class="px-4 py-3 text-right">Total earned</th>
-                        <th class="px-4 py-3 text-right">Payable</th>
-                        <th class="px-4 py-3 text-right">Paid</th>
+                        <th class="px-4 py-3 text-right">Payable (Net)</th>
+                        <th class="px-4 py-3 text-right">Paid (Incl. Advance)</th>
                         <th class="px-4 py-3 text-left">Status</th>
                     </tr>
                 </thead>
