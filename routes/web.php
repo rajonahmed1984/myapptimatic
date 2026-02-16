@@ -429,6 +429,12 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.messages.store');
+        Route::patch('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'updateMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.chat.messages.update');
+        Route::delete('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.chat.messages.destroy');
         Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
             ->name('projects.chat.read');
         Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
@@ -444,6 +450,12 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.chat.messages.store');
+        Route::patch('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'updateMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.chat.messages.update');
+        Route::delete('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.chat.messages.destroy');
         Route::patch('/projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
             ->name('projects.tasks.chat.read');
         Route::post('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
@@ -469,6 +481,12 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
         ->middleware('throttle:10,1')
         ->name('projects.chat.messages.store');
+    Route::patch('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'updateMessage'])
+        ->middleware('throttle:20,1')
+        ->name('projects.chat.messages.update');
+    Route::delete('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
+        ->middleware('throttle:20,1')
+        ->name('projects.chat.messages.destroy');
     Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
         ->name('projects.chat.read');
     Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
@@ -484,6 +502,12 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
         ->middleware('throttle:10,1')
         ->name('projects.tasks.chat.messages.store');
+    Route::patch('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'updateMessage'])
+        ->middleware('throttle:20,1')
+        ->name('projects.tasks.chat.messages.update');
+    Route::delete('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
+        ->middleware('throttle:20,1')
+        ->name('projects.tasks.chat.messages.destroy');
     Route::patch('/projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
         ->name('projects.tasks.chat.read');
     Route::post('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
@@ -706,6 +730,12 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::post('projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
         ->middleware('throttle:10,1')
         ->name('projects.chat.messages.store');
+    Route::patch('projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'updateMessage'])
+        ->middleware('throttle:20,1')
+        ->name('projects.chat.messages.update');
+    Route::delete('projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
+        ->middleware('throttle:20,1')
+        ->name('projects.chat.messages.destroy');
     Route::patch('projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
         ->name('projects.chat.read');
     Route::post('projects/{project}/chat', [ProjectChatController::class, 'store'])
@@ -719,6 +749,12 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::post('projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
         ->middleware('throttle:10,1')
         ->name('projects.tasks.chat.messages.store');
+    Route::patch('projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'updateMessage'])
+        ->middleware('throttle:20,1')
+        ->name('projects.tasks.chat.messages.update');
+    Route::delete('projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
+        ->middleware('throttle:20,1')
+        ->name('projects.tasks.chat.messages.destroy');
     Route::patch('projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
         ->name('projects.tasks.chat.read');
     Route::post('projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
@@ -867,6 +903,12 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.messages.store');
+        Route::patch('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'updateMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.chat.messages.update');
+        Route::delete('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.chat.messages.destroy');
         Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
             ->name('projects.chat.read');
         Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
@@ -882,6 +924,12 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.chat.messages.store');
+        Route::patch('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'updateMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.chat.messages.update');
+        Route::delete('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.chat.messages.destroy');
         Route::patch('/projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
             ->name('projects.tasks.chat.read');
         Route::post('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
@@ -952,6 +1000,12 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
         Route::post('/projects/{project}/chat/messages', [ProjectChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.chat.messages.store');
+        Route::patch('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'updateMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.chat.messages.update');
+        Route::delete('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.chat.messages.destroy');
         Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
             ->name('projects.chat.read');
         Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
@@ -967,6 +1021,12 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
         Route::post('/projects/{project}/tasks/{task}/chat/messages', [ProjectTaskChatController::class, 'storeMessage'])
             ->middleware('throttle:10,1')
             ->name('projects.tasks.chat.messages.store');
+        Route::patch('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'updateMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.chat.messages.update');
+        Route::delete('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.chat.messages.destroy');
         Route::patch('/projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
             ->name('projects.tasks.chat.read');
         Route::post('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
@@ -990,6 +1050,13 @@ Route::middleware(['support', 'user.activity:support', 'nocache'])
         Route::delete('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'destroy'])->name('support-tickets.destroy');
     });
 
+Route::middleware('signed')->group(function () {
+    Route::get('/chat/project-messages/{message}/inline', [ProjectChatController::class, 'inlineAttachment'])
+        ->name('chat.project-messages.inline');
+    Route::get('/chat/task-messages/{message}/inline', [ProjectTaskChatController::class, 'inlineAttachment'])
+        ->name('chat.task-messages.inline');
+});
+
 Route::get('/products', [PublicProductController::class, 'index'])
     ->name('products.public.index');
 
@@ -998,3 +1065,4 @@ Route::get('/{product:slug}/plans/{plan:slug}', [PublicProductController::class,
 
 Route::get('/{product:slug}', [PublicProductController::class, 'show'])
     ->name('products.public.show');
+

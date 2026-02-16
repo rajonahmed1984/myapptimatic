@@ -13,7 +13,127 @@
         <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to project</a>
     </div>
 
-    <div class="card p-6 space-y-6">
+    <style>
+        .wa-chat-canvas {
+            background-color: #efeae2;
+            background-image:
+                radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.34) 0, rgba(255, 255, 255, 0.34) 1.2px, transparent 1.2px),
+                radial-gradient(circle at 60% 80%, rgba(255, 255, 255, 0.2) 0, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+            background-size: 28px 28px, 24px 24px;
+        }
+
+        #task-chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #task-chat-messages::-webkit-scrollbar-thumb {
+            background: #b2b8c2;
+            border-radius: 999px;
+        }
+
+        .wa-message-enter {
+            animation: wa-pop-in 0.16s ease-out;
+        }
+
+        .wa-message-row {
+            display: flex;
+            width: 100%;
+        }
+
+        .wa-bubble {
+            position: relative;
+            max-width: min(680px, 85%);
+            border-radius: 12px;
+            padding: 8px 10px;
+            box-shadow: 0 1px 1px rgba(15, 23, 42, 0.08);
+            color: #1f2937;
+        }
+
+        .wa-bubble-own {
+            background: #d9fdd3;
+            border-top-right-radius: 2px;
+        }
+
+        .wa-bubble-other {
+            background: #ffffff;
+            border-top-left-radius: 2px;
+        }
+
+        .wa-meta-line {
+            margin-top: 6px;
+            text-align: right;
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .wa-file-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .wa-file-link:hover {
+            border-color: #2dd4bf;
+            color: #0f766e;
+        }
+
+        .wa-composer-icon {
+            display: inline-flex;
+            height: 34px;
+            width: 34px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            color: #64748b;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+
+        .wa-composer-icon:hover {
+            background: #e2e8f0;
+            color: #0f766e;
+        }
+
+        .wa-send-btn {
+            display: inline-flex;
+            height: 46px;
+            width: 46px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: #16a34a;
+            color: #fff;
+            transition: background-color 0.15s ease, opacity 0.15s ease;
+        }
+
+        .wa-send-btn:hover {
+            background: #15803d;
+        }
+
+        .chat-composer-input {
+            max-height: 112px;
+            min-height: 36px;
+            resize: none;
+        }
+
+        @keyframes wa-pop-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+
+    <div class="card space-y-6 bg-[#f7f8fa] p-4 sm:p-6">
         <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Task Details</div>
             <div class="mt-2 font-semibold text-slate-900">{{ $task->title }}</div>
@@ -27,11 +147,11 @@
             </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+        <div class="overflow-hidden rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Conversation</div>
-                    <div class="text-xs text-slate-500">Messages refresh every few seconds.</div>
+                    <div class="text-xs text-slate-500">Near real-time updates with seamless refresh.</div>
                 </div>
             </div>
             @php
@@ -43,7 +163,7 @@
                  data-read-url="{{ $readUrl }}"
                  data-last-id="{{ $lastMessageId }}"
                  data-oldest-id="{{ $oldestMessageId }}"
-                 class="mt-4 max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+                 class="wa-chat-canvas mt-4 max-h-[65vh] space-y-2 overflow-y-auto px-3 py-4 sm:px-5">
                 @include('projects.partials.task-chat-messages', [
                     'messages' => $messages,
                     'project' => $project,
@@ -51,93 +171,69 @@
                     'attachmentRouteName' => $attachmentRouteName,
                     'currentAuthorType' => $currentAuthorType,
                     'currentAuthorId' => $currentAuthorId,
+                    'updateRouteName' => $messageUpdateRouteName ?? null,
+                    'deleteRouteName' => $messageDeleteRouteName ?? null,
+                    'editableWindowSeconds' => $editableWindowSeconds ?? 30,
                 ])
             </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">AI Assistant</div>
-                    <div class="text-xs text-slate-500">Auto summary, reply draft, sentiment & priority.</div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span id="task-chat-ai-status" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Ready</span>
-                    <button type="button" id="task-chat-ai-generate" class="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800" @disabled(! $aiReady)>
-                        Generate AI
-                    </button>
-                </div>
-            </div>
+        @if($canPost)
+            <div class="rounded-2xl border border-slate-200 bg-[#f0f2f5] p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Post a message</div>
+                <form method="POST" action="{{ $postRoute }}" data-post-url="{{ $postMessagesUrl }}" enctype="multipart/form-data" class="mt-4 space-y-2" id="chatMessageForm">
+                    @csrf
+                    <input id="taskChatAttachmentInput" name="attachment" type="file" accept="image/*,.pdf" class="hidden" />
 
-            @if(! $aiReady)
-                <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                    GOOGLE_AI_API_KEY is missing. Add it to .env to enable AI suggestions.
-                </div>
-            @endif
-
-            <div class="mt-4 grid gap-4 md:grid-cols-2">
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm md:col-span-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Summary</div>
-                    <div id="task-chat-ai-summary" class="mt-2 text-slate-700">
-                        {{ $pinnedSummary['summary'] ?? 'Click Generate AI to analyze recent chat.' }}
-                    </div>
-                    <div id="task-chat-ai-generated-at" class="mt-2 text-[11px] text-slate-400">
-                        @if(!empty($pinnedSummary['generated_at']))
-                            Pinned · {{ $pinnedSummary['generated_at'] }}
-                        @endif
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Signals</div>
-                    <div class="mt-2 text-slate-600">Sentiment: <span id="task-chat-ai-sentiment">{{ $pinnedSummary['sentiment'] ?? '--' }}</span></div>
-                    <div class="mt-1 text-slate-600">Priority: <span id="task-chat-ai-priority">{{ $pinnedSummary['priority'] ?? '--' }}</span></div>
-                </div>
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Action items</div>
-                    <ul id="task-chat-ai-actions" class="mt-2 list-disc space-y-1 pl-4 text-slate-700">
-                        @if(!empty($pinnedSummary['action_items']) && is_array($pinnedSummary['action_items']))
-                            @foreach($pinnedSummary['action_items'] as $item)
-                                <li>{{ $item }}</li>
-                            @endforeach
-                        @else
-                            <li>--</li>
-                        @endif
-                    </ul>
-                </div>
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm md:col-span-2">
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Reply draft</div>
-                        <button type="button" id="task-chat-ai-insert" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
-                            Insert into reply
+                    <div class="flex items-end gap-2">
+                        <div class="flex min-h-[50px] flex-1 items-end gap-1 rounded-3xl border border-slate-300 bg-white px-2 py-1.5 shadow-sm">
+                            <button type="button" id="taskChatEmojiButton" class="wa-composer-icon text-lg" title="Emoji">🙂</button>
+                            <div class="flex-1">
+                                <textarea id="taskChatMessageInput" name="message" rows="1" class="chat-composer-input w-full border-0 bg-transparent px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-0" placeholder="Message">{{ old('message') }}</textarea>
+                            </div>
+                            <button type="button" id="taskChatAttachButton" class="wa-composer-icon" title="Attach file" aria-label="Attach file">
+                                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21.44 11.05l-8.49 8.49a5.5 5.5 0 01-7.78-7.78l9.2-9.19a3.5 3.5 0 114.95 4.95l-9.19 9.2a1.5 1.5 0 11-2.12-2.12l8.49-8.48"/>
+                                </svg>
+                            </button>
+                            <button type="button" id="taskChatCameraButton" class="wa-composer-icon" title="Camera" aria-label="Camera">
+                                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 7h3l2-2h6l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/>
+                                    <circle cx="12" cy="13" r="3.5"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="submit" id="taskChatSendButton" class="wa-send-btn" aria-label="Send message">
+                            <span id="taskChatSendIcon" class="hidden text-base">➤</span>
+                            <span id="taskChatMicIcon" class="text-base">🎤</span>
                         </button>
                     </div>
-                    <textarea id="task-chat-ai-reply" rows="4" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700" readonly>{{ $pinnedSummary['reply_draft'] ?? '' }}</textarea>
-                </div>
-            </div>
-        </div>
 
-        @if($canPost)
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Post a message</div>
-                <form method="POST" action="{{ $postRoute }}" data-post-url="{{ $postMessagesUrl }}" enctype="multipart/form-data" class="mt-4 space-y-3" id="chatMessageForm">
-                    @csrf
-                    <div>
-                        <label class="text-xs text-slate-500">Message</label>
-                        <textarea id="taskChatMessageInput" name="message" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Share an update...">{{ old('message') }}</textarea>
+                    <div id="taskChatEmojiPanel" class="hidden flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                        @foreach(['😀','😂','😍','😎','🤝','👍','🙏','🔥','✅','🎉','📌','🚀','💡','😅','🙂','😮','😢','❤️','👏','🤔'] as $emoji)
+                            <button type="button" class="wa-composer-icon h-9 w-9 text-lg" data-emoji="{{ $emoji }}">{{ $emoji }}</button>
+                        @endforeach
+                    </div>
+
+                    <div id="taskChatAttachmentMeta" class="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600"></div>
+                    <button type="button" id="taskChatAttachmentClearButton" class="hidden text-xs font-semibold text-rose-600 hover:text-rose-700">
+                        Remove selected file
+                    </button>
+                    <div id="taskChatEditMeta" class="hidden items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                        <span>Editing message</span>
+                        <button type="button" id="taskChatEditCancelButton" class="font-semibold text-amber-800 hover:text-amber-900">Cancel</button>
+                    </div>
+                    <div id="taskChatAttachmentPreview" class="hidden rounded-xl border border-slate-200 bg-white p-2">
+                        <img id="taskChatAttachmentPreviewImg" src="" alt="Selected image preview" class="max-h-48 rounded-lg border border-slate-200 object-contain">
+                    </div>
+
+                    <div class="space-y-1">
                         @error('message')
-                            <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                            <div class="text-xs text-rose-600">{{ $message }}</div>
                         @enderror
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-500">Attachment (optional)</label>
-                        <input name="attachment" type="file" accept="image/*,.pdf" class="mt-1 block w-full text-sm text-slate-600" />
-                        <p class="mt-1 text-xs text-slate-500">Images or PDF up to 5MB.</p>
                         @error('attachment')
-                            <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                            <div class="text-xs text-rose-600">{{ $message }}</div>
                         @enderror
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Send message</button>
                     </div>
                 </form>
             </div>
@@ -148,97 +244,24 @@
         document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('task-chat-messages');
         const form = document.getElementById('chatMessageForm');
+        const textarea = document.getElementById('taskChatMessageInput');
+        const attachmentInput = document.getElementById('taskChatAttachmentInput');
+        const attachmentMeta = document.getElementById('taskChatAttachmentMeta');
+        const attachmentClearButton = document.getElementById('taskChatAttachmentClearButton');
+        const editMeta = document.getElementById('taskChatEditMeta');
+        const editCancelButton = document.getElementById('taskChatEditCancelButton');
+        const attachmentPreview = document.getElementById('taskChatAttachmentPreview');
+        const attachmentPreviewImg = document.getElementById('taskChatAttachmentPreviewImg');
+        const emojiButton = document.getElementById('taskChatEmojiButton');
+        const emojiPanel = document.getElementById('taskChatEmojiPanel');
+        const attachButton = document.getElementById('taskChatAttachButton');
+        const cameraButton = document.getElementById('taskChatCameraButton');
+        const sendButton = document.getElementById('taskChatSendButton');
+        const sendIcon = document.getElementById('taskChatSendIcon');
+        const micIcon = document.getElementById('taskChatMicIcon');
         const messagesUrl = @json($messagesUrl);
         const readUrl = container?.dataset?.readUrl || @json($readUrl ?? '');
-        const aiSummaryRoute = @json($aiSummaryRoute ?? '');
-        const aiButton = document.getElementById('task-chat-ai-generate');
-        const aiStatus = document.getElementById('task-chat-ai-status');
-        const aiSummary = document.getElementById('task-chat-ai-summary');
-        const aiSentiment = document.getElementById('task-chat-ai-sentiment');
-        const aiPriority = document.getElementById('task-chat-ai-priority');
-        const aiActions = document.getElementById('task-chat-ai-actions');
-        const aiReply = document.getElementById('task-chat-ai-reply');
-        const aiInsert = document.getElementById('task-chat-ai-insert');
-        const replyInput = document.getElementById('taskChatMessageInput');
-        const aiGeneratedAt = document.getElementById('task-chat-ai-generated-at');
-
-        const setAiStatus = (label, cls) => {
-            if (!aiStatus) return;
-            aiStatus.textContent = label;
-            aiStatus.className = `rounded-full px-3 py-1 text-xs font-semibold ${cls}`;
-        };
-
-        const renderActions = (items) => {
-            if (!aiActions) return;
-            aiActions.innerHTML = '';
-            if (!items || !items.length) {
-                const li = document.createElement('li');
-                li.textContent = '--';
-                aiActions.appendChild(li);
-                return;
-            }
-            items.forEach((item) => {
-                const li = document.createElement('li');
-                li.textContent = item;
-                aiActions.appendChild(li);
-            });
-        };
-
-        if (aiInsert) {
-            aiInsert.addEventListener('click', () => {
-                if (!replyInput || !aiReply) return;
-                if (!aiReply.value.trim()) return;
-                replyInput.value = aiReply.value;
-                replyInput.focus();
-            });
-        }
-
-        if (aiButton && aiSummaryRoute) {
-            aiButton.addEventListener('click', async () => {
-                setAiStatus('Generating...', 'bg-amber-100 text-amber-700');
-                if (aiSummary) aiSummary.textContent = 'Working on the AI summary...';
-                if (aiReply) aiReply.value = '';
-                if (aiSentiment) aiSentiment.textContent = '--';
-                if (aiPriority) aiPriority.textContent = '--';
-                renderActions([]);
-
-                try {
-                    const response = await fetch(aiSummaryRoute, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                            'Accept': 'application/json',
-                        },
-                    });
-
-                    const payload = await response.json();
-                    if (!response.ok) {
-                        throw new Error(payload.error || 'Failed to generate AI summary.');
-                    }
-
-                    if (payload.data) {
-                        if (aiSummary) aiSummary.textContent = payload.data.summary || payload.raw || '--';
-                        if (aiSentiment) aiSentiment.textContent = payload.data.sentiment || '--';
-                        if (aiPriority) aiPriority.textContent = payload.data.priority || '--';
-                        if (aiReply) aiReply.value = payload.data.reply_draft || '';
-                        if (aiGeneratedAt) {
-                            aiGeneratedAt.textContent = payload.data.generated_at
-                                ? `Pinned · ${payload.data.generated_at}`
-                                : '';
-                        }
-                        renderActions(Array.isArray(payload.data.action_items) ? payload.data.action_items : []);
-                    } else if (aiSummary) {
-                        aiSummary.textContent = payload.raw || '--';
-                    }
-
-                    setAiStatus('Updated', 'bg-emerald-100 text-emerald-700');
-                } catch (error) {
-                    if (aiSummary) aiSummary.textContent = error.message;
-                    setAiStatus('Error', 'bg-rose-100 text-rose-700');
-                }
-            });
-        }
-
+        let attachmentPreviewUrl = null;
         if (!container || !messagesUrl) {
             return;
         }
@@ -247,6 +270,86 @@
             let oldestId = Number(container.dataset.oldestId || {{ $oldestMessageId }} || 0);
             let isLoadingOlder = false;
             let reachedStart = false;
+            let editingMessageId = 0;
+            let editingMessageUrl = '';
+            const seenMessageIds = new Set();
+            const defaultPlaceholder = textarea?.getAttribute('placeholder') || 'Message';
+
+            container.querySelectorAll('[data-message-id]').forEach((node) => {
+                const id = Number(node.dataset.messageId || 0);
+                if (id) {
+                    seenMessageIds.add(id);
+                }
+            });
+
+            const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content
+                || document.querySelector('[name="_token"]')?.value
+                || '';
+
+            const parseEditableDeadline = (row) => {
+                const raw = row?.dataset?.editableUntil || '';
+                const value = Date.parse(raw);
+                return Number.isFinite(value) ? value : 0;
+            };
+
+            const isEditWindowExpired = (row) => {
+                const deadline = parseEditableDeadline(row);
+                return !deadline || Date.now() >= deadline;
+            };
+
+            const refreshMessageActionAvailability = () => {
+                container.querySelectorAll('[data-message-id]').forEach((row) => {
+                    const actions = row.querySelector('[data-chat-actions]');
+                    if (!actions) {
+                        return;
+                    }
+                    if (!row.dataset.editUrl || !row.dataset.deleteUrl || isEditWindowExpired(row)) {
+                        actions.remove();
+                        row.dataset.editUrl = '';
+                        row.dataset.deleteUrl = '';
+                    }
+                });
+            };
+
+            const recalculateMessageBounds = () => {
+                const ids = Array.from(container.querySelectorAll('[data-message-id]'))
+                    .map((node) => Number(node.dataset.messageId || 0))
+                    .filter((id) => id > 0);
+                lastId = ids.length ? Math.max(...ids) : 0;
+                oldestId = ids.length ? Math.min(...ids) : 0;
+            };
+
+            const replaceMessageItem = (item) => {
+                if (!item?.id || !item?.html) {
+                    return;
+                }
+                const existing = container.querySelector(`[data-message-id="${item.id}"]`);
+                if (!existing) {
+                    return;
+                }
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = item.html.trim();
+                const next = wrapper.firstElementChild;
+                if (!next) {
+                    return;
+                }
+                existing.replaceWith(next);
+                seenMessageIds.add(Number(item.id));
+                refreshMessageActionAvailability();
+            };
+
+            const removeMessageItem = (id) => {
+                if (!id) {
+                    return;
+                }
+                const row = container.querySelector(`[data-message-id="${id}"]`);
+                if (row) {
+                    row.remove();
+                }
+                seenMessageIds.delete(Number(id));
+                recalculateMessageBounds();
+                refreshMessageActionAvailability();
+            };
 
             const scrollToBottom = () => {
                 container.scrollTop = container.scrollHeight;
@@ -257,20 +360,324 @@
                 return (container.scrollHeight - container.scrollTop - container.clientHeight) < threshold;
             };
 
+            const resizeComposerInput = () => {
+                if (!textarea) {
+                    return;
+                }
+                textarea.style.height = 'auto';
+                const nextHeight = Math.max(36, Math.min(textarea.scrollHeight, 112));
+                textarea.style.height = `${nextHeight}px`;
+            };
+
+            const hasAttachment = () => !!(attachmentInput && attachmentInput.files && attachmentInput.files.length);
+            const hasText = () => !!(textarea && textarea.value.trim().length);
+            const composerHasContent = () => hasAttachment() || hasText();
+
+            const updateAttachmentMeta = () => {
+                if (!attachmentMeta || !attachmentInput) {
+                    return;
+                }
+                const file = attachmentInput.files?.[0];
+                if (attachmentPreviewUrl) {
+                    URL.revokeObjectURL(attachmentPreviewUrl);
+                    attachmentPreviewUrl = null;
+                }
+                if (!file) {
+                    attachmentMeta.classList.add('hidden');
+                    attachmentMeta.textContent = '';
+                    if (attachmentClearButton) {
+                        attachmentClearButton.classList.add('hidden');
+                    }
+                    if (attachmentPreview) {
+                        attachmentPreview.classList.add('hidden');
+                    }
+                    if (attachmentPreviewImg) {
+                        attachmentPreviewImg.removeAttribute('src');
+                    }
+                    return;
+                }
+                attachmentMeta.classList.remove('hidden');
+                attachmentMeta.textContent = `Selected: ${file.name}`;
+                if (attachmentClearButton) {
+                    attachmentClearButton.classList.remove('hidden');
+                }
+
+                const isImage = file.type.startsWith('image/');
+                if (isImage && attachmentPreview && attachmentPreviewImg) {
+                    attachmentPreviewUrl = URL.createObjectURL(file);
+                    attachmentPreviewImg.src = attachmentPreviewUrl;
+                    attachmentPreview.classList.remove('hidden');
+                } else if (attachmentPreview) {
+                    attachmentPreview.classList.add('hidden');
+                }
+            };
+
+            const clearSelectedAttachment = () => {
+                if (!attachmentInput) {
+                    return;
+                }
+                attachmentInput.value = '';
+                updateAttachmentMeta();
+                updateComposerState();
+            };
+
+            const isEditingMessage = () => editingMessageId > 0 && editingMessageUrl !== '';
+
+            const stopEditingMessage = () => {
+                editingMessageId = 0;
+                editingMessageUrl = '';
+                if (textarea) {
+                    textarea.setAttribute('placeholder', defaultPlaceholder);
+                }
+                if (editMeta) {
+                    editMeta.classList.add('hidden');
+                    editMeta.classList.remove('flex');
+                }
+                updateComposerState();
+            };
+
+            const startEditingMessage = (row) => {
+                if (!textarea) {
+                    return;
+                }
+                const id = Number(row?.dataset?.messageId || 0);
+                const url = row?.dataset?.editUrl || '';
+                if (!id || !url) {
+                    return;
+                }
+                const messageNode = row.querySelector('[data-chat-message-text]');
+                const currentText = (messageNode?.textContent || '').trim();
+
+                editingMessageId = id;
+                editingMessageUrl = url;
+                textarea.value = currentText;
+                textarea.setAttribute('placeholder', 'Edit message');
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                if (editMeta) {
+                    editMeta.classList.remove('hidden');
+                    editMeta.classList.add('flex');
+                }
+                closeEmojiPanel();
+                clearSelectedAttachment();
+                resizeComposerInput();
+                updateComposerState();
+            };
+
+            const updateComposerState = () => {
+                const canSend = composerHasContent();
+                if (sendButton) {
+                    sendButton.disabled = !canSend;
+                    sendButton.classList.toggle('opacity-70', !canSend);
+                }
+                if (sendIcon && micIcon) {
+                    sendIcon.classList.toggle('hidden', !canSend);
+                    micIcon.classList.toggle('hidden', canSend);
+                }
+            };
+
+            const closeEmojiPanel = () => {
+                if (emojiPanel) {
+                    emojiPanel.classList.add('hidden');
+                }
+            };
+
+            const insertEmojiAtCursor = (emoji) => {
+                if (!textarea || !emoji) {
+                    return;
+                }
+                const start = textarea.selectionStart || 0;
+                const end = textarea.selectionEnd || start;
+                const value = textarea.value;
+                textarea.value = `${value.slice(0, start)}${emoji}${value.slice(end)}`;
+                const cursor = start + emoji.length;
+                textarea.setSelectionRange(cursor, cursor);
+                textarea.focus();
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            };
+
+            if (emojiButton && emojiPanel) {
+                emojiButton.addEventListener('click', () => {
+                    emojiPanel.classList.toggle('hidden');
+                });
+                emojiPanel.querySelectorAll('[data-emoji]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        insertEmojiAtCursor(button.dataset.emoji || '');
+                        closeEmojiPanel();
+                    });
+                });
+            }
+
+            const openAttachmentPicker = (useCamera) => {
+                if (!attachmentInput) {
+                    return;
+                }
+                if (useCamera) {
+                    attachmentInput.setAttribute('capture', 'environment');
+                    attachmentInput.setAttribute('accept', 'image/*');
+                } else {
+                    attachmentInput.removeAttribute('capture');
+                    attachmentInput.setAttribute('accept', 'image/*,.pdf');
+                }
+                attachmentInput.click();
+            };
+
+            if (attachButton) {
+                attachButton.addEventListener('click', () => openAttachmentPicker(false));
+            }
+            if (cameraButton) {
+                cameraButton.addEventListener('click', () => openAttachmentPicker(true));
+            }
+            if (attachmentInput) {
+                attachmentInput.addEventListener('change', () => {
+                    attachmentInput.removeAttribute('capture');
+                    attachmentInput.setAttribute('accept', 'image/*,.pdf');
+                    updateAttachmentMeta();
+                    updateComposerState();
+                });
+            }
+            if (attachmentClearButton) {
+                attachmentClearButton.addEventListener('click', clearSelectedAttachment);
+            }
+            if (editCancelButton) {
+                editCancelButton.addEventListener('click', () => {
+                    stopEditingMessage();
+                    if (textarea) {
+                        textarea.value = '';
+                        resizeComposerInput();
+                    }
+                    updateComposerState();
+                });
+            }
+
+            if (textarea) {
+                resizeComposerInput();
+                textarea.addEventListener('input', () => {
+                    resizeComposerInput();
+                    updateComposerState();
+                });
+            }
+
+            document.addEventListener('click', (event) => {
+                const target = event.target;
+                if (emojiPanel && !emojiPanel.classList.contains('hidden') && emojiButton
+                    && !emojiPanel.contains(target) && !emojiButton.contains(target)) {
+                    closeEmojiPanel();
+                }
+            });
+
+            container.addEventListener('click', async (event) => {
+                const editButton = event.target.closest('[data-chat-edit]');
+                const deleteButton = event.target.closest('[data-chat-delete]');
+                if (!editButton && !deleteButton) {
+                    return;
+                }
+
+                const row = event.target.closest('[data-message-id]');
+                if (!row || row.dataset.mutating === '1') {
+                    return;
+                }
+
+                if (isEditWindowExpired(row)) {
+                    refreshMessageActionAvailability();
+                    return;
+                }
+
+                const parseErrorMessage = async (response, fallback) => {
+                    try {
+                        const payload = await response.json();
+                        return payload?.message
+                            || payload?.error
+                            || Object.values(payload?.errors || {})?.[0]?.[0]
+                            || fallback;
+                    } catch (e) {
+                        return fallback;
+                    }
+                };
+
+                row.dataset.mutating = '1';
+                try {
+                    if (editButton) {
+                        if (!row.dataset.editUrl) {
+                            refreshMessageActionAvailability();
+                            return;
+                        }
+                        startEditingMessage(row);
+                        return;
+                    }
+
+                    if (deleteButton) {
+                        const deleteUrl = row.dataset.deleteUrl || '';
+                        if (!deleteUrl) {
+                            refreshMessageActionAvailability();
+                            return;
+                        }
+
+                        if (!window.confirm('Delete this message?')) {
+                            return;
+                        }
+
+                        const body = new FormData();
+                        body.append('_method', 'DELETE');
+                        body.append('_token', getCsrfToken());
+
+                        const response = await fetch(deleteUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body,
+                        });
+
+                        if (!response.ok) {
+                            alert(await parseErrorMessage(response, 'Message delete failed.'));
+                            return;
+                        }
+
+                        const payload = await response.json();
+                        const deletedId = Number(payload?.data?.id || row.dataset.messageId || 0);
+                        removeMessageItem(deletedId);
+                        if (editingMessageId === deletedId) {
+                            stopEditingMessage();
+                            if (textarea) {
+                                textarea.value = '';
+                                resizeComposerInput();
+                            }
+                        }
+                        if (lastId) {
+                            updateReadStatus(lastId);
+                        }
+                    }
+                } finally {
+                    delete row.dataset.mutating;
+                }
+            });
+
             const appendItems = (items) => {
                 if (!items || !items.length) {
                     return;
                 }
                 items.forEach((item) => {
-                    if (!item?.html) return;
+                    if (!item?.html || !item?.id) return;
+                    const existing = container.querySelector(`[data-message-id="${item.id}"]`);
+                    if (existing) {
+                        seenMessageIds.add(item.id);
+                        return;
+                    }
                     container.insertAdjacentHTML('beforeend', item.html);
-                    if (item.id) {
-                        lastId = Math.max(lastId, item.id);
-                        if (!oldestId) {
-                            oldestId = item.id;
-                        }
+                    const inserted = container.querySelector(`[data-message-id="${item.id}"]`);
+                    if (inserted) {
+                        inserted.classList.add('wa-message-enter');
+                        window.setTimeout(() => inserted.classList.remove('wa-message-enter'), 280);
+                    }
+                    seenMessageIds.add(item.id);
+                    lastId = Math.max(lastId, item.id);
+                    if (!oldestId) {
+                        oldestId = item.id;
                     }
                 });
+                refreshMessageActionAvailability();
             };
 
             const prependItems = (items) => {
@@ -281,8 +688,14 @@
                 const previousTop = container.scrollTop;
                 for (let i = items.length - 1; i >= 0; i -= 1) {
                     const item = items[i];
-                    if (!item?.html) continue;
+                    if (!item?.html || !item?.id) continue;
+                    const existing = container.querySelector(`[data-message-id="${item.id}"]`);
+                    if (existing) {
+                        seenMessageIds.add(item.id);
+                        continue;
+                    }
                     container.insertAdjacentHTML('afterbegin', item.html);
+                    seenMessageIds.add(item.id);
                 }
                 const oldestItemId = items[0]?.id;
                 if (oldestItemId) {
@@ -290,6 +703,7 @@
                 }
                 const heightDiff = container.scrollHeight - previousHeight;
                 container.scrollTop = previousTop + heightDiff;
+                refreshMessageActionAvailability();
             };
 
             const fetchMessages = async (params) => {
@@ -358,51 +772,114 @@
                     }
                     form.dataset.submitting = '1';
                     const submitButton = form.querySelector('button[type="submit"]');
-                    if (submitButton) {
-                        submitButton.disabled = true;
-                    }
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
 
-                    try {
-                        const postUrl = form.dataset.postUrl || form.action;
+                if (!composerHasContent()) {
+                    form.dataset.submitting = '0';
+                    updateComposerState();
+                    return;
+                }
+
+                try {
+                        const isEditing = isEditingMessage();
+                        const requestUrl = isEditing ? editingMessageUrl : (form.dataset.postUrl || form.action);
                         const formData = new FormData(form);
 
-                        const response = await fetch(postUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: formData
-                        });
+                        let response;
+                        if (isEditing) {
+                            const editingRow = container.querySelector(`[data-message-id="${editingMessageId}"]`);
+                            const hasAttachment = editingRow?.dataset?.hasAttachment === '1';
+                            const nextText = (textarea?.value || '').trim();
+                            if (!nextText && !hasAttachment) {
+                                alert('Message cannot be empty.');
+                                return;
+                            }
+                            formData.delete('attachment');
+                            formData.append('_method', 'PATCH');
+                            formData.append('_token', getCsrfToken());
+                            formData.set('message', nextText);
+                            response = await fetch(requestUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: formData
+                            });
+                        } else {
+                            response = await fetch(requestUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: formData
+                            });
+                        }
 
                         if (!response.ok) {
-                            alert('Message send failed.');
+                            let errorMessage = 'Message send failed.';
+                            try {
+                                const payload = await response.json();
+                                errorMessage = payload?.message
+                                    || payload?.error
+                                    || Object.values(payload?.errors || {})?.[0]?.[0]
+                                    || errorMessage;
+                            } catch (e) {
+                                // Ignore JSON parse failures.
+                            }
+                            alert(errorMessage);
                             return;
                         }
 
                         const payload = await response.json();
                         const item = payload?.data?.item;
                         if (item?.html) {
-                            appendItems([item]);
-                            scrollToBottom();
-                            updateReadStatus(lastId);
+                            if (isEditing) {
+                                replaceMessageItem(item);
+                            } else {
+                                appendItems([item]);
+                                scrollToBottom();
+                                updateReadStatus(lastId);
+                            }
+                        } else if (!isEditing) {
+                            const latestItems = await fetchMessages({ after_id: lastId, limit: 30 });
+                            if (latestItems.length) {
+                                appendItems(latestItems);
+                                scrollToBottom();
+                                updateReadStatus(lastId);
+                            }
                         }
-                        form.reset();
-                    } finally {
-                        form.dataset.submitting = '0';
-                        if (submitButton) {
-                            submitButton.disabled = false;
-                        }
+                    form.reset();
+                    stopEditingMessage();
+                    resizeComposerInput();
+                    closeEmojiPanel();
+                    updateAttachmentMeta();
+                    updateComposerState();
+                } finally {
+                    form.dataset.submitting = '0';
+                    if (submitButton) {
+                        submitButton.disabled = false;
                     }
-                });
-            }
+                    updateComposerState();
+                }
+            });
+        }
 
+            updateAttachmentMeta();
+            updateComposerState();
+            refreshMessageActionAvailability();
             scrollToBottom();
             updateReadStatus(lastId);
 
             container.addEventListener('scroll', async () => {
                 if (container.scrollTop <= 80) {
                     loadOlder();
+                }
+                if (isNearBottom()) {
+                    updateReadStatus(lastId);
                 }
             });
 
@@ -416,7 +893,17 @@
                         updateReadStatus(lastId);
                     }
                 }
-            }, 5000);
+            }, 2000);
+
+            setInterval(() => {
+                refreshMessageActionAvailability();
+            }, 1000);
+
+            window.addEventListener('beforeunload', () => {
+                if (attachmentPreviewUrl) {
+                    URL.revokeObjectURL(attachmentPreviewUrl);
+                }
+            });
         });
     </script>
 @endsection

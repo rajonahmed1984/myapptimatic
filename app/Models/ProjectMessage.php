@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class ProjectMessage extends Model
 {
@@ -74,6 +75,16 @@ class ProjectMessage extends Model
         }
 
         $extension = strtolower((string) pathinfo($this->attachment_path, PATHINFO_EXTENSION));
-        return in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'avif'], true)) {
+            return true;
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($this->attachment_path)) {
+            return false;
+        }
+
+        $mimeType = (string) ($disk->mimeType($this->attachment_path) ?? '');
+        return str_starts_with($mimeType, 'image/');
     }
 }

@@ -6,20 +6,147 @@
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-            <div class="section-label">Project Chat</div>
-            <div class="text-2xl font-semibold text-slate-900">{{ $project->name }}</div>
-            <div class="text-sm text-slate-500">Status: {{ ucfirst(str_replace('_', ' ', $project->status)) }}</div>
+            <div class="text-sm section-label">{{ $project->name }}</div>
         </div>
         <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to project</a>
     </div>
 
-    <div class="card p-6 space-y-6">
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+    <style>
+        .wa-chat-canvas {
+            background-color: #efeae2;
+            background-image:
+                radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.34) 0, rgba(255, 255, 255, 0.34) 1.2px, transparent 1.2px),
+                radial-gradient(circle at 60% 80%, rgba(255, 255, 255, 0.2) 0, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+            background-size: 28px 28px, 24px 24px;
+        }
+
+        #project-chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #project-chat-messages::-webkit-scrollbar-thumb {
+            background: #b2b8c2;
+            border-radius: 999px;
+        }
+
+        .wa-message-enter {
+            animation: wa-pop-in 0.16s ease-out;
+        }
+
+        .wa-message-row {
+            display: flex;
+            width: 100%;
+        }
+
+        .wa-bubble {
+            position: relative;
+            max-width: min(680px, 85%);
+            border-radius: 12px;
+            padding: 8px 10px;
+            box-shadow: 0 1px 1px rgba(15, 23, 42, 0.08);
+            color: #1f2937;
+        }
+
+        .wa-bubble-own {
+            background: #d9fdd3;
+            border-top-right-radius: 2px;
+        }
+
+        .wa-bubble-other {
+            background: #ffffff;
+            border-top-left-radius: 2px;
+        }
+
+        .wa-meta-line {
+            margin-top: 6px;
+            text-align: right;
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .wa-file-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .wa-file-link:hover {
+            border-color: #2dd4bf;
+            color: #0f766e;
+        }
+
+        .wa-composer-icon {
+            display: inline-flex;
+            height: 34px;
+            width: 34px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            color: #64748b;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+
+        .wa-composer-icon:hover {
+            background: #e2e8f0;
+            color: #0f766e;
+        }
+
+        .wa-send-btn {
+            display: inline-flex;
+            height: 46px;
+            width: 46px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: #16a34a;
+            color: #fff;
+            transition: background-color 0.15s ease, opacity 0.15s ease;
+        }
+
+        .wa-send-btn:hover {
+            background: #15803d;
+        }
+
+        .chat-composer-input {
+            max-height: 112px;
+            min-height: 36px;
+            resize: none;
+        }
+
+        .chat-mention {
+            border-radius: 6px;
+            padding: 0 6px;
+            background: #fee2b3;
+            color: #92400e;
+            font-weight: 600;
+        }
+
+        @keyframes wa-pop-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+
+    <div class="card">
+        <div class="overflow-hidden p-6 rounded-2xl">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Conversation</div>
-                    <div class="text-xs text-slate-500">Messages update live when teammates post.</div>
+                    <div class="text-xs text-slate-500">Live stream mode without browser permission prompts.</div>
                 </div>
+                <div class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ count($participants ?? []) }} participants</div>
             </div>
             @php
                 $participants = $participants ?? [];
@@ -40,13 +167,13 @@
                 };
             @endphp
             @if(!empty($participants))
-                <div class="mt-3 flex flex-wrap gap-2 text-xs" id="chatParticipants">
+                <div class="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-3 text-xs" id="chatParticipants">
                     @foreach($participants as $participant)
                         @php
                             $key = $participant['key'] ?? '';
                             $status = $participantStatuses[$key] ?? 'offline';
                         @endphp
-                        <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600" data-presence-key="{{ $key }}">
+                        <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 shadow-sm" data-presence-key="{{ $key }}">
                             <span class="h-2 w-2 rounded-full {{ $presenceDotClass($status) }}" title="{{ $presenceLabel($status) }}" data-presence-dot></span>
                             <span class="font-semibold text-slate-700">{{ $participant['label'] ?? 'User' }}</span>
                             <span class="text-slate-400">{{ $participant['role'] ?? '' }}</span>
@@ -64,7 +191,7 @@
                  data-read-url="{{ $readUrl }}"
                  data-last-id="{{ $lastMessageId }}"
                  data-oldest-id="{{ $oldestMessageId }}"
-                 class="mt-4 max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+                 class="wa-chat-canvas mt-4 max-h-[65vh] space-y-2 overflow-y-auto px-3 py-4 sm:px-5">
                 @include('projects.partials.project-chat-messages', [
                     'messages' => $messages,
                     'project' => $project,
@@ -74,97 +201,64 @@
                     'readReceipts' => $readReceipts ?? [],
                     'authorStatuses' => $authorStatuses ?? [],
                     'messageMentions' => $messageMentions ?? [],
+                    'updateRouteName' => $messageUpdateRouteName ?? null,
+                    'deleteRouteName' => $messageDeleteRouteName ?? null,
+                    'editableWindowSeconds' => $editableWindowSeconds ?? 30,
                 ])
             </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">AI Assistant</div>
-                    <div class="text-xs text-slate-500">Auto summary, reply draft, sentiment & priority.</div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span id="chat-ai-status" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Ready</span>
-                    <button type="button" id="chat-ai-generate" class="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800" @disabled(! $aiReady)>
-                        Generate AI
-                    </button>
-                </div>
-            </div>
+        @if($canPost)
+            <div class="rounded-2xl p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Post a message</div>
+                <form method="POST" action="{{ $postRoute }}" data-post-url="{{ $postMessagesUrl }}" enctype="multipart/form-data" class="mt-4 space-y-2" id="chatMessageForm">
+                    @csrf
+                    <input type="hidden" name="mentions" id="chatMentionsField" value="" />
+                    <input id="chatAttachmentInput" name="attachment" type="file" accept="image/*,.pdf" class="hidden" />
 
-            @if(! $aiReady)
-                <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                    GOOGLE_AI_API_KEY is missing. Add it to .env to enable AI suggestions.
-                </div>
-            @endif
-
-            <div class="mt-4 grid gap-4 md:grid-cols-2">
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm md:col-span-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Summary</div>
-                    <div id="chat-ai-summary" class="mt-2 text-slate-700">
-                        {{ $pinnedSummary['summary'] ?? 'Click Generate AI to analyze recent chat.' }}
-                    </div>
-                    <div id="chat-ai-generated-at" class="mt-2 text-[11px] text-slate-400">
-                        @if(!empty($pinnedSummary['generated_at']))
-                            Pinned · {{ $pinnedSummary['generated_at'] }}
-                        @endif
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Signals</div>
-                    <div class="mt-2 text-slate-600">Sentiment: <span id="chat-ai-sentiment">{{ $pinnedSummary['sentiment'] ?? '--' }}</span></div>
-                    <div class="mt-1 text-slate-600">Priority: <span id="chat-ai-priority">{{ $pinnedSummary['priority'] ?? '--' }}</span></div>
-                </div>
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Action items</div>
-                    <ul id="chat-ai-actions" class="mt-2 list-disc space-y-1 pl-4 text-slate-700">
-                        @if(!empty($pinnedSummary['action_items']) && is_array($pinnedSummary['action_items']))
-                            @foreach($pinnedSummary['action_items'] as $item)
-                                <li>{{ $item }}</li>
-                            @endforeach
-                        @else
-                            <li>--</li>
-                        @endif
-                    </ul>
-                </div>
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 text-sm md:col-span-2">
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Reply draft</div>
-                        <button type="button" id="chat-ai-insert" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
-                            Insert into reply
+                    <div class="flex gap-2">
+                        <div class="flex min-h-[50px] flex-1 items-end gap-1 rounded-3xl border border-slate-300 bg-white px-2 py-1.5 shadow-sm">
+                            <button type="button" id="chatEmojiButton" class="wa-composer-icon text-lg" title="Emoji">🙂</button>
+                            <div class="relative flex-1">
+                                <textarea id="chatMessageInput" name="message" rows="1" class="chat-composer-input w-full border-0 bg-transparent px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-0" placeholder="Message">{{ old('message') }}</textarea>
+                                <div id="chatMentionDropdown" class="absolute bottom-full left-0 z-20 mb-2 hidden w-72 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg"></div>
+                            </div>
+                            <button type="button" id="chatAttachButton" class="wa-composer-icon" title="Attach file" aria-label="Attach file">
+                                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21.44 11.05l-8.49 8.49a5.5 5.5 0 01-7.78-7.78l9.2-9.19a3.5 3.5 0 114.95 4.95l-9.19 9.2a1.5 1.5 0 11-2.12-2.12l8.49-8.48"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="submit" id="chatSendButton" class="wa-send-btn" aria-label="Send message">
+                            <span id="chatSendIcon" class="hidden text-base">➤</span>
                         </button>
                     </div>
-                    <textarea id="chat-ai-reply" rows="4" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700" readonly>{{ $pinnedSummary['reply_draft'] ?? '' }}</textarea>
-                </div>
-            </div>
-        </div>
 
-        @if($canPost)
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Post a message</div>
-                <form method="POST" action="{{ $postRoute }}" data-post-url="{{ $postMessagesUrl }}" enctype="multipart/form-data" class="mt-4 space-y-3" id="chatMessageForm">
-                    @csrf
-                    <div>
-                        <label class="text-xs text-slate-500">Message</label>
-                        <div class="relative">
-                            <textarea id="chatMessageInput" name="message" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Share an update...">{{ old('message') }}</textarea>
-                            <div id="chatMentionDropdown" class="absolute z-20 mt-2 hidden w-72 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg"></div>
-                        </div>
-                        <input type="hidden" name="mentions" id="chatMentionsField" value="" />
+                    <div id="chatEmojiPanel" class="hidden flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                        @foreach(['😀','😂','😍','😎','🤝','👍','🙏','🔥','✅','🎉','📌','🚀','💡','😅','🙂','😮','😢','❤️','👏','🤔'] as $emoji)
+                            <button type="button" class="wa-composer-icon h-9 w-9 text-lg" data-emoji="{{ $emoji }}">{{ $emoji }}</button>
+                        @endforeach
+                    </div>
+
+                    <div id="chatAttachmentMeta" class="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600"></div>
+                    <button type="button" id="chatAttachmentClearButton" class="hidden text-xs font-semibold text-rose-600 hover:text-rose-700">
+                        Remove selected file
+                    </button>
+                    <div id="chatEditMeta" class="hidden items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                        <span>Editing message</span>
+                        <button type="button" id="chatEditCancelButton" class="font-semibold text-amber-800 hover:text-amber-900">Cancel</button>
+                    </div>
+                    <div id="chatAttachmentPreview" class="hidden rounded-xl border border-slate-200 bg-white p-2">
+                        <img id="chatAttachmentPreviewImg" src="" alt="Selected image preview" class="max-h-48 rounded-lg border border-slate-200 object-contain">
+                    </div>
+
+                    <div class="space-y-1">
                         @error('message')
-                            <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                            <div class="text-xs text-rose-600">{{ $message }}</div>
                         @enderror
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-500">Attachment (optional)</label>
-                        <input name="attachment" type="file" accept="image/*,.pdf" class="mt-1 block w-full text-sm text-slate-600" />
-                        <p class="mt-1 text-xs text-slate-500">Images or PDF up to 5MB.</p>
                         @error('attachment')
-                            <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                            <div class="text-xs text-rose-600">{{ $message }}</div>
                         @enderror
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Send message</button>
                     </div>
                 </form>
             </div>
@@ -178,16 +272,25 @@
         const textarea = document.getElementById('chatMessageInput');
         const mentionsField = document.getElementById('chatMentionsField');
         const dropdown = document.getElementById('chatMentionDropdown');
+        const attachmentInput = document.getElementById('chatAttachmentInput');
+        const attachmentMeta = document.getElementById('chatAttachmentMeta');
+        const attachmentClearButton = document.getElementById('chatAttachmentClearButton');
+        const editMeta = document.getElementById('chatEditMeta');
+        const editCancelButton = document.getElementById('chatEditCancelButton');
+        const attachmentPreview = document.getElementById('chatAttachmentPreview');
+        const attachmentPreviewImg = document.getElementById('chatAttachmentPreviewImg');
+        const emojiButton = document.getElementById('chatEmojiButton');
+        const emojiPanel = document.getElementById('chatEmojiPanel');
+        const attachButton = document.getElementById('chatAttachButton');
+        const sendButton = document.getElementById('chatSendButton');
+        const sendIcon = document.getElementById('chatSendIcon');
         const participants = @json($participants ?? []);
         const participantsUrl = @json($participantsUrl ?? '');
         const presenceUrl = @json($presenceUrl ?? '');
         const streamUrl = container?.dataset?.streamUrl || @json($streamUrl ?? '');
         const messagesUrl = @json($messagesUrl);
         const readUrl = container?.dataset?.readUrl || @json($readUrl ?? '');
-        const currentAuthorType = @json($currentAuthorType);
-        const currentAuthorId = @json($currentAuthorId);
-        const projectName = @json($project->name ?? 'Project');
-        const aiSummaryRoute = @json($aiSummaryRoute ?? '');
+        let attachmentPreviewUrl = null;
 
         if (!container || !messagesUrl) {
             return;
@@ -200,7 +303,10 @@
         let reachedStart = false;
         let pollTimer = null;
         let eventSource = null;
+        let editingMessageId = 0;
+        let editingMessageUrl = '';
         const seenMessageIds = new Set();
+        const defaultPlaceholder = textarea?.getAttribute('placeholder') || 'Message';
 
         container.querySelectorAll('[data-message-id]').forEach((node) => {
             const id = Number(node.dataset.messageId || 0);
@@ -208,6 +314,75 @@
                 seenMessageIds.add(id);
             }
         });
+
+        const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content
+            || document.querySelector('[name="_token"]')?.value
+            || '';
+
+        const parseEditableDeadline = (row) => {
+            const raw = row?.dataset?.editableUntil || '';
+            const value = Date.parse(raw);
+            return Number.isFinite(value) ? value : 0;
+        };
+
+        const isEditWindowExpired = (row) => {
+            const deadline = parseEditableDeadline(row);
+            return !deadline || Date.now() >= deadline;
+        };
+
+        const refreshMessageActionAvailability = () => {
+            container.querySelectorAll('[data-message-id]').forEach((row) => {
+                const actions = row.querySelector('[data-chat-actions]');
+                if (!actions) {
+                    return;
+                }
+                if (!row.dataset.editUrl || !row.dataset.deleteUrl || isEditWindowExpired(row)) {
+                    actions.remove();
+                    row.dataset.editUrl = '';
+                    row.dataset.deleteUrl = '';
+                }
+            });
+        };
+
+        const recalculateMessageBounds = () => {
+            const ids = Array.from(container.querySelectorAll('[data-message-id]'))
+                .map((node) => Number(node.dataset.messageId || 0))
+                .filter((id) => id > 0);
+            lastId = ids.length ? Math.max(...ids) : 0;
+            oldestId = ids.length ? Math.min(...ids) : 0;
+        };
+
+        const replaceMessageItem = (item) => {
+            if (!item?.id || !item?.html) {
+                return;
+            }
+            const existing = container.querySelector(`[data-message-id="${item.id}"]`);
+            if (!existing) {
+                return;
+            }
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = item.html.trim();
+            const next = wrapper.firstElementChild;
+            if (!next) {
+                return;
+            }
+            existing.replaceWith(next);
+            seenMessageIds.add(Number(item.id));
+            refreshMessageActionAvailability();
+        };
+
+        const removeMessageItem = (id) => {
+            if (!id) {
+                return;
+            }
+            const row = container.querySelector(`[data-message-id="${id}"]`);
+            if (row) {
+                row.remove();
+            }
+            seenMessageIds.delete(Number(id));
+            recalculateMessageBounds();
+            refreshMessageActionAvailability();
+        };
 
         const presenceClasses = {
             active: 'bg-emerald-500',
@@ -228,6 +403,190 @@
             const threshold = 120;
             return (container.scrollHeight - container.scrollTop - container.clientHeight) < threshold;
         };
+
+        const resizeComposerInput = () => {
+            if (!textarea) {
+                return;
+            }
+            textarea.style.height = 'auto';
+            const nextHeight = Math.max(36, Math.min(textarea.scrollHeight, 112));
+            textarea.style.height = `${nextHeight}px`;
+        };
+
+        const hasAttachment = () => !!(attachmentInput && attachmentInput.files && attachmentInput.files.length);
+        const hasText = () => !!(textarea && textarea.value.trim().length);
+        const composerHasContent = () => hasAttachment() || hasText();
+
+        const updateAttachmentMeta = () => {
+            if (!attachmentMeta || !attachmentInput) {
+                return;
+            }
+            const file = attachmentInput.files?.[0];
+            if (attachmentPreviewUrl) {
+                URL.revokeObjectURL(attachmentPreviewUrl);
+                attachmentPreviewUrl = null;
+            }
+            if (!file) {
+                attachmentMeta.classList.add('hidden');
+                attachmentMeta.textContent = '';
+                if (attachmentClearButton) {
+                    attachmentClearButton.classList.add('hidden');
+                }
+                if (attachmentPreview) {
+                    attachmentPreview.classList.add('hidden');
+                }
+                if (attachmentPreviewImg) {
+                    attachmentPreviewImg.removeAttribute('src');
+                }
+                return;
+            }
+            attachmentMeta.classList.remove('hidden');
+            attachmentMeta.textContent = `Selected: ${file.name}`;
+            if (attachmentClearButton) {
+                attachmentClearButton.classList.remove('hidden');
+            }
+
+            const isImage = file.type.startsWith('image/');
+            if (isImage && attachmentPreview && attachmentPreviewImg) {
+                attachmentPreviewUrl = URL.createObjectURL(file);
+                attachmentPreviewImg.src = attachmentPreviewUrl;
+                attachmentPreview.classList.remove('hidden');
+            } else if (attachmentPreview) {
+                attachmentPreview.classList.add('hidden');
+            }
+        };
+
+        const clearSelectedAttachment = () => {
+            if (!attachmentInput) {
+                return;
+            }
+            attachmentInput.value = '';
+            updateAttachmentMeta();
+            updateComposerState();
+        };
+
+        const isEditingMessage = () => editingMessageId > 0 && editingMessageUrl !== '';
+
+        const stopEditingMessage = () => {
+            editingMessageId = 0;
+            editingMessageUrl = '';
+            if (textarea) {
+                textarea.setAttribute('placeholder', defaultPlaceholder);
+            }
+            if (editMeta) {
+                editMeta.classList.add('hidden');
+                editMeta.classList.remove('flex');
+            }
+            updateComposerState();
+        };
+
+        const startEditingMessage = (row) => {
+            if (!textarea) {
+                return;
+            }
+            const id = Number(row?.dataset?.messageId || 0);
+            const url = row?.dataset?.editUrl || '';
+            if (!id || !url) {
+                return;
+            }
+            const messageNode = row.querySelector('[data-chat-message-text]');
+            const currentText = (messageNode?.textContent || '').trim();
+
+            editingMessageId = id;
+            editingMessageUrl = url;
+            textarea.value = currentText;
+            textarea.setAttribute('placeholder', 'Edit message');
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            if (editMeta) {
+                editMeta.classList.remove('hidden');
+                editMeta.classList.add('flex');
+            }
+            closeEmojiPanel();
+            closeMentionDropdown();
+            clearSelectedAttachment();
+            resizeComposerInput();
+            syncMentionsField();
+            updateComposerState();
+        };
+
+        const updateComposerState = () => {
+            const canSend = composerHasContent();
+            if (sendButton) {
+                sendButton.disabled = !canSend;
+                sendButton.classList.toggle('opacity-70', !canSend);
+            }
+            if (sendIcon) {
+                sendIcon.classList.remove('hidden');
+            }
+        };
+
+        const closeEmojiPanel = () => {
+            if (emojiPanel) {
+                emojiPanel.classList.add('hidden');
+            }
+        };
+
+        const insertEmojiAtCursor = (emoji) => {
+            if (!textarea || !emoji) {
+                return;
+            }
+            const start = textarea.selectionStart || 0;
+            const end = textarea.selectionEnd || start;
+            const value = textarea.value;
+            textarea.value = `${value.slice(0, start)}${emoji}${value.slice(end)}`;
+            const cursor = start + emoji.length;
+            textarea.setSelectionRange(cursor, cursor);
+            textarea.focus();
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+
+        if (emojiButton && emojiPanel) {
+            emojiButton.addEventListener('click', () => {
+                emojiPanel.classList.toggle('hidden');
+            });
+            emojiPanel.querySelectorAll('[data-emoji]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    insertEmojiAtCursor(button.dataset.emoji || '');
+                    closeEmojiPanel();
+                });
+            });
+        }
+
+        const openAttachmentPicker = () => {
+            if (!attachmentInput) {
+                return;
+            }
+            attachmentInput.removeAttribute('capture');
+            attachmentInput.setAttribute('accept', 'image/*,.pdf');
+            attachmentInput.click();
+        };
+
+        if (attachButton) {
+            attachButton.addEventListener('click', () => openAttachmentPicker());
+        }
+        if (attachmentInput) {
+            attachmentInput.addEventListener('change', () => {
+                attachmentInput.removeAttribute('capture');
+                attachmentInput.setAttribute('accept', 'image/*,.pdf');
+                updateAttachmentMeta();
+                updateComposerState();
+            });
+        }
+        if (attachmentClearButton) {
+            attachmentClearButton.addEventListener('click', clearSelectedAttachment);
+        }
+        if (editCancelButton) {
+            editCancelButton.addEventListener('click', () => {
+                stopEditingMessage();
+                if (textarea) {
+                    textarea.value = '';
+                    resizeComposerInput();
+                }
+                syncMentionsField();
+                updateComposerState();
+            });
+        }
 
         const escapePresenceKey = (value) => {
             if (window.CSS && CSS.escape) {
@@ -258,40 +617,7 @@
             });
         };
 
-        let notificationRequested = false;
-        const canNotify = () => 'Notification' in window && Notification.permission === 'granted';
-        const maybeRequestNotificationPermission = () => {
-            if (!('Notification' in window)) {
-                return;
-            }
-            if (Notification.permission !== 'default' || notificationRequested) {
-                return;
-            }
-            notificationRequested = true;
-            Notification.requestPermission().catch(() => {});
-        };
-
-        const shouldNotify = () => document.hidden || !document.hasFocus() || !isNearBottom();
-        const showNotification = (item) => {
-            if (!canNotify() || !item?.meta) {
-                return;
-            }
-            if (String(item.meta.author_id) === String(currentAuthorId)
-                && item.meta.author_type === currentAuthorType) {
-                return;
-            }
-            if (!shouldNotify()) {
-                return;
-            }
-            const title = item.meta.author ? `${item.meta.author} - ${projectName}` : projectName;
-            const body = item.meta.snippet || 'New message';
-            const notification = new Notification(title, { body });
-            notification.onclick = () => {
-                window.focus();
-            };
-        };
-
-        const appendItems = (items, notify) => {
+        const appendItems = (items) => {
             if (!items || !items.length) {
                 return;
             }
@@ -300,17 +626,24 @@
 
             items.forEach((item) => {
                 if (!item?.html || !item?.id) return;
-                if (seenMessageIds.has(item.id)) return;
+                const existing = container.querySelector(`[data-message-id="${item.id}"]`);
+                if (existing) {
+                    seenMessageIds.add(item.id);
+                    return;
+                }
                 container.insertAdjacentHTML('beforeend', item.html);
+                const inserted = container.querySelector(`[data-message-id="${item.id}"]`);
+                if (inserted) {
+                    inserted.classList.add('wa-message-enter');
+                    window.setTimeout(() => inserted.classList.remove('wa-message-enter'), 280);
+                }
                 seenMessageIds.add(item.id);
                 lastId = Math.max(lastId, item.id);
                 if (!oldestId) {
                     oldestId = item.id;
                 }
-                if (notify) {
-                    showNotification(item);
-                }
             });
+            refreshMessageActionAvailability();
         };
 
         const prependItems = (items) => {
@@ -320,18 +653,23 @@
             const previousHeight = container.scrollHeight;
             const previousTop = container.scrollTop;
             for (let i = items.length - 1; i >= 0; i -= 1) {
-                const item = items[i];
-                if (!item?.html || !item?.id) continue;
-                if (seenMessageIds.has(item.id)) continue;
-                container.insertAdjacentHTML('afterbegin', item.html);
-                seenMessageIds.add(item.id);
-            }
+                    const item = items[i];
+                    if (!item?.html || !item?.id) continue;
+                    const existing = container.querySelector(`[data-message-id="${item.id}"]`);
+                    if (existing) {
+                        seenMessageIds.add(item.id);
+                        continue;
+                    }
+                    container.insertAdjacentHTML('afterbegin', item.html);
+                    seenMessageIds.add(item.id);
+                }
             const oldestItemId = items[0]?.id;
             if (oldestItemId) {
                 oldestId = oldestId ? Math.min(oldestId, oldestItemId) : oldestItemId;
             }
             const heightDiff = container.scrollHeight - previousHeight;
             container.scrollTop = previousTop + heightDiff;
+            refreshMessageActionAvailability();
         };
 
         const fetchMessages = async (params) => {
@@ -403,13 +741,13 @@
                 const keepAtBottom = isNearBottom();
                 const items = await fetchMessages({ after_id: lastId, limit: 30 });
                 if (items.length) {
-                    appendItems(items, true);
+                    appendItems(items);
                     if (keepAtBottom) {
                         scrollToBottom();
                         updateReadStatus(lastId);
                     }
                 }
-            }, 5000);
+            }, 2000);
         };
 
         const connectStream = () => {
@@ -428,10 +766,11 @@
 
             eventSource.addEventListener('messages', (event) => {
                 try {
+                    const keepAtBottom = isNearBottom();
                     const payload = JSON.parse(event.data || '{}');
                     const items = payload?.items || [];
-                    appendItems(items, true);
-                    if (items.length && isNearBottom()) {
+                    appendItems(items);
+                    if (items.length && keepAtBottom) {
                         scrollToBottom();
                         updateReadStatus(lastId);
                     }
@@ -523,93 +862,9 @@
         setInterval(() => {
             sendPresence(presenceState);
         }, 15000);
-
-        const aiButton = document.getElementById('chat-ai-generate');
-        const aiStatus = document.getElementById('chat-ai-status');
-        const aiSummary = document.getElementById('chat-ai-summary');
-        const aiSentiment = document.getElementById('chat-ai-sentiment');
-        const aiPriority = document.getElementById('chat-ai-priority');
-        const aiActions = document.getElementById('chat-ai-actions');
-        const aiReply = document.getElementById('chat-ai-reply');
-        const aiInsert = document.getElementById('chat-ai-insert');
-        const aiGeneratedAt = document.getElementById('chat-ai-generated-at');
-
-        const setAiStatus = (label, cls) => {
-            if (!aiStatus) return;
-            aiStatus.textContent = label;
-            aiStatus.className = `rounded-full px-3 py-1 text-xs font-semibold ${cls}`;
-        };
-
-        const renderActions = (items) => {
-            if (!aiActions) return;
-            aiActions.innerHTML = '';
-            if (!items || !items.length) {
-                const li = document.createElement('li');
-                li.textContent = '--';
-                aiActions.appendChild(li);
-                return;
-            }
-            items.forEach((item) => {
-                const li = document.createElement('li');
-                li.textContent = item;
-                aiActions.appendChild(li);
-            });
-        };
-
-        if (aiInsert) {
-            aiInsert.addEventListener('click', () => {
-                if (!textarea || !aiReply) return;
-                if (!aiReply.value.trim()) return;
-                textarea.value = aiReply.value;
-                textarea.focus();
-            });
-        }
-
-        if (aiButton && aiSummaryRoute) {
-            aiButton.addEventListener('click', async () => {
-                setAiStatus('Generating...', 'bg-amber-100 text-amber-700');
-                if (aiSummary) aiSummary.textContent = 'Working on the AI summary...';
-                if (aiReply) aiReply.value = '';
-                if (aiSentiment) aiSentiment.textContent = '--';
-                if (aiPriority) aiPriority.textContent = '--';
-                renderActions([]);
-
-                try {
-                    const response = await fetch(aiSummaryRoute, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                            'Accept': 'application/json',
-                        },
-                    });
-
-                    const payload = await response.json();
-                    if (!response.ok) {
-                        throw new Error(payload.error || 'Failed to generate AI summary.');
-                    }
-
-                    if (payload.data) {
-                        if (aiSummary) aiSummary.textContent = payload.data.summary || payload.raw || '--';
-                        if (aiSentiment) aiSentiment.textContent = payload.data.sentiment || '--';
-                        if (aiPriority) aiPriority.textContent = payload.data.priority || '--';
-                        if (aiReply) aiReply.value = payload.data.reply_draft || '';
-                        if (aiGeneratedAt) {
-                            aiGeneratedAt.textContent = payload.data.generated_at
-                                ? `Pinned · ${payload.data.generated_at}`
-                                : '';
-                        }
-                        renderActions(Array.isArray(payload.data.action_items) ? payload.data.action_items : []);
-                    } else if (aiSummary) {
-                        aiSummary.textContent = payload.raw || '--';
-                    }
-
-                    setAiStatus('Updated', 'bg-emerald-100 text-emerald-700');
-                } catch (error) {
-                    if (aiSummary) aiSummary.textContent = error.message;
-                    setAiStatus('Error', 'bg-rose-100 text-rose-700');
-                }
-            });
-        }
+        setInterval(() => {
+            refreshMessageActionAvailability();
+        }, 1000);
 
         const syncMentionsField = () => {
             if (!mentionsField || !textarea) {
@@ -645,57 +900,6 @@
             return { start, end: cursor, query };
         };
 
-        const getCaretCoordinates = (element, position) => {
-            const div = document.createElement('div');
-            const style = window.getComputedStyle(element);
-            const properties = [
-                'boxSizing',
-                'width',
-                'height',
-                'overflowX',
-                'overflowY',
-                'borderTopWidth',
-                'borderRightWidth',
-                'borderBottomWidth',
-                'borderLeftWidth',
-                'paddingTop',
-                'paddingRight',
-                'paddingBottom',
-                'paddingLeft',
-                'fontStyle',
-                'fontVariant',
-                'fontWeight',
-                'fontStretch',
-                'fontSize',
-                'fontSizeAdjust',
-                'lineHeight',
-                'fontFamily',
-                'textAlign',
-                'textTransform',
-                'textIndent',
-                'letterSpacing',
-                'wordSpacing',
-            ];
-            properties.forEach((prop) => {
-                div.style[prop] = style[prop];
-            });
-            div.style.position = 'absolute';
-            div.style.visibility = 'hidden';
-            div.style.whiteSpace = 'pre-wrap';
-            div.style.wordWrap = 'break-word';
-            div.style.top = '0';
-            div.style.left = '-9999px';
-            div.textContent = element.value.substring(0, position);
-            const span = document.createElement('span');
-            span.textContent = element.value.substring(position) || '.';
-            div.appendChild(span);
-            document.body.appendChild(div);
-            const top = span.offsetTop + parseInt(style.borderTopWidth, 10) - element.scrollTop;
-            const left = span.offsetLeft + parseInt(style.borderLeftWidth, 10) - element.scrollLeft;
-            document.body.removeChild(div);
-            return { top, left };
-        };
-
         let mentionState = null;
         let mentionResults = [];
         let mentionActiveIndex = 0;
@@ -714,14 +918,14 @@
         };
 
         const positionDropdown = () => {
-            if (!dropdown || !textarea || !mentionState) {
+            if (!dropdown) {
                 return;
             }
-            const caret = getCaretCoordinates(textarea, mentionState.end);
-            const textareaRect = textarea.getBoundingClientRect();
-            const containerRect = textarea.parentElement.getBoundingClientRect();
-            dropdown.style.left = `${textareaRect.left - containerRect.left + caret.left}px`;
-            dropdown.style.top = `${textareaRect.top - containerRect.top + caret.top + 24}px`;
+            dropdown.style.left = '0';
+            dropdown.style.right = 'auto';
+            dropdown.style.top = 'auto';
+            dropdown.style.bottom = '100%';
+            dropdown.style.marginBottom = '8px';
         };
 
         const renderMentionDropdown = (items) => {
@@ -775,6 +979,8 @@
             syncMentionsField();
             closeMentionDropdown();
             textarea.focus();
+            resizeComposerInput();
+            updateComposerState();
         };
 
         const fetchMentionResults = async (query) => {
@@ -839,9 +1045,12 @@
         };
 
         if (textarea) {
+            resizeComposerInput();
             textarea.addEventListener('input', () => {
+                resizeComposerInput();
                 updateMentionDropdown();
                 syncMentionsField();
+                updateComposerState();
             });
             textarea.addEventListener('keydown', (event) => {
                 if (!dropdown || dropdown.classList.contains('hidden')) {
@@ -864,19 +1073,109 @@
                     closeMentionDropdown();
                 }
             });
-            textarea.addEventListener('focus', () => {
-                maybeRequestNotificationPermission();
-            });
         }
 
         document.addEventListener('click', (event) => {
+            const target = event.target;
+            if (emojiPanel && !emojiPanel.classList.contains('hidden') && emojiButton
+                && !emojiPanel.contains(target) && !emojiButton.contains(target)) {
+                closeEmojiPanel();
+            }
             if (!dropdown || dropdown.classList.contains('hidden')) {
                 return;
             }
-            if (dropdown.contains(event.target) || textarea === event.target) {
+            if (dropdown.contains(target) || textarea === target) {
                 return;
             }
             closeMentionDropdown();
+        });
+
+        container.addEventListener('click', async (event) => {
+            const editButton = event.target.closest('[data-chat-edit]');
+            const deleteButton = event.target.closest('[data-chat-delete]');
+            if (!editButton && !deleteButton) {
+                return;
+            }
+
+            const row = event.target.closest('[data-message-id]');
+            if (!row || row.dataset.mutating === '1') {
+                return;
+            }
+
+            if (isEditWindowExpired(row)) {
+                refreshMessageActionAvailability();
+                return;
+            }
+
+            const parseErrorMessage = async (response, fallback) => {
+                try {
+                    const payload = await response.json();
+                    return payload?.message
+                        || payload?.error
+                        || Object.values(payload?.errors || {})?.[0]?.[0]
+                        || fallback;
+                } catch (e) {
+                    return fallback;
+                }
+            };
+
+            row.dataset.mutating = '1';
+            try {
+                if (editButton) {
+                    if (!row.dataset.editUrl) {
+                        refreshMessageActionAvailability();
+                        return;
+                    }
+                    startEditingMessage(row);
+                    return;
+                }
+
+                if (deleteButton) {
+                    const deleteUrl = row.dataset.deleteUrl || '';
+                    if (!deleteUrl) {
+                        refreshMessageActionAvailability();
+                        return;
+                    }
+
+                    if (!window.confirm('Delete this message?')) {
+                        return;
+                    }
+
+                    const body = new FormData();
+                    body.append('_method', 'DELETE');
+                    body.append('_token', getCsrfToken());
+
+                    const response = await fetch(deleteUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body,
+                    });
+
+                    if (!response.ok) {
+                        alert(await parseErrorMessage(response, 'Message delete failed.'));
+                        return;
+                    }
+
+                    const payload = await response.json();
+                    const deletedId = Number(payload?.data?.id || row.dataset.messageId || 0);
+                    removeMessageItem(deletedId);
+                    if (editingMessageId === deletedId) {
+                        stopEditingMessage();
+                        if (textarea) {
+                            textarea.value = '';
+                            resizeComposerInput();
+                        }
+                    }
+                    if (lastId) {
+                        updateReadStatus(lastId);
+                    }
+                }
+            } finally {
+                delete row.dataset.mutating;
+            }
         });
 
         if (form && form.dataset.bound !== '1') {
@@ -892,47 +1191,106 @@
                     submitButton.disabled = true;
                 }
 
-                maybeRequestNotificationPermission();
                 syncMentionsField();
+                if (!composerHasContent()) {
+                    form.dataset.submitting = '0';
+                    updateComposerState();
+                    return;
+                }
 
                 try {
-                    const postUrl = form.dataset.postUrl || form.action;
+                    const isEditing = isEditingMessage();
+                    const requestUrl = isEditing ? editingMessageUrl : (form.dataset.postUrl || form.action);
                     const formData = new FormData(form);
 
-                    const response = await fetch(postUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: formData
-                    });
+                    let response;
+                    if (isEditing) {
+                        const editingRow = container.querySelector(`[data-message-id="${editingMessageId}"]`);
+                        const hasAttachment = editingRow?.dataset?.hasAttachment === '1';
+                        const nextText = (textarea?.value || '').trim();
+                        if (!nextText && !hasAttachment) {
+                            alert('Message cannot be empty.');
+                            return;
+                        }
+                        formData.delete('attachment');
+                        formData.delete('mentions');
+                        formData.append('_method', 'PATCH');
+                        formData.append('_token', getCsrfToken());
+                        formData.set('message', nextText);
+                        response = await fetch(requestUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData
+                        });
+                    } else {
+                        response = await fetch(requestUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData
+                        });
+                    }
 
                     if (!response.ok) {
-                        alert('Message send failed.');
+                        let errorMessage = 'Message send failed.';
+                        try {
+                            const payload = await response.json();
+                            errorMessage = payload?.message
+                                || payload?.error
+                                || Object.values(payload?.errors || {})?.[0]?.[0]
+                                || errorMessage;
+                        } catch (e) {
+                            // Ignore JSON parse failures.
+                        }
+                        alert(errorMessage);
                         return;
                     }
 
                     const payload = await response.json();
                     const item = payload?.data?.item;
                     if (item?.html) {
-                        appendItems([item], false);
-                        scrollToBottom();
-                        updateReadStatus(lastId);
+                        if (isEditing) {
+                            replaceMessageItem(item);
+                        } else {
+                            appendItems([item]);
+                            scrollToBottom();
+                            updateReadStatus(lastId);
+                        }
+                    } else if (!isEditing) {
+                        const latestItems = await fetchMessages({ after_id: lastId, limit: 30 });
+                        if (latestItems.length) {
+                            appendItems(latestItems);
+                            scrollToBottom();
+                            updateReadStatus(lastId);
+                        }
                     }
                     form.reset();
+                    stopEditingMessage();
+                    resizeComposerInput();
                     selectedMentions = [];
                     syncMentionsField();
                     closeMentionDropdown();
+                    closeEmojiPanel();
+                    updateAttachmentMeta();
+                    updateComposerState();
                 } finally {
                     form.dataset.submitting = '0';
                     if (submitButton) {
                         submitButton.disabled = false;
                     }
+                    updateComposerState();
                 }
             });
         }
 
+        updateAttachmentMeta();
+        updateComposerState();
+        refreshMessageActionAvailability();
         scrollToBottom();
         updateReadStatus(lastId);
         sendPresence('active');
@@ -949,6 +1307,9 @@
         });
 
         window.addEventListener('beforeunload', () => {
+            if (attachmentPreviewUrl) {
+                URL.revokeObjectURL(attachmentPreviewUrl);
+            }
             if (eventSource) {
                 eventSource.close();
             }

@@ -1,4 +1,4 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'Payment Method Ledger')
 @section('page-title', 'Payment Method Ledger')

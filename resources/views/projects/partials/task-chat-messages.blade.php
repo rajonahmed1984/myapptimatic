@@ -6,7 +6,10 @@
         'attachmentRouteName' => $attachmentRouteName,
         'currentAuthorType' => $currentAuthorType,
         'currentAuthorId' => $currentAuthorId,
+        'updateRouteName' => $updateRouteName ?? null,
+        'deleteRouteName' => $deleteRouteName ?? null,
+        'editableWindowSeconds' => $editableWindowSeconds ?? 30,
     ])
 @empty
-    <div class="text-sm text-slate-500">No messages yet. Start the conversation.</div>
+    <div class="rounded-xl bg-white/85 px-4 py-3 text-sm text-slate-500 shadow-sm">No messages yet. Start the conversation.</div>
 @endforelse

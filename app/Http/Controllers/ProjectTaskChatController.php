@@ -21,6 +21,8 @@ use Illuminate\Support\Str;
 
 class ProjectTaskChatController extends Controller
 {
+    private const EDITABLE_WINDOW_SECONDS = 30;
+
     public function show(Request $request, Project $project, ProjectTask $task, ChatAiSummaryCache $summaryCache)
     {
         $this->ensureTaskBelongsToProject($project, $task);
@@ -38,6 +40,8 @@ class ProjectTaskChatController extends Controller
 
         $identity = $this->resolveAuthorIdentity($request);
         $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
+        $messageUpdateRouteName = $routePrefix . '.projects.tasks.chat.messages.update';
+        $messageDeleteRouteName = $routePrefix . '.projects.tasks.chat.messages.destroy';
 
         $canPost = Gate::forUser($actor)->check('comment', $task);
 
@@ -49,6 +53,9 @@ class ProjectTaskChatController extends Controller
                 'attachmentRouteName' => $attachmentRouteName,
                 'currentAuthorType' => $identity['type'],
                 'currentAuthorId' => $identity['id'],
+                'updateRouteName' => $messageUpdateRouteName,
+                'deleteRouteName' => $messageDeleteRouteName,
+                'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
             ]);
         }
 
@@ -69,6 +76,9 @@ class ProjectTaskChatController extends Controller
             'currentAuthorType' => $identity['type'],
             'currentAuthorId' => $identity['id'],
             'canPost' => $canPost,
+            'messageUpdateRouteName' => $messageUpdateRouteName,
+            'messageDeleteRouteName' => $messageDeleteRouteName,
+            'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
         ]);
     }
 
@@ -130,13 +140,18 @@ class ProjectTaskChatController extends Controller
         $identity = $this->resolveAuthorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
+        $messageUpdateRouteName = $routePrefix . '.projects.tasks.chat.messages.update';
+        $messageDeleteRouteName = $routePrefix . '.projects.tasks.chat.messages.destroy';
 
         $items = $messages->map(fn (ProjectTaskMessage $message) => $this->messageItem(
             $message,
             $project,
             $task,
             $attachmentRouteName,
-            $identity
+            $identity,
+            $messageUpdateRouteName,
+            $messageDeleteRouteName,
+            self::EDITABLE_WINDOW_SECONDS
         ))->values();
 
         $nextAfterId = $messages->max('id') ?? $afterId;
@@ -218,7 +233,18 @@ class ProjectTaskChatController extends Controller
 
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
-        $item = $this->messageItem($messageModel, $project, $task, $attachmentRouteName, $identity);
+        $messageUpdateRouteName = $routePrefix . '.projects.tasks.chat.messages.update';
+        $messageDeleteRouteName = $routePrefix . '.projects.tasks.chat.messages.destroy';
+        $item = $this->messageItem(
+            $messageModel,
+            $project,
+            $task,
+            $attachmentRouteName,
+            $identity,
+            $messageUpdateRouteName,
+            $messageDeleteRouteName,
+            self::EDITABLE_WINDOW_SECONDS
+        );
 
         return response()->json([
             'ok' => true,
@@ -227,6 +253,114 @@ class ProjectTaskChatController extends Controller
                 'item' => $item,
                 'next_after_id' => $messageModel->id,
                 'next_before_id' => $messageModel->id,
+            ],
+        ]);
+    }
+
+    public function updateMessage(
+        Request $request,
+        Project $project,
+        ProjectTask $task,
+        ProjectTaskMessage $message
+    ): JsonResponse {
+        $this->ensureTaskBelongsToProject($project, $task);
+        if ($message->project_task_id !== $task->id) {
+            abort(404);
+        }
+
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $task);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            abort(403, 'Author identity not available.');
+        }
+
+        $guardError = $this->messageMutationGuard($message, $identity);
+        if ($guardError) {
+            return $guardError;
+        }
+
+        $data = $request->validate([
+            'message' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $nextMessage = isset($data['message']) ? trim((string) $data['message']) : '';
+        $nextMessage = $nextMessage === '' ? null : $nextMessage;
+
+        if ($nextMessage === null && ! $message->attachment_path) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Message cannot be empty.',
+            ], 422);
+        }
+
+        $message->update([
+            'message' => $nextMessage,
+        ]);
+        $message->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor']);
+
+        $routePrefix = $this->resolveRoutePrefix($request);
+        $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
+        $messageUpdateRouteName = $routePrefix . '.projects.tasks.chat.messages.update';
+        $messageDeleteRouteName = $routePrefix . '.projects.tasks.chat.messages.destroy';
+        $item = $this->messageItem(
+            $message,
+            $project,
+            $task,
+            $attachmentRouteName,
+            $identity,
+            $messageUpdateRouteName,
+            $messageDeleteRouteName,
+            self::EDITABLE_WINDOW_SECONDS
+        );
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Message updated.',
+            'data' => [
+                'item' => $item,
+            ],
+        ]);
+    }
+
+    public function destroyMessage(
+        Request $request,
+        Project $project,
+        ProjectTask $task,
+        ProjectTaskMessage $message
+    ): JsonResponse {
+        $this->ensureTaskBelongsToProject($project, $task);
+        if ($message->project_task_id !== $task->id) {
+            abort(404);
+        }
+
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $task);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            abort(403, 'Author identity not available.');
+        }
+
+        $guardError = $this->messageMutationGuard($message, $identity);
+        if ($guardError) {
+            return $guardError;
+        }
+
+        $attachmentPath = $message->attachment_path;
+        $deletedId = $message->id;
+        $message->delete();
+
+        if ($attachmentPath) {
+            Storage::disk('public')->delete($attachmentPath);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Message deleted.',
+            'data' => [
+                'id' => $deletedId,
             ],
         ]);
     }
@@ -322,6 +456,20 @@ class ProjectTaskChatController extends Controller
         return $disk->download($message->attachment_path, $message->attachmentName() ?? 'attachment');
     }
 
+    public function inlineAttachment(ProjectTaskMessage $message)
+    {
+        if (! $message->attachment_path || ! $message->isImageAttachment()) {
+            abort(404);
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($message->attachment_path)) {
+            abort(404);
+        }
+
+        return $disk->response($message->attachment_path);
+    }
+
     private function ensureTaskBelongsToProject(Project $project, ProjectTask $task): void
     {
         if ($task->project_id !== $project->id) {
@@ -397,7 +545,11 @@ class ProjectTaskChatController extends Controller
         $file = $request->file('attachment');
         $name = pathinfo((string) $file->getClientOriginalName(), PATHINFO_FILENAME);
         $name = $name !== '' ? Str::slug($name) : 'attachment';
-        $extension = $file->getClientOriginalExtension();
+        $extension = strtolower((string) ($file->guessExtension() ?: $file->getClientOriginalExtension()));
+        if ($extension === '') {
+            $mimeType = (string) ($file->getMimeType() ?? '');
+            $extension = str_starts_with($mimeType, 'image/') ? 'jpg' : 'bin';
+        }
         $fileName = $name . '-' . Str::random(8) . '.' . $extension;
 
         return $file->storeAs('project-task-messages/' . $task->id, $fileName, 'public');
@@ -408,7 +560,10 @@ class ProjectTaskChatController extends Controller
         Project $project,
         ProjectTask $task,
         string $attachmentRouteName,
-        array $identity
+        array $identity,
+        string $updateRouteName,
+        string $deleteRouteName,
+        int $editableWindowSeconds
     ): array {
         return [
             'id' => $message->id,
@@ -419,7 +574,31 @@ class ProjectTaskChatController extends Controller
                 'attachmentRouteName' => $attachmentRouteName,
                 'currentAuthorType' => $identity['type'],
                 'currentAuthorId' => $identity['id'],
+                'updateRouteName' => $updateRouteName,
+                'deleteRouteName' => $deleteRouteName,
+                'editableWindowSeconds' => $editableWindowSeconds,
             ])->render(),
         ];
+    }
+
+    private function messageMutationGuard(ProjectTaskMessage $message, array $identity): ?JsonResponse
+    {
+        if ($message->author_type !== $identity['type']
+            || (string) $message->author_id !== (string) $identity['id']) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'You can only edit or delete your own message.',
+            ], 403);
+        }
+
+        $canEditUntil = $message->created_at?->copy()->addSeconds(self::EDITABLE_WINDOW_SECONDS);
+        if (! $canEditUntil || now()->greaterThanOrEqualTo($canEditUntil)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'You can edit or delete only within 30 seconds of sending.',
+            ], 422);
+        }
+
+        return null;
     }
 }

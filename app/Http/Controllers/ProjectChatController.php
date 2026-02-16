@@ -26,6 +26,8 @@ use Illuminate\Support\Str;
 
 class ProjectChatController extends Controller
 {
+    private const EDITABLE_WINDOW_SECONDS = 30;
+
     public function show(Request $request, Project $project, ChatAiSummaryCache $summaryCache)
     {
         $actor = $this->resolveActor($request);
@@ -44,6 +46,8 @@ class ProjectChatController extends Controller
 
         $identity = $this->resolveAuthorIdentity($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
+        $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
         $readReceipts = $this->readReceiptsForMessages($project, $messages, $identity);
         $authorStatuses = ChatPresence::authorStatusesForMessages($messages);
         $messageMentions = $this->mentionsForMessages($messages);
@@ -71,6 +75,9 @@ class ProjectChatController extends Controller
                 'messageMentions' => $messageMentions,
                 'latestMessageId' => $latestMessageId,
                 'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
+                'updateRouteName' => $messageUpdateRouteName,
+                'deleteRouteName' => $messageDeleteRouteName,
+                'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
             ]);
         }
 
@@ -100,6 +107,9 @@ class ProjectChatController extends Controller
             'participantStatuses' => $participantStatuses,
             'latestMessageId' => $latestMessageId,
             'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
+            'messageUpdateRouteName' => $messageUpdateRouteName,
+            'messageDeleteRouteName' => $messageDeleteRouteName,
+            'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
         ]);
     }
 
@@ -159,6 +169,8 @@ class ProjectChatController extends Controller
         $identity = $this->resolveAuthorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
+        $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
         $readReceipts = $this->readReceiptsForMessages($project, $messages, $identity);
         $authorStatuses = ChatPresence::authorStatusesForMessages($messages);
         $messageMentions = $this->mentionsForMessages($messages);
@@ -176,7 +188,10 @@ class ProjectChatController extends Controller
             $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
             $messageMentions[$message->id] ?? [],
             $latestMessageId,
-            $allParticipantsReadUpTo
+            $allParticipantsReadUpTo,
+            $messageUpdateRouteName,
+            $messageDeleteRouteName,
+            self::EDITABLE_WINDOW_SECONDS
         ))->values();
 
         $nextAfterId = $messages->max('id') ?? $afterId;
@@ -254,6 +269,8 @@ class ProjectChatController extends Controller
         $identity = $this->resolveAuthorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
+        $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
         $mentionables = $this->mentionablesForProject($project, $identity);
         $participantKeys = array_values(array_filter(array_map(
             fn ($participant) => $participant['key'] ?? null,
@@ -269,6 +286,8 @@ class ProjectChatController extends Controller
             $project,
             $identity,
             $attachmentRouteName,
+            $messageUpdateRouteName,
+            $messageDeleteRouteName,
             $participantKeys,
             $cursor
         ) {
@@ -308,7 +327,10 @@ class ProjectChatController extends Controller
                         $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
                         $messageMentions[$message->id] ?? [],
                         $latestMessageId,
-                        $allParticipantsReadUpTo
+                        $allParticipantsReadUpTo,
+                        $messageUpdateRouteName,
+                        $messageDeleteRouteName,
+                        self::EDITABLE_WINDOW_SECONDS
                     ))->values();
 
                     $lastId = (int) ($messages->max('id') ?? $lastId);
@@ -409,6 +431,8 @@ class ProjectChatController extends Controller
                 $identity = $this->resolveAuthorIdentity($request);
                 $routePrefix = $this->resolveRoutePrefix($request);
                 $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+                $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
+                $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
                 $readReceipts = $this->readReceiptsForMessages($project, collect([$duplicate]), $identity);
                 $authorStatuses = ChatPresence::authorStatusesForMessages(collect([$duplicate]));
                 $messageMentions = $this->mentionsForMessages(collect([$duplicate]));
@@ -422,7 +446,10 @@ class ProjectChatController extends Controller
                     $authorStatuses[$duplicate->author_type . ':' . $duplicate->author_id] ?? 'offline',
                     $messageMentions[$duplicate->id] ?? [],
                     $duplicate->id,
-                    $allParticipantsReadUpTo
+                    $allParticipantsReadUpTo,
+                    $messageUpdateRouteName,
+                    $messageDeleteRouteName,
+                    self::EDITABLE_WINDOW_SECONDS
                 );
 
                 return response()->json([
@@ -464,6 +491,8 @@ class ProjectChatController extends Controller
 
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
+        $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
         $readReceipts = $this->readReceiptsForMessages($project, collect([$messageModel]), $identity);
         $authorStatuses = ChatPresence::authorStatusesForMessages(collect([$messageModel]));
         $messageMentions = $this->mentionsForMessages(collect([$messageModel]));
@@ -477,7 +506,10 @@ class ProjectChatController extends Controller
             $authorStatuses[$messageModel->author_type . ':' . $messageModel->author_id] ?? 'offline',
             $messageMentions[$messageModel->id] ?? [],
             $messageModel->id,
-            $allParticipantsReadUpTo
+            $allParticipantsReadUpTo,
+            $messageUpdateRouteName,
+            $messageDeleteRouteName,
+            self::EDITABLE_WINDOW_SECONDS
         );
 
         return response()->json([
@@ -487,6 +519,121 @@ class ProjectChatController extends Controller
                 'item' => $item,
                 'next_after_id' => $messageModel->id,
                 'next_before_id' => $messageModel->id,
+            ],
+        ]);
+    }
+
+    public function updateMessage(Request $request, Project $project, ProjectMessage $message): JsonResponse
+    {
+        if ($message->project_id !== $project->id) {
+            abort(404);
+        }
+
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $project);
+        $this->touchPresence($request);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            abort(403, 'Author identity not available.');
+        }
+
+        $guardError = $this->messageMutationGuard($message, $identity);
+        if ($guardError) {
+            return $guardError;
+        }
+
+        $data = $request->validate([
+            'message' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $nextMessage = isset($data['message']) ? trim((string) $data['message']) : '';
+        $nextMessage = $nextMessage === '' ? null : $nextMessage;
+
+        if ($nextMessage === null && ! $message->attachment_path) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Message cannot be empty.',
+            ], 422);
+        }
+
+        $mentions = $this->resolveMentions($project, $identity, $nextMessage, null);
+
+        $message->update([
+            'message' => $nextMessage,
+            'mentions' => $mentions ?: null,
+        ]);
+        $message->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor']);
+
+        $routePrefix = $this->resolveRoutePrefix($request);
+        $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
+        $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
+        $readReceipts = $this->readReceiptsForMessages($project, collect([$message]), $identity);
+        $authorStatuses = ChatPresence::authorStatusesForMessages(collect([$message]));
+        $messageMentions = $this->mentionsForMessages(collect([$message]));
+        $latestMessageId = (int) ($project->messages()->max('id') ?? 0);
+        $allParticipantsReadUpTo = $latestMessageId > 0
+            ? $this->allParticipantsReadUpTo($project, $identity)
+            : null;
+
+        $item = $this->messageItem(
+            $message,
+            $project,
+            $attachmentRouteName,
+            $identity,
+            $readReceipts[$message->id] ?? [],
+            $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
+            $messageMentions[$message->id] ?? [],
+            $latestMessageId,
+            $allParticipantsReadUpTo,
+            $messageUpdateRouteName,
+            $messageDeleteRouteName,
+            self::EDITABLE_WINDOW_SECONDS
+        );
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Message updated.',
+            'data' => [
+                'item' => $item,
+            ],
+        ]);
+    }
+
+    public function destroyMessage(Request $request, Project $project, ProjectMessage $message): JsonResponse
+    {
+        if ($message->project_id !== $project->id) {
+            abort(404);
+        }
+
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $project);
+        $this->touchPresence($request);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            abort(403, 'Author identity not available.');
+        }
+
+        $guardError = $this->messageMutationGuard($message, $identity);
+        if ($guardError) {
+            return $guardError;
+        }
+
+        $attachmentPath = $message->attachment_path;
+        $deletedId = $message->id;
+        $message->delete();
+
+        if ($attachmentPath) {
+            Storage::disk('public')->delete($attachmentPath);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Message deleted.',
+            'data' => [
+                'id' => $deletedId,
             ],
         ]);
     }
@@ -579,6 +726,20 @@ class ProjectChatController extends Controller
         }
 
         return $disk->download($message->attachment_path, $message->attachmentName() ?? 'attachment');
+    }
+
+    public function inlineAttachment(ProjectMessage $message)
+    {
+        if (! $message->attachment_path || ! $message->isImageAttachment()) {
+            abort(404);
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($message->attachment_path)) {
+            abort(404);
+        }
+
+        return $disk->response($message->attachment_path);
     }
 
     private function resolveActor(Request $request): object
@@ -731,7 +892,11 @@ class ProjectChatController extends Controller
         $file = $request->file('attachment');
         $name = pathinfo((string) $file->getClientOriginalName(), PATHINFO_FILENAME);
         $name = $name !== '' ? Str::slug($name) : 'attachment';
-        $extension = $file->getClientOriginalExtension();
+        $extension = strtolower((string) ($file->guessExtension() ?: $file->getClientOriginalExtension()));
+        if ($extension === '') {
+            $mimeType = (string) ($file->getMimeType() ?? '');
+            $extension = str_starts_with($mimeType, 'image/') ? 'jpg' : 'bin';
+        }
         $fileName = $name . '-' . Str::random(8) . '.' . $extension;
 
         return $file->storeAs('project-messages/' . $project->id, $fileName, 'public');
@@ -987,7 +1152,10 @@ class ProjectChatController extends Controller
         string $authorStatus,
         array $mentionMatches,
         int $latestMessageId,
-        ?array $allParticipantsReadUpTo
+        ?array $allParticipantsReadUpTo,
+        string $updateRouteName,
+        string $deleteRouteName,
+        int $editableWindowSeconds
     ): array {
         return [
             'id' => $message->id,
@@ -1002,6 +1170,9 @@ class ProjectChatController extends Controller
                 'mentionMatches' => $mentionMatches,
                 'latestMessageId' => $latestMessageId,
                 'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
+                'updateRouteName' => $updateRouteName,
+                'deleteRouteName' => $deleteRouteName,
+                'editableWindowSeconds' => $editableWindowSeconds,
             ])->render(),
             'meta' => [
                 'author' => $message->authorName(),
@@ -1011,6 +1182,27 @@ class ProjectChatController extends Controller
                 'project' => $project->name,
             ],
         ];
+    }
+
+    private function messageMutationGuard(ProjectMessage $message, array $identity): ?JsonResponse
+    {
+        if ($message->author_type !== $identity['type']
+            || (string) $message->author_id !== (string) $identity['id']) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'You can only edit or delete your own message.',
+            ], 403);
+        }
+
+        $canEditUntil = $message->created_at?->copy()->addSeconds(self::EDITABLE_WINDOW_SECONDS);
+        if (! $canEditUntil || now()->greaterThanOrEqualTo($canEditUntil)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'You can edit or delete only within 30 seconds of sending.',
+            ], 422);
+        }
+
+        return null;
     }
 
     private function readReceiptsForMessages(Project $project, $messages, array $identity): array

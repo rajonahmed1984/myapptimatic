@@ -24,7 +24,7 @@
     }
 
     $linkedMessage = $formattedMessage !== ''
-        ? preg_replace('~(https?://[^\\s<]+)~', '<a href="$1" class="text-teal-600 hover:text-teal-500 underline" target="_blank" rel="noopener">$1</a>', $formattedMessage)
+        ? preg_replace('~(https?://[^\\s<]+)~', '<a href="$1" class="text-sky-700 hover:text-sky-600 underline" target="_blank" rel="noopener">$1</a>', $formattedMessage)
         : '';
     $seenBy = $seenBy ?? [];
     $authorStatus = $authorStatus ?? 'offline';
@@ -37,41 +37,72 @@
     $latestMessageId = $latestMessageId ?? 0;
     $allParticipantsReadUpTo = $allParticipantsReadUpTo ?? null;
     $showLatestMeta = $message->id === $latestMessageId;
+    $timestamp = $message->created_at?->format('M d, Y H:i') ?? '';
+    $fullTimestamp = $timestamp;
+    $editableWindowSeconds = (int) ($editableWindowSeconds ?? 30);
+    $editableUntil = $message->created_at?->copy()->addSeconds($editableWindowSeconds);
+    $canMutate = $isOwn && $editableUntil && now()->lessThan($editableUntil);
+    $updateUrl = isset($updateRouteName) ? route($updateRouteName, [$project, $message], false) : null;
+    $deleteUrl = isset($deleteRouteName) ? route($deleteRouteName, [$project, $message], false) : null;
+    $hasAttachment = ! empty($message->attachment_path);
+    $isEdited = $message->updated_at && $message->created_at && $message->updated_at->gt($message->created_at);
 @endphp
-<div class="flex {{ $isOwn ? 'justify-end' : 'justify-start' }}" data-message-id="{{ $message->id }}">
-    <div class="max-w-2xl rounded-2xl border border-slate-200 bg-white/90 p-3 text-sm text-slate-700">
-        <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <span class="flex items-center gap-2 font-semibold text-slate-700">
-                <span class="h-2 w-2 rounded-full {{ $statusDotClass }}" title="{{ $statusLabel }}" data-presence-dot data-presence-key="{{ $message->author_type }}:{{ $message->author_id }}"></span>
-                {{ $message->authorName() }}
-            </span>
-            <span>{{ $message->authorTypeLabel() }}</span>
-            <span>{{ $message->created_at?->format('M d, Y H:i') ?? '' }}</span>
-        </div>
-        @if($linkedMessage !== '')
-            <div class="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{!! $linkedMessage !!}</div>
+@php $attachmentUrl = route($attachmentRouteName, [$project, $message], false); @endphp
+@php $inlineAttachmentUrl = \Illuminate\Support\Facades\URL::signedRoute('chat.project-messages.inline', ['message' => $message->id], false); @endphp
+<div class="wa-message-row {{ $isOwn ? 'justify-end' : 'justify-start' }}"
+     data-message-id="{{ $message->id }}"
+     data-editable-until="{{ $editableUntil?->toIso8601String() ?? '' }}"
+     data-edit-url="{{ $canMutate ? ($updateUrl ?? '') : '' }}"
+     data-delete-url="{{ $canMutate ? ($deleteUrl ?? '') : '' }}"
+     data-has-attachment="{{ $hasAttachment ? '1' : '0' }}">
+    <div class="wa-bubble {{ $isOwn ? 'wa-bubble-own' : 'wa-bubble-other' }}">
+        @if(! $isOwn)
+            <div class="mb-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                <span class="flex items-center gap-2 font-semibold text-slate-700">
+                    <span class="h-2 w-2 rounded-full {{ $statusDotClass }}" title="{{ $statusLabel }}" data-presence-dot data-presence-key="{{ $message->author_type }}:{{ $message->author_id }}"></span>
+                    {{ $message->authorName() }}
+                </span>
+                <span>{{ $message->authorTypeLabel() }}</span>
+            </div>
         @endif
+
+        @if($linkedMessage !== '')
+            <div class="text-sm whitespace-pre-wrap text-slate-800" data-chat-message-text>{!! $linkedMessage !!}</div>
+        @endif
+
         @if($message->attachment_path)
             <div class="mt-2">
                 @if($message->isImageAttachment())
-                    <a href="{{ route($attachmentRouteName, [$project, $message]) }}" target="_blank" rel="noopener">
-                        <img src="{{ route($attachmentRouteName, [$project, $message]) }}" alt="Attachment" class="max-h-64 rounded-xl border border-slate-200">
+                    <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener">
+                        <img src="{{ $inlineAttachmentUrl }}" alt="Attachment" class="max-h-64 rounded-xl border border-slate-200">
                     </a>
                 @else
-                    <a href="{{ route($attachmentRouteName, [$project, $message]) }}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
+                    <a href="{{ $attachmentUrl }}" class="wa-file-link">
                         Download {{ $message->attachmentName() ?? 'attachment' }}
                     </a>
                 @endif
             </div>
         @endif
+
+        @if($canMutate && $updateUrl && $deleteUrl)
+            <div class="mt-1 flex justify-end gap-3 text-[11px] font-semibold text-slate-500" data-chat-actions>
+                <button type="button" class="hover:text-teal-700" data-chat-edit>Edit</button>
+                <button type="button" class="hover:text-rose-700" data-chat-delete>Delete</button>
+            </div>
+        @endif
+
+        <div class="wa-meta-line" title="{{ $fullTimestamp }}">
+            {{ $timestamp }}@if($isEdited) <span class="ml-1">edited</span>@endif
+        </div>
+
         @if($showLatestMeta && !empty($seenBy))
-            <div class="mt-2 text-[11px] text-slate-400 chat-seen-by">
+            <div class="mt-1 text-[11px] text-slate-500 chat-seen-by">
                 Seen by {{ implode(', ', $seenBy) }}
             </div>
         @endif
         @if($showLatestMeta && !empty($allParticipantsReadUpTo))
-            <div class="mt-1 text-[11px] text-slate-400 chat-read-up-to">
-                All participants have read up to {{ $allParticipantsReadUpTo['label'] ?? '' }}
+            <div class="mt-1 text-[11px] text-slate-500 chat-read-up-to">
+                All participants read up to {{ $allParticipantsReadUpTo['label'] ?? '' }}
             </div>
         @endif
     </div>
