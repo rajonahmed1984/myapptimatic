@@ -6,10 +6,12 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use App\Providers\AuthServiceProvider;
 use App\Providers\AppServiceProvider;
+use App\Http\Middleware\TrustProxies;
 use App\Support\AuthFresh\AdminAccess;
 use App\Support\AuthFresh\Portal;
 
@@ -26,18 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Providers\EventServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
-        $trustedProxies = env('TRUSTED_PROXIES', '*');
-        if (is_string($trustedProxies) && $trustedProxies !== '*') {
-            $trustedProxies = array_values(array_filter(array_map('trim', explode(',', $trustedProxies))));
-        }
-
         $middleware->trustProxies(
-            at: $trustedProxies,
-            headers: Request::HEADER_X_FORWARDED_FOR
-                | Request::HEADER_X_FORWARDED_HOST
-                | Request::HEADER_X_FORWARDED_PORT
-                | Request::HEADER_X_FORWARDED_PROTO
-                | Request::HEADER_X_FORWARDED_PREFIX
+            at: TrustProxies::proxies(),
+            headers: TrustProxies::headers()
         );
 
         // Use active guard + role to prevent cross-panel guest redirects.
@@ -112,6 +105,32 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $logCsrfMismatch = function (Request $request, string $type): void {
+            $sessionId = null;
+            if ($request->hasSession()) {
+                $sessionId = $request->session()->getId();
+            }
+
+            $sessionCookieName = (string) config('session.cookie');
+
+            Log::warning('[CSRF_419]', [
+                'type' => $type,
+                'path' => $request->path(),
+                'method' => $request->method(),
+                'host' => $request->getHost(),
+                'scheme' => $request->getScheme(),
+                'is_secure' => $request->isSecure(),
+                'session_cookie_name' => $sessionCookieName,
+                'request_has_session_cookie' => $sessionCookieName !== '' && $request->cookies->has($sessionCookieName),
+                'session_domain' => config('session.domain'),
+                'session_id' => $sessionId,
+                'csrf_token_present' => $request->has('_token'),
+                'x_forwarded_proto' => $request->headers->get('x-forwarded-proto'),
+                'x_forwarded_for' => $request->headers->get('x-forwarded-for'),
+                'x_forwarded_host' => $request->headers->get('x-forwarded-host'),
+            ]);
+        };
+
         $exceptions->render(function (NotFoundHttpException $exception, Request $request) {
             if (config('app.debug')) {
                 return null;
@@ -124,7 +143,9 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->view('errors.404', [], 404);
         });
 
-        $exceptions->render(function (TokenMismatchException $exception, Request $request) {
+        $exceptions->render(function (TokenMismatchException $exception, Request $request) use ($logCsrfMismatch) {
+            $logCsrfMismatch($request, TokenMismatchException::class);
+
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Session expired. Please log in again.'], 419);
             }
@@ -143,10 +164,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->with('status', 'Session expired. Please log in again.');
         });
 
-        $exceptions->render(function (HttpExceptionInterface $exception, Request $request) {
+        $exceptions->render(function (HttpExceptionInterface $exception, Request $request) use ($logCsrfMismatch) {
             if ($exception->getStatusCode() !== 419) {
                 return null;
             }
+
+            $logCsrfMismatch($request, $exception::class);
 
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Session expired. Please log in again.'], 419);

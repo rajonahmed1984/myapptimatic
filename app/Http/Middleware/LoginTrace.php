@@ -10,6 +10,17 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LoginTrace
 {
+    /**
+     * @var array<int, string>
+     */
+    private const LOGIN_ATTEMPT_ROUTES = [
+        'login.attempt',
+        'admin.login.attempt',
+        'employee.login.attempt',
+        'sales.login.attempt',
+        'support.login.attempt',
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
         if (! config('app.login_trace')) {
@@ -17,12 +28,17 @@ class LoginTrace
         }
 
         $route = $request->route();
+        $routeName = (string) ($route?->getName() ?? '');
+        if ($request->method() !== 'POST' || ! in_array($routeName, self::LOGIN_ATTEMPT_ROUTES, true)) {
+            return $next($request);
+        }
+
         $sessionCookieName = (string) config('session.cookie');
         $sessionIdBefore = $request->hasSession() ? $request->session()->getId() : null;
         $requestHasSessionCookie = $sessionCookieName !== '' && $request->cookies->has($sessionCookieName);
 
         Log::info('[LOGIN_TRACE] RouteProbeBefore', [
-            'route_name' => $route?->getName(),
+            'route_name' => $routeName,
             'path' => $request->path(),
             'method' => $request->method(),
             'host' => $request->getHost(),
@@ -43,7 +59,7 @@ class LoginTrace
         $sessionIdAfter = $request->hasSession() ? $request->session()->getId() : null;
 
         Log::info('[LOGIN_TRACE] RouteProbeAfter', [
-            'route_name' => $route?->getName(),
+            'route_name' => $routeName,
             'path' => $request->path(),
             'method' => $request->method(),
             'status' => $response->getStatusCode(),
@@ -59,7 +75,7 @@ class LoginTrace
             'session_id_after' => $sessionIdAfter,
             'csrf_token_present' => $request->has('_token'),
             'guard_checks' => $this->guardChecks(),
-            'redirect_to' => $response->headers->get('Location'),
+            'location' => $response->headers->get('Location'),
         ]);
 
         return $response;

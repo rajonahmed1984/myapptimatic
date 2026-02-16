@@ -1090,15 +1090,197 @@
             closeMentionDropdown();
         });
 
+        const parseErrorMessage = async (response, fallback) => {
+            try {
+                const payload = await response.json();
+                return payload?.message
+                    || payload?.error
+                    || Object.values(payload?.errors || {})?.[0]?.[0]
+                    || fallback;
+            } catch (e) {
+                return fallback;
+            }
+        };
+
+        const closeInlineEditor = (row, restore = true) => {
+            if (!row) {
+                return;
+            }
+            const editor = row.querySelector('[data-chat-inline-editor]');
+            if (editor) {
+                editor.remove();
+            }
+
+            const messageNode = row.querySelector('[data-chat-message-text]');
+            const createdTextNode = row.dataset.inlineCreatedTextNode === '1';
+            if (messageNode) {
+                if (restore && row.dataset.inlineOriginalHtml !== undefined) {
+                    messageNode.innerHTML = row.dataset.inlineOriginalHtml;
+                }
+                messageNode.classList.remove('hidden');
+                if (restore && createdTextNode && (messageNode.innerHTML || '').trim() === '') {
+                    messageNode.remove();
+                }
+            }
+
+            delete row.dataset.inlineOriginalHtml;
+            delete row.dataset.inlineCreatedTextNode;
+        };
+
+        const closeOtherInlineEditors = (exceptRowId) => {
+            container.querySelectorAll('[data-message-id]').forEach((candidate) => {
+                const id = Number(candidate.dataset.messageId || 0);
+                if (id && id === exceptRowId) {
+                    return;
+                }
+                closeInlineEditor(candidate, true);
+            });
+        };
+
+        const beginInlineEdit = (row) => {
+            if (!row || !row.dataset.editUrl) {
+                return;
+            }
+            if (isEditWindowExpired(row)) {
+                refreshMessageActionAvailability();
+                return;
+            }
+
+            const rowId = Number(row.dataset.messageId || 0);
+            closeOtherInlineEditors(rowId);
+            if (row.querySelector('[data-chat-inline-editor]')) {
+                return;
+            }
+
+            const bubble = row.querySelector('.wa-bubble');
+            if (!bubble) {
+                return;
+            }
+
+            let messageNode = row.querySelector('[data-chat-message-text]');
+            let createdTextNode = false;
+            if (!messageNode) {
+                messageNode = document.createElement('div');
+                messageNode.className = 'text-sm whitespace-pre-wrap text-slate-800';
+                messageNode.dataset.chatMessageText = '1';
+                const actions = row.querySelector('[data-chat-actions]');
+                const meta = row.querySelector('.wa-meta-line');
+                bubble.insertBefore(messageNode, actions || meta || null);
+                createdTextNode = true;
+            }
+
+            row.dataset.inlineOriginalHtml = messageNode.innerHTML || '';
+            if (createdTextNode) {
+                row.dataset.inlineCreatedTextNode = '1';
+            }
+            const currentText = messageNode.textContent || '';
+            messageNode.classList.add('hidden');
+
+            const editor = document.createElement('div');
+            editor.dataset.chatInlineEditor = '1';
+            editor.className = 'mt-2 rounded-xl border border-amber-200 bg-white px-2 py-2';
+            editor.innerHTML = `
+                <textarea rows="2" class="w-full resize-none rounded-lg border border-amber-200 px-2 py-1 text-sm text-slate-700 focus:border-amber-400 focus:outline-none" data-chat-inline-input></textarea>
+                <div class="mt-2 flex justify-end gap-2 text-xs font-semibold">
+                    <button type="button" class="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100" data-chat-inline-cancel>Cancel</button>
+                    <button type="button" class="rounded-md bg-emerald-600 px-2 py-1 text-white hover:bg-emerald-700" data-chat-inline-save>Save</button>
+                </div>
+            `;
+            messageNode.insertAdjacentElement('afterend', editor);
+
+            const input = editor.querySelector('[data-chat-inline-input]');
+            if (input) {
+                input.value = currentText.trim();
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+            }
+        };
+
+        const submitInlineEdit = async (row) => {
+            if (!row) {
+                return;
+            }
+            if (row.dataset.mutating === '1') {
+                return;
+            }
+
+            const editUrl = row.dataset.editUrl || '';
+            if (!editUrl) {
+                refreshMessageActionAvailability();
+                return;
+            }
+            if (isEditWindowExpired(row)) {
+                refreshMessageActionAvailability();
+                closeInlineEditor(row, true);
+                return;
+            }
+
+            const editor = row.querySelector('[data-chat-inline-editor]');
+            const input = editor?.querySelector('[data-chat-inline-input]');
+            const nextText = (input?.value || '').trim();
+            const hasAttachment = row.dataset.hasAttachment === '1';
+            if (!nextText && !hasAttachment) {
+                alert('Message cannot be empty.');
+                input?.focus();
+                return;
+            }
+
+            row.dataset.mutating = '1';
+            try {
+                const body = new FormData();
+                body.append('_method', 'PATCH');
+                body.append('_token', getCsrfToken());
+                body.append('message', nextText);
+
+                const response = await fetch(editUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body,
+                });
+
+                if (!response.ok) {
+                    alert(await parseErrorMessage(response, 'Message update failed.'));
+                    return;
+                }
+
+                const payload = await response.json();
+                const item = payload?.data?.item;
+                if (item?.html) {
+                    replaceMessageItem(item);
+                }
+            } finally {
+                delete row.dataset.mutating;
+            }
+        };
+
         container.addEventListener('click', async (event) => {
+            const inlineSaveButton = event.target.closest('[data-chat-inline-save]');
+            const inlineCancelButton = event.target.closest('[data-chat-inline-cancel]');
             const editButton = event.target.closest('[data-chat-edit]');
             const deleteButton = event.target.closest('[data-chat-delete]');
-            if (!editButton && !deleteButton) {
+            if (!inlineSaveButton && !inlineCancelButton && !editButton && !deleteButton) {
                 return;
             }
 
             const row = event.target.closest('[data-message-id]');
-            if (!row || row.dataset.mutating === '1') {
+            if (!row) {
+                return;
+            }
+
+            if (inlineCancelButton) {
+                closeInlineEditor(row, true);
+                return;
+            }
+
+            if (inlineSaveButton) {
+                await submitInlineEdit(row);
+                return;
+            }
+
+            if (row.dataset.mutating === '1') {
                 return;
             }
 
@@ -1107,26 +1289,10 @@
                 return;
             }
 
-            const parseErrorMessage = async (response, fallback) => {
-                try {
-                    const payload = await response.json();
-                    return payload?.message
-                        || payload?.error
-                        || Object.values(payload?.errors || {})?.[0]?.[0]
-                        || fallback;
-                } catch (e) {
-                    return fallback;
-                }
-            };
-
             row.dataset.mutating = '1';
             try {
                 if (editButton) {
-                    if (!row.dataset.editUrl) {
-                        refreshMessageActionAvailability();
-                        return;
-                    }
-                    startEditingMessage(row);
+                    beginInlineEdit(row);
                     return;
                 }
 
@@ -1162,13 +1328,6 @@
                     const payload = await response.json();
                     const deletedId = Number(payload?.data?.id || row.dataset.messageId || 0);
                     removeMessageItem(deletedId);
-                    if (editingMessageId === deletedId) {
-                        stopEditingMessage();
-                        if (textarea) {
-                            textarea.value = '';
-                            resizeComposerInput();
-                        }
-                    }
                     if (lastId) {
                         updateReadStatus(lastId);
                     }
