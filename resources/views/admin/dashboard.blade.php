@@ -350,11 +350,7 @@
                                 @foreach($recentClients as $session)
                                     <tr>
                                         <td class="py-2 pr-4">
-                                            @if(!empty($session['user_id']))
-                                                <a href="{{ route('admin.users.edit', $session['user_id']) }}" class="hover:text-teal-600">
-                                                    {{ $session['name'] ?? '--' }}
-                                                </a>
-                                            @elseif(!empty($session['customer_id']))
+                                            @if(!empty($session['customer_id']))
                                                 <a href="{{ route('admin.customers.show', $session['customer_id']) }}" class="hover:text-teal-600">
                                                     {{ $session['name'] ?? '--' }}
                                                 </a>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Role;
 use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectMessage;
@@ -1056,7 +1057,16 @@ class ProjectChatController extends Controller
 
     private function participantsForProject(Project $project, array $identity): array
     {
-        $userIds = $project->projectClients()->pluck('users.id')->all();
+        $customerUserIds = User::query()
+            ->where('customer_id', $project->customer_id)
+            ->whereIn('role', [Role::CLIENT, Role::CLIENT_PROJECT])
+            ->pluck('id')
+            ->all();
+
+        $userIds = array_merge(
+            $project->projectClients()->pluck('users.id')->all(),
+            $customerUserIds
+        );
         $employeeIds = $project->employees()->pluck('employees.id')->all();
         $salesRepIds = $project->salesRepresentatives()->pluck('sales_representatives.id')->all();
 
