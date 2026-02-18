@@ -146,9 +146,17 @@ const updateSidebarActiveState = (sidebar, currentUrl) => {
 
     const allLinks = Array.from(sidebar.querySelectorAll('a[href]'));
     const currentPath = normalizePath(currentUrl.pathname);
+    const isSubmenuLink = (link) => !link.classList.contains('nav-link') && Boolean(link.closest('.ml-8'));
 
     allLinks.forEach((link) => {
         link.classList.remove('nav-link-active', 'ajax-nav-active');
+        // Submenu active state is server-rendered via utility classes; clear stale ones on AJAX nav.
+        if (isSubmenuLink(link)) {
+            link.classList.remove('text-teal-300');
+            if (!link.classList.contains('hover:text-slate-200')) {
+                link.classList.add('hover:text-slate-200');
+            }
+        }
     });
 
     let bestAnyLink = null;
@@ -176,6 +184,10 @@ const updateSidebarActiveState = (sidebar, currentUrl) => {
 
     if (bestAnyLink) {
         bestAnyLink.classList.add('ajax-nav-active');
+        if (isSubmenuLink(bestAnyLink)) {
+            bestAnyLink.classList.add('text-teal-300');
+            bestAnyLink.classList.remove('hover:text-slate-200');
+        }
     }
 
     if (bestNavLink) {

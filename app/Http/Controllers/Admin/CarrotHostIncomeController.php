@@ -47,6 +47,7 @@ class CarrotHostIncomeController extends Controller
             ], 'transactions', 'transaction', $whmcsErrors);
 
             $transactions = $this->filterByDate($transactions, 'date', $startDate, $endDate);
+            $transactions = $this->sortTransactionsNewestFirst($transactions, 'date');
             $amountInSubtotal = $this->sumField($transactions, 'amountin');
             $feesSubtotal = $this->sumField($transactions, 'fees');
 
@@ -66,6 +67,7 @@ class CarrotHostIncomeController extends Controller
             $payload['whmcsErrors'] = $payload['errors'];
         }
         unset($payload['errors']);
+        $payload['transactions'] = $this->sortTransactionsNewestFirst((array) ($payload['transactions'] ?? []), 'date');
 
         $payload['month'] = $selectedMonth->format('Y-m');
         $payload['monthLabel'] = $selectedMonth->format('F Y');
@@ -162,6 +164,35 @@ class CarrotHostIncomeController extends Controller
 
             return $date >= $start && $date <= $end;
         }));
+    }
+
+    private function sortTransactionsNewestFirst(array $items, string $dateKey): array
+    {
+        usort($items, function ($a, $b) use ($dateKey) {
+            $aTime = $this->timestampFromValue($a[$dateKey] ?? null);
+            $bTime = $this->timestampFromValue($b[$dateKey] ?? null);
+
+            if ($aTime === $bTime) {
+                return strcmp((string) ($b['transid'] ?? ''), (string) ($a['transid'] ?? ''));
+            }
+
+            return $bTime <=> $aTime;
+        });
+
+        return $items;
+    }
+
+    private function timestampFromValue($value): int
+    {
+        if (! $value) {
+            return 0;
+        }
+
+        try {
+            return Carbon::parse((string) $value)->timestamp;
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 
     private function resolveMonth(?string $month): Carbon

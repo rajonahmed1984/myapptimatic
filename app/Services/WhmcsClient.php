@@ -62,7 +62,13 @@ class WhmcsClient
             'responsetype' => 'json',
         ], $params);
 
+        $configuredApiUrl = trim((string) config('whmcs.api_url'));
+        $configuredEndpoint = $configuredApiUrl !== ''
+            ? $this->normalizeEndpoint(rtrim($configuredApiUrl, '/'))
+            : '';
+
         $lastStatus = null;
+        $primaryStatus = null;
         $attemptErrors = [];
 
         foreach ($endpoints as $endpoint) {
@@ -71,6 +77,9 @@ class WhmcsClient
                 ->post($endpoint, $payload);
 
             $lastStatus = $response->status();
+            if ($primaryStatus === null || ($primaryStatus === 404 && $lastStatus !== 404)) {
+                $primaryStatus = $lastStatus;
+            }
             if ($lastStatus === 404 && count($endpoints) > 1) {
                 continue;
             }
@@ -81,6 +90,12 @@ class WhmcsClient
                     $endpoint,
                     $response->status()
                 );
+
+                // If the explicitly configured API endpoint is forbidden, fallback
+                // candidates are unlikely to succeed and only add noisy 404s.
+                if ($lastStatus === 403 && $configuredEndpoint !== '' && $endpoint === $configuredEndpoint) {
+                    break;
+                }
                 continue;
             }
 
@@ -113,9 +128,15 @@ class WhmcsClient
             ? ' [' . implode(' | ', $attemptErrors) . ']'
             : '';
 
+        $statusForMessage = $primaryStatus ?? $lastStatus;
+        $hint = '';
+        if ($statusForMessage === 403) {
+            $hint = ' Check WHMCS API access rules (server firewall / IP whitelist / API permission).';
+        }
+
         return [
             'ok' => false,
-            'error' => 'WHMCS API request failed with HTTP ' . ($lastStatus ?? 'unknown') . $attemptSummary,
+            'error' => 'WHMCS API request failed with HTTP ' . ($statusForMessage ?? 'unknown') . $attemptSummary . $hint,
         ];
     }
 
