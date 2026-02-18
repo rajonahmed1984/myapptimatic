@@ -453,7 +453,10 @@
                                 <td class="px-4 py-3 text-slate-500">{{ $project->due_date?->format($globalDateFormat) ?? '--' }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $project->currency }} {{ number_format($project->total_budget, 2) }}</td>
                                 <td class="px-4 py-3 text-right">
-                                    <a href="{{ route('admin.projects.show', $project) }}" class="text-teal-600 hover:text-teal-500">View</a>
+                                    <div class="inline-flex items-center gap-3">
+                                        <a href="{{ route('admin.projects.show', $project) }}" class="text-teal-600 hover:text-teal-500">View</a>
+                                        <a href="{{ route('admin.projects.edit', $project) }}" class="text-slate-600 hover:text-teal-600">Edit</a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty

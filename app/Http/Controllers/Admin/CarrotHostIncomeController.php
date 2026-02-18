@@ -67,7 +67,9 @@ class CarrotHostIncomeController extends Controller
             $payload['whmcsErrors'] = $payload['errors'];
         }
         unset($payload['errors']);
-        $payload['transactions'] = $this->sortTransactionsNewestFirst((array) ($payload['transactions'] ?? []), 'date');
+        $payload['transactions'] = collect($this->sortTransactionsNewestFirst((array) ($payload['transactions'] ?? []), 'date'))
+            ->map(fn (array $row) => $this->enrichClientName($client, $row))
+            ->all();
 
         $payload['month'] = $selectedMonth->format('Y-m');
         $payload['monthLabel'] = $selectedMonth->format('F Y');
@@ -236,5 +238,55 @@ class CarrotHostIncomeController extends Controller
     private function formatMoney(float $value): string
     {
         return number_format($value, 2);
+    }
+
+    private function enrichClientName(WhmcsClient $client, array $row): array
+    {
+        $displayName = trim((string) ($row['clientname'] ?? ''));
+
+        if ($displayName === '') {
+            $firstName = trim((string) ($row['firstname'] ?? ''));
+            $lastName = trim((string) ($row['lastname'] ?? ''));
+            $displayName = trim($firstName . ' ' . $lastName);
+        }
+
+        if ($displayName === '') {
+            $clientId = (int) ($row['userid'] ?? $row['clientid'] ?? 0);
+            if ($clientId > 0) {
+                $displayName = $this->fetchClientNameById($client, $clientId);
+            }
+        }
+
+        if ($displayName !== '') {
+            $row['clientname'] = $displayName;
+        }
+
+        return $row;
+    }
+
+    private function fetchClientNameById(WhmcsClient $client, int $clientId): string
+    {
+        $cacheKey = 'whmcs:carrothost:client-name:' . $clientId;
+
+        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($client, $clientId) {
+            $result = $client->call('GetClientsDetails', [
+                'clientid' => $clientId,
+            ]);
+
+            if (! ($result['ok'] ?? false)) {
+                return '';
+            }
+
+            $data = $result['data'] ?? [];
+            $firstName = trim((string) ($data['firstname'] ?? ''));
+            $lastName = trim((string) ($data['lastname'] ?? ''));
+            $fullName = trim($firstName . ' ' . $lastName);
+
+            if ($fullName !== '') {
+                return $fullName;
+            }
+
+            return trim((string) ($data['companyname'] ?? ''));
+        });
     }
 }

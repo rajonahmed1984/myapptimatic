@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\EmployeeWorkSession;
 use App\Services\EmployeeWorkSummaryService;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class TimesheetController extends Controller
 {
-    public function index(Request $request, EmployeeWorkSummaryService $workSummaryService): View
+    public function index(Request $request, EmployeeWorkSummaryService $workSummaryService): View|RedirectResponse
     {
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
@@ -24,6 +25,13 @@ class TimesheetController extends Controller
 
         $employee = $request->attributes->get('employee');
         $employee->loadMissing('activeCompensation');
+        $isEligible = $workSummaryService->isEligible($employee);
+
+        if (! $isEligible) {
+            return redirect()
+                ->route('employee.dashboard')
+                ->with('status', 'Work logs are available only for remote full-time or part-time employees.');
+        }
 
         $dailyLogs = EmployeeWorkSession::query()
             ->where('employee_id', $employee->id)
@@ -34,7 +42,6 @@ class TimesheetController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $isEligible = $workSummaryService->isEligible($employee);
         $requiredSeconds = $isEligible ? $workSummaryService->requiredSeconds($employee) : 0;
         $currency = $employee->activeCompensation?->currency ?? 'BDT';
 

@@ -21,7 +21,10 @@ class TasksController extends Controller
 
         $tasksQuery = $taskQueryService->visibleTasksForUser($user)
             ->with('project')
-            ->withCount('subtasks')
+            ->withCount([
+                'subtasks',
+                'subtasks as completed_subtasks_count' => fn ($query) => $query->where('is_completed', true),
+            ])
             ->orderByDesc('created_at');
 
         if ($statusFilter === 'open') {

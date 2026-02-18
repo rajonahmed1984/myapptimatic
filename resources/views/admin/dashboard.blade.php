@@ -67,9 +67,9 @@
             'automation_cards' => ['status_badge' => ''],
         ];
         $periodMetrics = $periodMetrics ?? [
-            'today' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0],
-            'month' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0],
-            'year' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0],
+            'today' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0, 'hosting_income' => 0],
+            'month' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0, 'hosting_income' => 0],
+            'year' => ['new_orders' => 0, 'active_orders' => 0, 'income' => 0, 'hosting_income' => 0],
         ];
         $periodSeries = $periodSeries ?? [
             'today' => ['labels' => [], 'new_orders' => [], 'active_orders' => [], 'income' => []],
@@ -77,7 +77,7 @@
             'year' => ['labels' => [], 'new_orders' => [], 'active_orders' => [], 'income' => []],
         ];
         $periodDefault = 'month';
-        $defaultMetrics = $periodMetrics[$periodDefault] ?? ['new_orders' => 0, 'active_orders' => 0, 'income' => 0];
+        $defaultMetrics = $periodMetrics[$periodDefault] ?? ['new_orders' => 0, 'active_orders' => 0, 'income' => 0, 'hosting_income' => 0];
         $incomeGrowth = $businessPulse['income_growth_percent'];
         $incomeGrowthText = $incomeGrowth === null
             ? 'N/A'
@@ -277,7 +277,7 @@
                     <div class="mt-4 flex flex-wrap items-center gap-6 text-xs text-slate-600">
                         <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-slate-400"></span><span class="font-medium">New Orders</span></span>
                         <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-blue-500"></span><span class="font-medium">Active Orders</span></span>
-                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-emerald-500"></span><span class="font-medium">Income</span></span>
+                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-emerald-500"></span><span class="font-medium">Income (incl. Hosting)</span></span>
                     </div>
                 </div>
 
@@ -288,6 +288,10 @@
                             <div class="rounded-xl bg-white p-3 shadow-sm">
                                 <div class="text-xs text-slate-500">Total Income</div>
                                 <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-income">{{ $currency }}{{ number_format($defaultMetrics['income'] ?? 0, 2) }}</div>
+                            </div>
+                            <div class="rounded-xl bg-white p-3 shadow-sm">
+                                <div class="text-xs text-slate-500">Hosting Income (CarrotHost)</div>
+                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-hosting-income">{{ $currency }}{{ number_format($defaultMetrics['hosting_income'] ?? 0, 2) }}</div>
                             </div>
                             <div class="rounded-xl bg-white p-3 shadow-sm">
                                 <div class="text-xs text-slate-500">Avg Per Order</div>
@@ -456,6 +460,7 @@
                 const newOrdersEl = document.getElementById('left-sidebar-new-orders');
                 const activeOrdersEl = document.getElementById('left-sidebar-active-orders');
                 const incomeEl = document.getElementById('right-sidebar-income');
+                const hostingIncomeEl = document.getElementById('right-sidebar-hosting-income');
                 const avgIncomeEl = document.getElementById('right-sidebar-avg-income');
                 const periodButtons = document.querySelectorAll('.btn-period-chooser [data-period]');
 
@@ -546,7 +551,7 @@
                 };
 
                 const updateMetrics = (periodKey) => {
-                    const summary = periodMetrics[periodKey] || { new_orders: 0, active_orders: 0, income: 0 };
+                    const summary = periodMetrics[periodKey] || { new_orders: 0, active_orders: 0, income: 0, hosting_income: 0 };
                     const series = periodSeries[periodKey] || { labels: [], new_orders: [], active_orders: [], income: [] };
 
                     if (newOrdersEl) {
@@ -557,6 +562,9 @@
                     }
                     if (incomeEl) {
                         incomeEl.textContent = formatMoney(summary.income ?? 0);
+                    }
+                    if (hostingIncomeEl) {
+                        hostingIncomeEl.textContent = formatMoney(summary.hosting_income ?? 0);
                     }
                     if (avgIncomeEl) {
                         const orderCount = Number(summary.new_orders || 0);

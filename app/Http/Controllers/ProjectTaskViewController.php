@@ -67,11 +67,12 @@ class ProjectTaskViewController extends Controller
         $canChangeStatus = $this->canChangeTaskStatus($actor, $task, $request->user());
         $currentStatus = $task->status ?? 'pending';
         $hasSubtasks = $task->relationLoaded('subtasks') ? $task->subtasks->isNotEmpty() : $task->subtasks()->exists();
-        $canStartTask = $canChangeStatus && in_array($currentStatus, ['pending', 'todo'], true);
-        $canCompleteTask = $canChangeStatus && ! in_array($currentStatus, ['completed', 'done'], true);
-        if ($routePrefix !== 'employee') {
-            $canCompleteTask = $canCompleteTask && ! $hasSubtasks;
-        }
+        $canStartTask = $canChangeStatus
+            && ! $hasSubtasks
+            && in_array($currentStatus, ['pending', 'todo'], true);
+        $canCompleteTask = $canChangeStatus
+            && ! $hasSubtasks
+            && ! in_array($currentStatus, ['completed', 'done'], true);
         $canAddSubtask = Gate::forUser($actor)->check('create', [ProjectTaskSubtask::class, $task]);
         $editableSubtaskIds = $task->subtasks
             ->filter(fn ($subtask) => $this->canEditSubtask($actor, $subtask, $request->user()))

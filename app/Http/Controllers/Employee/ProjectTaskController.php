@@ -29,7 +29,12 @@ class ProjectTaskController extends Controller
 
         $assignees = TaskAssignees::parse($data['assignees'] ?? []);
         if (empty($assignees)) {
-            $assignees = [['type' => 'employee', 'id' => $request->user()->id]];
+            $employee = $request->attributes->get('employee') ?: $request->user()?->employee;
+            $employeeId = $employee?->id;
+            if (! $employeeId) {
+                return back()->withErrors(['assignees' => 'Unable to resolve employee assignee.'])->withInput();
+            }
+            $assignees = [['type' => 'employee', 'id' => $employeeId]];
         }
 
         if ($data['task_type'] === 'upload' && ! $request->hasFile('attachment')) {
@@ -46,7 +51,7 @@ class ProjectTaskController extends Controller
             'start_date' => $data['start_date'],
             'due_date' => $data['due_date'],
             'assigned_type' => $assignees[0]['type'] ?? 'employee',
-            'assigned_id' => $assignees[0]['id'] ?? $request->user()->id,
+            'assigned_id' => $assignees[0]['id'] ?? null,
             'customer_visible' => (bool) ($data['customer_visible'] ?? TaskSettings::defaultCustomerVisible()),
             'progress' => 0,
             'created_by' => $request->user()?->id,
@@ -91,6 +96,11 @@ class ProjectTaskController extends Controller
         }
 
         $data = $request->validated();
+        $hasSubtasks = TaskCompletionManager::hasSubtasks($task);
+
+        if ($hasSubtasks && array_key_exists('status', $data)) {
+            return $this->forbiddenResponse($request, 'Main task status is controlled by subtasks when subtasks exist.');
+        }
 
         if (! $user?->isMasterAdmin() && ! $isCreator && $isAssigned) {
             $extraFields = array_diff(array_keys($data), ['status']);
@@ -188,9 +198,14 @@ class ProjectTaskController extends Controller
 
         $user = $request->user();
         $isAssigned = $this->isAssignedEmployee($task, $user);
+        $hasSubtasks = TaskCompletionManager::hasSubtasks($task);
 
         if (! $user?->isMasterAdmin() && ! $isAssigned && $task->creatorEditWindowExpired($user?->id)) {
             return $this->forbiddenResponse($request, 'You can only edit this task within 24 hours of creation.');
+        }
+
+        if ($hasSubtasks) {
+            return $this->startResponse($request, $task, 'Main task status is controlled by subtasks when subtasks exist.');
         }
 
         $currentStatus = $task->status ?? 'pending';

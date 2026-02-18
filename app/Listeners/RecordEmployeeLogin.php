@@ -23,6 +23,10 @@ class RecordEmployeeLogin
         if (! $employee) {
             return;
         }
+        
+        if (! $this->isSessionEligible($employee)) {
+            return;
+        }
 
         $now = now();
         $sessionId = session()->getId();
@@ -71,5 +75,11 @@ class RecordEmployeeLogin
                 'first_login_at' => $daily->first_login_at ?? $now,
             ]);
         });
+    }
+
+    private function isSessionEligible(Employee $employee): bool
+    {
+        return in_array($employee->employment_type, ['full_time', 'part_time'], true)
+            && $employee->work_mode === 'remote';
     }
 }

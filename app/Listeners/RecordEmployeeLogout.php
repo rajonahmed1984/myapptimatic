@@ -25,6 +25,10 @@ class RecordEmployeeLogout
         if (! $employee) {
             return;
         }
+        
+        if (! $this->isSessionEligible($employee)) {
+            return;
+        }
 
         $sessionId = session()->getId();
         $now = now();
@@ -36,5 +40,11 @@ class RecordEmployeeLogout
             ->update([
                 'logout_at' => $now,
             ]);
+    }
+
+    private function isSessionEligible(Employee $employee): bool
+    {
+        return in_array($employee->employment_type, ['full_time', 'part_time'], true)
+            && $employee->work_mode === 'remote';
     }
 }

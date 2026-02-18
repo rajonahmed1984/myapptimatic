@@ -5,6 +5,7 @@
     $routePrefix = $routePrefix ?? 'admin';
     $usesStartRoute = $usesStartRoute ?? false;
     $showCreator = $showCreator ?? ($routePrefix === 'admin');
+    $showSubtasks = ($routePrefix === 'employee');
 
     $tasksIndexRoute = $routePrefix . '.tasks.index';
     $projectsIndexRoute = $routePrefix . '.projects.index';
@@ -86,6 +87,9 @@
                 <tr>
                     <th class="px-4 py-3">Created</th>
                     <th class="px-4 py-3">Project Task</th>
+                    @if($showSubtasks)
+                        <th class="px-4 py-3">Subtasks</th>
+                    @endif
                     @if($showCreator)
                         <th class="px-4 py-3">Created By</th>
                     @endif
@@ -122,6 +126,11 @@
                                 --
                             @endif
                         </td>
+                        @if($showSubtasks)
+                            <td class="px-4 py-3 text-slate-600 whitespace-nowrap">
+                                {{ (int) ($task->completed_subtasks_count ?? 0) }}/{{ (int) ($task->subtasks_count ?? 0) }}
+                            </td>
+                        @endif
                         @if($showCreator)
                             <td class="px-4 py-3 text-slate-600">
                                 {{ $task->createdBy?->name ?? 'System' }}
@@ -168,7 +177,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ $showCreator ? 6 : 5 }}" class="px-4 py-6 text-center text-slate-500">No tasks found.</td>
+                        <td colspan="{{ 5 + ($showCreator ? 1 : 0) + ($showSubtasks ? 1 : 0) }}" class="px-4 py-6 text-center text-slate-500">No tasks found.</td>
                     </tr>
                 @endforelse
             </tbody>

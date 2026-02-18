@@ -79,7 +79,7 @@
                         </div>
                         <div class="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
                             @if($task->project)
-                                <a href="{{ route($taskShowRoute, [$task->project, $task]) }}" class="text-teal-600 hover:text-teal-500">Open</a>
+                                <a href="{{ route($taskShowRoute, [$task->project, $task]) }}" class="rounded-full border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:border-emerald-300">Open</a>
                             @endif
                             @if($task->can_start && $task->project)
                                 <form method="POST" action="{{ $usesStartRoute ? route($taskStartRoute, [$task->project, $task]) : route($taskUpdateRoute, [$task->project, $task]) }}">
@@ -130,13 +130,15 @@
                                     </a>
                                 @endif
                             </div>
-                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $statusClass }}">
-                                {{ $statusLabel }}
-                            </span>
+                            <div class="flex flex-col items-end gap-2">
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $statusClass }}">
+                                    {{ $statusLabel }}
+                                </span>
+                            </div>
                         </div>
                         <div class="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
                             @if($task->project)
-                                <a href="{{ route($taskShowRoute, [$task->project, $task]) }}" class="text-teal-600 hover:text-teal-500">Open</a>
+                                <a href="{{ route($taskShowRoute, [$task->project, $task]) }}" class="rounded-full border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:border-emerald-300">Open</a>
                             @endif
                             @if($task->can_complete && $task->project)
                                 <form method="POST" action="{{ route($taskUpdateRoute, [$task->project, $task]) }}">

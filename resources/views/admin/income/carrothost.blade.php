@@ -59,10 +59,11 @@
                 <table class="min-w-full text-left text-sm text-slate-700">
                     <thead class="text-xs uppercase tracking-[0.2em] text-slate-500">
                         <tr>
-                            <th class="px-3 py-2 whitespace-nowrap">Date</th>
-                            <th class="px-3 py-2">Transaction ID</th>
-                            <th class="px-3 py-2">Invoice</th>
+                            <th class="px-3 py-2">ID</th>
                             <th class="px-3 py-2">Client</th>
+                            <th class="px-3 py-2 whitespace-nowrap">Date & Time</th>
+                            <th class="px-3 py-2">Invoice</th>
+                            <th class="px-3 py-2">Transaction ID</th>
                             <th class="px-3 py-2">Amount In</th>
                             <th class="px-3 py-2">Fees</th>
                             <th class="px-3 py-2">Gateway</th>
@@ -71,17 +72,18 @@
                     <tbody>
                         @forelse($transactions as $row)
                             <tr class="border-t border-slate-100">
+                                <td class="px-3 py-2">{{ $row['userid'] ?? ($row['clientid'] ?? '--') }}</td>
+                                <td class="px-3 py-2">{{ $row['clientname'] ?? '--' }}</td>
                                 <td class="px-3 py-2 whitespace-nowrap">{{ $row['date'] ?? '--' }}</td>
-                                <td class="px-3 py-2">{{ $row['transid'] ?? '--' }}</td>
                                 <td class="px-3 py-2">{{ $row['invoiceid'] ?? '--' }}</td>
-                                <td class="px-3 py-2">{{ $row['clientname'] ?? ($row['userid'] ?? '--') }}</td>
+                                <td class="px-3 py-2">{{ $row['transid'] ?? '--' }}</td>
                                 <td class="px-3 py-2">{{ $row['amountin'] ?? '--' }}</td>
                                 <td class="px-3 py-2">{{ $row['fees'] ?? '--' }}</td>
                                 <td class="px-3 py-2">{{ $row['gateway'] ?? '--' }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-3 py-4 text-center text-slate-500">No transactions found.</td>
+                                <td colspan="8" class="px-3 py-4 text-center text-slate-500">No transactions found.</td>
                             </tr>
                         @endforelse
                     </tbody>

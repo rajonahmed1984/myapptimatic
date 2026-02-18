@@ -15,14 +15,19 @@
                 $canViewTasks = app(\App\Services\TaskQueryService::class)->canViewTasks(auth()->user());
                 $employeeNavEmployee = null;
                 $employeeWorkMode = null;
+                $employeeEmploymentType = null;
                 $isRemoteEmployeeMode = false;
                 $isOfficeEmployeeMode = false;
+                $isEmployeeWorkSessionEligible = false;
 
                 if ($isEmployeeNav) {
                     $employeeNavEmployee = request()->attributes->get('employee') ?: auth()->user()?->employee;
                     $employeeWorkMode = strtolower((string) ($employeeNavEmployee?->work_mode ?? ''));
+                    $employeeEmploymentType = strtolower((string) ($employeeNavEmployee?->employment_type ?? ''));
                     $isRemoteEmployeeMode = in_array($employeeWorkMode, ['remote', 'work_from_home', 'wfh'], true);
                     $isOfficeEmployeeMode = in_array($employeeWorkMode, ['office', 'in_office', 'on_site', 'onsite'], true);
+                    $isEmployeeWorkSessionEligible = $isRemoteEmployeeMode
+                        && in_array($employeeEmploymentType, ['full_time', 'part_time'], true);
                 }
             @endphp
             <div class="flex items-center gap-3">
@@ -36,7 +41,7 @@
                     <div class="text-lg font-semibold text-white">{{ $portalBranding['company_name'] ?? 'License Portal' }}</div>
                 </div>
             </div>
-            @if($isEmployeeNav && ! $isOfficeEmployeeMode)
+            @if($isEmployeeNav && $isEmployeeWorkSessionEligible)
                 <div id="global-work-timer" class="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-100" data-summary-url="{{ route('employee.work-summaries.today') }}" data-ping-url="{{ route('employee.work-sessions.ping') }}">
                     <div class="flex items-center justify-between gap-2">
                         <div class="text-[11px] uppercase tracking-[0.25em] text-slate-300">Session</div>
@@ -456,7 +461,7 @@
                             <span>Chat</span>
                             <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
                         </x-nav-link>
-                        @unless($isOfficeEmployeeMode)
+                        @if($isEmployeeWorkSessionEligible)
                             <x-nav-link 
                                 :href="route('employee.timesheets.index')"
                                 routes="employee.timesheets.*"
@@ -464,7 +469,7 @@
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 Work Logs
                             </x-nav-link>
-                        @endunless
+                        @endif
                         <x-nav-link 
                             :href="route('employee.leave-requests.index')"
                             routes="employee.leave-requests.*"
@@ -566,7 +571,7 @@
                                 <span>Chat</span>
                                 <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
                             </x-nav-link>
-                            @unless($isOfficeEmployeeMode)
+                            @if($isEmployeeWorkSessionEligible)
                                 <x-nav-link 
                                     :href="route('employee.timesheets.index')"
                                     routes="employee.timesheets.*"
@@ -574,7 +579,7 @@
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
                                     Work Logs
                                 </x-nav-link>
-                            @endunless
+                            @endif
                             <x-nav-link 
                                 :href="route('employee.leave-requests.index')"
                                 routes="employee.leave-requests.*"

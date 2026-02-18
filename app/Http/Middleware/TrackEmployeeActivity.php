@@ -34,6 +34,10 @@ class TrackEmployeeActivity
         if (! $employee) {
             return;
         }
+        
+        if (! $this->isSessionEligible($employee)) {
+            return;
+        }
 
         $now = now();
         $sessionId = $request->session()->getId();
@@ -110,5 +114,11 @@ class TrackEmployeeActivity
         });
 
         $request->session()->put('employee_activity_last_update', $now);
+    }
+
+    private function isSessionEligible(Employee $employee): bool
+    {
+        return in_array($employee->employment_type, ['full_time', 'part_time'], true)
+            && $employee->work_mode === 'remote';
     }
 }

@@ -29,6 +29,15 @@ use Illuminate\Support\Facades\Schema;
 class DashboardMetricsService
 {
     private const CACHE_TTL_SECONDS = 120;
+    private const WHMCS_DEFAULT_START = '2026-01-01';
+    private const WHMCS_PAGE_SIZE = 100;
+    private const WHMCS_MAX_PAGES = 50;
+    private array $carrotHostDailyIncomeCache = [];
+
+    public function __construct(
+        private readonly WhmcsClient $whmcsClient
+    ) {
+    }
 
     public function getMetrics(): array
     {
@@ -213,10 +222,13 @@ class DashboardMetricsService
 
         $metrics = [];
         foreach ($periods as $key => [$start, $end]) {
+            $carrotHostIncome = $this->carrotHostIncomeBetween($start, $end);
+            $totalIncome = $this->incomeTotalBetween($start, $end) + $carrotHostIncome;
             $metrics[$key] = [
                 'new_orders' => Order::whereBetween('created_at', [$start, $end])->count(),
                 'active_orders' => Order::where('status', 'accepted')->whereBetween('created_at', [$start, $end])->count(),
-                'income' => $this->incomeTotalBetween($start, $end),
+                'income' => $totalIncome,
+                'hosting_income' => $carrotHostIncome,
             ];
         }
 
@@ -247,6 +259,10 @@ class DashboardMetricsService
         $manualTodayIncome = (float) Income::whereDate('income_date', $todayStart->toDateString())->sum('amount');
         if ($manualTodayIncome !== 0.0) {
             $hourlyIncome[0] = (float) ($hourlyIncome[0] ?? 0) + $manualTodayIncome;
+        }
+        $todayCarrotHostIncome = $this->carrotHostIncomeBetween($todayStart, $todayEnd);
+        if ($todayCarrotHostIncome !== 0.0) {
+            $hourlyIncome[0] = (float) ($hourlyIncome[0] ?? 0) + $todayCarrotHostIncome;
         }
 
         $todayLabels = [];
@@ -284,6 +300,7 @@ class DashboardMetricsService
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
+        $dailyIncomeHosting = $this->carrotHostDailyIncomeMap($monthStart, $monthEnd);
 
         $monthLabels = [];
         $monthNew = [];
@@ -295,7 +312,9 @@ class DashboardMetricsService
             $monthLabels[] = $date->format('d M');
             $monthNew[] = (int) ($dailyOrders[$key] ?? 0);
             $monthActive[] = (int) ($dailyActiveOrders[$key] ?? 0);
-            $monthIncome[] = (float) ($dailyIncomeSystem[$key] ?? 0) + (float) ($dailyIncomeManual[$key] ?? 0);
+            $monthIncome[] = (float) ($dailyIncomeSystem[$key] ?? 0)
+                + (float) ($dailyIncomeManual[$key] ?? 0)
+                + (float) ($dailyIncomeHosting[$key] ?? 0);
         }
 
         $yearStart = now()->startOfMonth()->subMonths(11);
@@ -322,6 +341,12 @@ class DashboardMetricsService
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
+        $yearlyHostingDaily = $this->carrotHostDailyIncomeMap($yearStart, $yearEnd);
+        $monthlyIncomeHosting = [];
+        foreach ($yearlyHostingDaily as $date => $amount) {
+            $bucket = Carbon::parse($date)->format('Y-m');
+            $monthlyIncomeHosting[$bucket] = (float) ($monthlyIncomeHosting[$bucket] ?? 0) + (float) $amount;
+        }
 
         $yearLabels = [];
         $yearNew = [];
@@ -333,7 +358,9 @@ class DashboardMetricsService
             $yearLabels[] = $date->format('M');
             $yearNew[] = (int) ($monthlyOrders[$key] ?? 0);
             $yearActive[] = (int) ($monthlyActiveOrders[$key] ?? 0);
-            $yearIncome[] = (float) ($monthlyIncomeSystem[$key] ?? 0) + (float) ($monthlyIncomeManual[$key] ?? 0);
+            $yearIncome[] = (float) ($monthlyIncomeSystem[$key] ?? 0)
+                + (float) ($monthlyIncomeManual[$key] ?? 0)
+                + (float) ($monthlyIncomeHosting[$key] ?? 0);
         }
 
         return [
@@ -380,7 +407,8 @@ class DashboardMetricsService
             $manualIncome = (float) Income::whereDate('income_date', '>=', $start->toDateString())
                 ->whereDate('income_date', '<=', $end->toDateString())
                 ->sum('amount');
-            $payments = (float) ($totals['payment'] ?? 0) + $manualIncome;
+            $carrotHostIncome = $this->carrotHostIncomeBetween($start, $end);
+            $payments = (float) ($totals['payment'] ?? 0) + $manualIncome + $carrotHostIncome;
             $refunds = (float) ($totals['refund'] ?? 0);
             $credits = (float) ($totals['credit'] ?? 0);
             $expenses = (float) ($totals['expense'] ?? 0);
@@ -408,6 +436,187 @@ class DashboardMetricsService
             ->sum('amount');
 
         return $manual + $system;
+    }
+
+    private function carrotHostIncomeBetween(Carbon $start, Carbon $end): float
+    {
+        $dailyMap = $this->carrotHostDailyIncomeMap($start, $end);
+        if ($dailyMap === []) {
+            return 0.0;
+        }
+
+        return (float) array_sum($dailyMap);
+    }
+
+    private function carrotHostDailyIncomeMap(Carbon $start, Carbon $end): array
+    {
+        $rangeStart = $start->copy()->startOfDay();
+        $rangeEnd = $end->copy()->endOfDay();
+        $defaultStart = Carbon::parse(self::WHMCS_DEFAULT_START)->startOfDay();
+
+        if ($rangeEnd->lt($defaultStart)) {
+            return [];
+        }
+
+        if ($rangeStart->lt($defaultStart)) {
+            $rangeStart = $defaultStart->copy();
+        }
+
+        $cacheKey = $rangeStart->toDateString() . ':' . $rangeEnd->toDateString();
+        if (array_key_exists($cacheKey, $this->carrotHostDailyIncomeCache)) {
+            return $this->carrotHostDailyIncomeCache[$cacheKey];
+        }
+
+        if (! $this->whmcsClient->isConfigured()) {
+            $this->carrotHostDailyIncomeCache[$cacheKey] = [];
+            return [];
+        }
+
+        $storageKey = 'dashboard:carrothost:daily:' . $cacheKey;
+        $dailyIncome = Cache::remember($storageKey, now()->addMinutes(10), function () use ($rangeStart, $rangeEnd) {
+            $errors = [];
+            $transactions = $this->fetchAllWhmcs(
+                'GetTransactions',
+                [
+                    'startdate' => $rangeStart->toDateString(),
+                    'enddate' => $rangeEnd->toDateString(),
+                    'orderby' => 'date',
+                    'order' => 'desc',
+                ],
+                'transactions',
+                'transaction',
+                $errors
+            );
+
+            $transactions = $this->filterWhmcsByDate(
+                $transactions,
+                'date',
+                $rangeStart->toDateString(),
+                $rangeEnd->toDateString()
+            );
+
+            $totals = [];
+            foreach ($transactions as $transaction) {
+                $dateValue = $transaction['date'] ?? null;
+                if (! $dateValue) {
+                    continue;
+                }
+
+                try {
+                    $bucket = Carbon::parse((string) $dateValue)->toDateString();
+                } catch (\Throwable) {
+                    continue;
+                }
+
+                $totals[$bucket] = (float) ($totals[$bucket] ?? 0) + $this->normalizeMoney($transaction['amountin'] ?? 0);
+            }
+
+            return $totals;
+        });
+
+        $this->carrotHostDailyIncomeCache[$cacheKey] = $dailyIncome;
+
+        return $dailyIncome;
+    }
+
+    private function fetchAllWhmcs(
+        string $action,
+        array $params,
+        string $rootKey,
+        ?string $itemKey,
+        array &$errors
+    ): array {
+        $items = [];
+        $offset = 0;
+
+        for ($page = 0; $page < self::WHMCS_MAX_PAGES; $page++) {
+            $result = $this->whmcsClient->call($action, array_merge($params, [
+                'limitstart' => $offset,
+                'limitnum' => self::WHMCS_PAGE_SIZE,
+            ]));
+
+            if (! $result['ok']) {
+                $errors[] = $action . ': ' . $result['error'];
+                break;
+            }
+
+            $data = $result['data'] ?? [];
+            $container = $data[$rootKey] ?? [];
+            $batch = $this->normalizeWhmcsList($container, $itemKey);
+
+            if (empty($batch)) {
+                break;
+            }
+
+            $items = array_merge($items, $batch);
+
+            $total = (int) ($data['totalresults'] ?? 0);
+            $offset += self::WHMCS_PAGE_SIZE;
+
+            if ($total > 0 && count($items) >= $total) {
+                break;
+            }
+
+            if (count($batch) < self::WHMCS_PAGE_SIZE) {
+                break;
+            }
+        }
+
+        return $items;
+    }
+
+    private function normalizeWhmcsList($container, ?string $itemKey): array
+    {
+        if (! is_array($container)) {
+            return [];
+        }
+
+        $items = $container;
+        if ($itemKey && array_key_exists($itemKey, $container)) {
+            $items = $container[$itemKey];
+        }
+
+        if ($items === null || $items === '') {
+            return [];
+        }
+
+        if (is_array($items) && array_is_list($items)) {
+            return $items;
+        }
+
+        return is_array($items) ? [$items] : [];
+    }
+
+    private function filterWhmcsByDate(array $items, string $dateKey, string $start, string $end): array
+    {
+        return array_values(array_filter($items, function ($item) use ($dateKey, $start, $end) {
+            $value = $item[$dateKey] ?? null;
+            if (! $value) {
+                return true;
+            }
+
+            try {
+                $date = Carbon::parse($value)->toDateString();
+            } catch (\Throwable) {
+                return true;
+            }
+
+            return $date >= $start && $date <= $end;
+        }));
+    }
+
+    private function normalizeMoney($value): float
+    {
+        if ($value === null) {
+            return 0.0;
+        }
+
+        $clean = preg_replace('/[^\d\.\-]/', '', (string) $value);
+        if ($clean === '' || $clean === '-' || $clean === '.') {
+            return 0.0;
+        }
+
+        return (float) $clean;
     }
 
     private function billingAmounts(): array

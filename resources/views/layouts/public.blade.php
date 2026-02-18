@@ -16,7 +16,21 @@
                 </a>
                 <div class="text-sm text-slate-600">
                     @auth
-                        <a href="{{ auth()->user()->isAdmin() ? route('admin.dashboard') : route('client.dashboard') }}" class="text-teal-600 hover:text-teal-500">Go to dashboard</a>
+                        @php
+                            $user = auth()->user();
+                            $dashboardUrl = route('client.dashboard');
+
+                            if ($user?->isAdmin()) {
+                                $dashboardUrl = route('admin.dashboard');
+                            } elseif ($user?->isEmployee()) {
+                                $dashboardUrl = route('employee.dashboard');
+                            } elseif ($user?->isSales()) {
+                                $dashboardUrl = route('rep.dashboard');
+                            } elseif ($user?->isSupport()) {
+                                $dashboardUrl = route('support.dashboard');
+                            }
+                        @endphp
+                        <a href="{{ $dashboardUrl }}" class="text-teal-600 hover:text-teal-500">Go to dashboard</a>
                     @else
                         <a href="{{ route('login') }}" class="text-teal-600 hover:text-teal-500">Sign in</a>
                         <span class="mx-2 text-slate-300">|</span>

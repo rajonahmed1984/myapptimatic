@@ -89,7 +89,14 @@ class TaskQueryService
 
         return $tasks->map(function (ProjectTask $task) use ($user, $gate) {
             $canUpdate = $gate->allows('update', $task);
-            if ($canUpdate && ! $user->isMasterAdmin() && $task->creatorEditWindowExpired($user->id)) {
+            $employeeAssigneeOverride = $this->isEmployeeAssignee($user, $task);
+
+            if (
+                $canUpdate
+                && ! $user->isMasterAdmin()
+                && ! $employeeAssigneeOverride
+                && $task->creatorEditWindowExpired($user->id)
+            ) {
                 $canUpdate = false;
             }
 
@@ -107,6 +114,31 @@ class TaskQueryService
 
             return $task;
         });
+    }
+
+    private function isEmployeeAssignee(User $user, ProjectTask $task): bool
+    {
+        if (! $user->isEmployee()) {
+            return false;
+        }
+
+        $employeeId = $user->employee?->id;
+        if (! $employeeId) {
+            return false;
+        }
+
+        if ($task->assigned_type === 'employee' && (int) $task->assigned_id === (int) $employeeId) {
+            return true;
+        }
+
+        if ((int) $task->assignee_id === (int) $user->id) {
+            return true;
+        }
+
+        return $task->assignments()
+            ->where('assignee_type', 'employee')
+            ->where('assignee_id', $employeeId)
+            ->exists();
     }
 
     public function tasksSummaryForUser(User $user): array
