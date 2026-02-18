@@ -16,7 +16,7 @@
 
 @section('content')
     <div class="mb-6 flex items-center justify-between">
-        <a href="{{ $backRoute }}" class="text-teal-600 hover:text-teal-700 text-sm font-semibold" hx-boost="false">← Back to project</a>
+        <a href="{{ $backRoute }}" class="text-teal-600 hover:text-teal-700 text-sm font-semibold" hx-boost="false">← Back</a>
         <div class="text-xs text-slate-500">Project: {{ $project->name }}</div>
     </div>
 

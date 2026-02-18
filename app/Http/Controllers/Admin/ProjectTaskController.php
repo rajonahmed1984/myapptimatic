@@ -430,13 +430,30 @@ class ProjectTaskController extends Controller
     private function tasksPayload(Request $request, Project $project): array
     {
         $user = $request->user();
+        $statusFilter = (string) ($request->query('status') ?? $request->input('task_status_filter', ''));
+        $statusFilter = in_array($statusFilter, ['pending', 'in_progress', 'blocked', 'completed'], true)
+            ? $statusFilter
+            : null;
         $tasks = $project->tasks()
             ->with(['assignments.employee', 'assignments.salesRep', 'creator'])
             ->when($user?->isClient(), fn ($query) => $query->where('customer_visible', true))
+            ->when($statusFilter, function ($query, $status) {
+                if ($status === 'completed') {
+                    $query->whereIn('status', ['completed', 'done']);
+                    return;
+                }
+
+                $query->where('status', $status);
+            })
             ->orderByDesc('created_at')
             ->orderByDesc('id')
-            ->paginate(25)
-            ->withQueryString();
+            ->paginate(25);
+
+        if ($statusFilter) {
+            $tasks->appends(['status' => $statusFilter]);
+        } else {
+            $tasks->withQueryString();
+        }
 
         $baseSummary = $project->tasks()
             ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count")
@@ -458,6 +475,7 @@ class ProjectTaskController extends Controller
             'tasks' => $tasks,
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'summary' => $summary,
+            'statusFilter' => $statusFilter,
         ];
     }
 

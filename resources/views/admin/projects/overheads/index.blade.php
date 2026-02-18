@@ -10,7 +10,7 @@
             <div class="text-lg font-semibold text-slate-900">{{ $project->name }}</div>
             <div class="text-xs text-slate-600">ID: {{ $project->id }} · Status: {{ ucfirst(str_replace('_', ' ', $project->status)) }}</div>
         </div>
-        <a href="{{ route('admin.projects.show', $project) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500" hx-boost="false">Back to project</a>
+        <a href="{{ route('admin.projects.show', $project) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500" hx-boost="false">Back</a>
     </div>
 
     <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700 space-y-4">
@@ -35,10 +35,15 @@
                     </thead>
                     <tbody>
                         @foreach($overheads as $overhead)
+                            @php
+                                $overheadInvoice = $overhead->invoice;
+                                $overheadInvoiceId = $overheadInvoice?->id;
+                                $hasOverheadInvoice = ! empty($overheadInvoiceId);
+                            @endphp
                             <tr class="border-t border-slate-100">
                                 <td class="px-3 py-2">
-                                    @if($overhead->invoice_id && $overhead->invoice)
-                                        <a href="{{ route('admin.invoices.show', $overhead->invoice) }}" class="text-teal-700 hover:text-teal-600 font-semibold">#{{ $overhead->invoice->number ?? $overhead->invoice_id }}</a>
+                                    @if($hasOverheadInvoice)
+                                        <a href="{{ route('admin.invoices.show', ['invoice' => $overheadInvoiceId]) }}" class="text-teal-700 hover:text-teal-600 font-semibold">#{{ $overheadInvoice->number ?? $overheadInvoiceId }}</a>
                                     @else
                                         <span class="text-slate-400 text-xs">--</span>
                                     @endif
@@ -48,11 +53,14 @@
                                 <td class="px-3 py-2">{{ $overhead->created_at?->format($globalDateFormat) ?? '--' }}</td>
                                 <td class="px-3 py-2">
                                     @php
-                                        $overheadInvoiceStatus = strtolower((string) ($overhead->invoice->status ?? ''));
+                                        $overheadInvoiceStatus = strtolower((string) ($overheadInvoice->status ?? ''));
                                         $overheadStatusLabel = 'Unpaid';
                                         $overheadStatusClass = 'border-amber-200 text-amber-700 bg-amber-50';
 
-                                        if ($overheadInvoiceStatus === 'paid') {
+                                        if (! $hasOverheadInvoice) {
+                                            $overheadStatusLabel = 'Not invoiced';
+                                            $overheadStatusClass = 'border-slate-300 text-slate-600 bg-slate-100';
+                                        } elseif ($overheadInvoiceStatus === 'paid') {
                                             $overheadStatusLabel = 'Paid';
                                             $overheadStatusClass = 'border-emerald-200 text-emerald-700 bg-emerald-50';
                                         } elseif ($overheadInvoiceStatus === 'cancelled') {

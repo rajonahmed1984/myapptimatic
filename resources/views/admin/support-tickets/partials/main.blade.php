@@ -79,35 +79,75 @@
         </div>
     </div>
 
-    <div class="mt-8 space-y-4">
-        @forelse($ticket->replies as $reply)
-            <div class="flex {{ $reply->is_admin ? 'justify-end' : 'justify-start' }}">
-                <div class="max-w-2xl rounded-2xl border border-slate-300 bg-white px-5 py-4 text-sm shadow-sm">
-                    <div class="flex items-center justify-between text-xs text-slate-500">
-                        <span>{{ $reply->user?->name ?? ($reply->is_admin ? 'Admin' : 'Client') }}</span>
-                        <span>{{ $reply->created_at->format($globalDateFormat . ' H:i') }}</span>
+    <div id="replies" class="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-5 py-4">
+            <div>
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Conversation</div>
+                <div class="mt-1 text-sm text-slate-600">
+                    {{ $ticket->replies->count() }} {{ \Illuminate\Support\Str::plural('message', $ticket->replies->count()) }}
+                </div>
+            </div>
+            <a href="#reply-box" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
+                Reply now
+            </a>
+        </div>
+
+        <div class="space-y-4 bg-slate-100/50 p-5">
+            @forelse($ticket->replies as $reply)
+                @php
+                    $isAdminReply = (bool) $reply->is_admin;
+                    $authorName = $reply->user?->name ?? ($isAdminReply ? 'Admin Team' : 'Client');
+                    $initial = \Illuminate\Support\Str::substr((string) $authorName, 0, 1);
+                @endphp
+                <div class="flex gap-3 {{ $isAdminReply ? 'justify-end' : 'justify-start' }}">
+                    @if(! $isAdminReply)
+                        <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-600">
+                            {{ strtoupper($initial) }}
+                        </div>
+                    @endif
+
+                    <div class="max-w-3xl rounded-2xl border px-4 py-3 shadow-sm {{ $isAdminReply ? 'border-teal-200 bg-teal-50/70' : 'border-slate-200 bg-white' }}">
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="font-semibold {{ $isAdminReply ? 'text-teal-700' : 'text-slate-700' }}">{{ $authorName }}</span>
+                            <span class="text-slate-400">|</span>
+                            <span class="text-slate-500">{{ $reply->created_at->format($globalDateFormat . ' H:i') }}</span>
+                            <span class="rounded-full px-2 py-0.5 font-semibold {{ $isAdminReply ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-600' }}">
+                                {{ $isAdminReply ? 'Staff' : 'Client' }}
+                            </span>
+                        </div>
+
+                        <div class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{{ $reply->message }}</div>
+
+                        @if($reply->attachment_path)
+                            <div class="mt-3 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-600">
+                                Attachment:
+                                <a href="{{ $reply->attachmentUrl() }}" target="_blank" class="ml-1 font-semibold text-teal-600 hover:text-teal-500">
+                                    {{ $reply->attachmentName() }}
+                                </a>
+                            </div>
+                        @endif
                     </div>
-                    <div class="mt-3 whitespace-pre-line text-slate-700">{{ $reply->message }}</div>
-                    @if($reply->attachment_path)
-                        <div class="mt-3 text-xs text-slate-500">
-                            Attachment:
-                            <a href="{{ $reply->attachmentUrl() }}" target="_blank" class="font-semibold text-teal-600 hover:text-teal-500">
-                                {{ $reply->attachmentName() }}
-                            </a>
+
+                    @if($isAdminReply)
+                        <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-teal-200 bg-teal-100 text-xs font-semibold text-teal-700">
+                            {{ strtoupper($initial) }}
                         </div>
                     @endif
                 </div>
-            </div>
-        @empty
-            <div class="card-muted p-4 text-sm text-slate-500">No replies yet.</div>
-        @endforelse
+            @empty
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                    No replies yet. Start the conversation with your first response.
+                </div>
+            @endforelse
+        </div>
     </div>
 
-    <div class="card mt-8 p-6">
+    <div id="reply-box" class="card mt-6 p-6">
         <div class="section-label">Post reply</div>
+        <div class="mt-1 text-xs text-slate-500">Write a clear response. Keep it short, then attach proof if needed.</div>
         <form method="POST" action="{{ route('admin.support-tickets.reply', $ticket) }}" class="mt-4 space-y-4" enctype="multipart/form-data" data-ajax-form="true">
             @csrf
-            <textarea id="ticket-reply-message" name="message" rows="5" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700">{{ old('message') }}</textarea>
+            <textarea id="ticket-reply-message" name="message" rows="6" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700" placeholder="Type your reply...">{{ old('message') }}</textarea>
             <div>
                 <label class="text-sm text-slate-600">Attachment (image/PDF)</label>
                 <input name="attachment" type="file" accept="image/*,.pdf" class="mt-2 block w-full text-sm text-slate-600" />

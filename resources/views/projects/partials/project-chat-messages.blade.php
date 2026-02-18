@@ -10,6 +10,7 @@
         'message' => $message,
         'project' => $project,
         'attachmentRouteName' => $attachmentRouteName,
+        'taskShowRouteName' => $taskShowRouteName ?? null,
         'currentAuthorType' => $currentAuthorType,
         'currentAuthorId' => $currentAuthorId,
         'seenBy' => $readReceipts[$message->id] ?? [],

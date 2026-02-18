@@ -33,6 +33,24 @@
     </div>
 
     @php
+        $businessPulse = $businessPulse ?? [
+            'today_income' => 0,
+            'income_30d' => 0,
+            'previous_income_30d' => 0,
+            'expense_30d' => 0,
+            'net_30d' => 0,
+            'income_growth_percent' => null,
+            'pending_orders' => 0,
+            'unpaid_invoices' => 0,
+            'overdue_invoices' => 0,
+            'overdue_share_percent' => 0,
+            'open_tickets' => 0,
+            'customer_reply_tickets' => 0,
+            'support_load' => 0,
+            'health_score' => 0,
+            'health_label' => 'Unknown',
+            'health_classes' => 'bg-slate-100 text-slate-700',
+        ];
         $projectMaintenance = $projectMaintenance ?? ['projects_active' => 0, 'projects_on_hold' => 0, 'subscriptions_blocked' => 0, 'renewals_30d' => 0, 'projects_profitable' => 0, 'projects_loss' => 0];
         $hrStats = $hrStats ?? [
             'active_employees' => 0,
@@ -58,15 +76,76 @@
             'month' => ['labels' => [], 'new_orders' => [], 'active_orders' => [], 'income' => []],
             'year' => ['labels' => [], 'new_orders' => [], 'active_orders' => [], 'income' => []],
         ];
-        $incomeStatement = $incomeStatement ?? [
-            'today' => ['payments' => 0, 'refunds' => 0, 'credits' => 0, 'expenses' => 0, 'net' => 0],
-            'month' => ['payments' => 0, 'refunds' => 0, 'credits' => 0, 'expenses' => 0, 'net' => 0],
-            'year' => ['payments' => 0, 'refunds' => 0, 'credits' => 0, 'expenses' => 0, 'net' => 0],
-        ];
         $periodDefault = 'month';
         $defaultMetrics = $periodMetrics[$periodDefault] ?? ['new_orders' => 0, 'active_orders' => 0, 'income' => 0];
-        $defaultStatement = $incomeStatement[$periodDefault] ?? ['payments' => 0, 'refunds' => 0, 'credits' => 0, 'expenses' => 0, 'net' => 0];
+        $incomeGrowth = $businessPulse['income_growth_percent'];
+        $incomeGrowthText = $incomeGrowth === null
+            ? 'N/A'
+            : (($incomeGrowth >= 0 ? '+' : '') . number_format($incomeGrowth, 1) . '%');
+        $incomeGrowthClass = $incomeGrowth === null
+            ? 'text-slate-500'
+            : ($incomeGrowth >= 0 ? 'text-emerald-600' : 'text-rose-600');
     @endphp
+
+    <div class="mt-6 card p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <div class="section-label">Business Pulse</div>
+                <div class="mt-1 text-sm text-slate-500">Quick view of business health, cashflow and operational pressure.</div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $businessPulse['health_classes'] }}">
+                    {{ $businessPulse['health_label'] }}
+                </span>
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    Score {{ (int) ($businessPulse['health_score'] ?? 0) }}/100
+                </span>
+            </div>
+        </div>
+
+        <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Net (30d)</div>
+                <div class="mt-2 text-2xl font-semibold {{ ($businessPulse['net_30d'] ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
+                    {{ $currency }}{{ number_format($businessPulse['net_30d'] ?? 0, 2) }}
+                </div>
+                <div class="mt-1 text-xs {{ $incomeGrowthClass }}">
+                    Income trend: {{ $incomeGrowthText }} vs previous 30d
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Receivable Pressure</div>
+                <div class="mt-2 text-2xl font-semibold text-amber-600">
+                    {{ number_format($businessPulse['overdue_share_percent'] ?? 0, 1) }}%
+                </div>
+                <div class="mt-1 text-xs text-slate-500">
+                    Overdue {{ $businessPulse['overdue_invoices'] ?? 0 }} / Open {{ ($businessPulse['unpaid_invoices'] ?? 0) + ($businessPulse['overdue_invoices'] ?? 0) }}
+                </div>
+                <a href="{{ route('admin.invoices.overdue') }}" class="mt-2 inline-flex text-xs font-semibold text-teal-600 hover:text-teal-500">View overdue invoices</a>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Sales Pipeline</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">
+                    {{ $businessPulse['pending_orders'] ?? 0 }}
+                </div>
+                <div class="mt-1 text-xs text-slate-500">Pending orders awaiting conversion.</div>
+                <a href="{{ route('admin.orders.index') }}" class="mt-2 inline-flex text-xs font-semibold text-teal-600 hover:text-teal-500">Review orders</a>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Support Load</div>
+                <div class="mt-2 text-2xl font-semibold text-slate-900">
+                    {{ $businessPulse['support_load'] ?? 0 }}
+                </div>
+                <div class="mt-1 text-xs text-slate-500">
+                    Open: {{ $businessPulse['open_tickets'] ?? 0 }}, Customer reply: {{ $businessPulse['customer_reply_tickets'] ?? 0 }}
+                </div>
+                <a href="{{ route('admin.support-tickets.index') }}" class="mt-2 inline-flex text-xs font-semibold text-teal-600 hover:text-teal-500">Open tickets</a>
+            </div>
+        </div>
+    </div>
 
     <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div class="card px-4 py-3 leading-tight">
@@ -223,31 +302,6 @@
                             </div>
                         </div>
                     </div>
-                    <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                        <div class="text-xs font-semibold uppercase tracking-widest text-slate-500">Income Statement</div>
-                        <div class="mt-4 space-y-2 text-sm text-slate-600">
-                            <div class="flex items-center justify-between">
-                                <span>Payments</span>
-                                <span class="font-semibold text-emerald-600" id="income-statement-payments">{{ $currency }}{{ number_format($defaultStatement['payments'], 2) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span>Refunds</span>
-                                <span class="font-semibold text-rose-600" id="income-statement-refunds">{{ $currency }}{{ number_format($defaultStatement['refunds'], 2) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span>Credits</span>
-                                <span class="font-semibold text-amber-600" id="income-statement-credits">{{ $currency }}{{ number_format($defaultStatement['credits'], 2) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span>Expenses</span>
-                                <span class="font-semibold text-slate-600" id="income-statement-expenses">{{ $currency }}{{ number_format($defaultStatement['expenses'], 2) }}</span>
-                            </div>
-                            <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-base">
-                                <span class="font-semibold text-slate-700">Net Income</span>
-                                <span class="font-bold text-slate-900" id="income-statement-net">{{ $currency }}{{ number_format($defaultStatement['net'], 2) }}</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -263,7 +317,6 @@
             <div id="system-period-metrics" data-period-default="{{ $periodDefault }}"
                  data-period-metrics='@json($periodMetrics)'
                  data-period-series='@json($periodSeries)'
-                 data-income-statement='@json($incomeStatement)'
                  data-currency="{{ $currency }}" style="display:none"></div>
         </div>
     </div>
@@ -408,11 +461,6 @@
                 const activeOrdersEl = document.getElementById('left-sidebar-active-orders');
                 const incomeEl = document.getElementById('right-sidebar-income');
                 const avgIncomeEl = document.getElementById('right-sidebar-avg-income');
-                const statementPaymentsEl = document.getElementById('income-statement-payments');
-                const statementRefundsEl = document.getElementById('income-statement-refunds');
-                const statementCreditsEl = document.getElementById('income-statement-credits');
-                const statementExpensesEl = document.getElementById('income-statement-expenses');
-                const statementNetEl = document.getElementById('income-statement-net');
                 const periodButtons = document.querySelectorAll('.btn-period-chooser [data-period]');
 
                 if (!metricsEl || !graph) {
@@ -421,7 +469,6 @@
 
                 const periodMetrics = JSON.parse(metricsEl.dataset.periodMetrics || '{}');
                 const periodSeries = JSON.parse(metricsEl.dataset.periodSeries || '{}');
-                const incomeStatement = JSON.parse(metricsEl.dataset.incomeStatement || '{}');
                 const currency = metricsEl.dataset.currency || '';
                 const defaultPeriod = metricsEl.dataset.periodDefault || 'month';
                 const chartWidth = 400;
@@ -505,7 +552,6 @@
                 const updateMetrics = (periodKey) => {
                     const summary = periodMetrics[periodKey] || { new_orders: 0, active_orders: 0, income: 0 };
                     const series = periodSeries[periodKey] || { labels: [], new_orders: [], active_orders: [], income: [] };
-                    const statement = incomeStatement[periodKey] || { payments: 0, refunds: 0, credits: 0, expenses: 0, net: 0 };
 
                     if (newOrdersEl) {
                         newOrdersEl.textContent = summary.new_orders ?? 0;
@@ -520,21 +566,6 @@
                         const orderCount = Number(summary.new_orders || 0);
                         const avg = orderCount > 0 ? (Number(summary.income || 0) / orderCount) : 0;
                         avgIncomeEl.textContent = formatMoney(avg);
-                    }
-                    if (statementPaymentsEl) {
-                        statementPaymentsEl.textContent = formatMoney(statement.payments ?? 0);
-                    }
-                    if (statementRefundsEl) {
-                        statementRefundsEl.textContent = formatMoney(statement.refunds ?? 0);
-                    }
-                    if (statementCreditsEl) {
-                        statementCreditsEl.textContent = formatMoney(statement.credits ?? 0);
-                    }
-                    if (statementExpensesEl) {
-                        statementExpensesEl.textContent = formatMoney(statement.expenses ?? 0);
-                    }
-                    if (statementNetEl) {
-                        statementNetEl.textContent = formatMoney(statement.net ?? 0);
                     }
 
                     const orderPoints = scaleValues(series.new_orders || []);

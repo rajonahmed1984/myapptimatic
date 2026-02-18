@@ -278,11 +278,16 @@
                             </thead>
                             <tbody>
                                 @foreach($project->overheads as $overhead)
+                                    @php
+                                        $overheadInvoice = $overhead->invoice;
+                                        $overheadInvoiceId = $overheadInvoice?->id;
+                                        $hasOverheadInvoice = ! empty($overheadInvoiceId);
+                                    @endphp
                                     <tr class="border-t border-slate-100">
                                         <td class="px-3 py-2">
-                                            @if($overhead->invoice)
-                                                <a href="{{ route('admin.invoices.show', $overhead->invoice) }}" class="text-teal-700 hover:text-teal-600">
-                                                    #{{ is_numeric($overhead->invoice->number) ? $overhead->invoice->number : $overhead->invoice->id }}
+                                            @if($hasOverheadInvoice)
+                                                <a href="{{ route('admin.invoices.show', ['invoice' => $overheadInvoiceId]) }}" class="text-teal-700 hover:text-teal-600">
+                                                    #{{ is_numeric($overheadInvoice->number) ? $overheadInvoice->number : $overheadInvoiceId }}
                                                 </a>
                                             @else
                                                 --
@@ -294,11 +299,14 @@
                                         
                                         <td class="px-3 py-2">
                                             @php
-                                                $overheadInvoiceStatus = strtolower((string) ($overhead->invoice->status ?? ''));
+                                                $overheadInvoiceStatus = strtolower((string) ($overheadInvoice->status ?? ''));
                                                 $overheadStatusLabel = 'Unpaid';
                                                 $overheadStatusClass = 'border-amber-200 text-amber-700 bg-amber-50';
 
-                                                if ($overheadInvoiceStatus === 'paid') {
+                                                if (! $hasOverheadInvoice) {
+                                                    $overheadStatusLabel = 'Not invoiced';
+                                                    $overheadStatusClass = 'border-slate-300 text-slate-600 bg-slate-100';
+                                                } elseif ($overheadInvoiceStatus === 'paid') {
                                                     $overheadStatusLabel = 'Paid';
                                                     $overheadStatusClass = 'border-emerald-200 text-emerald-700 bg-emerald-50';
                                                 } elseif ($overheadInvoiceStatus === 'cancelled') {
@@ -311,7 +319,11 @@
                                             </span>
                                         </td>
                                         <td class="px-3 py-2 text-right">
-                                            <a href="{{ route('admin.invoices.show', $overhead->invoice) }}" class="text-xs font-semibold text-slate-700 hover:text-teal-600">View</a>
+                                            @if($hasOverheadInvoice)
+                                                <a href="{{ route('admin.invoices.show', ['invoice' => $overheadInvoiceId]) }}" class="text-xs font-semibold text-slate-700 hover:text-teal-600">View</a>
+                                            @else
+                                                <span class="text-xs text-slate-400">--</span>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach

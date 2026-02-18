@@ -19,7 +19,7 @@
         <div>
             <div class="text-sm section-label">{{ $project->name }}</div>
         </div>
-        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to project</a>
+        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
     </div>
 
     <style>
@@ -207,6 +207,7 @@
                     'messages' => $messages,
                     'project' => $project,
                     'attachmentRouteName' => $attachmentRouteName,
+                    'taskShowRouteName' => $taskShowRouteName ?? null,
                     'currentAuthorType' => $currentAuthorType,
                     'currentAuthorId' => $currentAuthorId,
                     'readReceipts' => $readReceipts ?? [],
@@ -303,6 +304,7 @@
         const sendButton = document.getElementById('chatSendButton');
         const sendIcon = document.getElementById('chatSendIcon');
         const participants = @json($participants ?? []);
+        const mentionables = @json($mentionables ?? $participants ?? []);
         const participantsUrl = @json($participantsUrl ?? '');
         const presenceUrl = @json($presenceUrl ?? '');
         const streamUrl = container?.dataset?.streamUrl || @json($streamUrl ?? '');
@@ -955,25 +957,57 @@
                 return;
             }
             dropdown.innerHTML = '';
+
+            const grouped = {
+                people: [],
+                tasks: [],
+            };
+
             items.forEach((item, index) => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50';
-                if (index === mentionActiveIndex) {
-                    button.classList.add('bg-slate-100');
+                const type = String(item?.type || '').toLowerCase();
+                if (type === 'project_task') {
+                    grouped.tasks.push({ item, index });
+                    return;
                 }
-                const label = document.createElement('span');
-                label.textContent = item.label;
-                const meta = document.createElement('span');
-                meta.textContent = item.role || '';
-                meta.className = 'text-xs text-slate-400';
-                button.appendChild(label);
-                button.appendChild(meta);
-                button.addEventListener('click', () => {
-                    applyMention(item);
-                });
-                dropdown.appendChild(button);
+
+                grouped.people.push({ item, index });
             });
+
+            const renderGroup = (title, rows) => {
+                if (!rows.length) {
+                    return;
+                }
+
+                const header = document.createElement('div');
+                header.className = 'sticky top-0 z-[1] border-b border-slate-100 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500';
+                header.textContent = title;
+                dropdown.appendChild(header);
+
+                rows.forEach(({ item, index }) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50';
+                    if (index === mentionActiveIndex) {
+                        button.classList.add('bg-slate-100');
+                    }
+
+                    const label = document.createElement('span');
+                    label.textContent = item.label;
+                    const meta = document.createElement('span');
+                    meta.textContent = item.role || '';
+                    meta.className = 'text-xs text-slate-400';
+                    button.appendChild(label);
+                    button.appendChild(meta);
+                    button.addEventListener('click', () => {
+                        applyMention(item);
+                    });
+                    dropdown.appendChild(button);
+                });
+            };
+
+            renderGroup('People', grouped.people);
+            renderGroup('Tasks', grouped.tasks);
+
             dropdown.classList.remove('hidden');
             positionDropdown();
         };
@@ -1011,7 +1045,7 @@
             }
             const url = new URL(participantsUrl, window.location.origin);
             url.searchParams.set('q', query);
-            url.searchParams.set('limit', '8');
+            url.searchParams.set('limit', '50');
             try {
                 const response = await fetch(url.toString(), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -1045,16 +1079,24 @@
                             return true;
                         }
                         return (participant.label || '').toLowerCase().includes(query);
-                    })
-                    .slice(0, 8);
+                    });
 
-                if (!filtered.length) {
+                const people = filtered.filter((participant) => String(participant?.type || '').toLowerCase() !== 'project_task');
+                const tasks = filtered.filter((participant) => String(participant?.type || '').toLowerCase() === 'project_task');
+
+                // Keep people visible even when many tasks match.
+                const visible = [
+                    ...people.slice(0, 20),
+                    ...tasks.slice(0, 20),
+                ];
+
+                if (!visible.length) {
                     closeMentionDropdown();
                     return;
                 }
-                mentionResults = filtered;
+                mentionResults = visible;
                 mentionActiveIndex = Math.min(mentionActiveIndex, mentionResults.length - 1);
-                renderMentionDropdown(filtered);
+                renderMentionDropdown(visible);
             };
 
             if (mentionFetchTimer) {
@@ -1062,7 +1104,7 @@
             }
             mentionFetchTimer = setTimeout(async () => {
                 const fetched = query ? await fetchMentionResults(query) : null;
-                handleResults(fetched || participants);
+                handleResults(fetched || mentionables);
             }, 150);
         };
 

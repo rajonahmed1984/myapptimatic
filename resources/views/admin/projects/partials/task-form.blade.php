@@ -1,7 +1,12 @@
 @php
     $isEdit = isset($task) && $task;
+    $taskStatusFilter = old('task_status_filter', request()->query('status'));
+    $taskStatusFilter = in_array($taskStatusFilter, ['pending', 'in_progress', 'blocked', 'completed'], true) ? $taskStatusFilter : null;
     $ajaxForm = $ajaxForm ?? true;
-    $returnToUrl = $returnToUrl ?? route('admin.projects.tasks.index', $project);
+    $returnToUrl = $returnToUrl ?? route('admin.projects.tasks.index', array_filter([
+        'project' => $project,
+        'status' => $taskStatusFilter,
+    ], fn ($value) => $value !== null && $value !== ''));
     $selectedAssignees = collect(old('assignees', $isEdit ? $task->assignments->map(fn ($assignment) => $assignment->assignee_type . ':' . $assignment->assignee_id)->all() : []))
         ->filter()
         ->values()
@@ -30,6 +35,7 @@
         @if($isEdit)
             @method('PATCH')
         @endif
+        <input type="hidden" name="task_status_filter" value="{{ $taskStatusFilter }}">
         @if(! $ajaxForm)
             <input type="hidden" name="return_to" value="{{ $returnToUrl }}">
         @endif

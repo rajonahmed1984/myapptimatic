@@ -63,6 +63,7 @@ class WhmcsClient
         ], $params);
 
         $lastStatus = null;
+        $attemptErrors = [];
 
         foreach ($endpoints as $endpoint) {
             $response = Http::asForm()
@@ -75,26 +76,31 @@ class WhmcsClient
             }
 
             if (! $response->ok()) {
-                return [
-                    'ok' => false,
-                    'error' => 'WHMCS API request failed with HTTP ' . $response->status(),
-                ];
+                $attemptErrors[] = sprintf(
+                    '%s returned HTTP %d',
+                    $endpoint,
+                    $response->status()
+                );
+                continue;
             }
 
             $data = $response->json();
             if (! is_array($data)) {
-                return [
-                    'ok' => false,
-                    'error' => 'WHMCS API returned an invalid response.',
-                ];
+                $attemptErrors[] = sprintf(
+                    '%s returned an invalid response',
+                    $endpoint
+                );
+                continue;
             }
 
             if (($data['result'] ?? '') !== 'success') {
                 $message = $data['message'] ?? 'WHMCS API returned an error.';
-                return [
-                    'ok' => false,
-                    'error' => $message,
-                ];
+                $attemptErrors[] = sprintf(
+                    '%s returned API error: %s',
+                    $endpoint,
+                    $message
+                );
+                continue;
             }
 
             return [
@@ -103,9 +109,13 @@ class WhmcsClient
             ];
         }
 
+        $attemptSummary = $attemptErrors !== []
+            ? ' [' . implode(' | ', $attemptErrors) . ']'
+            : '';
+
         return [
             'ok' => false,
-            'error' => 'WHMCS API request failed with HTTP ' . ($lastStatus ?? 'unknown'),
+            'error' => 'WHMCS API request failed with HTTP ' . ($lastStatus ?? 'unknown') . $attemptSummary,
         ];
     }
 

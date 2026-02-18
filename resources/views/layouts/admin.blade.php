@@ -693,7 +693,7 @@
                         </button>
                         <div>
                             <div class="section-label">{{ $isEmployeeNav ? 'Employee workspace' : 'Admin workspace' }}</div>
-                            <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
+                            <div class="text-lg font-semibold text-slate-900" data-current-page-title>@yield('page-title', 'Overview')</div>
                         </div>
                     </div>
                     @php($adminUser = auth()->user())
@@ -757,6 +757,7 @@
                 <div
                     id="appContent"
                     data-page-title="@yield('title', config('app.name', 'MyApptimatic'))"
+                    data-page-heading="@yield('page-title', 'Overview')"
                     data-page-key="{{ request()->route()?->getName() ?? '' }}"
                 >
                     @if ($errors->any())

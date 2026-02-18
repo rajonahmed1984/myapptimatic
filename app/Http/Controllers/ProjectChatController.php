@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectMessage;
 use App\Models\ProjectMessageRead;
+use App\Models\ProjectTask;
 use App\Models\UserSession;
 use App\Models\SalesRepresentative;
 use App\Models\User;
@@ -46,13 +47,15 @@ class ProjectChatController extends Controller
 
         $identity = $this->resolveAuthorIdentity($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $taskShowRouteName = $routePrefix . '.projects.tasks.show';
         $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
         $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
         $readReceipts = $this->readReceiptsForMessages($project, $messages, $identity);
         $authorStatuses = ChatPresence::authorStatusesForMessages($messages);
         $messageMentions = $this->mentionsForMessages($messages);
-        $mentionables = $this->mentionablesForProject($project, $identity);
-        $participantStatuses = $this->participantStatuses($mentionables);
+        $participants = $this->participantsForProject($project, $identity);
+        $mentionables = $this->mentionablesForProject($project, $identity, $participants);
+        $participantStatuses = $this->participantStatuses($participants);
         $allParticipantsReadUpTo = $latestMessageId > 0
             ? $this->allParticipantsReadUpTo($project, $identity)
             : null;
@@ -68,6 +71,7 @@ class ProjectChatController extends Controller
                 'messages' => $messages,
                 'project' => $project,
                 'attachmentRouteName' => $attachmentRouteName,
+                'taskShowRouteName' => $taskShowRouteName,
                 'currentAuthorType' => $identity['type'],
                 'currentAuthorId' => $identity['id'],
                 'readReceipts' => $readReceipts,
@@ -89,6 +93,7 @@ class ProjectChatController extends Controller
             'postRoute' => route($routePrefix . '.projects.chat.store', $project),
             'backRoute' => route($routePrefix . '.projects.show', $project),
             'attachmentRouteName' => $attachmentRouteName,
+            'taskShowRouteName' => $taskShowRouteName,
             'messagesUrl' => route($routePrefix . '.projects.chat.messages', $project),
             'streamUrl' => route($routePrefix . '.projects.chat.stream', $project),
             'postMessagesUrl' => route($routePrefix . '.projects.chat.messages.store', $project),
@@ -104,7 +109,8 @@ class ProjectChatController extends Controller
             'readReceipts' => $readReceipts,
             'authorStatuses' => $authorStatuses,
             'messageMentions' => $messageMentions,
-            'participants' => $mentionables,
+            'participants' => $participants,
+            'mentionables' => $mentionables,
             'participantStatuses' => $participantStatuses,
             'latestMessageId' => $latestMessageId,
             'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
@@ -170,6 +176,7 @@ class ProjectChatController extends Controller
         $identity = $this->resolveAuthorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $taskShowRouteName = $routePrefix . '.projects.tasks.show';
         $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
         $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
         $readReceipts = $this->readReceiptsForMessages($project, $messages, $identity);
@@ -184,6 +191,7 @@ class ProjectChatController extends Controller
             $message,
             $project,
             $attachmentRouteName,
+            $taskShowRouteName,
             $identity,
             $readReceipts[$message->id] ?? [],
             $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
@@ -215,22 +223,22 @@ class ProjectChatController extends Controller
         $this->touchPresence($request);
 
         $identity = $this->resolveAuthorIdentity($request);
-        $participants = $this->mentionablesForProject($project, $identity);
+        $mentionables = $this->mentionablesForProject($project, $identity);
 
         $query = trim((string) $request->query('q', ''));
         if ($query !== '') {
-            $participants = array_values(array_filter($participants, function ($participant) use ($query) {
+            $mentionables = array_values(array_filter($mentionables, function ($participant) use ($query) {
                 return stripos((string) ($participant['label'] ?? ''), $query) !== false;
             }));
         }
 
         $limit = min(max((int) $request->query('limit', 20), 1), 50);
-        $participants = array_slice($participants, 0, $limit);
+        $mentionables = array_slice($mentionables, 0, $limit);
 
         return response()->json([
             'ok' => true,
             'data' => [
-                'items' => $participants,
+                'items' => $mentionables,
             ],
         ]);
     }
@@ -270,12 +278,13 @@ class ProjectChatController extends Controller
         $identity = $this->resolveAuthorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $taskShowRouteName = $routePrefix . '.projects.tasks.show';
         $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
         $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
-        $mentionables = $this->mentionablesForProject($project, $identity);
+        $participants = $this->participantsForProject($project, $identity);
         $participantKeys = array_values(array_filter(array_map(
             fn ($participant) => $participant['key'] ?? null,
-            $mentionables
+            $participants
         )));
 
         $cursor = max(
@@ -287,6 +296,7 @@ class ProjectChatController extends Controller
             $project,
             $identity,
             $attachmentRouteName,
+            $taskShowRouteName,
             $messageUpdateRouteName,
             $messageDeleteRouteName,
             $participantKeys,
@@ -323,6 +333,7 @@ class ProjectChatController extends Controller
                         $message,
                         $project,
                         $attachmentRouteName,
+                        $taskShowRouteName,
                         $identity,
                         $readReceipts[$message->id] ?? [],
                         $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
@@ -432,6 +443,7 @@ class ProjectChatController extends Controller
                 $identity = $this->resolveAuthorIdentity($request);
                 $routePrefix = $this->resolveRoutePrefix($request);
                 $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+                $taskShowRouteName = $routePrefix . '.projects.tasks.show';
                 $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
                 $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
                 $readReceipts = $this->readReceiptsForMessages($project, collect([$duplicate]), $identity);
@@ -442,6 +454,7 @@ class ProjectChatController extends Controller
                     $duplicate,
                     $project,
                     $attachmentRouteName,
+                    $taskShowRouteName,
                     $identity,
                     $readReceipts[$duplicate->id] ?? [],
                     $authorStatuses[$duplicate->author_type . ':' . $duplicate->author_id] ?? 'offline',
@@ -492,6 +505,7 @@ class ProjectChatController extends Controller
 
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $taskShowRouteName = $routePrefix . '.projects.tasks.show';
         $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
         $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
         $readReceipts = $this->readReceiptsForMessages($project, collect([$messageModel]), $identity);
@@ -502,6 +516,7 @@ class ProjectChatController extends Controller
             $messageModel,
             $project,
             $attachmentRouteName,
+            $taskShowRouteName,
             $identity,
             $readReceipts[$messageModel->id] ?? [],
             $authorStatuses[$messageModel->author_type . ':' . $messageModel->author_id] ?? 'offline',
@@ -568,6 +583,7 @@ class ProjectChatController extends Controller
 
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
+        $taskShowRouteName = $routePrefix . '.projects.tasks.show';
         $messageUpdateRouteName = $routePrefix . '.projects.chat.messages.update';
         $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
         $readReceipts = $this->readReceiptsForMessages($project, collect([$message]), $identity);
@@ -582,6 +598,7 @@ class ProjectChatController extends Controller
             $message,
             $project,
             $attachmentRouteName,
+            $taskShowRouteName,
             $identity,
             $readReceipts[$message->id] ?? [],
             $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
@@ -941,11 +958,12 @@ class ProjectChatController extends Controller
             'user' => [],
             'employee' => [],
             'sales_rep' => [],
+            'project_task' => [],
         ];
 
         foreach ($messages as $message) {
             foreach ((array) ($message->mentions ?? []) as $mention) {
-                $type = $this->normalizeAuthorType($mention['type'] ?? '');
+                $type = $this->normalizeMentionType($mention['type'] ?? '');
                 $id = (int) ($mention['id'] ?? 0);
                 if (! $type || $id <= 0) {
                     continue;
@@ -966,12 +984,15 @@ class ProjectChatController extends Controller
         $salesRepNames = ! empty($idsByType['sales_rep'])
             ? SalesRepresentative::whereIn('id', array_unique($idsByType['sales_rep']))->pluck('name', 'id')->all()
             : [];
+        $taskTitles = ! empty($idsByType['project_task'])
+            ? ProjectTask::whereIn('id', array_unique($idsByType['project_task']))->pluck('title', 'id')->all()
+            : [];
 
         $mentionsByMessage = [];
         foreach ($messages as $message) {
             $matches = [];
             foreach ((array) ($message->mentions ?? []) as $mention) {
-                $type = $this->normalizeAuthorType($mention['type'] ?? '');
+                $type = $this->normalizeMentionType($mention['type'] ?? '');
                 $id = (int) ($mention['id'] ?? 0);
                 $label = trim((string) ($mention['label'] ?? ''));
 
@@ -984,11 +1005,15 @@ class ProjectChatController extends Controller
                     $display = $employeeNames[$id] ?? $label;
                 } elseif ($type === 'sales_rep') {
                     $display = $salesRepNames[$id] ?? $label;
+                } elseif ($type === 'project_task') {
+                    $display = $taskTitles[$id] ?? $label;
                 } else {
                     $display = $userNames[$id] ?? $label;
                 }
 
                 $matches[] = [
+                    'type' => $type,
+                    'id' => $id,
                     'label' => $label,
                     'display' => $display,
                 ];
@@ -1000,7 +1025,36 @@ class ProjectChatController extends Controller
         return $mentionsByMessage;
     }
 
-    private function mentionablesForProject(Project $project, array $identity): array
+    private function mentionablesForProject(Project $project, array $identity, ?array $participants = null): array
+    {
+        $participants = $participants ?? $this->participantsForProject($project, $identity);
+        $mentionables = $participants;
+
+        $tasks = $project->tasks()
+            ->orderByDesc('id')
+            ->get(['id', 'title']);
+
+        foreach ($tasks as $task) {
+            $label = trim((string) ($task->title ?? ''));
+            if ($label === '') {
+                continue;
+            }
+
+            $mentionables[] = [
+                'key' => 'project_task:' . $task->id,
+                'type' => 'project_task',
+                'id' => $task->id,
+                'label' => $label,
+                'role' => 'Task #' . $task->id,
+            ];
+        }
+
+        usort($mentionables, fn ($a, $b) => strcasecmp((string) ($a['label'] ?? ''), (string) ($b['label'] ?? '')));
+
+        return $mentionables;
+    }
+
+    private function participantsForProject(Project $project, array $identity): array
     {
         $userIds = $project->projectClients()->pluck('users.id')->all();
         $employeeIds = $project->employees()->pluck('employees.id')->all();
@@ -1013,7 +1067,7 @@ class ProjectChatController extends Controller
             ->get();
 
         foreach ($authors as $author) {
-            $type = $this->normalizeAuthorType($author->author_type ?? '');
+            $type = $this->normalizeMentionType($author->author_type ?? '');
             $id = (int) ($author->author_id ?? 0);
             if ($id <= 0) {
                 continue;
@@ -1103,11 +1157,14 @@ class ProjectChatController extends Controller
         return $statuses;
     }
 
-    private function normalizeAuthorType(?string $type): string
+    private function normalizeMentionType(?string $type): string
     {
         $type = strtolower((string) $type);
         if ($type === 'salesrep') {
             return 'sales_rep';
+        }
+        if ($type === 'projecttask' || $type === 'task') {
+            return 'project_task';
         }
 
         return $type;
@@ -1148,6 +1205,7 @@ class ProjectChatController extends Controller
         ProjectMessage $message,
         Project $project,
         string $attachmentRouteName,
+        string $taskShowRouteName,
         array $identity,
         array $seenBy,
         string $authorStatus,
@@ -1164,6 +1222,7 @@ class ProjectChatController extends Controller
                 'message' => $message,
                 'project' => $project,
                 'attachmentRouteName' => $attachmentRouteName,
+                'taskShowRouteName' => $taskShowRouteName,
                 'currentAuthorType' => $identity['type'],
                 'currentAuthorId' => $identity['id'],
                 'seenBy' => $seenBy,

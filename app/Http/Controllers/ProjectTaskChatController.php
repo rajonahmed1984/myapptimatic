@@ -66,7 +66,7 @@ class ProjectTaskChatController extends Controller
             'task' => $task,
             'messages' => $messages,
             'postRoute' => route($routePrefix . '.projects.tasks.chat.store', [$project, $task]),
-            'backRoute' => route($routePrefix . '.projects.show', $project),
+            'backRoute' => route($routePrefix . '.projects.tasks.show', [$project, $task]),
             'attachmentRouteName' => $attachmentRouteName,
             'messagesUrl' => route($routePrefix . '.projects.tasks.chat.messages', [$project, $task]),
             'postMessagesUrl' => route($routePrefix . '.projects.tasks.chat.messages.store', [$project, $task]),

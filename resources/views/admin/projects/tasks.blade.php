@@ -4,6 +4,13 @@
 @section('page-title', 'Project Tasks')
 
 @section('content')
+    @php
+        $taskStatusFilter = $statusFilter ?? null;
+        $taskCreateUrl = route('admin.projects.tasks.create', array_filter([
+            'project' => $project,
+            'status' => $taskStatusFilter,
+        ], fn ($value) => $value !== null && $value !== ''));
+    @endphp
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <div class="section-label">Delivery</div>
@@ -32,10 +39,10 @@
                         <div class="text-xs text-slate-500">Create tasks with modal form, no page reload.</div>
                     </div>
                     <a
-                        href="{{ route('admin.projects.tasks.create', $project) }}"
+                        href="{{ $taskCreateUrl }}"
                         data-ajax-modal="true"
                         data-modal-title="Add Task"
-                        data-url="{{ route('admin.projects.tasks.create', $project) }}"
+                        data-url="{{ $taskCreateUrl }}"
                         class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
                     >
                         + Add Task
@@ -47,12 +54,14 @@
         @include('admin.projects.partials.tasks-stats', [
             'project' => $project,
             'summary' => $summary,
+            'statusFilter' => $taskStatusFilter,
         ])
 
         @include('admin.projects.partials.tasks-table', [
             'project' => $project,
             'tasks' => $tasks,
             'taskTypeOptions' => $taskTypeOptions,
+            'statusFilter' => $taskStatusFilter,
         ])
     </div>
 @endsection

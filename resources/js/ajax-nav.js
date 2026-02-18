@@ -237,17 +237,27 @@
 
     const applyPageMetadata = (response, content) => {
         const headerTitle = (response.headers.get('X-Page-Title') || '').trim();
+        const headerHeading = (response.headers.get('X-Page-Heading') || '').trim();
         const headerPageKey = (response.headers.get('X-Page-Key') || '').trim();
 
         const inlineTitle = (content.querySelector('[data-page-title]')?.getAttribute('data-page-title') || '').trim();
+        const inlineHeading = (content.querySelector('[data-page-heading]')?.getAttribute('data-page-heading') || '').trim();
         const inlinePageKey = (content.querySelector('[data-page-key]')?.getAttribute('data-page-key') || '').trim();
 
         const title = headerTitle || inlineTitle;
+        const heading = headerHeading || inlineHeading;
         const pageKey = headerPageKey || inlinePageKey;
 
         if (title !== '') {
             document.title = title;
             content.dataset.pageTitle = title;
+        }
+
+        if (heading !== '') {
+            content.dataset.pageHeading = heading;
+            document.querySelectorAll('[data-current-page-title]').forEach((node) => {
+                node.textContent = heading;
+            });
         }
 
         if (pageKey !== '') {

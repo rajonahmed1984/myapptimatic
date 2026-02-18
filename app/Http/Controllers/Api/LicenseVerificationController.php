@@ -172,6 +172,7 @@ class LicenseVerificationController extends Controller
 
         $license->update([
             'last_check_at' => Carbon::now(),
+            'last_verified_at' => Carbon::now(),
             'last_check_ip' => $request->ip(),
         ]);
 

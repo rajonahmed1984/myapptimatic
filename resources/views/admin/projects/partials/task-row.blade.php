@@ -1,4 +1,12 @@
 <tr id="task-row-{{ $task->id }}" data-task-id="{{ $task->id }}" class="border-t border-slate-100 align-top">
+    @php
+        $statusFilter = $statusFilter ?? null;
+        $taskEditUrl = route('admin.projects.tasks.edit', array_filter([
+            'project' => $project,
+            'task' => $task,
+            'status' => $statusFilter,
+        ], fn ($value) => $value !== null && $value !== ''));
+    @endphp
     <td class="px-3 py-2">
         <div class="font-semibold text-slate-900">{{ $task->title }}</div>
         <div class="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-400">
@@ -61,10 +69,10 @@
 
             @can('update', $task)
                 <a
-                    href="{{ route('admin.projects.tasks.edit', [$project, $task]) }}"
+                    href="{{ $taskEditUrl }}"
                     data-ajax-modal="true"
                     data-modal-title="Edit Task"
-                    data-url="{{ route('admin.projects.tasks.edit', [$project, $task]) }}"
+                    data-url="{{ $taskEditUrl }}"
                     class="text-slate-600 hover:text-slate-800"
                 >
                     Edit
@@ -74,6 +82,7 @@
                     <form method="POST" action="{{ route('admin.projects.tasks.changeStatus', [$project, $task]) }}" data-ajax-form="true">
                         @csrf
                         @method('PATCH')
+                        <input type="hidden" name="task_status_filter" value="{{ $statusFilter }}">
                         <input type="hidden" name="status" value="in_progress">
                         <input type="hidden" name="progress" value="50">
                         <button type="submit" class="rounded-full border border-amber-200 px-3 py-1 text-[11px] text-amber-700 hover:border-amber-300">
@@ -83,6 +92,7 @@
                     <form method="POST" action="{{ route('admin.projects.tasks.changeStatus', [$project, $task]) }}" data-ajax-form="true">
                         @csrf
                         @method('PATCH')
+                        <input type="hidden" name="task_status_filter" value="{{ $statusFilter }}">
                         <input type="hidden" name="status" value="completed">
                         <input type="hidden" name="progress" value="100">
                         <button type="submit" class="rounded-full border border-emerald-200 px-3 py-1 text-[11px] text-emerald-700 hover:border-emerald-300">
@@ -96,6 +106,7 @@
                 <form method="POST" action="{{ route('admin.projects.tasks.destroy', [$project, $task]) }}" data-ajax-form="true" onsubmit="return confirm('Delete this task?');">
                     @csrf
                     @method('DELETE')
+                    <input type="hidden" name="task_status_filter" value="{{ $statusFilter }}">
                     <button type="submit" class="rounded-full border border-rose-200 px-3 py-1 text-rose-600 hover:border-rose-300">
                         Delete
                     </button>

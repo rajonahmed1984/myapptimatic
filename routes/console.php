@@ -89,12 +89,14 @@ CronActivityLogger::track($pendingPayments, 'process-pending-payments');
 $verifyLicenses = Schedule::call(function () {
     // Verify active licenses
     \App\Models\License::where('status', 'active')
-        ->whereNotNull('last_verified_at')
-        ->where('last_verified_at', '<=', now()->subHours(1))
+        ->where(function ($query) {
+            $query->whereNull('last_verified_at')
+                ->orWhere('last_verified_at', '<=', now()->subHours(1));
+        })
         ->chunk(100, function ($licenses) {
             foreach ($licenses as $license) {
-                \App\Jobs\EvaluateLicenseRiskJob::dispatch($license);
+                \App\Jobs\SyncLicenseJob::dispatch($license->id, null);
             }
         });
-})->everyFiveMinutes()->name('verify-licenses');
+})->everyFiveMinutes()->name('verify-licenses')->withoutOverlapping();
 CronActivityLogger::track($verifyLicenses, 'verify-licenses');

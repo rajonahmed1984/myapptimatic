@@ -146,7 +146,7 @@
                         </button>
                         <div>
                             <div class="section-label">Sales rep workspace</div>
-                            <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
+                            <div class="text-lg font-semibold text-slate-900" data-current-page-title>@yield('page-title', 'Overview')</div>
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-3 md:gap-4">
@@ -185,6 +185,7 @@
                 <div
                     id="appContent"
                     data-page-title="@yield('title', config('app.name', 'MyApptimatic'))"
+                    data-page-heading="@yield('page-title', 'Overview')"
                     data-page-key="{{ request()->route()?->getName() ?? '' }}"
                 >
                     @if ($errors->any())
@@ -296,4 +297,3 @@
     @endif
 </body>
 </html>
-

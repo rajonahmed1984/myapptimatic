@@ -537,12 +537,24 @@ class ProjectController extends Controller
         $this->authorize('view', $project);
 
         $user = $request->user();
+        $statusFilter = (string) $request->query('status', '');
+        $statusFilter = in_array($statusFilter, ['pending', 'in_progress', 'blocked', 'completed'], true)
+            ? $statusFilter
+            : null;
         $tasksQuery = $project->tasks()
             ->with(['assignments.employee', 'assignments.salesRep', 'creator'])
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 
         $tasksQuery->when($user?->isClient(), fn ($q) => $q->where('customer_visible', true));
+        $tasksQuery->when($statusFilter, function ($query, $status) {
+            if ($status === 'completed') {
+                $query->whereIn('status', ['completed', 'done']);
+                return;
+            }
+
+            $query->where('status', $status);
+        });
 
         $tasks = $tasksQuery->paginate(25)->withQueryString();
 
@@ -584,6 +596,7 @@ class ProjectController extends Controller
             'salesReps' => SalesRepresentative::where('status', 'active')->orderBy('name')->get(['id', 'name', 'email']),
             'tasks' => $tasks,
             'summary' => $summary,
+            'statusFilter' => $statusFilter,
             'projectChatUnreadCount' => $projectChatUnreadCount,
         ]);
     }

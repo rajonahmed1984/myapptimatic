@@ -26,7 +26,7 @@
             </div>
             <div class="mt-1 text-sm text-slate-500">Project: {{ $project->name }}</div>
         </div>
-        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to project</a>
+        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
     </div>
 
     @if($task->task_type === 'upload' && $uploadActivities->isNotEmpty())

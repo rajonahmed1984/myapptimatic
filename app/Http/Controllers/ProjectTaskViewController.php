@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 
 class ProjectTaskViewController extends Controller
 {
@@ -81,6 +82,12 @@ class ProjectTaskViewController extends Controller
             ->pluck('id')
             ->all();
 
+        $tasksIndexRouteName = $routePrefix . '.projects.tasks.index';
+        $projectShowRouteName = $routePrefix . '.projects.show';
+        $backRoute = Route::has($tasksIndexRouteName)
+            ? route($tasksIndexRouteName, $project)
+            : route($projectShowRouteName, $project);
+
         return view('projects.task-detail-clickup', [
             'layout' => $this->layoutForPrefix($routePrefix),
             'routePrefix' => $routePrefix,
@@ -121,7 +128,7 @@ class ProjectTaskViewController extends Controller
             'activityItemsUrl' => route($routePrefix . '.projects.tasks.activity.items', [$project, $task]),
             'activityItemsPostUrl' => route($routePrefix . '.projects.tasks.activity.items.store', [$project, $task]),
             'uploadRoute' => route($routePrefix . '.projects.tasks.upload', [$project, $task]),
-            'backRoute' => route($routePrefix . '.projects.show', $project),
+            'backRoute' => $backRoute,
             'attachmentRouteName' => $attachmentRouteName,
             'uploadMaxMb' => TaskSettings::uploadMaxMb(),
         ]);

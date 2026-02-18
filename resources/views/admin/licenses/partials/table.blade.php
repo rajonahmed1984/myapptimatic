@@ -83,7 +83,23 @@
                             <x-status-badge :status="$license->status" />
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.licenses.edit', $license) }}" class="text-teal-600 hover:text-teal-500">Manage</a>
+                            <div class="inline-flex items-center gap-3">
+                                @can('update', $license)
+                                    <form method="POST" action="{{ route('admin.licenses.sync', $license) }}" class="inline">
+                                        @csrf
+                                        <button
+                                            type="submit"
+                                            data-license-sync
+                                            data-license-id="{{ $license->id }}"
+                                            data-sync-status-url="{{ route('admin.licenses.sync-status', $license) }}"
+                                            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                        >
+                                            Sync
+                                        </button>
+                                    </form>
+                                @endcan
+                                <a href="{{ route('admin.licenses.edit', $license) }}" class="text-teal-600 hover:text-teal-500">Manage</a>
+                            </div>
                         </td>
                     </tr>
                 @empty

@@ -150,7 +150,11 @@
                                 @if($task->project)
                                     <a href="{{ route($taskShowRoute, [$task->project, $task]) }}" class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300">Open Task</a>
                                 @endif
-                                @if($task->can_start && $task->project)
+                                @php
+                                    $isInProgress = $currentStatus === 'in_progress';
+                                    $isCompleted = in_array($currentStatus, ['completed', 'done'], true);
+                                @endphp
+                                @if($task->can_start && $task->project && $statusFilter !== 'in_progress' && ! $isInProgress && ! $isCompleted)
                                     <form method="POST" action="{{ $usesStartRoute ? route($taskStartRoute, [$task->project, $task]) : route($taskUpdateRoute, [$task->project, $task]) }}" hx-boost="false">
                                         @csrf
                                         @method('PATCH')
@@ -162,7 +166,7 @@
                                         </button>
                                     </form>
                                 @endif
-                                @if($task->can_complete && $task->project)
+                                @if($task->can_complete && $task->project && $statusFilter !== 'completed' && ! $isCompleted)
                                     <form method="POST" action="{{ route($taskUpdateRoute, [$task->project, $task]) }}" hx-boost="false">
                                         @csrf
                                         @method('PATCH')

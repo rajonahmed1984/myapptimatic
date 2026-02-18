@@ -10,6 +10,8 @@
         });
 
         foreach ($mentionMatches as $mention) {
+            $type = (string) ($mention['type'] ?? '');
+            $mentionId = (int) ($mention['id'] ?? 0);
             $label = trim((string) ($mention['label'] ?? ''));
             if ($label === '') {
                 continue;
@@ -18,7 +20,13 @@
             $display = trim((string) ($mention['display'] ?? $label));
             $escapedDisplay = e($display);
             $pattern = '/(^|\\s)@' . preg_quote($label, '/') . '(?=\\s|$|[[:punct:]])/iu';
-            $replacement = '$1<span class="rounded bg-amber-100 px-1 text-amber-700 font-semibold chat-mention">@' . $escapedDisplay . '</span>';
+            $mentionClass = 'rounded bg-amber-100 px-1 text-amber-700 font-semibold chat-mention';
+            if ($type === 'project_task' && $mentionId > 0 && ! empty($taskShowRouteName ?? null)) {
+                $taskUrl = route($taskShowRouteName, [$project, $mentionId], false);
+                $replacement = '$1<a href="' . e($taskUrl) . '" hx-boost="false" class="' . $mentionClass . ' hover:underline">@' . $escapedDisplay . '</a>';
+            } else {
+                $replacement = '$1<span class="' . $mentionClass . '">@' . $escapedDisplay . '</span>';
+            }
             $formattedMessage = preg_replace($pattern, $replacement, $formattedMessage);
         }
     }

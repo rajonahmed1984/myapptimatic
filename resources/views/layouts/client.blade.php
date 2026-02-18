@@ -179,7 +179,7 @@
                         </button>
                         <div>
                             <div class="section-label">Client workspace</div>
-                            <div class="text-lg font-semibold text-slate-900">@yield('page-title', 'Overview')</div>
+                            <div class="text-lg font-semibold text-slate-900" data-current-page-title>@yield('page-title', 'Overview')</div>
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-3 md:gap-4">
@@ -218,6 +218,7 @@
                 <div
                     id="appContent"
                     data-page-title="@yield('title', config('app.name', 'MyApptimatic'))"
+                    data-page-heading="@yield('page-title', 'Overview')"
                     data-page-key="{{ request()->route()?->getName() ?? '' }}"
                 >
                     @if(!empty($clientInvoiceNotice) && $clientInvoiceNotice['has_due'] && !auth()->user()->isClientProject())
@@ -332,4 +333,3 @@
     </div>
 </body>
 </html>
-

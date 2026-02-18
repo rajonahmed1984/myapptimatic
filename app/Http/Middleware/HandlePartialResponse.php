@@ -38,6 +38,10 @@ class HandlePartialResponse
             $response->headers->set('X-Page-Title', $payload['title']);
         }
 
+        if ($payload['heading'] !== '') {
+            $response->headers->set('X-Page-Heading', $payload['heading']);
+        }
+
         if ($payload['page_key'] !== '') {
             $response->headers->set('X-Page-Key', $payload['page_key']);
         }
@@ -89,7 +93,7 @@ class HandlePartialResponse
     }
 
     /**
-     * @return array{html: string, title: string, page_key: string}|null
+     * @return array{html: string, title: string, heading: string, page_key: string}|null
      */
     private function extractPartialPayload(string $html, ?string $routeName): ?array
     {
@@ -138,6 +142,8 @@ class HandlePartialResponse
             $title = $titleNode ? trim($titleNode->textContent) : '';
         }
 
+        $heading = trim((string) $contentNode->getAttribute('data-page-heading'));
+
         $pageKey = trim((string) $contentNode->getAttribute('data-page-key'));
         if ($pageKey === '' && $routeName !== null) {
             $pageKey = $routeName;
@@ -146,6 +152,7 @@ class HandlePartialResponse
         return [
             'html' => $contentHtml,
             'title' => $title,
+            'heading' => $heading,
             'page_key' => $pageKey,
         ];
     }

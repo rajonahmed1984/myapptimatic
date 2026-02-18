@@ -29,6 +29,7 @@ class SyncLicenseJob implements ShouldQueue
 
         $license->update([
             'last_check_at' => now(),
+            'last_verified_at' => now(),
             'last_check_ip' => $this->ipAddress,
         ]);
     }

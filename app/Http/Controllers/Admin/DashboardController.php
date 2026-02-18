@@ -41,6 +41,7 @@ class DashboardController extends Controller
         return view('admin.dashboard', array_merge(
             $metrics['counts'],
             [
+                'businessPulse' => $metrics['businessPulse'],
                 'automation' => $metrics['automation'],
                 'automationRuns' => $metrics['automationRuns'],
                 'automationMetrics' => $metrics['automationMetrics'],

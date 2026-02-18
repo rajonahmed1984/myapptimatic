@@ -32,7 +32,7 @@ class DashboardMetricsService
 
     public function getMetrics(): array
     {
-        return Cache::remember('dashboard.metrics.v1', self::CACHE_TTL_SECONDS, function () {
+        return Cache::remember('dashboard.metrics.v2', self::CACHE_TTL_SECONDS, function () {
             $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
             if (! Currency::isAllowed($currency)) {
                 $currency = Currency::DEFAULT;
@@ -40,6 +40,7 @@ class DashboardMetricsService
 
             return [
                 'counts' => $this->counts(),
+                'businessPulse' => $this->businessPulse(),
                 'automation' => $this->automationMetrics(),
                 'automationRuns' => $this->automationRuns(),
                 'automationMetrics' => $this->automationMetricCards(),
@@ -67,6 +68,90 @@ class DashboardMetricsService
             'pendingOrderCount' => Order::where('status', 'pending')->count(),
             'openTicketCount' => SupportTicket::where('status', 'open')->count(),
             'customerReplyTicketCount' => SupportTicket::where('status', 'customer_reply')->count(),
+        ];
+    }
+
+    private function businessPulse(): array
+    {
+        $todayStart = now()->startOfDay();
+        $todayEnd = now()->endOfDay();
+        $monthStart = now()->subDays(29)->startOfDay();
+        $monthEnd = now()->endOfDay();
+        $previousStart = now()->subDays(59)->startOfDay();
+        $previousEnd = now()->subDays(30)->endOfDay();
+
+        $monthIncome = $this->incomeTotalBetween($monthStart, $monthEnd);
+        $prevMonthIncome = $this->incomeTotalBetween($previousStart, $previousEnd);
+        $todayIncome = $this->incomeTotalBetween($todayStart, $todayEnd);
+
+        $monthExpense = (float) AccountingEntry::where('type', 'expense')
+            ->whereBetween('entry_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->sum('amount');
+
+        $overdueCount = Invoice::where('status', 'overdue')->count();
+        $unpaidCount = Invoice::where('status', 'unpaid')->count();
+        $pendingOrders = Order::where('status', 'pending')->count();
+        $openTickets = SupportTicket::where('status', 'open')->count();
+        $customerReplyTickets = SupportTicket::where('status', 'customer_reply')->count();
+        $openSupportLoad = $openTickets + $customerReplyTickets;
+
+        $incomeGrowthPercent = null;
+        if ($prevMonthIncome > 0) {
+            $incomeGrowthPercent = (($monthIncome - $prevMonthIncome) / $prevMonthIncome) * 100;
+        } elseif ($monthIncome > 0) {
+            $incomeGrowthPercent = 100.0;
+        }
+
+        $net30d = $monthIncome - $monthExpense;
+        $receivableBase = max(1, $unpaidCount + $overdueCount);
+        $overdueShare = ($overdueCount / $receivableBase) * 100;
+
+        $healthScore = 100;
+        $healthScore -= min(35, $overdueCount * 3);
+        $healthScore -= min(20, $pendingOrders * 2);
+        $healthScore -= min(20, $openSupportLoad);
+        if ($net30d < 0) {
+            $healthScore -= 15;
+        }
+        if (($incomeGrowthPercent ?? 0) < 0) {
+            $healthScore -= 10;
+        }
+        $healthScore = max(0, min(100, $healthScore));
+
+        $health = [
+            'label' => 'Healthy',
+            'classes' => 'bg-emerald-100 text-emerald-700',
+        ];
+        if ($healthScore < 75) {
+            $health = [
+                'label' => 'Watch',
+                'classes' => 'bg-amber-100 text-amber-700',
+            ];
+        }
+        if ($healthScore < 50) {
+            $health = [
+                'label' => 'Critical',
+                'classes' => 'bg-rose-100 text-rose-700',
+            ];
+        }
+
+        return [
+            'today_income' => $todayIncome,
+            'income_30d' => $monthIncome,
+            'previous_income_30d' => $prevMonthIncome,
+            'expense_30d' => $monthExpense,
+            'net_30d' => $net30d,
+            'income_growth_percent' => $incomeGrowthPercent,
+            'pending_orders' => $pendingOrders,
+            'unpaid_invoices' => $unpaidCount,
+            'overdue_invoices' => $overdueCount,
+            'overdue_share_percent' => $overdueShare,
+            'open_tickets' => $openTickets,
+            'customer_reply_tickets' => $customerReplyTickets,
+            'support_load' => $openSupportLoad,
+            'health_score' => $healthScore,
+            'health_label' => $health['label'],
+            'health_classes' => $health['classes'],
         ];
     }
 
