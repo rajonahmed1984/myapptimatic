@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ChatPresence
@@ -140,7 +141,122 @@ class ChatPresence
 
         $fallback = [];
 
+        $statusForLastSeen = static function ($lastSeen) use ($activeThreshold, $idleThreshold): string {
+            if (! $lastSeen) {
+                return 'offline';
+            }
+
+            $timestamp = $lastSeen instanceof Carbon ? $lastSeen : Carbon::parse($lastSeen);
+            if ($timestamp->greaterThanOrEqualTo($activeThreshold)) {
+                return 'active';
+            }
+            if ($timestamp->greaterThanOrEqualTo($idleThreshold)) {
+                return 'idle';
+            }
+
+            return 'offline';
+        };
+
+        // Direct user participants are mapped 1:1 with user_sessions.
+        $userIds = collect($groupedIds['user'] ?? [])->filter()->unique()->values();
+        if ($userIds->isNotEmpty()) {
+            $userSessions = DB::table('user_sessions')
+                ->select('user_id', DB::raw('MAX(CASE WHEN logout_at IS NULL THEN last_seen_at ELSE NULL END) as last_seen_active'))
+                ->where('user_type', User::class)
+                ->whereIn('user_id', $userIds)
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
+            foreach ($userIds as $id) {
+                $fallback['user:' . $id] = $statusForLastSeen($userSessions[$id]->last_seen_active ?? null);
+            }
+        }
+
+        // Employee participants may be tracked in employee_sessions and/or user_sessions via linked user_id.
+        $employeeIds = collect($groupedIds['employee'] ?? [])->filter()->unique()->values();
+        if ($employeeIds->isNotEmpty()) {
+            $employeeToUser = DB::table('employees')
+                ->whereIn('id', $employeeIds)
+                ->pluck('user_id', 'id');
+
+            $linkedUserIds = $employeeToUser->filter()->unique()->values();
+            $linkedUserSessions = $linkedUserIds->isNotEmpty()
+                ? DB::table('user_sessions')
+                    ->select('user_id', DB::raw('MAX(CASE WHEN logout_at IS NULL THEN last_seen_at ELSE NULL END) as last_seen_active'))
+                    ->where('user_type', User::class)
+                    ->whereIn('user_id', $linkedUserIds)
+                    ->groupBy('user_id')
+                    ->get()
+                    ->keyBy('user_id')
+                : collect();
+
+            $employeeSessions = DB::table('employee_sessions')
+                ->select('employee_id', DB::raw('MAX(CASE WHEN logout_at IS NULL THEN last_seen_at ELSE NULL END) as last_seen_active'))
+                ->whereIn('employee_id', $employeeIds)
+                ->groupBy('employee_id')
+                ->get()
+                ->keyBy('employee_id');
+
+            foreach ($employeeIds as $id) {
+                $employeeSeen = $employeeSessions[$id]->last_seen_active ?? null;
+                $linkedUserId = $employeeToUser[$id] ?? null;
+                $userSeen = $linkedUserId ? ($linkedUserSessions[$linkedUserId]->last_seen_active ?? null) : null;
+
+                $lastSeen = null;
+                if ($employeeSeen && $userSeen) {
+                    $lastSeen = Carbon::parse($employeeSeen)->greaterThan(Carbon::parse($userSeen)) ? $employeeSeen : $userSeen;
+                } else {
+                    $lastSeen = $employeeSeen ?: $userSeen;
+                }
+
+                $fallback['employee:' . $id] = $statusForLastSeen($lastSeen);
+            }
+        }
+
+        // Sales reps authenticate as linked users; read from user_sessions via user_id.
+        $salesRepIds = collect(array_merge($groupedIds['sales_rep'] ?? [], $groupedIds['salesrep'] ?? []))
+            ->filter()
+            ->unique()
+            ->values();
+        if ($salesRepIds->isNotEmpty()) {
+            $salesRepToUser = DB::table('sales_representatives')
+                ->whereIn('id', $salesRepIds)
+                ->pluck('user_id', 'id');
+
+            $linkedUserIds = $salesRepToUser->filter()->unique()->values();
+            $linkedUserSessions = $linkedUserIds->isNotEmpty()
+                ? DB::table('user_sessions')
+                    ->select('user_id', DB::raw('MAX(CASE WHEN logout_at IS NULL THEN last_seen_at ELSE NULL END) as last_seen_active'))
+                    ->where('user_type', User::class)
+                    ->whereIn('user_id', $linkedUserIds)
+                    ->groupBy('user_id')
+                    ->get()
+                    ->keyBy('user_id')
+                : collect();
+
+            foreach ($salesRepIds as $id) {
+                $linkedUserId = $salesRepToUser[$id] ?? null;
+                $status = $statusForLastSeen($linkedUserId ? ($linkedUserSessions[$linkedUserId]->last_seen_active ?? null) : null);
+
+                if (array_key_exists('sales_rep', $groupedIds)) {
+                    $fallback['sales_rep:' . $id] = $status;
+                }
+                if (array_key_exists('salesrep', $groupedIds)) {
+                    $fallback['salesrep:' . $id] = $status;
+                }
+            }
+        }
+
+        // Keep old behavior for any unknown future types.
         foreach ($groupedIds as $type => $ids) {
+            if (in_array($type, ['user', 'employee', 'sales_rep', 'salesrep'], true)) {
+                continue;
+            }
+            if (! isset($typeMap[$type])) {
+                continue;
+            }
+
             $uniqueIds = collect($ids)->filter()->unique()->values();
             if ($uniqueIds->isEmpty()) {
                 continue;
@@ -155,18 +271,7 @@ class ChatPresence
                 ->keyBy('user_id');
 
             foreach ($uniqueIds as $id) {
-                $lastSeenActive = $sessions[$id]->last_seen_active ?? null;
-                $status = 'offline';
-                if ($lastSeenActive) {
-                    $lastSeenActive = \Illuminate\Support\Carbon::parse($lastSeenActive);
-                    if ($lastSeenActive->greaterThanOrEqualTo($activeThreshold)) {
-                        $status = 'active';
-                    } elseif ($lastSeenActive->greaterThanOrEqualTo($idleThreshold)) {
-                        $status = 'idle';
-                    }
-                }
-
-                $fallback[$type . ':' . $id] = $status;
+                $fallback[$type . ':' . $id] = $statusForLastSeen($sessions[$id]->last_seen_active ?? null);
             }
         }
 

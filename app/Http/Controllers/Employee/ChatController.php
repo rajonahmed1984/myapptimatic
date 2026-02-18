@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ChatController extends Controller
@@ -23,25 +22,23 @@ class ChatController extends Controller
 
         $projects = $employee->projects()
             ->select(['projects.id', 'projects.name', 'projects.status'])
+            ->selectSub(function ($query) use ($employee) {
+                $query->from('project_messages as pm')
+                    ->selectRaw('COUNT(*)')
+                    ->whereColumn('pm.project_id', 'projects.id')
+                    ->whereRaw(
+                        'pm.id > COALESCE((SELECT MAX(pmr.last_read_message_id) FROM project_message_reads as pmr WHERE pmr.project_id = projects.id AND pmr.reader_type = ? AND pmr.reader_id = ?), 0)',
+                        ['employee', $employee->id]
+                    );
+            }, 'unread_count')
+            ->orderByDesc('unread_count')
+            ->orderByRaw("CASE WHEN projects.status = 'ongoing' THEN 0 ELSE 1 END")
             ->orderByDesc('projects.created_at')
             ->paginate(25)
             ->withQueryString();
 
-        $projectIds = $projects->getCollection()->pluck('id');
-        $unreadCounts = collect();
-        if ($projectIds->isNotEmpty()) {
-            $unreadCounts = DB::table('project_messages as pm')
-                ->select('pm.project_id', DB::raw('COUNT(*) as unread'))
-                ->leftJoin('project_message_reads as pmr', function ($join) use ($employee) {
-                    $join->on('pmr.project_id', '=', 'pm.project_id')
-                        ->where('pmr.reader_type', 'employee')
-                        ->where('pmr.reader_id', $employee->id);
-                })
-                ->whereIn('pm.project_id', $projectIds->all())
-                ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
-                ->groupBy('pm.project_id')
-                ->pluck('unread', 'project_id');
-        }
+        $unreadCounts = $projects->getCollection()
+            ->mapWithKeys(fn ($project) => [$project->id => (int) ($project->unread_count ?? 0)]);
 
         return view('employee.chats.index', [
             'projects' => $projects,

@@ -126,9 +126,10 @@ class AppServiceProvider extends ServiceProvider
                             $employeeHeaderStats['task_badge'] = (int) (($taskSummary['open'] ?? 0) + ($taskSummary['in_progress'] ?? 0));
                         }
 
-                        $projectIds = DB::table('employee_project')
-                            ->where('employee_id', $employee->id)
-                            ->pluck('project_id');
+                        // Keep sidebar unread count aligned with employee chat listing
+                        // by using the same relation-scoped project set.
+                        $projectIds = $employee->projects()
+                            ->pluck('projects.id');
 
                         if ($projectIds->isNotEmpty()) {
                             $employeeHeaderStats['unread_chat'] = (int) DB::table('project_messages as pm')

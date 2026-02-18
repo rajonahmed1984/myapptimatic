@@ -873,13 +873,39 @@ class ProjectChatController extends Controller
             return;
         }
 
-        UserSession::query()
-            ->where('user_type', get_class($user))
-            ->where('user_id', $user->id)
-            ->whereNull('logout_at')
-            ->orderByDesc('login_at')
-            ->limit(1)
-            ->update(['last_seen_at' => now()]);
+        $now = now();
+        $sessionTargets = [
+            [
+                'type' => get_class($user),
+                'id' => (int) $user->id,
+            ],
+        ];
+
+        // Employee/Sales sessions are authenticated through linked users.
+        if ($user instanceof Employee || $user instanceof SalesRepresentative) {
+            $linkedUserId = (int) ($user->user_id ?? 0);
+            if ($linkedUserId > 0) {
+                $sessionTargets[] = [
+                    'type' => User::class,
+                    'id' => $linkedUserId,
+                ];
+            }
+        }
+
+        foreach ($sessionTargets as $target) {
+            UserSession::query()
+                ->where('user_type', $target['type'])
+                ->where('user_id', $target['id'])
+                ->whereNull('logout_at')
+                ->orderByDesc('login_at')
+                ->limit(1)
+                ->update(['last_seen_at' => $now]);
+        }
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (($identity['id'] ?? 0) > 0) {
+            ChatPresence::reportPresence((string) $identity['type'], (int) $identity['id'], 'active');
+        }
     }
 
     private function resolveRoutePrefix(Request $request): string

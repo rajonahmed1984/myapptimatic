@@ -825,9 +825,11 @@
             if (!presenceUrl) {
                 return;
             }
-            const token = document.querySelector('[name="_token"]')?.value || '';
+            const token = getCsrfToken();
             const formData = new FormData();
-            formData.append('_token', token);
+            if (token) {
+                formData.append('_token', token);
+            }
             formData.append('status', status);
 
             try {
@@ -835,6 +837,7 @@
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: formData,
