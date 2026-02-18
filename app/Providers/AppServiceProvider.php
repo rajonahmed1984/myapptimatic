@@ -12,9 +12,7 @@ use App\Models\LeaveRequest;
 use App\Models\SalesRepresentative;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\ProjectTaskSubtask;
 use App\Observers\ProjectTaskObserver;
-use App\Observers\ProjectTaskSubtaskObserver;
 use App\Services\AuthFresh\LoginService;
 use App\Support\Branding;
 use App\Support\SystemLogger;
@@ -61,7 +59,6 @@ class AppServiceProvider extends ServiceProvider
         $this->registerEmailLogListener();
         $this->registerAutomationEventListeners();
         ProjectTask::observe(ProjectTaskObserver::class);
-        ProjectTaskSubtask::observe(ProjectTaskSubtaskObserver::class);
 
         try {
             $portalUrl = UrlResolver::portalUrl();

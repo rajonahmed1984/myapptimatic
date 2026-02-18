@@ -1,39 +1,4 @@
 <style>
-    #ajaxToastHost {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        z-index: 80;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        pointer-events: none;
-    }
-
-    .ajax-toast {
-        pointer-events: auto;
-        border-radius: 0.75rem;
-        border: 1px solid rgb(203 213 225 / 0.9);
-        background: #fff;
-        color: #0f172a;
-        box-shadow: 0 14px 30px rgb(15 23 42 / 0.12);
-        padding: 0.625rem 0.875rem;
-        font-size: 0.75rem;
-        line-height: 1rem;
-    }
-
-    .ajax-toast.ajax-toast-success {
-        border-color: rgb(94 234 212 / 0.9);
-        background: rgb(240 253 250);
-        color: rgb(15 118 110);
-    }
-
-    .ajax-toast.ajax-toast-error {
-        border-color: rgb(252 165 165 / 0.9);
-        background: rgb(254 242 242);
-        color: rgb(185 28 28);
-    }
-
     #ajaxModal.hidden {
         display: none;
     }
@@ -48,8 +13,6 @@
         color: rgb(185 28 28);
     }
 </style>
-
-<div id="ajaxToastHost" aria-live="polite" aria-atomic="true"></div>
 
 <div id="ajaxModal" class="fixed inset-0 z-[70] hidden" aria-hidden="true">
     <div class="absolute inset-0 bg-slate-900/60" data-ajax-modal-backdrop></div>

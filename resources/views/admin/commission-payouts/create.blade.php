@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">Create payout</h1>
             <div class="text-sm text-slate-500">Select a sales rep and payable earnings to include.</div>
         </div>
-        <a href="{{ route('admin.commission-payouts.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700" hx-boost="false">Back to payouts</a>
+        <a href="{{ route('admin.commission-payouts.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">Back to payouts</a>
     </div>
 
     <div class="card p-6 space-y-6">

@@ -10,7 +10,7 @@
             <div class="text-lg font-semibold text-slate-900">{{ $project->name }}</div>
             <div class="text-xs text-slate-600">ID: {{ $project->id }} · Status: {{ ucfirst(str_replace('_', ' ', $project->status)) }}</div>
         </div>
-        <a href="{{ route('admin.projects.show', $project) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500" hx-boost="false">Back</a>
+        <a href="{{ route('admin.projects.show', $project) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Back</a>
     </div>
 
     <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700 space-y-4">

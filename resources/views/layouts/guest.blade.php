@@ -27,7 +27,7 @@
                 <div class="mx-auto w-full max-w-md {{ $wideForm ? 'md:max-w-[50rem]' : '' }}">
                     <div class="card p-8">
                     @if ($errors->any())
-                        <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                        <div data-flash-message data-flash-type="error" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                             @if (request()->routeIs('login', 'admin.login', 'employee.login', 'sales.login', 'support.login', 'project-client.login'))
                                 {{ $errors->first() }}
                             @else
@@ -41,7 +41,7 @@
                     @endif
 
                     @if (session('status'))
-                        <div class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
+                        <div data-flash-message data-flash-type="success" class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
                             {{ session('status') }}
                         </div>
                     @endif

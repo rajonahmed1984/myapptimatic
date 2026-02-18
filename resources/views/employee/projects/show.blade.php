@@ -42,12 +42,7 @@
 
     <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <div class="card p-6">
-        <div class="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
-            <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Customer</div>
-                <div class="mt-2 font-semibold text-slate-900">{{ $project->customer?->name ?? '--' }}</div>
-                <div class="text-xs text-slate-500">Project ID: {{ $project->id }}</div>
-            </div>
+        <div class="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
             <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Dates</div>
                 <div class="mt-2 text-sm text-slate-700">
@@ -213,28 +208,32 @@
                                     @endif
                                 </td>
                                 <td class="px-3 py-2 text-right align-top">
-                                    <a href="{{ route('employee.projects.tasks.show', [$project, $task]) }}" class="text-xs font-semibold text-teal-600 hover:text-teal-500">Open Task</a>
-                                    @can('update', $task)
-                                        @if($canStartTask)
-                                            <form method="POST" action="{{ route('employee.projects.tasks.start', [$project, $task]) }}" class="mt-2 inline-block">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300">
-                                                    Inprogress
-                                                </button>
-                                            </form>
-                                        @endif
-                                        @if($canCompleteTask)
-                                            <form method="POST" action="{{ route('employee.projects.tasks.update', [$project, $task]) }}" class="mt-2 inline-block">
-                                                @csrf
-                                                @method('PATCH')
-                                                <input type="hidden" name="status" value="completed">
-                                                <button type="submit" class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300">
-                                                    Complete
-                                                </button>
-                                            </form>
-                                        @endif
-                                    @endcan
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                        <a href="{{ route('employee.projects.tasks.show', [$project, $task]) }}" class="inline-flex items-center rounded-full border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700 hover:border-teal-300 hover:text-teal-600">
+                                            OpenTask
+                                        </a>
+                                        @can('update', $task)
+                                            @if($canStartTask)
+                                                <form method="POST" action="{{ route('employee.projects.tasks.start', [$project, $task]) }}" class="inline-block">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300">
+                                                        Inprogress
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            @if($canCompleteTask)
+                                                <form method="POST" action="{{ route('employee.projects.tasks.update', [$project, $task]) }}" class="inline-block">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="status" value="completed">
+                                                    <button type="submit" class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300">
+                                                        Complete
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        @endcan
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -446,7 +445,7 @@
                         });
 
                         if (!response.ok) {
-                            alert('Message send failed.');
+                            window.notify('Message send failed.', 'error');
                             return;
                         }
 

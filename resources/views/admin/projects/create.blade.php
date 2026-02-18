@@ -10,11 +10,11 @@
             <div class="text-2xl font-semibold text-slate-900">Create project</div>
             <div class="text-sm text-slate-500">Link to orders/invoices, assign teams, and create initial tasks.</div>
         </div>
-        <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
+        <a href="{{ route('admin.projects.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
     </div>
 
     <div class="card p-6">
-        <form method="POST" action="{{ route('admin.projects.store') }}" hx-boost="false" class="mt-2 grid gap-4 rounded-2xl border border-slate-300 bg-white/80 p-5" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('admin.projects.store') }}" data-native="true" class="mt-2 grid gap-4 rounded-2xl border border-slate-300 bg-white/80 p-5" enctype="multipart/form-data">
             @csrf
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
@@ -523,7 +523,7 @@
                     if (taskRows.children.length > 1) {
                         e.target.closest('.task-row').remove();
                     } else {
-                        alert('At least one task is required.');
+                        window.notify('At least one task is required.', 'warning');
                     }
                 }
             });

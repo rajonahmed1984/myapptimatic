@@ -9,7 +9,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">Manual Payment</h1>
             <p class="mt-1 text-sm text-slate-500">Submit transfer details so we can verify your payment.</p>
         </div>
-        <a href="{{ route('client.invoices.pay', $invoice) }}" class="text-sm text-slate-500 hover:text-teal-600" hx-boost="false">Back to invoice</a>
+        <a href="{{ route('client.invoices.pay', $invoice) }}" class="text-sm text-slate-500 hover:text-teal-600">Back to invoice</a>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2">
@@ -44,7 +44,7 @@
 
         <div class="card p-6">
             <div class="section-label">Payment Submission</div>
-            <form method="POST" action="{{ route('client.invoices.manual.store', [$invoice, $attempt]) }}" enctype="multipart/form-data" class="mt-4 space-y-4">
+            <form method="POST" action="{{ route('client.invoices.manual.store', [$invoice, $attempt]) }}" enctype="multipart/form-data" class="mt-4 space-y-4" data-native="true">
                 @csrf
                 <div>
                     <label class="text-sm text-slate-600">Reference / Transaction ID</label>

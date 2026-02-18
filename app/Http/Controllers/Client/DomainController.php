@@ -17,7 +17,7 @@ class DomainController extends Controller
                 ->whereHas('license.subscription', function ($query) use ($customer) {
                     $query->where('customer_id', $customer->id);
                 })
-                ->with(['license.product', 'license.subscription.plan', 'clientRequests'])
+                ->with(['license.product', 'license.subscription.plan'])
                 ->orderBy('domain')
                 ->get()
             : collect();
@@ -32,7 +32,7 @@ class DomainController extends Controller
     {
         $customer = $request->user()?->customer;
 
-        $domain->load(['license.product', 'license.subscription.plan', 'clientRequests']);
+        $domain->load(['license.product', 'license.subscription.plan']);
 
         if (! $customer || $domain->license?->subscription?->customer_id !== $customer->id) {
             abort(404);

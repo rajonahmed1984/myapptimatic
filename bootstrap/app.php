@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +13,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use App\Providers\AuthServiceProvider;
 use App\Providers\AppServiceProvider;
 use App\Http\Middleware\TrustProxies;
+use App\Support\AjaxResponse;
 use App\Support\AuthFresh\AdminAccess;
 use App\Support\AuthFresh\Portal;
 
@@ -102,6 +104,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             \App\Http\Middleware\HandlePartialResponse::class,
+            \App\Http\Middleware\NormalizeAjaxRedirectResponse::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
@@ -141,6 +144,22 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return response()->view('errors.404', [], 404);
+        });
+
+        $exceptions->render(function (ValidationException $exception, Request $request) {
+            if ($request->is('api/*')) {
+                return null;
+            }
+
+            if (! AjaxResponse::ajaxFromRequest($request)) {
+                return null;
+            }
+
+            return AjaxResponse::ajaxValidation(
+                $exception->errors(),
+                null,
+                'Validation failed.'
+            );
         });
 
         $exceptions->render(function (TokenMismatchException $exception, Request $request) use ($logCsrfMismatch) {

@@ -208,7 +208,6 @@
                     <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">Project</th>
-                            <th class="px-4 py-3">Customer</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Tasks</th>
                             <th class="px-4 py-3">Due</th>
@@ -220,14 +219,13 @@
                                 <td class="px-4 py-3">
                                     <a href="{{ route('employee.projects.show', $project) }}" class="font-semibold text-slate-900 hover:text-teal-600">{{ $project->name }}</a>
                                 </td>
-                                <td class="px-4 py-3 text-slate-600">{{ $project->customer?->name ?? '--' }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ ucfirst(str_replace('_', ' ', $project->status)) }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $project->tasks_count }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $project->due_date?->format($globalDateFormat) ?? '--' }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-6 text-center text-slate-500">No assigned projects yet.</td>
+                                <td colspan="4" class="px-4 py-6 text-center text-slate-500">No assigned projects yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -311,7 +309,7 @@
                         });
                         const payload = await response.json().catch(() => ({}));
                         if (!response.ok) {
-                            alert(payload.message || 'Request failed.');
+                            window.notify(payload.message || 'Request failed.', 'error');
                             return null;
                         }
                         return payload.data || null;

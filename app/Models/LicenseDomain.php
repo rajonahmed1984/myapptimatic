@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LicenseDomain extends Model
 {
@@ -26,8 +25,4 @@ class LicenseDomain extends Model
         return $this->belongsTo(License::class);
     }
 
-    public function clientRequests(): HasMany
-    {
-        return $this->hasMany(ClientRequest::class);
-    }
 }

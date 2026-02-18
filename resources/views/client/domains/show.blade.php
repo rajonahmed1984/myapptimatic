@@ -7,9 +7,9 @@
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-semibold text-slate-900">Domain Details</h1>
-            <p class="mt-1 text-sm text-slate-500">Review domain status and submit change requests.</p>
+            <p class="mt-1 text-sm text-slate-500">Review domain status and license details.</p>
         </div>
-        <a href="{{ route('client.domains.index') }}" class="text-sm text-slate-500 hover:text-teal-600" hx-boost="false">Back to domains</a>
+        <a href="{{ route('client.domains.index') }}" class="text-sm text-slate-500 hover:text-teal-600">Back to domains</a>
     </div>
 
     @php
@@ -58,27 +58,5 @@
         </div>
     </div>
 
-    <div class="card mt-6 p-6">
-        <div class="section-label">Request Change</div>
-        <h3 class="mt-2 text-lg font-semibold text-slate-900">Submit a request</h3>
-        <form method="POST" action="{{ route('client.requests.store') }}" class="mt-4 grid gap-4 md:grid-cols-[1fr_2fr_auto]">
-            @csrf
-            <input type="hidden" name="license_domain_id" value="{{ $domain->id }}">
-            <div>
-                <label class="text-xs font-semibold text-slate-500">Type</label>
-                <select name="type" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
-                    <option value="domain_edit">Request edit</option>
-                    <option value="domain_delete">Request delete</option>
-                </select>
-            </div>
-            <div>
-                <label class="text-xs font-semibold text-slate-500">Message (optional)</label>
-                <input type="text" name="message" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600" placeholder="Add any notes or new domain info">
-            </div>
-            <div class="flex items-end">
-                <button type="submit" class="w-full rounded-full bg-teal-500 px-6 py-2 text-xs font-semibold text-white">Submit request</button>
-            </div>
-        </form>
-    </div>
 @endsection
 

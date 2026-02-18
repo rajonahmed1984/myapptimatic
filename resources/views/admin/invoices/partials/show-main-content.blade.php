@@ -4,9 +4,9 @@
             <div class="section-label text-2xl">Invoice</div>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('admin.invoices.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to invoices</a>
-            <a href="{{ route('admin.invoices.client-view', $invoice) }}" target="_blank" rel="noopener" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">View as client</a>
-            <a href="{{ route('admin.invoices.download', $invoice) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Download</a>
+            <a href="{{ route('admin.invoices.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to invoices</a>
+            <a href="{{ route('admin.invoices.client-view', $invoice) }}" target="_blank" rel="noopener" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">View as client</a>
+            <a href="{{ route('admin.invoices.download', $invoice) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Download</a>
             <button type="button" id="manage-invoice-toggle" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Manage Invoice</button>
         </div>
     </div>
@@ -46,10 +46,10 @@
                     <div class="invoice-status">
                         <span class="{{ $status }}">{{ strtoupper($invoice->status) }}</span>
                         <h3>Invoice: #{{ $displayNumber }}</h3>
-                        <div>Invoice Date: <span class="small-text">{{ $invoice->issue_date->format($globalDateFormat) }}</span></div>
-                        <div>Invoice Due Date: <span class="small-text">{{ $invoice->due_date->format($globalDateFormat) }}</span></div>
+                        <div class="small-text">Invoice Date: {{ $invoice->issue_date->format($globalDateFormat) }}</div>
+                        <div class="small-text">Invoice Due Date: {{ $invoice->due_date->format($globalDateFormat) }}</div>
                         @if($invoice->paid_at)
-                            <div>Paid Date: <span class="small-text">{{ $invoice->paid_at->format($globalDateFormat) }}</span></div>
+                            <div class="small-text">Paid Date: {{ $invoice->paid_at->format($globalDateFormat) }}</div>
                         @endif
                     </div>
                 </div>
@@ -99,7 +99,7 @@
                                 </tr>
                                 @if($hasTax)
                                     <tr>
-                                        <td class="total-row text-right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included '.$taxLabel : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
+                                        <td class="total-row text-right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included Tax' : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
                                         <td class="total-row text-center">{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</td>
                                     </tr>
                                 @endif
@@ -253,4 +253,3 @@
             @endif
         </div>
     </div>
-

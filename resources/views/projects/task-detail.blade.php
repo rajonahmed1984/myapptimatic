@@ -26,7 +26,7 @@
             </div>
             <div class="mt-1 text-sm text-slate-500">Project: {{ $project->name }}</div>
         </div>
-        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
+        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
     </div>
 
     @if($task->task_type === 'upload' && $uploadActivities->isNotEmpty())
@@ -425,7 +425,7 @@
                     const time = document.getElementById('subtaskTime').value;
 
                     if (!title) {
-                        alert('Please enter a subtask title');
+                        window.notify('Please enter a subtask title', 'warning');
                         return;
                     }
 
@@ -442,10 +442,10 @@
                     })
                     .then(response => {
                         if (response.ok) {
-                            location.reload();
+                            refreshTaskView();
                         }
                     })
-                    .catch(() => alert('Error adding subtask'));
+                    .catch(() => window.notify('Error adding subtask', 'error'));
                 });
             }
 
@@ -464,9 +464,9 @@
                         body: formData
                     })
                     .then(() => {
-                        location.reload();
+                        refreshTaskView();
                     })
-                    .catch(() => alert('Error updating subtask'));
+                    .catch(() => window.notify('Error updating subtask', 'error'));
                 });
             });
 
@@ -488,6 +488,19 @@
             const activityUrl = container?.dataset?.activityUrl || @json($activityItemsUrl ?? '');
             const activityForm = document.getElementById('activityPostForm');
             const activityPostUrl = @json($activityItemsPostUrl ?? '');
+            const refreshTaskView = async () => {
+                if (window.AjaxNav && typeof window.AjaxNav.refresh === 'function') {
+                    await window.AjaxNav.refresh();
+                    return;
+                }
+
+                if (window.AjaxEngine && typeof window.AjaxEngine.navigate === 'function') {
+                    await window.AjaxEngine.navigate(window.location.href, { historyMode: 'replace' });
+                    return;
+                }
+
+                window.location.assign(window.location.href);
+            };
 
             if (!container || !activityUrl) {
                 return;
@@ -589,7 +602,7 @@
                     });
 
                     if (!response.ok) {
-                        alert('Comment send failed.');
+                        window.notify('Comment send failed.', 'error');
                         return;
                     }
 

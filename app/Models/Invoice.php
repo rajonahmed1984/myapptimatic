@@ -99,8 +99,4 @@ class Invoice extends Model
         return $this->hasMany(Order::class);
     }
 
-    public function clientRequests(): HasMany
-    {
-        return $this->hasMany(ClientRequest::class);
-    }
 }

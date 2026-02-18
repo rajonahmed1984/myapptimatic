@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Customer;
 use App\Models\SalesRepresentative;
 use App\Models\UserActivityDaily;
+use App\Models\UserSession;
 use App\Enums\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -98,7 +99,9 @@ class UserActivitySummaryController
         if ($userId) {
             $employees = $employees->where('id', $userId);
         }
-        foreach ($employees->get() as $employee) {
+        $employees = $employees->get();
+        $employeePrepared = $this->buildPreparedMetrics($employees, 'employee', $today, $weekStart, $monthStart, $fromDate, $toDate);
+        foreach ($employees as $employee) {
             $users[] = $this->getUserMetrics(
                 $employee,
                 'employee',
@@ -107,13 +110,15 @@ class UserActivitySummaryController
                 $weekStart,
                 $monthStart,
                 $fromDate,
-                $toDate
+                $toDate,
+                $employeePrepared
             );
         }
 
         // Get customers (if no specific user filter or if the userId matches a customer)
         if (!$userId) {
             $customers = User::where('role', Role::CLIENT)->with('customer:id,avatar_path')->get();
+            $customerPrepared = $this->buildPreparedMetrics($customers, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
             foreach ($customers as $user) {
                 $users[] = $this->getUserMetrics(
                     $user,
@@ -123,7 +128,8 @@ class UserActivitySummaryController
                     $weekStart,
                     $monthStart,
                     $fromDate,
-                    $toDate
+                    $toDate,
+                    $customerPrepared
                 );
             }
         }
@@ -131,6 +137,8 @@ class UserActivitySummaryController
         // Get sales representatives (if no specific user filter or if the userId matches a sales rep)
         if (!$userId) {
             $salesReps = SalesRepresentative::with('user')->get();
+            $salesRepUsers = $salesReps->pluck('user')->filter()->values();
+            $salesRepPrepared = $this->buildPreparedMetrics($salesRepUsers, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
             foreach ($salesReps as $rep) {
                 if ($rep->user) {
                     $users[] = $this->getUserMetrics(
@@ -141,7 +149,8 @@ class UserActivitySummaryController
                         $weekStart,
                         $monthStart,
                         $fromDate,
-                        $toDate
+                        $toDate,
+                        $salesRepPrepared
                     );
                 }
             }
@@ -150,6 +159,7 @@ class UserActivitySummaryController
         // Get admin/web users (if no specific user filter or if the userId matches an admin)
         if (!$userId) {
             $adminUsers = User::whereIn('role', Role::adminRoles())->get();
+            $adminPrepared = $this->buildPreparedMetrics($adminUsers, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
             foreach ($adminUsers as $user) {
                 $users[] = $this->getUserMetrics(
                     $user,
@@ -159,7 +169,8 @@ class UserActivitySummaryController
                     $weekStart,
                     $monthStart,
                     $fromDate,
-                    $toDate
+                    $toDate,
+                    $adminPrepared
                 );
             }
         }
@@ -201,6 +212,7 @@ class UserActivitySummaryController
             $employees = $employees->where('id', $userId);
         }
         $employees = $employees->get();
+        $prepared = $this->buildPreparedMetrics($employees, 'employee', $today, $weekStart, $monthStart, $fromDate, $toDate);
 
         $users = [];
         foreach ($employees as $employee) {
@@ -212,7 +224,8 @@ class UserActivitySummaryController
                 $weekStart,
                 $monthStart,
                 $fromDate,
-                $toDate
+                $toDate,
+                $prepared
             );
         }
 
@@ -241,6 +254,7 @@ class UserActivitySummaryController
             $users = $users->where('id', $userId);
         }
         $users = $users->get();
+        $prepared = $this->buildPreparedMetrics($users, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
 
         $summaryUsers = [];
         foreach ($users as $user) {
@@ -252,7 +266,8 @@ class UserActivitySummaryController
                 $weekStart,
                 $monthStart,
                 $fromDate,
-                $toDate
+                $toDate,
+                $prepared
             );
         }
 
@@ -280,6 +295,7 @@ class UserActivitySummaryController
             $reps = $reps->where('id', $userId);
         }
         $reps = $reps->get();
+        $prepared = $this->buildPreparedMetrics($reps, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
 
         $users = [];
         foreach ($reps as $rep) {
@@ -291,7 +307,8 @@ class UserActivitySummaryController
                 $weekStart,
                 $monthStart,
                 $fromDate,
-                $toDate
+                $toDate,
+                $prepared
             );
         }
 
@@ -325,6 +342,7 @@ class UserActivitySummaryController
             $users = $users->where('id', $userId);
         }
         $users = $users->get();
+        $prepared = $this->buildPreparedMetrics($users, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
 
         $summaryUsers = [];
         foreach ($users as $user) {
@@ -336,7 +354,8 @@ class UserActivitySummaryController
                 $weekStart,
                 $monthStart,
                 $fromDate,
-                $toDate
+                $toDate,
+                $prepared
             );
         }
 
@@ -363,74 +382,132 @@ class UserActivitySummaryController
     /**
      * Calculate metrics for a single user.
      */
-    private function getUserMetrics($user, $type, $guard, $today, $weekStart, $monthStart, $fromDate, $toDate): array
+    private function getUserMetrics($user, $type, $guard, $today, $weekStart, $monthStart, $fromDate, $toDate, array $prepared = []): array
     {
         $userType = get_class($user);
         $userId = $user->id;
 
-        // Today's metrics
-        $todayRecord = UserActivityDaily::where('user_type', $userType)
-            ->where('user_id', $userId)
-            ->where('guard', $guard)
-            ->where('date', $today)
-            ->first();
-
-        // Week metrics
-        $weekMetrics = UserActivityDaily::where('user_type', $userType)
-            ->where('user_id', $userId)
-            ->where('guard', $guard)
-            ->whereBetween('date', [$weekStart, $today])
-            ->selectRaw('SUM(sessions_count) as sessions_count, SUM(active_seconds) as active_seconds')
-            ->first();
-
-        // Month metrics
-        $monthMetrics = UserActivityDaily::where('user_type', $userType)
-            ->where('user_id', $userId)
-            ->where('guard', $guard)
-            ->whereBetween('date', [$monthStart, $today])
-            ->selectRaw('SUM(sessions_count) as sessions_count, SUM(active_seconds) as active_seconds')
-            ->first();
-
-        // Range metrics (if provided)
-        $rangeMetrics = null;
-        if ($fromDate && $toDate) {
-            $rangeMetrics = UserActivityDaily::where('user_type', $userType)
-                ->where('user_id', $userId)
-                ->where('guard', $guard)
-                ->whereBetween('date', [$fromDate->toDateString(), $toDate->toDateString()])
-                ->selectRaw('SUM(sessions_count) as sessions_count, SUM(active_seconds) as active_seconds')
-                ->first();
-        }
-
-        // Get latest session for online status and timestamps
-        $lastSession = $user->activitySessions()
-            ->where('guard', $guard)
-            ->latest('last_seen_at')
-            ->first();
+        $todayRecord = $prepared['today'][$userId] ?? ['sessions_count' => 0, 'active_seconds' => 0];
+        $weekMetrics = $prepared['week'][$userId] ?? ['sessions_count' => 0, 'active_seconds' => 0];
+        $monthMetrics = $prepared['month'][$userId] ?? ['sessions_count' => 0, 'active_seconds' => 0];
+        $rangeMetrics = $prepared['range'][$userId] ?? null;
+        $lastSession = $prepared['last_sessions'][$userId] ?? null;
+        $isOnline = array_key_exists($userId, $prepared['online_ids'] ?? [])
+            ? (bool) ($prepared['online_ids'][$userId] ?? false)
+            : $user->isOnline();
 
         return [
             'user' => $user,
             'type' => $type,
             'guard' => $guard,
-            'is_online' => $user->isOnline(),
+            'is_online' => $isOnline,
             'today' => [
-                'sessions_count' => $todayRecord?->sessions_count ?? 0,
-                'active_seconds' => $todayRecord?->active_seconds ?? 0,
+                'sessions_count' => $todayRecord['sessions_count'] ?? 0,
+                'active_seconds' => $todayRecord['active_seconds'] ?? 0,
             ],
             'week' => [
-                'sessions_count' => $weekMetrics?->sessions_count ?? 0,
-                'active_seconds' => $weekMetrics?->active_seconds ?? 0,
+                'sessions_count' => $weekMetrics['sessions_count'] ?? 0,
+                'active_seconds' => $weekMetrics['active_seconds'] ?? 0,
             ],
             'month' => [
-                'sessions_count' => $monthMetrics?->sessions_count ?? 0,
-                'active_seconds' => $monthMetrics?->active_seconds ?? 0,
+                'sessions_count' => $monthMetrics['sessions_count'] ?? 0,
+                'active_seconds' => $monthMetrics['active_seconds'] ?? 0,
             ],
             'range' => $rangeMetrics ? [
-                'sessions_count' => $rangeMetrics->sessions_count ?? 0,
-                'active_seconds' => $rangeMetrics->active_seconds ?? 0,
+                'sessions_count' => $rangeMetrics['sessions_count'] ?? 0,
+                'active_seconds' => $rangeMetrics['active_seconds'] ?? 0,
             ] : null,
-            'last_login_at' => $lastSession?->login_at,
-            'last_seen_at' => $lastSession?->last_seen_at,
+            'last_login_at' => $lastSession['login_at'] ?? null,
+            'last_seen_at' => $lastSession['last_seen_at'] ?? null,
+        ];
+    }
+
+    private function buildPreparedMetrics(iterable $users, string $guard, string $today, string $weekStart, string $monthStart, $fromDate, $toDate): array
+    {
+        $collection = collect($users)->filter();
+        if ($collection->isEmpty()) {
+            return [
+                'today' => [],
+                'week' => [],
+                'month' => [],
+                'range' => [],
+                'last_sessions' => [],
+                'online_ids' => [],
+            ];
+        }
+
+        $first = $collection->first();
+        $userType = get_class($first);
+        $userIds = $collection->pluck('id')->filter()->values()->all();
+
+        $sumByDateRange = function (string $start, string $end) use ($userType, $userIds, $guard) {
+            return UserActivityDaily::query()
+                ->where('user_type', $userType)
+                ->where('guard', $guard)
+                ->whereIn('user_id', $userIds)
+                ->whereBetween('date', [$start, $end])
+                ->selectRaw('user_id, SUM(sessions_count) as sessions_count, SUM(active_seconds) as active_seconds')
+                ->groupBy('user_id')
+                ->get()
+                ->mapWithKeys(fn ($row) => [(int) $row->user_id => [
+                    'sessions_count' => (int) ($row->sessions_count ?? 0),
+                    'active_seconds' => (int) ($row->active_seconds ?? 0),
+                ]])
+                ->all();
+        };
+
+        $today = UserActivityDaily::query()
+            ->where('user_type', $userType)
+            ->where('guard', $guard)
+            ->whereIn('user_id', $userIds)
+            ->where('date', $today)
+            ->select('user_id', 'sessions_count', 'active_seconds')
+            ->get()
+            ->mapWithKeys(fn ($row) => [(int) $row->user_id => [
+                'sessions_count' => (int) ($row->sessions_count ?? 0),
+                'active_seconds' => (int) ($row->active_seconds ?? 0),
+            ]])
+            ->all();
+
+        $week = $sumByDateRange($weekStart, $today);
+        $month = $sumByDateRange($monthStart, $today);
+
+        $range = [];
+        if ($fromDate && $toDate) {
+            $range = $sumByDateRange($fromDate->toDateString(), $toDate->toDateString());
+        }
+
+        $lastSessions = UserSession::query()
+            ->where('user_type', $userType)
+            ->where('guard', $guard)
+            ->whereIn('user_id', $userIds)
+            ->selectRaw('user_id, MAX(login_at) as login_at, MAX(last_seen_at) as last_seen_at')
+            ->groupBy('user_id')
+            ->get()
+            ->mapWithKeys(fn ($row) => [(int) $row->user_id => [
+                'login_at' => $row->login_at,
+                'last_seen_at' => $row->last_seen_at,
+            ]])
+            ->all();
+
+        $onlineIds = UserSession::query()
+            ->where('user_type', $userType)
+            ->where('guard', $guard)
+            ->whereIn('user_id', $userIds)
+            ->whereNull('logout_at')
+            ->where('last_seen_at', '>=', now()->subMinutes(2))
+            ->distinct()
+            ->pluck('user_id')
+            ->mapWithKeys(fn ($id) => [(int) $id => true])
+            ->all();
+
+        return [
+            'today' => $today,
+            'week' => $week,
+            'month' => $month,
+            'range' => $range,
+            'last_sessions' => $lastSessions,
+            'online_ids' => $onlineIds,
         ];
     }
 }

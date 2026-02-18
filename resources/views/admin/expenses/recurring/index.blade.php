@@ -15,7 +15,7 @@
                 <button type="submit" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Generate now</button>
             </form>
             <a href="{{ route('admin.expenses.recurring.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Add recurring</a>
-            <a href="{{ route('admin.expenses.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
+            <a href="{{ route('admin.expenses.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back</a>
         </div>
     </div>
 

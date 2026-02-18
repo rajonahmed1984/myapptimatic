@@ -10,7 +10,7 @@
             <h1 class="mt-2 text-2xl font-semibold text-slate-900">Open Ticket</h1>
             <p class="mt-2 text-sm text-slate-600">Create a support ticket on behalf of a customer.</p>
         </div>
-        <a href="{{ route('admin.support-tickets.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to tickets</a>
+        <a href="{{ route('admin.support-tickets.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to tickets</a>
     </div>
 
     <div class="card p-6">

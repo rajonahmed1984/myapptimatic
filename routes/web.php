@@ -9,7 +9,6 @@ use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\AiBusinessStatusController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\SystemCacheController;
-use App\Http\Controllers\Admin\ClientRequestController as AdminClientRequestController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerProjectUserController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -61,7 +60,6 @@ use App\Http\Controllers\Employee\LeaveRequestController as EmployeeLeaveRequest
 use App\Http\Controllers\Employee\PayrollController as EmployeePayrollController;
 use App\Http\Controllers\Employee\WorkSessionController as EmployeeWorkSessionController;
 use App\Http\Controllers\Client\AffiliateController as ClientAffiliateController;
-use App\Http\Controllers\Client\ClientRequestController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\ChatController as ClientChatController;
 use App\Http\Controllers\Client\TasksController as ClientTasksController;
@@ -775,8 +773,6 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::patch('support-tickets/{ticket}/status', [AdminSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
     Route::patch('support-tickets/{ticket}', [AdminSupportTicketController::class, 'update'])->name('support-tickets.update');
     Route::delete('support-tickets/{ticket}', [AdminSupportTicketController::class, 'destroy'])->name('support-tickets.destroy');
-    Route::get('requests', [AdminClientRequestController::class, 'index'])->name('requests.index');
-    Route::patch('requests/{clientRequest}', [AdminClientRequestController::class, 'update'])->name('requests.update');
     Route::get('invoices', [AdminInvoiceController::class, 'index'])->name('invoices.index');
     Route::get('invoices/create', [AdminInvoiceController::class, 'create'])->name('invoices.create');
     Route::post('invoices', [AdminInvoiceController::class, 'store'])->name('invoices.store');
@@ -872,7 +868,6 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::get('/domains', [ClientDomainController::class, 'index'])->middleware('project.financial')->name('domains.index');
         Route::get('/domains/{domain}', [ClientDomainController::class, 'show'])->middleware('project.financial')->name('domains.show');
         Route::get('/licenses', [ClientLicenseController::class, 'index'])->middleware('project.financial')->name('licenses.index');
-        Route::post('/requests', [ClientRequestController::class, 'store'])->name('requests.store');
         Route::get('/projects', [\App\Http\Controllers\Client\ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/{project}', [\App\Http\Controllers\Client\ProjectController::class, 'show'])->name('projects.show');
         Route::post('/projects/{project}/tasks', [\App\Http\Controllers\Client\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
@@ -1067,4 +1062,3 @@ Route::get('/{product:slug}/plans/{plan:slug}', [PublicProductController::class,
 
 Route::get('/{product:slug}', [PublicProductController::class, 'show'])
     ->name('products.public.show');
-

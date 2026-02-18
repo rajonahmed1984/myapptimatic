@@ -16,7 +16,7 @@
 
 @section('content')
     <div class="mb-6 flex items-center justify-between">
-        <a href="{{ $backRoute }}" class="text-teal-600 hover:text-teal-700 text-sm font-semibold" hx-boost="false">← Back</a>
+        <a href="{{ $backRoute }}" class="text-teal-600 hover:text-teal-700 text-sm font-semibold">← Back</a>
         <div class="text-xs text-slate-500">Project: {{ $project->name }}</div>
     </div>
 
@@ -518,6 +518,19 @@
     <script>
         const csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content')
             || @json(csrf_token());
+        const refreshTaskView = async () => {
+            if (window.AjaxNav && typeof window.AjaxNav.refresh === 'function') {
+                await window.AjaxNav.refresh();
+                return;
+            }
+
+            if (window.AjaxEngine && typeof window.AjaxEngine.navigate === 'function') {
+                await window.AjaxEngine.navigate(window.location.href, { historyMode: 'replace' });
+                return;
+            }
+
+            window.location.assign(window.location.href);
+        };
 
         const assigneesForm = document.getElementById('assigneesForm');
         const assigneesList = document.getElementById('assigneesList');
@@ -609,7 +622,7 @@
 
         const showSubtaskError = (message) => {
             if (!errorBox) {
-                alert(message);
+                window.notify(message, 'error');
                 return;
             }
             errorBox.textContent = message;
@@ -671,7 +684,7 @@
                 })
                 .then(async response => {
                     if (response.ok) {
-                        location.reload();
+                        await refreshTaskView();
                         return;
                     }
 
@@ -727,17 +740,17 @@
                 })
                 .then(response => {
                     if (response.ok) {
-                        location.reload();
+                        refreshTaskView();
                     } else {
                         return response.text().then(text => {
                             console.error('Response:', text);
-                            alert('Error updating subtask: ' + (response.status || 'Unknown error'));
+                            window.notify('Error updating subtask: ' + (response.status || 'Unknown error'), 'error');
                         });
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error updating subtask: ' + error.message);
+                    window.notify('Error updating subtask: ' + error.message, 'error');
                 });
             });
         });
@@ -791,7 +804,7 @@
 
                 const title = input.value.trim();
                 if (!title) {
-                    alert('Please enter a subtask title');
+                    window.notify('Please enter a subtask title', 'warning');
                     return;
                 }
 
@@ -817,13 +830,13 @@
                     } else {
                         return response.text().then(text => {
                             console.error('Response:', text);
-                            alert('Error updating subtask: ' + (response.status || 'Unknown error'));
+                            window.notify('Error updating subtask: ' + (response.status || 'Unknown error'), 'error');
                         });
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error updating subtask: ' + error.message);
+                    window.notify('Error updating subtask: ' + error.message, 'error');
                 });
             });
         });
@@ -852,17 +865,17 @@
                 })
                 .then(response => {
                     if (response.ok) {
-                        location.reload();
+                        refreshTaskView();
                     } else {
                         return response.text().then(text => {
                             console.error('Response:', text);
-                            alert('Error updating subtask: ' + (response.status || 'Unknown error'));
+                            window.notify('Error updating subtask: ' + (response.status || 'Unknown error'), 'error');
                         });
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error updating subtask: ' + error.message);
+                    window.notify('Error updating subtask: ' + error.message, 'error');
                 });
             });
         });

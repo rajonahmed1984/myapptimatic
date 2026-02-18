@@ -16,6 +16,7 @@ use App\Models\SalesRepresentative;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\TaskQueryService;
+use App\Support\AjaxResponse;
 use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskAssignmentManager;
@@ -942,7 +943,7 @@ class ProjectController extends Controller
         if (! $request->user()?->isMasterAdmin() && $task->creatorEditWindowExpired($request->user()?->id)) {
             $message = 'You can only edit this task within 24 hours of creation.';
             if ($request->expectsJson()) {
-                return response()->json(['ok' => false, 'message' => $message], 403);
+                return AjaxResponse::ajaxError($message, 403);
             }
             return back()->withErrors(['task' => $message]);
         }

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ProjectTask;
-use App\Models\ProjectTaskSubtask;
 use App\Notifications\TaskStatusCompletedNotification;
 use App\Notifications\TaskStatusOpenedNotification;
 use App\Support\TaskNotificationRecipients;
@@ -21,7 +20,7 @@ class TaskStatusNotificationService
             return;
         }
 
-        $this->sendTaskNotification($task, null, 'open');
+        $this->sendTaskNotification($task, 'open');
     }
 
     public function notifyTaskStatusTransition(ProjectTask $task, ?string $previousStatus): void
@@ -31,57 +30,17 @@ class TaskStatusNotificationService
         }
 
         if ($this->isOpenTaskStatus($task->status) && ! $this->isOpenTaskStatus($previousStatus)) {
-            $this->sendTaskNotification($task, null, 'open');
+            $this->sendTaskNotification($task, 'open');
         }
 
         if ($this->isCompletedTaskStatus($task->status) && ! $this->isCompletedTaskStatus($previousStatus)) {
-            $this->sendTaskNotification($task, null, 'completed');
+            $this->sendTaskNotification($task, 'completed');
         }
     }
 
-    public function notifySubtaskOpened(ProjectTaskSubtask $subtask): void
+    private function sendTaskNotification(ProjectTask $task, string $type): void
     {
-        if (! $this->isEnabled()) {
-            return;
-        }
-
-        if (! $this->isOpenSubtaskStatus($subtask->status)) {
-            return;
-        }
-
-        $task = $subtask->task;
-        if (! $task) {
-            return;
-        }
-
-        $this->sendTaskNotification($task, $subtask, 'open');
-    }
-
-    public function notifySubtaskStatusTransition(ProjectTaskSubtask $subtask, ?string $previousStatus): void
-    {
-        if (! $this->isEnabled()) {
-            return;
-        }
-
-        $task = $subtask->task;
-        if (! $task) {
-            return;
-        }
-
-        if ($this->isOpenSubtaskStatus($subtask->status) && ! $this->isOpenSubtaskStatus($previousStatus)) {
-            $this->sendTaskNotification($task, $subtask, 'open');
-        }
-
-        if ($this->isCompletedSubtaskStatus($subtask->status) && ! $this->isCompletedSubtaskStatus($previousStatus)) {
-            $this->sendTaskNotification($task, $subtask, 'completed');
-        }
-    }
-
-    private function sendTaskNotification(ProjectTask $task, ?ProjectTaskSubtask $subtask, string $type): void
-    {
-        $recipients = $subtask
-            ? TaskNotificationRecipients::forSubtask($subtask, $task)
-            : TaskNotificationRecipients::forTask($task);
+        $recipients = TaskNotificationRecipients::forTask($task);
 
         if (empty($recipients)) {
             return;
@@ -91,7 +50,7 @@ class TaskStatusNotificationService
             $notification = $type === 'completed'
                 ? new TaskStatusCompletedNotification(
                     $task,
-                    $subtask,
+                    null,
                     $recipient['view_url'],
                     $recipient['project_url'],
                     $recipient['portal_login_url'],
@@ -99,7 +58,7 @@ class TaskStatusNotificationService
                 )
                 : new TaskStatusOpenedNotification(
                     $task,
-                    $subtask,
+                    null,
                     $recipient['view_url'],
                     $recipient['project_url'],
                     $recipient['portal_login_url'],
@@ -126,14 +85,4 @@ class TaskStatusNotificationService
         return in_array($status, ['completed', 'done'], true);
     }
 
-    private function isOpenSubtaskStatus(?string $status): bool
-    {
-        $status = $status ?? 'open';
-        return $status === 'open';
-    }
-
-    private function isCompletedSubtaskStatus(?string $status): bool
-    {
-        return $status === 'completed';
-    }
 }

@@ -95,7 +95,7 @@ class TaskStatusNotificationTest extends TestCase
         Notification::assertSentOnDemandTimes(TaskStatusCompletedNotification::class, 3);
     }
 
-    public function test_subtask_open_and_complete_notifications_send(): void
+    public function test_subtask_open_and_complete_notifications_are_not_sent(): void
     {
         Notification::fake();
 
@@ -124,7 +124,7 @@ class TaskStatusNotificationTest extends TestCase
             'created_by' => $clientUser->id,
         ]);
 
-        Notification::assertSentOnDemandTimes(TaskStatusOpenedNotification::class, 3);
+        Notification::assertNothingSent();
 
         Notification::fake();
 
@@ -143,7 +143,7 @@ class TaskStatusNotificationTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        Notification::assertSentOnDemandTimes(TaskStatusCompletedNotification::class, 3);
+        Notification::assertNothingSent();
     }
 
     public function test_parent_completion_notification_fires_when_all_subtasks_complete(): void
@@ -183,7 +183,7 @@ class TaskStatusNotificationTest extends TestCase
             ])
             ->assertStatus(302);
 
-        Notification::assertSentOnDemandTimes(TaskStatusCompletedNotification::class, 6);
+        Notification::assertSentOnDemandTimes(TaskStatusCompletedNotification::class, 3);
     }
 
     public function test_hidden_tasks_do_not_notify_clients(): void

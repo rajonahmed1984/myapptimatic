@@ -49,7 +49,6 @@ class PreventBlockedClientAccess
         $allowedPatterns = [
             'client.dashboard',
             'client.invoices.*',
-            'client.requests.*',
             'client.support-tickets.*',
         ];
 

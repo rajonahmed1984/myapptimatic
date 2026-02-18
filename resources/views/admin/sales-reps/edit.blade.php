@@ -10,7 +10,7 @@
             <div class="text-2xl font-semibold text-slate-900">{{ $rep->name }}</div>
             <div class="text-sm text-slate-500">Update contact details and status.</div>
         </div>
-        <a href="{{ route('admin.sales-reps.index', [], false) }}" hx-boost="false" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
+        <a href="{{ route('admin.sales-reps.index', [], false) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
     </div>
 
     <div class="card p-6">

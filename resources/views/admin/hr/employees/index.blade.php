@@ -54,21 +54,18 @@
                         <td class="py-2 px-3">
                             @php
                                 $loginStatus = $loginStatuses[$employee->id] ?? 'logout';
-                                $loginLabel = match ($loginStatus) {
-                                    'login' => 'Login',
-                                    'idle' => 'Idle',
-                                    default => 'Logout',
-                                };
-                                $loginClasses = match ($loginStatus) {
-                                    'login' => 'border-emerald-200 text-emerald-700 bg-emerald-50',
-                                    'idle' => 'border-amber-200 text-amber-700 bg-amber-50',
-                                    default => 'border-rose-200 text-rose-700 bg-rose-50',
-                                };
+                                $showLoginBadge = in_array($loginStatus, ['login', 'idle'], true);
+                                $loginLabel = $loginStatus === 'idle' ? 'Idle' : 'Login';
+                                $loginClasses = $loginStatus === 'idle'
+                                    ? 'border-amber-200 text-amber-700 bg-amber-50'
+                                    : 'border-emerald-200 text-emerald-700 bg-emerald-50';
                                 $lastLoginAt = $lastLoginByEmployee[$employee->id] ?? null;
                             @endphp
-                            <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $loginClasses }}">
-                                {{ $loginLabel }}
-                            </span>
+                            @if($showLoginBadge)
+                                <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $loginClasses }}">
+                                    {{ $loginLabel }}
+                                </span>
+                            @endif
                             <div class="mt-1 text-[11px] text-slate-400">
                                 Last login: {{ $lastLoginAt ? \Illuminate\Support\Carbon::parse($lastLoginAt)->format($globalDateFormat . ' H:i') : '--' }}
                             </div>

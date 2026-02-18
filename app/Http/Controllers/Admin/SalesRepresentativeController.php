@@ -23,6 +23,7 @@ use Illuminate\Validation\Rule;
 use App\Enums\Role;
 use App\Services\CommissionService;
 use App\Services\SalesRepBalanceService;
+use App\Support\AjaxResponse;
 use Illuminate\Support\Carbon;
 
 class SalesRepresentativeController extends Controller
@@ -146,6 +147,13 @@ class SalesRepresentativeController extends Controller
             $salesRep->update($uploadPaths);
         }
 
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxRedirect(
+                route('admin.sales-reps.index'),
+                'Sales representative created.',
+            );
+        }
+
         return redirect()
             ->route('admin.sales-reps.index')
             ->with('status', 'Sales representative created.');
@@ -179,6 +187,13 @@ class SalesRepresentativeController extends Controller
         $uploadPaths = $this->handleUploads($request, $salesRep);
         if (! empty($uploadPaths)) {
             $salesRep->update($uploadPaths);
+        }
+
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxRedirect(
+                route('admin.sales-reps.edit', $salesRep),
+                'Sales representative updated.',
+            );
         }
 
         return redirect()
@@ -322,6 +337,14 @@ class SalesRepresentativeController extends Controller
     public function storeAdvancePayment(Request $request, SalesRepresentative $salesRep)
     {
         if (! Schema::hasColumn('commission_payouts', 'type')) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError(
+                    'Advance payments require the latest commission payout migration. Run database migrations first.',
+                    422,
+                    ['amount' => ['Advance payments require the latest commission payout migration. Run database migrations first.']],
+                );
+            }
+
             return back()->withErrors(['amount' => 'Advance payments require the latest commission payout migration. Run database migrations first.']);
         }
 
@@ -345,6 +368,14 @@ class SalesRepresentativeController extends Controller
                 ->first();
 
             if (! $project) {
+                if (AjaxResponse::ajaxFromRequest($request)) {
+                    return AjaxResponse::ajaxError(
+                        'Select a valid project linked to this sales rep.',
+                        422,
+                        ['project_id' => ['Select a valid project linked to this sales rep.']],
+                    );
+                }
+
                 return back()->withErrors(['project_id' => 'Select a valid project linked to this sales rep.'])->withInput();
             }
         }
@@ -384,6 +415,13 @@ class SalesRepresentativeController extends Controller
                 'created_by' => $request->user()?->id,
             ]);
         });
+
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxRedirect(
+                route('admin.sales-reps.show', ['sales_rep' => $salesRep->id, 'tab' => 'profile']),
+                'Advance payment recorded.',
+            );
+        }
 
         return back()->with('status', 'Advance payment recorded.');
     }

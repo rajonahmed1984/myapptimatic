@@ -89,11 +89,32 @@
     </div>
 
     <script>
-        function copyLink() {
+        async function copyLink() {
             const input = document.getElementById('referral-link');
-            input.select();
-            document.execCommand('copy');
-            alert('Link copied to clipboard!');
+            if (!input) return;
+
+            const notify = (message, type = 'info') => {
+                if (typeof window.notify === 'function') {
+                    window.notify(message, type);
+                }
+            };
+
+            const text = input.value || '';
+            if (!text) return;
+
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    notify('Link copied to clipboard!', 'success');
+                    return;
+                }
+
+                input.select();
+                const copied = document.execCommand('copy');
+                notify(copied ? 'Link copied to clipboard!' : 'Unable to copy link.', copied ? 'success' : 'error');
+            } catch (_error) {
+                notify('Unable to copy link.', 'error');
+            }
         }
     </script>
 @endsection

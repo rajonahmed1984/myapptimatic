@@ -11,7 +11,7 @@
             <div class="text-sm text-slate-500">Maintenance #{{ $maintenance->id }}</div>
         </div>
         <div class="flex items-center gap-3">
-            <a href="{{ route('admin.project-maintenances.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back to maintenance</a>
+            <a href="{{ route('admin.project-maintenances.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to maintenance</a>
             <a href="{{ route('admin.project-maintenances.edit', $maintenance) }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Edit</a>
         </div>
     </div>

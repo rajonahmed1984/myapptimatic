@@ -228,10 +228,7 @@ class ProjectTaskController extends Controller
         $this->authorize('update', $task);
 
         if (! $request->user()?->isMasterAdmin() && $task->creatorEditWindowExpired($request->user()?->id)) {
-            return response()->json([
-                'ok' => false,
-                'message' => 'You can only edit this task within 24 hours of creation.',
-            ], 403);
+            return AjaxResponse::ajaxError('You can only edit this task within 24 hours of creation.', 403);
         }
 
         $data = $request->validate([
@@ -374,10 +371,7 @@ class ProjectTaskController extends Controller
     private function forbiddenResponse(Request $request, string $message): RedirectResponse|JsonResponse
     {
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return response()->json([
-                'ok' => false,
-                'message' => $message,
-            ], 403);
+            return AjaxResponse::ajaxError($message, 403);
         }
 
         return back()->withErrors(['task' => $message]);

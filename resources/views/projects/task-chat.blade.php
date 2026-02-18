@@ -21,7 +21,7 @@
             <div class="text-2xl font-semibold text-slate-900">{{ $task->title }}</div>
             <div class="text-sm text-slate-500">Project: {{ $project->name }}</div>
         </div>
-        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
+        <a href="{{ $backRoute }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
     </div>
 
     <style>
@@ -717,7 +717,7 @@
                 const nextText = (input?.value || '').trim();
                 const hasAttachment = row.dataset.hasAttachment === '1';
                 if (!nextText && !hasAttachment) {
-                    alert('Message cannot be empty.');
+                    window.notify('Message cannot be empty.', 'warning');
                     input?.focus();
                     return;
                 }
@@ -739,7 +739,7 @@
                     });
 
                     if (!response.ok) {
-                        alert(await parseErrorMessage(response, 'Message update failed.'));
+                        window.notify(await parseErrorMessage(response, 'Message update failed.'), 'error');
                         return;
                     }
 
@@ -818,7 +818,7 @@
                         });
 
                         if (!response.ok) {
-                            alert(await parseErrorMessage(response, 'Message delete failed.'));
+                            window.notify(await parseErrorMessage(response, 'Message delete failed.'), 'error');
                             return;
                         }
 
@@ -973,7 +973,7 @@
                             const hasAttachment = editingRow?.dataset?.hasAttachment === '1';
                             const nextText = (textarea?.value || '').trim();
                             if (!nextText && !hasAttachment) {
-                                alert('Message cannot be empty.');
+                                window.notify('Message cannot be empty.', 'warning');
                                 return;
                             }
                             formData.delete('attachment');
@@ -1010,7 +1010,7 @@
                             } catch (e) {
                                 // Ignore JSON parse failures.
                             }
-                            alert(errorMessage);
+                            window.notify(errorMessage, 'error');
                             return;
                         }
 

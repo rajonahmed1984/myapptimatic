@@ -48,7 +48,7 @@
         @endif
 
         @if ($errors->any())
-            <div class="mb-6 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+            <div data-flash-message data-flash-type="error" class="mb-6 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
                 <ul class="space-y-1">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -58,7 +58,7 @@
         @endif
 
         @if (session('status'))
-            <div class="mb-6 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-sm text-emerald-200">
+            <div data-flash-message data-flash-type="success" class="mb-6 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-sm text-emerald-200">
                 {{ session('status') }}
             </div>
         @endif

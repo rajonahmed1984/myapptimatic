@@ -10,7 +10,7 @@
             <div class="text-2xl font-semibold text-slate-900">Add sales representative</div>
             <div class="text-sm text-slate-500">Create profile details and set login credentials.</div>
         </div>
-        <a href="{{ route('admin.sales-reps.index') }}" hx-boost="false" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
+        <a href="{{ route('admin.sales-reps.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back</a>
     </div>
 
     <div class="card p-6">

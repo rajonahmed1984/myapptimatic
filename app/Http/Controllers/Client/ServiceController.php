@@ -16,7 +16,7 @@ class ServiceController extends Controller
             'customer' => $customer,
             'subscriptions' => $customer
                 ? $customer->subscriptions()
-                    ->with(['plan.product', 'licenses.domains', 'clientRequests'])
+                    ->with(['plan.product', 'licenses.domains'])
                     ->latest()
                     ->get()
                 : collect(),
@@ -31,7 +31,7 @@ class ServiceController extends Controller
             abort(404);
         }
 
-        $subscription->load(['plan.product', 'licenses.domains', 'clientRequests']);
+        $subscription->load(['plan.product', 'licenses.domains']);
 
         return view('client.services.show', [
             'subscription' => $subscription,

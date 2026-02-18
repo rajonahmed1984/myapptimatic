@@ -23,7 +23,7 @@
             $mentionClass = 'rounded bg-amber-100 px-1 text-amber-700 font-semibold chat-mention';
             if ($type === 'project_task' && $mentionId > 0 && ! empty($taskShowRouteName ?? null)) {
                 $taskUrl = route($taskShowRouteName, [$project, $mentionId], false);
-                $replacement = '$1<a href="' . e($taskUrl) . '" hx-boost="false" class="' . $mentionClass . ' hover:underline">@' . $escapedDisplay . '</a>';
+                $replacement = '$1<a href="' . e($taskUrl) . '" class="' . $mentionClass . ' hover:underline">@' . $escapedDisplay . '</a>';
             } else {
                 $replacement = '$1<span class="' . $mentionClass . '">@' . $escapedDisplay . '</span>';
             }

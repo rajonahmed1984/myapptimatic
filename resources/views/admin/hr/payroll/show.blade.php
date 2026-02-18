@@ -38,7 +38,7 @@
             @elseif($period->status === 'draft')
                 <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Month not closed</span>
             @endif
-            <a href="{{ route('admin.hr.payroll.index') }}" class="text-sm text-slate-600 hover:text-slate-800" hx-boost="false">Back</a>
+            <a href="{{ route('admin.hr.payroll.index') }}" class="text-sm text-slate-600 hover:text-slate-800">Back</a>
         </div>
     </div>
 

@@ -59,6 +59,9 @@ CronActivityLogger::track($projectChatAi, 'chat:ai-summary --type=project --days
 $taskChatAi = Schedule::command('chat:ai-summary --type=task --days=14 --limit=200 --email --email-limit=30')->weeklyOn(5, '01:00');
 CronActivityLogger::track($taskChatAi, 'chat:ai-summary --type=task --days=14 --limit=200 --email --email-limit=30');
 
+$projectChatSummaryEmail = Schedule::command('projects:chat-summary-notify')->everyFiveMinutes()->withoutOverlapping();
+CronActivityLogger::track($projectChatSummaryEmail, 'projects:chat-summary-notify');
+
 // Daily license sync summary and automation reports.
 $licenseSyncLog = Schedule::command('licenses:sync-log')
     ->dailyAt($automationTime)

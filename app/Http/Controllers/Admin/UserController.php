@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupportUserRequest;
 use App\Models\User;
 use App\Enums\Role;
+use App\Support\AjaxResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -38,7 +40,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request, string $role): RedirectResponse
+    public function store(Request $request, string $role): RedirectResponse|JsonResponse
     {
         $role = $this->normalizeRole($role);
 
@@ -57,8 +59,14 @@ class UserController extends Controller
             $user->update($uploadPaths);
         }
 
-        return redirect()->route('admin.users.index', $role)
-            ->with('status', 'User created.');
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxRedirect(
+                route('admin.users.index', $role),
+                'User created.'
+            );
+        }
+
+        return redirect()->route('admin.users.index', $role)->with('status', 'User created.');
     }
 
     public function edit(User $user)
@@ -71,7 +79,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $user): RedirectResponse
+    public function update(Request $request, User $user): RedirectResponse|JsonResponse
     {
         $this->abortIfNotAdminRole($user);
 
@@ -87,6 +95,10 @@ class UserController extends Controller
 
         // Prevent self from downgrading own role to avoid lockout.
         if ($request->user()?->id === $user->id && $data['role'] !== $user->role) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError('You cannot change your own role.', 422);
+            }
+
             return back()->withInput()->with('status', 'You cannot change your own role.');
         }
 
@@ -97,6 +109,10 @@ class UserController extends Controller
                 ->count();
 
             if ($otherMasters === 0) {
+                if (AjaxResponse::ajaxFromRequest($request)) {
+                    return AjaxResponse::ajaxError('At least one master admin must remain.', 422);
+                }
+
                 return back()->withInput()->with('status', 'At least one master admin must remain.');
             }
         }
@@ -118,15 +134,25 @@ class UserController extends Controller
             $user->update($uploadPaths);
         }
 
-        return redirect()->route('admin.users.index', $data['role'])
-            ->with('status', 'User updated.');
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxRedirect(
+                route('admin.users.index', $data['role']),
+                'User updated.'
+            );
+        }
+
+        return redirect()->route('admin.users.index', $data['role'])->with('status', 'User updated.');
     }
 
-    public function destroy(Request $request, User $user): RedirectResponse
+    public function destroy(Request $request, User $user): RedirectResponse|JsonResponse
     {
         $this->abortIfNotAdminRole($user);
 
         if ($request->user()?->id === $user->id) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError('You cannot delete your own account.', 422);
+            }
+
             return back()->with('status', 'You cannot delete your own account.');
         }
 
@@ -137,14 +163,25 @@ class UserController extends Controller
                 ->count();
 
             if ($otherMasters === 0) {
+                if (AjaxResponse::ajaxFromRequest($request)) {
+                    return AjaxResponse::ajaxError('At least one master admin must remain.', 422);
+                }
+
                 return back()->with('status', 'At least one master admin must remain.');
             }
         }
 
+        $deletedRole = $user->role;
         $user->delete();
 
-        return redirect()->route('admin.users.index', $user->role)
-            ->with('status', 'User deleted.');
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxRedirect(
+                route('admin.users.index', $deletedRole),
+                'User deleted.'
+            );
+        }
+
+        return redirect()->route('admin.users.index', $deletedRole)->with('status', 'User deleted.');
     }
 
     private function normalizeRole(string $role): string

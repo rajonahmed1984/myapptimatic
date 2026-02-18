@@ -62,32 +62,18 @@
                     $query = array_filter(['status' => $key, 'search' => $search], fn ($value) => $value !== null && $value !== '');
                 @endphp
                 <a href="{{ route($tasksIndexRoute, $query) }}"
-                   hx-get="{{ route($tasksIndexRoute, $query) }}"
-                   hx-target="#tasksIndex"
-                   hx-swap="outerHTML"
-                   hx-push-url="true"
                    class="inline-flex items-center gap-2 rounded-full border px-3 py-1 font-semibold {{ $isActive ? 'border-teal-300 bg-teal-50 text-teal-700' : 'border-slate-200 text-slate-600 hover:border-teal-200 hover:text-teal-600' }}">
                     <span>{{ $filter['label'] }}</span>
                     <span class="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $filter['count'] }}</span>
                 </a>
             @endforeach
         </div>
-        <form id="tasksSearchForm" method="GET" action="{{ route($tasksIndexRoute) }}" class="flex items-center gap-2"
-              hx-get="{{ route($tasksIndexRoute) }}"
-              hx-target="#tasksIndex"
-              hx-swap="outerHTML"
-              hx-push-url="true">
+        <form id="tasksSearchForm" method="GET" action="{{ route($tasksIndexRoute) }}" class="flex items-center gap-2" data-live-filter="true">
             @if($statusFilter !== '')
                 <input type="hidden" name="status" value="{{ $statusFilter }}">
             @endif
             <input type="text" name="search" value="{{ $search }}" placeholder="Search tasks"
-                   class="w-48 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 focus:border-teal-300 focus:outline-none"
-                   hx-get="{{ route($tasksIndexRoute) }}"
-                   hx-trigger="keyup changed delay:300ms"
-                   hx-target="#tasksIndex"
-                   hx-swap="outerHTML"
-                   hx-push-url="true"
-                   hx-include="#tasksSearchForm">
+                   class="w-48 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 focus:border-teal-300 focus:outline-none">
             <button type="submit" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
                 Search
             </button>
@@ -115,8 +101,9 @@
                         $statusClass = $statusClasses[$currentStatus] ?? 'bg-slate-100 text-slate-600';
                     @endphp
                     <tr class="align-top">
-                        <td class="px-4 py-3 text-slate-500">
-                            {{ $task->created_at?->format($globalDateFormat) ?? '--' }}
+                        <td class="px-4 py-3 text-slate-500 whitespace-nowrap">
+                            <div class="whitespace-nowrap">{{ $task->created_at?->format($globalDateFormat) ?? '--' }}</div>
+                            <div class="text-xs text-slate-400 whitespace-nowrap">{{ $task->created_at?->format('H:i') ?? '--' }}</div>
                         </td>
                         <td class="px-4 py-3">
                             <div class="font-semibold text-slate-900">
@@ -155,7 +142,7 @@
                                     $isCompleted = in_array($currentStatus, ['completed', 'done'], true);
                                 @endphp
                                 @if($task->can_start && $task->project && $statusFilter !== 'in_progress' && ! $isInProgress && ! $isCompleted)
-                                    <form method="POST" action="{{ $usesStartRoute ? route($taskStartRoute, [$task->project, $task]) : route($taskUpdateRoute, [$task->project, $task]) }}" hx-boost="false">
+                                    <form method="POST" action="{{ $usesStartRoute ? route($taskStartRoute, [$task->project, $task]) : route($taskUpdateRoute, [$task->project, $task]) }}">
                                         @csrf
                                         @method('PATCH')
                                         @unless($usesStartRoute)
@@ -167,7 +154,7 @@
                                     </form>
                                 @endif
                                 @if($task->can_complete && $task->project && $statusFilter !== 'completed' && ! $isCompleted)
-                                    <form method="POST" action="{{ route($taskUpdateRoute, [$task->project, $task]) }}" hx-boost="false">
+                                    <form method="POST" action="{{ route($taskUpdateRoute, [$task->project, $task]) }}">
                                         @csrf
                                         @method('PATCH')
                                         <input type="hidden" name="status" value="completed">

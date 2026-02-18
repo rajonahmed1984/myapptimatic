@@ -23,7 +23,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             <a href="{{ route('admin.expenses.recurring.edit', $recurringExpense) }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Edit</a>
-            <a href="{{ route('admin.expenses.recurring.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600" hx-boost="false">Back</a>
+            <a href="{{ route('admin.expenses.recurring.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back</a>
         </div>
     </div>
 

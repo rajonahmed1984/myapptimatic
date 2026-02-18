@@ -13,6 +13,17 @@
                 $isEmployeeNav = request()->routeIs('employee.*');
                 $isSalesRepNav = request()->routeIs('rep.*');
                 $canViewTasks = app(\App\Services\TaskQueryService::class)->canViewTasks(auth()->user());
+                $employeeNavEmployee = null;
+                $employeeWorkMode = null;
+                $isRemoteEmployeeMode = false;
+                $isOfficeEmployeeMode = false;
+
+                if ($isEmployeeNav) {
+                    $employeeNavEmployee = request()->attributes->get('employee') ?: auth()->user()?->employee;
+                    $employeeWorkMode = strtolower((string) ($employeeNavEmployee?->work_mode ?? ''));
+                    $isRemoteEmployeeMode = in_array($employeeWorkMode, ['remote', 'work_from_home', 'wfh'], true);
+                    $isOfficeEmployeeMode = in_array($employeeWorkMode, ['office', 'in_office', 'on_site', 'onsite'], true);
+                }
             @endphp
             <div class="flex items-center gap-3">
                 @if(!empty($sidebarImage))
@@ -25,7 +36,7 @@
                     <div class="text-lg font-semibold text-white">{{ $portalBranding['company_name'] ?? 'License Portal' }}</div>
                 </div>
             </div>
-            @if($isEmployeeNav)
+            @if($isEmployeeNav && ! $isOfficeEmployeeMode)
                 <div id="global-work-timer" class="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-100" data-summary-url="{{ route('employee.work-summaries.today') }}" data-ping-url="{{ route('employee.work-sessions.ping') }}">
                     <div class="flex items-center justify-between gap-2">
                         <div class="text-[11px] uppercase tracking-[0.25em] text-slate-300">Session</div>
@@ -89,13 +100,6 @@
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Affiliates
-                        </x-nav-link>
-                        <x-nav-link 
-                            :href="route('admin.requests.index')"
-                            routes="admin.requests.*"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Requests
                         </x-nav-link>
                     </div>
 
@@ -452,13 +456,15 @@
                             <span>Chat</span>
                             <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
                         </x-nav-link>
-                        <x-nav-link 
-                            :href="route('employee.timesheets.index')"
-                            routes="employee.timesheets.*"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Work Logs
-                        </x-nav-link>
+                        @unless($isOfficeEmployeeMode)
+                            <x-nav-link 
+                                :href="route('employee.timesheets.index')"
+                                routes="employee.timesheets.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Work Logs
+                            </x-nav-link>
+                        @endunless
                         <x-nav-link 
                             :href="route('employee.leave-requests.index')"
                             routes="employee.leave-requests.*"
@@ -466,13 +472,15 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Leave Requests
                         </x-nav-link>
-                        <x-nav-link
-                            :href="route('employee.attendance.index')"
-                            routes="employee.attendance.*"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Attendance
-                        </x-nav-link>
+                        @unless($isRemoteEmployeeMode)
+                            <x-nav-link
+                                :href="route('employee.attendance.index')"
+                                routes="employee.attendance.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Attendance
+                            </x-nav-link>
+                        @endunless
                     </div>
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payroll</div>
@@ -558,13 +566,15 @@
                                 <span>Chat</span>
                                 <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
                             </x-nav-link>
-                            <x-nav-link 
-                                :href="route('employee.timesheets.index')"
-                                routes="employee.timesheets.*"
-                            >
-                                <span class="h-2 w-2 rounded-full bg-current"></span>
-                                Work Logs
-                            </x-nav-link>
+                            @unless($isOfficeEmployeeMode)
+                                <x-nav-link 
+                                    :href="route('employee.timesheets.index')"
+                                    routes="employee.timesheets.*"
+                                >
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    Work Logs
+                                </x-nav-link>
+                            @endunless
                             <x-nav-link 
                                 :href="route('employee.leave-requests.index')"
                                 routes="employee.leave-requests.*"
@@ -572,13 +582,15 @@
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 Leave Requests
                             </x-nav-link>
-                            <x-nav-link
-                                :href="route('employee.attendance.index')"
-                                routes="employee.attendance.*"
-                            >
-                                <span class="h-2 w-2 rounded-full bg-current"></span>
-                                Attendance
-                            </x-nav-link>
+                            @unless($isRemoteEmployeeMode)
+                                <x-nav-link
+                                    :href="route('employee.attendance.index')"
+                                    routes="employee.attendance.*"
+                                >
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    Attendance
+                                </x-nav-link>
+                            @endunless
                         </div>
                         <div class="space-y-2">
                             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payroll</div>
@@ -722,7 +734,7 @@
                         </div>
                     @endif
                     <div class="flex flex-wrap items-center gap-3 md:gap-4">
-                        <form method="POST" action="{{ route('admin.system.cache.clear') }}">
+                        <form method="POST" action="{{ route('admin.system.cache.clear') }}" data-native="true">
                             @csrf
                             <button
                                 type="submit"
@@ -753,7 +765,7 @@
                 @endif
             </header>
 
-            <main id="main-content" class="w-full px-6 py-10 fade-in" hx-boost="false">
+            <main id="main-content" class="w-full px-6 py-10 fade-in">
                 <div
                     id="appContent"
                     data-page-title="@yield('title', config('app.name', 'MyApptimatic'))"
@@ -761,7 +773,7 @@
                     data-page-key="{{ request()->route()?->getName() ?? '' }}"
                 >
                     @if ($errors->any())
-                        <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                        <div data-flash-message data-flash-type="error" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                             <ul class="space-y-1">
                                 @foreach ($errors->all() as $error)
                                     <li>{{ $error }}</li>
@@ -771,7 +783,7 @@
                     @endif
 
                     @if (session('status'))
-                        <div class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
+                        <div data-flash-message data-flash-type="success" class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
                             {{ session('status') }}
                         </div>
                     @endif
@@ -982,15 +994,8 @@
 
               setupGlobalWorkTimer();
 
-              // HTMX configuration: Update active sidebar state after content loads
-              document.addEventListener('htmx:afterSwap', function(event) {
-                  // Reload page to ensure sidebar active states are updated
-                  // This is a safeguard; the server-side route detection should already handle it
-                  // For pure HTMX without reload, you could update active classes here
-              });
-
-              document.addEventListener('htmx:load', (event) => {
-                  bindInvoiceItems(event.target);
+              document.addEventListener('ajax:content:loaded', (event) => {
+                  bindInvoiceItems(event.detail?.content || document);
               });
           });
       </script>

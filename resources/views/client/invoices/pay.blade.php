@@ -91,7 +91,7 @@
                             </tr>
                             @if($hasTax)
                                 <tr>
-                                    <td class="total-row text-right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included '.$taxLabel : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
+                                    <td class="total-row text-right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included Tax' : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
                                     <td class="total-row text-center">{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</td>
                                 </tr>
                             @endif
@@ -121,7 +121,7 @@
                 @if($gateways->isEmpty())
                     <div class="small-text text-muted">No active payment gateways configured.</div>
                 @else
-                    <form method="POST" action="{{ route('client.invoices.checkout', $invoice) }}" id="gateway-form" class="gateway-form">
+                    <form method="POST" action="{{ route('client.invoices.checkout', $invoice) }}" id="gateway-form" class="gateway-form" data-native="true">
                         @csrf
                         <label for="gateway-select" class="small-text"><strong>Select gateway</strong></label>
                         <select id="gateway-select" name="payment_gateway_id" class="form-control">
@@ -130,7 +130,7 @@
                             @endforeach
                         </select>
                         <div id="gateway-instructions" class="small-text text-muted" style="margin-top: 10px;"></div>
-                        <button type="submit" id="gateway-submit" class="btn-primary">Pay now</button>
+                        <button type="submit" id="gateway-submit" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Pay now</button>
                     </form>
 
                     @php
@@ -194,9 +194,9 @@
         <div class="container-fluid invoice-container">
             <div class="row mt-5" style="display: flex !important; justify-content: center;">
                 <div class="invoice-col full no-print" style="text-align: center;">
-                    <div class="btn-group btn-group-sm">
-                        <a href="{{ $downloadRoute }}" class="btn btn-default">Download</a>
-                        <a href="javascript:window.print()" class="btn btn-default">Print</a>
+                    <div class="flex flex-wrap items-center justify-center gap-2">
+                        <a href="{{ $downloadRoute }}" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Download</a>
+                        <a href="javascript:window.print()" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Print</a>
                     </div>
                 </div>
                 <div class="invoice-col full" style="text-align: center;">

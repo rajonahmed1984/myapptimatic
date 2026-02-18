@@ -18,7 +18,6 @@
                 <tr>
                     <th class="px-4 py-3 w-20">ID</th>
                     <th class="px-4 py-3">Project</th>
-                    <th class="px-4 py-3">Customer</th>
                     <th class="px-4 py-3">Tasks</th>
                     <th class="px-4 py-3">Subtasks</th>
                     <th class="px-4 py-3">Status</th>
@@ -32,7 +31,6 @@
                         <td class="px-4 py-3">
                             <a href="{{ route('employee.projects.show', $project) }}" class="text-sm font-semibold text-teal-700 hover:text-teal-600">{{ $project->name }}</a>                            
                         </td>
-                        <td class="px-4 py-3">{{ $project->customer?->name ?? '--' }}</td>
                         <td class="px-4 py-3 text-xs text-slate-600">
                             {{ (int) $project->tasks_count }} total / {{ (int) $project->completed_tasks_count }} completed
                         </td>
@@ -48,7 +46,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-6 text-center text-sm text-slate-500">No projects assigned.</td>
+                        <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">No projects assigned.</td>
                     </tr>
                 @endforelse
                 </tbody>

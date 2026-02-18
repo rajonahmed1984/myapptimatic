@@ -10,11 +10,11 @@
 @section('content')
     <div class="mb-6 flex items-center justify-between gap-4">
         <h1 class="text-2xl font-semibold text-slate-900">Edit User</h1>
-        <a href="{{ route('admin.users.index', $user- hx-boost="false">role) }}" class="text-sm text-slate-500 hover:text-teal-600">Back to users</a>
+        <a href="{{ route('admin.users.index', $user->role) }}" class="text-sm text-slate-500 hover:text-teal-600">Back to users</a>
     </div>
 
     <div class="card p-6">
-        <form method="POST" action="{{ route('admin.users.update', $user) }}" enctype="multipart/form-data" class="grid gap-6 md:grid-cols-2">
+        <form method="POST" action="{{ route('admin.users.update', $user) }}" enctype="multipart/form-data" data-native="true" class="grid gap-6 md:grid-cols-2">
             @csrf
             @method('PUT')
             <div>

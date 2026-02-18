@@ -132,7 +132,6 @@ class InvoiceController extends Controller
                 ->with([
                     'subscription.plan.product',
                     'project',
-                    'clientRequests',
                     'paymentProofs.paymentAttempt',
                     'accountingEntries',
                 ])

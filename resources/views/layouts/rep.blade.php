@@ -150,7 +150,7 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-3 md:gap-4">
-                        <form method="POST" action="{{ route('rep.system.cache.clear') }}">
+                        <form method="POST" action="{{ route('rep.system.cache.clear') }}" data-native="true">
                             @csrf
                             <button
                                 type="submit"
@@ -189,7 +189,7 @@
                     data-page-key="{{ request()->route()?->getName() ?? '' }}"
                 >
                     @if ($errors->any())
-                        <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                        <div data-flash-message data-flash-type="error" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                             <ul class="space-y-1">
                                 @foreach ($errors->all() as $error)
                                     <li>{{ $error }}</li>
@@ -199,7 +199,7 @@
                     @endif
 
                     @if (session('status'))
-                        <div class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
+                        <div data-flash-message data-flash-type="success" class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
                             {{ session('status') }}
                         </div>
                     @endif

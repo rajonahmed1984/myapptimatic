@@ -6,7 +6,7 @@
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div class="flex-1">
-            <form id="licensesSearchForm" method="GET" action="{{ route('admin.licenses.index') }}" class="flex items-center gap-3">
+            <form id="licensesSearchForm" method="GET" action="{{ route('admin.licenses.index') }}" class="flex items-center gap-3" data-live-filter="true">
                 <div class="relative w-full max-w-sm">
                     <input
                         type="text"
@@ -14,12 +14,6 @@
                         value="{{ $search ?? request('search') }}"
                         placeholder="Search licenses..."
                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                        hx-get="{{ route('admin.licenses.index') }}"
-                        hx-trigger="keyup changed delay:300ms"
-                        hx-target="#licensesTable"
-                        hx-swap="outerHTML"
-                        hx-push-url="true"
-                        hx-include="#licensesSearchForm"
                     />
                 </div>
             </form>
@@ -50,7 +44,7 @@
                         document.execCommand('copy');
                         markCopied(btn);
                     } catch (e) {
-                        alert('Unable to copy license key.');
+                        window.notify('Unable to copy license key.', 'error');
                     } finally {
                         document.body.removeChild(textarea);
                     }
@@ -168,7 +162,7 @@
                 };
 
                 bindSyncButtons();
-                document.addEventListener('htmx:afterSwap', bindSyncButtons);
+                document.addEventListener('ajax:content:loaded', bindSyncButtons);
             });
         </script>
     @endpush

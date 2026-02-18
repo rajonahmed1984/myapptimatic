@@ -6,7 +6,7 @@
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div class="flex-1">
-            <form id="salesRepsSearchForm" method="GET" action="{{ route('admin.sales-reps.index') }}" class="flex items-center gap-3">
+            <form id="salesRepsSearchForm" method="GET" action="{{ route('admin.sales-reps.index') }}" class="flex items-center gap-3" data-live-filter="true">
                 <div class="relative">
                     <input
                         type="text"
@@ -14,12 +14,6 @@
                         value="{{ $search ?? request('search') }}"
                         placeholder="Search sales reps..."
                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                        hx-get="{{ route('admin.sales-reps.index') }}"
-                        hx-trigger="keyup changed delay:300ms"
-                        hx-target="#salesRepsTable"
-                        hx-swap="outerHTML"
-                        hx-push-url="true"
-                        hx-include="#salesRepsSearchForm"
                     />
                 </div>
             </form>

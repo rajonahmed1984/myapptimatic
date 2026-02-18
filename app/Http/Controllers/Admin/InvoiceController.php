@@ -271,10 +271,7 @@ class InvoiceController extends Controller
     {
         if (! in_array($invoice->status, ['unpaid', 'overdue'], true)) {
             if (AjaxResponse::ajaxFromRequest($request)) {
-                return response()->json([
-                    'ok' => false,
-                    'message' => 'Only unpaid or overdue invoices can be recalculated.',
-                ], 422);
+                return AjaxResponse::ajaxError('Only unpaid or overdue invoices can be recalculated.', 422);
             }
 
             return redirect()->route('admin.invoices.show', $invoice)

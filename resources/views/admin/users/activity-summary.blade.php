@@ -140,16 +140,4 @@
             </table>
         </div>
     </div>
-
-    @push('scripts')
-        <script>
-            // Format duration in seconds to HH:MM
-            function formatDuration(seconds) {
-                if (!seconds) return '0:00';
-                const hours = Math.floor(seconds / 3600);
-                const minutes = Math.floor((seconds % 3600) / 60);
-                return hours + ':' + String(minutes).padStart(2, '0');
-            }
-        </script>
-    @endpush
 @endsection

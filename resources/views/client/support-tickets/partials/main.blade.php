@@ -71,7 +71,7 @@
                 @enderror
             </div>
             <div class="flex items-center justify-between">
-                <a href="{{ route('client.support-tickets.index') }}" class="text-sm text-slate-500 hover:text-teal-600" hx-boost="false">Back to tickets</a>
+                <a href="{{ route('client.support-tickets.index') }}" class="text-sm text-slate-500 hover:text-teal-600">Back to tickets</a>
                 <button type="submit" class="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Send reply</button>
             </div>
         </form>

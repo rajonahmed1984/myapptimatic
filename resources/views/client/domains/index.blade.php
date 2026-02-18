@@ -7,9 +7,9 @@
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-semibold text-slate-900">Domains</h1>
-            <p class="mt-1 text-sm text-slate-500">Manage licensed domains and submit domain change requests.</p>
+            <p class="mt-1 text-sm text-slate-500">Manage licensed domains and monitor verification status.</p>
         </div>
-        <a href="{{ route('client.dashboard') }}" class="text-sm text-slate-500 hover:text-teal-600" hx-boost="false">Back to dashboard</a>
+        <a href="{{ route('client.dashboard') }}" class="text-sm text-slate-500 hover:text-teal-600">Back to dashboard</a>
     </div>
 
     @if(! $customer)
@@ -55,25 +55,7 @@
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3 text-xs">
                                     <a href="{{ route('client.domains.show', $domain) }}" class="text-teal-600 hover:text-teal-500">View</a>
-                                    <details class="relative">
-                                        <summary class="cursor-pointer text-slate-500 hover:text-teal-600">Request</summary>
-                                        <form method="POST" action="{{ route('client.requests.store') }}" class="absolute right-0 z-10 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-lg">
-                                            @csrf
-                                            <input type="hidden" name="license_domain_id" value="{{ $domain->id }}">
-                                            <label class="text-xs font-semibold text-slate-500">Type</label>
-                                            <select name="type" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
-                                                <option value="domain_edit">Request edit</option>
-                                                <option value="domain_delete">Request delete</option>
-                                            </select>
-                                            <label class="mt-3 block text-xs font-semibold text-slate-500">Message (optional)</label>
-                                            <textarea name="message" rows="2" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600" placeholder="Add any details..."></textarea>
-                                            <button type="submit" class="mt-3 w-full rounded-full bg-teal-500 px-4 py-2 text-xs font-semibold text-white">Submit request</button>
-                                        </form>
-                                    </details>
                                 </div>
-                                @if($domain->clientRequests->where('status', 'pending')->isNotEmpty())
-                                    <div class="mt-2 text-xs text-amber-600">Request pending</div>
-                                @endif
                             </td>
                         </tr>
                     @endforeach

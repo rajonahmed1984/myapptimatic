@@ -6,7 +6,7 @@
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div class="flex-1">
-            <form id="paymentProofsSearchForm" method="GET" action="{{ route('admin.payment-proofs.index') }}" class="flex items-center gap-3">
+            <form id="paymentProofsSearchForm" method="GET" action="{{ route('admin.payment-proofs.index') }}" class="flex items-center gap-3" data-live-filter="true">
                 <input type="hidden" name="status" value="{{ $status }}">
                 <div class="relative w-full max-w-sm">
                     <input
@@ -15,12 +15,6 @@
                         value="{{ $search ?? request('search') }}"
                         placeholder="Search payment proofs..."
                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                        hx-get="{{ route('admin.payment-proofs.index') }}"
-                        hx-trigger="keyup changed delay:300ms"
-                        hx-target="#paymentProofsTable"
-                        hx-swap="outerHTML"
-                        hx-push-url="true"
-                        hx-include="#paymentProofsSearchForm"
                     />
                 </div>
             </form>

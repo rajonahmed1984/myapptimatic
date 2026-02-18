@@ -10,7 +10,7 @@
             <h1 class="mt-2 text-2xl font-semibold text-slate-900">Create Invoice</h1>
             <p class="mt-2 text-sm text-slate-600">Create a manual invoice for a customer.</p>
         </div>
-        <a href="{{ route('admin.invoices.index') }}" hx-boost="false" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to invoices</a>
+        <a href="{{ route('admin.invoices.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Back to invoices</a>
     </div>
 
     <div class="card p-6">

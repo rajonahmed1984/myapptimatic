@@ -113,11 +113,6 @@ class Customer extends Model
         return $this->hasMany(ProjectMaintenance::class);
     }
 
-    public function clientRequests(): HasMany
-    {
-        return $this->hasMany(ClientRequest::class);
-    }
-
     public function affiliate(): HasOne
     {
         return $this->hasOne(Affiliate::class);

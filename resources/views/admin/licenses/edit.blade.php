@@ -11,7 +11,7 @@
             <div class="section-label">Licenses</div>
             <h1 class="text-2xl font-semibold text-slate-900">Edit License</h1>
         </div>
-        <a href="{{ route('admin.licenses.index') }}" hx-boost="false" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to licenses</a>
+        <a href="{{ route('admin.licenses.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to licenses</a>
     </div>
 
     <div class="card p-6">
@@ -62,9 +62,9 @@
                     <div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">1 (fixed)</div>
                     <p class="mt-2 text-xs text-slate-500">Only one domain is allowed per license.</p>
                 </div>
-                <div class="md:col-span-2">
+                <div>
                     <label class="text-sm text-slate-600">Allowed domain (single)</label>
-                    <textarea name="allowed_domains" rows="3" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{{ old('allowed_domains', $primaryDomain) }}</textarea>
+                    <input name="allowed_domains" type="text" value="{{ old('allowed_domains', $primaryDomain) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                     <p class="mt-2 text-xs text-slate-500">Use only the hostname, e.g. <code>sectorix-w.local</code> or <code>sectorix-w.com</code>.</p>
                 </div>
                 <div class="md:col-span-2">

@@ -9,7 +9,7 @@
             <div class="section-label">Licenses</div>
             <h1 class="text-2xl font-semibold text-slate-900">Create License</h1>
         </div>
-        <a href="{{ route('admin.licenses.index') }}" hx-boost="false" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to licenses</a>
+        <a href="{{ route('admin.licenses.index') }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to licenses</a>
     </div>
 
     <div class="card p-6">
