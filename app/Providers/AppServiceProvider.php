@@ -132,15 +132,18 @@ class AppServiceProvider extends ServiceProvider
                             ->pluck('projects.id');
 
                         if ($projectIds->isNotEmpty()) {
-                            $employeeHeaderStats['unread_chat'] = (int) DB::table('project_messages as pm')
-                                ->leftJoin('project_message_reads as pmr', function ($join) use ($employee) {
-                                    $join->on('pmr.project_id', '=', 'pm.project_id')
-                                        ->where('pmr.reader_type', 'employee')
-                                        ->where('pmr.reader_id', $employee->id);
-                                })
+                            $employeeUnreadByProject = DB::table('project_messages as pm')
+                                ->select('pm.project_id', DB::raw('COUNT(*) as unread'))
                                 ->whereIn('pm.project_id', $projectIds->all())
-                                ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
-                                ->count();
+                                ->whereRaw(
+                                    'pm.id > COALESCE((SELECT MAX(pmr.last_read_message_id) FROM project_message_reads as pmr WHERE pmr.project_id = pm.project_id AND pmr.reader_type = ? AND pmr.reader_id = ?), 0)',
+                                    ['employee', $employee->id]
+                                )
+                                ->groupBy('pm.project_id')
+                                ->pluck('unread', 'pm.project_id')
+                                ->map(fn ($count) => (int) $count);
+
+                            $employeeHeaderStats['unread_chat'] = (int) $employeeUnreadByProject->sum();
                         }
                     }
                 }

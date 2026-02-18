@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -37,8 +38,27 @@ class ChatController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        $unreadCounts = $projects->getCollection()
-            ->mapWithKeys(fn ($project) => [$project->id => (int) ($project->unread_count ?? 0)]);
+        $pageProjectIds = $projects->getCollection()->pluck('id')->map(fn ($id) => (int) $id)->filter()->values();
+        $unreadCounts = collect();
+
+        if ($pageProjectIds->isNotEmpty()) {
+            $unreadCounts = DB::table('project_messages as pm')
+                ->select('pm.project_id', DB::raw('COUNT(*) as unread'))
+                ->whereIn('pm.project_id', $pageProjectIds->all())
+                ->whereRaw(
+                    'pm.id > COALESCE((SELECT MAX(pmr.last_read_message_id) FROM project_message_reads as pmr WHERE pmr.project_id = pm.project_id AND pmr.reader_type = ? AND pmr.reader_id = ?), 0)',
+                    ['employee', $employee->id]
+                )
+                ->groupBy('pm.project_id')
+                ->pluck('unread', 'pm.project_id')
+                ->map(fn ($count) => (int) $count);
+        }
+
+        foreach ($pageProjectIds as $projectId) {
+            if (! $unreadCounts->has($projectId)) {
+                $unreadCounts->put($projectId, 0);
+            }
+        }
 
         return view('employee.chats.index', [
             'projects' => $projects,
