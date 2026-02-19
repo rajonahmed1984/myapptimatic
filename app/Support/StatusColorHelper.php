@@ -173,6 +173,20 @@ class StatusColorHelper
                 'dot' => 'bg-amber-500',
                 'icon' => '◆',
             ],
+            'partial' => [
+                'bg' => 'bg-blue-100',
+                'text' => 'text-blue-700',
+                'color' => 'blue',
+                'dot' => 'bg-blue-500',
+                'icon' => '*',
+            ],
+            'partially_paid' => [
+                'bg' => 'bg-blue-100',
+                'text' => 'text-blue-700',
+                'color' => 'blue',
+                'dot' => 'bg-blue-500',
+                'icon' => '*',
+            ],
             'accepted' => [
                 'bg' => 'bg-emerald-100',
                 'text' => 'text-emerald-700',

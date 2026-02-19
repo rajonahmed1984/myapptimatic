@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ExpenseCategory;
 use App\Models\ExpenseInvoice;
+use App\Models\PaymentMethod;
 use App\Models\RecurringExpense;
 use App\Services\ExpenseInvoiceService;
 use App\Services\RecurringExpenseGenerator;
@@ -28,21 +29,7 @@ class RecurringExpenseController extends Controller
             ->orderByDesc('id')
             ->paginate(20);
 
-        $nextDueMap = [];
-        $recurringIds = $recurringExpenses->pluck('id')->filter()->values();
-        if ($recurringIds->isNotEmpty()) {
-            $nextDueMap = ExpenseInvoice::query()
-                ->selectRaw('expenses.recurring_expense_id as recurring_id, MIN(expense_invoices.due_date) as next_due')
-                ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
-                ->whereIn('expenses.recurring_expense_id', $recurringIds->all())
-                ->whereNotNull('expense_invoices.due_date')
-                ->where('expense_invoices.status', '!=', 'paid')
-                ->groupBy('expenses.recurring_expense_id')
-                ->pluck('next_due', 'recurring_id')
-                ->toArray();
-        }
-
-        return view('admin.expenses.recurring.index', compact('recurringExpenses', 'nextDueMap'));
+        return view('admin.expenses.recurring.index', compact('recurringExpenses'));
     }
 
     public function create(): View
@@ -94,6 +81,7 @@ class RecurringExpenseController extends Controller
 
         $invoices = (clone $baseInvoices)
             ->with('expense')
+            ->withSum('payments', 'amount')
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
             ->paginate(20);
@@ -119,6 +107,7 @@ class RecurringExpenseController extends Controller
             $currencyCode = Currency::DEFAULT;
         }
         $currencySymbol = Currency::symbol($currencyCode);
+        $paymentMethods = PaymentMethod::dropdownOptions();
 
         return view('admin.expenses.recurring.show', [
             'recurringExpense' => $recurringExpense,
@@ -130,6 +119,7 @@ class RecurringExpenseController extends Controller
             'nextDueDate' => $nextDueDate,
             'currencySymbol' => $currencySymbol,
             'currencyCode' => $currencyCode,
+            'paymentMethods' => $paymentMethods,
         ]);
     }
 

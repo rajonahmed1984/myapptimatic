@@ -30,7 +30,6 @@
                         <th class="py-2 px-3">Amount</th>
                         <th class="py-2 px-3">Recurrence</th>
                         <th class="py-2 px-3">Next run</th>
-                        <th class="py-2 px-3">Next due</th>
                         <th class="py-2 px-3">Status</th>
                         <th class="py-2 px-3 text-right">Actions</th>
                     </tr>
@@ -49,10 +48,7 @@
                             <td class="py-2 px-3">
                                 Every {{ $recurring->recurrence_interval }} {{ $recurring->recurrence_type === 'yearly' ? 'year(s)' : 'month(s)' }}
                             </td>
-                            <td class="py-2 px-3">{{ $recurring->next_run_date?->format($globalDateFormat) ?? '--' }}</td>
-                            <td class="py-2 px-3">
-                                {{ !empty($nextDueMap[$recurring->id]) ? \Carbon\Carbon::parse($nextDueMap[$recurring->id])->format($globalDateFormat) : '--' }}
-                            </td>
+                            <td class="py-2 px-3 whitespace-nowrap">{{ $recurring->next_run_date?->format($globalDateFormat) ?? '--' }}</td>
                             <td class="py-2 px-3">
                                 <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $recurring->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : ($recurring->status === 'paused' ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-slate-300 text-slate-600 bg-slate-50') }}">
                                     {{ ucfirst($recurring->status) }}
@@ -82,7 +78,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="py-4 px-3 text-center text-slate-500">No recurring expenses yet.</td>
+                            <td colspan="8" class="py-4 px-3 text-center text-slate-500">No recurring expenses yet.</td>
                         </tr>
                     @endforelse
                 </tbody>

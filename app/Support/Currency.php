@@ -10,7 +10,7 @@ class Currency
 
     // Currency symbols
     public const SYMBOLS = [
-        'BDT' => '৳',
+        'BDT' => "\u{09F3}",
         'USD' => '$',
     ];
 
@@ -60,3 +60,4 @@ class Currency
         return self::DEFAULT;
     }
 }
+

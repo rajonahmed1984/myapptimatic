@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ExpenseInvoice extends Model
 {
@@ -22,6 +23,7 @@ class ExpenseInvoice extends Model
         'amount',
         'currency',
         'notes',
+        'paid_at',
         'created_by',
     ];
 
@@ -29,6 +31,7 @@ class ExpenseInvoice extends Model
         'invoice_date' => 'date',
         'due_date' => 'date',
         'amount' => 'float',
+        'paid_at' => 'datetime',
     ];
 
     public function expense(): BelongsTo
@@ -39,5 +42,10 @@ class ExpenseInvoice extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(ExpenseInvoicePayment::class);
     }
 }
