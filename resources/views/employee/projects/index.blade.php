@@ -38,7 +38,19 @@
                             {{ (int) $project->subtasks_count }} total / {{ (int) $project->completed_subtasks_count }} completed
                         </td>
                         <td class="px-4 py-3">
-                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ ucfirst(str_replace('_',' ', $project->status)) }}</span>
+                            @php
+                                $status = strtolower((string) $project->status);
+                                $statusClasses = [
+                                    'ongoing' => 'bg-emerald-100 text-emerald-700',
+                                    'hold' => 'bg-amber-100 text-amber-700',
+                                    'complete' => 'bg-blue-100 text-blue-700',
+                                    'cancel' => 'bg-rose-100 text-rose-700',
+                                ];
+                                $statusClass = $statusClasses[$status] ?? 'bg-slate-100 text-slate-700';
+                            @endphp
+                            <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClass }}">
+                                {{ ucfirst(str_replace('_', ' ', $status)) }}
+                            </span>
                         </td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('employee.projects.show', $project) }}" class="text-sm font-semibold text-teal-700 hover:text-teal-600">View</a>
