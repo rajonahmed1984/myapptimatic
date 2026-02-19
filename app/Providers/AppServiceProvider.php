@@ -156,12 +156,10 @@ class AppServiceProvider extends ServiceProvider
                     }
 
                     $adminUnreadChat = (int) DB::table('project_messages as pm')
-                        ->leftJoin('project_message_reads as pmr', function ($join) use ($user) {
-                            $join->on('pmr.project_id', '=', 'pm.project_id')
-                                ->where('pmr.reader_type', 'user')
-                                ->where('pmr.reader_id', $user->id);
-                        })
-                        ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
+                        ->whereRaw(
+                            'pm.id > COALESCE((SELECT MAX(pmr.last_read_message_id) FROM project_message_reads as pmr WHERE pmr.project_id = pm.project_id AND pmr.reader_type = ? AND pmr.reader_id = ?), 0)',
+                            ['user', $user->id]
+                        )
                         ->count();
                 }
 

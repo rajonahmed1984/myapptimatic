@@ -327,12 +327,7 @@ const consumeServerFlashMessages = (root = null) => {
 
     const uniqueNodes = new Set([
         ...scope.querySelectorAll('[data-flash-message]'),
-        ...scope.querySelectorAll('.border-teal-200.bg-teal-50'),
-        ...scope.querySelectorAll('.border-red-200.bg-red-50'),
-        ...scope.querySelectorAll('.border-amber-200.bg-amber-50'),
-        ...scope.querySelectorAll('.border-blue-200.bg-blue-50'),
-        ...scope.querySelectorAll('.border-emerald-400\\/40.bg-emerald-400\\/10'),
-        ...scope.querySelectorAll('.border-red-500\\/40.bg-red-500\\/10'),
+        ...scope.querySelectorAll('[data-flash-auto="true"]'),
     ]);
 
     uniqueNodes.forEach((node) => {

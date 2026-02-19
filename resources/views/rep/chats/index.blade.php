@@ -37,7 +37,7 @@
                                 {{ $project->status ? ucfirst(str_replace('_', ' ', $project->status)) : '--' }}
                             </td>
                             <td class="px-4 py-3">
-                                <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $unread > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-50 text-slate-500' }}">
+                                <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $unread > 0 ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-slate-200 bg-slate-50 text-slate-500' }}">
                                     {{ $unread }}
                                 </span>
                             </td>

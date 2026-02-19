@@ -10,9 +10,14 @@
                 <div class="section-label">Chat</div>
                 <div class="text-sm text-slate-500">Select a project to open chat.</div>
             </div>
-            <a href="{{ route('admin.projects.index') }}" class="text-xs font-semibold text-slate-500 hover:text-teal-600">
-                Projects
-            </a>
+            <div class="flex items-center gap-3">
+                <span class="rounded-full border px-3 py-1 text-xs font-semibold {{ ($pageUnreadTotal ?? 0) > 0 ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-slate-300 bg-slate-50 text-slate-500' }}">
+                    Unread on this page: {{ (int) ($pageUnreadTotal ?? 0) }}
+                </span>
+                <a href="{{ route('admin.projects.index') }}" class="text-xs font-semibold text-slate-500 hover:text-teal-600">
+                    Projects
+                </a>
+            </div>
         </div>
 
         <div class="mt-6 overflow-x-auto">
@@ -28,7 +33,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($projects as $project)
-                        @php $unread = (int) ($unreadCounts[$project->id] ?? 0); @endphp
+                        @php $unread = (int) ($project->unread_count ?? 0); @endphp
                         <tr class="align-top">
                             <td class="px-4 py-3">
                                 <div class="text-xs text-slate-500">#{{ $project->id }}</div>
@@ -36,15 +41,15 @@
                             <td class="px-4 py-3">
                                 <div class="font-semibold text-slate-900">{{ $project->name }}</div>
                             </td>
-                            <td class="px-4 py-3 text-slate-600 {{ $unread > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-300 bg-slate-50 text-slate-500' }}">
+                            <td class="px-4 py-3 text-slate-600">
                                 {{ $project->status ? ucfirst(str_replace('_', ' ', $project->status)) : '--' }}
                             </td>
                             <td class="px-4 py-3">
-                                <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold {{ $unread > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-300 bg-slate-50 text-slate-500' }}">
+                                <span class="inline-flex min-w-8 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-semibold {{ $unread > 0 ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-slate-300 bg-slate-50 text-slate-500' }}">
                                     {{ $unread }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-right {{ $unread > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-300 bg-slate-50 text-slate-500' }}">
+                            <td class="px-4 py-3 text-right">
                                 <a href="{{ route('admin.projects.chat', $project) }}" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
                                     Open Chat
                                 </a>
@@ -52,7 +57,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-4 py-6 text-center text-slate-500">No projects available.</td>
+                            <td colspan="5" class="px-4 py-6 text-center text-slate-500">No projects available.</td>
                         </tr>
                     @endforelse
                 </tbody>
