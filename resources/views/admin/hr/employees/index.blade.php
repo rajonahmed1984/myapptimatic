@@ -21,6 +21,7 @@
                     <th class="py-2 px-3">Name</th>
                     <th class="py-2 px-3">Designation</th>
                     <th class="py-2 px-3">Employment</th>
+                    <th class="py-2 px-3">Join Date</th>
                     <th class="py-2 px-3">Manager</th>
                     <th class="py-2 px-3">Status</th>
                     <th class="py-2 px-3">Login</th>
@@ -45,6 +46,7 @@
                         </td>
                         <td class="py-2 px-3">{{ $employee->designation ?? '--' }}</td>
                         <td class="py-2 px-3">{{ ucfirst($employee->employment_type ?? '--') }}</td>
+                        <td class="py-2 px-3">{{ $employee->join_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
                         <td class="py-2 px-3">{{ $employee->manager?->name ?? '--' }}</td>
                         <td class="py-2 px-3">
                             <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $employee->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-300 text-slate-600 bg-slate-50' }}">
@@ -88,7 +90,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
+                    <tr><td colspan="9" class="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
                 @endforelse
                 </tbody>
             </table>
