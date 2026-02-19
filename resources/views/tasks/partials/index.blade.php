@@ -136,15 +136,15 @@
                                 {{ $task->createdBy?->name ?? 'System' }}
                             </td>
                         @endif
-                        <td class="px-4 py-3">
-                            <span class="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold {{ $statusClass }}">
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap {{ $statusClass }}">
                                 {{ $statusLabel }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-right">
-                            <div class="flex flex-col items-end gap-2 text-xs font-semibold">
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <div class="flex flex-col items-end gap-2 text-xs font-semibold whitespace-nowrap">
                                 @if($task->project)
-                                    <a href="{{ route($taskShowRoute, [$task->project, $task]) }}" class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300">Open Task</a>
+                                    <a href="{{ route($taskShowRoute, [$task->project, $task]) }}" class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300 whitespace-nowrap">Open Task</a>
                                 @endif
                                 @php
                                     $isInProgress = $currentStatus === 'in_progress';
@@ -157,7 +157,7 @@
                                         @unless($usesStartRoute)
                                             <input type="hidden" name="status" value="in_progress">
                                         @endunless
-                                        <button type="submit" class="rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300">
+                                        <button type="submit" class="rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300 whitespace-nowrap">
                                             Inprogress
                                         </button>
                                     </form>
@@ -167,7 +167,7 @@
                                         @csrf
                                         @method('PATCH')
                                         <input type="hidden" name="status" value="completed">
-                                        <button type="submit" class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300">
+                                        <button type="submit" class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300 whitespace-nowrap">
                                             Complete
                                         </button>
                                     </form>

@@ -39,7 +39,15 @@ class ChatController extends Controller
                 ->whereIn('pm.project_id', $projectIds->all())
                 ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
                 ->groupBy('pm.project_id')
-                ->pluck('unread', 'project_id');
+                ->pluck('unread', 'pm.project_id')
+                ->map(fn ($count) => (int) $count);
+
+            foreach ($projectIds as $projectId) {
+                $projectId = (int) $projectId;
+                if (! $unreadCounts->has($projectId)) {
+                    $unreadCounts->put($projectId, 0);
+                }
+            }
         }
 
         return view('client.chats.index', [
