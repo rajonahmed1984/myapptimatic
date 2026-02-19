@@ -1004,6 +1004,13 @@
               });
           });
       </script>
+    @if(request()->routeIs('employee.*'))
+        @include('layouts.partials.chat-unread-notifier', [
+            'unreadCount' => (int) ($employeeHeaderStats['unread_chat'] ?? 0),
+            'chatRoute' => route('employee.chats.index'),
+            'scope' => 'employee',
+        ])
+    @endif
     @if(session('cache_cleared'))
         <script>
             (async function () {

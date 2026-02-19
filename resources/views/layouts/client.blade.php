@@ -298,6 +298,11 @@
             });
         });
     </script>
+    @include('layouts.partials.chat-unread-notifier', [
+        'unreadCount' => (int) ($clientHeaderStats['unread_chat'] ?? 0),
+        'chatRoute' => route('client.chats.index'),
+        'scope' => 'client',
+    ])
     @if(session('cache_cleared'))
         <script>
             (async function () {

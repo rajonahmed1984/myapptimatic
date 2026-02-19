@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\LicenseDomain;
 use App\Models\Project;
+use App\Models\ProjectMessageRead;
 use App\Models\ProjectMaintenance;
 use App\Models\Setting;
 use App\Services\TaskQueryService;
@@ -136,13 +137,19 @@ class DashboardController extends Controller
 
     private function projectSpecificDashboard(Request $request, $user, TaskQueryService $taskQueryService)
     {
+        if (! $user->project_id) {
+            abort(404, 'Project assignment not found.');
+        }
+
         $project = Project::with([
             'customer',
             'tasks' => function ($query) {
                 $query->latest()->limit(10);
             },
             'tasks.assignments',
-            'maintenances'
+            'messages' => function ($query) {
+                $query->latest('id')->limit(8);
+            },
         ])->findOrFail($user->project_id);
 
         $this->authorize('view', $project);
@@ -150,7 +157,7 @@ class DashboardController extends Controller
         // Task statistics
         $totalTasks = $project->tasks()->count();
         $todoTasks = $project->tasks()->where('status', 'todo')->count();
-        $inProgressTasks = $project->tasks()->where('status', 'in_progress')->count();
+        $inProgressTaskCount = $project->tasks()->where('status', 'in_progress')->count();
         $completedTasks = $project->tasks()->where('status', 'completed')->count();
         $blockedTasks = $project->tasks()->where('status', 'blocked')->count();
 
@@ -161,41 +168,37 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // Unread messages count (messages don't have read status, use count of recent messages)
-        $unreadMessagesCount = 0;
+        // Unread chat count for project-specific client user
+        $lastReadId = ProjectMessageRead::query()
+            ->where('project_id', $project->id)
+            ->where('reader_type', 'user')
+            ->where('reader_id', $user->id)
+            ->value('last_read_message_id');
+
+        $unreadMessagesCount = $project->messages()
+            ->when($lastReadId, fn ($query) => $query->where('id', '>', $lastReadId))
+            ->count();
 
         // Recent chat messages
         $recentMessages = $project->messages()
-            ->latest()
-            ->limit(5)
+            ->latest('id')
+            ->limit(8)
             ->get();
-
-        // Support tickets for this user
-        $openTicketsCount = $user->customer?->supportTickets()
-            ->whereIn('status', ['open', 'customer_reply'])
-            ->count() ?? 0;
-
-        $recentTickets = $user->customer?->supportTickets()
-            ->latest('updated_at')
-            ->limit(4)
-            ->get() ?? collect();
 
         $showTasksWidget = $taskQueryService->canViewTasks($user);
         $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
 
-        return view('client.project-dashboard', [
+        return view('client.project-dashboard-minimal', [
             'project' => $project,
             'user' => $user,
             'totalTasks' => $totalTasks,
             'todoTasks' => $todoTasks,
-            'inProgressTasks' => $inProgressTasks,
+            'inProgressTaskCount' => $inProgressTaskCount,
             'completedTasks' => $completedTasks,
             'blockedTasks' => $blockedTasks,
             'recentTasks' => $recentTasks,
             'unreadMessagesCount' => $unreadMessagesCount,
             'recentMessages' => $recentMessages,
-            'openTicketsCount' => $openTicketsCount,
-            'recentTickets' => $recentTickets,
             'showTasksWidget' => $showTasksWidget,
             'taskSummary' => $tasksWidget['summary'] ?? null,
             'openTasks' => $tasksWidget['openTasks'] ?? collect(),

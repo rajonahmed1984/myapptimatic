@@ -236,6 +236,11 @@
             });
         });
     </script>
+    @include('layouts.partials.chat-unread-notifier', [
+        'unreadCount' => (int) ($repHeaderStats['unread_chat'] ?? 0),
+        'chatRoute' => route('rep.chats.index'),
+        'scope' => 'rep',
+    ])
     @include('partials.ajax-modal')
     @include('layouts.partials.delete-confirm-modal')
     @include('layouts.partials.table-responsive')

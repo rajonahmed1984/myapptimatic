@@ -12,6 +12,7 @@ use App\Models\UserSession;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Http\Requests\StoreTaskChatMessageRequest;
+use App\Notifications\ProjectChatMentionNotification;
 use App\Services\ChatAiService;
 use App\Services\GeminiService;
 use App\Services\ChatAiSummaryCache;
@@ -23,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -415,7 +417,7 @@ class ProjectChatController extends Controller
 
         $mentions = $this->resolveMentions($project, $identity, $message, $data['mentions'] ?? null);
 
-        ProjectMessage::create([
+        $createdMessage = ProjectMessage::create([
             'project_id' => $project->id,
             'author_type' => $identity['type'],
             'author_id' => $identity['id'],
@@ -423,6 +425,7 @@ class ProjectChatController extends Controller
             'mentions' => $mentions ?: null,
             'attachment_path' => $attachmentPath,
         ]);
+        $this->notifyMentionedParticipants($project, $createdMessage, $identity);
 
         return back()->with('status', 'Message sent.');
     }
@@ -503,6 +506,7 @@ class ProjectChatController extends Controller
             'attachment_path' => $attachmentPath,
         ]);
         $messageModel->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor']);
+        $this->notifyMentionedParticipants($project, $messageModel, $identity);
 
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.chat.messages.attachment';
@@ -1299,6 +1303,174 @@ class ProjectChatController extends Controller
         }
 
         return null;
+    }
+
+    private function notifyMentionedParticipants(Project $project, ProjectMessage $message, array $identity): void
+    {
+        $mentions = collect((array) ($message->mentions ?? []))
+            ->map(function ($mention) {
+                $type = $this->normalizeMentionType($mention['type'] ?? '');
+                $id = (int) ($mention['id'] ?? 0);
+                return ['type' => $type, 'id' => $id];
+            })
+            ->filter(fn ($mention) => in_array($mention['type'], ['user', 'employee', 'sales_rep'], true) && $mention['id'] > 0)
+            ->unique(fn ($mention) => $mention['type'] . ':' . $mention['id'])
+            ->values();
+
+        if ($mentions->isEmpty()) {
+            return;
+        }
+
+        $authorName = $message->authorName();
+        $snippet = $this->messageSnippet($message);
+        $userIds = $mentions->where('type', 'user')->pluck('id')->all();
+        $employeeIds = $mentions->where('type', 'employee')->pluck('id')->all();
+        $salesRepIds = $mentions->where('type', 'sales_rep')->pluck('id')->all();
+
+        if (! empty($userIds)) {
+            $users = User::query()
+                ->whereIn('id', $userIds)
+                ->get(['id', 'name', 'email', 'role']);
+
+            foreach ($users as $user) {
+                $this->sendMentionMailToUser($project, $identity, $authorName, $snippet, $user);
+            }
+        }
+
+        if (! empty($employeeIds)) {
+            $employees = Employee::query()
+                ->whereIn('id', $employeeIds)
+                ->get(['id', 'name', 'email']);
+
+            foreach ($employees as $employee) {
+                $this->sendMentionMailToEmployee($project, $identity, $authorName, $snippet, $employee);
+            }
+        }
+
+        if (! empty($salesRepIds)) {
+            $salesReps = SalesRepresentative::query()
+                ->whereIn('id', $salesRepIds)
+                ->get(['id', 'name', 'email']);
+
+            foreach ($salesReps as $salesRep) {
+                $this->sendMentionMailToSalesRep($project, $identity, $authorName, $snippet, $salesRep);
+            }
+        }
+    }
+
+    private function sendMentionMailToUser(
+        Project $project,
+        array $identity,
+        string $authorName,
+        string $snippet,
+        User $user
+    ): void {
+        if ($identity['type'] === 'user' && (int) $identity['id'] === (int) $user->id) {
+            return;
+        }
+
+        $email = trim((string) ($user->email ?? ''));
+        if ($email === '') {
+            return;
+        }
+
+        [$chatRouteName, $loginRouteName, $loginLabel] = $this->routesForMentionedUser($user);
+        $chatUrl = $this->safeRoute($chatRouteName, $project);
+        $loginUrl = $this->safeRoute($loginRouteName);
+
+        $this->deliverMentionNotification($email, $project, $authorName, $snippet, $chatUrl, $loginUrl, $loginLabel);
+    }
+
+    private function sendMentionMailToEmployee(
+        Project $project,
+        array $identity,
+        string $authorName,
+        string $snippet,
+        Employee $employee
+    ): void {
+        if ($identity['type'] === 'employee' && (int) $identity['id'] === (int) $employee->id) {
+            return;
+        }
+
+        $email = trim((string) ($employee->email ?? ''));
+        if ($email === '') {
+            return;
+        }
+
+        $chatUrl = $this->safeRoute('employee.projects.chat', $project);
+        $loginUrl = $this->safeRoute('employee.login');
+        $this->deliverMentionNotification($email, $project, $authorName, $snippet, $chatUrl, $loginUrl, 'Employee login');
+    }
+
+    private function sendMentionMailToSalesRep(
+        Project $project,
+        array $identity,
+        string $authorName,
+        string $snippet,
+        SalesRepresentative $salesRep
+    ): void {
+        if ($identity['type'] === 'sales_rep' && (int) $identity['id'] === (int) $salesRep->id) {
+            return;
+        }
+
+        $email = trim((string) ($salesRep->email ?? ''));
+        if ($email === '') {
+            return;
+        }
+
+        $chatUrl = $this->safeRoute('rep.projects.chat', $project);
+        $loginUrl = $this->safeRoute('sales.login');
+        $this->deliverMentionNotification($email, $project, $authorName, $snippet, $chatUrl, $loginUrl, 'Sales login');
+    }
+
+    private function deliverMentionNotification(
+        string $email,
+        Project $project,
+        string $authorName,
+        string $snippet,
+        ?string $chatUrl,
+        ?string $loginUrl,
+        ?string $loginLabel
+    ): void {
+        try {
+            Notification::route('mail', $email)->notify(new ProjectChatMentionNotification(
+                $project,
+                $authorName,
+                $snippet,
+                $chatUrl,
+                $loginUrl,
+                $loginLabel
+            ));
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    private function routesForMentionedUser(User $user): array
+    {
+        if ($user->isClient() || $user->isClientProject()) {
+            return ['client.projects.chat', 'login', 'Client login'];
+        }
+
+        if ($user->isSales()) {
+            return ['rep.projects.chat', 'sales.login', 'Sales login'];
+        }
+
+        if ($user->isSupport()) {
+            return ['admin.projects.chat', 'support.login', 'Support login'];
+        }
+
+        return ['admin.projects.chat', 'admin.login', 'Admin login'];
+    }
+
+    private function safeRoute(string $routeName, mixed $parameters = []): ?string
+    {
+        try {
+            return route($routeName, $parameters);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return null;
+        }
     }
 
     private function readReceiptsForMessages(Project $project, $messages, array $identity): array
