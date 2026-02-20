@@ -16,7 +16,7 @@
     $isEdited = $message->updated_at && $message->created_at && $message->updated_at->gt($message->created_at);
 @endphp
 @php $attachmentUrl = route($attachmentRouteName, [$project, $task, $message], false); @endphp
-@php $inlineAttachmentUrl = \Illuminate\Support\Facades\URL::signedRoute('chat.task-messages.inline', ['message' => $message->id], false); @endphp
+@php $inlineAttachmentUrl = \Illuminate\Support\Facades\URL::signedRoute('chat.task-messages.inline', ['message' => $message->id], null, false); @endphp
 <div class="wa-message-row {{ $isOwn ? 'justify-end' : 'justify-start' }}"
      data-message-id="{{ $message->id }}"
      data-editable-until="{{ $editableUntil?->toIso8601String() ?? '' }}"

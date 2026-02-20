@@ -1087,16 +1087,9 @@ class ProjectChatController extends Controller
 
     private function participantsForProject(Project $project, array $identity): array
     {
-        $customerUserIds = User::query()
-            ->where('customer_id', $project->customer_id)
-            ->whereIn('role', [Role::CLIENT, Role::CLIENT_PROJECT])
-            ->pluck('id')
-            ->all();
-
-        $userIds = array_merge(
-            $project->projectClients()->pluck('users.id')->all(),
-            $customerUserIds
-        );
+        // Keep participant scope strict to the current project to avoid
+        // leaking users from other projects under the same customer.
+        $userIds = $project->projectClients()->pluck('users.id')->all();
         $employeeIds = $project->employees()->pluck('employees.id')->all();
         $salesRepIds = $project->salesRepresentatives()->pluck('sales_representatives.id')->all();
 
@@ -1105,6 +1098,19 @@ class ProjectChatController extends Controller
             ->select('author_type', 'author_id')
             ->distinct()
             ->get();
+        $authorUserIds = $authors
+            ->filter(fn ($author) => $this->normalizeMentionType($author->author_type ?? '') === 'user')
+            ->pluck('author_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+        $authorUserRoles = $authorUserIds->isNotEmpty()
+            ? User::query()
+                ->whereIn('id', $authorUserIds->all())
+                ->pluck('role', 'id')
+                ->all()
+            : [];
 
         foreach ($authors as $author) {
             $type = $this->normalizeMentionType($author->author_type ?? '');
@@ -1118,6 +1124,11 @@ class ProjectChatController extends Controller
             } elseif ($type === 'sales_rep') {
                 $salesRepIds[] = $id;
             } else {
+                $role = $authorUserRoles[$id] ?? null;
+                $isClientUser = in_array($role, [Role::CLIENT, Role::CLIENT_PROJECT], true);
+                if ($isClientUser && ! in_array($id, $userIds, true)) {
+                    continue;
+                }
                 $userIds[] = $id;
             }
         }
@@ -1480,6 +1491,12 @@ class ProjectChatController extends Controller
             return [];
         }
 
+        $allowedParticipantKeys = collect($this->participantsForProject($project, $identity))
+            ->map(fn ($participant) => ($participant['type'] ?? '') . ':' . ($participant['id'] ?? ''))
+            ->filter()
+            ->values()
+            ->all();
+
         $minId = $messageIds->min();
         $reads = ProjectMessageRead::query()
             ->where('project_id', $project->id)
@@ -1490,6 +1507,13 @@ class ProjectChatController extends Controller
         if ($identity['id']) {
             $reads = $reads->reject(fn ($read) => $read->reader_type === $identity['type']
                 && (string) $read->reader_id === (string) $identity['id']);
+        }
+        if (! empty($allowedParticipantKeys)) {
+            $reads = $reads->filter(function ($read) use ($allowedParticipantKeys) {
+                $readerType = $this->normalizeMentionType((string) $read->reader_type);
+                $key = $readerType . ':' . (int) $read->reader_id;
+                return in_array($key, $allowedParticipantKeys, true);
+            });
         }
 
         if ($reads->isEmpty()) {

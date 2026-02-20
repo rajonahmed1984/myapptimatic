@@ -1047,7 +1047,7 @@ Route::middleware(['support', 'user.activity:support', 'nocache'])
         Route::delete('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'destroy'])->name('support-tickets.destroy');
     });
 
-Route::middleware('signed')->group(function () {
+Route::middleware('signed:relative')->group(function () {
     Route::get('/chat/project-messages/{message}/inline', [ProjectChatController::class, 'inlineAttachment'])
         ->name('chat.project-messages.inline');
     Route::get('/chat/task-messages/{message}/inline', [ProjectTaskChatController::class, 'inlineAttachment'])
