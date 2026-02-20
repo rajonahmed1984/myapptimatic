@@ -388,10 +388,10 @@
                                                 <button type="button" class="subtask-edit-btn rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-700" data-subtask-id="{{ $subtask->id }}">Edit</button>
                                             @endif
                                             @if($canChangeSubtaskStatus)
-                                            <button type="button" class="subtask-status-btn rounded-full border border-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-700 hover:border-amber-300" data-subtask-id="{{ $subtask->id }}" data-status="in_progress">
+                                            <button type="button" class="subtask-status-btn rounded-full border border-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-700 hover:border-amber-300" data-subtask-id="{{ $subtask->id }}" data-status="in_progress" data-update-url="{{ route($routePrefix . '.projects.tasks.subtasks.update', [$project, $task, $subtask]) }}">
                                                 Inprogress
                                             </button>
-                                            <button type="button" class="subtask-status-btn rounded-full border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:border-emerald-300" data-subtask-id="{{ $subtask->id }}" data-status="completed">
+                                            <button type="button" class="subtask-status-btn rounded-full border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:border-emerald-300" data-subtask-id="{{ $subtask->id }}" data-status="completed" data-update-url="{{ route($routePrefix . '.projects.tasks.subtasks.update', [$project, $task, $subtask]) }}">
                                                 Complete
                                             </button>
                                             @endif
@@ -863,7 +863,11 @@
 
                 const subtaskId = button.getAttribute('data-subtask-id');
                 const status = button.getAttribute('data-status');
+                const updateUrl = button.getAttribute('data-update-url');
                 if (!subtaskId) {
+                    return;
+                }
+                if (!updateUrl) {
                     return;
                 }
 
@@ -874,7 +878,7 @@
                 formData.append('_token', csrfToken);
                 formData.append('_method', 'PATCH');
 
-                fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.update', [$project, $task, ':id']) }}`.replace(':id', subtaskId), {
+                fetch(updateUrl, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
