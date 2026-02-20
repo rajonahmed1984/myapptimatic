@@ -518,6 +518,7 @@
     <script>
         const csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content')
             || @json(csrf_token());
+        const taskPageKey = @json($routePrefix . '.projects.tasks.show');
         const refreshTaskView = async () => {
             if (window.AjaxNav && typeof window.AjaxNav.refresh === 'function') {
                 await window.AjaxNav.refresh();
@@ -843,10 +844,30 @@
         @endif
 
         @if(in_array($routePrefix, ['employee', 'admin'], true))
-        document.querySelectorAll('.subtask-status-btn').forEach(button => {
-            button.addEventListener('click', () => {
+        if (!window.__taskDetailSubtaskStatusBound) {
+            document.addEventListener('click', (event) => {
+                const appContent = document.querySelector('#appContent');
+                if (appContent?.dataset?.pageKey !== taskPageKey) {
+                    return;
+                }
+
+                const target = event.target instanceof Element ? event.target : null;
+                const button = target?.closest('.subtask-status-btn');
+                if (!button || !appContent.contains(button)) {
+                    return;
+                }
+
+                if (button.dataset.busy === 'true') {
+                    return;
+                }
+
                 const subtaskId = button.getAttribute('data-subtask-id');
                 const status = button.getAttribute('data-status');
+                if (!subtaskId) {
+                    return;
+                }
+
+                button.dataset.busy = 'true';
 
                 const formData = new FormData();
                 formData.append('status', status || 'open');
@@ -865,20 +886,24 @@
                 })
                 .then(response => {
                     if (response.ok) {
-                        refreshTaskView();
-                    } else {
-                        return response.text().then(text => {
-                            console.error('Response:', text);
-                            window.notify('Error updating subtask: ' + (response.status || 'Unknown error'), 'error');
-                        });
+                        return refreshTaskView();
                     }
+                    return response.text().then(text => {
+                        console.error('Response:', text);
+                        window.notify('Error updating subtask: ' + (response.status || 'Unknown error'), 'error');
+                    });
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     window.notify('Error updating subtask: ' + error.message, 'error');
+                })
+                .finally(() => {
+                    delete button.dataset.busy;
                 });
             });
-        });
+
+            window.__taskDetailSubtaskStatusBound = true;
+        }
         @endif
 
     </script>
