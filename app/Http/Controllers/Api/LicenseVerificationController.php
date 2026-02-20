@@ -34,11 +34,12 @@ class LicenseVerificationController extends Controller
         $data = $request->validate([
             'license_key' => ['required', 'string'],
             'domain' => ['required', 'string'],
+            'license_url' => ['nullable', 'string'],
         ]);
 
         $decision = 'allow';
         $reason = null;
-        $domainInput = $data['domain'];
+        $domainInput = (string) ($data['domain'] ?? '');
 
         $license = License::query()
             ->with(['subscription.customer', 'domains'])
@@ -87,13 +88,28 @@ class LicenseVerificationController extends Controller
             return $this->blockedResponse($reason, [], $requestId);
         }
 
-        $domain = $this->normalizeDomain($data['domain']);
+        $domain = $this->normalizeDomain($domainInput);
         if (! $domain) {
             $decision = 'block';
             $reason = 'invalid_domain';
             $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domainInput, $request);
 
             return $this->blockedResponse($reason, [], $requestId);
+        }
+
+        $licenseUrlInput = trim((string) ($data['license_url'] ?? ''));
+        if ($licenseUrlInput !== '') {
+            $licenseUrlDomain = $this->normalizeDomain($licenseUrlInput);
+
+            if (! $licenseUrlDomain || $licenseUrlDomain !== $domain) {
+                $decision = 'block';
+                $reason = 'invalid_domain';
+                $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request, [
+                    'license_url_mismatch' => true,
+                ]);
+
+                return $this->blockedResponse($reason, [], $requestId);
+            }
         }
 
         $activeDomain = LicenseDomain::query()

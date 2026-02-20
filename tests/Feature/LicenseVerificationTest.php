@@ -142,6 +142,27 @@ class LicenseVerificationTest extends TestCase
     }
 
     #[Test]
+    public function license_url_must_match_domain_when_provided(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup();
+
+        $response = $this->postJson(route('api.licenses.verify'), [
+            'license_key' => $license->license_key,
+            'domain' => 'example.com',
+            'license_url' => 'https://other.com',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'blocked',
+            'blocked' => true,
+            'reason' => 'invalid_domain',
+        ]);
+    }
+
+    #[Test]
     public function signature_is_required_when_enabled(): void
     {
         $previousRequire = getenv('AI_REQUIRE_SIGNED_VERIFY');
