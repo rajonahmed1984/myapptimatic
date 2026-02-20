@@ -1089,7 +1089,23 @@ class ProjectChatController extends Controller
     {
         // Keep participant scope strict to the current project to avoid
         // leaking users from other projects under the same customer.
-        $userIds = $project->projectClients()->pluck('users.id')->all();
+        $customerId = (int) ($project->customer_id ?? 0);
+        $userIds = User::query()
+            ->where(function ($query) use ($project, $customerId) {
+                $query->where(function ($scope) use ($project) {
+                    $scope->where('role', Role::CLIENT_PROJECT)
+                        ->where('project_id', $project->id);
+                });
+
+                if ($customerId > 0) {
+                    $query->orWhere(function ($scope) use ($customerId) {
+                        $scope->whereIn('role', [Role::CLIENT, 'customer'])
+                            ->where('customer_id', $customerId);
+                    });
+                }
+            })
+            ->pluck('id')
+            ->all();
         $employeeIds = $project->employees()->pluck('employees.id')->all();
         $salesRepIds = $project->salesRepresentatives()->pluck('sales_representatives.id')->all();
 
