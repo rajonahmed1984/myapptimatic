@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Models\EmployeeAttendance;
 use App\Models\EmployeeCompensation;
 use App\Models\EmployeeSession;
 use App\Models\EmployeePayout;
 use App\Models\EmployeeWorkSession;
 use App\Models\EmployeeWorkSummary;
+use App\Models\PaidHoliday;
 use App\Models\PayrollItem;
 use App\Models\Project;
 use App\Models\ProjectTask;
@@ -605,6 +607,7 @@ class EmployeeController extends Controller
                     'status',
                     'pay_type',
                     'currency',
+                    'base_pay',
                     'timesheet_hours',
                     'overtime_enabled',
                     'overtime_hours',
@@ -617,6 +620,141 @@ class EmployeeController extends Controller
                     'net_pay',
                     'paid_at',
                 ]);
+
+            if ($tab === 'payroll') {
+                $periodPayrollStats = [];
+                foreach ($recentPayrollItems as $payrollItem) {
+                    $period = $payrollItem->period;
+                    if (! $period || ! $period->start_date || ! $period->end_date) {
+                        $basePay = round((float) ($payrollItem->base_pay ?? 0), 2, PHP_ROUND_HALF_UP);
+                        $bonus = $this->sumPayrollAdjustment($payrollItem->bonuses);
+                        $penalty = $this->sumPayrollAdjustment($payrollItem->penalties);
+                        $advance = $this->sumPayrollAdjustment($payrollItem->advances);
+                        $deduction = $this->sumPayrollAdjustment($payrollItem->deductions);
+                        $overtimeHours = (float) ($payrollItem->overtime_hours ?? 0);
+                        $overtimeRate = (float) ($payrollItem->overtime_rate ?? 0);
+                        $overtimePay = round($overtimeHours * $overtimeRate, 2, PHP_ROUND_HALF_UP);
+
+                        $payrollItem->computed_base_pay = $basePay;
+                        $payrollItem->computed_hours_attendance = number_format((float) ($payrollItem->timesheet_hours ?? 0), 2).' hrs';
+                        $payrollItem->computed_overtime_label = number_format($overtimeHours, 2).($overtimeRate > 0 ? ' @ '.number_format($overtimeRate, 2) : '');
+                        $payrollItem->computed_overtime_pay = $overtimePay;
+                        $payrollItem->computed_bonus = round($bonus, 2, PHP_ROUND_HALF_UP);
+                        $payrollItem->computed_penalty = round($penalty, 2, PHP_ROUND_HALF_UP);
+                        $payrollItem->computed_advance = round($advance, 2, PHP_ROUND_HALF_UP);
+                        $payrollItem->computed_deduction = round($deduction, 2, PHP_ROUND_HALF_UP);
+                        $payrollItem->computed_est_subtotal = $basePay;
+                        $payrollItem->computed_gross_pay = round($basePay + $overtimePay + $bonus, 2, PHP_ROUND_HALF_UP);
+                        $payrollItem->computed_net_pay = round($payrollItem->computed_gross_pay - $penalty - $advance - $deduction, 2, PHP_ROUND_HALF_UP);
+                        continue;
+                    }
+
+                    $periodId = (int) $period->id;
+                    if (! isset($periodPayrollStats[$periodId])) {
+                        $startDate = $period->start_date->toDateString();
+                        $endDate = $period->end_date->toDateString();
+
+                        $paidHolidayDates = PaidHoliday::query()
+                            ->where('is_paid', true)
+                            ->whereBetween('holiday_date', [$startDate, $endDate])
+                            ->pluck('holiday_date')
+                            ->map(fn ($date) => Carbon::parse((string) $date)->toDateString())
+                            ->all();
+
+                        $paidHolidayMap = array_fill_keys($paidHolidayDates, true);
+                        $workingDaysInPeriod = 0;
+                        $cursor = $period->start_date->copy()->startOfDay();
+                        $periodEnd = $period->end_date->copy()->startOfDay();
+                        while ($cursor->lessThanOrEqualTo($periodEnd)) {
+                            if (! isset($paidHolidayMap[$cursor->toDateString()])) {
+                                $workingDaysInPeriod++;
+                            }
+                            $cursor->addDay();
+                        }
+
+                        $totalWorkSeconds = (int) EmployeeWorkSession::query()
+                            ->where('employee_id', $employee->id)
+                            ->whereDate('work_date', '>=', $startDate)
+                            ->whereDate('work_date', '<=', $endDate)
+                            ->when(! empty($paidHolidayDates), fn ($q) => $q->whereNotIn('work_date', $paidHolidayDates))
+                            ->sum('active_seconds');
+                        $workLogHours = round($totalWorkSeconds / 3600, 2, PHP_ROUND_HALF_UP);
+
+                        $attendanceRows = EmployeeAttendance::query()
+                            ->where('employee_id', $employee->id)
+                            ->whereDate('date', '>=', $startDate)
+                            ->whereDate('date', '<=', $endDate)
+                            ->when(! empty($paidHolidayDates), fn ($q) => $q->whereNotIn('date', $paidHolidayDates))
+                            ->get(['status']);
+                        $presentDays = (float) $attendanceRows->where('status', 'present')->count();
+                        $halfDays = (float) $attendanceRows->where('status', 'half_day')->count() * 0.5;
+                        $workedDays = round($presentDays + $halfDays, 1);
+
+                        $periodPayrollStats[$periodId] = [
+                            'work_log_hours' => $workLogHours,
+                            'worked_days' => $workedDays,
+                            'working_days' => $workingDaysInPeriod,
+                        ];
+                    }
+
+                    $periodStats = $periodPayrollStats[$periodId];
+                    $employmentType = (string) ($employee->employment_type ?? '');
+                    $isHoursBased = $payrollItem->pay_type === 'hourly' || $employmentType === 'part_time';
+                    $isAttendanceBased = $employmentType === 'full_time';
+                    $hoursPerDay = $employmentType === 'part_time' ? 4 : 8;
+
+                    $actualHours = (float) ($periodStats['work_log_hours'] ?? 0);
+                    if ($actualHours <= 0) {
+                        $actualHours = (float) ($payrollItem->timesheet_hours ?? 0);
+                    }
+
+                    $workedDays = (float) ($periodStats['worked_days'] ?? 0);
+                    $totalWorkingDays = (int) ($periodStats['working_days'] ?? 0);
+                    $expectedHours = max(0, $totalWorkingDays) * $hoursPerDay;
+
+                    $basePay = (float) ($payrollItem->base_pay ?? 0);
+                    $estSubtotal = $basePay;
+                    if ($isHoursBased) {
+                        $hoursRatio = $expectedHours > 0 ? min(1, max(0, $actualHours / $expectedHours)) : 0;
+                        $estSubtotal = $basePay * $hoursRatio;
+                    } elseif ($isAttendanceBased && $totalWorkingDays > 0) {
+                        $attendanceRatio = min(1, max(0, $workedDays / $totalWorkingDays));
+                        $estSubtotal = $basePay * $attendanceRatio;
+                    }
+                    $estSubtotal = round($estSubtotal, 2, PHP_ROUND_HALF_UP);
+
+                    $bonus = $this->sumPayrollAdjustment($payrollItem->bonuses);
+                    $penalty = $this->sumPayrollAdjustment($payrollItem->penalties);
+                    $advance = $this->sumPayrollAdjustment($payrollItem->advances);
+                    $deduction = $this->sumPayrollAdjustment($payrollItem->deductions);
+                    $overtimeHours = (float) ($payrollItem->overtime_hours ?? 0);
+                    $overtimeRate = (float) ($payrollItem->overtime_rate ?? 0);
+                    $overtimePay = $overtimeHours * $overtimeRate;
+
+                    if ($isHoursBased) {
+                        $hoursAttendance = number_format($actualHours, 2).' hrs ('.number_format((float) $expectedHours, 0).' hrs)';
+                    } elseif ($isAttendanceBased) {
+                        $workedDisplay = fmod($workedDays, 1.0) === 0.0
+                            ? (string) ((int) $workedDays)
+                            : number_format($workedDays, 1);
+                        $hoursAttendance = $workedDisplay.' ('.$totalWorkingDays.')';
+                    } else {
+                        $hoursAttendance = '--';
+                    }
+
+                    $payrollItem->computed_base_pay = round($basePay, 2, PHP_ROUND_HALF_UP);
+                    $payrollItem->computed_hours_attendance = $hoursAttendance;
+                    $payrollItem->computed_overtime_label = number_format($overtimeHours, 2).($overtimeRate > 0 ? ' @ '.number_format($overtimeRate, 2) : '');
+                    $payrollItem->computed_overtime_pay = round($overtimePay, 2, PHP_ROUND_HALF_UP);
+                    $payrollItem->computed_bonus = round($bonus, 2, PHP_ROUND_HALF_UP);
+                    $payrollItem->computed_penalty = round($penalty, 2, PHP_ROUND_HALF_UP);
+                    $payrollItem->computed_advance = round($advance, 2, PHP_ROUND_HALF_UP);
+                    $payrollItem->computed_deduction = round($deduction, 2, PHP_ROUND_HALF_UP);
+                    $payrollItem->computed_est_subtotal = $estSubtotal;
+                    $payrollItem->computed_gross_pay = round($estSubtotal + $overtimePay + $bonus, 2, PHP_ROUND_HALF_UP);
+                    $payrollItem->computed_net_pay = round($payrollItem->computed_gross_pay - $penalty - $advance - $deduction, 2, PHP_ROUND_HALF_UP);
+                }
+            }
 
             $draftPayrollItem = $recentPayrollItems->firstWhere('status', 'draft');
 
@@ -770,5 +908,16 @@ class EmployeeController extends Controller
             ->groupBy('employee_id')
             ->pluck('last_login_at', 'employee_id')
             ->all();
+    }
+
+    private function sumPayrollAdjustment($value): float
+    {
+        if (is_array($value)) {
+            return (float) array_reduce($value, function ($carry, $row) {
+                return $carry + (float) ($row['amount'] ?? $row ?? 0);
+            }, 0.0);
+        }
+
+        return (float) ($value ?? 0);
     }
 }

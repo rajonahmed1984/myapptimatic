@@ -123,6 +123,7 @@
                             $payableNet = round(max(0, $computedNet), 2, PHP_ROUND_HALF_UP);
                             $paidAmount = round((float) ($item->paid_amount ?? 0), 2, PHP_ROUND_HALF_UP);
                             $remainingAmount = round(max(0, $payableNet - $paidAmount), 2, PHP_ROUND_HALF_UP);
+                            $displayStatus = $payableNet <= 0 ? 'paid' : $item->status;
                         @endphp
                         <tr class="border-b border-slate-100">
                             <td class="py-2 px-3">{{ $item->employee_id }}</td>
@@ -247,11 +248,11 @@
                             <td class="py-2 px-3">{{ number_format($computedNet, 2) }}</td>
                             <td class="py-2 px-3">
                                 <span class="rounded-full px-2 py-1 text-xs font-semibold {{
-                                    $item->status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
-                                    ($item->status === 'partial' ? 'bg-orange-100 text-orange-700' :
-                                    ($item->status === 'approved' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'))
+                                    $displayStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                                    ($displayStatus === 'partial' ? 'bg-orange-100 text-orange-700' :
+                                    ($displayStatus === 'approved' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'))
                                 }}">
-                                    {{ ucfirst($item->status) }}
+                                    {{ ucfirst($displayStatus) }}
                                 </span>
                             </td>
                             <td class="py-2 px-3">{{ number_format($paidAmount, 2) }}</td>

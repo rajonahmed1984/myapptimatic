@@ -521,13 +521,20 @@
             <div class="mt-4 card p-4">
                 <div class="mb-3 text-sm font-semibold text-slate-800">Recent Payroll Items</div>
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[760px] text-sm text-slate-700">
+                    <table class="w-full min-w-[1500px] text-sm text-slate-700">
                         <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
                             <tr>
                                 <th class="py-2 text-left">Period</th>
                                 <th class="py-2 text-left">Pay Type</th>
-                                <th class="py-2 text-right">Hours</th>
+                                <th class="py-2 text-right">Base</th>
+                                <th class="py-2 text-right">Hours / Attendance</th>
+                                <th class="py-2 text-right">Overtime</th>
+                                <th class="py-2 text-right">Bonus</th>
+                                <th class="py-2 text-right">Penalty</th>
+                                <th class="py-2 text-right">Advance</th>
+                                <th class="py-2 text-right">Est. Subtotal</th>
                                 <th class="py-2 text-right">Gross</th>
+                                <th class="py-2 text-right">Deduction</th>
                                 <th class="py-2 text-right">Net</th>
                                 <th class="py-2 text-left">Status</th>
                                 <th class="py-2 text-left">Paid At</th>
@@ -538,15 +545,27 @@
                                 <tr class="border-b border-slate-100">
                                     <td class="py-2">{{ $payrollItem->period?->period_key ?? '--' }}</td>
                                     <td class="py-2">{{ ucfirst((string) ($payrollItem->pay_type ?? '--')) }}</td>
-                                    <td class="py-2 text-right">{{ number_format((float) ($payrollItem->timesheet_hours ?? 0), 2) }}</td>
-                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->gross_pay ?? 0), 2) }}</td>
-                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->net_pay ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_base_pay ?? $payrollItem->base_pay ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->computed_hours_attendance ?? '--' }}</td>
+                                    <td class="py-2 text-right">
+                                        {{ $payrollItem->computed_overtime_label ?? number_format((float) ($payrollItem->overtime_hours ?? 0), 2) }}
+                                        <div class="text-[11px] text-slate-500">
+                                            {{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_overtime_pay ?? 0), 2) }}
+                                        </div>
+                                    </td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_bonus ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_penalty ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_advance ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_est_subtotal ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_gross_pay ?? $payrollItem->gross_pay ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_deduction ?? 0), 2) }}</td>
+                                    <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_net_pay ?? $payrollItem->net_pay ?? 0), 2) }}</td>
                                     <td class="py-2">{{ ucfirst((string) ($payrollItem->status ?? '--')) }}</td>
                                     <td class="py-2">{{ $payrollItem->paid_at?->format(($globalDateFormat ?? 'Y-m-d') . ' H:i') ?? '--' }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="py-4 text-center text-slate-500">No payroll item yet.</td>
+                                    <td colspan="14" class="py-4 text-center text-slate-500">No payroll item yet.</td>
                                 </tr>
                             @endforelse
                         </tbody>
