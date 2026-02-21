@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     @include('layouts.partials.head')
@@ -10,7 +10,7 @@
                 $wideForm = request()->routeIs('register');
             @endphp
             <div class="w-full">
-                <div class="mb-8 flex flex-wrap items-center justify-between border-b py-2 gap-4">
+                <div class="mb-8 flex flex-wrap items-center justify-between gap-4 border-b py-2">
                     <a href="{{ url('/') }}" class="flex items-center gap-3">
                         @if(!empty($portalBranding['logo_url']))
                             <img src="{{ $portalBranding['logo_url'] }}" alt="Company logo" class="h-12 rounded-xl p-1">
@@ -25,7 +25,7 @@
                     </div>
                 </div>
                 <div class="mx-auto w-full max-w-md {{ $wideForm ? 'md:max-w-[50rem]' : '' }}">
-                    <div class="card p-8">
+                    <div class="card overflow-hidden p-8">
                     @if ($errors->any())
                         <div data-flash-message data-flash-type="error" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                             @if (request()->routeIs('login', 'admin.login', 'employee.login', 'sales.login', 'support.login', 'project-client.login'))
@@ -49,7 +49,7 @@
                     @yield('content')
                     </div>
                     <div class="mt-6 text-center text-xs text-slate-500">
-                        Copyright © {{ now()->year }} <a href="https://apptimatic.com" class="font-semibold text-teal-600 hover:text-teal-500">Apptimatic</a>. All Rights Reserved.
+                        Copyright &copy; {{ now()->year }} <a href="https://apptimatic.com" class="font-semibold text-teal-600 hover:text-teal-500">Apptimatic</a>. All Rights Reserved.
                     </div>
                 </div>
             </div>

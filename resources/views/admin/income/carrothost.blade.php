@@ -13,19 +13,30 @@
         <div class="text-right text-xs text-slate-500">
             <div>Last refreshed: {{ now()->format($globalDateFormat.' H:i') }}</div>
             <div class="mt-2 flex flex-wrap items-center justify-end gap-2 text-xs">
+                <form id="carrothost-sync-form" method="POST" action="{{ route('admin.income.carrothost.sync') }}" class="inline">
+                    @csrf
+                    <input type="hidden" name="month" value="{{ $month }}">
+                    <button
+                        type="submit"
+                        id="carrothost-sync-btn"
+                        class="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-100"
+                    >
+                        Sync Data
+                    </button>
+                </form>
                 @if($prevMonth)
                     <a href="{{ route('admin.income.carrothost', ['month' => $prevMonth]) }}" class="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:border-emerald-200 hover:text-emerald-700">
-                        ← {{ $prevMonthLabel }}
+                        &larr; {{ $prevMonthLabel }}
                     </a>
                 @else
-                    <span class="rounded-full border border-slate-100 px-3 py-1 text-slate-300">← {{ $monthLabel }}</span>
+                    <span class="rounded-full border border-slate-100 px-3 py-1 text-slate-300">&larr; {{ $monthLabel }}</span>
                 @endif
                 @if($nextMonth)
                     <a href="{{ route('admin.income.carrothost', ['month' => $nextMonth]) }}" class="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:border-emerald-200 hover:text-emerald-700">
-                        {{ $nextMonthLabel }} →
+                        {{ $nextMonthLabel }} &rarr;
                     </a>
                 @else
-                    <span class="rounded-full border border-slate-100 px-3 py-1 text-slate-300">{{ $monthLabel }} →</span>
+                    <span class="rounded-full border border-slate-100 px-3 py-1 text-slate-300">{{ $monthLabel }} &rarr;</span>
                 @endif
             </div>
         </div>
@@ -93,3 +104,76 @@
 
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const syncForm = document.getElementById('carrothost-sync-form');
+            const syncButton = document.getElementById('carrothost-sync-btn');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+            if (!syncForm || !syncButton || !window.fetch || !csrfToken) {
+                return;
+            }
+
+            let isSyncing = false;
+            let autoSyncTimer = null;
+
+            const setSyncState = (syncing) => {
+                isSyncing = syncing;
+                syncButton.disabled = syncing;
+                syncButton.classList.toggle('opacity-70', syncing);
+                syncButton.classList.toggle('cursor-wait', syncing);
+                syncButton.textContent = syncing ? 'Syncing...' : 'Sync Data';
+            };
+
+            const syncNow = async () => {
+                if (isSyncing) {
+                    return;
+                }
+
+                setSyncState(true);
+                const formData = new FormData(syncForm);
+                formData.set('_token', csrfToken);
+
+                try {
+                    const response = await fetch(syncForm.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData,
+                    });
+
+                    if (response.ok) {
+                        window.location.reload();
+                        return;
+                    }
+                } catch (error) {
+                    // Silent fail; user can retry manually.
+                }
+
+                setSyncState(false);
+            };
+
+            syncForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                syncNow();
+            });
+
+            autoSyncTimer = setInterval(() => {
+                if (document.visibilityState !== 'visible') {
+                    return;
+                }
+                syncNow();
+            }, 5 * 60 * 1000);
+
+            window.addEventListener('beforeunload', () => {
+                if (autoSyncTimer) {
+                    clearInterval(autoSyncTimer);
+                }
+            });
+        });
+    </script>
+@endpush

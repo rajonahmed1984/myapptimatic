@@ -3,6 +3,83 @@
 @section('title', 'Admin Dashboard')
 @section('page-title', 'Admin Overview')
 
+@push('styles')
+    <style>
+        #system-overview-card .btn-period-chooser {
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            background: #f8fafc;
+            padding: 0.15rem;
+            gap: 0.15rem;
+        }
+
+        #system-overview-card .btn-period-chooser .btn {
+            border-radius: 0.35rem;
+            padding: 0.3rem 0.75rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        #system-overview-card .btn-period-chooser .btn.active {
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+        }
+
+        #system-overview-chart-wrap {
+            background-image: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.92));
+        }
+
+        #system-overview-tooltip {
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.14s ease, transform 0.14s ease;
+        }
+
+        #system-overview-tooltip[data-visible="true"] {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #system-overview-card .legend-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border-radius: 0.35rem;
+            border: 1px solid #d1d5db;
+            background: rgba(255, 255, 255, 0.75);
+            padding: 0.2rem 0.55rem;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        #system-overview-card .legend-swatch {
+            height: 0.75rem;
+            width: 1.4rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.2rem;
+            background: rgba(203, 213, 225, 0.35);
+        }
+
+        #system-overview-card .legend-swatch-new {
+            border-color: #d1d5db;
+            background: rgba(226, 232, 240, 0.7);
+        }
+
+        #system-overview-card .legend-swatch-active {
+            border-color: #1d4ed8;
+            background: rgba(59, 130, 246, 0.45);
+        }
+
+        #system-overview-card .legend-swatch-income {
+            border-color: #16a34a;
+            background: rgba(74, 222, 128, 0.45);
+        }
+    </style>
+@endpush
+
 @section('content')
 
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4 stagger">
@@ -222,99 +299,97 @@
     </div>
 
     <div class="mt-8">
-        <div class="card p-6">
-            <div class="flex items-center justify-between gap-4">
+        <div class="card p-6" id="system-overview-card">
+            <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <div class="section-label">System Overview</div>
                     <div class="mt-2 text-sm text-slate-500">Period activity snapshot</div>
                 </div>
-                <div class="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">Live</div>
+                <div class="btn-group btn-group-sm btn-period-chooser" role="group" aria-label="Period chooser">
+                    <button type="button" class="btn btn-default" data-period="today">Today</button>
+                    <button type="button" class="btn btn-default active" data-period="month">Last 30 Days</button>
+                    <button type="button" class="btn btn-default" data-period="year">Last 1 Year</button>
+                </div>
             </div>
 
-            <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">            
-
-                <div class="lg:col-span-8">
-                    <div class="mt-2">
-                        <svg viewBox="0 0 400 200" class="h-64 w-full" id="system-overview-graph">
-                            <g id="system-overview-grid" stroke="#e2e8f0" stroke-width="0.6">
-                                <line x1="0" y1="20" x2="400" y2="20"></line>
-                                <line x1="0" y1="50" x2="400" y2="50"></line>
-                                <line x1="0" y1="80" x2="400" y2="80"></line>
-                                <line x1="0" y1="110" x2="400" y2="110"></line>
-                                <line x1="0" y1="140" x2="400" y2="140"></line>
-                                <line x1="0" y1="170" x2="400" y2="170"></line>
-                            </g>
-                            <g id="system-overview-areas">
-                                <path d="M 0.00 200 L 0.00 200.00 L 13.79 200.00 L 27.59 200.00 L 41.38 200.00 L 55.17 200.00 L 68.97 200.00 L 82.76 200.00 L 96.55 200.00 L 110.34 200.00 L 124.14 200.00 L 137.93 200.00 L 151.72 200.00 L 165.52 200.00 L 179.31 200.00 L 193.10 200.00 L 206.90 200.00 L 220.69 200.00 L 234.48 200.00 L 248.28 200.00 L 262.07 200.00 L 275.86 200.00 L 289.66 200.00 L 303.45 200.00 L 317.24 200.00 L 331.03 120.00 L 344.83 200.00 L 358.62 40.00 L 372.41 120.00 L 386.21 200.00 L 400.00 200.00 L 400.00 200 Z" fill="url(#ordersGradient2)" fill-opacity="0.35"></path>
-                                <path d="M 0.00 200 L 0.00 200.00 L 13.79 200.00 L 27.59 200.00 L 41.38 200.00 L 55.17 200.00 L 68.97 200.00 L 82.76 200.00 L 96.55 200.00 L 110.34 200.00 L 124.14 200.00 L 137.93 200.00 L 151.72 200.00 L 165.52 200.00 L 179.31 200.00 L 193.10 200.00 L 206.90 200.00 L 220.69 200.00 L 234.48 200.00 L 248.28 200.00 L 262.07 200.00 L 275.86 200.00 L 289.66 200.00 L 303.45 200.00 L 317.24 200.00 L 331.03 200.00 L 344.83 194.84 L 358.62 40.00 L 372.41 197.42 L 386.21 200.00 L 400.00 200.00 L 400.00 200 Z" fill="url(#incomeGradient2)" fill-opacity="0.35"></path>
-                            </g>
-                            <g id="system-overview-lines">
-                                <polyline points="0.00,200.00 13.79,200.00 27.59,200.00 41.38,200.00 55.17,200.00 68.97,200.00 82.76,200.00 96.55,200.00 110.34,200.00 124.14,200.00 137.93,200.00 151.72,200.00 165.52,200.00 179.31,200.00 193.10,200.00 206.90,200.00 220.69,200.00 234.48,200.00 248.28,200.00 262.07,200.00 275.86,200.00 289.66,200.00 303.45,200.00 317.24,200.00 331.03,120.00 344.83,200.00 358.62,40.00 372.41,120.00 386.21,200.00 400.00,200.00" fill="none" stroke="url(#ordersGradient2)" stroke-width="2"></polyline>
-                                <polyline points="0.00,200.00 13.79,200.00 27.59,200.00 41.38,200.00 55.17,200.00 68.97,200.00 82.76,200.00 96.55,200.00 110.34,200.00 124.14,200.00 137.93,200.00 151.72,200.00 165.52,200.00 179.31,200.00 193.10,200.00 206.90,200.00 220.69,200.00 234.48,200.00 248.28,200.00 262.07,200.00 275.86,200.00 289.66,200.00 303.45,200.00 317.24,200.00 331.03,200.00 344.83,194.84 358.62,40.00 372.41,197.42 386.21,200.00 400.00,200.00" fill="none" stroke="url(#incomeGradient2)" stroke-width="2"></polyline>
-                            </g>
-                            <g id="system-overview-bars">
-                                <rect x="3.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="17.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="30.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="43.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="57.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="70.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="83.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="97.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="110.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="123.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="137.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="150.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="163.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="177.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="190.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="203.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="217.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="230.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="243.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="257.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="270.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="283.67" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="297.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="310.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="323.67" y="120.00" width="6.00" height="80.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="337.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="350.33" y="40.00" width="6.00" height="160.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="363.67" y="120.00" width="6.00" height="80.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="377.00" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect><rect x="390.33" y="200.00" width="6.00" height="0.00" rx="2" fill="url(#activeGradient2)"></rect>
-                            </g>
-                            <defs>
-                                <linearGradient id="ordersGradient2" x1="0" y1="0" x2="1" y2="0">
-                                    <stop offset="0%" stop-color="#cbd5e1"></stop>
-                                    <stop offset="100%" stop-color="#94a3b8"></stop>
-                                </linearGradient>
-                                <linearGradient id="activeGradient2" x1="0" y1="0" x2="1" y2="0">
-                                    <stop offset="0%" stop-color="#2563eb"></stop>
-                                    <stop offset="100%" stop-color="#60a5fa"></stop>
-                                </linearGradient>
-                                <linearGradient id="incomeGradient2" x1="0" y1="0" x2="1" y2="0">
-                                    <stop offset="0%" stop-color="#22c55e"></stop>
-                                    <stop offset="100%" stop-color="#86efac"></stop>
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                    </div>
-                    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-slate-500" id="system-overview-axis">
-                        <span>07 Dec</span><span>08 Dec</span><span>09 Dec</span><span>10 Dec</span><span>11 Dec</span><span>12 Dec</span><span>13 Dec</span><span>14 Dec</span><span>15 Dec</span><span>16 Dec</span><span>17 Dec</span><span>18 Dec</span><span>19 Dec</span><span>20 Dec</span><span>21 Dec</span><span>22 Dec</span><span>23 Dec</span><span>24 Dec</span><span>25 Dec</span><span>26 Dec</span><span>27 Dec</span><span>28 Dec</span><span>29 Dec</span><span>30 Dec</span><span>31 Dec</span><span>01 Jan</span><span>02 Jan</span><span>03 Jan</span><span>04 Jan</span><span>05 Jan</span>
-                    </div>
-                    <div class="mt-4 flex flex-wrap items-center gap-6 text-xs text-slate-600">
-                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-slate-400"></span><span class="font-medium">New Orders</span></span>
-                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-blue-500"></span><span class="font-medium">Active Orders</span></span>
-                        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-emerald-500"></span><span class="font-medium">Income (incl. Hosting)</span></span>
-                    </div>
+            <div id="system-overview-chart-wrap" class="mt-5 rounded-2xl border border-slate-200 p-4">
+                <div class="flex flex-wrap items-center justify-center gap-2 text-xs" id="system-overview-legend">
+                    <span class="legend-chip"><span class="legend-swatch legend-swatch-new"></span>New Orders</span>
+                    <span class="legend-chip"><span class="legend-swatch legend-swatch-active"></span>Activated Orders</span>
+                    <span class="legend-chip"><span class="legend-swatch legend-swatch-income"></span>Income</span>
                 </div>
-
-                <div class="lg:col-span-4 flex flex-col">
-                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-4">
-                        <div class="text-xs font-semibold uppercase tracking-widest text-emerald-700">Income Breakdown</div>
-                        <div class="mt-4 space-y-3">
-                            <div class="rounded-xl bg-white p-3 shadow-sm">
-                                <div class="text-xs text-slate-500">Total Income</div>
-                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-income">{{ $currency }}{{ number_format($defaultMetrics['income'] ?? 0, 2) }}</div>
-                            </div>
-                            <div class="rounded-xl bg-white p-3 shadow-sm">
-                                <div class="text-xs text-slate-500">Hosting Income (CarrotHost)</div>
-                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-hosting-income">{{ $currency }}{{ number_format($defaultMetrics['hosting_income'] ?? 0, 2) }}</div>
-                            </div>
-                            <div class="rounded-xl bg-white p-3 shadow-sm">
-                                <div class="text-xs text-slate-500">Avg Per Order</div>
-                                @php
-                                    $avgIncome = 0;
-                                    $orderCount = (int) ($defaultMetrics['new_orders'] ?? 0);
-                                    if ($orderCount > 0) {
-                                        $avgIncome = ($defaultMetrics['income'] ?? 0) / $orderCount;
-                                    }
-                                @endphp
-                                <div class="mt-1 text-lg font-bold text-emerald-600" id="right-sidebar-avg-income">{{ $currency }}{{ number_format($avgIncome, 2) }}</div>
-                            </div>
+                <div class="relative mt-4">
+                    <svg viewBox="0 0 760 340" class="h-72 w-full" id="system-overview-graph" role="img" aria-label="System overview chart">
+                        <defs>
+                            <linearGradient id="systemOverviewNewArea" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#d1d5db" stop-opacity="0.48"></stop>
+                                <stop offset="100%" stop-color="#f1f5f9" stop-opacity="0"></stop>
+                            </linearGradient>
+                            <linearGradient id="systemOverviewActiveArea" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"></stop>
+                                <stop offset="100%" stop-color="#dbeafe" stop-opacity="0"></stop>
+                            </linearGradient>
+                            <linearGradient id="systemOverviewIncomeArea" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#22c55e" stop-opacity="0.42"></stop>
+                                <stop offset="100%" stop-color="#dcfce7" stop-opacity="0"></stop>
+                            </linearGradient>
+                            <linearGradient id="systemOverviewActiveBar" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#2563eb" stop-opacity="0.95"></stop>
+                                <stop offset="100%" stop-color="#93c5fd" stop-opacity="0.82"></stop>
+                            </linearGradient>
+                        </defs>
+                        <g id="system-overview-grid"></g>
+                        <g id="system-overview-y-left"></g>
+                        <g id="system-overview-y-right"></g>
+                        <g id="system-overview-x-axis"></g>
+                        <g id="system-overview-series-new"></g>
+                        <g id="system-overview-series-active"></g>
+                        <g id="system-overview-series-income"></g>
+                        <g id="system-overview-hit"></g>
+                    </svg>
+                    <div id="system-overview-tooltip" class="absolute left-0 top-0 z-10 hidden rounded-xl bg-slate-900 px-3 py-2 text-xs text-white shadow-xl" aria-hidden="true">
+                        <div class="text-[11px] font-semibold text-slate-100" data-system-overview-tooltip-label>--</div>
+                        <div class="mt-1 flex items-center gap-1.5">
+                            <span class="inline-flex h-2.5 w-2.5 rounded-sm bg-emerald-400"></span>
+                            <span>Income:</span>
+                            <span class="font-semibold" data-system-overview-tooltip-income>0</span>
+                        </div>
+                        <div class="mt-1 text-[11px] text-slate-300">
+                            New: <span data-system-overview-tooltip-new-orders>0</span>
+                            <span class="px-1 text-slate-500">|</span>
+                            Active: <span data-system-overview-tooltip-active-orders>0</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-6">
-                <div class="section-label">Period Controls</div>
-                <div class="btn-group btn-group-sm btn-period-chooser" role="group" aria-label="Period chooser">
-                    <button type="button" class="btn btn-default" data-period="today">Today</button>
-                    <button type="button" class="btn btn-default active" data-period="month">Last 30 Days</button>
-                    <button type="button" class="btn btn-default" data-period="year">Last 1 Year</button>
+            @php
+                $avgIncome = 0;
+                $orderCount = (int) ($defaultMetrics['new_orders'] ?? 0);
+                if ($orderCount > 0) {
+                    $avgIncome = ($defaultMetrics['income'] ?? 0) / $orderCount;
+                }
+            @endphp
+            <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">New Orders</div>
+                    <div class="mt-1 text-xl font-semibold text-slate-700" id="left-sidebar-new-orders">{{ (int) ($defaultMetrics['new_orders'] ?? 0) }}</div>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Activated Orders</div>
+                    <div class="mt-1 text-xl font-semibold text-blue-600" id="left-sidebar-active-orders">{{ (int) ($defaultMetrics['active_orders'] ?? 0) }}</div>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total Income</div>
+                    <div class="mt-1 text-xl font-semibold text-emerald-600" id="right-sidebar-income">{{ $currency }}{{ number_format($defaultMetrics['income'] ?? 0, 2) }}</div>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Hosting Income</div>
+                    <div class="mt-1 text-xl font-semibold text-emerald-600" id="right-sidebar-hosting-income">{{ $currency }}{{ number_format($defaultMetrics['hosting_income'] ?? 0, 2) }}</div>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Avg Per Order</div>
+                    <div class="mt-1 text-xl font-semibold text-emerald-600" id="right-sidebar-avg-income">{{ $currency }}{{ number_format($avgIncome, 2) }}</div>
                 </div>
             </div>
 
@@ -376,12 +451,76 @@
         </div>
     </div>
 
+    @php
+        $buildAutomationSpark = function ($rawValue, string $style = 'peak'): array {
+            $value = max(0, (float) $rawValue);
+            $base = 30.0;
+            $x = [0, 24, 48, 72, 96, 120];
+            $y = array_fill(0, count($x), $base);
+
+            if ($value > 0) {
+                $scaled = min($value, 25.0);
+                $amplitude = min(22.0, 4.0 + (log($scaled + 1.0, 2) * 5.0));
+
+                if ($style === 'ramp') {
+                    $y = [$base, $base, $base, $base, $base - ($amplitude * 0.45), $base - $amplitude];
+                } elseif ($style === 'mid') {
+                    $y = [$base, $base, $base - ($amplitude * 0.65), $base, $base, $base];
+                } elseif ($style === 'wave') {
+                    $y = [$base, $base - ($amplitude * 0.35), $base - $amplitude, $base - ($amplitude * 0.4), $base, $base];
+                } else {
+                    $y = [$base, $base - ($amplitude * 0.3), $base - ($amplitude * 0.78), $base, $base, $base];
+                }
+            }
+
+            $linePoints = collect($x)
+                ->map(fn ($xPos, $index) => number_format($xPos, 2, '.', '').','.number_format($y[$index], 2, '.', ''))
+                ->implode(' ');
+
+            return [
+                'line' => $linePoints,
+                'area' => '0,'.$base.' '.$linePoints.' 120,'.$base,
+            ];
+        };
+
+        $automationSparkCards = [
+            [
+                'label' => 'Invoices Created',
+                'value' => (int) ($automation['invoices_created'] ?? 0),
+                'stroke' => '#10b981',
+                'fill' => '#10b98122',
+                'style' => 'wave',
+            ],
+            [
+                'label' => 'Overdue Suspensions',
+                'value' => (int) ($automation['overdue_suspensions'] ?? 0),
+                'stroke' => '#f59e0b',
+                'fill' => '#f59e0b22',
+                'style' => 'mid',
+            ],
+            [
+                'label' => 'Inactive Tickets Closed',
+                'value' => (int) ($automation['tickets_closed'] ?? 0),
+                'stroke' => '#0ea5e9',
+                'fill' => '#0ea5e922',
+                'style' => 'peak',
+            ],
+            [
+                'label' => 'Overdue Reminders',
+                'value' => (int) ($automation['overdue_reminders'] ?? 0),
+                'stroke' => '#f43f5e',
+                'fill' => '#f43f5e22',
+                'style' => 'ramp',
+            ],
+        ];
+    @endphp
+
     <div class="mt-8 grid gap-6 lg:grid-cols-2">
         <div class="card p-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <div class="section-label">Billing status</div>
-                    <div class="mt-1 text-sm text-slate-500">Revenue snapshots</div>
+                    <div class="mt-1 text-sm text-slate-500">Revenue snapshots (including hosting income)</div>
                 </div>
                 <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Live</span>
             </div>
@@ -419,34 +558,19 @@
             </div>
 
             <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Invoices Created</div>
-                    <div class="mt-2 flex items-center justify-between">
-                        <div class="text-2xl font-semibold text-slate-900">{{ $automation['invoices_created'] ?? 0 }}</div>
-                        <svg viewBox="0 0 120 32" class="h-8 w-28"><polygon fill="#10b98122" points="0 31 120 31 120 31"></polygon><polyline fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="square" points="0,1 120,1 "></polyline></svg>
+                @foreach($automationSparkCards as $card)
+                    @php($spark = $buildAutomationSpark($card['value'], $card['style']))
+                    <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">{{ $card['label'] }}</div>
+                        <div class="mt-2 flex items-center justify-between">
+                            <div class="text-2xl font-semibold text-slate-900">{{ $card['value'] }}</div>
+                            <svg viewBox="0 0 120 32" class="h-8 w-28">
+                                <polygon fill="{{ $card['fill'] }}" points="{{ $spark['area'] }}"></polygon>
+                                <polyline fill="none" stroke="{{ $card['stroke'] }}" stroke-width="2" stroke-linecap="square" points="{{ $spark['line'] }}"></polyline>
+                            </svg>
+                        </div>
                     </div>
-                </div>
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overdue Suspensions</div>
-                    <div class="mt-2 flex items-center justify-between">
-                        <div class="text-2xl font-semibold text-slate-900">{{ $automation['overdue_suspensions'] ?? 0 }}</div>
-                        <svg viewBox="0 0 120 32" class="h-8 w-28"><polygon fill="#f59e0b22" points="0 31 120 31 120 31"></polygon><polyline fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="square" points="0,31 120,31 "></polyline></svg>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Inactive Tickets Closed</div>
-                    <div class="mt-2 flex items-center justify-between">
-                        <div class="text-2xl font-semibold text-slate-900">{{ $automation['tickets_closed'] ?? 0 }}</div>
-                        <svg viewBox="0 0 120 32" class="h-8 w-28"><polygon fill="#0ea5e922" points="0 31 120 31 120 31"></polygon><polyline fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="square" points="0,31 120,31 "></polyline></svg>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overdue Reminders</div>
-                    <div class="mt-2 flex items-center justify-between">
-                        <div class="text-2xl font-semibold text-slate-900">{{ $automation['overdue_reminders'] ?? 0 }}</div>
-                        <svg viewBox="0 0 120 32" class="h-8 w-28"><polygon fill="#f43f5e22" points="0 31 120 31 120 31"></polygon><polyline fill="none" stroke="#f43f5e" stroke-width="2" stroke-linecap="square" points="0,1 120,1 "></polyline></svg>
-                    </div>
-                </div>
+                @endforeach
             </div>
         </div>
     </div>
@@ -456,27 +580,39 @@
             document.addEventListener('DOMContentLoaded', () => {
                 const metricsEl = document.getElementById('system-period-metrics');
                 const graph = document.getElementById('system-overview-graph');
-                const axis = document.getElementById('system-overview-axis');
+                const tooltipEl = document.getElementById('system-overview-tooltip');
                 const newOrdersEl = document.getElementById('left-sidebar-new-orders');
                 const activeOrdersEl = document.getElementById('left-sidebar-active-orders');
                 const incomeEl = document.getElementById('right-sidebar-income');
                 const hostingIncomeEl = document.getElementById('right-sidebar-hosting-income');
                 const avgIncomeEl = document.getElementById('right-sidebar-avg-income');
                 const periodButtons = document.querySelectorAll('.btn-period-chooser [data-period]');
+                const tooltipLabelEl = document.querySelector('[data-system-overview-tooltip-label]');
+                const tooltipIncomeEl = document.querySelector('[data-system-overview-tooltip-income]');
+                const tooltipNewEl = document.querySelector('[data-system-overview-tooltip-new-orders]');
+                const tooltipActiveEl = document.querySelector('[data-system-overview-tooltip-active-orders]');
 
                 if (!metricsEl || !graph) {
                     return;
                 }
 
+                const NS = 'http://www.w3.org/2000/svg';
                 const periodMetrics = JSON.parse(metricsEl.dataset.periodMetrics || '{}');
                 const periodSeries = JSON.parse(metricsEl.dataset.periodSeries || '{}');
                 const currency = metricsEl.dataset.currency || '';
                 const defaultPeriod = metricsEl.dataset.periodDefault || 'month';
-                const chartWidth = 400;
-                const chartHeight = 200;
-                const chartTop = 40;
-                const chartBottom = 200;
-                const chartRange = chartBottom - chartTop;
+                let chartWidth = 760;
+                let chartHeight = 340;
+                let plot = {
+                    left: 64,
+                    top: 36,
+                    right: 696,
+                    bottom: 282,
+                    width: 632,
+                    height: 246,
+                };
+                let activeCache = null;
+                let currentPeriod = defaultPeriod;
 
                 const formatMoney = (value) => {
                     const number = Number(value || 0);
@@ -489,70 +625,440 @@
                     });
                 };
 
-                const scaleValues = (values) => {
-                    const max = Math.max(...values, 1);
-                    return values.map((value, index) => {
-                        const x = values.length > 1 ? (index / (values.length - 1)) * chartWidth : chartWidth / 2;
-                        const y = chartBottom - (Number(value || 0) / max) * chartRange;
-                        return { x, y };
-                    });
+                const syncChartLayout = () => {
+                    chartWidth = Math.max(760, Math.round(graph.clientWidth || 760));
+                    chartHeight = Math.max(280, Math.round(graph.clientHeight || 340));
+                    graph.setAttribute('viewBox', `0 0 ${chartWidth} ${chartHeight}`);
+
+                    const sideMargin = Math.max(62, Math.min(90, Math.round(chartWidth * 0.06)));
+                    const topMargin = 36;
+                    const bottomMargin = 58;
+                    plot = {
+                        left: sideMargin,
+                        top: topMargin,
+                        right: chartWidth - sideMargin,
+                        bottom: chartHeight - bottomMargin,
+                    };
+                    plot.width = Math.max(120, plot.right - plot.left);
+                    plot.height = Math.max(120, plot.bottom - plot.top);
                 };
 
-                const buildAreaPath = (points) => {
+                const svg = (tagName, attributes = {}) => {
+                    const el = document.createElementNS(NS, tagName);
+                    Object.entries(attributes).forEach(([key, value]) => {
+                        el.setAttribute(key, String(value));
+                    });
+                    return el;
+                };
+
+                const toNumberArray = (values, size) => {
+                    const source = Array.isArray(values) ? values : [];
+                    return Array.from({ length: size }, (_, index) => Number(source[index] || 0));
+                };
+
+                const normalizeSeries = (rawSeries) => {
+                    const labels = Array.isArray(rawSeries?.labels) ? rawSeries.labels : [];
+                    const count = Math.max(
+                        labels.length,
+                        Array.isArray(rawSeries?.new_orders) ? rawSeries.new_orders.length : 0,
+                        Array.isArray(rawSeries?.active_orders) ? rawSeries.active_orders.length : 0,
+                        Array.isArray(rawSeries?.income) ? rawSeries.income.length : 0,
+                        1
+                    );
+
+                    return {
+                        labels: Array.from({ length: count }, (_, index) => labels[index] ?? String(index + 1)),
+                        newOrders: toNumberArray(rawSeries?.new_orders, count),
+                        activeOrders: toNumberArray(rawSeries?.active_orders, count),
+                        income: toNumberArray(rawSeries?.income, count),
+                    };
+                };
+
+                const calcOrderMax = (values) => {
+                    const max = Math.max(...values, 0);
+                    return max <= 0 ? 4 : Math.max(4, Math.ceil(max));
+                };
+
+                const calcIncomeMax = (values) => {
+                    const max = Math.max(...values, 0);
+                    if (max <= 0) {
+                        return 100;
+                    }
+                    const roughStep = max / 5;
+                    const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+                    const normalized = roughStep / magnitude;
+                    let step = 1;
+                    if (normalized > 5) {
+                        step = 10;
+                    } else if (normalized > 2) {
+                        step = 5;
+                    } else if (normalized > 1) {
+                        step = 2;
+                    }
+                    return Math.max(10, Math.ceil(max / (step * magnitude)) * step * magnitude);
+                };
+
+                const xForIndex = (index, size) => {
+                    if (size <= 1) {
+                        return plot.left + (plot.width / 2);
+                    }
+                    return plot.left + (index / (size - 1)) * plot.width;
+                };
+
+                const yForValue = (value, max) => {
+                    const safeMax = Math.max(1, Number(max || 1));
+                    return plot.bottom - (Math.max(0, Number(value || 0)) / safeMax) * plot.height;
+                };
+
+                const linePath = (points) => {
                     if (!points.length) {
                         return '';
                     }
-                    const start = `M ${points[0].x.toFixed(2)} ${chartBottom.toFixed(2)}`;
-                    const line = points.map((point) => `${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' L ');
-                    const end = `L ${points[points.length - 1].x.toFixed(2)} ${chartBottom.toFixed(2)} Z`;
-                    return `${start} L ${line} ${end}`;
+                    const head = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+                    const body = points.slice(1).map((point) => `L ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ');
+                    return `${head} ${body}`.trim();
                 };
 
-                const buildLinePoints = (points) => points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
-
-                const renderBars = (values) => {
-                    const barGroup = graph.querySelector('#system-overview-bars');
-                    if (!barGroup) {
-                        return;
+                const areaPath = (points) => {
+                    if (!points.length) {
+                        return '';
                     }
-                    barGroup.innerHTML = '';
-                    if (!values.length) {
-                        return;
-                    }
-                    const max = Math.max(...values, 1);
-                    const barWidth = Math.max(3, Math.min(10, chartWidth / (values.length * 1.8)));
-                    values.forEach((value, index) => {
-                        const x = values.length > 1
-                            ? (index / (values.length - 1)) * chartWidth - barWidth / 2
-                            : chartWidth / 2 - barWidth / 2;
-                        const height = (Number(value || 0) / max) * chartRange;
-                        const y = chartBottom - height;
-                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                        rect.setAttribute('x', x.toFixed(2));
-                        rect.setAttribute('y', y.toFixed(2));
-                        rect.setAttribute('width', barWidth.toFixed(2));
-                        rect.setAttribute('height', height.toFixed(2));
-                        rect.setAttribute('rx', '2');
-                        rect.setAttribute('fill', 'url(#activeGradient2)');
-                        barGroup.appendChild(rect);
-                    });
+                    const first = points[0];
+                    const last = points[points.length - 1];
+                    const body = points.map((point) => `L ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ');
+                    return `M ${first.x.toFixed(2)} ${plot.bottom.toFixed(2)} ${body} L ${last.x.toFixed(2)} ${plot.bottom.toFixed(2)} Z`;
                 };
 
-                const renderAxis = (labels) => {
-                    if (!axis) {
+                const renderGrid = (labels, orderMax, incomeMax) => {
+                    const gridGroup = graph.querySelector('#system-overview-grid');
+                    const yLeftGroup = graph.querySelector('#system-overview-y-left');
+                    const yRightGroup = graph.querySelector('#system-overview-y-right');
+                    const xAxisGroup = graph.querySelector('#system-overview-x-axis');
+
+                    if (!gridGroup || !yLeftGroup || !yRightGroup || !xAxisGroup) {
                         return;
                     }
-                    axis.innerHTML = '';
-                    labels.forEach((label) => {
-                        const span = document.createElement('span');
-                        span.textContent = label;
-                        axis.appendChild(span);
+
+                    gridGroup.innerHTML = '';
+                    yLeftGroup.innerHTML = '';
+                    yRightGroup.innerHTML = '';
+                    xAxisGroup.innerHTML = '';
+
+                    const horizontalTicks = 6;
+                    for (let tick = 0; tick <= horizontalTicks; tick += 1) {
+                        const ratio = tick / horizontalTicks;
+                        const y = plot.top + ratio * plot.height;
+                        gridGroup.appendChild(svg('line', {
+                            x1: plot.left.toFixed(2),
+                            y1: y.toFixed(2),
+                            x2: plot.right.toFixed(2),
+                            y2: y.toFixed(2),
+                            stroke: '#cbd5e1',
+                            'stroke-width': tick === horizontalTicks ? 1 : 0.7,
+                        }));
+
+                        const leftValue = Math.round(orderMax - ratio * orderMax);
+                        const rightValue = Math.round(incomeMax - ratio * incomeMax);
+
+                        const leftText = svg('text', {
+                            x: (plot.left - 10).toFixed(2),
+                            y: (y + 4).toFixed(2),
+                            'text-anchor': 'end',
+                            'font-size': '11',
+                            fill: '#475569',
+                        });
+                        leftText.textContent = leftValue;
+                        yLeftGroup.appendChild(leftText);
+
+                        const rightText = svg('text', {
+                            x: (plot.right + 10).toFixed(2),
+                            y: (y + 4).toFixed(2),
+                            'text-anchor': 'start',
+                            'font-size': '11',
+                            fill: '#475569',
+                        });
+                        rightText.textContent = rightValue;
+                        yRightGroup.appendChild(rightText);
+                    }
+
+                    const step = labels.length > 18 ? Math.ceil(labels.length / 12) : 1;
+                    labels.forEach((label, index) => {
+                        const x = xForIndex(index, labels.length);
+                        const showLabel = (index % step === 0) || index === labels.length - 1;
+                        gridGroup.appendChild(svg('line', {
+                            x1: x.toFixed(2),
+                            y1: plot.top.toFixed(2),
+                            x2: x.toFixed(2),
+                            y2: plot.bottom.toFixed(2),
+                            stroke: showLabel ? '#d1d5db' : '#e2e8f0',
+                            'stroke-width': 0.6,
+                            'stroke-dasharray': showLabel ? '3 3' : '2 5',
+                        }));
+
+                        if (!showLabel) {
+                            return;
+                        }
+
+                        const text = svg('text', {
+                            x: x.toFixed(2),
+                            y: (plot.bottom + 18).toFixed(2),
+                            'font-size': '10',
+                            fill: '#64748b',
+                            'text-anchor': 'end',
+                        });
+                        text.setAttribute('transform', `rotate(-45 ${x.toFixed(2)} ${(plot.bottom + 18).toFixed(2)})`);
+                        text.textContent = label;
+                        xAxisGroup.appendChild(text);
                     });
+
+                    const leftTitle = svg('text', {
+                        x: (plot.left - 10).toFixed(2),
+                        y: (plot.top - 16).toFixed(2),
+                        'text-anchor': 'end',
+                        'font-size': '11',
+                        fill: '#334155',
+                        'font-weight': '600',
+                    });
+                    leftTitle.textContent = 'Orders';
+                    yLeftGroup.appendChild(leftTitle);
+
+                    const rightTitle = svg('text', {
+                        x: (plot.right + 10).toFixed(2),
+                        y: (plot.top - 16).toFixed(2),
+                        'text-anchor': 'start',
+                        'font-size': '11',
+                        fill: '#334155',
+                        'font-weight': '600',
+                    });
+                    rightTitle.textContent = 'Income';
+                    yRightGroup.appendChild(rightTitle);
+                };
+
+                const renderSeries = (series) => {
+                    const newGroup = graph.querySelector('#system-overview-series-new');
+                    const activeGroup = graph.querySelector('#system-overview-series-active');
+                    const incomeGroup = graph.querySelector('#system-overview-series-income');
+                    const hitGroup = graph.querySelector('#system-overview-hit');
+
+                    if (!newGroup || !activeGroup || !incomeGroup || !hitGroup) {
+                        return;
+                    }
+
+                    newGroup.innerHTML = '';
+                    activeGroup.innerHTML = '';
+                    incomeGroup.innerHTML = '';
+                    hitGroup.innerHTML = '';
+
+                    const total = series.labels.length;
+                    const orderMax = calcOrderMax([...series.newOrders, ...series.activeOrders]);
+                    const incomeMax = calcIncomeMax(series.income);
+                    renderGrid(series.labels, orderMax, incomeMax);
+
+                    const newPoints = series.newOrders.map((value, index) => ({
+                        x: xForIndex(index, total),
+                        y: yForValue(value, orderMax),
+                        value,
+                    }));
+                    const activePoints = series.activeOrders.map((value, index) => ({
+                        x: xForIndex(index, total),
+                        y: yForValue(value, orderMax),
+                        value,
+                    }));
+                    const incomePoints = series.income.map((value, index) => ({
+                        x: xForIndex(index, total),
+                        y: yForValue(value, incomeMax),
+                        value,
+                    }));
+
+                    if (newPoints.length) {
+                        newGroup.appendChild(svg('path', {
+                            d: areaPath(newPoints),
+                            fill: 'url(#systemOverviewNewArea)',
+                        }));
+                        newGroup.appendChild(svg('path', {
+                            d: linePath(newPoints),
+                            fill: 'none',
+                            stroke: '#cbd5e1',
+                            'stroke-width': '2',
+                            'stroke-linecap': 'round',
+                            'stroke-linejoin': 'round',
+                        }));
+                    }
+
+                    if (activePoints.length) {
+                        activeGroup.appendChild(svg('path', {
+                            d: areaPath(activePoints),
+                            fill: 'url(#systemOverviewActiveArea)',
+                        }));
+
+                        const gap = total > 1 ? plot.width / (total - 1) : 20;
+                        const barWidth = Math.max(6, Math.min(14, gap * 0.42));
+                        activePoints.forEach((point) => {
+                            const y = yForValue(point.value, orderMax);
+                            activeGroup.appendChild(svg('rect', {
+                                x: (point.x - (barWidth / 2)).toFixed(2),
+                                y: y.toFixed(2),
+                                width: barWidth.toFixed(2),
+                                height: Math.max(0, plot.bottom - y).toFixed(2),
+                                rx: '2',
+                                fill: 'url(#systemOverviewActiveBar)',
+                                opacity: '0.9',
+                            }));
+                        });
+
+                        activeGroup.appendChild(svg('path', {
+                            d: linePath(activePoints),
+                            fill: 'none',
+                            stroke: '#1d4ed8',
+                            'stroke-width': '1.2',
+                            'stroke-linecap': 'round',
+                            'stroke-linejoin': 'round',
+                            opacity: '0.72',
+                        }));
+                    }
+
+                    if (incomePoints.length) {
+                        incomeGroup.appendChild(svg('path', {
+                            d: areaPath(incomePoints),
+                            fill: 'url(#systemOverviewIncomeArea)',
+                        }));
+                        incomeGroup.appendChild(svg('path', {
+                            d: linePath(incomePoints),
+                            fill: 'none',
+                            stroke: '#22c55e',
+                            'stroke-width': '2.4',
+                            'stroke-linecap': 'round',
+                            'stroke-linejoin': 'round',
+                        }));
+                        incomePoints.forEach((point) => {
+                            incomeGroup.appendChild(svg('circle', {
+                                cx: point.x.toFixed(2),
+                                cy: point.y.toFixed(2),
+                                r: '2.2',
+                                fill: '#f8fafc',
+                                stroke: '#16a34a',
+                                'stroke-width': '1.4',
+                            }));
+                        });
+                    }
+
+                    hitGroup.appendChild(svg('rect', {
+                        x: plot.left.toFixed(2),
+                        y: plot.top.toFixed(2),
+                        width: plot.width.toFixed(2),
+                        height: plot.height.toFixed(2),
+                        fill: 'transparent',
+                    }));
+
+                    activeCache = {
+                        ...series,
+                        points: { newPoints, activePoints, incomePoints },
+                    };
+                };
+
+                const hideTooltip = () => {
+                    if (!tooltipEl) {
+                        return;
+                    }
+                    tooltipEl.classList.add('hidden');
+                    tooltipEl.setAttribute('data-visible', 'false');
+                    tooltipEl.setAttribute('aria-hidden', 'true');
+                };
+
+                const showTooltip = (index) => {
+                    if (!tooltipEl || !activeCache) {
+                        return;
+                    }
+
+                    const total = activeCache.labels.length;
+                    if (!total) {
+                        hideTooltip();
+                        return;
+                    }
+
+                    const safeIndex = Math.max(0, Math.min(index, total - 1));
+                    if (tooltipLabelEl) {
+                        tooltipLabelEl.textContent = activeCache.labels[safeIndex] ?? '--';
+                    }
+                    if (tooltipIncomeEl) {
+                        tooltipIncomeEl.textContent = formatMoney(activeCache.income[safeIndex] || 0);
+                    }
+                    if (tooltipNewEl) {
+                        tooltipNewEl.textContent = String(Number(activeCache.newOrders[safeIndex] || 0));
+                    }
+                    if (tooltipActiveEl) {
+                        tooltipActiveEl.textContent = String(Number(activeCache.activeOrders[safeIndex] || 0));
+                    }
+
+                    const point = activeCache.points.incomePoints[safeIndex] || { x: plot.left, y: plot.bottom };
+                    const xPx = (point.x / chartWidth) * graph.clientWidth;
+                    const yPx = (point.y / chartHeight) * graph.clientHeight;
+
+                    tooltipEl.classList.remove('hidden');
+                    tooltipEl.setAttribute('data-visible', 'true');
+                    tooltipEl.setAttribute('aria-hidden', 'false');
+
+                    const width = tooltipEl.offsetWidth || 170;
+                    const height = tooltipEl.offsetHeight || 76;
+                    let left = xPx + 14;
+                    let top = yPx - height - 14;
+
+                    if (left + width > graph.clientWidth - 8) {
+                        left = xPx - width - 14;
+                    }
+                    if (left < 4) {
+                        left = 4;
+                    }
+                    if (top < 4) {
+                        top = yPx + 14;
+                    }
+                    if (top + height > graph.clientHeight - 4) {
+                        top = graph.clientHeight - height - 4;
+                    }
+
+                    tooltipEl.style.left = `${Math.round(left)}px`;
+                    tooltipEl.style.top = `${Math.round(top)}px`;
+                };
+
+                const bindTooltip = () => {
+                    const hitRect = graph.querySelector('#system-overview-hit rect');
+                    if (!hitRect) {
+                        return;
+                    }
+
+                    hitRect.addEventListener('mousemove', (event) => {
+                        if (!activeCache) {
+                            return;
+                        }
+
+                        const total = activeCache.labels.length;
+                        if (total <= 0) {
+                            return;
+                        }
+
+                        const ctm = graph.getScreenCTM();
+                        if (!ctm) {
+                            return;
+                        }
+
+                        const point = graph.createSVGPoint();
+                        point.x = event.clientX;
+                        point.y = event.clientY;
+                        const local = point.matrixTransform(ctm.inverse());
+                        const ratio = total <= 1 ? 0 : (local.x - plot.left) / plot.width;
+                        const index = Math.round(Math.max(0, Math.min(1, ratio)) * (total - 1));
+                        showTooltip(index);
+                    });
+
+                    hitRect.addEventListener('mouseenter', () => showTooltip(0));
+                    hitRect.addEventListener('mouseleave', hideTooltip);
                 };
 
                 const updateMetrics = (periodKey) => {
+                    currentPeriod = periodKey;
+                    syncChartLayout();
                     const summary = periodMetrics[periodKey] || { new_orders: 0, active_orders: 0, income: 0, hosting_income: 0 };
-                    const series = periodSeries[periodKey] || { labels: [], new_orders: [], active_orders: [], income: [] };
+                    const normalized = normalizeSeries(periodSeries[periodKey] || { labels: [], new_orders: [], active_orders: [], income: [] });
 
                     if (newOrdersEl) {
                         newOrdersEl.textContent = summary.new_orders ?? 0;
@@ -572,26 +1078,9 @@
                         avgIncomeEl.textContent = formatMoney(avg);
                     }
 
-                    const orderPoints = scaleValues(series.new_orders || []);
-                    const incomePoints = scaleValues(series.income || []);
-                    const areas = graph.querySelectorAll('#system-overview-areas path');
-                    const lines = graph.querySelectorAll('#system-overview-lines polyline');
-
-                    if (areas[0]) {
-                        areas[0].setAttribute('d', buildAreaPath(orderPoints));
-                    }
-                    if (areas[1]) {
-                        areas[1].setAttribute('d', buildAreaPath(incomePoints));
-                    }
-                    if (lines[0]) {
-                        lines[0].setAttribute('points', buildLinePoints(orderPoints));
-                    }
-                    if (lines[1]) {
-                        lines[1].setAttribute('points', buildLinePoints(incomePoints));
-                    }
-
-                    renderBars(series.active_orders || []);
-                    renderAxis(series.labels || []);
+                    renderSeries(normalized);
+                    bindTooltip();
+                    hideTooltip();
                     setActiveButton(periodKey);
                 };
 
@@ -602,6 +1091,10 @@
                 });
 
                 updateMetrics(defaultPeriod);
+                window.addEventListener('resize', () => {
+                    hideTooltip();
+                    updateMetrics(currentPeriod);
+                });
             });
         </script>
     @endpush

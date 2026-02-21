@@ -625,6 +625,7 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
           ->group(function () {
               Route::get('/dashboard', [AdminIncomeController::class, 'dashboard'])->name('dashboard');
               Route::get('/carrothost', [AdminCarrotHostIncomeController::class, 'index'])->name('carrothost');
+              Route::post('/carrothost/sync', [AdminCarrotHostIncomeController::class, 'sync'])->name('carrothost.sync');
               Route::get('/', [AdminIncomeController::class, 'index'])->name('index');
               Route::get('/create', [AdminIncomeController::class, 'create'])->name('create');
             Route::post('/', [AdminIncomeController::class, 'store'])->name('store');

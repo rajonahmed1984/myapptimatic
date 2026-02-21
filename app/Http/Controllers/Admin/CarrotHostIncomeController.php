@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\WhmcsClient;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,15 +20,7 @@ class CarrotHostIncomeController extends Controller
     public function index(Request $request, WhmcsClient $client): View
     {
         $selectedMonth = $this->resolveMonth($request->query('month'));
-        $monthStart = $selectedMonth->copy()->startOfMonth();
-        $monthEnd = $selectedMonth->copy()->endOfMonth();
-        $today = now()->startOfDay();
-        if ($monthEnd->greaterThan($today)) {
-            $monthEnd = $today;
-        }
-
-        $startDate = $monthStart->toDateString();
-        $endDate = $monthEnd->toDateString();
+        [$startDate, $endDate] = $this->monthRange($selectedMonth);
 
         $earliestMonth = Carbon::parse(self::DEFAULT_START)->startOfMonth();
         $prevMonth = $selectedMonth->copy()->subMonth();
@@ -34,39 +28,7 @@ class CarrotHostIncomeController extends Controller
         $hasPrev = $prevMonth->greaterThanOrEqualTo($earliestMonth);
         $hasNext = $selectedMonth->lt(now()->startOfMonth());
 
-        $cacheKey = 'whmcs:carrothost:' . $startDate . ':' . $endDate;
-
-        $payload = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($client, $startDate, $endDate) {
-            $whmcsErrors = [];
-
-            $transactions = $this->fetchAll($client, 'GetTransactions', [
-                'startdate' => $startDate,
-                'enddate' => $endDate,
-                'orderby' => 'date',
-                'order' => 'desc',
-            ], 'transactions', 'transaction', $whmcsErrors);
-
-            $transactions = $this->filterByDate($transactions, 'date', $startDate, $endDate);
-            $transactions = $this->sortTransactionsNewestFirst($transactions, 'date');
-            $amountInSubtotal = $this->sumField($transactions, 'amountin');
-            $feesSubtotal = $this->sumField($transactions, 'fees');
-
-            return [
-                'transactions' => $transactions,
-                'amountInSubtotal' => $amountInSubtotal,
-                'feesSubtotal' => $feesSubtotal,
-                'amountInSubtotalDisplay' => $this->formatMoney($amountInSubtotal),
-                'feesSubtotalDisplay' => $this->formatMoney($feesSubtotal),
-                'whmcsErrors' => $whmcsErrors,
-                'startDate' => $startDate,
-                'endDate' => $endDate,
-            ];
-        });
-
-        if (array_key_exists('errors', $payload) && ! array_key_exists('whmcsErrors', $payload)) {
-            $payload['whmcsErrors'] = $payload['errors'];
-        }
-        unset($payload['errors']);
+        $payload = $this->loadPayload($client, $startDate, $endDate);
         $payload['transactions'] = collect($this->sortTransactionsNewestFirst((array) ($payload['transactions'] ?? []), 'date'))
             ->map(fn (array $row) => $this->enrichClientName($client, $row))
             ->all();
@@ -79,6 +41,32 @@ class CarrotHostIncomeController extends Controller
         $payload['nextMonthLabel'] = $hasNext ? $nextMonth->format('F Y') : null;
 
         return view('admin.income.carrothost', $payload);
+    }
+
+    public function sync(Request $request, WhmcsClient $client): JsonResponse|RedirectResponse
+    {
+        $selectedMonth = $this->resolveMonth((string) $request->input('month', $request->query('month', '')));
+        [$startDate, $endDate] = $this->monthRange($selectedMonth);
+
+        $payload = $this->loadPayload($client, $startDate, $endDate, true);
+        $warningCount = count((array) ($payload['whmcsErrors'] ?? []));
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => true,
+                'message' => 'CarrotHost data synced.',
+                'warnings' => $warningCount,
+                'month' => $selectedMonth->format('Y-m'),
+                'range' => [
+                    'start' => $startDate,
+                    'end' => $endDate,
+                ],
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.income.carrothost', ['month' => $selectedMonth->format('Y-m')])
+            ->with('status', 'CarrotHost data synced.');
     }
 
     private function fetchAll(
@@ -208,6 +196,69 @@ class CarrotHostIncomeController extends Controller
         } catch (\Throwable $e) {
             return now()->startOfMonth();
         }
+    }
+
+    private function monthRange(Carbon $selectedMonth): array
+    {
+        $monthStart = $selectedMonth->copy()->startOfMonth();
+        $monthEnd = $selectedMonth->copy()->endOfMonth();
+        $today = now()->startOfDay();
+
+        if ($monthEnd->greaterThan($today)) {
+            $monthEnd = $today;
+        }
+
+        return [$monthStart->toDateString(), $monthEnd->toDateString()];
+    }
+
+    private function cacheKey(string $startDate, string $endDate): string
+    {
+        return 'whmcs:carrothost:' . $startDate . ':' . $endDate;
+    }
+
+    private function loadPayload(WhmcsClient $client, string $startDate, string $endDate, bool $forceRefresh = false): array
+    {
+        $cacheKey = $this->cacheKey($startDate, $endDate);
+
+        if ($forceRefresh) {
+            Cache::forget($cacheKey);
+            $payload = $this->buildPayload($client, $startDate, $endDate);
+            Cache::put($cacheKey, $payload, now()->addMinutes(10));
+
+            return $payload;
+        }
+
+        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($client, $startDate, $endDate) {
+            return $this->buildPayload($client, $startDate, $endDate);
+        });
+    }
+
+    private function buildPayload(WhmcsClient $client, string $startDate, string $endDate): array
+    {
+        $whmcsErrors = [];
+
+        $transactions = $this->fetchAll($client, 'GetTransactions', [
+            'startdate' => $startDate,
+            'enddate' => $endDate,
+            'orderby' => 'date',
+            'order' => 'desc',
+        ], 'transactions', 'transaction', $whmcsErrors);
+
+        $transactions = $this->filterByDate($transactions, 'date', $startDate, $endDate);
+        $transactions = $this->sortTransactionsNewestFirst($transactions, 'date');
+        $amountInSubtotal = $this->sumField($transactions, 'amountin');
+        $feesSubtotal = $this->sumField($transactions, 'fees');
+
+        return [
+            'transactions' => $transactions,
+            'amountInSubtotal' => $amountInSubtotal,
+            'feesSubtotal' => $feesSubtotal,
+            'amountInSubtotalDisplay' => $this->formatMoney($amountInSubtotal),
+            'feesSubtotalDisplay' => $this->formatMoney($feesSubtotal),
+            'whmcsErrors' => $whmcsErrors,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+        ];
     }
 
     private function sumField(array $rows, string $key): float

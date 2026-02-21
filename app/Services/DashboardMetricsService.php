@@ -621,23 +621,36 @@ class DashboardMetricsService
 
     private function billingAmounts(): array
     {
-        $today = now()->toDateString();
-        $monthStart = now()->startOfMonth()->toDateString();
-        $monthEnd = now()->endOfMonth()->toDateString();
-        $yearStart = now()->startOfYear()->toDateString();
-        $yearEnd = now()->endOfYear()->toDateString();
+        $todayStart = now()->startOfDay();
+        $todayEnd = now()->endOfDay();
+        $monthStart = now()->startOfMonth();
+        $monthEnd = now()->endOfDay();
+        $yearStart = now()->startOfYear();
+        $yearEnd = now()->endOfDay();
+        $allTimeStart = Carbon::parse(self::WHMCS_DEFAULT_START)->startOfDay();
+        $allTimeEnd = now()->endOfDay();
+
+        $todayBase = (float) AccountingEntry::where('type', 'payment')
+            ->whereDate('entry_date', $todayStart->toDateString())
+            ->sum('amount');
+        $monthBase = (float) AccountingEntry::where('type', 'payment')
+            ->whereBetween('entry_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->sum('amount');
+        $yearBase = (float) AccountingEntry::where('type', 'payment')
+            ->whereBetween('entry_date', [$yearStart->toDateString(), $yearEnd->toDateString()])
+            ->sum('amount');
+        $allTimeBase = (float) AccountingEntry::where('type', 'payment')->sum('amount');
+
+        $todayHosting = $this->carrotHostIncomeBetween($todayStart, $todayEnd);
+        $monthHosting = $this->carrotHostIncomeBetween($monthStart, $monthEnd);
+        $yearHosting = $this->carrotHostIncomeBetween($yearStart, $yearEnd);
+        $allTimeHosting = $this->carrotHostIncomeBetween($allTimeStart, $allTimeEnd);
 
         return [
-            'today' => (float) AccountingEntry::where('type', 'payment')
-                ->whereDate('entry_date', $today)
-                ->sum('amount'),
-            'month' => (float) AccountingEntry::where('type', 'payment')
-                ->whereBetween('entry_date', [$monthStart, $monthEnd])
-                ->sum('amount'),
-            'year' => (float) AccountingEntry::where('type', 'payment')
-                ->whereBetween('entry_date', [$yearStart, $yearEnd])
-                ->sum('amount'),
-            'all_time' => (float) AccountingEntry::where('type', 'payment')->sum('amount'),
+            'today' => $todayBase + $todayHosting,
+            'month' => $monthBase + $monthHosting,
+            'year' => $yearBase + $yearHosting,
+            'all_time' => $allTimeBase + $allTimeHosting,
         ];
     }
 
