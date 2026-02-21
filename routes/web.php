@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
 use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\AiBusinessStatusController;
+use App\Http\Controllers\Admin\ApptimaticEmailController as AdminApptimaticEmailController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\Admin\CustomerController;
@@ -469,6 +470,16 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('/tasks', [AdminTasksController::class, 'index'])->name('tasks.index');
     Route::get('/chats', [AdminChatController::class, 'index'])->name('chats.index');
     Route::redirect('/chat', '/admin/chats');
+    Route::redirect('/mail', '/admin/apptimatic-email');
+    Route::middleware('admin.role:master_admin,sub_admin,admin,support')
+        ->prefix('apptimatic-email')
+        ->name('apptimatic-email.')
+        ->group(function () {
+            Route::get('/', [AdminApptimaticEmailController::class, 'inbox'])->name('inbox');
+            Route::get('/messages/{message}', [AdminApptimaticEmailController::class, 'show'])
+                ->where('message', '[A-Za-z0-9\-]+')
+                ->name('show');
+        });
     Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
     Route::get('/projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
         ->name('projects.chat.participants');

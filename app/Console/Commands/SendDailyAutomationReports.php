@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\MailCategory;
 use App\Enums\Role;
 use App\Mail\CronActivityReportMail;
 use App\Mail\LicenseSyncReportMail;
@@ -9,12 +10,12 @@ use App\Models\CronRun;
 use App\Models\LicenseSyncRun;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\Mail\MailSender;
 use App\Support\Branding;
 use App\Support\UrlResolver;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class SendDailyAutomationReports extends Command
@@ -237,11 +238,12 @@ class SendDailyAutomationReports extends Command
 
     private function sendMailable(array $recipients, $mailable): void
     {
-        if (config('queue.default') === 'sync') {
-            Mail::to($recipients)->sendNow($mailable);
-            return;
-        }
-
-        Mail::to($recipients)->queue($mailable);
+        $queue = config('queue.default') !== 'sync';
+        app(MailSender::class)->sendMailable(
+            MailCategory::SYSTEM,
+            $recipients,
+            $mailable,
+            $queue
+        );
     }
 }

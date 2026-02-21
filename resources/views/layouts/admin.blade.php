@@ -353,6 +353,27 @@
                             <span>Chat</span>
                             <span class="ml-auto ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">{{ $adminHeaderStats['unread_chat'] ?? 0 }}</span>
                         </x-nav-link>
+                        @php
+                            $isApptimaticEmailActive = isActive('admin.apptimatic-email.*');
+                        @endphp
+                        <div>
+                            <a
+                                href="{{ route('admin.apptimatic-email.inbox') }}"
+                                class="{{ $isApptimaticEmailActive ? 'nav-link nav-link-active' : 'nav-link' }}"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                <span>Apptimatic Email</span>
+                            </a>
+                            <div class="ml-8 mt-1 space-y-1 text-xs">
+                                <a href="{{ route('admin.apptimatic-email.inbox') }}" class="flex items-center gap-2 {{ activeIf(request()->routeIs('admin.apptimatic-email.*')) }}">
+                                    <span>Inbox</span>
+                                    <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $adminHeaderStats['apptimatic_email_unread'] ?? 0 }}</span>
+                                </a>
+                                <span class="block cursor-not-allowed text-slate-500/70" title="Coming soon">Sent</span>
+                                <span class="block cursor-not-allowed text-slate-500/70" title="Coming soon">Drafts</span>
+                                <span class="block cursor-not-allowed text-slate-500/70" title="Coming soon">Trash</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="space-y-2">

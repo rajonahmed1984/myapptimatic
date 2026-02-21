@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Enums\MailCategory;
+use App\Mail\Concerns\UsesMailCategory;
 use App\Models\Employee;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
@@ -20,6 +22,7 @@ abstract class TaskStatusNotification extends Notification implements ShouldQueu
 {
     use Queueable;
     use SerializesModels;
+    use UsesMailCategory;
 
     protected ProjectTask $task;
     protected ?ProjectTaskSubtask $subtask;
@@ -49,6 +52,11 @@ abstract class TaskStatusNotification extends Notification implements ShouldQueu
     public function via(object $notifiable): array
     {
         return ['mail'];
+    }
+
+    public function mailCategory(): string
+    {
+        return MailCategory::SYSTEM;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -114,7 +122,7 @@ abstract class TaskStatusNotification extends Notification implements ShouldQueu
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
         $portalUrl = UrlResolver::portalUrl();
 
-        return (new MailMessage())
+        $mail = (new MailMessage())
             ->subject($subject)
             ->view('emails.generic', [
                 'subject' => $subject,
@@ -125,6 +133,8 @@ abstract class TaskStatusNotification extends Notification implements ShouldQueu
                 'portalLoginLabel' => $this->portalLoginLabel,
                 'bodyHtml' => new HtmlString($bodyHtml),
             ]);
+
+        return $this->withMailCategoryHeader($mail);
     }
 
     private function resolveCreatorName(): string

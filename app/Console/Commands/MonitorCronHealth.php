@@ -2,11 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\MailCategory;
 use App\Models\Setting;
+use App\Services\Mail\MailSender;
 use App\Support\UrlResolver;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 
 class MonitorCronHealth extends Command
 {
@@ -62,7 +63,9 @@ class MonitorCronHealth extends Command
         $lastRunText = $lastRunAt ? $lastRunAt->format('Y-m-d H:i:s') . " ({$timeZone})" : 'never';
 
         try {
-            Mail::raw(
+            app(MailSender::class)->sendRaw(
+                MailCategory::SYSTEM,
+                $to,
                 "The daily billing cron has not completed successfully within the expected window.\n\n"
                 . "Reason: {$reason}\n"
                 . "Last run at: {$lastRunText}\n"
@@ -70,9 +73,7 @@ class MonitorCronHealth extends Command
                 . ($cronUrl ? "Manual trigger URL: {$cronUrl}\n" : '')
                 . "Portal: {$portalUrl}\n\n"
                 . "This alert will repeat every {$cooldownHours} hours until the cron completes successfully.",
-                function ($message) use ($to, $subject) {
-                    $message->to($to)->subject($subject);
-                }
+                $subject
             );
         } catch (\Throwable $e) {
             $this->error('Failed to send cron health alert: ' . $e->getMessage());

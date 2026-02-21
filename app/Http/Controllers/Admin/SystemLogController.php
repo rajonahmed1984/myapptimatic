@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Enums\MailCategory;
 use App\Models\SystemLog;
+use App\Services\Mail\MailSender;
 use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Mail;
 
 class SystemLogController extends Controller
 {
@@ -44,25 +45,19 @@ class SystemLogController extends Controller
         $subject = (string) ($context['subject'] ?? '');
         $html = (string) ($context['html'] ?? '');
         $text = (string) ($context['text'] ?? '');
-        $from = $context['from'][0] ?? null;
 
         if (empty($recipients) || $subject === '' || ($html === '' && $text === '')) {
             return back()->withErrors(['email' => 'Cannot resend this email log.']);
         }
 
         try {
-            Mail::send([], [], function ($message) use ($recipients, $subject, $html, $text, $from) {
-                $message->to($recipients)->subject($subject);
-                if ($from) {
-                    $message->from($from);
-                }
-                if ($html !== '') {
-                    $message->html($html);
-                }
-                if ($text !== '') {
-                    $message->text($text);
-                }
-            });
+            app(MailSender::class)->sendHtmlText(
+                MailCategory::SYSTEM,
+                $recipients,
+                $subject,
+                $html !== '' ? $html : null,
+                $text !== '' ? $text : null
+            );
         } catch (\Throwable $e) {
             return back()->withErrors(['email' => 'Resend failed: '.$e->getMessage()]);
         }

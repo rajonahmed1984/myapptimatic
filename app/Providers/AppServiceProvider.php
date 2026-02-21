@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\MailCategory;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\PaymentProof;
@@ -14,17 +15,20 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Observers\ProjectTaskObserver;
 use App\Services\AuthFresh\LoginService;
+use App\Services\ApptimaticEmailStubRepository;
 use App\Support\Branding;
+use App\Support\MailCategoryContext;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use App\Services\SettingsService;
 use App\Services\TaskQueryService;
+use App\Services\Mail\MailFromResolver;
+use App\Services\Mail\MailSender;
 use DateTimeZone;
 use Illuminate\Cache\RateLimiting\Limit;
 use App\Events\InvoiceOverdue;
 use App\Events\LicenseBlocked;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Mail\Events\MessageFailed;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\Events\MessageSent;
@@ -37,6 +41,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use PHPUnit\Framework\Assert;
+use Symfony\Component\Mime\Address;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -172,6 +177,7 @@ class AppServiceProvider extends ServiceProvider
                     'pending_leave_requests' => LeaveRequest::where('status', 'pending')->count(),
                     'tasks_badge' => $adminTaskBadge,
                     'unread_chat' => $adminUnreadChat,
+                    'apptimatic_email_unread' => app(ApptimaticEmailStubRepository::class)->unreadCount(),
                 ]);
                 $view->with('employeeHeaderStats', $employeeHeaderStats);
             });
@@ -261,14 +267,6 @@ class AppServiceProvider extends ServiceProvider
                 $view->with('repHeaderStats', $repHeaderStats);
             });
 
-            if (! empty($brand['company_email'])) {
-                config(['mail.from.address' => $brand['company_email']]);
-            }
-
-            if (! empty($brand['company_name'])) {
-                config(['mail.from.name' => $brand['company_name']]);
-            }
-
             $settingsService = app(SettingsService::class);
             config($settingsService->recaptchaConfig());
 
@@ -345,54 +343,152 @@ class AppServiceProvider extends ServiceProvider
 
     private function registerEmailLogListener(): void
     {
-        // Capture all outgoing mail lifecycle events so /admin/logs/email shows every message.
         Event::listen(MessageSending::class, function (MessageSending $event) {
             $mailer = property_exists($event, 'mailer') ? $event->mailer : null;
-            $this->logEmailEvent('Email sending.', $event->message, $mailer, 'info');
+            $category = $this->resolveCategoryForMessage($event->message);
+            $this->applyFromRoutingForCategory($event->message, $category);
+            $this->logEmailEvent('Email sending.', $event->message, $mailer, $category, 'info');
         });
 
         Event::listen(MessageSent::class, function (MessageSent $event) {
             $mailer = property_exists($event, 'mailer') ? $event->mailer : null;
-            $this->logEmailEvent('Email sent.', $event->message, $mailer, 'info');
+            $category = $this->resolveCategoryForMessage($event->message);
+            $this->logEmailEvent('Email sent.', $event->message, $mailer, $category, 'info');
         });
 
         Event::listen(MessageFailed::class, function (MessageFailed $event) {
             $mailer = property_exists($event, 'mailer') ? $event->mailer : null;
-            $this->logEmailEvent('Email failed to send.', $event->message, $mailer, 'error', [
+            $category = $this->resolveCategoryForMessage($event->message);
+            $this->logEmailEvent('Email failed to send.', $event->message, $mailer, $category, 'error', [
                 'failure' => $event->exception?->getMessage(),
             ]);
         });
     }
 
-    private function logEmailEvent(string $messageLabel, object $message, ?string $mailer, string $level = 'info', array $extra = []): void
+    private function logEmailEvent(
+        string $messageLabel,
+        object $message,
+        ?string $mailer,
+        string $category,
+        string $level = 'info',
+        array $extra = []
+    ): void
     {
-        $to = [];
-        $from = [];
-
-        if (method_exists($message, 'getTo') && is_array($message->getTo())) {
-            foreach ($message->getTo() as $address) {
-                $to[] = strtolower($address->getAddress());
-            }
-        }
-
-        if (method_exists($message, 'getFrom') && is_array($message->getFrom())) {
-            foreach ($message->getFrom() as $address) {
-                $from[] = strtolower($address->getAddress());
-            }
-        }
+        $to = $this->extractAddresses($message, 'getTo');
+        $from = $this->extractAddresses($message, 'getFrom');
 
         $subject = method_exists($message, 'getSubject') ? (string) $message->getSubject() : '';
-        $html = method_exists($message, 'getHtmlBody') ? (string) $message->getHtmlBody() : '';
-        $text = method_exists($message, 'getTextBody') ? (string) $message->getTextBody() : '';
+        $messageId = null;
 
-        SystemLogger::write('email', $messageLabel, array_merge([
+        if (method_exists($message, 'getHeaders')) {
+            $headers = $message->getHeaders();
+            if ($headers->has('Message-ID')) {
+                $messageId = (string) $headers->get('Message-ID')->getBodyAsString();
+            }
+        }
+
+        $context = array_merge([
             'subject' => $subject,
             'to' => $to,
+            'to_count' => count($to),
             'from' => $from,
-            'html' => $html,
-            'text' => $text,
+            'from_address' => $from[0] ?? null,
+            'category' => MailCategory::normalize($category),
             'mailer' => $mailer,
-        ], $extra), level: $level);
+            'message_id' => $messageId,
+        ], $extra);
+
+        if ((bool) config('system_mail.log_bodies', false)) {
+            $context['html'] = method_exists($message, 'getHtmlBody') ? (string) $message->getHtmlBody() : '';
+            $context['text'] = method_exists($message, 'getTextBody') ? (string) $message->getTextBody() : '';
+        }
+
+        SystemLogger::write('email', $messageLabel, $context, level: $level);
+    }
+
+    private function resolveCategoryForMessage(object $message): string
+    {
+        if (method_exists($message, 'getHeaders')) {
+            $headers = $message->getHeaders();
+            $headerName = 'X-Apptimatic-Mail-Category';
+            if ($headers->has($headerName)) {
+                return MailCategory::normalize((string) $headers->get($headerName)->getBodyAsString());
+            }
+        }
+
+        $contextCategory = MailCategoryContext::current();
+        if ($contextCategory !== null) {
+            return MailCategory::normalize($contextCategory);
+        }
+
+        $resolver = app(MailFromResolver::class);
+        $from = $this->extractAddresses($message, 'getFrom');
+        if (! empty($from)) {
+            return $resolver->categoryForAddress($from[0]);
+        }
+
+        return MailCategory::SYSTEM;
+    }
+
+    private function applyFromRoutingForCategory(object $message, string $category): void
+    {
+        $resolver = app(MailFromResolver::class);
+        $resolvedFrom = $resolver->resolve($category);
+        $resolvedAddress = strtolower(trim((string) ($resolvedFrom['address'] ?? '')));
+        if ($resolvedAddress === '' || ! method_exists($message, 'from')) {
+            return;
+        }
+
+        $existingFrom = $this->extractAddresses($message, 'getFrom');
+        if (in_array($resolvedAddress, $existingFrom, true)) {
+            return;
+        }
+
+        $legacyDefault = strtolower(trim((string) config('mail.from.address', '')));
+        $isLegacyFrom = ! empty($existingFrom)
+            && $legacyDefault !== ''
+            && in_array($legacyDefault, $existingFrom, true);
+
+        if (empty($existingFrom) || $isLegacyFrom) {
+            $message->from(new Address(
+                $resolvedFrom['address'],
+                (string) ($resolvedFrom['name'] ?? '')
+            ));
+        }
+
+        if (method_exists($message, 'getHeaders')) {
+            $headers = $message->getHeaders();
+            $headerName = 'X-Apptimatic-Mail-Category';
+            if ($headers->has($headerName)) {
+                $headers->remove($headerName);
+            }
+            $headers->addTextHeader($headerName, MailCategory::normalize($category));
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function extractAddresses(object $message, string $getter): array
+    {
+        if (! method_exists($message, $getter)) {
+            return [];
+        }
+
+        $addresses = $message->{$getter}();
+        if (! is_array($addresses)) {
+            return [];
+        }
+
+        $results = [];
+        foreach ($addresses as $address) {
+            $email = strtolower(trim((string) $address->getAddress()));
+            if ($email !== '') {
+                $results[] = $email;
+            }
+        }
+
+        return array_values(array_unique($results));
     }
 
     private function registerAutomationEventListeners(): void
@@ -409,9 +505,12 @@ class AppServiceProvider extends ServiceProvider
             $to = Setting::getValue('company_email') ?: config('mail.from.address');
             if ($to) {
                 try {
-                    Mail::raw("Invoice #{$invoice->id} is overdue. Status: {$invoice->status}", function ($message) use ($to) {
-                        $message->to($to)->subject('Invoice overdue alert');
-                    });
+                    app(MailSender::class)->sendRaw(
+                        MailCategory::BILLING,
+                        $to,
+                        "Invoice #{$invoice->id} is overdue. Status: {$invoice->status}",
+                        'Invoice overdue alert'
+                    );
                 } catch (\Throwable) {
                     // Do not break on mail failure.
                 }
@@ -434,9 +533,12 @@ class AppServiceProvider extends ServiceProvider
                 try {
                     $requestId = $event->context['request_id'] ?? '';
                     $reason = $event->reason;
-                    Mail::raw("License {$license->id} blocked during verification. Reason: {$reason}. Request ID: {$requestId}", function ($message) use ($to) {
-                        $message->to($to)->subject('License blocked alert');
-                    });
+                    app(MailSender::class)->sendRaw(
+                        MailCategory::BILLING,
+                        $to,
+                        "License {$license->id} blocked during verification. Reason: {$reason}. Request ID: {$requestId}",
+                        'License blocked alert'
+                    );
                 } catch (\Throwable) {
                     // swallow mail errors
                 }

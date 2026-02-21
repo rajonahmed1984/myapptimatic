@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\MailCategory;
 use App\Models\Customer;
 use App\Models\EmailTemplate;
 use App\Models\Invoice;
@@ -13,14 +14,18 @@ use App\Models\SupportTicket;
 use App\Models\SupportTicketReply;
 use App\Support\Branding;
 use App\Support\UrlResolver;
+use App\Services\Mail\MailSender;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
-use App\Support\SystemLogger;
 
 class ClientNotificationService
 {
+    public function __construct(
+        private readonly MailSender $mailSender
+    ) {
+    }
+
     public function sendClientSignup(Customer $customer): void
     {
         if (! $customer->email) {
@@ -47,7 +52,7 @@ class ClientNotificationService
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
-        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SYSTEM);
     }
 
     public function sendOrderConfirmation(Order $order): void
@@ -93,7 +98,8 @@ class ClientNotificationService
             $bodyHtml,
             $fromEmail,
             $companyName,
-            $attachment ? [$attachment] : []
+            $attachment ? [$attachment] : [],
+            MailCategory::BILLING
         );
     }
 
@@ -147,7 +153,7 @@ class ClientNotificationService
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
-        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
 
     public function sendInvoiceCreated(Invoice $invoice): void
@@ -193,7 +199,8 @@ class ClientNotificationService
             $bodyHtml,
             $fromEmail,
             $companyName,
-            $attachment ? [$attachment] : []
+            $attachment ? [$attachment] : [],
+            MailCategory::BILLING
         );
     }
 
@@ -235,7 +242,7 @@ class ClientNotificationService
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
-        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
 
     public function sendInvoicePaymentConfirmation(Invoice $invoice, ?string $reference = null): void
@@ -271,7 +278,7 @@ class ClientNotificationService
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
-        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
 
     public function sendTicketAutoClose(SupportTicket $ticket): void
@@ -339,7 +346,7 @@ class ClientNotificationService
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
         $fromEmail = $this->resolveFromEmail($template);
 
-        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
 
     private function sendTicketTemplate(SupportTicket $ticket, string $templateKey, string $fallbackSubject, array $extraReplacements = []): void
@@ -373,17 +380,25 @@ class ClientNotificationService
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
         $fromEmail = $this->resolveFromEmail($template);
 
-        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SUPPORT);
     }
 
-    private function sendGeneric(string $to, string $subject, string $bodyHtml, ?string $fromEmail, string $companyName, array $attachments = []): void
+    private function sendGeneric(
+        string $to,
+        string $subject,
+        string $bodyHtml,
+        ?string $fromEmail,
+        string $companyName,
+        array $attachments = [],
+        string $category = MailCategory::SYSTEM
+    ): void
     {
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
         $portalUrl = UrlResolver::portalUrl();
         $portalLoginUrl = $portalUrl.'/login';
 
         try {
-            Mail::send('emails.generic', [
+            $this->mailSender->sendView($category, $to, 'emails.generic', [
                 'subject' => $subject,
                 'companyName' => $companyName,
                 'logoUrl' => $logoUrl,
@@ -391,21 +406,7 @@ class ClientNotificationService
                 'portalLoginUrl' => $portalLoginUrl,
                 'portalLoginLabel' => 'log in to the client area',
                 'bodyHtml' => new HtmlString($bodyHtml),
-            ], function ($message) use ($to, $subject, $fromEmail, $companyName, $attachments) {
-                $message->to($to)->subject($subject);
-                if ($fromEmail) {
-                    $message->from($fromEmail, $companyName);
-                }
-                foreach ($attachments as $attachment) {
-                    if (is_array($attachment) && isset($attachment['data'], $attachment['filename'])) {
-                        $message->attachData(
-                            $attachment['data'],
-                            $attachment['filename'],
-                            ['mime' => $attachment['mimetype'] ?? 'application/pdf']
-                        );
-                    }
-                }
-            });
+            ], $subject, $attachments);
         } catch (\Throwable $e) {
             Log::warning('Failed to send client notification.', [
                 'subject' => $subject,

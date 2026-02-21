@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\MailCategory;
 use App\Enums\Role;
 use App\Models\EmailTemplate;
 use App\Models\Invoice;
@@ -12,14 +13,18 @@ use App\Models\SupportTicketReply;
 use App\Models\User;
 use App\Support\Branding;
 use App\Support\UrlResolver;
+use App\Services\Mail\MailSender;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
-use App\Support\SystemLogger;
 
 class AdminNotificationService
 {
+    public function __construct(
+        private readonly MailSender $mailSender
+    ) {
+    }
+
     public function sendNewOrder(Order $order, ?string $ipAddress = null): void
     {
         $recipients = $this->adminRecipients();
@@ -96,7 +101,9 @@ class AdminNotificationService
             ],
             $subject,
             $fromEmail,
-            $companyName
+            $companyName,
+            [],
+            MailCategory::BILLING
         );
     }
 
@@ -137,7 +144,7 @@ class AdminNotificationService
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
-        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
 
     public function sendInvoiceCreated(Invoice $invoice): void
@@ -183,12 +190,12 @@ class AdminNotificationService
 
         if (empty($items)) {
             $body = $note ?: 'No recent chat activity found.';
-            $this->sendGeneric($recipients, $subject, $this->formatEmailBody($body), $fromEmail, $companyName);
+            $this->sendGeneric($recipients, $subject, $this->formatEmailBody($body), $fromEmail, $companyName, [], MailCategory::SUPPORT);
             return;
         }
 
         $bodyHtml = $this->buildChatDigestHtml($items, $note);
-        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SUPPORT);
     }
 
     public function sendOrderAccepted(Order $order): void
@@ -225,7 +232,7 @@ class AdminNotificationService
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
-        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
 
     public function sendTicketCreated(SupportTicket $ticket): void
@@ -270,7 +277,7 @@ class AdminNotificationService
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
 
-        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName);
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SUPPORT);
     }
 
     private function sendInvoiceTemplate(Invoice $invoice, string $templateKey, string $fallbackSubject): void
@@ -314,7 +321,8 @@ class AdminNotificationService
             $bodyHtml,
             $fromEmail,
             $companyName,
-            $attachment ? [$attachment] : []
+            $attachment ? [$attachment] : [],
+            MailCategory::BILLING
         );
     }
 
@@ -375,7 +383,15 @@ class AdminNotificationService
         return $fromEmail ?: null;
     }
 
-    private function sendGeneric(array $recipients, string $subject, string $bodyHtml, ?string $fromEmail, string $companyName, array $attachments = []): void
+    private function sendGeneric(
+        array $recipients,
+        string $subject,
+        string $bodyHtml,
+        ?string $fromEmail,
+        string $companyName,
+        array $attachments = [],
+        string $category = MailCategory::SYSTEM
+    ): void
     {
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
         $portalUrl = UrlResolver::portalUrl();
@@ -396,7 +412,8 @@ class AdminNotificationService
             $subject,
             $fromEmail,
             $companyName,
-            $attachments
+            $attachments,
+            $category
         );
     }
 
@@ -407,24 +424,11 @@ class AdminNotificationService
         string $subject,
         ?string $fromEmail,
         string $companyName,
-        array $attachments = []
+        array $attachments = [],
+        string $category = MailCategory::SYSTEM
     ): void {
         try {
-            Mail::send($view, $data, function ($message) use ($recipients, $subject, $fromEmail, $companyName, $attachments) {
-                $message->to($recipients)->subject($subject);
-                if ($fromEmail) {
-                    $message->from($fromEmail, $companyName);
-                }
-                foreach ($attachments as $attachment) {
-                    if (is_array($attachment) && isset($attachment['data'], $attachment['filename'])) {
-                        $message->attachData(
-                            $attachment['data'],
-                            $attachment['filename'],
-                            ['mime' => $attachment['mimetype'] ?? 'application/pdf']
-                        );
-                    }
-                }
-            });
+            $this->mailSender->sendView($category, $recipients, $view, $data, $subject, $attachments);
         } catch (\Throwable $e) {
             Log::warning('Failed to send admin notification.', [
                 'subject' => $subject,

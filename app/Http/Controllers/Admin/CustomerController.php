@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Enums\MailCategory;
 use App\Models\AccountingEntry;
 use App\Models\Customer;
 use App\Models\EmailTemplate;
@@ -19,12 +20,12 @@ use App\Support\Branding;
 use App\Support\Currency;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
+use App\Services\Mail\MailSender;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
@@ -138,8 +139,6 @@ class CustomerController extends Controller
 
         $subject = $template?->subject ?: "Welcome to {$companyName}";
         $body = $template?->body ?: "Hi {{client_name}},\n\nYour account for {{company_name}} is ready. You can sign in here: {{login_url}}.\n\nThank you,\n{{company_name}}";
-        $fromEmail = trim((string) ($template?->from_email ?? ''));
-
         $replacements = [
             '{{client_name}}' => $customer->name,
             '{{company_name}}' => $companyName,
@@ -155,7 +154,7 @@ class CustomerController extends Controller
         $portalLoginUrl = UrlResolver::portalUrl().'/login';
 
         try {
-            Mail::send('emails.generic', [
+            app(MailSender::class)->sendView(MailCategory::SYSTEM, $customer->email, 'emails.generic', [
                 'subject' => $subject,
                 'companyName' => $companyName,
                 'logoUrl' => $logoUrl,
@@ -163,13 +162,7 @@ class CustomerController extends Controller
                 'portalLoginUrl' => $portalLoginUrl,
                 'portalLoginLabel' => 'log in to the client area',
                 'bodyHtml' => new HtmlString($bodyHtml),
-            ], function ($message) use ($customer, $subject, $fromEmail, $companyName) {
-                $message->to($customer->email)
-                    ->subject($subject);
-                if ($fromEmail !== '') {
-                    $message->from($fromEmail, $companyName);
-                }
-            });
+            ], $subject);
         } catch (\Throwable $e) {
             Log::warning('Failed to send account info email.', [
                 'customer_id' => $customer->id,

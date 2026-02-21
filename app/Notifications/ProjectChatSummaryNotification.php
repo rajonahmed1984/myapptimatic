@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Enums\MailCategory;
+use App\Mail\Concerns\UsesMailCategory;
 use App\Models\Project;
 use App\Models\Setting;
 use App\Support\Branding;
@@ -15,6 +17,7 @@ use Illuminate\Support\HtmlString;
 class ProjectChatSummaryNotification extends Notification implements ShouldQueue
 {
     use Queueable;
+    use UsesMailCategory;
 
     public function __construct(
         private readonly Project $project,
@@ -29,6 +32,11 @@ class ProjectChatSummaryNotification extends Notification implements ShouldQueue
     public function via(object $notifiable): array
     {
         return ['mail'];
+    }
+
+    public function mailCategory(): string
+    {
+        return MailCategory::SUPPORT;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -57,7 +65,7 @@ class ProjectChatSummaryNotification extends Notification implements ShouldQueue
             $lines[] = '<br><a href="' . e($this->chatUrl) . '">Open project chat</a>';
         }
 
-        return (new MailMessage())
+        $mail = (new MailMessage())
             ->subject($subject)
             ->view('emails.generic', [
                 'subject' => $subject,
@@ -68,5 +76,7 @@ class ProjectChatSummaryNotification extends Notification implements ShouldQueue
                 'portalLoginLabel' => $this->portalLoginLabel,
                 'bodyHtml' => new HtmlString('<p>' . implode('<br>', $lines) . '</p>'),
             ]);
+
+        return $this->withMailCategoryHeader($mail);
     }
 }

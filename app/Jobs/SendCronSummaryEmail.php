@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Enums\MailCategory;
 use App\Models\Setting;
+use App\Services\Mail\MailSender;
 use App\Support\Branding;
 use App\Support\UrlResolver;
 use Carbon\Carbon;
@@ -12,7 +14,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class SendCronSummaryEmail implements ShouldQueue
 {
@@ -68,7 +69,7 @@ class SendCronSummaryEmail implements ShouldQueue
         ];
 
         try {
-            Mail::send('emails.cron-activity', [
+            app(MailSender::class)->sendView(MailCategory::SYSTEM, $to, 'emails.cron-activity', [
                 'subject' => $subject,
                 'companyName' => $companyName,
                 'logoUrl' => $logoUrl,
@@ -82,14 +83,7 @@ class SendCronSummaryEmail implements ShouldQueue
                 'dateFormat' => $dateFormat,
                 'timeZone' => $timeZone,
                 'errorMessage' => $this->errorMessage,
-            ], function ($message) use ($to, $subject, $companyName) {
-                $message->to($to)->subject($subject);
-
-                $fromEmail = Setting::getValue('company_email');
-                if ($fromEmail) {
-                    $message->from($fromEmail, $companyName);
-                }
-            });
+            ], $subject);
         } catch (\Throwable $e) {
             Log::warning('Failed to send cron activity email.', [
                 'error' => $e->getMessage(),
