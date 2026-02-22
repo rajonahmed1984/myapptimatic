@@ -70,7 +70,7 @@
                                         data-advance-current="{{ number_format((float) ($recurring->advances_sum_amount ?? 0), 2, '.', '') }}"
                                         data-advance-currency="{{ $currencyCode }}"
                                     >
-                                        Advance Payment
+                                        Advance
                                     </button>
                                     <a href="{{ route('admin.expenses.recurring.edit', $recurring) }}" class="text-teal-600 hover:text-teal-500">Edit</a>
                                     @if($recurring->status === 'paused')

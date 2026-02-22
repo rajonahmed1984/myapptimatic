@@ -176,16 +176,13 @@
                             <span>Manual Payments</span>
                         </x-nav-link>
                         <x-nav-menu
-                            :href="route('admin.accounting.index')"
+                            :href="route('admin.accounting.ledger')"
                             routes="admin.accounting.*"
                             label="Accounting"
                             :alwaysOpen="true"
                         >
-                            <a href="{{ route('admin.accounting.index') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.index')) }}">Ledger</a>
+                            <a href="{{ route('admin.accounting.ledger') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.ledger') || request()->routeIs('admin.accounting.index')) }}">Ledger</a>
                             <a href="{{ route('admin.accounting.transactions') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.transactions')) }}">Transactions</a>
-                            <a href="{{ route('admin.accounting.refunds') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.refunds')) }}">Refunds</a>
-                            <a href="{{ route('admin.accounting.credits') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.credits')) }}">Credits</a>
-                            <a href="{{ route('admin.accounting.expenses') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.expenses')) }}">Expenses</a>
                         </x-nav-menu>
                         @if(auth()->user()?->isMasterAdmin())
                             <x-nav-menu
@@ -208,8 +205,9 @@
                             >
                                 <a href="{{ route('admin.expenses.dashboard') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.dashboard')) }}">Dashboard</a>
                                 <a href="{{ route('admin.expenses.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.index')) }}">All expenses</a>
-                                <a href="{{ route('admin.expenses.recurring.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.recurring.*')) }}">Recurring</a>
-                                <a href="{{ route('admin.expenses.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.categories.*')) }}">Categories</a>
+                                <a href="{{ route('admin.expenses.create') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.create')) }}">One-time expense</a>
+                                <a href="{{ route('admin.expenses.recurring.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.recurring.*')) }}">Recurring expense</a>
+                                <a href="{{ route('admin.expenses.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.categories.*')) }}">Expense Categories</a>
                             </x-nav-menu>
                             <x-nav-link 
                                 :href="route('admin.finance.tax.index')"

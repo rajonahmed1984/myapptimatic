@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\PaymentMethod;
 use App\Models\RecurringExpense;
 use App\Models\Setting;
 use App\Services\ExpenseEntryService;
+use App\Services\ExpenseInvoiceService;
 use App\Support\Currency;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -138,17 +140,109 @@ class ExpenseController extends Controller
         return view('admin.expenses.index', $payload);
     }
 
-    public function create(): View
+    public function create(ExpenseInvoiceService $invoiceService): View
     {
+        $invoiceService->syncOverdueStatuses();
+
         $categories = ExpenseCategory::query()
             ->where('status', 'active')
             ->orderBy('name')
             ->get();
 
-        return view('admin.expenses.create', compact('categories'));
+        $oneTimeExpenses = Expense::query()
+            ->with([
+                'category',
+                'invoice' => function ($query) {
+                    $query->withSum('payments', 'amount');
+                },
+            ])
+            ->where('type', 'one_time')
+            ->latest('expense_date')
+            ->latest('id')
+            ->limit(15)
+            ->get();
+
+        $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($currencyCode)) {
+            $currencyCode = Currency::DEFAULT;
+        }
+
+        $paymentMethods = PaymentMethod::dropdownOptions();
+
+        return view('admin.expenses.one-time', compact('categories', 'oneTimeExpenses', 'currencyCode', 'paymentMethods'));
     }
 
-    public function store(Request $request, \App\Services\ExpenseInvoiceService $invoiceService): RedirectResponse
+    public function edit(Expense $expense): View
+    {
+        if ($expense->type !== 'one_time') {
+            abort(404);
+        }
+
+        $categories = ExpenseCategory::query()
+            ->where('status', 'active')
+            ->orWhere('id', $expense->category_id)
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.expenses.edit', compact('expense', 'categories'));
+    }
+
+    public function update(Request $request, Expense $expense): RedirectResponse
+    {
+        if ($expense->type !== 'one_time') {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'category_id' => [
+                'required',
+                Rule::exists('expense_categories', 'id')->where('status', 'active'),
+            ],
+            'title' => ['required', 'string', 'max:255'],
+            'amount' => ['required', 'numeric', 'min:0'],
+            'expense_date' => ['required', 'date'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+        ]);
+
+        $expense->update([
+            'category_id' => $data['category_id'],
+            'title' => $data['title'],
+            'amount' => $data['amount'],
+            'expense_date' => $data['expense_date'],
+            'notes' => $data['notes'] ?? null,
+        ]);
+
+        if ($request->hasFile('attachment')) {
+            if ($expense->attachment_path && Storage::disk('public')->exists($expense->attachment_path)) {
+                Storage::disk('public')->delete($expense->attachment_path);
+            }
+
+            $path = $request->file('attachment')->store('expenses/receipts', 'public');
+            $expense->update(['attachment_path' => $path]);
+        }
+
+        return redirect()->route('admin.expenses.create')
+            ->with('status', 'Expense updated.');
+    }
+
+    public function destroy(Expense $expense): RedirectResponse
+    {
+        if ($expense->type !== 'one_time') {
+            abort(404);
+        }
+
+        if ($expense->attachment_path && Storage::disk('public')->exists($expense->attachment_path)) {
+            Storage::disk('public')->delete($expense->attachment_path);
+        }
+
+        $expense->delete();
+
+        return redirect()->route('admin.expenses.create')
+            ->with('status', 'Expense deleted.');
+    }
+
+    public function store(Request $request, ExpenseInvoiceService $invoiceService): RedirectResponse
     {
         $data = $request->validate([
             'category_id' => [

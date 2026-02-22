@@ -9,7 +9,7 @@
             <h1 class="text-2xl font-semibold text-slate-900">Edit Accounting Entry</h1>
             <p class="mt-1 text-sm text-slate-500">Update this ledger record.</p>
         </div>
-        <a href="{{ route('admin.accounting.index') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to accounting</a>
+        <a href="{{ route('admin.accounting.ledger') }}" class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Back to accounting</a>
     </div>
 
     <form method="POST" action="{{ route('admin.accounting.update', $entry) }}" class="card p-6">

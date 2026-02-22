@@ -33,21 +33,6 @@ class AccountingController extends Controller
         return $this->renderIndex($request, 'transactions', 'Transactions', ['payment', 'refund']);
     }
 
-    public function refunds(Request $request)
-    {
-        return $this->renderIndex($request, 'refunds', 'Refunds', ['refund']);
-    }
-
-    public function credits(Request $request)
-    {
-        return $this->renderIndex($request, 'credits', 'Credits', ['credit']);
-    }
-
-    public function expenses(Request $request)
-    {
-        return $this->renderIndex($request, 'expenses', 'Expenses', ['expense']);
-    }
-
     public function create(Request $request): View
     {
         $type = $this->normalizeType($request->query('type', 'payment'));
@@ -270,7 +255,7 @@ class AccountingController extends Controller
 
     private function normalizeScope(string $scope): string
     {
-        return in_array($scope, ['ledger', 'transactions', 'refunds', 'credits', 'expenses'], true)
+        return in_array($scope, ['ledger', 'transactions'], true)
             ? $scope
             : 'ledger';
     }
@@ -279,9 +264,6 @@ class AccountingController extends Controller
     {
         return match ($scope) {
             'transactions' => ['payment', 'refund', 'credit'],
-            'refunds' => ['refund'],
-            'credits' => ['credit'],
-            'expenses' => ['expense'],
             default => null,
         };
     }
@@ -290,10 +272,7 @@ class AccountingController extends Controller
     {
         return match ($scope) {
             'transactions' => 'admin.accounting.transactions',
-            'refunds' => 'admin.accounting.refunds',
-            'credits' => 'admin.accounting.credits',
-            'expenses' => 'admin.accounting.expenses',
-            default => 'admin.accounting.index',
+            default => 'admin.accounting.ledger',
         };
     }
 

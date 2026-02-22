@@ -597,8 +597,12 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
           ->group(function () {
               Route::get('/dashboard', [AdminExpenseDashboardController::class, 'index'])->name('dashboard');
               Route::get('/', [AdminExpenseController::class, 'index'])->name('index');
-              Route::get('/create', [AdminExpenseController::class, 'create'])->name('create');
+              Route::get('/one-time', [AdminExpenseController::class, 'create'])->name('create');
+              Route::get('/create', fn () => redirect()->route('admin.expenses.create'))->name('create.legacy');
               Route::post('/', [AdminExpenseController::class, 'store'])->name('store');
+              Route::get('/{expense}/edit', [AdminExpenseController::class, 'edit'])->name('edit');
+              Route::put('/{expense}', [AdminExpenseController::class, 'update'])->name('update');
+              Route::delete('/{expense}', [AdminExpenseController::class, 'destroy'])->name('destroy');
             Route::get('/{expense}/attachment', [AdminExpenseController::class, 'attachment'])->name('attachments.show');
             Route::post('/invoices', [AdminExpenseInvoiceController::class, 'store'])->name('invoices.store');
             Route::post('/invoices/{expenseInvoice}/pay', [AdminExpenseInvoiceController::class, 'markPaid'])->name('invoices.pay');
@@ -817,10 +821,8 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('commission-earnings/export', [CommissionExportController::class, 'exportEarnings'])->name('commission-earnings.export');
     Route::get('commission-payouts/export', [CommissionExportController::class, 'exportPayouts'])->name('commission-payouts.export');
     Route::get('accounting', [AdminAccountingController::class, 'index'])->name('accounting.index');
+    Route::get('accounting/ledger', [AdminAccountingController::class, 'index'])->name('accounting.ledger');
     Route::get('accounting/transactions', [AdminAccountingController::class, 'transactions'])->name('accounting.transactions');
-    Route::get('accounting/refunds', [AdminAccountingController::class, 'refunds'])->name('accounting.refunds');
-    Route::get('accounting/credits', [AdminAccountingController::class, 'credits'])->name('accounting.credits');
-    Route::get('accounting/expenses', [AdminAccountingController::class, 'expenses'])->name('accounting.expenses');
     Route::get('accounting/create', [AdminAccountingController::class, 'create'])->name('accounting.create');
     Route::post('accounting', [AdminAccountingController::class, 'store'])->name('accounting.store');
     Route::get('accounting/{entry}/edit', [AdminAccountingController::class, 'edit'])->name('accounting.edit');

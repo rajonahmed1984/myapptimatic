@@ -49,14 +49,5 @@
             >New Expense</a>
         </div>
     </div>
-{{-- 
-    <div class="mb-6 flex flex-wrap gap-2 text-sm">
-        <a href="{{ route('admin.accounting.index') }}" class="{{ $scope === 'ledger' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Ledger</a>
-        <a href="{{ route('admin.accounting.transactions') }}" class="{{ $scope === 'transactions' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Transactions</a>
-        <a href="{{ route('admin.accounting.refunds') }}" class="{{ $scope === 'refunds' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Refunds</a>
-        <a href="{{ route('admin.accounting.credits') }}" class="{{ $scope === 'credits' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Credits</a>
-        <a href="{{ route('admin.accounting.expenses') }}" class="{{ $scope === 'expenses' ? 'rounded-full bg-slate-900 px-4 py-2 font-semibold text-white' : 'rounded-full border border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600' }}">Expenses</a>
-    </div> --}}
-
     @include('admin.accounting.partials.table', ['entries' => $entries, 'scope' => $scope, 'search' => $search])
 @endsection
