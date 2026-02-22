@@ -27,9 +27,9 @@
         </div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <div class="card px-4 py-3">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Next run</div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Next due date</div>
             <div class="mt-2 text-lg font-semibold text-slate-900">
                 {{ $recurringExpense->next_run_date?->format($globalDateFormat) ?? '--' }}
             </div>
@@ -52,6 +52,45 @@
             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Overdue</div>
             <div class="mt-2 text-lg font-semibold text-rose-600">{{ $overdueCount }}</div>
         </div>
+        <div class="card px-4 py-3">
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Advance total</div>
+            <div class="mt-2 text-lg font-semibold text-emerald-600">{{ $formatCurrency($advanceTotal ?? 0) }}</div>
+        </div>
+    </div>
+
+    <div class="mt-6 overflow-hidden">
+        <div class="mb-2 section-label">Advance Details</div>
+        <div class="px-3 py-3 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80">
+            <table class="min-w-full text-sm text-slate-700">
+                <thead>
+                    <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                        <th class="py-2 px-3">Date</th>
+                        <th class="py-2 px-3">Method</th>
+                        <th class="py-2 px-3">Amount</th>
+                        <th class="py-2 px-3">Reference</th>
+                        <th class="py-2 px-3">Note</th>
+                        <th class="py-2 px-3">By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($advancePayments as $advance)
+                        <tr class="border-b border-slate-100">
+                            <td class="py-2 px-3">{{ $advance->paid_at?->format($globalDateFormat) ?? '--' }}</td>
+                            <td class="py-2 px-3">{{ strtoupper((string) $advance->payment_method) }}</td>
+                            <td class="py-2 px-3 font-semibold text-slate-900">{{ $formatCurrency($advance->amount) }}</td>
+                            <td class="py-2 px-3">{{ $advance->payment_reference ?: '--' }}</td>
+                            <td class="py-2 px-3">{{ $advance->note ?: '--' }}</td>
+                            <td class="py-2 px-3">{{ $advance->creator?->name ?? '--' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="py-4 px-3 text-center text-slate-500">No advance payment yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4">{{ $advancePayments->links() }}</div>
     </div>
 
     <div class="mt-6 overflow-hidden">

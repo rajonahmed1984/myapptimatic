@@ -15,20 +15,28 @@ class SupportTicketAttachmentController extends Controller
         }
 
         $user = Auth::user();
-
-        // Admins can view all attachments. Clients must own the ticket.
-        if (! $user?->isAdmin()) {
-            $customerId = $user?->customer_id;
-            $ticket = $reply->relationLoaded('ticket') ? $reply->ticket : $reply->ticket()->first();
-
-            if (! $ticket || $ticket->customer_id !== $customerId) {
-                abort(403);
-            }
+        if (! $user) {
+            abort(403);
         }
 
         $disk = Storage::disk('public');
         if (! $disk->exists($reply->attachment_path)) {
             abort(404);
+        }
+
+        // Admin and support roles can view all attachments.
+        if ($user->isAdmin() || $user->isSupport()) {
+            return $disk->response($reply->attachment_path);
+        }
+
+        // Client can only access attachments for their own ticket.
+        if (! $user->isClient()) {
+            abort(403);
+        }
+
+        $ticket = $reply->relationLoaded('ticket') ? $reply->ticket : $reply->ticket()->first();
+        if (! $ticket || $ticket->customer_id !== $user->customer_id) {
+            abort(403);
         }
 
         return $disk->response($reply->attachment_path);

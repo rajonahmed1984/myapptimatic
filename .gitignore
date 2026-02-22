@@ -26,3 +26,6 @@ yarn-error.log
 /.vscode
 /tmp_*
 /temp_*
+public.zip
+junit.xml
+junit-*.xml

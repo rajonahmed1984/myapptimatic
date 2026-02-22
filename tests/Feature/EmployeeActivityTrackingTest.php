@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\UserSession;
@@ -30,6 +31,7 @@ class EmployeeActivityTrackingTest extends TestCase
         $user = User::factory()->create([
             'email' => 'employee@example.com',
             'password' => bcrypt('password'),
+            'role' => Role::EMPLOYEE,
         ]);
 
         $employee = Employee::create([

@@ -18,6 +18,7 @@ class ProjectTaskSubtask extends Model
         'status',
         'completed_at',
         'created_by',
+        'attachment_path',
     ];
 
     protected $casts = [
@@ -47,5 +48,25 @@ class ProjectTaskSubtask extends Model
         }
 
         return $this->created_at->copy()->addHours(24)->isPast();
+    }
+
+    public function attachmentName(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        return pathinfo($this->attachment_path, PATHINFO_BASENAME);
+    }
+
+    public function isImageAttachment(): bool
+    {
+        if (! $this->attachment_path) {
+            return false;
+        }
+
+        $extension = strtolower((string) pathinfo($this->attachment_path, PATHINFO_EXTENSION));
+
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
     }
 }

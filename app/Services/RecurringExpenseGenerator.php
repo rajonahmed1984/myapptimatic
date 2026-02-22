@@ -9,30 +9,34 @@ use Illuminate\Support\Facades\DB;
 
 class RecurringExpenseGenerator
 {
+    public const DEFAULT_LOOKAHEAD_DAYS = 3;
+
     public function __construct(private ExpenseInvoiceService $invoiceService)
     {
     }
 
-    public function generate(?Carbon $asOfDate = null, ?int $templateId = null): array
+    public function generate(?Carbon $asOfDate = null, ?int $templateId = null, int $lookaheadDays = 0): array
     {
         $asOf = ($asOfDate ?? now())->startOfDay();
+        $lookaheadDays = max(0, $lookaheadDays);
+        $runUntil = $asOf->copy()->addDays($lookaheadDays);
         $created = 0;
         $processed = 0;
 
         $query = RecurringExpense::query()
             ->where('status', 'active')
             ->whereNotNull('next_run_date')
-            ->whereDate('next_run_date', '<=', $asOf->toDateString())
+            ->whereDate('next_run_date', '<=', $runUntil->toDateString())
             ->orderBy('next_run_date');
 
         if ($templateId) {
             $query->whereKey($templateId);
         }
 
-        $query->chunkById(50, function ($templates) use (&$created, &$processed, $asOf) {
+        $query->chunkById(50, function ($templates) use (&$created, &$processed, $runUntil) {
             foreach ($templates as $template) {
                 $processed++;
-                $created += $this->generateForTemplate($template, $asOf);
+                $created += $this->generateForTemplate($template, $runUntil);
             }
         });
 

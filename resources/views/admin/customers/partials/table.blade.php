@@ -19,7 +19,8 @@
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3 text-slate-500"><a href="{{ route('admin.customers.show', $customer) }}" class="hover:text-teal-600">{{ $customer->id }}</a></td>
                             <td class="px-4 py-3">
-                                <div>
+                                <div class="flex items-center gap-3">
+                                    <x-avatar :path="$customer->avatar_path" :name="$customer->name" size="h-10 w-10" textSize="text-xs" />
                                     <div>
                                         <a href="{{ route('admin.customers.show', $customer) }}" class="font-medium text-slate-900 hover:text-teal-600">
                                             {{ $customer->name }}

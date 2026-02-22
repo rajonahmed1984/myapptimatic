@@ -42,4 +42,9 @@ class RecurringExpense extends Model
     {
         return $this->hasMany(Expense::class, 'recurring_expense_id');
     }
+
+    public function advances(): HasMany
+    {
+        return $this->hasMany(RecurringExpenseAdvance::class, 'recurring_expense_id');
+    }
 }

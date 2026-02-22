@@ -7,8 +7,8 @@ use App\Models\ExpenseCategory;
 use App\Models\ExpenseInvoice;
 use App\Models\PaymentMethod;
 use App\Models\RecurringExpense;
+use App\Models\RecurringExpenseAdvance;
 use App\Services\ExpenseInvoiceService;
-use App\Services\RecurringExpenseGenerator;
 use App\Support\Currency;
 use App\Models\Setting;
 use Carbon\Carbon;
@@ -25,11 +25,20 @@ class RecurringExpenseController extends Controller
 
         $recurringExpenses = RecurringExpense::query()
             ->with('category')
+            ->withSum('advances', 'amount')
             ->orderByDesc('next_run_date')
             ->orderByDesc('id')
             ->paginate(20);
 
-        return view('admin.expenses.recurring.index', compact('recurringExpenses'));
+        $paymentMethods = PaymentMethod::dropdownOptions();
+
+        $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($currencyCode)) {
+            $currencyCode = Currency::DEFAULT;
+        }
+        $currencySymbol = Currency::symbol($currencyCode);
+
+        return view('admin.expenses.recurring.index', compact('recurringExpenses', 'paymentMethods', 'currencyCode', 'currencySymbol'));
     }
 
     public function create(): View
@@ -108,6 +117,12 @@ class RecurringExpenseController extends Controller
         }
         $currencySymbol = Currency::symbol($currencyCode);
         $paymentMethods = PaymentMethod::dropdownOptions();
+        $advancePayments = $recurringExpense->advances()
+            ->with('creator')
+            ->latest('paid_at')
+            ->latest('id')
+            ->paginate(10, ['*'], 'advances_page');
+        $advanceTotal = (float) $recurringExpense->advances()->sum('amount');
 
         return view('admin.expenses.recurring.show', [
             'recurringExpense' => $recurringExpense,
@@ -120,6 +135,8 @@ class RecurringExpenseController extends Controller
             'currencySymbol' => $currencySymbol,
             'currencyCode' => $currencyCode,
             'paymentMethods' => $paymentMethods,
+            'advancePayments' => $advancePayments,
+            'advanceTotal' => $advanceTotal,
         ]);
     }
 
@@ -144,11 +161,27 @@ class RecurringExpenseController extends Controller
             ->with('status', 'Recurring expense updated.');
     }
 
-    public function pause(RecurringExpense $recurringExpense): RedirectResponse
+    public function storeAdvance(Request $request, RecurringExpense $recurringExpense): RedirectResponse
     {
-        $recurringExpense->update(['status' => 'paused']);
+        $data = $request->validate([
+            'payment_method' => ['required', Rule::in(PaymentMethod::allowedCodes())],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'paid_at' => ['required', 'date'],
+            'payment_reference' => ['nullable', 'string', 'max:120'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
 
-        return back()->with('status', 'Recurring expense paused.');
+        RecurringExpenseAdvance::create([
+            'recurring_expense_id' => $recurringExpense->id,
+            'payment_method' => $data['payment_method'],
+            'amount' => $data['amount'],
+            'paid_at' => $data['paid_at'],
+            'payment_reference' => $data['payment_reference'] ?? null,
+            'note' => $data['note'] ?? null,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        return back()->with('status', 'Advance payment added.');
     }
 
     public function resume(RecurringExpense $recurringExpense): RedirectResponse
@@ -167,14 +200,6 @@ class RecurringExpenseController extends Controller
         $recurringExpense->update(['status' => 'stopped']);
 
         return back()->with('status', 'Recurring expense stopped.');
-    }
-
-    public function generate(Request $request, RecurringExpenseGenerator $generator): RedirectResponse
-    {
-        $templateId = $request->input('template_id');
-        $result = $generator->generate(now(), $templateId ? (int) $templateId : null);
-
-        return back()->with('status', "Generated {$result['created']} expense occurrence(s).");
     }
 
     private function validatePayload(Request $request, ?RecurringExpense $recurringExpense = null): array

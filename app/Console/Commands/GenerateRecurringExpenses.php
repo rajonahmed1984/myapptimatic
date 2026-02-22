@@ -17,7 +17,7 @@ class GenerateRecurringExpenses extends Command
         $templateId = $this->option('template') ? (int) $this->option('template') : null;
         $asOf = $dateInput ? Carbon::parse($dateInput)->startOfDay() : now()->startOfDay();
 
-        $result = $generator->generate($asOf, $templateId);
+        $result = $generator->generate($asOf, $templateId, RecurringExpenseGenerator::DEFAULT_LOOKAHEAD_DAYS);
 
         $this->info("Recurring expenses processed: {$result['processed']}, created: {$result['created']}.");
 

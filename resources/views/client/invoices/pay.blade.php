@@ -37,7 +37,7 @@
             <div class="invoice-col text-right">
                 <div class="invoice-status">
                     <span class="{{ $statusClass }}" style="text-transform: uppercase;">{{ strtoupper($invoice->status) }}</span>
-                    <h3>Invoice: #{{ $displayNumber }}</h3>
+                    <h3>Invoice #{{ $displayNumber }}</h3>
                     <div style="margin-top: 0; font-size: 12px;">Invoice Date: <span class="small-text">{{ $invoice->issue_date->format($globalDateFormat) }}</span></div>
                     <div style="margin-top: 0; font-size: 12px;">Invoice Due Date: <span class="small-text">{{ $invoice->due_date->format($globalDateFormat) }}</span></div>
                     @if($invoice->paid_at)

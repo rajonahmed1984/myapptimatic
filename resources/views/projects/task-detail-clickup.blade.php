@@ -382,6 +382,24 @@
                                             <span>• Completed: {{ $subtask->completed_at->format($globalDateFormat . ' H:i') }}</span>
                                         @endif
                                     </div>
+                                    @if($subtask->attachment_path)
+                                        <div class="mt-2">
+                                            <a
+                                                href="{{ route($routePrefix . '.projects.tasks.subtasks.attachment', [$project, $task, $subtask]) }}"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1"
+                                            >
+                                                <img
+                                                    src="{{ route($routePrefix . '.projects.tasks.subtasks.attachment', [$project, $task, $subtask]) }}"
+                                                    alt="Subtask image"
+                                                    class="h-12 w-12 rounded border border-slate-200 object-cover"
+                                                    loading="lazy"
+                                                />
+                                                <span class="text-xs font-medium text-slate-600">View image</span>
+                                            </a>
+                                        </div>
+                                    @endif
                                     @if(in_array($routePrefix, ['employee', 'admin'], true) && ($canChangeSubtaskStatus || $canInlineEdit))
                                         <div class="mt-2 flex flex-wrap items-center gap-2">
                                             @if($canInlineEdit)
@@ -422,6 +440,11 @@
                     <div id="subtaskForm" style="display: none;" class="p-4 rounded-lg border-2 border-teal-200 bg-teal-50 space-y-3">
                         <div>
                             <textarea id="subtaskTitle" placeholder="What needs to be done?" class="w-full rounded-lg border border-teal-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 placeholder-slate-500"></textarea>
+                        </div>
+                        <div>
+                            <label for="subtaskImage" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Image (Optional)</label>
+                            <input id="subtaskImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="block w-full text-sm text-slate-600" />
+                            <p class="mt-1 text-xs text-slate-500">Max {{ $uploadMaxMb }}MB.</p>
                         </div>
                         <div id="subtaskError" class="text-xs text-rose-600" style="display: none;"></div>
                         <div class="flex gap-2 justify-end">
@@ -619,6 +642,7 @@
         const saveBtn = document.getElementById('saveSubtaskBtn');
         const form = document.getElementById('subtaskForm');
         const titleInput = document.getElementById('subtaskTitle');
+        const subtaskImageInput = document.getElementById('subtaskImage');
         const errorBox = document.getElementById('subtaskError');
 
         const showSubtaskError = (message) => {
@@ -650,6 +674,9 @@
             cancelBtn.addEventListener('click', () => {
                 form.style.display = 'none';
                 titleInput.value = '';
+                if (subtaskImageInput) {
+                    subtaskImageInput.value = '';
+                }
                 clearSubtaskError();
             });
         }
@@ -671,6 +698,10 @@
 
                 const formData = new FormData();
                 formData.append('title', title);
+                const imageFile = subtaskImageInput?.files?.[0];
+                if (imageFile) {
+                    formData.append('image', imageFile);
+                }
                 formData.append('_token', csrfToken);
 
                 fetch(`{{ route($routePrefix . '.projects.tasks.subtasks.store', [$project, $task]) }}`, {

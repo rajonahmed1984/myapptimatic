@@ -404,6 +404,7 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
         Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
         Route::delete('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
+        Route::get('/projects/{project}/tasks/{task}/subtasks/{subtask}/attachment', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'attachment'])->name('projects.tasks.subtasks.attachment');
         Route::get('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'index'])->name('projects.tasks.activity');
         Route::get('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'items'])->name('projects.tasks.activity.items');
         Route::post('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'storeItem'])
@@ -613,10 +614,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
             Route::get('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'show'])->name('recurring.show');
             Route::get('/recurring/{recurringExpense}/edit', [AdminRecurringExpenseController::class, 'edit'])->name('recurring.edit');
             Route::put('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'update'])->name('recurring.update');
-            Route::post('/recurring/{recurringExpense}/pause', [AdminRecurringExpenseController::class, 'pause'])->name('recurring.pause');
+            Route::post('/recurring/{recurringExpense}/advance', [AdminRecurringExpenseController::class, 'storeAdvance'])->name('recurring.advance.store');
             Route::post('/recurring/{recurringExpense}/resume', [AdminRecurringExpenseController::class, 'resume'])->name('recurring.resume');
             Route::post('/recurring/{recurringExpense}/stop', [AdminRecurringExpenseController::class, 'stop'])->name('recurring.stop');
-            Route::post('/recurring/generate', [AdminRecurringExpenseController::class, 'generate'])->name('recurring.generate');
         });
 
       Route::middleware('admin.role:master_admin')
@@ -719,6 +719,7 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::post('projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
     Route::patch('projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
     Route::delete('projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
+    Route::get('projects/{project}/tasks/{task}/subtasks/{subtask}/attachment', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'attachment'])->name('projects.tasks.subtasks.attachment');
     Route::get('projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'index'])->name('projects.tasks.activity');
     Route::get('projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'items'])->name('projects.tasks.activity.items');
     Route::post('projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'storeItem'])
@@ -888,6 +889,7 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
         Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
         Route::delete('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
+        Route::get('/projects/{project}/tasks/{task}/subtasks/{subtask}/attachment', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'attachment'])->name('projects.tasks.subtasks.attachment');
         Route::get('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'index'])->name('projects.tasks.activity');
         Route::get('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'items'])->name('projects.tasks.activity.items');
         Route::post('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'storeItem'])
@@ -997,6 +999,8 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
             ->name('projects.tasks.subtasks.update');
         Route::delete('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])
             ->name('projects.tasks.subtasks.destroy');
+        Route::get('/projects/{project}/tasks/{task}/subtasks/{subtask}/attachment', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'attachment'])
+            ->name('projects.tasks.subtasks.attachment');
         Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
         Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');

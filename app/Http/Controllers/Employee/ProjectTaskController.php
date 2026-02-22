@@ -99,7 +99,14 @@ class ProjectTaskController extends Controller
         $hasSubtasks = TaskCompletionManager::hasSubtasks($task);
 
         if ($hasSubtasks && array_key_exists('status', $data)) {
-            return $this->forbiddenResponse($request, 'Main task status is controlled by subtasks when subtasks exist.');
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Main task status is controlled by subtasks when subtasks exist.',
+                ], 403);
+            }
+
+            return back()->withErrors(['status' => 'Main task status is controlled by subtasks when subtasks exist.']);
         }
 
         if (! $user?->isMasterAdmin() && ! $isCreator && $isAssigned) {

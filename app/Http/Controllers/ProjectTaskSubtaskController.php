@@ -8,9 +8,13 @@ use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\User;
 use App\Support\TaskCompletionManager;
+use App\Support\TaskSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProjectTaskSubtaskController extends Controller
 {
@@ -19,12 +23,16 @@ class ProjectTaskSubtaskController extends Controller
         $this->ensureTaskBelongsToProject($project, $task);
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('create', [ProjectTaskSubtask::class, $task]);
+        $maxMb = TaskSettings::uploadMaxMb();
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'due_date' => ['sometimes', 'nullable', 'date'],
             'due_time' => ['sometimes', 'nullable', 'date_format:H:i'],
+            'image' => ['sometimes', 'nullable', 'image', 'max:' . ($maxMb * 1024)],
         ]);
+
+        unset($data['image']);
 
         $creatorId = null;
         $user = $request->user();
@@ -37,6 +45,10 @@ class ProjectTaskSubtaskController extends Controller
         }
 
         $data['created_by'] = $creatorId;
+        if ($request->hasFile('image')) {
+            $data['attachment_path'] = $this->storeAttachment($request->file('image'), $task);
+        }
+
         $subtask = $task->subtasks()->create($data);
         TaskCompletionManager::syncFromSubtasks($task);
 
@@ -114,10 +126,38 @@ class ProjectTaskSubtaskController extends Controller
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('delete', $subtask);
 
+        if ($subtask->attachment_path) {
+            Storage::disk('public')->delete($subtask->attachment_path);
+        }
+
         $subtask->delete();
         TaskCompletionManager::syncFromSubtasks($task);
 
         return back()->with('status', 'Subtask deleted.');
+    }
+
+    public function attachment(Request $request, Project $project, ProjectTask $task, ProjectTaskSubtask $subtask)
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $this->ensureSubtaskBelongsToTask($task, $subtask);
+
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $subtask);
+
+        if (! $subtask->attachment_path) {
+            abort(404, 'This subtask does not have an image attachment.');
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($subtask->attachment_path)) {
+            abort(404, 'The image attachment is no longer available.');
+        }
+
+        if ($subtask->isImageAttachment()) {
+            return $disk->response($subtask->attachment_path);
+        }
+
+        return $disk->download($subtask->attachment_path, $subtask->attachmentName() ?? 'subtask-attachment');
     }
 
     private function ensureTaskBelongsToProject(Project $project, ProjectTask $task): void
@@ -189,5 +229,15 @@ class ProjectTaskSubtaskController extends Controller
             ->where('assignee_type', 'employee')
             ->where('assignee_id', $employeeId)
             ->exists();
+    }
+
+    private function storeAttachment(UploadedFile $file, ProjectTask $task): string
+    {
+        $name = pathinfo((string) $file->getClientOriginalName(), PATHINFO_FILENAME);
+        $name = $name !== '' ? Str::slug($name) : 'subtask-image';
+        $extension = $file->getClientOriginalExtension();
+        $fileName = $name . '-' . Str::random(8) . '.' . $extension;
+
+        return $file->storeAs('project-task-subtasks/' . $task->id, $fileName, 'public');
     }
 }
