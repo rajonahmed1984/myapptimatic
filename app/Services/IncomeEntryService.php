@@ -93,6 +93,56 @@ class IncomeEntryService
             }
         }
 
+        if (in_array('credit_settlement', $sources, true)) {
+            $query = AccountingEntry::query()
+                ->with(['customer', 'invoice.project'])
+                ->where('type', 'credit')
+                ->whereNotNull('invoice_id')
+                ->latest('entry_date')
+                ->latest('id');
+
+            if ($startDate) {
+                $query->whereDate('entry_date', '>=', $startDate->toDateString());
+            }
+            if ($endDate) {
+                $query->whereDate('entry_date', '<=', $endDate->toDateString());
+            }
+
+            $creditSettlements = $query->get()
+                ->unique(function (AccountingEntry $entry) {
+                    $amount = number_format((float) $entry->amount, 2, '.', '');
+                    return $entry->invoice_id . ':' . strtoupper((string) $entry->currency) . ':' . $amount;
+                })
+                ->values();
+
+            foreach ($creditSettlements as $entry) {
+                $invoice = $entry->invoice;
+                $project = $invoice?->project;
+                $invoiceNumber = $invoice?->number ?: $invoice?->id;
+                $title = $invoiceNumber
+                    ? "Credit settlement (Invoice #{$invoiceNumber})"
+                    : 'Credit settlement';
+
+                $entries->push([
+                    'key' => 'credit_settlement:'.$entry->id,
+                    'source_type' => 'credit_settlement',
+                    'source_label' => 'Credit Settlement',
+                    'source_id' => $entry->id,
+                    'title' => $title,
+                    'amount' => (float) $entry->amount,
+                    'income_date' => $entry->entry_date,
+                    'category_id' => null,
+                    'category_name' => 'Credit Settlement',
+                    'notes' => $entry->reference,
+                    'attachment_path' => null,
+                    'customer_id' => $entry->customer_id,
+                    'customer_name' => $entry->customer?->name,
+                    'project_id' => $project?->id,
+                    'project_name' => $project?->name,
+                ]);
+            }
+        }
+
         return $entries;
     }
 }

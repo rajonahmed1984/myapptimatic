@@ -30,7 +30,7 @@ class IncomeController extends Controller
     {
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
-            $sourceFilters = ['manual', 'system', 'carrothost'];
+            $sourceFilters = ['manual', 'system', 'credit_settlement', 'carrothost'];
         }
 
         $filters = [
@@ -61,6 +61,7 @@ class IncomeController extends Controller
         $totalAmount = (float) $entries->sum('amount');
         $manualTotal = (float) $entries->where('source_type', 'manual')->sum('amount');
         $systemTotal = (float) $entries->where('source_type', 'system')->sum('amount');
+        $creditSettlementTotal = (float) $entries->where('source_type', 'credit_settlement')->sum('amount');
 
         $categoryTotals = $entries
             ->groupBy(fn ($entry) => $entry['category_id'] ?? 'system')
@@ -103,6 +104,7 @@ class IncomeController extends Controller
             $totalAmount,
             $manualTotal,
             $systemTotal,
+            $creditSettlementTotal,
             $categoryTotals,
             $topCustomers,
             $forceAiRefresh
@@ -123,6 +125,7 @@ class IncomeController extends Controller
             'totalAmount' => $totalAmount,
             'manualTotal' => $manualTotal,
             'systemTotal' => $systemTotal,
+            'creditSettlementTotal' => $creditSettlementTotal,
             'categoryTotals' => $categoryTotals,
             'topCustomers' => $topCustomers,
             'currencySymbol' => $currencySymbol,
@@ -140,7 +143,7 @@ class IncomeController extends Controller
         $search = trim((string) $request->input('search', ''));
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
-            $sourceFilters = ['manual', 'system'];
+            $sourceFilters = ['manual', 'system', 'credit_settlement'];
         }
 
         $filters = [
@@ -302,6 +305,7 @@ class IncomeController extends Controller
         float $totalAmount,
         float $manualTotal,
         float $systemTotal,
+        float $creditSettlementTotal,
         $categoryTotals,
         $topCustomers,
         bool $forceRefresh = false
@@ -321,6 +325,7 @@ class IncomeController extends Controller
                 $totalAmount,
                 $manualTotal,
                 $systemTotal,
+                $creditSettlementTotal,
                 $categoryTotals,
                 $topCustomers
             ) {
@@ -345,6 +350,7 @@ Totals:
 - Total income: {$currencyCode} {$totalAmount}
 - Manual income: {$currencyCode} {$manualTotal}
 - System income: {$currencyCode} {$systemTotal}
+- Credit settlement: {$currencyCode} {$creditSettlementTotal}
 - Entries: {$count}
 
 Top categories: {$topCategories}

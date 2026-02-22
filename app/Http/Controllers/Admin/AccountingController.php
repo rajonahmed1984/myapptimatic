@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -170,7 +171,7 @@ class AccountingController extends Controller
     {
         $search = trim((string) $request->input('search', ''));
         $payload = [
-            'entries' => $this->queryEntries($types, $search)->get(),
+            'entries' => $this->entriesForScope($scope, $search),
             'pageTitle' => $pageTitle,
             'scope' => $scope,
             'search' => $search,
@@ -179,7 +180,7 @@ class AccountingController extends Controller
         return view('admin.accounting.index', $payload);
     }
 
-    private function queryEntries(?array $types, string $search)
+    private function queryEntries(?array $types, string $search, ?string $scope = null)
     {
         $query = AccountingEntry::query()
             ->with(['customer', 'invoice', 'paymentGateway'])
@@ -188,6 +189,16 @@ class AccountingController extends Controller
 
         if ($types) {
             $query->whereIn('type', $types);
+        }
+
+        if ($scope === 'transactions') {
+            $query->where(function ($inner) {
+                $inner->whereIn('type', ['payment', 'refund'])
+                    ->orWhere(function ($creditQuery) {
+                        $creditQuery->where('type', 'credit')
+                            ->whereNotNull('invoice_id');
+                    });
+            });
         }
 
         if ($search !== '') {
@@ -215,6 +226,30 @@ class AccountingController extends Controller
         return $query;
     }
 
+    private function entriesForScope(string $scope, string $search): Collection
+    {
+        $entries = $this->queryEntries($this->scopeTypes($scope), $search, $scope)->get();
+
+        if ($scope === 'transactions') {
+            return $this->deduplicateCreditSettlements($entries);
+        }
+
+        return $entries;
+    }
+
+    private function deduplicateCreditSettlements(Collection $entries): Collection
+    {
+        return $entries->unique(function (AccountingEntry $entry) {
+            if ($entry->type !== 'credit' || ! $entry->invoice_id) {
+                return 'entry:' . $entry->id;
+            }
+
+            $amount = number_format((float) $entry->amount, 2, '.', '');
+
+            return 'credit-settlement:' . $entry->invoice_id . ':' . strtoupper((string) $entry->currency) . ':' . $amount;
+        })->values();
+    }
+
     private function tablePatches(Request $request): array
     {
         $scope = $this->normalizeScope($request->input('scope', $request->query('scope', 'ledger')));
@@ -225,7 +260,7 @@ class AccountingController extends Controller
                 'action' => 'replace',
                 'selector' => '#accountingTableWrap',
                 'html' => view('admin.accounting.partials.table', [
-                    'entries' => $this->queryEntries($this->scopeTypes($scope), $search)->get(),
+                    'entries' => $this->entriesForScope($scope, $search),
                     'scope' => $scope,
                     'search' => $search,
                 ])->render(),
@@ -243,7 +278,7 @@ class AccountingController extends Controller
     private function scopeTypes(string $scope): ?array
     {
         return match ($scope) {
-            'transactions' => ['payment', 'refund'],
+            'transactions' => ['payment', 'refund', 'credit'],
             'refunds' => ['refund'],
             'credits' => ['credit'],
             'expenses' => ['expense'],
