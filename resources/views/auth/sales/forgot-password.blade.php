@@ -26,6 +26,11 @@
                 </div>
             @endif
 
+            @include('auth.partials.card-alerts', [
+                'suppressStatus' => true,
+                'suppressErrorKeys' => ['email'],
+            ])
+
             <form class="mt-8 space-y-5" method="POST" action="{{ $emailAction }}">
                 @csrf
                 <div>

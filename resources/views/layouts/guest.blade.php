@@ -26,26 +26,6 @@
                 </div>
                 <div class="mx-auto w-full max-w-md {{ $wideForm ? 'md:max-w-[50rem]' : '' }}">
                     <div class="card overflow-hidden p-8">
-                    @if ($errors->any())
-                        <div data-flash-message data-flash-type="error" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                            @if (request()->routeIs('login', 'admin.login', 'employee.login', 'sales.login', 'support.login', 'project-client.login'))
-                                {{ $errors->first() }}
-                            @else
-                                <ul class="space-y-1">
-                                    @foreach ($errors->all() as $error)
-                                        <li>{{ $error }}</li>
-                                    @endforeach
-                                </ul>
-                            @endif
-                        </div>
-                    @endif
-
-                    @if (session('status'))
-                        <div data-flash-message data-flash-type="success" class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
-                            {{ session('status') }}
-                        </div>
-                    @endif
-
                     @yield('content')
                     </div>
                     <div class="mt-6 text-center text-xs text-slate-500">
