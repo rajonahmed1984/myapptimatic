@@ -8,15 +8,23 @@ use App\Models\CommissionPayout;
 use App\Models\PaymentMethod;
 use App\Models\SalesRepresentative;
 use App\Services\CommissionService;
+use App\Support\HybridUiResponder;
+use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class CommissionPayoutController extends Controller
 {
-    public function index()
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $payouts = CommissionPayout::query()
             ->with(['salesRep', 'project:id,name'])
             ->latest()
@@ -34,11 +42,20 @@ class CommissionPayoutController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'status']);
 
-        return view('admin.commission-payouts.index', [
+        $payload = [
             'payouts' => $payouts,
             'salesReps' => $salesReps,
             'payableByRep' => $payableByRep,
-        ]);
+        ];
+
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_COMMISSION_PAYOUTS_INDEX,
+            'admin.commission-payouts.index',
+            $payload,
+            'Admin/CommissionPayouts/Index',
+            $this->indexInertiaProps($payouts, $salesReps, $payableByRep)
+        );
     }
 
     public function create(Request $request)
@@ -165,5 +182,56 @@ class CommissionPayoutController extends Controller
         }
 
         return back()->with('status', 'Payout reversed and earnings returned to payable.');
+    }
+
+    private function indexInertiaProps(
+        LengthAwarePaginator $payouts,
+        Collection $salesReps,
+        Collection $payableByRep
+    ): array {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return [
+            'pageTitle' => 'Commission Payouts',
+            'routes' => [
+                'export_payouts' => route('admin.commission-payouts.export'),
+                'export_earnings' => route('admin.commission-earnings.export'),
+                'create' => route('admin.commission-payouts.create'),
+            ],
+            'payable_by_rep' => $salesReps->map(function (SalesRepresentative $rep) use ($payableByRep) {
+                $aggregate = $payableByRep->get($rep->id);
+
+                return [
+                    'id' => $rep->id,
+                    'name' => $rep->name,
+                    'status' => ucfirst((string) $rep->status),
+                    'earnings_count' => (int) ($aggregate->earnings_count ?? 0),
+                    'total_amount_display' => number_format((float) ($aggregate->total_amount ?? 0), 2),
+                    'routes' => [
+                        'create' => route('admin.commission-payouts.create', ['sales_rep_id' => $rep->id]),
+                    ],
+                ];
+            })->values()->all(),
+            'payouts' => collect($payouts->items())->map(function (CommissionPayout $payout) use ($dateFormat) {
+                return [
+                    'id' => $payout->id,
+                    'sales_rep_name' => $payout->salesRep?->name ?? '--',
+                    'project_name' => $payout->project?->name ?? '--',
+                    'type_label' => ucfirst((string) ($payout->type ?? 'regular')),
+                    'total_amount_display' => number_format((float) $payout->total_amount, 2).' '.$payout->currency,
+                    'status_label' => ucfirst((string) $payout->status),
+                    'paid_at_display' => $payout->paid_at?->format($dateFormat.' H:i') ?? '--',
+                    'updated_at_display' => $payout->updated_at?->format($dateFormat.' H:i') ?? '--',
+                    'routes' => [
+                        'show' => route('admin.commission-payouts.show', $payout),
+                    ],
+                ];
+            })->values()->all(),
+            'pagination' => [
+                'has_pages' => $payouts->hasPages(),
+                'previous_url' => $payouts->previousPageUrl(),
+                'next_url' => $payouts->nextPageUrl(),
+            ],
+        ];
     }
 }

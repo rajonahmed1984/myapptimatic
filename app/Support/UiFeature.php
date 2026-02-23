@@ -24,6 +24,8 @@ class UiFeature
 
     public const ADMIN_PAYMENT_GATEWAYS_INDEX = 'admin_payment_gateways_index';
 
+    public const ADMIN_COMMISSION_PAYOUTS_INDEX = 'admin_commission_payouts_index';
+
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -45,6 +47,7 @@ class UiFeature
             self::ADMIN_LOGS_INDEX => self::enabled(self::ADMIN_LOGS_INDEX),
             self::ADMIN_CHATS_INDEX => self::enabled(self::ADMIN_CHATS_INDEX),
             self::ADMIN_PAYMENT_GATEWAYS_INDEX => self::enabled(self::ADMIN_PAYMENT_GATEWAYS_INDEX),
+            self::ADMIN_COMMISSION_PAYOUTS_INDEX => self::enabled(self::ADMIN_COMMISSION_PAYOUTS_INDEX),
         ];
     }
 }

@@ -839,7 +839,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
         ->name('payment-gateways.index');
     Route::get('payment-gateways/{paymentGateway}/edit', [PaymentGatewayController::class, 'edit'])->name('payment-gateways.edit');
     Route::put('payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');
-    Route::get('commission-payouts', [CommissionPayoutController::class, 'index'])->name('commission-payouts.index');
+    Route::get('commission-payouts', [CommissionPayoutController::class, 'index'])
+        ->middleware(['react.ui:admin_commission_payouts_index', HandleInertiaRequests::class])
+        ->name('commission-payouts.index');
     Route::get('commission-payouts/create', [CommissionPayoutController::class, 'create'])->name('commission-payouts.create');
     Route::post('commission-payouts', [CommissionPayoutController::class, 'store'])->name('commission-payouts.store');
     Route::get('commission-payouts/{commissionPayout}', [CommissionPayoutController::class, 'show'])->name('commission-payouts.show');
