@@ -64,6 +64,18 @@
             "@php artisan test",
             "@php artisan optimize:clear --except=cache"
         ],
+        "phase6:verify": [
+            "@php artisan test --filter=PaymentCallbackContractTest",
+            "@php artisan test --filter=PaymentProofActionContractParityTest",
+            "@php artisan test --filter=PaymentGatewayActionContractParityTest",
+            "@php artisan test --filter=ComplexModuleTransportContractTest",
+            "@php artisan test --filter=NoBreakSmokeTest",
+            "npm run build",
+            "@php artisan config:cache",
+            "@php artisan route:cache",
+            "@php artisan test",
+            "@php artisan optimize:clear --except=cache"
+        ],
         "ci": [
             "@lint",
             "@test"
