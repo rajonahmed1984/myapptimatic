@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class LoginNoCacheHeadersTest extends TestCase
@@ -23,9 +24,7 @@ class LoginNoCacheHeadersTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider loginPortalRoutes
-     */
+    #[DataProvider('loginPortalRoutes')]
     public function test_login_get_has_no_cache_headers(string $loginRouteName, string $attemptRouteName): void
     {
         $response = $this->get(route($loginRouteName));
@@ -34,9 +33,7 @@ class LoginNoCacheHeadersTest extends TestCase
         $this->assertNoCacheHeaders($response);
     }
 
-    /**
-     * @dataProvider loginPortalRoutes
-     */
+    #[DataProvider('loginPortalRoutes')]
     public function test_login_post_has_no_cache_headers(string $loginRouteName, string $attemptRouteName): void
     {
         $response = $this->from(route($loginRouteName))->post(route($attemptRouteName), [

@@ -6,23 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Services\PaymentService;
-use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
-use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PaymentProofController extends Controller
 {
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): InertiaResponse
+    {
         $status = $request->query('status');
         $allowed = ['pending', 'approved', 'rejected', 'all'];
         $search = trim((string) $request->input('search', ''));
@@ -58,23 +54,11 @@ class PaymentProofController extends Controller
             });
         }
 
-        $payload = [
-            'paymentProofs' => $query->get(),
-            'status' => $status,
-            'search' => $search,
-        ];
+        $paymentProofs = $query->get();
 
-        if ($request->header('HX-Request')) {
-            return view('admin.payment-proofs.partials.table', $payload);
-        }
-
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_PAYMENT_PROOFS_INDEX,
-            'admin.payment-proofs.index',
-            $payload,
+        return Inertia::render(
             'Admin/PaymentProofs/Index',
-            $this->indexInertiaProps($payload['paymentProofs'], (string) $status, $search)
+            $this->indexInertiaProps($paymentProofs, (string) $status, $search)
         );
     }
 

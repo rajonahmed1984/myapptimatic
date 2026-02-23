@@ -6,28 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\PaymentGateway;
 use App\Models\Setting;
 use App\Support\Currency;
-use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
-use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class PaymentGatewayController extends Controller
 {
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): InertiaResponse
+    {
         $gateways = PaymentGateway::query()->orderBy('sort_order')->get();
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_PAYMENT_GATEWAYS_INDEX,
-            'admin.payment-gateways.index',
-            ['gateways' => $gateways],
+        return Inertia::render(
             'Admin/PaymentGateways/Index',
             $this->indexInertiaProps($gateways)
         );

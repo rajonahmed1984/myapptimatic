@@ -22,8 +22,6 @@ return [
     'admin_automation_status_index' => (bool) env('FEATURE_ADMIN_AUTOMATION_STATUS_INDEX', false),
     'admin_users_activity_summary_index' => (bool) env('FEATURE_ADMIN_USERS_ACTIVITY_SUMMARY_INDEX', false),
     'admin_logs_index' => (bool) env('FEATURE_ADMIN_LOGS_INDEX', false),
-    'admin_chats_index' => (bool) env('FEATURE_ADMIN_CHATS_INDEX', false),
-    'admin_payment_gateways_index' => (bool) env('FEATURE_ADMIN_PAYMENT_GATEWAYS_INDEX', false),
     'admin_commission_payouts_index' => (bool) env('FEATURE_ADMIN_COMMISSION_PAYOUTS_INDEX', false),
     'admin_accounting_index' => (bool) env('FEATURE_ADMIN_ACCOUNTING_INDEX', false),
     'admin_finance_reports_index' => (bool) env('FEATURE_ADMIN_FINANCE_REPORTS_INDEX', false),
@@ -37,5 +35,4 @@ return [
     'admin_plans_index' => (bool) env('FEATURE_ADMIN_PLANS_INDEX', false),
     'admin_subscriptions_index' => (bool) env('FEATURE_ADMIN_SUBSCRIPTIONS_INDEX', false),
     'admin_licenses_index' => (bool) env('FEATURE_ADMIN_LICENSES_INDEX', false),
-    'admin_payment_proofs_index' => (bool) env('FEATURE_ADMIN_PAYMENT_PROOFS_INDEX', false),
 ];

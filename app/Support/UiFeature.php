@@ -28,10 +28,6 @@ class UiFeature
 
     public const ADMIN_LOGS_INDEX = 'admin_logs_index';
 
-    public const ADMIN_CHATS_INDEX = 'admin_chats_index';
-
-    public const ADMIN_PAYMENT_GATEWAYS_INDEX = 'admin_payment_gateways_index';
-
     public const ADMIN_COMMISSION_PAYOUTS_INDEX = 'admin_commission_payouts_index';
 
     public const ADMIN_ACCOUNTING_INDEX = 'admin_accounting_index';
@@ -58,8 +54,6 @@ class UiFeature
 
     public const ADMIN_LICENSES_INDEX = 'admin_licenses_index';
 
-    public const ADMIN_PAYMENT_PROOFS_INDEX = 'admin_payment_proofs_index';
-
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -83,8 +77,6 @@ class UiFeature
             self::ADMIN_AUTOMATION_STATUS_INDEX => self::enabled(self::ADMIN_AUTOMATION_STATUS_INDEX),
             self::ADMIN_USERS_ACTIVITY_SUMMARY_INDEX => self::enabled(self::ADMIN_USERS_ACTIVITY_SUMMARY_INDEX),
             self::ADMIN_LOGS_INDEX => self::enabled(self::ADMIN_LOGS_INDEX),
-            self::ADMIN_CHATS_INDEX => self::enabled(self::ADMIN_CHATS_INDEX),
-            self::ADMIN_PAYMENT_GATEWAYS_INDEX => self::enabled(self::ADMIN_PAYMENT_GATEWAYS_INDEX),
             self::ADMIN_COMMISSION_PAYOUTS_INDEX => self::enabled(self::ADMIN_COMMISSION_PAYOUTS_INDEX),
             self::ADMIN_ACCOUNTING_INDEX => self::enabled(self::ADMIN_ACCOUNTING_INDEX),
             self::ADMIN_FINANCE_REPORTS_INDEX => self::enabled(self::ADMIN_FINANCE_REPORTS_INDEX),
@@ -98,7 +90,6 @@ class UiFeature
             self::ADMIN_PLANS_INDEX => self::enabled(self::ADMIN_PLANS_INDEX),
             self::ADMIN_SUBSCRIPTIONS_INDEX => self::enabled(self::ADMIN_SUBSCRIPTIONS_INDEX),
             self::ADMIN_LICENSES_INDEX => self::enabled(self::ADMIN_LICENSES_INDEX),
-            self::ADMIN_PAYMENT_PROOFS_INDEX => self::enabled(self::ADMIN_PAYMENT_PROOFS_INDEX),
         ];
     }
 }
