@@ -9,18 +9,24 @@ use App\Services\ClientNotificationService;
 use App\Services\GeminiService;
 use App\Services\SupportTicketAiService;
 use App\Support\AjaxResponse;
+use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
+use App\Support\UiFeature;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class SupportTicketController extends Controller
 {
-    public function index(Request $request)
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $status = $request->query('status');
         $allowedStatuses = ['open', 'answered', 'customer_reply', 'closed'];
 
@@ -43,11 +49,20 @@ class SupportTicketController extends Controller
             'closed' => SupportTicket::where('status', 'closed')->count(),
         ];
 
-        return view('admin.support-tickets.index', [
+        $payload = [
             'tickets' => $tickets,
             'status' => $status,
             'statusCounts' => $statusCounts,
-        ]);
+        ];
+
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_SUPPORT_TICKETS_INDEX,
+            'admin.support-tickets.index',
+            $payload,
+            'Admin/SupportTickets/Index',
+            $this->indexInertiaProps($tickets, $status, $statusCounts)
+        );
     }
 
     public function create(Request $request)
@@ -108,7 +123,7 @@ class SupportTicketController extends Controller
 
         SystemLogger::write('ticket_mail_import', 'Admin opened support ticket.', [
             'ticket_id' => $ticket->id,
-            'ticket_number' => 'TKT-' . str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
+            'ticket_number' => 'TKT-'.str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
             'customer_id' => $customer->id,
             'customer_name' => $customer->name,
             'admin_name' => $request->user()->name,
@@ -192,7 +207,7 @@ class SupportTicketController extends Controller
 
         SystemLogger::write('ticket_mail_import', 'Admin replied to support ticket.', [
             'ticket_id' => $ticket->id,
-            'ticket_number' => 'TKT-' . str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
+            'ticket_number' => 'TKT-'.str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
             'customer_id' => $ticket->customer_id,
             'customer_name' => $ticket->customer->name,
             'admin_name' => $request->user()->name,
@@ -302,6 +317,63 @@ class SupportTicketController extends Controller
                 'html' => view('admin.support-tickets.partials.main', [
                     'ticket' => $ticket,
                 ])->render(),
+            ],
+        ];
+    }
+
+    private function indexInertiaProps(
+        LengthAwarePaginator $tickets,
+        ?string $status,
+        array $statusCounts
+    ): array {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+        $activeStatus = $status ?: 'all';
+        $filters = [
+            'all' => 'All',
+            'open' => 'Open',
+            'answered' => 'Answered',
+            'customer_reply' => 'Customer Reply',
+            'closed' => 'Closed',
+        ];
+
+        return [
+            'pageTitle' => 'Support Tickets',
+            'active_status' => $activeStatus,
+            'filter_links' => collect($filters)->map(function (string $label, string $key) use ($activeStatus, $statusCounts) {
+                return [
+                    'key' => $key,
+                    'label' => $label,
+                    'count' => (int) ($statusCounts[$key] ?? 0),
+                    'active' => $activeStatus === $key,
+                    'href' => $key === 'all'
+                        ? route('admin.support-tickets.index')
+                        : route('admin.support-tickets.index', ['status' => $key]),
+                ];
+            })->values()->all(),
+            'routes' => [
+                'create' => route('admin.support-tickets.create'),
+            ],
+            'tickets' => collect($tickets->items())->values()->map(function (SupportTicket $ticket, int $index) use ($tickets, $dateFormat) {
+                return [
+                    'id' => $ticket->id,
+                    'serial' => $tickets->firstItem() ? $tickets->firstItem() + $index : $ticket->id,
+                    'ticket_number' => 'TKT-'.str_pad((string) $ticket->id, 5, '0', STR_PAD_LEFT),
+                    'subject' => (string) $ticket->subject,
+                    'customer_name' => (string) ($ticket->customer->name ?? '--'),
+                    'status' => (string) $ticket->status,
+                    'status_label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)),
+                    'last_reply_at_display' => $ticket->last_reply_at?->format($dateFormat.' H:i') ?? '--',
+                    'routes' => [
+                        'show' => route('admin.support-tickets.show', $ticket),
+                        'reply' => route('admin.support-tickets.show', $ticket).'#replies',
+                        'destroy' => route('admin.support-tickets.destroy', $ticket),
+                    ],
+                ];
+            })->all(),
+            'pagination' => [
+                'has_pages' => $tickets->hasPages(),
+                'previous_url' => $tickets->previousPageUrl(),
+                'next_url' => $tickets->nextPageUrl(),
             ],
         ];
     }

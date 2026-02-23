@@ -808,7 +808,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::resource('sales-reps', \App\Http\Controllers\Admin\SalesRepresentativeController::class)->except(['destroy']);
     Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
     Route::post('sales-reps/{sales_rep}/advance-payment', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'storeAdvancePayment'])->name('sales-reps.advance-payment');
-    Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])->name('support-tickets.index');
+    Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])
+        ->middleware(['react.ui:admin_support_tickets_index', HandleInertiaRequests::class])
+        ->name('support-tickets.index');
     Route::get('support-tickets/create', [AdminSupportTicketController::class, 'create'])->name('support-tickets.create');
     Route::post('support-tickets', [AdminSupportTicketController::class, 'store'])->name('support-tickets.store');
     Route::get('support-tickets/{ticket}', [AdminSupportTicketController::class, 'show'])->name('support-tickets.show');
