@@ -493,6 +493,7 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
                 ->middleware(['react.ui:admin_apptimatic_email_inbox', HandleInertiaRequests::class])
                 ->name('inbox');
             Route::get('/messages/{message}', [AdminApptimaticEmailController::class, 'show'])
+                ->middleware(['react.ui:admin_apptimatic_email_show', HandleInertiaRequests::class])
                 ->where('message', '[A-Za-z0-9\-]+')
                 ->name('show');
         });

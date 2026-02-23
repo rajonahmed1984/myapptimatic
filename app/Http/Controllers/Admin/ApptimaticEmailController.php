@@ -43,21 +43,30 @@ class ApptimaticEmailController extends Controller
     public function show(
         Request $request,
         string $message,
-        ApptimaticEmailStubRepository $mailbox
-    ): View {
+        ApptimaticEmailStubRepository $mailbox,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $messages = $mailbox->inbox();
         $selectedMessage = $mailbox->find($message);
         abort_if(! $selectedMessage, 404);
 
         $threadMessages = $mailbox->threadFor($message);
-
-        return view('admin.apptimatic-email.show', $this->viewData(
+        $payload = $this->viewData(
             $request,
             $mailbox,
             $messages,
             $selectedMessage,
             $threadMessages
-        ));
+        );
+
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_APPTIMATIC_EMAIL_SHOW,
+            'admin.apptimatic-email.show',
+            $payload,
+            'Admin/ApptimaticEmail/Inbox',
+            $this->inboxInertiaProps($payload)
+        );
     }
 
     private function viewData(

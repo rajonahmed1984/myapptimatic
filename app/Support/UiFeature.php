@@ -38,6 +38,8 @@ class UiFeature
 
     public const ADMIN_APPTIMATIC_EMAIL_INBOX = 'admin_apptimatic_email_inbox';
 
+    public const ADMIN_APPTIMATIC_EMAIL_SHOW = 'admin_apptimatic_email_show';
+
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -66,6 +68,7 @@ class UiFeature
             self::ADMIN_FINANCE_PAYMENT_METHODS_INDEX => self::enabled(self::ADMIN_FINANCE_PAYMENT_METHODS_INDEX),
             self::ADMIN_ORDERS_INDEX => self::enabled(self::ADMIN_ORDERS_INDEX),
             self::ADMIN_APPTIMATIC_EMAIL_INBOX => self::enabled(self::ADMIN_APPTIMATIC_EMAIL_INBOX),
+            self::ADMIN_APPTIMATIC_EMAIL_SHOW => self::enabled(self::ADMIN_APPTIMATIC_EMAIL_SHOW),
         ];
     }
 }
