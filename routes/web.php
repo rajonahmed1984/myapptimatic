@@ -688,7 +688,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
             Route::put('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'update'])->name('payment-methods.update');
             Route::delete('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 
-            Route::get('/tax', [AdminFinanceTaxController::class, 'index'])->name('tax.index');
+            Route::get('/tax', [AdminFinanceTaxController::class, 'index'])
+                ->middleware(['react.ui:admin_finance_tax_index', HandleInertiaRequests::class])
+                ->name('tax.index');
             Route::put('/tax', [AdminFinanceTaxController::class, 'updateSettings'])->name('tax.update');
             Route::post('/tax/rates', [AdminFinanceTaxController::class, 'storeRate'])->name('tax.rates.store');
             Route::get('/tax/rates/{rate}/edit', [AdminFinanceTaxController::class, 'editRate'])->name('tax.rates.edit');

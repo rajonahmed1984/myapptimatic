@@ -27,6 +27,7 @@ return [
     'admin_finance_reports_index' => (bool) env('FEATURE_ADMIN_FINANCE_REPORTS_INDEX', false),
     'admin_support_tickets_index' => (bool) env('FEATURE_ADMIN_SUPPORT_TICKETS_INDEX', false),
     'admin_finance_payment_methods_index' => (bool) env('FEATURE_ADMIN_FINANCE_PAYMENT_METHODS_INDEX', false),
+    'admin_finance_tax_index' => (bool) env('FEATURE_ADMIN_FINANCE_TAX_INDEX', false),
     'admin_orders_index' => (bool) env('FEATURE_ADMIN_ORDERS_INDEX', false),
     'admin_apptimatic_email_inbox' => (bool) env('FEATURE_ADMIN_APPTIMATIC_EMAIL_INBOX', false),
     'admin_apptimatic_email_show' => (bool) env('FEATURE_ADMIN_APPTIMATIC_EMAIL_SHOW', false),

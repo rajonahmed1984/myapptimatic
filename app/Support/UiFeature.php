@@ -38,6 +38,8 @@ class UiFeature
 
     public const ADMIN_FINANCE_PAYMENT_METHODS_INDEX = 'admin_finance_payment_methods_index';
 
+    public const ADMIN_FINANCE_TAX_INDEX = 'admin_finance_tax_index';
+
     public const ADMIN_ORDERS_INDEX = 'admin_orders_index';
 
     public const ADMIN_APPTIMATIC_EMAIL_INBOX = 'admin_apptimatic_email_inbox';
@@ -82,6 +84,7 @@ class UiFeature
             self::ADMIN_FINANCE_REPORTS_INDEX => self::enabled(self::ADMIN_FINANCE_REPORTS_INDEX),
             self::ADMIN_SUPPORT_TICKETS_INDEX => self::enabled(self::ADMIN_SUPPORT_TICKETS_INDEX),
             self::ADMIN_FINANCE_PAYMENT_METHODS_INDEX => self::enabled(self::ADMIN_FINANCE_PAYMENT_METHODS_INDEX),
+            self::ADMIN_FINANCE_TAX_INDEX => self::enabled(self::ADMIN_FINANCE_TAX_INDEX),
             self::ADMIN_ORDERS_INDEX => self::enabled(self::ADMIN_ORDERS_INDEX),
             self::ADMIN_APPTIMATIC_EMAIL_INBOX => self::enabled(self::ADMIN_APPTIMATIC_EMAIL_INBOX),
             self::ADMIN_APPTIMATIC_EMAIL_SHOW => self::enabled(self::ADMIN_APPTIMATIC_EMAIL_SHOW),

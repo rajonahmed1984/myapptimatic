@@ -25,6 +25,7 @@ const CRITICAL_ROUTE_PATTERNS = [
     /(^|\/)admin\/commission-payouts(\/|$)/i,
     /(^|\/)admin\/finance\/reports(\/|$)/i,
     /(^|\/)admin\/finance\/payment-methods(\/|$)/i,
+    /(^|\/)admin\/finance\/tax(\/|$)/i,
     /(^|\/)admin\/support-tickets(\/|$)/i,
     /(^|\/)admin\/orders(\/|$)/i,
     /(^|\/)admin\/apptimatic-email(\/|$)/i,
