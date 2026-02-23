@@ -6,18 +6,31 @@ use App\Http\Controllers\Controller;
 use App\Models\PaymentGateway;
 use App\Models\Setting;
 use App\Support\Currency;
+use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
+use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class PaymentGatewayController extends Controller
 {
-    public function index()
-    {
-        return view('admin.payment-gateways.index', [
-            'gateways' => PaymentGateway::query()->orderBy('sort_order')->get(),
-        ]);
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
+        $gateways = PaymentGateway::query()->orderBy('sort_order')->get();
+
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_PAYMENT_GATEWAYS_INDEX,
+            'admin.payment-gateways.index',
+            ['gateways' => $gateways],
+            'Admin/PaymentGateways/Index',
+            $this->indexInertiaProps($gateways)
+        );
     }
 
     public function edit(PaymentGateway $paymentGateway)
@@ -161,5 +174,23 @@ class PaymentGatewayController extends Controller
 
         return redirect()->route('admin.payment-gateways.index')
             ->with('status', 'Payment gateway updated.');
+    }
+
+    private function indexInertiaProps($gateways): array
+    {
+        return [
+            'pageTitle' => 'Payment Gateways',
+            'gateways' => collect($gateways)->map(function (PaymentGateway $gateway) {
+                return [
+                    'id' => $gateway->id,
+                    'name' => $gateway->name,
+                    'driver' => ucfirst((string) $gateway->driver),
+                    'is_active' => (bool) $gateway->is_active,
+                    'routes' => [
+                        'edit' => route('admin.payment-gateways.edit', $gateway),
+                    ],
+                ];
+            })->values()->all(),
+        ];
     }
 }

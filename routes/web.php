@@ -834,7 +834,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::post('payment-proofs/{paymentProof}/reject', [AdminPaymentProofController::class, 'reject'])->name('payment-proofs.reject');
     Route::get('payment-proofs/{paymentProof}/receipt', [AdminPaymentProofController::class, 'receipt'])->name('payment-proofs.receipt');
     Route::get('payment-proofs', [AdminPaymentProofController::class, 'index'])->name('payment-proofs.index');
-    Route::get('payment-gateways', [PaymentGatewayController::class, 'index'])->name('payment-gateways.index');
+    Route::get('payment-gateways', [PaymentGatewayController::class, 'index'])
+        ->middleware(['react.ui:admin_payment_gateways_index', HandleInertiaRequests::class])
+        ->name('payment-gateways.index');
     Route::get('payment-gateways/{paymentGateway}/edit', [PaymentGatewayController::class, 'edit'])->name('payment-gateways.edit');
     Route::put('payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');
     Route::get('commission-payouts', [CommissionPayoutController::class, 'index'])->name('commission-payouts.index');
