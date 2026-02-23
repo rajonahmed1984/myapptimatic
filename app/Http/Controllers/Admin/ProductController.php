@@ -5,20 +5,34 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Support\AjaxResponse;
+use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
+use App\Support\UiFeature;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class ProductController extends Controller
 {
-    public function index()
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $products = Product::query()->latest()->get();
+        $payload = compact('products');
 
-        return view('admin.products.index', compact('products'));
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_PRODUCTS_INDEX,
+            'admin.products.index',
+            $payload,
+            'Admin/Products/Index',
+            $this->indexInertiaProps($products)
+        );
     }
 
     public function create(Request $request): View|RedirectResponse
@@ -120,6 +134,30 @@ class ProductController extends Controller
                     'products' => Product::query()->latest()->get(),
                 ])->render(),
             ],
+        ];
+    }
+
+    private function indexInertiaProps(EloquentCollection $products): array
+    {
+        return [
+            'pageTitle' => 'Products',
+            'routes' => [
+                'create' => route('admin.products.create'),
+            ],
+            'products' => $products->values()->map(function (Product $product, int $index) {
+                return [
+                    'id' => $product->id,
+                    'serial' => $index + 1,
+                    'name' => (string) $product->name,
+                    'slug' => (string) $product->slug,
+                    'status' => (string) $product->status,
+                    'status_label' => ucfirst((string) $product->status),
+                    'routes' => [
+                        'edit' => route('admin.products.edit', $product),
+                        'destroy' => route('admin.products.destroy', $product),
+                    ],
+                ];
+            })->all(),
         ];
     }
 }

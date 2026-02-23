@@ -707,7 +707,10 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'show'])->name('customers.project-users.show');
     Route::put('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'update'])->name('customers.project-users.update');
     Route::delete('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'destroy'])->name('customers.project-users.destroy');
-    Route::resource('products', ProductController::class)->except(['show']);
+    Route::get('products', [ProductController::class, 'index'])
+        ->middleware(['react.ui:admin_products_index', HandleInertiaRequests::class])
+        ->name('products.index');
+    Route::resource('products', ProductController::class)->except(['show', 'index']);
     Route::resource('plans', PlanController::class)->except(['show']);
     Route::resource('subscriptions', SubscriptionController::class)->except(['show']);
     Route::resource('licenses', LicenseController::class)->except(['show']);
