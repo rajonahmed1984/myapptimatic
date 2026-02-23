@@ -4,46 +4,53 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SyncLicenseJob;
+use App\Models\AnomalyFlag;
 use App\Models\License;
 use App\Models\LicenseDomain;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Models\Subscription;
-use App\Models\AnomalyFlag;
 use App\Services\AccessBlockService;
+use App\Support\HybridUiResponder;
+use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
-use App\Models\Setting;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class LicenseController extends Controller
 {
-    public function index(Request $request)
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $search = trim((string) $request->input('search', ''));
 
         $licenses = License::query()
             ->with(['product', 'subscription.customer', 'subscription.plan', 'subscription.latestOrder', 'domains'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('license_key', 'like', '%' . $search . '%')
-                        ->orWhere('status', 'like', '%' . $search . '%')
+                    $inner->where('license_key', 'like', '%'.$search.'%')
+                        ->orWhere('status', 'like', '%'.$search.'%')
                         ->orWhereHas('domains', function ($domainQuery) use ($search) {
-                            $domainQuery->where('domain', 'like', '%' . $search . '%');
+                            $domainQuery->where('domain', 'like', '%'.$search.'%');
                         })
                         ->orWhereHas('product', function ($productQuery) use ($search) {
-                            $productQuery->where('name', 'like', '%' . $search . '%');
+                            $productQuery->where('name', 'like', '%'.$search.'%');
                         })
                         ->orWhereHas('subscription', function ($subscriptionQuery) use ($search) {
                             $subscriptionQuery->whereHas('plan', function ($planQuery) use ($search) {
-                                $planQuery->where('name', 'like', '%' . $search . '%')
+                                $planQuery->where('name', 'like', '%'.$search.'%')
                                     ->orWhereHas('product', function ($planProductQuery) use ($search) {
-                                        $planProductQuery->where('name', 'like', '%' . $search . '%');
+                                        $planProductQuery->where('name', 'like', '%'.$search.'%');
                                     });
                             })
-                            ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                                $customerQuery->where('name', 'like', '%' . $search . '%');
-                            });
+                                ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                                    $customerQuery->where('name', 'like', '%'.$search.'%');
+                                });
                         });
 
                     if (is_numeric($search)) {
@@ -87,7 +94,19 @@ class LicenseController extends Controller
             return view('admin.licenses.partials.table', $payload);
         }
 
-        return view('admin.licenses.index', $payload);
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_LICENSES_INDEX,
+            'admin.licenses.index',
+            $payload,
+            'Admin/Licenses/Index',
+            $this->indexInertiaProps(
+                $licenses,
+                $accessBlockedCustomers,
+                $search,
+                $request
+            )
+        );
     }
 
     public function create()
@@ -308,6 +327,112 @@ class LicenseController extends Controller
         }
 
         return $domains->first();
+    }
+
+    private function indexInertiaProps(
+        LengthAwarePaginator $licenses,
+        array $accessBlockedCustomers,
+        string $search,
+        Request $request
+    ): array {
+        $dateFormat = (string) Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
+
+        return [
+            'pageTitle' => 'Licenses',
+            'search' => $search,
+            'routes' => [
+                'index' => route('admin.licenses.index'),
+                'create' => route('admin.licenses.create'),
+            ],
+            'licenses' => collect($licenses->items())->values()->map(function (License $license) use ($accessBlockedCustomers, $dateFormat, $request) {
+                $activeDomain = $license->domains->firstWhere('status', 'active');
+                $domain = $activeDomain?->domain ?? $license->domains->first()?->domain;
+                $subscription = $license->subscription;
+                $customer = $subscription?->customer;
+                $isBlocked = $customer && ($accessBlockedCustomers[$customer->id] ?? false);
+
+                $verificationLabel = 'Verified';
+                $verificationClass = 'bg-emerald-100 text-emerald-700';
+                $verificationHint = 'Active and domain matched';
+
+                if (! $customer || $customer->status !== 'active') {
+                    $verificationLabel = 'Blocked';
+                    $verificationClass = 'bg-rose-100 text-rose-700';
+                    $verificationHint = 'customer_inactive';
+                } elseif ($license->status !== 'active') {
+                    $verificationLabel = 'Blocked';
+                    $verificationClass = 'bg-rose-100 text-rose-700';
+                    $verificationHint = 'license_inactive';
+                } elseif ($license->expires_at && $license->expires_at->isPast()) {
+                    $verificationLabel = 'Blocked';
+                    $verificationClass = 'bg-rose-100 text-rose-700';
+                    $verificationHint = 'license_expired';
+                } elseif (! $subscription || $subscription->status !== 'active') {
+                    $verificationLabel = 'Blocked';
+                    $verificationClass = 'bg-rose-100 text-rose-700';
+                    $verificationHint = 'subscription_inactive';
+                } elseif (! $activeDomain) {
+                    $verificationLabel = 'Pending';
+                    $verificationClass = 'bg-amber-100 text-amber-700';
+                    $verificationHint = 'domain_not_bound';
+                } elseif ($isBlocked) {
+                    $verificationLabel = 'Blocked';
+                    $verificationClass = 'bg-rose-100 text-rose-700';
+                    $verificationHint = 'invoice_overdue';
+                }
+
+                $syncAt = $license->last_check_at;
+                $syncLabel = 'Never';
+                $syncClass = 'bg-slate-100 text-slate-600';
+
+                if ($syncAt) {
+                    $hours = $syncAt->diffInHours(now());
+                    if ($hours <= 24) {
+                        $syncLabel = 'Synced';
+                        $syncClass = 'bg-emerald-100 text-emerald-700';
+                    } elseif ($hours > 48) {
+                        $syncLabel = 'Stale';
+                        $syncClass = 'bg-amber-100 text-amber-700';
+                    } else {
+                        $syncLabel = 'Synced';
+                        $syncClass = 'bg-emerald-100 text-emerald-700';
+                    }
+                }
+
+                $latestOrder = $subscription?->latestOrder;
+                $orderNumber = $latestOrder?->order_number ?? $latestOrder?->id;
+
+                return [
+                    'id' => $license->id,
+                    'customer_name' => (string) ($customer?->name ?? '--'),
+                    'customer_url' => $customer ? route('admin.customers.show', $customer) : null,
+                    'is_blocked' => (bool) $isBlocked,
+                    'order_number' => $orderNumber ? (string) $orderNumber : '--',
+                    'product_name' => (string) ($license->product?->name ?? '--'),
+                    'plan_name' => (string) ($subscription?->plan?->name ?? '--'),
+                    'license_key' => (string) $license->license_key,
+                    'domain' => (string) ($domain ?? '--'),
+                    'verification_label' => $verificationLabel,
+                    'verification_class' => $verificationClass,
+                    'verification_hint' => $verificationHint,
+                    'license_status' => (string) $license->status,
+                    'sync_label' => $syncLabel,
+                    'sync_class' => $syncClass,
+                    'sync_time_display' => $syncAt ? $syncAt->format($dateFormat.' H:i') : 'No sync yet',
+                    'can_sync' => (bool) ($request->user()?->can('update', $license)),
+                    'routes' => [
+                        'edit' => route('admin.licenses.edit', $license),
+                        'sync' => route('admin.licenses.sync', $license),
+                        'sync_status' => route('admin.licenses.sync-status', $license),
+                    ],
+                ];
+            })->all(),
+            'pagination' => [
+                'has_pages' => $licenses->hasPages(),
+                'previous_url' => $licenses->previousPageUrl(),
+                'next_url' => $licenses->nextPageUrl(),
+            ],
+        ];
     }
 
     private function normalizeDomain(string $input): ?string

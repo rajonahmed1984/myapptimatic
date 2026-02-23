@@ -46,6 +46,8 @@ class UiFeature
 
     public const ADMIN_SUBSCRIPTIONS_INDEX = 'admin_subscriptions_index';
 
+    public const ADMIN_LICENSES_INDEX = 'admin_licenses_index';
+
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -78,6 +80,7 @@ class UiFeature
             self::ADMIN_PRODUCTS_INDEX => self::enabled(self::ADMIN_PRODUCTS_INDEX),
             self::ADMIN_PLANS_INDEX => self::enabled(self::ADMIN_PLANS_INDEX),
             self::ADMIN_SUBSCRIPTIONS_INDEX => self::enabled(self::ADMIN_SUBSCRIPTIONS_INDEX),
+            self::ADMIN_LICENSES_INDEX => self::enabled(self::ADMIN_LICENSES_INDEX),
         ];
     }
 }

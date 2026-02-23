@@ -31,4 +31,5 @@ return [
     'admin_products_index' => (bool) env('FEATURE_ADMIN_PRODUCTS_INDEX', false),
     'admin_plans_index' => (bool) env('FEATURE_ADMIN_PLANS_INDEX', false),
     'admin_subscriptions_index' => (bool) env('FEATURE_ADMIN_SUBSCRIPTIONS_INDEX', false),
+    'admin_licenses_index' => (bool) env('FEATURE_ADMIN_LICENSES_INDEX', false),
 ];

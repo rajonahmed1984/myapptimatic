@@ -719,7 +719,10 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
         ->middleware(['react.ui:admin_subscriptions_index', HandleInertiaRequests::class])
         ->name('subscriptions.index');
     Route::resource('subscriptions', SubscriptionController::class)->except(['show', 'index']);
-    Route::resource('licenses', LicenseController::class)->except(['show']);
+    Route::get('licenses', [LicenseController::class, 'index'])
+        ->middleware(['react.ui:admin_licenses_index', HandleInertiaRequests::class])
+        ->name('licenses.index');
+    Route::resource('licenses', LicenseController::class)->except(['show', 'index']);
     Route::post('licenses/{license}/domains/{domain}/revoke', [LicenseController::class, 'revokeDomain'])->name('licenses.domains.revoke');
     Route::post('licenses/{license}/sync', [LicenseController::class, 'sync'])->name('licenses.sync');
     Route::get('licenses/{license}/sync-status', [LicenseController::class, 'syncStatus'])->name('licenses.sync-status');
