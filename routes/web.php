@@ -572,7 +572,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
         Route::get('payroll/{payrollPeriod}/export', [HrPayrollController::class, 'export'])->name('payroll.export');
     });
 
-    Route::get('users/activity-summary', [UserActivitySummaryController::class, 'index'])->name('users.activity-summary');
+    Route::get('users/activity-summary', [UserActivitySummaryController::class, 'index'])
+        ->middleware(['react.ui:admin_users_activity_summary_index', HandleInertiaRequests::class])
+        ->name('users.activity-summary');
     Route::get('/automation-status', [AutomationStatusController::class, 'index'])
         ->middleware(['react.ui:admin_automation_status_index', HandleInertiaRequests::class])
         ->name('automation-status');

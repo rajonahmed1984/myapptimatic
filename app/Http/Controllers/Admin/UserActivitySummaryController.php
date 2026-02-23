@@ -2,24 +2,29 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Models\User;
+use App\Enums\Role;
+use App\Http\Controllers\Controller;
 use App\Models\Employee;
-use App\Models\Customer;
 use App\Models\SalesRepresentative;
+use App\Models\User;
 use App\Models\UserActivityDaily;
 use App\Models\UserSession;
-use App\Enums\Role;
+use App\Support\HybridUiResponder;
+use App\Support\UiFeature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
-class UserActivitySummaryController
+class UserActivitySummaryController extends Controller
 {
     /**
      * Display user activity summary with type filtering.
      */
-    public function index(Request $request)
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         // Authorization check
         $user = auth('web')->user();
         if (! $user || ! in_array($user->role, Role::adminRoles(), true)) {
@@ -31,7 +36,7 @@ class UserActivitySummaryController
         $userId = $request->query('user_id');
 
         // Validate type
-        if (!in_array($type, ['all', 'employee', 'customer', 'salesrep', 'admin'])) {
+        if (! in_array($type, ['all', 'employee', 'customer', 'salesrep', 'admin'])) {
             $type = 'all';
         }
 
@@ -48,18 +53,20 @@ class UserActivitySummaryController
         ]));
 
         // Try to get from cache first (60 seconds)
-        $cached = Cache::get("user_activity_summary:{$cacheKey}");
-        if ($cached) {
-            return view('admin.users.activity-summary', $cached);
+        $payload = Cache::get("user_activity_summary:{$cacheKey}");
+        if (! is_array($payload)) {
+            $payload = $this->buildSummaryData($type, $fromDate, $toDate, $userId);
+            Cache::put("user_activity_summary:{$cacheKey}", $payload, now()->addSeconds(60));
         }
 
-        // Build data
-        $data = $this->buildSummaryData($type, $fromDate, $toDate, $userId);
-
-        // Cache for 60 seconds
-        Cache::put("user_activity_summary:{$cacheKey}", $data, now()->addSeconds(60));
-
-        return view('admin.users.activity-summary', $data);
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_USERS_ACTIVITY_SUMMARY_INDEX,
+            'admin.users.activity-summary',
+            $payload,
+            'Admin/Users/ActivitySummary/Index',
+            $this->indexInertiaProps($payload)
+        );
     }
 
     /**
@@ -116,7 +123,7 @@ class UserActivitySummaryController
         }
 
         // Get customers (if no specific user filter or if the userId matches a customer)
-        if (!$userId) {
+        if (! $userId) {
             $customers = User::where('role', Role::CLIENT)->with('customer:id,avatar_path')->get();
             $customerPrepared = $this->buildPreparedMetrics($customers, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
             foreach ($customers as $user) {
@@ -135,7 +142,7 @@ class UserActivitySummaryController
         }
 
         // Get sales representatives (if no specific user filter or if the userId matches a sales rep)
-        if (!$userId) {
+        if (! $userId) {
             $salesReps = SalesRepresentative::with('user')->get();
             $salesRepUsers = $salesReps->pluck('user')->filter()->values();
             $salesRepPrepared = $this->buildPreparedMetrics($salesRepUsers, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
@@ -157,7 +164,7 @@ class UserActivitySummaryController
         }
 
         // Get admin/web users (if no specific user filter or if the userId matches an admin)
-        if (!$userId) {
+        if (! $userId) {
             $adminUsers = User::whereIn('role', Role::adminRoles())->get();
             $adminPrepared = $this->buildPreparedMetrics($adminUsers, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
             foreach ($adminUsers as $user) {
@@ -179,6 +186,7 @@ class UserActivitySummaryController
         usort($users, function ($a, $b) {
             $aLastSeen = $a['last_seen_at'] ? strtotime($a['last_seen_at']) : 0;
             $bLastSeen = $b['last_seen_at'] ? strtotime($b['last_seen_at']) : 0;
+
             return $bLastSeen <=> $aLastSeen;
         });
 
@@ -422,6 +430,138 @@ class UserActivitySummaryController
         ];
     }
 
+    private function indexInertiaProps(array $payload): array
+    {
+        $users = collect($payload['users'] ?? [])->map(function ($row) {
+            return $this->normalizeUserRow($row);
+        })->values()->all();
+
+        $options = [];
+        foreach (collect($payload['userOptions'] ?? [])->all() as $id => $name) {
+            if (is_array($name)) {
+                $options[] = [
+                    'id' => $name['id'] ?? null,
+                    'name' => (string) ($name['name'] ?? ''),
+                ];
+
+                continue;
+            }
+
+            $options[] = [
+                'id' => is_numeric($id) ? (int) $id : $id,
+                'name' => (string) $name,
+            ];
+        }
+
+        return [
+            'pageTitle' => 'User Activity Summary',
+            'type' => (string) ($payload['type'] ?? 'all'),
+            'users' => $users,
+            'filters' => [
+                'type' => (string) data_get($payload, 'filters.type', 'all'),
+                'user_id' => data_get($payload, 'filters.user_id'),
+                'from' => data_get($payload, 'filters.from'),
+                'to' => data_get($payload, 'filters.to'),
+            ],
+            'userOptions' => $options,
+            'showRange' => (bool) ($payload['showRange'] ?? false),
+            'routes' => [
+                'index' => route('admin.users.activity-summary'),
+            ],
+        ];
+    }
+
+    private function normalizeUserRow($row): array
+    {
+        $user = data_get($row, 'user');
+        $lastSeenAt = data_get($row, 'last_seen_at');
+        $lastLoginAt = data_get($row, 'last_login_at');
+
+        $lastSeenHuman = '--';
+        if ($lastSeenAt) {
+            try {
+                $lastSeenHuman = \Carbon\Carbon::parse($lastSeenAt)->diffForHumans();
+            } catch (\Throwable) {
+                $lastSeenHuman = '--';
+            }
+        }
+
+        $lastLoginDisplay = '--';
+        if ($lastLoginAt) {
+            try {
+                $lastLoginDisplay = \Carbon\Carbon::parse($lastLoginAt)->format('M d, Y H:i');
+            } catch (\Throwable) {
+                $lastLoginDisplay = '--';
+            }
+        }
+
+        $todaySeconds = (int) data_get($row, 'today.active_seconds', 0);
+        $weekSeconds = (int) data_get($row, 'week.active_seconds', 0);
+        $monthSeconds = (int) data_get($row, 'month.active_seconds', 0);
+        $rangeSeconds = (int) data_get($row, 'range.active_seconds', 0);
+
+        return [
+            'user' => [
+                'id' => is_object($user) ? $user->id : null,
+                'name' => is_object($user) ? (string) ($user->name ?? '') : '',
+                'email' => is_object($user) ? (string) ($user->email ?? '--') : '--',
+                'avatar_path' => $this->resolveAvatarPath($user),
+            ],
+            'is_online' => (bool) data_get($row, 'is_online', false),
+            'today' => [
+                'sessions_count' => (int) data_get($row, 'today.sessions_count', 0),
+                'active_seconds' => $todaySeconds,
+                'active_duration' => $this->formatDuration($todaySeconds),
+            ],
+            'week' => [
+                'sessions_count' => (int) data_get($row, 'week.sessions_count', 0),
+                'active_seconds' => $weekSeconds,
+                'active_duration' => $this->formatDuration($weekSeconds),
+            ],
+            'month' => [
+                'sessions_count' => (int) data_get($row, 'month.sessions_count', 0),
+                'active_seconds' => $monthSeconds,
+                'active_duration' => $this->formatDuration($monthSeconds),
+            ],
+            'range' => data_get($row, 'range') ? [
+                'sessions_count' => (int) data_get($row, 'range.sessions_count', 0),
+                'active_seconds' => $rangeSeconds,
+                'active_duration' => $this->formatDuration($rangeSeconds),
+            ] : null,
+            'last_seen_human' => $lastSeenHuman,
+            'last_login_display' => $lastLoginDisplay,
+        ];
+    }
+
+    private function resolveAvatarPath($user): ?string
+    {
+        if (! is_object($user)) {
+            return null;
+        }
+
+        if ($user instanceof Employee) {
+            return $user->photo_path;
+        }
+
+        if ($user instanceof User) {
+            return $user->avatar_path ?? $user->customer?->avatar_path;
+        }
+
+        return $user->avatar_path ?? null;
+    }
+
+    private function formatDuration(int $seconds): string
+    {
+        if ($seconds <= 0) {
+            return '0:00';
+        }
+
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv(($seconds % 3600), 60);
+
+        return sprintf('%d:%02d', $hours, $minutes);
+    }
+
     private function buildPreparedMetrics(iterable $users, string $guard, string $today, string $weekStart, string $monthStart, $fromDate, $toDate): array
     {
         $collection = collect($users)->filter();
@@ -456,7 +596,7 @@ class UserActivitySummaryController
                 ->all();
         };
 
-        $today = UserActivityDaily::query()
+        $todayMetrics = UserActivityDaily::query()
             ->where('user_type', $userType)
             ->where('guard', $guard)
             ->whereIn('user_id', $userIds)
@@ -502,7 +642,7 @@ class UserActivitySummaryController
             ->all();
 
         return [
-            'today' => $today,
+            'today' => $todayMetrics,
             'week' => $week,
             'month' => $month,
             'range' => $range,
