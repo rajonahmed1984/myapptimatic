@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Income;
 use App\Models\IncomeCategory;
 use App\Models\Setting;
-use App\Services\IncomeEntryService;
 use App\Services\GeminiService;
+use App\Services\IncomeEntryService;
 use App\Services\WhmcsClient;
 use App\Support\Currency;
+use App\Support\HybridUiResponder;
+use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,11 +21,14 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class IncomeController extends Controller
 {
     private const WHMCS_DEFAULT_START = '2026-01-01';
+
     private const WHMCS_PAGE_SIZE = 100;
+
     private const WHMCS_MAX_PAGES = 50;
 
     public function dashboard(Request $request, IncomeEntryService $entryService, GeminiService $geminiService, WhmcsClient $whmcsClient): View
@@ -67,6 +72,7 @@ class IncomeController extends Controller
             ->groupBy(fn ($entry) => $entry['category_id'] ?? 'system')
             ->map(function ($items) {
                 $first = $items->first();
+
                 return [
                     'category_id' => $first['category_id'],
                     'name' => $first['category_name'] ?? 'System',
@@ -138,8 +144,11 @@ class IncomeController extends Controller
         ]);
     }
 
-    public function index(Request $request, IncomeEntryService $entryService): View
-    {
+    public function index(
+        Request $request,
+        IncomeEntryService $entryService,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $search = trim((string) $request->input('search', ''));
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
@@ -189,6 +198,7 @@ class IncomeController extends Controller
             ->groupBy(fn ($entry) => $entry['category_id'] ?? 'system')
             ->map(function ($items) {
                 $first = $items->first();
+
                 return [
                     'category_id' => $first['category_id'],
                     'name' => $first['category_name'] ?? 'System',
@@ -221,7 +231,14 @@ class IncomeController extends Controller
             return view('admin.income.partials.table', $payload);
         }
 
-        return view('admin.income.index', $payload);
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_INCOME_INDEX,
+            'admin.income.index',
+            $payload,
+            'Admin/Income/Index',
+            $this->indexInertiaProps($incomes, $search, $currencySymbol, $currencyCode)
+        );
     }
 
     public function create(): View
@@ -297,6 +314,78 @@ class IncomeController extends Controller
         );
     }
 
+    private function indexInertiaProps(
+        LengthAwarePaginator $incomes,
+        string $search,
+        string $currencySymbol,
+        string $currencyCode
+    ): array {
+        $globalDateFormat = (string) config('app.date_format', 'd-m-Y');
+
+        $incomeRows = $incomes->getCollection()
+            ->values()
+            ->map(function ($entry) use ($currencySymbol, $currencyCode, $globalDateFormat) {
+                $sourceType = (string) data_get($entry, 'source_type', 'manual');
+                $sourceId = data_get($entry, 'source_id');
+                $attachmentPath = (string) data_get($entry, 'attachment_path', '');
+
+                $canViewAttachment = $sourceType === 'manual'
+                    && $attachmentPath !== ''
+                    && is_numeric($sourceId);
+
+                return [
+                    'key' => (string) data_get($entry, 'key', ''),
+                    'income_date_display' => $this->formatEntryDate(data_get($entry, 'income_date'), $globalDateFormat),
+                    'title' => (string) data_get($entry, 'title', '--'),
+                    'notes' => (string) (data_get($entry, 'notes') ?: ''),
+                    'category_name' => (string) (data_get($entry, 'category_name') ?: '--'),
+                    'source_label' => (string) (data_get($entry, 'source_label') ?: ucfirst($sourceType)),
+                    'customer_name' => (string) (data_get($entry, 'customer_name') ?: '--'),
+                    'project_name' => (string) (data_get($entry, 'project_name') ?: '--'),
+                    'amount_display' => $currencySymbol.number_format((float) data_get($entry, 'amount', 0), 2).$currencyCode,
+                    'attachment_url' => $canViewAttachment
+                        ? route('admin.income.attachments.show', (int) $sourceId)
+                        : null,
+                ];
+            })
+            ->all();
+
+        $paginationLinks = $incomes->linkCollection()
+            ->map(function ($link) {
+                return [
+                    'url' => $link['url'],
+                    'label' => (string) $link['label'],
+                    'active' => (bool) $link['active'],
+                ];
+            })
+            ->all();
+
+        return [
+            'pageTitle' => 'Income list',
+            'search' => $search,
+            'routes' => [
+                'index' => route('admin.income.index'),
+                'categories' => route('admin.income.categories.index'),
+                'create' => route('admin.income.create'),
+            ],
+            'incomes' => $incomeRows,
+            'pagination_links' => $paginationLinks,
+        ];
+    }
+
+    private function formatEntryDate(mixed $value, string $format): string
+    {
+        if (empty($value)) {
+            return '--';
+        }
+
+        try {
+            return Carbon::parse((string) $value)->format($format);
+        } catch (\Throwable) {
+            return '--';
+        }
+    }
+
     private function buildAiSummary(
         GeminiService $geminiService,
         array $filters,
@@ -314,7 +403,7 @@ class IncomeController extends Controller
             return [null, 'Google AI is disabled.'];
         }
 
-        $cacheKey = 'ai:income-dashboard:' . md5(json_encode($filters));
+        $cacheKey = 'ai:income-dashboard:'.md5(json_encode($filters));
 
         try {
             $builder = function () use (
@@ -334,11 +423,13 @@ class IncomeController extends Controller
 
                 $topCategories = collect($categoryTotals)->take(3)->map(function ($item) use ($currencyCode) {
                     $amount = number_format((float) ($item['total'] ?? 0), 2);
+
                     return "{$item['name']}: {$currencyCode} {$amount}";
                 })->implode(', ');
 
                 $topCustomerText = collect($topCustomers)->take(3)->map(function ($item) use ($currencyCode) {
                     $amount = number_format((float) ($item['total'] ?? 0), 2);
+
                     return "{$item['name']}: {$currencyCode} {$amount}";
                 })->implode(', ');
 
@@ -382,6 +473,7 @@ PROMPT;
 
         $groups = $entries->groupBy(function ($entry) use ($format) {
             $date = $entry['income_date'] ? Carbon::parse($entry['income_date']) : now();
+
             return $date->format($format);
         });
 
@@ -413,7 +505,7 @@ PROMPT;
         $start = $startDate ? Carbon::parse($startDate)->toDateString() : self::WHMCS_DEFAULT_START;
         $end = $endDate ? Carbon::parse($endDate)->toDateString() : now()->toDateString();
 
-        $cacheKey = 'whmcs:carrothost:transactions:' . $start . ':' . $end;
+        $cacheKey = 'whmcs:carrothost:transactions:'.$start.':'.$end;
 
         $payload = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($client, $start, $end) {
             $whmcsErrors = [];
@@ -492,7 +584,7 @@ PROMPT;
             ]));
 
             if (! $result['ok']) {
-                $errors[] = $action . ': ' . $result['error'];
+                $errors[] = $action.': '.$result['error'];
                 break;
             }
 

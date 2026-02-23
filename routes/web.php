@@ -662,7 +662,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
               Route::get('/dashboard', [AdminIncomeController::class, 'dashboard'])->name('dashboard');
               Route::get('/carrothost', [AdminCarrotHostIncomeController::class, 'index'])->name('carrothost');
               Route::post('/carrothost/sync', [AdminCarrotHostIncomeController::class, 'sync'])->name('carrothost.sync');
-              Route::get('/', [AdminIncomeController::class, 'index'])->name('index');
+              Route::get('/', [AdminIncomeController::class, 'index'])
+                ->middleware(['react.ui:admin_income_index', HandleInertiaRequests::class])
+                ->name('index');
               Route::get('/create', [AdminIncomeController::class, 'create'])->name('create');
             Route::post('/', [AdminIncomeController::class, 'store'])->name('store');
             Route::get('/{income}/attachment', [AdminIncomeController::class, 'attachment'])->name('attachments.show');

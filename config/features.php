@@ -18,6 +18,7 @@ return [
     'admin_expenses_categories_index' => (bool) env('FEATURE_ADMIN_EXPENSES_CATEGORIES_INDEX', false),
     'admin_expenses_index' => (bool) env('FEATURE_ADMIN_EXPENSES_INDEX', false),
     'admin_income_categories_index' => (bool) env('FEATURE_ADMIN_INCOME_CATEGORIES_INDEX', false),
+    'admin_income_index' => (bool) env('FEATURE_ADMIN_INCOME_INDEX', false),
     'admin_automation_status_index' => (bool) env('FEATURE_ADMIN_AUTOMATION_STATUS_INDEX', false),
     'admin_users_activity_summary_index' => (bool) env('FEATURE_ADMIN_USERS_ACTIVITY_SUMMARY_INDEX', false),
     'admin_logs_index' => (bool) env('FEATURE_ADMIN_LOGS_INDEX', false),

@@ -20,6 +20,8 @@ class UiFeature
 
     public const ADMIN_INCOME_CATEGORIES_INDEX = 'admin_income_categories_index';
 
+    public const ADMIN_INCOME_INDEX = 'admin_income_index';
+
     public const ADMIN_AUTOMATION_STATUS_INDEX = 'admin_automation_status_index';
 
     public const ADMIN_USERS_ACTIVITY_SUMMARY_INDEX = 'admin_users_activity_summary_index';
@@ -77,6 +79,7 @@ class UiFeature
             self::ADMIN_EXPENSES_CATEGORIES_INDEX => self::enabled(self::ADMIN_EXPENSES_CATEGORIES_INDEX),
             self::ADMIN_EXPENSES_INDEX => self::enabled(self::ADMIN_EXPENSES_INDEX),
             self::ADMIN_INCOME_CATEGORIES_INDEX => self::enabled(self::ADMIN_INCOME_CATEGORIES_INDEX),
+            self::ADMIN_INCOME_INDEX => self::enabled(self::ADMIN_INCOME_INDEX),
             self::ADMIN_AUTOMATION_STATUS_INDEX => self::enabled(self::ADMIN_AUTOMATION_STATUS_INDEX),
             self::ADMIN_USERS_ACTIVITY_SUMMARY_INDEX => self::enabled(self::ADMIN_USERS_ACTIVITY_SUMMARY_INDEX),
             self::ADMIN_LOGS_INDEX => self::enabled(self::ADMIN_LOGS_INDEX),
