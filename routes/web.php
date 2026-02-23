@@ -665,7 +665,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
             Route::post('/', [AdminIncomeController::class, 'store'])->name('store');
             Route::get('/{income}/attachment', [AdminIncomeController::class, 'attachment'])->name('attachments.show');
 
-            Route::get('/categories', [AdminIncomeCategoryController::class, 'index'])->name('categories.index');
+            Route::get('/categories', [AdminIncomeCategoryController::class, 'index'])
+                ->middleware(['react.ui:admin_income_categories_index', HandleInertiaRequests::class])
+                ->name('categories.index');
             Route::post('/categories', [AdminIncomeCategoryController::class, 'store'])->name('categories.store');
             Route::put('/categories/{category}', [AdminIncomeCategoryController::class, 'update'])->name('categories.update');
             Route::delete('/categories/{category}', [AdminIncomeCategoryController::class, 'destroy'])->name('categories.destroy');
