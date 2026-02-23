@@ -14,6 +14,8 @@ class UiFeature
 
     public const ADMIN_EXPENSES_RECURRING_EDIT = 'admin_expenses_recurring_edit';
 
+    public const ADMIN_AUTOMATION_STATUS_INDEX = 'admin_automation_status_index';
+
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -30,6 +32,7 @@ class UiFeature
             self::ADMIN_EXPENSES_RECURRING_SHOW => self::enabled(self::ADMIN_EXPENSES_RECURRING_SHOW),
             self::ADMIN_EXPENSES_RECURRING_CREATE => self::enabled(self::ADMIN_EXPENSES_RECURRING_CREATE),
             self::ADMIN_EXPENSES_RECURRING_EDIT => self::enabled(self::ADMIN_EXPENSES_RECURRING_EDIT),
+            self::ADMIN_AUTOMATION_STATUS_INDEX => self::enabled(self::ADMIN_AUTOMATION_STATUS_INDEX),
         ];
     }
 }

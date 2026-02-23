@@ -15,4 +15,5 @@ return [
     'admin_expenses_recurring_show' => (bool) env('FEATURE_ADMIN_EXPENSES_RECURRING_SHOW', false),
     'admin_expenses_recurring_create' => (bool) env('FEATURE_ADMIN_EXPENSES_RECURRING_CREATE', false),
     'admin_expenses_recurring_edit' => (bool) env('FEATURE_ADMIN_EXPENSES_RECURRING_EDIT', false),
+    'admin_automation_status_index' => (bool) env('FEATURE_ADMIN_AUTOMATION_STATUS_INDEX', false),
 ];

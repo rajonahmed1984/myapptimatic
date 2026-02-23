@@ -14,6 +14,7 @@ const LIVE_FILTER_DEBOUNCE_MS = 320;
 const CRITICAL_ROUTE_PATTERNS = [
     /(^|\/)__ui(\/|$)/i,
     /(^|\/)admin\/expenses\/recurring(\/|$)/i,
+    /(^|\/)admin\/automation-status(\/|$)/i,
     /(^|\/)(login|logout|register)(\/|$)/i,
     /(^|\/)(password|forgot-password|reset-password)(\/|$)/i,
     /(^|\/)(two-factor|2fa)(\/|$)/i,

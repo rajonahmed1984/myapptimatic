@@ -573,7 +573,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     });
 
     Route::get('users/activity-summary', [UserActivitySummaryController::class, 'index'])->name('users.activity-summary');
-    Route::get('/automation-status', [AutomationStatusController::class, 'index'])->name('automation-status');
+    Route::get('/automation-status', [AutomationStatusController::class, 'index'])
+        ->middleware(['react.ui:admin_automation_status_index', HandleInertiaRequests::class])
+        ->name('automation-status');
     Route::post('/system/cache/clear', SystemCacheController::class)
         ->name('system.cache.clear');
     Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
