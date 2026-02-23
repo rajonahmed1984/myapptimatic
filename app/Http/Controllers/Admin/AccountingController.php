@@ -10,22 +10,39 @@ use App\Models\PaymentGateway;
 use App\Models\Setting;
 use App\Support\AjaxResponse;
 use App\Support\Currency;
+use App\Support\HybridUiResponder;
+use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\View\View;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class AccountingController extends Controller
 {
     private const TYPES = ['payment', 'refund', 'credit', 'expense'];
 
-    public function index(Request $request)
-    {
-        return $this->renderIndex($request, 'ledger', 'Ledger', null);
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
+        $scope = 'ledger';
+        $pageTitle = 'Ledger';
+        $search = trim((string) $request->input('search', ''));
+        $payload = $this->indexPayload($scope, $pageTitle, $search);
+
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_ACCOUNTING_INDEX,
+            'admin.accounting.index',
+            $payload,
+            'Admin/Accounting/Index',
+            $this->indexInertiaProps($payload['entries'], $scope, $search, $pageTitle, url()->current())
+        );
     }
 
     public function transactions(Request $request)
@@ -155,14 +172,19 @@ class AccountingController extends Controller
     private function renderIndex(Request $request, string $scope, string $pageTitle, ?array $types)
     {
         $search = trim((string) $request->input('search', ''));
-        $payload = [
+        $payload = $this->indexPayload($scope, $pageTitle, $search);
+
+        return view('admin.accounting.index', $payload);
+    }
+
+    private function indexPayload(string $scope, string $pageTitle, string $search): array
+    {
+        return [
             'entries' => $this->entriesForScope($scope, $search),
             'pageTitle' => $pageTitle,
             'scope' => $scope,
             'search' => $search,
         ];
-
-        return view('admin.accounting.index', $payload);
     }
 
     private function queryEntries(?array $types, string $search, ?string $scope = null)
@@ -188,17 +210,17 @@ class AccountingController extends Controller
 
         if ($search !== '') {
             $query->where(function ($inner) use ($search) {
-                $inner->where('reference', 'like', '%' . $search . '%')
-                    ->orWhere('description', 'like', '%' . $search . '%')
+                $inner->where('reference', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%')
                     ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                        $customerQuery->where('name', 'like', '%' . $search . '%');
+                        $customerQuery->where('name', 'like', '%'.$search.'%');
                     })
                     ->orWhereHas('invoice', function ($invoiceQuery) use ($search) {
-                        $invoiceQuery->where('number', 'like', '%' . $search . '%')
-                            ->orWhere('id', 'like', '%' . $search . '%');
+                        $invoiceQuery->where('number', 'like', '%'.$search.'%')
+                            ->orWhere('id', 'like', '%'.$search.'%');
                     })
                     ->orWhereHas('paymentGateway', function ($gatewayQuery) use ($search) {
-                        $gatewayQuery->where('name', 'like', '%' . $search . '%');
+                        $gatewayQuery->where('name', 'like', '%'.$search.'%');
                     });
 
                 if (is_numeric($search)) {
@@ -226,12 +248,12 @@ class AccountingController extends Controller
     {
         return $entries->unique(function (AccountingEntry $entry) {
             if ($entry->type !== 'credit' || ! $entry->invoice_id) {
-                return 'entry:' . $entry->id;
+                return 'entry:'.$entry->id;
             }
 
             $amount = number_format((float) $entry->amount, 2, '.', '');
 
-            return 'credit-settlement:' . $entry->invoice_id . ':' . strtoupper((string) $entry->currency) . ':' . $amount;
+            return 'credit-settlement:'.$entry->invoice_id.':'.strtoupper((string) $entry->currency).':'.$amount;
         })->values();
     }
 
@@ -360,5 +382,54 @@ class AccountingController extends Controller
     private function normalizeType(string $type): string
     {
         return in_array($type, self::TYPES, true) ? $type : 'payment';
+    }
+
+    private function indexInertiaProps(
+        Collection $entries,
+        string $scope,
+        string $search,
+        string $pageTitle,
+        string $searchAction
+    ): array {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return [
+            'pageTitle' => $pageTitle,
+            'scope' => $scope,
+            'search' => $search,
+            'searchAction' => $searchAction,
+            'routes' => [
+                'ledger' => route('admin.accounting.ledger'),
+                'transactions' => route('admin.accounting.transactions'),
+                'create' => [
+                    'payment' => route('admin.accounting.create', ['type' => 'payment', 'scope' => $scope, 'search' => $search]),
+                    'refund' => route('admin.accounting.create', ['type' => 'refund', 'scope' => $scope, 'search' => $search]),
+                    'credit' => route('admin.accounting.create', ['type' => 'credit', 'scope' => $scope, 'search' => $search]),
+                    'expense' => route('admin.accounting.create', ['type' => 'expense', 'scope' => $scope, 'search' => $search]),
+                ],
+            ],
+            'entries' => $entries->map(function (AccountingEntry $entry) use ($scope, $search, $dateFormat) {
+                $amount = number_format((float) $entry->amount, 2);
+                $isOutflow = $entry->isOutflow();
+
+                return [
+                    'id' => $entry->id,
+                    'entry_date_display' => $entry->entry_date?->format($dateFormat) ?? '--',
+                    'type_label' => ucfirst((string) $entry->type),
+                    'customer_name' => $entry->customer?->name ?? '-',
+                    'invoice_label' => $entry->invoice?->number ?? (string) ($entry->invoice?->id ?? '-'),
+                    'gateway_name' => $entry->paymentGateway?->name ?? '-',
+                    'amount_display' => sprintf('%s%s %s', $isOutflow ? '-' : '+', strtoupper((string) $entry->currency), $amount),
+                    'is_outflow' => $isOutflow,
+                    'reference' => $entry->reference ?: '-',
+                    'routes' => [
+                        'customer_show' => $entry->customer ? route('admin.customers.show', $entry->customer) : null,
+                        'invoice_show' => $entry->invoice ? route('admin.invoices.show', $entry->invoice) : null,
+                        'edit' => route('admin.accounting.edit', ['entry' => $entry, 'scope' => $scope, 'search' => $search]),
+                        'destroy' => route('admin.accounting.destroy', $entry),
+                    ],
+                ];
+            })->values()->all(),
+        ];
     }
 }

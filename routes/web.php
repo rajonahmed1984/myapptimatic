@@ -849,8 +849,12 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::post('commission-payouts/{commissionPayout}/reverse', [CommissionPayoutController::class, 'reverse'])->name('commission-payouts.reverse');
     Route::get('commission-earnings/export', [CommissionExportController::class, 'exportEarnings'])->name('commission-earnings.export');
     Route::get('commission-payouts/export', [CommissionExportController::class, 'exportPayouts'])->name('commission-payouts.export');
-    Route::get('accounting', [AdminAccountingController::class, 'index'])->name('accounting.index');
-    Route::get('accounting/ledger', [AdminAccountingController::class, 'index'])->name('accounting.ledger');
+    Route::get('accounting', [AdminAccountingController::class, 'index'])
+        ->middleware(['react.ui:admin_accounting_index', HandleInertiaRequests::class])
+        ->name('accounting.index');
+    Route::get('accounting/ledger', [AdminAccountingController::class, 'index'])
+        ->middleware(['react.ui:admin_accounting_index', HandleInertiaRequests::class])
+        ->name('accounting.ledger');
     Route::get('accounting/transactions', [AdminAccountingController::class, 'transactions'])->name('accounting.transactions');
     Route::get('accounting/create', [AdminAccountingController::class, 'create'])->name('accounting.create');
     Route::post('accounting', [AdminAccountingController::class, 'store'])->name('accounting.store');

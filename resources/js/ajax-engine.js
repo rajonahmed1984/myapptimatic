@@ -19,6 +19,7 @@ const CRITICAL_ROUTE_PATTERNS = [
     /(^|\/)admin\/logs(\/|$)/i,
     /(^|\/)admin\/chats(\/|$)/i,
     /(^|\/)admin\/payment-gateways(\/|$)/i,
+    /(^|\/)admin\/accounting(\/?$|\/ledger(\/|$))/i,
     /(^|\/)admin\/commission-payouts(\/|$)/i,
     /(^|\/)(login|logout|register)(\/|$)/i,
     /(^|\/)(password|forgot-password|reset-password)(\/|$)/i,
