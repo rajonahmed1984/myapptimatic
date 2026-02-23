@@ -616,7 +616,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
           ->name('expenses.')
           ->group(function () {
               Route::get('/dashboard', [AdminExpenseDashboardController::class, 'index'])->name('dashboard');
-              Route::get('/', [AdminExpenseController::class, 'index'])->name('index');
+              Route::get('/', [AdminExpenseController::class, 'index'])
+                ->middleware(['react.ui:admin_expenses_index', HandleInertiaRequests::class])
+                ->name('index');
               Route::get('/one-time', [AdminExpenseController::class, 'create'])->name('create');
               Route::get('/create', fn () => redirect()->route('admin.expenses.create'))->name('create.legacy');
               Route::post('/', [AdminExpenseController::class, 'store'])->name('store');

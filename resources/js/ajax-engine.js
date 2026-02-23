@@ -13,6 +13,7 @@ const LIVE_FILTER_DEBOUNCE_MS = 320;
 
 const CRITICAL_ROUTE_PATTERNS = [
     /(^|\/)__ui(\/|$)/i,
+    /(^|\/)admin\/expenses(\/?$)/i,
     /(^|\/)admin\/expenses\/recurring(\/|$)/i,
     /(^|\/)admin\/expenses\/categories(\/|$)/i,
     /(^|\/)admin\/income\/categories(\/|$)/i,
