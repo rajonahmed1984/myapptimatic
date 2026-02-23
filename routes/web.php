@@ -627,7 +627,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
             Route::post('/invoices', [AdminExpenseInvoiceController::class, 'store'])->name('invoices.store');
             Route::post('/invoices/{expenseInvoice}/pay', [AdminExpenseInvoiceController::class, 'markPaid'])->name('invoices.pay');
 
-            Route::get('/categories', [AdminExpenseCategoryController::class, 'index'])->name('categories.index');
+            Route::get('/categories', [AdminExpenseCategoryController::class, 'index'])
+                ->middleware(['react.ui:admin_expenses_categories_index', HandleInertiaRequests::class])
+                ->name('categories.index');
             Route::post('/categories', [AdminExpenseCategoryController::class, 'store'])->name('categories.store');
             Route::put('/categories/{category}', [AdminExpenseCategoryController::class, 'update'])->name('categories.update');
             Route::delete('/categories/{category}', [AdminExpenseCategoryController::class, 'destroy'])->name('categories.destroy');
