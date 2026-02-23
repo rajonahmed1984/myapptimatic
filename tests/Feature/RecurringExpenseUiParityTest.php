@@ -64,6 +64,55 @@ class RecurringExpenseUiParityTest extends TestCase
     }
 
     #[Test]
+    public function recurring_create_uses_blade_when_react_flag_is_off(): void
+    {
+        config()->set('features.admin_expenses_recurring_create', false);
+
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.create'));
+
+        $response->assertOk();
+        $response->assertViewIs('admin.expenses.recurring.create');
+    }
+
+    #[Test]
+    public function recurring_create_uses_inertia_when_react_flag_is_on(): void
+    {
+        config()->set('features.admin_expenses_recurring_create', true);
+
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.create'));
+
+        $response->assertOk();
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Expenses\\/Recurring\\/Create', false);
+    }
+
+    #[Test]
+    public function recurring_create_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    {
+        $client = User::factory()->create([
+            'role' => Role::CLIENT,
+        ]);
+
+        config()->set('features.admin_expenses_recurring_create', false);
+        $this->actingAs($client)
+            ->get(route('admin.expenses.recurring.create'))
+            ->assertForbidden();
+
+        config()->set('features.admin_expenses_recurring_create', true);
+        $this->actingAs($client)
+            ->get(route('admin.expenses.recurring.create'))
+            ->assertForbidden();
+    }
+
+    #[Test]
     public function recurring_show_uses_blade_when_react_flag_is_off(): void
     {
         config()->set('features.admin_expenses_recurring_show', false);
@@ -116,6 +165,62 @@ class RecurringExpenseUiParityTest extends TestCase
         config()->set('features.admin_expenses_recurring_show', true);
         $this->actingAs($client)
             ->get(route('admin.expenses.recurring.show', $recurring))
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function recurring_edit_uses_blade_when_react_flag_is_off(): void
+    {
+        config()->set('features.admin_expenses_recurring_edit', false);
+
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+        ]);
+        $recurring = $this->createRecurringExpense($admin);
+
+        $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.edit', $recurring));
+
+        $response->assertOk();
+        $response->assertViewIs('admin.expenses.recurring.edit');
+    }
+
+    #[Test]
+    public function recurring_edit_uses_inertia_when_react_flag_is_on(): void
+    {
+        config()->set('features.admin_expenses_recurring_edit', true);
+
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+        ]);
+        $recurring = $this->createRecurringExpense($admin);
+
+        $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.edit', $recurring));
+
+        $response->assertOk();
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Expenses\\/Recurring\\/Edit', false);
+    }
+
+    #[Test]
+    public function recurring_edit_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    {
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+        ]);
+        $recurring = $this->createRecurringExpense($admin);
+
+        $client = User::factory()->create([
+            'role' => Role::CLIENT,
+        ]);
+
+        config()->set('features.admin_expenses_recurring_edit', false);
+        $this->actingAs($client)
+            ->get(route('admin.expenses.recurring.edit', $recurring))
+            ->assertForbidden();
+
+        config()->set('features.admin_expenses_recurring_edit', true);
+        $this->actingAs($client)
+            ->get(route('admin.expenses.recurring.edit', $recurring))
             ->assertForbidden();
     }
 

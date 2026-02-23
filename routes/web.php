@@ -626,12 +626,16 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
             Route::get('/recurring', [AdminRecurringExpenseController::class, 'index'])
                 ->middleware(['react.ui:admin_expenses_recurring_index', HandleInertiaRequests::class])
                 ->name('recurring.index');
-            Route::get('/recurring/create', [AdminRecurringExpenseController::class, 'create'])->name('recurring.create');
+            Route::get('/recurring/create', [AdminRecurringExpenseController::class, 'create'])
+                ->middleware(['react.ui:admin_expenses_recurring_create', HandleInertiaRequests::class])
+                ->name('recurring.create');
             Route::post('/recurring', [AdminRecurringExpenseController::class, 'store'])->name('recurring.store');
             Route::get('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'show'])
                 ->middleware(['react.ui:admin_expenses_recurring_show', HandleInertiaRequests::class])
                 ->name('recurring.show');
-            Route::get('/recurring/{recurringExpense}/edit', [AdminRecurringExpenseController::class, 'edit'])->name('recurring.edit');
+            Route::get('/recurring/{recurringExpense}/edit', [AdminRecurringExpenseController::class, 'edit'])
+                ->middleware(['react.ui:admin_expenses_recurring_edit', HandleInertiaRequests::class])
+                ->name('recurring.edit');
             Route::put('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'update'])->name('recurring.update');
             Route::post('/recurring/{recurringExpense}/advance', [AdminRecurringExpenseController::class, 'storeAdvance'])->name('recurring.advance.store');
             Route::post('/recurring/{recurringExpense}/resume', [AdminRecurringExpenseController::class, 'resume'])->name('recurring.resume');

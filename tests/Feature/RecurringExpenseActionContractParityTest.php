@@ -286,10 +286,12 @@ class RecurringExpenseActionContractParityTest extends TestCase
     {
         config()->set('features.admin_expenses_recurring_index', $enabled);
         config()->set('features.admin_expenses_recurring_show', $enabled);
+        config()->set('features.admin_expenses_recurring_create', $enabled);
+        config()->set('features.admin_expenses_recurring_edit', $enabled);
     }
 
     /**
-     * @return array{status:int,location:string}
+     * @return array{status:int,location_path:string}
      */
     private function responseContract($response): array
     {

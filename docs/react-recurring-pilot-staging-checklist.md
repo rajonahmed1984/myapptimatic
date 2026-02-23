@@ -1,10 +1,16 @@
 # Recurring Expenses React Pilot Staging Checklist
 
 ## Scope
-- Module: `admin.expenses.recurring.index` and `admin.expenses.recurring.show`
+- Module:
+  - `admin.expenses.recurring.index`
+  - `admin.expenses.recurring.create`
+  - `admin.expenses.recurring.show`
+  - `admin.expenses.recurring.edit`
 - Flags:
   - `FEATURE_ADMIN_EXPENSES_RECURRING_INDEX=true`
+  - `FEATURE_ADMIN_EXPENSES_RECURRING_CREATE=true`
   - `FEATURE_ADMIN_EXPENSES_RECURRING_SHOW=true`
+  - `FEATURE_ADMIN_EXPENSES_RECURRING_EDIT=true`
 - Duration: one full release cycle (minimum 7 days)
 
 ## Pre-Enable Gate
@@ -19,7 +25,9 @@
 ## Daily Evidence Collection
 1. Functional checks (manual):
    - Recurring index list/pagination.
+   - Recurring create form validation and submit.
    - Recurring show summary cards and both tables.
+   - Recurring edit form validation and submit.
    - Invoice payment modal submit path.
    - Advance payment create path.
    - Resume/stop actions and flash messages.
@@ -38,7 +46,9 @@
 ## Rollback Steps
 1. Set:
    - `FEATURE_ADMIN_EXPENSES_RECURRING_INDEX=false`
+   - `FEATURE_ADMIN_EXPENSES_RECURRING_CREATE=false`
    - `FEATURE_ADMIN_EXPENSES_RECURRING_SHOW=false`
+   - `FEATURE_ADMIN_EXPENSES_RECURRING_EDIT=false`
 2. Rebuild caches:
    - `php artisan optimize:clear`
    - `php artisan config:cache`

@@ -70,14 +70,23 @@ class RecurringExpenseController extends Controller
         );
     }
 
-    public function create(): View
-    {
+    public function create(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $categories = ExpenseCategory::query()
             ->where('status', 'active')
             ->orderBy('name')
             ->get();
 
-        return view('admin.expenses.recurring.create', compact('categories'));
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_EXPENSES_RECURRING_CREATE,
+            'admin.expenses.recurring.create',
+            compact('categories'),
+            'Admin/Expenses/Recurring/Create',
+            $this->createInertiaProps($categories)
+        );
     }
 
     public function store(Request $request): RedirectResponse
@@ -97,13 +106,23 @@ class RecurringExpenseController extends Controller
             ->with('status', 'Recurring expense created.');
     }
 
-    public function edit(RecurringExpense $recurringExpense): View
-    {
+    public function edit(
+        Request $request,
+        RecurringExpense $recurringExpense,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $categories = ExpenseCategory::query()
             ->orderBy('name')
             ->get();
 
-        return view('admin.expenses.recurring.edit', compact('recurringExpense', 'categories'));
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_EXPENSES_RECURRING_EDIT,
+            'admin.expenses.recurring.edit',
+            compact('recurringExpense', 'categories'),
+            'Admin/Expenses/Recurring/Edit',
+            $this->editInertiaProps($recurringExpense, $categories)
+        );
     }
 
     public function show(
@@ -310,6 +329,71 @@ class RecurringExpenseController extends Controller
         ]);
 
         return $data;
+    }
+
+    private function createInertiaProps($categories): array
+    {
+        return [
+            'pageTitle' => 'Add Recurring Expense',
+            'heading' => 'New recurring expense',
+            'routes' => [
+                'back' => route('admin.expenses.recurring.index'),
+                'submit' => route('admin.expenses.recurring.store'),
+            ],
+            'submit' => [
+                'label' => 'Save Recurring',
+                'http_method' => 'POST',
+            ],
+            'categories' => $this->categoryOptions($categories),
+            'form' => $this->recurringFormDefaults(null),
+        ];
+    }
+
+    private function editInertiaProps(
+        RecurringExpense $recurringExpense,
+        $categories
+    ): array {
+        return [
+            'pageTitle' => 'Edit Recurring Expense',
+            'heading' => 'Edit recurring expense',
+            'routes' => [
+                'back' => route('admin.expenses.recurring.index'),
+                'submit' => route('admin.expenses.recurring.update', $recurringExpense),
+            ],
+            'submit' => [
+                'label' => 'Update',
+                'http_method' => 'PUT',
+            ],
+            'categories' => $this->categoryOptions($categories),
+            'form' => $this->recurringFormDefaults($recurringExpense),
+        ];
+    }
+
+    private function recurringFormDefaults(?RecurringExpense $recurringExpense): array
+    {
+        $startDate = $recurringExpense?->start_date?->toDateString() ?? now()->toDateString();
+        $endDate = $recurringExpense?->end_date?->toDateString() ?? '';
+
+        return [
+            'category_id' => (string) old('category_id', (string) ($recurringExpense?->category_id ?? '')),
+            'title' => (string) old('title', (string) ($recurringExpense?->title ?? '')),
+            'amount' => (string) old('amount', $recurringExpense ? (string) $recurringExpense->amount : ''),
+            'recurrence_type' => (string) old('recurrence_type', (string) ($recurringExpense?->recurrence_type ?? 'monthly')),
+            'recurrence_interval' => (string) old('recurrence_interval', (string) ($recurringExpense?->recurrence_interval ?? 1)),
+            'start_date' => (string) old('start_date', $startDate),
+            'end_date' => (string) old('end_date', $endDate),
+            'notes' => (string) old('notes', (string) ($recurringExpense?->notes ?? '')),
+        ];
+    }
+
+    private function categoryOptions($categories): array
+    {
+        return collect($categories)->map(function (ExpenseCategory $category) {
+            return [
+                'id' => $category->id,
+                'name' => $category->name,
+            ];
+        })->values()->all();
     }
 
     private function indexInertiaProps(

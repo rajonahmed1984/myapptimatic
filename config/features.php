@@ -13,4 +13,6 @@ return [
     'react_sandbox' => (bool) env('FEATURE_REACT_SANDBOX', false),
     'admin_expenses_recurring_index' => (bool) env('FEATURE_ADMIN_EXPENSES_RECURRING_INDEX', false),
     'admin_expenses_recurring_show' => (bool) env('FEATURE_ADMIN_EXPENSES_RECURRING_SHOW', false),
+    'admin_expenses_recurring_create' => (bool) env('FEATURE_ADMIN_EXPENSES_RECURRING_CREATE', false),
+    'admin_expenses_recurring_edit' => (bool) env('FEATURE_ADMIN_EXPENSES_RECURRING_EDIT', false),
 ];

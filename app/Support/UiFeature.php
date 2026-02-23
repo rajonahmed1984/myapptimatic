@@ -10,6 +10,10 @@ class UiFeature
 
     public const ADMIN_EXPENSES_RECURRING_SHOW = 'admin_expenses_recurring_show';
 
+    public const ADMIN_EXPENSES_RECURRING_CREATE = 'admin_expenses_recurring_create';
+
+    public const ADMIN_EXPENSES_RECURRING_EDIT = 'admin_expenses_recurring_edit';
+
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -24,6 +28,8 @@ class UiFeature
             self::REACT_SANDBOX => self::enabled(self::REACT_SANDBOX),
             self::ADMIN_EXPENSES_RECURRING_INDEX => self::enabled(self::ADMIN_EXPENSES_RECURRING_INDEX),
             self::ADMIN_EXPENSES_RECURRING_SHOW => self::enabled(self::ADMIN_EXPENSES_RECURRING_SHOW),
+            self::ADMIN_EXPENSES_RECURRING_CREATE => self::enabled(self::ADMIN_EXPENSES_RECURRING_CREATE),
+            self::ADMIN_EXPENSES_RECURRING_EDIT => self::enabled(self::ADMIN_EXPENSES_RECURRING_EDIT),
         ];
     }
 }
