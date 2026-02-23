@@ -7,22 +7,36 @@ use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Support\AjaxResponse;
+use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
+use App\Support\UiFeature;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class PlanController extends Controller
 {
-    public function index()
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $plans = Plan::query()->with('product')->latest()->get();
         $defaultCurrency = Setting::getValue('currency');
+        $payload = compact('plans', 'defaultCurrency');
 
-        return view('admin.plans.index', compact('plans', 'defaultCurrency'));
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_PLANS_INDEX,
+            'admin.plans.index',
+            $payload,
+            'Admin/Plans/Index',
+            $this->indexInertiaProps($plans, (string) $defaultCurrency)
+        );
     }
 
     public function create(Request $request): View
@@ -172,6 +186,38 @@ class PlanController extends Controller
                     'defaultCurrency' => Setting::getValue('currency'),
                 ])->render(),
             ],
+        ];
+    }
+
+    private function indexInertiaProps(EloquentCollection $plans, string $defaultCurrency): array
+    {
+        return [
+            'pageTitle' => 'Plans',
+            'default_currency' => $defaultCurrency,
+            'routes' => [
+                'create' => route('admin.plans.create'),
+            ],
+            'plans' => $plans->values()->map(function (Plan $plan, int $index) use ($defaultCurrency) {
+                $product = $plan->product;
+
+                return [
+                    'id' => $plan->id,
+                    'serial' => $index + 1,
+                    'name' => (string) $plan->name,
+                    'slug_path' => ($plan->slug && $product?->slug)
+                        ? (string) ($product->slug.'/plans/'.$plan->slug)
+                        : '--',
+                    'product_name' => (string) ($product?->name ?? '--'),
+                    'price_display' => trim($defaultCurrency.' '.(string) $plan->price),
+                    'interval_label' => ucfirst((string) $plan->interval),
+                    'status' => $plan->is_active ? 'active' : 'inactive',
+                    'status_label' => $plan->is_active ? 'Active' : 'Inactive',
+                    'routes' => [
+                        'edit' => route('admin.plans.edit', $plan),
+                        'destroy' => route('admin.plans.destroy', $plan),
+                    ],
+                ];
+            })->all(),
         ];
     }
 }

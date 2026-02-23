@@ -42,6 +42,8 @@ class UiFeature
 
     public const ADMIN_PRODUCTS_INDEX = 'admin_products_index';
 
+    public const ADMIN_PLANS_INDEX = 'admin_plans_index';
+
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -72,6 +74,7 @@ class UiFeature
             self::ADMIN_APPTIMATIC_EMAIL_INBOX => self::enabled(self::ADMIN_APPTIMATIC_EMAIL_INBOX),
             self::ADMIN_APPTIMATIC_EMAIL_SHOW => self::enabled(self::ADMIN_APPTIMATIC_EMAIL_SHOW),
             self::ADMIN_PRODUCTS_INDEX => self::enabled(self::ADMIN_PRODUCTS_INDEX),
+            self::ADMIN_PLANS_INDEX => self::enabled(self::ADMIN_PLANS_INDEX),
         ];
     }
 }

@@ -27,6 +27,7 @@ const CRITICAL_ROUTE_PATTERNS = [
     /(^|\/)admin\/orders(\/|$)/i,
     /(^|\/)admin\/apptimatic-email(\/|$)/i,
     /(^|\/)admin\/products(\/|$)/i,
+    /(^|\/)admin\/plans(\/|$)/i,
     /(^|\/)(login|logout|register)(\/|$)/i,
     /(^|\/)(password|forgot-password|reset-password)(\/|$)/i,
     /(^|\/)(two-factor|2fa)(\/|$)/i,
