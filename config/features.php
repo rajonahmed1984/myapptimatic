@@ -30,4 +30,5 @@ return [
     'admin_apptimatic_email_show' => (bool) env('FEATURE_ADMIN_APPTIMATIC_EMAIL_SHOW', false),
     'admin_products_index' => (bool) env('FEATURE_ADMIN_PRODUCTS_INDEX', false),
     'admin_plans_index' => (bool) env('FEATURE_ADMIN_PLANS_INDEX', false),
+    'admin_subscriptions_index' => (bool) env('FEATURE_ADMIN_SUBSCRIPTIONS_INDEX', false),
 ];

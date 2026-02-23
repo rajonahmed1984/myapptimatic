@@ -5,29 +5,45 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Plan;
-use App\Models\Subscription;
 use App\Models\SalesRepresentative;
-use App\Support\AjaxResponse;
+use App\Models\Subscription;
 use App\Services\AccessBlockService;
 use App\Services\BillingService;
+use App\Support\AjaxResponse;
+use App\Support\HybridUiResponder;
+use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class SubscriptionController extends Controller
 {
-    public function index(Request $request)
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $payload = $this->indexPayload($request);
 
         if ($request->header('HX-Request')) {
             return view('admin.subscriptions.partials.table', $payload);
         }
 
-        return view('admin.subscriptions.index', $payload);
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_SUBSCRIPTIONS_INDEX,
+            'admin.subscriptions.index',
+            $payload,
+            'Admin/Subscriptions/Index',
+            $this->indexInertiaProps(
+                $payload['subscriptions'],
+                (string) ($payload['search'] ?? '')
+            )
+        );
     }
 
     public function create(Request $request): View
@@ -179,14 +195,14 @@ class SubscriptionController extends Controller
             ->with(['customer', 'plan.product', 'latestOrder'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('status', 'like', '%' . $search . '%')
+                    $inner->where('status', 'like', '%'.$search.'%')
                         ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                            $customerQuery->where('name', 'like', '%' . $search . '%');
+                            $customerQuery->where('name', 'like', '%'.$search.'%');
                         })
                         ->orWhereHas('plan', function ($planQuery) use ($search) {
-                            $planQuery->where('name', 'like', '%' . $search . '%')
+                            $planQuery->where('name', 'like', '%'.$search.'%')
                                 ->orWhereHas('product', function ($productQuery) use ($search) {
-                                    $productQuery->where('name', 'like', '%' . $search . '%');
+                                    $productQuery->where('name', 'like', '%'.$search.'%');
                                 });
                         });
 
@@ -226,6 +242,52 @@ class SubscriptionController extends Controller
                 'action' => 'replace',
                 'selector' => '#subscriptionsTable',
                 'html' => view('admin.subscriptions.partials.table', $this->indexPayload($request))->render(),
+            ],
+        ];
+    }
+
+    private function indexInertiaProps(
+        LengthAwarePaginator $subscriptions,
+        string $search
+    ): array {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return [
+            'pageTitle' => 'Subscriptions',
+            'search' => $search,
+            'routes' => [
+                'index' => route('admin.subscriptions.index'),
+                'create' => route('admin.subscriptions.create'),
+            ],
+            'subscriptions' => collect($subscriptions->items())->values()->map(function (Subscription $subscription) use ($dateFormat) {
+                $customer = $subscription->customer;
+                $plan = $subscription->plan;
+                $planPrice = $plan?->price;
+                $planCurrency = $plan?->currency;
+                $planInterval = $plan?->interval;
+
+                return [
+                    'id' => $subscription->id,
+                    'customer_name' => (string) ($customer?->name ?? '--'),
+                    'customer_url' => $customer ? route('admin.customers.show', $customer) : null,
+                    'product_plan' => (string) (($plan?->product?->name ?? '--').' - '.($plan?->name ?? '--')),
+                    'amount_display' => $planPrice !== null
+                        ? trim((string) (($planCurrency ? $planCurrency.' ' : '').number_format((float) $planPrice, 2)))
+                        : '--',
+                    'interval_label' => $planInterval ? ucfirst((string) $planInterval) : '--',
+                    'status' => (string) $subscription->status,
+                    'status_label' => ucfirst((string) $subscription->status),
+                    'next_invoice_display' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
+                    'routes' => [
+                        'edit' => route('admin.subscriptions.edit', $subscription),
+                        'destroy' => route('admin.subscriptions.destroy', $subscription),
+                    ],
+                ];
+            })->all(),
+            'pagination' => [
+                'has_pages' => $subscriptions->hasPages(),
+                'previous_url' => $subscriptions->previousPageUrl(),
+                'next_url' => $subscriptions->nextPageUrl(),
             ],
         ];
     }
