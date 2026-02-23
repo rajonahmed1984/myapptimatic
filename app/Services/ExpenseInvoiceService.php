@@ -65,6 +65,17 @@ class ExpenseInvoiceService
                 ->first();
 
             if ($existing) {
+                $updates = [];
+
+                if (! empty($overrides['due_date']) && ! $existing->due_date) {
+                    $updates['due_date'] = $overrides['due_date'];
+                }
+
+                if (! empty($updates)) {
+                    $existing->update($updates);
+                    $existing->refresh();
+                }
+
                 return $existing;
             }
 

@@ -10,6 +10,7 @@ use App\Models\ExpenseInvoice;
 use App\Models\ExpenseInvoicePayment;
 use App\Models\PaymentMethod;
 use App\Models\PayrollItem;
+use App\Models\RecurringExpenseAdvance;
 use App\Services\ExpenseInvoiceService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -102,8 +103,13 @@ class ExpenseInvoiceController extends Controller
 
     public function markPaid(Request $request, ExpenseInvoice $expenseInvoice): RedirectResponse
     {
+        $allowedPaymentMethods = PaymentMethod::allowedCodes();
+        if ($this->supportsAdvancePayment($expenseInvoice)) {
+            $allowedPaymentMethods[] = 'advance';
+        }
+
         $data = $request->validate([
-            'payment_method' => ['required', Rule::in(PaymentMethod::allowedCodes())],
+            'payment_method' => ['required', Rule::in(array_values(array_unique($allowedPaymentMethods)))],
             'payment_type' => ['required', Rule::in(['full', 'partial'])],
             'amount' => ['nullable', 'numeric', 'min:0.01'],
             'payment_reference' => ['nullable', 'string', 'max:120'],
@@ -125,7 +131,7 @@ class ExpenseInvoiceController extends Controller
         $result = DB::transaction(function () use (
             $expenseInvoice,
             $request,
-            $paymentType,
+            &$paymentType,
             $paymentMethod,
             $paidAt,
             $paymentReference,
@@ -169,6 +175,44 @@ class ExpenseInvoiceController extends Controller
                 ];
             }
 
+            $advanceBalanceAfter = null;
+            if ($paymentMethod === 'advance') {
+                $recurringExpenseId = (int) ($invoice->expense()
+                    ->whereNotNull('recurring_expense_id')
+                    ->value('recurring_expense_id') ?? 0);
+
+                if ($recurringExpenseId <= 0) {
+                    return [
+                        'ok' => false,
+                        'error' => 'Advance payment is available only for recurring expense invoices.',
+                    ];
+                }
+
+                $advanceBalance = $this->recurringAdvanceBalance($recurringExpenseId);
+                if ($advanceBalance <= 0) {
+                    return [
+                        'ok' => false,
+                        'error' => 'No advance balance available for this recurring expense.',
+                    ];
+                }
+
+                $paymentAmount = round(min($paymentAmount, $advanceBalance), 2, PHP_ROUND_HALF_UP);
+                if ($paymentAmount <= 0) {
+                    return [
+                        'ok' => false,
+                        'error' => 'No advance balance available for this recurring expense.',
+                    ];
+                }
+
+                $paymentType = $paymentAmount >= ($remainingBefore - 0.009) ? 'full' : 'partial';
+                $advanceBalanceAfter = round(max(0, $advanceBalance - $paymentAmount), 2, PHP_ROUND_HALF_UP);
+            }
+
+            $paymentNote = $note !== '' ? $note : null;
+            if ($paymentMethod === 'advance' && $paymentNote === null) {
+                $paymentNote = 'Auto-applied from recurring advance balance.';
+            }
+
             ExpenseInvoicePayment::query()->create([
                 'expense_invoice_id' => $invoice->id,
                 'payment_method' => $paymentMethod,
@@ -176,7 +220,7 @@ class ExpenseInvoiceController extends Controller
                 'amount' => $paymentAmount,
                 'paid_at' => $paidAt->toDateString(),
                 'payment_reference' => $paymentReference !== '' ? $paymentReference : null,
-                'note' => $note !== '' ? $note : null,
+                'note' => $paymentNote,
                 'created_by' => $request->user()?->id,
             ]);
 
@@ -203,6 +247,8 @@ class ExpenseInvoiceController extends Controller
                 'is_fully_paid' => $isFullyPaid,
                 'remaining_after' => $remainingAfter,
                 'payment_amount' => $paymentAmount,
+                'payment_method' => $paymentMethod,
+                'advance_balance_after' => $advanceBalanceAfter,
             ];
         });
 
@@ -214,9 +260,52 @@ class ExpenseInvoiceController extends Controller
             return back()->with('status', 'Expense invoice fully paid.');
         }
 
+        if (($result['payment_method'] ?? '') === 'advance') {
+            return back()->with(
+                'status',
+                'Advance applied ('.number_format((float) ($result['payment_amount'] ?? 0), 2).'). Remaining due: '.number_format((float) ($result['remaining_after'] ?? 0), 2).'. Advance balance left: '.number_format((float) ($result['advance_balance_after'] ?? 0), 2)
+            );
+        }
+
         return back()->with(
             'status',
             'Partial payment saved ('.number_format((float) ($result['payment_amount'] ?? 0), 2).'). Remaining: '.number_format((float) ($result['remaining_after'] ?? 0), 2)
         );
+    }
+
+    private function supportsAdvancePayment(ExpenseInvoice $expenseInvoice): bool
+    {
+        if (! $expenseInvoice->expense_id) {
+            return false;
+        }
+
+        return Expense::query()
+            ->whereKey($expenseInvoice->expense_id)
+            ->whereNotNull('recurring_expense_id')
+            ->exists();
+    }
+
+    private function recurringAdvanceBalance(int $recurringExpenseId): float
+    {
+        $totalAdvance = round(
+            (float) RecurringExpenseAdvance::query()
+                ->where('recurring_expense_id', $recurringExpenseId)
+                ->sum('amount'),
+            2,
+            PHP_ROUND_HALF_UP
+        );
+
+        $usedAdvance = round(
+            (float) ExpenseInvoicePayment::query()
+                ->where('payment_method', 'advance')
+                ->whereHas('invoice.expense', function ($query) use ($recurringExpenseId) {
+                    $query->where('recurring_expense_id', $recurringExpenseId);
+                })
+                ->sum('amount'),
+            2,
+            PHP_ROUND_HALF_UP
+        );
+
+        return round(max(0, $totalAdvance - $usedAdvance), 2, PHP_ROUND_HALF_UP);
     }
 }

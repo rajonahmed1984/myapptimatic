@@ -53,7 +53,13 @@
                             <td class="py-2 px-3">
                                 Every {{ $recurring->recurrence_interval }} {{ $recurring->recurrence_type === 'yearly' ? 'year(s)' : 'month(s)' }}
                             </td>
-                            <td class="py-2 px-3 whitespace-nowrap">{{ $recurring->next_run_date?->format($globalDateFormat) ?? '--' }}</td>
+                            <td class="py-2 px-3 whitespace-nowrap">
+                                @if(! empty($recurring->next_due_date))
+                                    {{ \Illuminate\Support\Carbon::parse($recurring->next_due_date)->format($globalDateFormat) }}
+                                @else
+                                    {{ $recurring->next_run_date?->format($globalDateFormat) ?? '--' }}
+                                @endif
+                            </td>
                             <td class="py-2 px-3">
                                 <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $recurring->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : ($recurring->status === 'paused' ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-slate-300 text-slate-600 bg-slate-50') }}">
                                     {{ ucfirst($recurring->status) }}

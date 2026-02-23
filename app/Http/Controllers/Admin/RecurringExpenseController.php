@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ExpenseCategory;
 use App\Models\ExpenseInvoice;
+use App\Models\ExpenseInvoicePayment;
 use App\Models\PaymentMethod;
 use App\Models\RecurringExpense;
 use App\Models\RecurringExpenseAdvance;
@@ -22,8 +23,22 @@ class RecurringExpenseController extends Controller
     public function index(ExpenseInvoiceService $invoiceService): View
     {
         $invoiceService->syncOverdueStatuses();
+        $today = Carbon::today()->toDateString();
 
         $recurringExpenses = RecurringExpense::query()
+            ->select('recurring_expenses.*')
+            ->addSelect([
+                'next_due_date' => ExpenseInvoice::query()
+                    ->select('expense_invoices.due_date')
+                    ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
+                    ->whereColumn('expenses.recurring_expense_id', 'recurring_expenses.id')
+                    ->where('expense_invoices.source_type', 'expense')
+                    ->where('expense_invoices.status', '!=', 'paid')
+                    ->whereNotNull('expense_invoices.due_date')
+                    ->whereDate('expense_invoices.due_date', '>=', $today)
+                    ->orderBy('expense_invoices.due_date')
+                    ->limit(1),
+            ])
             ->with('category')
             ->withSum('advances', 'amount')
             ->orderByDesc('next_run_date')
@@ -80,6 +95,7 @@ class RecurringExpenseController extends Controller
     public function show(RecurringExpense $recurringExpense, ExpenseInvoiceService $invoiceService): View
     {
         $recurringExpense->load('category');
+        $this->backfillMissingDueDates($recurringExpense->id);
         $invoiceService->syncOverdueStatuses($recurringExpense->id);
 
         $baseInvoices = ExpenseInvoice::query()
@@ -91,6 +107,7 @@ class RecurringExpenseController extends Controller
         $invoices = (clone $baseInvoices)
             ->with('expense')
             ->withSum('payments', 'amount')
+            ->withMax('payments', 'paid_at')
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
             ->paginate(20);
@@ -123,6 +140,13 @@ class RecurringExpenseController extends Controller
             ->latest('id')
             ->paginate(10, ['*'], 'advances_page');
         $advanceTotal = (float) $recurringExpense->advances()->sum('amount');
+        $advanceUsed = (float) ExpenseInvoicePayment::query()
+            ->where('payment_method', 'advance')
+            ->whereHas('invoice.expense', function ($query) use ($recurringExpense) {
+                $query->where('recurring_expense_id', $recurringExpense->id);
+            })
+            ->sum('amount');
+        $advanceBalance = max(0, $advanceTotal - $advanceUsed);
 
         return view('admin.expenses.recurring.show', [
             'recurringExpense' => $recurringExpense,
@@ -137,7 +161,31 @@ class RecurringExpenseController extends Controller
             'paymentMethods' => $paymentMethods,
             'advancePayments' => $advancePayments,
             'advanceTotal' => $advanceTotal,
+            'advanceUsed' => $advanceUsed,
+            'advanceBalance' => $advanceBalance,
         ]);
+    }
+
+    private function backfillMissingDueDates(int $recurringExpenseId): void
+    {
+        ExpenseInvoice::query()
+            ->where('source_type', 'expense')
+            ->whereNull('due_date')
+            ->whereHas('expense', function ($query) use ($recurringExpenseId) {
+                $query->where('recurring_expense_id', $recurringExpenseId);
+            })
+            ->with('expense:id,expense_date,recurring_expense_id')
+            ->orderBy('id')
+            ->chunkById(100, function ($invoices) {
+                foreach ($invoices as $invoice) {
+                    $dueDate = $invoice->expense?->expense_date?->toDateString()
+                        ?? $invoice->invoice_date?->toDateString();
+
+                    if ($dueDate) {
+                        $invoice->update(['due_date' => $dueDate]);
+                    }
+                }
+            });
     }
 
     public function update(Request $request, RecurringExpense $recurringExpense): RedirectResponse

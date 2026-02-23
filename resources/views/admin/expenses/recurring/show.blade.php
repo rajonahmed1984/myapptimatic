@@ -53,8 +53,11 @@
             <div class="mt-2 text-lg font-semibold text-rose-600">{{ $overdueCount }}</div>
         </div>
         <div class="card px-4 py-3">
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Advance total</div>
-            <div class="mt-2 text-lg font-semibold text-emerald-600">{{ $formatCurrency($advanceTotal ?? 0) }}</div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Advance balance</div>
+            <div class="mt-2 text-lg font-semibold text-emerald-600">{{ $formatCurrency($advanceBalance ?? 0) }}</div>
+            <div class="mt-1 text-[11px] text-slate-500">
+                Total: {{ $formatCurrency($advanceTotal ?? 0) }} | Used: {{ $formatCurrency($advanceUsed ?? 0) }}
+            </div>
         </div>
     </div>
 
@@ -100,8 +103,8 @@
                     <tr class="text-xs uppercase tracking-[0.2em] text-slate-500">
                         <th class="py-2 px-3">ID</th>
                         <th class="py-2 px-3">Invoice</th>
-                        <th class="py-2 px-3">Expense date</th>
                         <th class="py-2 px-3">Due date</th>
+                        <th class="py-2 px-3">Paid date</th>
                         <th class="py-2 px-3">Amount</th>
                         <th class="py-2 px-3">Status</th>
                         <th class="py-2 px-3 text-right">Action</th>
@@ -134,8 +137,20 @@
                         <tr class="border-b border-slate-100">
                             <td class="py-2 px-3 font-semibold text-slate-700">#{{ $invoice->id }}</td>
                             <td class="py-2 px-3 font-semibold text-slate-900">{{ $invoice->invoice_no }}</td>
-                            <td class="py-2 px-3">{{ $invoice->expense?->expense_date?->format($globalDateFormat) ?? '--' }}</td>
                             <td class="py-2 px-3">{{ $invoice->due_date?->format($globalDateFormat) ?? '--' }}</td>
+                            <td class="py-2 px-3">
+                                @php
+                                    $paidDate = $invoice->paid_at;
+                                    if (! $paidDate && ! empty($invoice->payments_max_paid_at)) {
+                                        try {
+                                            $paidDate = \Illuminate\Support\Carbon::parse($invoice->payments_max_paid_at);
+                                        } catch (\Throwable $e) {
+                                            $paidDate = null;
+                                        }
+                                    }
+                                @endphp
+                                {{ $paidDate?->format($globalDateFormat) ?? '--' }}
+                            </td>
                             <td class="py-2 px-3 font-semibold text-slate-900">
                                 {{ $formatCurrency($invoiceAmount) }}
                                 @if($isPartiallyPaid)
@@ -194,8 +209,14 @@
                 @csrf
                 <div>
                     <label for="expensePaymentMethod" class="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Method</label>
+                    @php
+                        $hasAdvanceMethod = collect($paymentMethods ?? [])->contains(fn ($method) => (string) ($method->code ?? '') === 'advance');
+                    @endphp
                     <select id="expensePaymentMethod" name="payment_method" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
                         <option value="">Select</option>
+                        @unless($hasAdvanceMethod)
+                            <option value="advance">Advance</option>
+                        @endunless
                         @foreach($paymentMethods as $method)
                             <option value="{{ $method->code }}">{{ $method->name }}</option>
                         @endforeach
@@ -241,15 +262,17 @@
             const invoiceEl = document.getElementById('expensePaymentInvoice');
             const summaryEl = document.getElementById('expensePaymentSummary');
             const typeEl = document.getElementById('expensePaymentType');
+            const methodEl = document.getElementById('expensePaymentMethod');
             const amountEl = document.getElementById('expensePaymentAmount');
             const hintEl = document.getElementById('expensePaymentHint');
 
-            if (!root || !modal || !form || !invoiceEl || !summaryEl || !typeEl || !amountEl || !hintEl) return;
+            if (!root || !modal || !form || !invoiceEl || !summaryEl || !typeEl || !methodEl || !amountEl || !hintEl) return;
 
             let remainingAmount = 0;
             let paidAmount = 0;
             let totalAmount = 0;
             let currency = '';
+            const advanceBalance = Number({{ number_format((float) ($advanceBalance ?? 0), 2, '.', '') }});
 
             const toNumber = (value) => {
                 const n = Number.parseFloat(value || '0');
@@ -283,8 +306,9 @@
 
                 form.setAttribute('action', btn.getAttribute('data-expense-payment-action') || '');
                 invoiceEl.textContent = btn.getAttribute('data-expense-payment-invoice') || 'Invoice';
-                summaryEl.textContent = `Total: ${formatNumber(totalAmount)} ${currency} | Paid: ${formatNumber(paidAmount)} ${currency} | Remaining: ${formatNumber(remainingAmount)} ${currency}`;
+                summaryEl.textContent = `Total: ${formatNumber(totalAmount)} ${currency} | Paid: ${formatNumber(paidAmount)} ${currency} | Remaining: ${formatNumber(remainingAmount)} ${currency} | Advance: ${formatNumber(advanceBalance)} ${currency}`;
                 typeEl.value = 'full';
+                methodEl.value = advanceBalance > 0 ? 'advance' : '';
                 syncAmountField();
 
                 modal.classList.remove('hidden');
