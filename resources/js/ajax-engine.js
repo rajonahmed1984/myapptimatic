@@ -22,6 +22,7 @@ const CRITICAL_ROUTE_PATTERNS = [
     /(^|\/)admin\/accounting(\/?$|\/ledger(\/|$))/i,
     /(^|\/)admin\/commission-payouts(\/|$)/i,
     /(^|\/)admin\/finance\/reports(\/|$)/i,
+    /(^|\/)admin\/finance\/payment-methods(\/|$)/i,
     /(^|\/)admin\/support-tickets(\/|$)/i,
     /(^|\/)(login|logout|register)(\/|$)/i,
     /(^|\/)(password|forgot-password|reset-password)(\/|$)/i,

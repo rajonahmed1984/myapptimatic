@@ -8,19 +8,24 @@ use App\Models\EmployeePayout;
 use App\Models\PaymentMethod;
 use App\Models\PayrollAuditLog;
 use App\Models\PayrollItem;
+use App\Support\HybridUiResponder;
+use App\Support\UiFeature;
 use Carbon\Carbon;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class PaymentMethodController extends Controller
 {
-    public function index(Request $request): View
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $editMethod = null;
         if ($request->filled('edit')) {
             $editMethod = PaymentMethod::query()->find($request->integer('edit'));
@@ -41,11 +46,20 @@ class PaymentMethodController extends Controller
             );
         }
 
-        return view('admin.finance.payment-methods.index', [
+        $payload = [
             'methods' => $methods,
             'editMethod' => $editMethod,
             'amountByMethod' => $amountByMethod,
-        ]);
+        ];
+
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_FINANCE_PAYMENT_METHODS_INDEX,
+            'admin.finance.payment-methods.index',
+            $payload,
+            'Admin/Finance/PaymentMethods/Index',
+            $this->indexInertiaProps($methods, $editMethod, $amountByMethod, $request)
+        );
     }
 
     public function show(Request $request, PaymentMethod $paymentMethod): View
@@ -296,5 +310,51 @@ class PaymentMethodController extends Controller
         }
 
         return implode(' + ', $parts);
+    }
+
+    private function indexInertiaProps(
+        Collection $methods,
+        ?PaymentMethod $editMethod,
+        array $amountByMethod,
+        Request $request
+    ): array {
+        $old = $request->session()->getOldInput();
+
+        return [
+            'pageTitle' => 'Payment Methods',
+            'form' => [
+                'title' => $editMethod ? 'Edit payment method' : 'Add payment method',
+                'action' => $editMethod
+                    ? route('admin.finance.payment-methods.update', $editMethod)
+                    : route('admin.finance.payment-methods.store'),
+                'method' => $editMethod ? 'PUT' : 'POST',
+                'cancel_href' => $editMethod ? route('admin.finance.payment-methods.index') : null,
+                'fields' => [
+                    'name' => (string) ($old['name'] ?? $editMethod?->name ?? ''),
+                    'code' => (string) ($old['code'] ?? $editMethod?->code ?? ''),
+                    'sort_order' => (int) ($old['sort_order'] ?? $editMethod?->sort_order ?? 0),
+                    'account_details' => (string) ($old['account_details'] ?? $editMethod?->account_details ?? ''),
+                    'is_active' => array_key_exists('is_active', $old)
+                        ? (bool) $old['is_active']
+                        : (bool) ($editMethod?->is_active ?? true),
+                ],
+            ],
+            'methods' => $methods->map(function (PaymentMethod $method) use ($amountByMethod) {
+                return [
+                    'id' => $method->id,
+                    'name' => (string) $method->name,
+                    'code' => (string) $method->code,
+                    'amount_display' => (string) ($amountByMethod[$method->id] ?? '0.00'),
+                    'account_details' => $method->account_details ? (string) $method->account_details : '--',
+                    'is_active' => (bool) $method->is_active,
+                    'sort_order' => (int) $method->sort_order,
+                    'routes' => [
+                        'show' => route('admin.finance.payment-methods.show', $method),
+                        'edit' => route('admin.finance.payment-methods.index', ['edit' => $method->id]),
+                        'destroy' => route('admin.finance.payment-methods.destroy', $method),
+                    ],
+                ];
+            })->values()->all(),
+        ];
     }
 }

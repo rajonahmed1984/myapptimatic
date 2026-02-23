@@ -24,4 +24,5 @@ return [
     'admin_accounting_index' => (bool) env('FEATURE_ADMIN_ACCOUNTING_INDEX', false),
     'admin_finance_reports_index' => (bool) env('FEATURE_ADMIN_FINANCE_REPORTS_INDEX', false),
     'admin_support_tickets_index' => (bool) env('FEATURE_ADMIN_SUPPORT_TICKETS_INDEX', false),
+    'admin_finance_payment_methods_index' => (bool) env('FEATURE_ADMIN_FINANCE_PAYMENT_METHODS_INDEX', false),
 ];
