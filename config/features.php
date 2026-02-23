@@ -18,4 +18,5 @@ return [
     'admin_automation_status_index' => (bool) env('FEATURE_ADMIN_AUTOMATION_STATUS_INDEX', false),
     'admin_users_activity_summary_index' => (bool) env('FEATURE_ADMIN_USERS_ACTIVITY_SUMMARY_INDEX', false),
     'admin_logs_index' => (bool) env('FEATURE_ADMIN_LOGS_INDEX', false),
+    'admin_chats_index' => (bool) env('FEATURE_ADMIN_CHATS_INDEX', false),
 ];

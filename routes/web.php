@@ -480,7 +480,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('/ai/business-status', [AiBusinessStatusController::class, 'index'])->name('ai.business-status');
     Route::post('/ai/business-status/generate', [AiBusinessStatusController::class, 'generate'])->name('ai.business-status.generate');
     Route::get('/tasks', [AdminTasksController::class, 'index'])->name('tasks.index');
-    Route::get('/chats', [AdminChatController::class, 'index'])->name('chats.index');
+    Route::get('/chats', [AdminChatController::class, 'index'])
+        ->middleware(['react.ui:admin_chats_index', HandleInertiaRequests::class])
+        ->name('chats.index');
     Route::redirect('/chat', '/admin/chats');
     Route::redirect('/mail', '/admin/apptimatic-email');
     Route::middleware('admin.role:master_admin,sub_admin,admin,support')

@@ -4,13 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Support\HybridUiResponder;
+use App\Support\UiFeature;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class ChatController extends Controller
 {
-    public function index(Request $request): View
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $user = $request->user();
 
         $projectsQuery = Project::query()
@@ -40,9 +46,45 @@ class ChatController extends Controller
             fn ($project) => (int) ($project->unread_count ?? 0)
         );
 
-        return view('admin.chats.index', [
+        $payload = [
             'projects' => $projects,
             'pageUnreadTotal' => $pageUnreadTotal,
-        ]);
+        ];
+
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_CHATS_INDEX,
+            'admin.chats.index',
+            $payload,
+            'Admin/Chats/Index',
+            $this->indexInertiaProps($projects, $pageUnreadTotal)
+        );
+    }
+
+    private function indexInertiaProps(
+        LengthAwarePaginator $projects,
+        int $pageUnreadTotal
+    ): array {
+        return [
+            'pageTitle' => 'Chat',
+            'pageUnreadTotal' => $pageUnreadTotal,
+            'routes' => [
+                'projects_index' => route('admin.projects.index'),
+            ],
+            'projects' => [
+                'data' => collect($projects->items())->map(function (Project $project) {
+                    return [
+                        'id' => $project->id,
+                        'name' => $project->name,
+                        'status' => $project->status,
+                        'unread_count' => (int) ($project->unread_count ?? 0),
+                        'routes' => [
+                            'chat' => route('admin.projects.chat', $project),
+                        ],
+                    ];
+                })->values()->all(),
+                'links' => $projects->toArray()['links'] ?? [],
+            ],
+        ];
     }
 }
