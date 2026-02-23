@@ -12,6 +12,8 @@ const LARGE_UPLOAD_LIMIT_BYTES = 2 * 1024 * 1024;
 const LIVE_FILTER_DEBOUNCE_MS = 320;
 
 const CRITICAL_ROUTE_PATTERNS = [
+    /(^|\/)__ui(\/|$)/i,
+    /(^|\/)admin\/expenses\/recurring(\/|$)/i,
     /(^|\/)(login|logout|register)(\/|$)/i,
     /(^|\/)(password|forgot-password|reset-password)(\/|$)/i,
     /(^|\/)(two-factor|2fa)(\/|$)/i,

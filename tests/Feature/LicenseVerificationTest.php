@@ -169,9 +169,9 @@ class LicenseVerificationTest extends TestCase
         $previousSecret = getenv('AI_VERIFY_SECRET');
         $previousTolerance = getenv('API_SIGNATURE_TOLERANCE_SECONDS');
 
-        putenv('AI_REQUIRE_SIGNED_VERIFY=true');
-        putenv('AI_VERIFY_SECRET=test-secret');
-        putenv('API_SIGNATURE_TOLERANCE_SECONDS=600');
+        $this->setEnv('AI_REQUIRE_SIGNED_VERIFY', 'true');
+        $this->setEnv('AI_VERIFY_SECRET', 'test-secret');
+        $this->setEnv('API_SIGNATURE_TOLERANCE_SECONDS', '600');
 
         try {
             Setting::setValue('auto_bind_domains', 1);
@@ -187,7 +187,7 @@ class LicenseVerificationTest extends TestCase
 
             $timestamp = (string) time();
             $body = json_encode($payload);
-            $signature = hash_hmac('sha256', $timestamp . '.' . $body, 'test-secret');
+            $signature = hash_hmac('sha256', $timestamp.'.'.$body, 'test-secret');
 
             $this->withHeaders([
                 'X-Timestamp' => $timestamp,
@@ -257,9 +257,20 @@ class LicenseVerificationTest extends TestCase
     {
         if ($value === false || $value === null) {
             putenv($key);
+            unset($_ENV[$key], $_SERVER[$key]);
+
             return;
         }
 
-        putenv($key . '=' . $value);
+        putenv($key.'='.$value);
+        $_ENV[$key] = (string) $value;
+        $_SERVER[$key] = (string) $value;
+    }
+
+    private function setEnv(string $key, string $value): void
+    {
+        putenv($key.'='.$value);
+        $_ENV[$key] = $value;
+        $_SERVER[$key] = $value;
     }
 }
