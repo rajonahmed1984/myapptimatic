@@ -54,6 +54,16 @@
         "test": [
             "@php artisan test"
         ],
+        "phase5:verify": [
+            "@php artisan test --filter=UiParityTest",
+            "@php artisan test --filter=ActionContractParityTest",
+            "@php artisan test --filter=NoBreakSmokeTest",
+            "npm run build",
+            "@php artisan config:cache",
+            "@php artisan route:cache",
+            "@php artisan test",
+            "@php artisan optimize:clear --except=cache"
+        ],
         "ci": [
             "@lint",
             "@test"
