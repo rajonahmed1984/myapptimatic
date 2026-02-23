@@ -34,6 +34,8 @@ class UiFeature
 
     public const ADMIN_FINANCE_PAYMENT_METHODS_INDEX = 'admin_finance_payment_methods_index';
 
+    public const ADMIN_ORDERS_INDEX = 'admin_orders_index';
+
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -60,6 +62,7 @@ class UiFeature
             self::ADMIN_FINANCE_REPORTS_INDEX => self::enabled(self::ADMIN_FINANCE_REPORTS_INDEX),
             self::ADMIN_SUPPORT_TICKETS_INDEX => self::enabled(self::ADMIN_SUPPORT_TICKETS_INDEX),
             self::ADMIN_FINANCE_PAYMENT_METHODS_INDEX => self::enabled(self::ADMIN_FINANCE_PAYMENT_METHODS_INDEX),
+            self::ADMIN_ORDERS_INDEX => self::enabled(self::ADMIN_ORDERS_INDEX),
         ];
     }
 }

@@ -3,24 +3,31 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Models\Plan;
 use App\Models\License;
 use App\Models\LicenseDomain;
-use App\Support\SystemLogger;
-use App\Services\BillingService;
+use App\Models\Order;
+use App\Models\Plan;
 use App\Services\AdminNotificationService;
+use App\Services\BillingService;
 use App\Services\ClientNotificationService;
+use App\Support\HybridUiResponder;
+use App\Support\SystemLogger;
+use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class OrderController extends Controller
 {
-    public function index(Request $request)
-    {
+    public function index(
+        Request $request,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $status = $request->query('status');
         $allowed = ['pending', 'accepted', 'cancelled'];
 
@@ -32,10 +39,20 @@ class OrderController extends Controller
             $ordersQuery->where('status', $status);
         }
 
-        return view('admin.orders.index', [
-            'orders' => $ordersQuery->paginate(25),
+        $orders = $ordersQuery->paginate(25);
+        $payload = [
+            'orders' => $orders,
             'status' => $status,
-        ]);
+        ];
+
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_ORDERS_INDEX,
+            'admin.orders.index',
+            $payload,
+            'Admin/Orders/Index',
+            $this->indexInertiaProps($orders, $status)
+        );
     }
 
     public function show(Order $order)
@@ -68,8 +85,7 @@ class OrderController extends Controller
         Order $order,
         AdminNotificationService $adminNotifications,
         ClientNotificationService $clientNotifications
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         if ($order->status !== 'pending') {
             return back()->with('status', 'Order already processed.');
         }
@@ -301,5 +317,59 @@ class OrderController extends Controller
         }
 
         return $value;
+    }
+
+    private function indexInertiaProps(LengthAwarePaginator $orders, ?string $status): array
+    {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return [
+            'pageTitle' => 'Orders',
+            'status' => (string) ($status ?? ''),
+            'routes' => [
+                'index' => route('admin.orders.index'),
+            ],
+            'orders' => collect($orders->items())->map(function (Order $order) use ($dateFormat) {
+                $plan = $order->plan;
+                $product = $plan?->product;
+                $service = $product
+                    ? $product->name.' - '.($plan?->name ?? '')
+                    : ($plan?->name ?? '--');
+
+                $invoice = $order->invoice;
+                $invoiceNumber = '--';
+                $invoiceAmount = '--';
+
+                if ($invoice) {
+                    $invoiceNumber = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
+                    $invoiceAmount = trim((string) (($invoice->currency ?? '').' '.number_format((float) ($invoice->total ?? 0), 2)));
+                }
+
+                return [
+                    'id' => $order->id,
+                    'order_number' => (string) ($order->order_number ?? $order->id),
+                    'customer_name' => (string) ($order->customer?->name ?? '--'),
+                    'service' => (string) $service,
+                    'status' => (string) $order->status,
+                    'status_label' => ucfirst((string) $order->status),
+                    'invoice_number' => $invoiceNumber,
+                    'invoice_amount' => $invoiceAmount,
+                    'created_at_display' => $order->created_at?->format($dateFormat) ?? '--',
+                    'can_process' => (string) $order->status === 'pending',
+                    'routes' => [
+                        'show' => route('admin.orders.show', $order),
+                        'invoice_show' => $invoice ? route('admin.invoices.show', $invoice) : null,
+                        'approve' => route('admin.orders.approve', $order),
+                        'cancel' => route('admin.orders.cancel', $order),
+                        'destroy' => route('admin.orders.destroy', $order),
+                    ],
+                ];
+            })->values()->all(),
+            'pagination' => [
+                'has_pages' => $orders->hasPages(),
+                'previous_url' => $orders->previousPageUrl(),
+                'next_url' => $orders->nextPageUrl(),
+            ],
+        ];
     }
 }
