@@ -22,4 +22,5 @@ return [
     'admin_payment_gateways_index' => (bool) env('FEATURE_ADMIN_PAYMENT_GATEWAYS_INDEX', false),
     'admin_commission_payouts_index' => (bool) env('FEATURE_ADMIN_COMMISSION_PAYOUTS_INDEX', false),
     'admin_accounting_index' => (bool) env('FEATURE_ADMIN_ACCOUNTING_INDEX', false),
+    'admin_finance_reports_index' => (bool) env('FEATURE_ADMIN_FINANCE_REPORTS_INDEX', false),
 ];

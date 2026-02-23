@@ -5,21 +5,27 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AccountingEntry;
 use App\Models\ExpenseCategory;
-use App\Models\Income;
 use App\Models\IncomeCategory;
 use App\Models\Invoice;
 use App\Models\Setting;
 use App\Services\ExpenseEntryService;
 use App\Services\IncomeEntryService;
 use App\Support\Currency;
+use App\Support\HybridUiResponder;
+use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 
 class FinanceReportController extends Controller
 {
-    public function index(Request $request, IncomeEntryService $incomeService, ExpenseEntryService $expenseService): View
-    {
+    public function index(
+        Request $request,
+        IncomeEntryService $incomeService,
+        ExpenseEntryService $expenseService,
+        HybridUiResponder $hybridUiResponder
+    ): View|InertiaResponse {
         $startDate = $request->query('start_date')
             ? Carbon::parse($request->query('start_date'))->startOfDay()
             : now()->startOfMonth();
@@ -118,6 +124,7 @@ class FinanceReportController extends Controller
             ->groupBy(fn ($entry) => $entry['category_id'] ?? 'system')
             ->map(function ($items) {
                 $first = $items->first();
+
                 return [
                     'category_id' => $first['category_id'],
                     'name' => $first['category_name'] ?? 'System',
@@ -131,6 +138,7 @@ class FinanceReportController extends Controller
             ->groupBy('category_id')
             ->map(function ($items) {
                 $first = $items->first();
+
                 return [
                     'category_id' => $first['category_id'],
                     'name' => $first['category_name'],
@@ -145,6 +153,7 @@ class FinanceReportController extends Controller
             ->groupBy(fn ($entry) => ($entry['person_type'] ?? 'person').':'.($entry['person_id'] ?? ''))
             ->map(function ($items) {
                 $first = $items->first();
+
                 return [
                     'label' => $first['person_name'],
                     'total' => (float) collect($items)->sum('amount'),
@@ -178,7 +187,7 @@ class FinanceReportController extends Controller
         }
         $currencySymbol = Currency::symbol($currencyCode);
 
-        return view('admin.finance.reports.index', [
+        $payload = [
             'filters' => [
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
@@ -210,7 +219,103 @@ class FinanceReportController extends Controller
             'expenseCategories' => $expenseCategories,
             'currencyCode' => $currencyCode,
             'currencySymbol' => $currencySymbol,
-        ]);
+        ];
+
+        return $hybridUiResponder->render(
+            $request,
+            UiFeature::ADMIN_FINANCE_REPORTS_INDEX,
+            'admin.finance.reports.index',
+            $payload,
+            'Admin/Finance/Reports/Index',
+            $this->indexInertiaProps($payload)
+        );
+    }
+
+    private function indexInertiaProps(array $payload): array
+    {
+        return [
+            'pageTitle' => 'Finance Reports',
+            'routes' => [
+                'index' => route('admin.finance.reports.index'),
+                'tax_index' => route('admin.finance.tax.index'),
+            ],
+            'filters' => [
+                'start_date' => (string) data_get($payload, 'filters.start_date', ''),
+                'end_date' => (string) data_get($payload, 'filters.end_date', ''),
+                'income_basis' => (string) data_get($payload, 'filters.income_basis', 'received'),
+                'income_category_id' => (string) (data_get($payload, 'filters.income_category_id') ?? ''),
+                'expense_category_id' => (string) (data_get($payload, 'filters.expense_category_id') ?? ''),
+                'income_sources' => array_values((array) data_get($payload, 'filters.income_sources', [])),
+                'expense_sources' => array_values((array) data_get($payload, 'filters.expense_sources', [])),
+            ],
+            'summary' => [
+                'total_income' => (float) data_get($payload, 'totalIncome', 0),
+                'total_expense' => (float) data_get($payload, 'totalExpense', 0),
+                'net_profit' => (float) data_get($payload, 'netProfit', 0),
+                'received_income' => (float) data_get($payload, 'receivedIncome', 0),
+                'payout_expense' => (float) data_get($payload, 'payoutExpense', 0),
+                'net_cashflow' => (float) data_get($payload, 'netCashflow', 0),
+            ],
+            'tax' => [
+                'taxable_base' => (float) data_get($payload, 'taxableBase', 0),
+                'tax_amount' => (float) data_get($payload, 'taxAmount', 0),
+                'tax_gross' => (float) data_get($payload, 'taxGross', 0),
+                'tax_exclusive' => (float) data_get($payload, 'taxExclusive', 0),
+                'tax_inclusive' => (float) data_get($payload, 'taxInclusive', 0),
+            ],
+            'income_category_totals' => collect(data_get($payload, 'incomeCategoryTotals', []))
+                ->map(function ($row) {
+                    return [
+                        'name' => (string) data_get($row, 'name', 'System'),
+                        'total' => (float) data_get($row, 'total', 0),
+                    ];
+                })->values()->all(),
+            'expense_category_totals' => collect(data_get($payload, 'expenseCategoryTotals', []))
+                ->map(function ($row) {
+                    return [
+                        'name' => (string) data_get($row, 'name', ''),
+                        'total' => (float) data_get($row, 'total', 0),
+                    ];
+                })->values()->all(),
+            'employee_totals' => collect(data_get($payload, 'employeeTotals', []))
+                ->map(function ($row) {
+                    return [
+                        'label' => (string) data_get($row, 'label', ''),
+                        'total' => (float) data_get($row, 'total', 0),
+                    ];
+                })->values()->all(),
+            'trend' => [
+                'labels' => collect(data_get($payload, 'trendLabels', []))->values()->all(),
+                'income' => collect(data_get($payload, 'trendIncome', []))->map(fn ($value) => (float) $value)->values()->all(),
+                'expense' => collect(data_get($payload, 'trendExpense', []))->map(fn ($value) => (float) $value)->values()->all(),
+            ],
+            'month_totals' => collect(data_get($payload, 'monthTotals', []))
+                ->map(function ($row) {
+                    return [
+                        'label' => (string) data_get($row, 'label', ''),
+                        'income' => (float) data_get($row, 'income', 0),
+                        'expense' => (float) data_get($row, 'expense', 0),
+                    ];
+                })->values()->all(),
+            'income_categories' => collect(data_get($payload, 'incomeCategories', []))
+                ->map(function ($category) {
+                    return [
+                        'id' => (int) data_get($category, 'id', 0),
+                        'name' => (string) data_get($category, 'name', ''),
+                    ];
+                })->values()->all(),
+            'expense_categories' => collect(data_get($payload, 'expenseCategories', []))
+                ->map(function ($category) {
+                    return [
+                        'id' => (int) data_get($category, 'id', 0),
+                        'name' => (string) data_get($category, 'name', ''),
+                    ];
+                })->values()->all(),
+            'currency' => [
+                'code' => (string) data_get($payload, 'currencyCode', Currency::DEFAULT),
+                'symbol' => (string) data_get($payload, 'currencySymbol', Currency::symbol(Currency::DEFAULT)),
+            ],
+        ];
     }
 
     private function buildTrends($incomeEntries, $expenseEntries, Carbon $startDate, Carbon $endDate): array
@@ -220,11 +325,13 @@ class FinanceReportController extends Controller
 
         $incomeGroups = $incomeEntries->groupBy(function ($entry) use ($format) {
             $date = $entry['income_date'] ? Carbon::parse($entry['income_date']) : now();
+
             return $date->format($format);
         });
 
         $expenseGroups = $expenseEntries->groupBy(function ($entry) use ($format) {
             $date = $entry['expense_date'] ? Carbon::parse($entry['expense_date']) : now();
+
             return $date->format($format);
         });
 
@@ -254,10 +361,12 @@ class FinanceReportController extends Controller
         $format = 'Y-m';
         $incomeGroups = $incomeEntries->groupBy(function ($entry) use ($format) {
             $date = $entry['income_date'] ? Carbon::parse($entry['income_date']) : now();
+
             return $date->format($format);
         });
         $expenseGroups = $expenseEntries->groupBy(function ($entry) use ($format) {
             $date = $entry['expense_date'] ? Carbon::parse($entry['expense_date']) : now();
+
             return $date->format($format);
         });
 

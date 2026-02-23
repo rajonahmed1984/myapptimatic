@@ -28,6 +28,8 @@ class UiFeature
 
     public const ADMIN_ACCOUNTING_INDEX = 'admin_accounting_index';
 
+    public const ADMIN_FINANCE_REPORTS_INDEX = 'admin_finance_reports_index';
+
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -51,6 +53,7 @@ class UiFeature
             self::ADMIN_PAYMENT_GATEWAYS_INDEX => self::enabled(self::ADMIN_PAYMENT_GATEWAYS_INDEX),
             self::ADMIN_COMMISSION_PAYOUTS_INDEX => self::enabled(self::ADMIN_COMMISSION_PAYOUTS_INDEX),
             self::ADMIN_ACCOUNTING_INDEX => self::enabled(self::ADMIN_ACCOUNTING_INDEX),
+            self::ADMIN_FINANCE_REPORTS_INDEX => self::enabled(self::ADMIN_FINANCE_REPORTS_INDEX),
         ];
     }
 }

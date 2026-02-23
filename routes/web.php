@@ -670,7 +670,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
         ->prefix('finance')
         ->name('finance.')
         ->group(function () {
-            Route::get('/reports', [AdminFinanceReportController::class, 'index'])->name('reports.index');
+            Route::get('/reports', [AdminFinanceReportController::class, 'index'])
+                ->middleware(['react.ui:admin_finance_reports_index', HandleInertiaRequests::class])
+                ->name('reports.index');
             Route::get('/payment-methods', [AdminPaymentMethodController::class, 'index'])->name('payment-methods.index');
             Route::get('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'show'])->name('payment-methods.show');
             Route::post('/payment-methods', [AdminPaymentMethodController::class, 'store'])->name('payment-methods.store');
