@@ -853,11 +853,26 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::delete('accounting/{entry}', [AdminAccountingController::class, 'destroy'])->name('accounting.destroy');
     Route::get('settings', [SettingController::class, 'edit'])->name('settings.edit');
     Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
-    Route::get('logs/activity', [SystemLogController::class, 'index'])->name('logs.activity')->defaults('type', 'activity');
-    Route::get('logs/admin', [SystemLogController::class, 'index'])->name('logs.admin')->defaults('type', 'admin');
-    Route::get('logs/module', [SystemLogController::class, 'index'])->name('logs.module')->defaults('type', 'module');
-    Route::get('logs/email', [SystemLogController::class, 'index'])->name('logs.email')->defaults('type', 'email');
-    Route::get('logs/ticket-mail-import', [SystemLogController::class, 'index'])->name('logs.ticket-mail-import')->defaults('type', 'ticket-mail-import');
+    Route::get('logs/activity', [SystemLogController::class, 'index'])
+        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->name('logs.activity')
+        ->defaults('type', 'activity');
+    Route::get('logs/admin', [SystemLogController::class, 'index'])
+        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->name('logs.admin')
+        ->defaults('type', 'admin');
+    Route::get('logs/module', [SystemLogController::class, 'index'])
+        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->name('logs.module')
+        ->defaults('type', 'module');
+    Route::get('logs/email', [SystemLogController::class, 'index'])
+        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->name('logs.email')
+        ->defaults('type', 'email');
+    Route::get('logs/ticket-mail-import', [SystemLogController::class, 'index'])
+        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->name('logs.ticket-mail-import')
+        ->defaults('type', 'ticket-mail-import');
     Route::post('logs/email/{systemLog}/resend', [SystemLogController::class, 'resend'])->name('logs.email.resend');
     Route::delete('logs/email/{systemLog}', [SystemLogController::class, 'destroy'])->name('logs.email.delete');
     

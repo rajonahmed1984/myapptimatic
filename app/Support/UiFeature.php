@@ -18,6 +18,8 @@ class UiFeature
 
     public const ADMIN_USERS_ACTIVITY_SUMMARY_INDEX = 'admin_users_activity_summary_index';
 
+    public const ADMIN_LOGS_INDEX = 'admin_logs_index';
+
     public static function enabled(string $feature): bool
     {
         return (bool) config("features.{$feature}", false);
@@ -36,6 +38,7 @@ class UiFeature
             self::ADMIN_EXPENSES_RECURRING_EDIT => self::enabled(self::ADMIN_EXPENSES_RECURRING_EDIT),
             self::ADMIN_AUTOMATION_STATUS_INDEX => self::enabled(self::ADMIN_AUTOMATION_STATUS_INDEX),
             self::ADMIN_USERS_ACTIVITY_SUMMARY_INDEX => self::enabled(self::ADMIN_USERS_ACTIVITY_SUMMARY_INDEX),
+            self::ADMIN_LOGS_INDEX => self::enabled(self::ADMIN_LOGS_INDEX),
         ];
     }
 }

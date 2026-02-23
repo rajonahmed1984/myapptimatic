@@ -16,6 +16,7 @@ const CRITICAL_ROUTE_PATTERNS = [
     /(^|\/)admin\/expenses\/recurring(\/|$)/i,
     /(^|\/)admin\/automation-status(\/|$)/i,
     /(^|\/)admin\/users\/activity-summary(\/|$)/i,
+    /(^|\/)admin\/logs(\/|$)/i,
     /(^|\/)(login|logout|register)(\/|$)/i,
     /(^|\/)(password|forgot-password|reset-password)(\/|$)/i,
     /(^|\/)(two-factor|2fa)(\/|$)/i,
