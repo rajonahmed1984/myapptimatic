@@ -94,14 +94,25 @@ use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskActivityController;
 use App\Http\Controllers\ProjectTaskViewController;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Support\UiFeature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
 use App\Models\Project;
+use Inertia\Inertia;
 
 Route::get('/', [PublicProductController::class, 'index'])
     ->name('products.public.home');
+
+Route::get('/__ui/react-sandbox', function () {
+    abort_unless(UiFeature::enabled(UiFeature::REACT_SANDBOX), 404);
+
+    return Inertia::render('Sandbox', [
+        'generated_at' => now()->toIso8601String(),
+    ]);
+})->middleware(HandleInertiaRequests::class)->name('ui.react-sandbox');
 
 Route::redirect('/admin', '/admin/login');
 Route::get('/employee', fn () => redirect()->route('employee.login'))->name('employee.home');
@@ -612,10 +623,14 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
             Route::put('/categories/{category}', [AdminExpenseCategoryController::class, 'update'])->name('categories.update');
             Route::delete('/categories/{category}', [AdminExpenseCategoryController::class, 'destroy'])->name('categories.destroy');
 
-            Route::get('/recurring', [AdminRecurringExpenseController::class, 'index'])->name('recurring.index');
+            Route::get('/recurring', [AdminRecurringExpenseController::class, 'index'])
+                ->middleware(['react.ui:admin_expenses_recurring_index', HandleInertiaRequests::class])
+                ->name('recurring.index');
             Route::get('/recurring/create', [AdminRecurringExpenseController::class, 'create'])->name('recurring.create');
             Route::post('/recurring', [AdminRecurringExpenseController::class, 'store'])->name('recurring.store');
-            Route::get('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'show'])->name('recurring.show');
+            Route::get('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'show'])
+                ->middleware(['react.ui:admin_expenses_recurring_show', HandleInertiaRequests::class])
+                ->name('recurring.show');
             Route::get('/recurring/{recurringExpense}/edit', [AdminRecurringExpenseController::class, 'edit'])->name('recurring.edit');
             Route::put('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'update'])->name('recurring.update');
             Route::post('/recurring/{recurringExpense}/advance', [AdminRecurringExpenseController::class, 'storeAdvance'])->name('recurring.advance.store');

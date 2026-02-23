@@ -1,21 +1,21 @@
 <?php
 
+use App\Http\Middleware\TrustProxies;
+use App\Providers\AppServiceProvider;
+use App\Providers\AuthServiceProvider;
+use App\Support\AjaxResponse;
+use App\Support\AuthFresh\AdminAccess;
+use App\Support\AuthFresh\Portal;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use App\Providers\AuthServiceProvider;
-use App\Providers\AppServiceProvider;
-use App\Http\Middleware\TrustProxies;
-use App\Support\AjaxResponse;
-use App\Support\AuthFresh\AdminAccess;
-use App\Support\AuthFresh\Portal;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -100,6 +100,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'user.activity' => \App\Http\Middleware\TrackAuthenticatedUserActivity::class,
             'nocache' => \App\Http\Middleware\NoCacheHeaders::class,
             'login.trace' => \App\Http\Middleware\LoginTrace::class,
+            'react.ui' => \App\Http\Middleware\ReactUiGate::class,
         ]);
 
         $middleware->web(append: [

@@ -22,7 +22,7 @@ return new class extends Migration
         DB::table('project_task_messages')
             ->join('project_tasks', 'project_tasks.id', '=', 'project_task_messages.project_task_id')
             ->select([
-                'project_task_messages.id as id',
+                'project_task_messages.id as source_id',
                 'project_tasks.project_id as project_id',
                 'project_task_messages.author_type',
                 'project_task_messages.author_id',
@@ -49,7 +49,7 @@ return new class extends Migration
                 if ($payload) {
                     DB::table('project_messages')->insert($payload);
                 }
-            }, 'id', 'id');
+            }, 'project_task_messages.id', 'source_id');
     }
 
     public function down(): void
