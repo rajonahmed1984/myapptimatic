@@ -8,7 +8,8 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class PaidHolidayController extends Controller
 {
@@ -18,7 +19,7 @@ class PaidHolidayController extends Controller
         'Annual/Earned leave',
     ];
 
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         $validated = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
@@ -45,16 +46,37 @@ class PaidHolidayController extends Controller
 
         $holidayTypes = self::HOLIDAY_TYPES;
 
-        return view('admin.hr.paid-holidays.index', compact(
-            'holidays',
-            'selectedMonth',
-            'holidayTypes',
-            'totalDaysInMonth',
-            'paidHolidayCount',
-            'workingDays',
-            'expectedHoursFullTime',
-            'expectedHoursPartTime'
-        ));
+        return Inertia::render('Admin/Hr/PaidHolidays/Index', [
+            'pageTitle' => 'Paid Holidays',
+            'selectedMonth' => $selectedMonth,
+            'holidayTypes' => $holidayTypes,
+            'holidays' => $holidays->through(fn (PaidHoliday $holiday) => [
+                'id' => $holiday->id,
+                'holiday_date' => $holiday->holiday_date?->format('Y-m-d') ?? '--',
+                'name' => $holiday->name,
+                'note' => $holiday->note,
+                'is_paid' => (bool) $holiday->is_paid,
+                'routes' => [
+                    'destroy' => route('admin.hr.paid-holidays.destroy', $holiday),
+                ],
+            ])->values(),
+            'summary' => [
+                'totalDaysInMonth' => $totalDaysInMonth,
+                'paidHolidayCount' => $paidHolidayCount,
+                'workingDays' => $workingDays,
+                'expectedHoursFullTime' => $expectedHoursFullTime,
+                'expectedHoursPartTime' => $expectedHoursPartTime,
+            ],
+            'pagination' => [
+                'previous_url' => $holidays->previousPageUrl(),
+                'next_url' => $holidays->nextPageUrl(),
+                'has_pages' => $holidays->hasPages(),
+            ],
+            'routes' => [
+                'index' => route('admin.hr.paid-holidays.index'),
+                'store' => route('admin.hr.paid-holidays.store'),
+            ],
+        ]);
     }
 
     public function store(Request $request): RedirectResponse

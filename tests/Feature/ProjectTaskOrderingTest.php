@@ -87,8 +87,11 @@ class ProjectTaskOrderingTest extends TestCase
         $response->assertOk();
 
         $today = now()->toDateString();
-        $content = $this->extractRenderableHtml($response->getContent());
-        $this->assertStringContainsString('name="tasks[0][start_date]" value="'.$today.'"', $content);
+        preg_match('/data-page="([^"]+)"/', $response->getContent(), $matches);
+        $this->assertArrayHasKey(1, $matches);
+
+        $payload = json_decode(html_entity_decode($matches[1], ENT_QUOTES), true);
+        $this->assertSame($today, data_get($payload, 'props.tasks.0.start_date'));
     }
 
     private function extractRenderableHtml(string $content): string

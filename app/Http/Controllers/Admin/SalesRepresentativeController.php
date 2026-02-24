@@ -259,7 +259,7 @@ class SalesRepresentativeController extends Controller
         SalesRepresentative $salesRep,
         CommissionService $commissionService,
         SalesRepBalanceService $salesRepBalanceService
-    ) {
+    ): InertiaResponse {
         $salesRep->load(['user:id,name,email', 'employee:id,name']);
         $tab = $request->query('tab', 'profile');
         $allowedTabs = ['profile', 'services', 'invoices', 'emails', 'log', 'earnings', 'payouts', 'projects'];
@@ -371,18 +371,134 @@ class SalesRepresentativeController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'customer_id', 'status']);
 
-        return view('admin.sales-reps.show', [
-            'rep' => $salesRep,
+        return Inertia::render('Admin/SalesReps/Show', [
+            'pageTitle' => $salesRep->name,
+            'rep' => [
+                'id' => $salesRep->id,
+                'name' => $salesRep->name,
+                'email' => $salesRep->email,
+                'phone' => $salesRep->phone,
+                'status' => $salesRep->status,
+                'status_label' => ucfirst((string) $salesRep->status),
+                'user_name' => $salesRep->user?->name,
+                'user_email' => $salesRep->user?->email,
+                'employee_name' => $salesRep->employee?->name,
+                'avatar_url' => $salesRep->avatar_path ? asset('storage/'.$salesRep->avatar_path) : null,
+                'nid_url' => $salesRep->nid_path
+                    ? route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $salesRep->id, 'doc' => 'nid'], false)
+                    : null,
+                'nid_is_image' => $salesRep->nid_path
+                    ? Str::endsWith(strtolower($salesRep->nid_path), ['.jpg', '.jpeg', '.png', '.webp'])
+                    : false,
+                'cv_url' => $salesRep->cv_path
+                    ? route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $salesRep->id, 'doc' => 'cv'], false)
+                    : null,
+            ],
             'tab' => $tab,
-            'summary' => $summary,
-            'recentEarnings' => $recentEarnings,
-            'recentPayouts' => $recentPayouts,
-            'subscriptions' => $subscriptions,
-            'invoiceEarnings' => $invoiceEarnings,
-            'projects' => $projects,
-            'projectStatusCounts' => $projectStatusCounts,
-            'projectTaskStatusCounts' => $projectTaskStatusCounts,
-            'advanceProjects' => $advanceProjects,
+            'tabs' => [
+                ['key' => 'profile', 'label' => 'Profile'],
+                ['key' => 'services', 'label' => 'Products / Services'],
+                ['key' => 'projects', 'label' => 'Projects'],
+                ['key' => 'invoices', 'label' => 'Invoices'],
+                ['key' => 'earnings', 'label' => 'Recent Earnings'],
+                ['key' => 'payouts', 'label' => 'Recent Payouts'],
+                ['key' => 'emails', 'label' => 'Emails'],
+                ['key' => 'log', 'label' => 'Log'],
+            ],
+            'summary' => [
+                'total_earned' => (float) ($summary['total_earned'] ?? 0),
+                'payable' => (float) ($summary['payable'] ?? 0),
+                'paid' => (float) ($summary['paid'] ?? 0),
+                'advance_paid' => (float) ($summary['advance_paid'] ?? 0),
+                'overpaid' => (float) ($summary['overpaid'] ?? 0),
+                'outstanding' => (float) ($summary['outstanding'] ?? 0),
+                'payable_label' => (string) ($summary['payable_label'] ?? 'Settled'),
+                'project_earned' => (float) ($summary['project_earned'] ?? 0),
+                'maintenance_earned' => (float) ($summary['maintenance_earned'] ?? 0),
+            ],
+            'recentEarnings' => $recentEarnings->map(function (CommissionEarning $earning) {
+                return [
+                    'id' => $earning->id,
+                    'source_type' => $earning->source_type,
+                    'source_id' => $earning->source_id,
+                    'amount' => (float) $earning->amount,
+                    'currency' => $earning->currency,
+                    'status' => $earning->status,
+                    'earned_at' => $earning->earned_at?->format('Y-m-d H:i') ?? '--',
+                ];
+            })->values(),
+            'recentPayouts' => $recentPayouts->map(function (CommissionPayout $payout) {
+                return [
+                    'id' => $payout->id,
+                    'type' => $payout->type,
+                    'status' => $payout->status,
+                    'total_amount' => (float) $payout->total_amount,
+                    'currency' => $payout->currency,
+                    'paid_at' => $payout->paid_at?->format('Y-m-d H:i') ?? '--',
+                    'reference' => $payout->reference,
+                ];
+            })->values(),
+            'subscriptions' => $subscriptions->map(function (Subscription $subscription) {
+                return [
+                    'id' => $subscription->id,
+                    'customer_name' => $subscription->customer?->name ?? '--',
+                    'plan_name' => $subscription->plan?->name ?? '--',
+                    'status' => ucfirst((string) ($subscription->status ?? '--')),
+                    'next_invoice_at' => $subscription->next_invoice_at?->format('Y-m-d') ?? '--',
+                ];
+            })->values(),
+            'invoiceEarnings' => $invoiceEarnings->map(function (CommissionEarning $earning) {
+                $invoice = $earning->invoice;
+
+                return [
+                    'id' => $earning->id,
+                    'invoice_number' => $invoice ? '#'.($invoice->number ?? $invoice->id) : '--',
+                    'invoice_show_route' => $invoice ? route('admin.invoices.show', $invoice) : null,
+                    'customer_name' => $invoice?->customer?->name ?? '--',
+                    'project_name' => $earning->project?->name ?? '--',
+                    'status' => ucfirst((string) ($invoice->status ?? '--')),
+                    'total_display' => $invoice ? ($invoice->currency.' '.number_format((float) $invoice->total, 2)) : '--',
+                    'issue_date' => $invoice?->issue_date?->format('Y-m-d') ?? '--',
+                    'due_date' => $invoice?->due_date?->format('Y-m-d') ?? '--',
+                ];
+            })->values(),
+            'projects' => $projects->map(function (Project $project) use ($projectTaskStatusCounts) {
+                $taskCounts = collect($projectTaskStatusCounts->get($project->id, []));
+
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'customer_name' => $project->customer?->name ?? '--',
+                    'status' => ucfirst((string) $project->status),
+                    'route' => route('admin.projects.show', $project),
+                    'tasks' => [
+                        'pending' => (int) ($taskCounts->get('pending', 0) + $taskCounts->get('todo', 0)),
+                        'in_progress' => (int) $taskCounts->get('in_progress', 0),
+                        'blocked' => (int) $taskCounts->get('blocked', 0),
+                        'completed' => (int) ($taskCounts->get('completed', 0) + $taskCounts->get('done', 0)),
+                    ],
+                ];
+            })->values(),
+            'projectStatusCounts' => $projectStatusCounts->all(),
+            'advanceProjects' => $advanceProjects->map(function (Project $project) {
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'status' => $project->status,
+                    'customer_name' => $project->customer?->name,
+                ];
+            })->values(),
+            'paymentMethods' => PaymentMethod::commissionPayoutDropdownOptions()
+                ->map(fn ($method) => ['code' => $method->code, 'name' => $method->name])
+                ->values(),
+            'routes' => [
+                'index' => route('admin.sales-reps.index'),
+                'edit' => route('admin.sales-reps.edit', $salesRep),
+                'impersonate' => route('admin.sales-reps.impersonate', $salesRep),
+                'advance_payment' => route('admin.sales-reps.advance-payment', $salesRep),
+                'show_tab' => route('admin.sales-reps.show', ['sales_rep' => $salesRep->id]),
+                'commission_payout_create' => route('admin.commission-payouts.create', ['sales_rep_id' => $salesRep->id]),
+            ],
         ]);
     }
 

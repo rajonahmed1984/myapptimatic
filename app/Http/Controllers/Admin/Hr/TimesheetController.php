@@ -9,11 +9,12 @@ use App\Models\PaidHoliday;
 use App\Services\EmployeeWorkSummaryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class TimesheetController extends Controller
 {
-    public function index(Request $request, EmployeeWorkSummaryService $workSummaryService): View
+    public function index(Request $request, EmployeeWorkSummaryService $workSummaryService): InertiaResponse
     {
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
@@ -108,7 +109,7 @@ class TimesheetController extends Controller
 
                     $workDate = Carbon::parse($holidayDate);
                     $requiredSeconds = $workSummaryService->requiredSeconds($selectedEmployee);
-                    $synthetic = new \stdClass();
+                    $synthetic = new \stdClass;
                     $synthetic->employee_id = $selectedEmployee->id;
                     $synthetic->employee = $selectedEmployee;
                     $synthetic->work_date = $workDate;
@@ -143,6 +144,48 @@ class TimesheetController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('admin.hr.work-logs.index', compact('dailyLogs', 'employees', 'selectedMonth', 'selectedEmployeeId'));
+        $formatDuration = function (int $seconds): string {
+            $hours = (int) floor($seconds / 3600);
+            $minutes = (int) floor(($seconds % 3600) / 60);
+            $secs = (int) ($seconds % 60);
+
+            return sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
+        };
+
+        return Inertia::render('Admin/Hr/WorkLogs/Index', [
+            'pageTitle' => 'Work Logs',
+            'selectedMonth' => $selectedMonth,
+            'selectedEmployeeId' => $selectedEmployeeId,
+            'employees' => $employees->map(fn (Employee $employee) => [
+                'id' => $employee->id,
+                'name' => $employee->name,
+            ])->values(),
+            'dailyLogs' => $dailyLogs->getCollection()->map(function ($log) use ($formatDuration) {
+                $workDate = $log->work_date instanceof Carbon
+                    ? $log->work_date->format('Y-m-d')
+                    : Carbon::parse((string) $log->work_date)->format('Y-m-d');
+
+                return [
+                    'employee_name' => $log->employee?->name ?? '--',
+                    'work_date' => $workDate,
+                    'sessions_count' => (int) ($log->sessions_count ?? 0),
+                    'first_started_at' => $log->first_started_at ? Carbon::parse((string) $log->first_started_at)->format('H:i:s') : '--',
+                    'last_activity_at' => $log->last_activity_at ? Carbon::parse((string) $log->last_activity_at)->format('H:i:s') : '--',
+                    'active_duration' => $formatDuration((int) ($log->active_seconds ?? 0)),
+                    'required_duration' => $formatDuration((int) ($log->required_seconds ?? 0)),
+                    'coverage_percent' => (int) ($log->coverage_percent ?? 0),
+                    'currency' => $log->currency ?? 'BDT',
+                    'estimated_amount' => number_format((float) ($log->estimated_amount ?? 0), 2),
+                ];
+            })->values(),
+            'pagination' => [
+                'previous_url' => $dailyLogs->previousPageUrl(),
+                'next_url' => $dailyLogs->nextPageUrl(),
+                'has_pages' => $dailyLogs->hasPages(),
+            ],
+            'routes' => [
+                'index' => route('admin.hr.timesheets.index'),
+            ],
+        ]);
     }
 }

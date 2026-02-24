@@ -12,11 +12,12 @@ use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ExpenseDashboardController extends Controller
 {
-    public function index(Request $request, ExpenseEntryService $entryService, GeminiService $geminiService): View
+    public function index(Request $request, ExpenseEntryService $entryService, GeminiService $geminiService): InertiaResponse
     {
         $startDate = $request->query('start_date')
             ? Carbon::parse($request->query('start_date'))->startOfDay()
@@ -66,6 +67,7 @@ class ExpenseDashboardController extends Controller
             ->groupBy('category_id')
             ->map(function ($items) {
                 $first = $items->first();
+
                 return [
                     'category_id' => $first['category_id'],
                     'name' => $first['category_name'],
@@ -80,6 +82,7 @@ class ExpenseDashboardController extends Controller
             ->groupBy(fn ($entry) => ($entry['person_type'] ?? 'person').':'.($entry['person_id'] ?? ''))
             ->map(function ($items) {
                 $first = $items->first();
+
                 return [
                     'label' => $first['person_name'],
                     'total' => (float) collect($items)->sum('amount'),
@@ -93,6 +96,7 @@ class ExpenseDashboardController extends Controller
             ->groupBy(fn ($entry) => (string) ($entry['person_id'] ?? ''))
             ->map(function ($items) {
                 $first = $items->first();
+
                 return [
                     'label' => $first['person_name'],
                     'total' => (float) collect($items)->sum('amount'),
@@ -124,6 +128,7 @@ class ExpenseDashboardController extends Controller
         ])->groupBy('category_id')
             ->map(function ($items) {
                 $first = $items->first();
+
                 return [
                     'category_id' => $first['category_id'],
                     'name' => $first['category_name'],
@@ -162,30 +167,41 @@ class ExpenseDashboardController extends Controller
             $forceAiRefresh
         );
 
-        return view('admin.expenses.dashboard', [
+        return Inertia::render('Admin/Expenses/Dashboard', [
+            'pageTitle' => 'Expense Dashboard',
             'filters' => $filters,
             'expenseTotal' => $expenseTotal,
             'incomeReceived' => $incomeReceived,
             'payoutExpenseTotal' => $payoutExpenseTotal,
             'netIncome' => $netIncome,
             'netCashflow' => $netCashflow,
-            'categoryTotals' => $categoryTotals,
-            'employeeTotals' => $employeeTotals,
-            'salesRepTotals' => $salesRepTotals,
+            'categoryTotals' => $categoryTotals->values(),
+            'employeeTotals' => $employeeTotals->values(),
+            'salesRepTotals' => $salesRepTotals->values(),
             'totalAmount' => $totalAmount,
             'monthlyTotal' => $monthlyTotal,
             'yearlyTotal' => $yearlyTotal,
-            'topCategories' => $topCategories,
+            'topCategories' => $topCategories->values(),
             'trendLabels' => $labels,
             'trendExpenses' => $expenseSeries,
             'trendIncome' => $incomeSeries,
-            'categories' => $categories,
-            'recurringTemplates' => $recurringTemplates,
-            'peopleOptions' => $peopleOptions,
+            'categories' => $categories->map(fn (ExpenseCategory $category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])->values(),
+            'recurringTemplates' => $recurringTemplates->map(fn (RecurringExpense $template) => [
+                'id' => $template->id,
+                'title' => $template->title,
+            ])->values(),
+            'peopleOptions' => collect($peopleOptions)->values(),
             'currencyCode' => $currencyCode,
             'currencySymbol' => $currencySymbol,
             'aiSummary' => $aiSummary,
             'aiError' => $aiError,
+            'routes' => [
+                'index' => route('admin.expenses.dashboard'),
+                'refresh_ai' => route('admin.expenses.dashboard', array_merge($request->query(), ['ai' => 'refresh'])),
+            ],
         ]);
     }
 
@@ -196,6 +212,7 @@ class ExpenseDashboardController extends Controller
 
         $expenseGroups = $entries->groupBy(function ($entry) use ($format) {
             $date = $entry['expense_date'] ? Carbon::parse($entry['expense_date']) : now();
+
             return $date->format($format);
         });
 
@@ -246,7 +263,7 @@ class ExpenseDashboardController extends Controller
             return [null, 'Google AI is disabled.'];
         }
 
-        $cacheKey = 'ai:expense-dashboard:' . md5(json_encode([
+        $cacheKey = 'ai:expense-dashboard:'.md5(json_encode([
             'start' => $startDate->toDateString(),
             'end' => $endDate->toDateString(),
             'filters' => $filters,
@@ -268,11 +285,13 @@ class ExpenseDashboardController extends Controller
             ) {
                 $topCategories = collect($categoryTotals)->take(3)->map(function ($item) use ($currencyCode) {
                     $amount = number_format((float) ($item['total'] ?? 0), 2);
+
                     return "{$item['name']}: {$currencyCode} {$amount}";
                 })->implode(', ');
 
                 $topEmployees = collect($employeeTotals)->take(3)->map(function ($item) use ($currencyCode) {
                     $amount = number_format((float) ($item['total'] ?? 0), 2);
+
                     return "{$item['label']}: {$currencyCode} {$amount}";
                 })->implode(', ');
 

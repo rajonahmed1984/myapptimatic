@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Admin\Hr;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreEmployeeUserRequest;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeeCompensation;
-use App\Models\EmployeeSession;
 use App\Models\EmployeePayout;
+use App\Models\EmployeeSession;
 use App\Models\EmployeeWorkSession;
 use App\Models\EmployeeWorkSummary;
 use App\Models\PaidHoliday;
@@ -17,8 +19,6 @@ use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\User;
 use App\Services\EmployeeWorkSummaryService;
-use App\Enums\Role;
-use App\Http\Requests\StoreEmployeeUserRequest;
 use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -29,10 +29,12 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class EmployeeController extends Controller
 {
-    public function index(): View
+    public function index(): InertiaResponse
     {
         $employees = Employee::query()
             ->with('manager')
@@ -42,15 +44,80 @@ class EmployeeController extends Controller
         $loginStatuses = $this->resolveEmployeeLoginStatuses($employees);
         $lastLoginByEmployee = $this->resolveEmployeeLastLogins($employees);
 
-        return view('admin.hr.employees.index', compact('employees', 'loginStatuses', 'lastLoginByEmployee'));
+        return Inertia::render('Admin/Hr/Employees/Index', [
+            'pageTitle' => 'Employees',
+            'employees' => $employees->through(function (Employee $employee) use ($loginStatuses, $lastLoginByEmployee) {
+                $loginStatus = $loginStatuses[$employee->id] ?? 'logout';
+                $showLoginBadge = in_array($loginStatus, ['login', 'idle'], true);
+                $loginLabel = $loginStatus === 'idle' ? 'Idle' : 'Login';
+                $loginClasses = $loginStatus === 'idle'
+                    ? 'border-amber-200 text-amber-700 bg-amber-50'
+                    : 'border-emerald-200 text-emerald-700 bg-emerald-50';
+                $lastLoginAt = $lastLoginByEmployee[$employee->id] ?? null;
+
+                return [
+                    'id' => $employee->id,
+                    'name' => $employee->name,
+                    'email' => $employee->email,
+                    'designation' => $employee->designation ?? '--',
+                    'employment_type' => ucfirst((string) ($employee->employment_type ?? '--')),
+                    'join_date' => $employee->join_date?->format('Y-m-d') ?? '--',
+                    'manager_name' => $employee->manager?->name ?? '--',
+                    'status' => (string) $employee->status,
+                    'status_label' => ucfirst((string) $employee->status),
+                    'show_login_badge' => $showLoginBadge,
+                    'login_label' => $loginLabel,
+                    'login_classes' => $loginClasses,
+                    'last_login_at' => $lastLoginAt ? Carbon::parse((string) $lastLoginAt)->format('Y-m-d H:i') : '--',
+                    'routes' => [
+                        'show' => route('admin.hr.employees.show', $employee),
+                        'edit' => route('admin.hr.employees.edit', $employee),
+                        'destroy' => route('admin.hr.employees.destroy', $employee),
+                    ],
+                ];
+            })->values(),
+            'pagination' => [
+                'previous_url' => $employees->previousPageUrl(),
+                'next_url' => $employees->nextPageUrl(),
+                'has_pages' => $employees->hasPages(),
+            ],
+            'routes' => [
+                'create' => route('admin.hr.employees.create'),
+            ],
+        ]);
     }
 
-    public function create(): View
+    public function create(): InertiaResponse
     {
         $managers = Employee::query()->orderBy('name')->get();
         $users = User::query()->orderBy('name')->get();
 
-        return view('admin.hr.employees.create', compact('managers', 'users'));
+        return Inertia::render('Admin/Hr/Employees/Create', [
+            'pageTitle' => 'Add Employee',
+            'managers' => $managers->map(fn (Employee $manager) => [
+                'id' => $manager->id,
+                'name' => $manager->name,
+            ])->values(),
+            'users' => $users->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])->values(),
+            'currencyOptions' => ['BDT', 'USD'],
+            'defaults' => [
+                'join_date' => now()->toDateString(),
+                'employment_type' => 'full_time',
+                'work_mode' => 'remote',
+                'status' => 'active',
+                'salary_type' => 'monthly',
+                'currency' => 'BDT',
+                'basic_pay' => 0,
+            ],
+            'routes' => [
+                'index' => route('admin.hr.employees.index'),
+                'store' => route('admin.hr.employees.store'),
+            ],
+        ]);
     }
 
     public function store(StoreEmployeeUserRequest $request): RedirectResponse
@@ -134,12 +201,55 @@ class EmployeeController extends Controller
             ->with('status', 'Employee created.');
     }
 
-    public function edit(Employee $employee): View
+    public function edit(Employee $employee): InertiaResponse
     {
+        $employee->load('activeCompensation');
         $managers = Employee::query()->where('id', '!=', $employee->id)->orderBy('name')->get();
         $users = User::query()->orderBy('name')->get();
 
-        return view('admin.hr.employees.edit', compact('employee', 'managers', 'users'));
+        return Inertia::render('Admin/Hr/Employees/Edit', [
+            'pageTitle' => 'Edit Employee',
+            'employee' => [
+                'id' => $employee->id,
+                'user_id' => $employee->user_id,
+                'manager_id' => $employee->manager_id,
+                'name' => $employee->name,
+                'email' => $employee->email,
+                'phone' => $employee->phone,
+                'address' => $employee->address,
+                'department' => $employee->department,
+                'designation' => $employee->designation,
+                'join_date' => $employee->join_date?->format('Y-m-d'),
+                'employment_type' => $employee->employment_type,
+                'work_mode' => $employee->work_mode,
+                'status' => $employee->status,
+                'salary_type' => $employee->activeCompensation?->salary_type,
+                'currency' => $employee->activeCompensation?->currency,
+                'basic_pay' => $employee->activeCompensation?->basic_pay ?? 0,
+                'hourly_rate' => $employee->activeCompensation?->overtime_rate,
+                'photo_path' => $employee->photo_path,
+                'nid_path' => $employee->nid_path,
+                'cv_path' => $employee->cv_path,
+            ],
+            'managers' => $managers->map(fn (Employee $manager) => [
+                'id' => $manager->id,
+                'name' => $manager->name,
+            ])->values(),
+            'users' => $users->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])->values(),
+            'currencyOptions' => ['BDT', 'USD'],
+            'documentLinks' => [
+                'nid' => $employee->nid_path ? route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'nid']) : null,
+                'cv' => $employee->cv_path ? route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'cv']) : null,
+            ],
+            'routes' => [
+                'index' => route('admin.hr.employees.index'),
+                'update' => route('admin.hr.employees.update', $employee),
+            ],
+        ]);
     }
 
     public function update(Request $request, Employee $employee): RedirectResponse
@@ -646,6 +756,7 @@ class EmployeeController extends Controller
                         $payrollItem->computed_est_subtotal = $basePay;
                         $payrollItem->computed_gross_pay = round($basePay + $overtimePay + $bonus, 2, PHP_ROUND_HALF_UP);
                         $payrollItem->computed_net_pay = round($payrollItem->computed_gross_pay - $penalty - $advance - $deduction, 2, PHP_ROUND_HALF_UP);
+
                         continue;
                     }
 
@@ -883,6 +994,7 @@ class EmployeeController extends Controller
             $session = $openSessions->get($employeeId)?->first();
             if (! $session) {
                 $statuses[$employeeId] = 'logout';
+
                 continue;
             }
 

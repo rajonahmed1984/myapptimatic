@@ -12,11 +12,12 @@ use App\Models\PayrollItem;
 use App\Models\PayrollPeriod;
 use App\Services\EmployeeWorkSummaryService;
 use Carbon\Carbon;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class DashboardController extends Controller
 {
-    public function __invoke(EmployeeWorkSummaryService $workSummaryService): View
+    public function __invoke(EmployeeWorkSummaryService $workSummaryService): InertiaResponse
     {
         $activeEmployees = Employee::query()->where('status', 'active')->count();
         $activeFullTimeEmployees = Employee::query()
@@ -91,7 +92,8 @@ class DashboardController extends Controller
             ->limit(8)
             ->get();
 
-        return view('admin.hr.dashboard', [
+        return Inertia::render('Admin/Hr/Dashboard', [
+            'pageTitle' => 'HR Dashboard',
             'activeEmployees' => $activeEmployees,
             'activeFullTimeEmployees' => $activeFullTimeEmployees,
             'onLeaveToday' => $onLeaveToday,
@@ -103,10 +105,32 @@ class DashboardController extends Controller
             'paidHolidaysThisMonth' => $paidHolidaysThisMonth,
             'draftPeriods' => $draftPeriods,
             'payrollToPay' => $payrollToPay,
-            'recentWorkLogs' => $recentWorkLogs,
-            'recentLeaveRequests' => $recentLeaveRequests,
-            'recentAttendance' => $recentAttendance,
+            'recentWorkLogs' => $recentWorkLogs->map(fn (EmployeeWorkSession $log) => [
+                'employee_name' => $log->employee?->name ?? '--',
+                'work_date' => $log->work_date?->format('Y-m-d') ?? '--',
+                'active_hours' => number_format(((int) ($log->active_seconds ?? 0)) / 3600, 2),
+            ])->values(),
+            'recentLeaveRequests' => $recentLeaveRequests->map(fn (LeaveRequest $leave) => [
+                'employee_name' => $leave->employee?->name ?? '--',
+                'leave_type' => $leave->leaveType?->name ?? 'Leave',
+                'status' => ucfirst((string) $leave->status),
+                'start_date' => $leave->start_date?->format('Y-m-d') ?? '--',
+            ])->values(),
+            'recentAttendance' => $recentAttendance->map(fn (EmployeeAttendance $attendance) => [
+                'employee_name' => $attendance->employee?->name ?? '--',
+                'status' => ucfirst(str_replace('_', ' ', (string) $attendance->status)),
+                'date' => $attendance->date?->format('Y-m-d') ?? '--',
+            ])->values(),
             'currentMonth' => Carbon::now()->format('Y-m'),
+            'routes' => [
+                'employeesCreate' => route('admin.hr.employees.create'),
+                'attendanceIndex' => route('admin.hr.attendance.index'),
+                'paidHolidaysIndex' => route('admin.hr.paid-holidays.index'),
+                'payrollIndex' => route('admin.hr.payroll.index'),
+                'employeesIndex' => route('admin.hr.employees.index'),
+                'leaveRequestsIndex' => route('admin.hr.leave-requests.index'),
+                'timesheetsIndex' => route('admin.hr.timesheets.index'),
+            ],
         ]);
     }
 }

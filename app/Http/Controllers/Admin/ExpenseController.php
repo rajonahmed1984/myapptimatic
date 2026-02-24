@@ -149,7 +149,7 @@ class ExpenseController extends Controller
         );
     }
 
-    public function create(ExpenseInvoiceService $invoiceService): View
+    public function create(ExpenseInvoiceService $invoiceService): InertiaResponse
     {
         $invoiceService->syncOverdueStatuses();
 
@@ -178,10 +178,78 @@ class ExpenseController extends Controller
 
         $paymentMethods = PaymentMethod::dropdownOptions();
 
-        return view('admin.expenses.one-time', compact('categories', 'oneTimeExpenses', 'currencyCode', 'paymentMethods'));
+        $oneTimeItems = $oneTimeExpenses->map(function (Expense $expense) use ($currencyCode) {
+            $invoice = $expense->invoice;
+            $invoiceAmount = round((float) ($invoice->amount ?? 0), 2, PHP_ROUND_HALF_UP);
+            $paidAmount = round((float) ($invoice->payments_sum_amount ?? 0), 2, PHP_ROUND_HALF_UP);
+            if (($invoice->status ?? '') === 'paid' && $paidAmount <= 0) {
+                $paidAmount = $invoiceAmount;
+            }
+            $remainingAmount = round(max(0, $invoiceAmount - $paidAmount), 2, PHP_ROUND_HALF_UP);
+            $invoicePaid = (bool) ($invoice && $remainingAmount <= 0.009);
+            $invoicePartiallyPaid = (bool) ($invoice && $paidAmount > 0 && ! $invoicePaid);
+            $paymentStatus = $invoicePaid ? 'Paid' : ($invoicePartiallyPaid ? 'Partial' : 'Due');
+            $paymentStatusClass = $invoicePaid
+                ? 'bg-emerald-50 text-emerald-700'
+                : ($invoicePartiallyPaid ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700');
+
+            return [
+                'id' => $expense->id,
+                'date_label' => $expense->expense_date?->format('d-M-Y'),
+                'title' => $expense->title,
+                'category_name' => $expense->category?->name ?? 'N/A',
+                'amount' => (float) $expense->amount,
+                'invoice' => $invoice ? [
+                    'invoice_no' => $invoice->invoice_no,
+                    'total' => $invoiceAmount,
+                    'paid' => $paidAmount,
+                    'remaining' => $remainingAmount,
+                    'is_paid' => $invoicePaid,
+                    'is_partial' => $invoicePartiallyPaid,
+                    'payment_status' => $paymentStatus,
+                    'payment_status_class' => $paymentStatusClass,
+                    'routes' => [
+                        'pay' => route('admin.expenses.invoices.pay', $invoice),
+                    ],
+                ] : null,
+                'routes' => [
+                    'edit' => route('admin.expenses.edit', $expense),
+                    'destroy' => route('admin.expenses.destroy', $expense),
+                    'generate_invoice' => route('admin.expenses.invoices.store'),
+                ],
+                'payment_currency' => $currencyCode,
+            ];
+        })->values();
+
+        return Inertia::render('Admin/Expenses/Create', [
+            'pageTitle' => 'Add Expense',
+            'currencyCode' => $currencyCode,
+            'categories' => $categories->map(fn (ExpenseCategory $category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])->values(),
+            'oneTimeExpenses' => $oneTimeItems,
+            'paymentMethods' => $paymentMethods->map(fn ($method) => [
+                'code' => $method->code,
+                'name' => $method->name,
+            ])->values(),
+            'form' => [
+                'category_id' => old('category_id'),
+                'title' => old('title', ''),
+                'amount' => old('amount', ''),
+                'expense_date' => old('expense_date', now()->toDateString()),
+                'notes' => old('notes', ''),
+                'generate_invoice' => (bool) old('generate_invoice', false),
+            ],
+            'routes' => [
+                'index' => route('admin.expenses.index'),
+                'store' => route('admin.expenses.store'),
+                'invoice_store' => route('admin.expenses.invoices.store'),
+            ],
+        ]);
     }
 
-    public function edit(Expense $expense): View
+    public function edit(Expense $expense): InertiaResponse
     {
         if ($expense->type !== 'one_time') {
             abort(404);
@@ -193,7 +261,28 @@ class ExpenseController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.expenses.edit', compact('expense', 'categories'));
+        return Inertia::render('Admin/Expenses/Edit', [
+            'pageTitle' => 'Edit Expense',
+            'categories' => $categories->map(fn (ExpenseCategory $category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])->values(),
+            'expense' => [
+                'id' => $expense->id,
+                'category_id' => $expense->category_id,
+                'title' => $expense->title,
+                'amount' => $expense->amount,
+                'expense_date' => $expense->expense_date?->toDateString(),
+                'notes' => $expense->notes,
+                'attachment_url' => $expense->attachment_path
+                    ? route('admin.expenses.attachments.show', $expense)
+                    : null,
+            ],
+            'routes' => [
+                'back' => route('admin.expenses.create'),
+                'update' => route('admin.expenses.update', $expense),
+            ],
+        ]);
     }
 
     public function update(Request $request, Expense $expense): RedirectResponse

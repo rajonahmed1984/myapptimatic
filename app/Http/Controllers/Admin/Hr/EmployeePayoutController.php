@@ -4,19 +4,20 @@ namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
-use App\Models\PaymentMethod;
 use App\Models\EmployeePayout;
+use App\Models\PaymentMethod;
 use App\Models\Project;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class EmployeePayoutController extends Controller
 {
-    public function create(Request $request): View
+    public function create(Request $request): InertiaResponse
     {
         $employeeId = $request->query('employee_id');
         $employees = Employee::query()
@@ -67,11 +68,26 @@ class EmployeePayoutController extends Controller
             }
         }
 
-        return view('admin.hr.employees.payouts.create', [
-            'employees' => $employees,
-            'selectedEmployee' => $employeeId,
+        return Inertia::render('Admin/Hr/Employees/Payouts/Create', [
+            'pageTitle' => 'Employee Payout',
+            'employees' => $employees->map(fn (Employee $employee) => [
+                'id' => $employee->id,
+                'name' => $employee->name,
+            ])->values(),
+            'selectedEmployee' => $employeeId ? (int) $employeeId : null,
             'earnings' => $earnings,
             'summary' => $summary,
+            'paymentMethods' => PaymentMethod::dropdownOptions()
+                ->map(fn ($method) => [
+                    'code' => $method->code,
+                    'name' => $method->name,
+                ])
+                ->values(),
+            'routes' => [
+                'employeesIndex' => route('admin.hr.employees.index'),
+                'create' => route('admin.hr.employee-payouts.create'),
+                'store' => route('admin.hr.employee-payouts.store'),
+            ],
         ]);
     }
 

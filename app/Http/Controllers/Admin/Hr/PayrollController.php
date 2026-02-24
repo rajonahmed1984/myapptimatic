@@ -9,9 +9,8 @@ use App\Models\EmployeeWorkSession;
 use App\Models\PaidHoliday;
 use App\Models\PaymentMethod;
 use App\Models\PayrollAuditLog;
-use App\Models\PayrollPeriod;
 use App\Models\PayrollItem;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Models\PayrollPeriod;
 use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -19,11 +18,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PayrollController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         $filters = $request->validate([
             'period_key' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
@@ -70,15 +71,53 @@ class PayrollController extends Controller
             ->whereBetween('holiday_date', [$monthStart, $monthEnd])
             ->count();
 
-        return view('admin.hr.payroll.index', compact(
-            'periods',
-            'summary',
-            'workLogDaysThisMonth',
-            'attendanceMarkedToday',
-            'paidHolidaysThisMonth',
-            'selectedPeriodKey',
-            'selectedStatus'
-        ));
+        $selectedGeneratePeriod = now()->format('Y-m');
+        $generatePeriods = collect(range(0, 36))
+            ->map(fn (int $offset) => now()->copy()->startOfMonth()->subMonths($offset))
+            ->values();
+
+        return Inertia::render('Admin/Hr/Payroll/Index', [
+            'pageTitle' => 'Payroll',
+            'summary' => $summary,
+            'workLogDaysThisMonth' => $workLogDaysThisMonth,
+            'attendanceMarkedToday' => $attendanceMarkedToday,
+            'paidHolidaysThisMonth' => $paidHolidaysThisMonth,
+            'selectedPeriodKey' => $selectedPeriodKey,
+            'selectedStatus' => $selectedStatus,
+            'selectedGeneratePeriod' => $selectedGeneratePeriod,
+            'generatePeriods' => $generatePeriods->map(fn (Carbon $periodOption) => [
+                'value' => $periodOption->format('Y-m'),
+                'label' => $periodOption->format('M Y'),
+            ])->values(),
+            'periods' => $periods->through(fn (PayrollPeriod $period) => [
+                'id' => $period->id,
+                'period_key' => $period->period_key,
+                'start_date' => $period->start_date?->format('Y-m-d') ?? '--',
+                'end_date' => $period->end_date?->format('Y-m-d') ?? '--',
+                'status' => $period->status,
+                'is_draft' => $period->status === 'draft',
+                'month_closed' => (bool) ($period->end_date?->lt(today())),
+                'items_count' => (int) ($period->items_count ?? 0),
+                'approved_items_count' => (int) ($period->approved_items_count ?? 0),
+                'paid_items_count' => (int) ($period->paid_items_count ?? 0),
+                'routes' => [
+                    'show' => route('admin.hr.payroll.show', $period),
+                    'export' => route('admin.hr.payroll.export', $period),
+                    'edit' => route('admin.hr.payroll.edit', $period),
+                    'destroy' => route('admin.hr.payroll.destroy', $period),
+                    'finalize' => route('admin.hr.payroll.finalize', $period),
+                ],
+            ])->values(),
+            'pagination' => [
+                'previous_url' => $periods->previousPageUrl(),
+                'next_url' => $periods->nextPageUrl(),
+                'has_pages' => $periods->hasPages(),
+            ],
+            'routes' => [
+                'index' => route('admin.hr.payroll.index'),
+                'generate' => route('admin.hr.payroll.generate'),
+            ],
+        ]);
     }
 
     public function generate(Request $request, PayrollService $service): RedirectResponse
@@ -98,14 +137,24 @@ class PayrollController extends Controller
         return back()->with('status', 'Payroll generated for '.$data['period_key']);
     }
 
-    public function edit(PayrollPeriod $payrollPeriod): View
+    public function edit(PayrollPeriod $payrollPeriod): InertiaResponse
     {
         if ($payrollPeriod->status !== 'draft') {
             abort(404);
         }
 
-        return view('admin.hr.payroll.edit', [
-            'period' => $payrollPeriod,
+        return Inertia::render('Admin/Hr/Payroll/Edit', [
+            'pageTitle' => 'Edit Payroll Period',
+            'period' => [
+                'id' => $payrollPeriod->id,
+                'period_key' => $payrollPeriod->period_key,
+                'start_date' => $payrollPeriod->start_date?->format('Y-m-d'),
+                'end_date' => $payrollPeriod->end_date?->format('Y-m-d'),
+            ],
+            'routes' => [
+                'index' => route('admin.hr.payroll.index'),
+                'update' => route('admin.hr.payroll.update', $payrollPeriod),
+            ],
         ]);
     }
 
@@ -116,7 +165,7 @@ class PayrollController extends Controller
         }
 
         $data = $request->validate([
-            'period_key' => ['required', 'regex:/^\d{4}-\d{2}$/', 'unique:payroll_periods,period_key,' . $payrollPeriod->id],
+            'period_key' => ['required', 'regex:/^\d{4}-\d{2}$/', 'unique:payroll_periods,period_key,'.$payrollPeriod->id],
             'start_date' => ['required', 'date_format:Y-m-d'],
             'end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date'],
         ]);
@@ -337,7 +386,7 @@ class PayrollController extends Controller
         return back()->with('status', 'Payroll adjustments updated for '.$payrollItem->employee?->name.'.');
     }
 
-    public function show(PayrollPeriod $payrollPeriod): View
+    public function show(PayrollPeriod $payrollPeriod): InertiaResponse
     {
         $items = PayrollItem::query()
             ->where('payroll_period_id', $payrollPeriod->id)
@@ -511,14 +560,121 @@ class PayrollController extends Controller
             })
             ->values();
 
-        return view('admin.hr.payroll.show', [
-            'period' => $payrollPeriod,
-            'items' => $items,
-            'totals' => $totals,
-            'workLogHoursByEmployee' => $workLogHoursByEmployee,
-            'absentDaysByEmployee' => $absentDaysByEmployee,
-            'attendanceSummaryByEmployee' => $attendanceSummaryByEmployee,
-            'workingDaysInPeriod' => $workingDaysInPeriod,
+        $paymentMethods = PaymentMethod::dropdownOptions()
+            ->map(fn ($method) => [
+                'code' => $method->code,
+                'name' => $method->name,
+            ])
+            ->values();
+
+        return Inertia::render('Admin/Hr/Payroll/Show', [
+            'pageTitle' => 'Payroll '.$payrollPeriod->period_key,
+            'period' => [
+                'id' => $payrollPeriod->id,
+                'period_key' => $payrollPeriod->period_key,
+                'status' => $payrollPeriod->status,
+                'start_date' => $payrollPeriod->start_date?->format('Y-m-d') ?? '--',
+                'end_date' => $payrollPeriod->end_date?->format('Y-m-d') ?? '--',
+                'month_closed' => (bool) ($payrollPeriod->end_date?->lt(today())),
+            ],
+            'totals' => $totals->map(fn ($total) => [
+                'currency' => $total->currency,
+                'base_total' => number_format((float) $total->base_total, 2),
+                'gross_total' => number_format((float) $total->gross_total, 2),
+                'net_total' => number_format((float) $total->net_total, 2),
+            ])->values(),
+            'items' => $items->through(function (PayrollItem $item) use ($payrollPeriod, $workLogHoursByEmployee, $attendanceSummaryByEmployee, $workingDaysInPeriod) {
+                $bonus = $this->sumAdjustment($item->bonuses);
+                $penalty = $this->sumAdjustment($item->penalties);
+                $advance = $this->sumAdjustment($item->advances);
+                $deduction = $this->sumAdjustment($item->deductions);
+                $deductionFirst = is_array($item->deductions) ? (array) ($item->deductions[0] ?? []) : [];
+                $deductionReference = (string) ($deductionFirst['reference'] ?? '');
+                $deductionNote = (string) ($deductionFirst['note'] ?? '');
+                $attendance = $attendanceSummaryByEmployee[$item->employee_id] ?? null;
+                $workedDays = (float) ($attendance['worked_days'] ?? 0);
+                $totalWorkingDays = (int) ($attendance['working_days'] ?? ($workingDaysInPeriod ?? 0));
+                $workLogHours = (float) ($workLogHoursByEmployee[$item->employee_id] ?? 0);
+                $isHoursBased = $item->pay_type === 'hourly' || ($item->employee?->employment_type ?? null) === 'part_time';
+                $isAttendanceBased = ($item->employee?->employment_type ?? null) === 'full_time';
+                $hoursPerDay = (($item->employee?->employment_type ?? null) === 'part_time') ? 4 : 8;
+                $expectedHours = max(0, (int) ($workingDaysInPeriod ?? 0)) * $hoursPerDay;
+                $actualHours = $workLogHours > 0 ? $workLogHours : (float) ($item->timesheet_hours ?? 0);
+                $estSubtotal = (float) ($item->base_pay ?? 0);
+
+                if ($isHoursBased) {
+                    $hoursRatio = $expectedHours > 0 ? min(1, max(0, $actualHours / $expectedHours)) : 0;
+                    $estSubtotal = (float) ($item->base_pay ?? 0) * $hoursRatio;
+                } elseif ($isAttendanceBased && $totalWorkingDays > 0) {
+                    $attendanceRatio = min(1, max(0, $workedDays / $totalWorkingDays));
+                    $estSubtotal = (float) ($item->base_pay ?? 0) * $attendanceRatio;
+                }
+
+                $estSubtotal = round($estSubtotal, 2, PHP_ROUND_HALF_UP);
+                $overtimePay = (float) ($item->overtime_hours ?? 0) * (float) ($item->overtime_rate ?? 0);
+                $computedGross = round($estSubtotal + $overtimePay + $bonus, 2, PHP_ROUND_HALF_UP);
+                $computedNet = round($computedGross - $penalty - $advance - $deduction, 2, PHP_ROUND_HALF_UP);
+                $payableNet = round(max(0, $computedNet), 2, PHP_ROUND_HALF_UP);
+                $paidAmount = round((float) ($item->paid_amount ?? 0), 2, PHP_ROUND_HALF_UP);
+                $remainingAmount = round(max(0, $payableNet - $paidAmount), 2, PHP_ROUND_HALF_UP);
+                $displayStatus = $payableNet <= 0 ? 'paid' : $item->status;
+
+                return [
+                    'id' => $item->id,
+                    'employee_id' => $item->employee_id,
+                    'employee_name' => $item->employee?->name ?? 'N/A',
+                    'pay_type' => ucfirst((string) $item->pay_type),
+                    'currency' => $item->currency,
+                    'base_pay' => number_format((float) $item->base_pay, 2),
+                    'hours_display' => $isHoursBased
+                        ? number_format($actualHours, 2).' hrs ('.number_format((float) $expectedHours, 0).' hrs)'
+                        : ($isAttendanceBased
+                            ? (fmod($workedDays, 1.0) === 0.0 ? (string) ((int) $workedDays) : number_format($workedDays, 1)).' ('.$totalWorkingDays.')'
+                            : '--'),
+                    'overtime_hours' => number_format((float) $item->overtime_hours, 2),
+                    'overtime_rate' => number_format((float) $item->overtime_rate, 2),
+                    'bonus' => number_format($bonus, 2),
+                    'penalty' => number_format($penalty, 2),
+                    'advance' => number_format($advance, 2),
+                    'est_subtotal' => number_format($estSubtotal, 2),
+                    'computed_gross' => number_format($computedGross, 2),
+                    'deduction' => number_format($deduction, 2),
+                    'deduction_reference' => $deductionReference,
+                    'deduction_note' => $deductionNote,
+                    'computed_net' => number_format($computedNet, 2),
+                    'display_status' => $displayStatus,
+                    'paid_amount' => number_format($paidAmount, 2),
+                    'paid_at' => $item->paid_at?->format('Y-m-d H:i') ?? '--',
+                    'payment_reference' => $item->payment_reference ?? '--',
+                    'can_adjust' => in_array($item->status, ['draft', 'approved'], true),
+                    'can_pay' => in_array($item->status, ['approved', 'partial'], true) && $remainingAmount > 0,
+                    'payment_data' => [
+                        'net' => number_format($payableNet, 2).' '.$item->currency,
+                        'net_amount' => number_format($payableNet, 2, '.', ''),
+                        'paid_amount' => number_format($paidAmount, 2, '.', ''),
+                        'remaining_amount' => number_format($remainingAmount, 2, '.', ''),
+                        'currency' => $item->currency,
+                    ],
+                    'routes' => [
+                        'adjust' => route('admin.hr.payroll.items.adjustments', [$payrollPeriod, $item]),
+                        'pay' => route('admin.hr.payroll.items.pay', [$payrollPeriod, $item]),
+                    ],
+                ];
+            })->values(),
+            'pagination' => [
+                'previous_url' => $items->previousPageUrl(),
+                'next_url' => $items->nextPageUrl(),
+                'has_pages' => $items->hasPages(),
+            ],
+            'paymentMethods' => $paymentMethods,
+            'today' => now()->format('Y-m-d'),
+            'routes' => [
+                'index' => route('admin.hr.payroll.index'),
+                'export' => route('admin.hr.payroll.export', $payrollPeriod),
+                'edit' => route('admin.hr.payroll.edit', $payrollPeriod),
+                'destroy' => route('admin.hr.payroll.destroy', $payrollPeriod),
+                'finalize' => route('admin.hr.payroll.finalize', $payrollPeriod),
+            ],
         ]);
     }
 

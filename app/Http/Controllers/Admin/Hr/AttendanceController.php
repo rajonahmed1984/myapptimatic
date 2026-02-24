@@ -8,11 +8,12 @@ use App\Models\EmployeeAttendance;
 use App\Models\PaidHoliday;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class AttendanceController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         $validated = $request->validate([
             'date' => ['nullable', 'date_format:Y-m-d'],
@@ -37,7 +38,30 @@ class AttendanceController extends Controller
             ->get()
             ->keyBy('employee_id');
 
-        return view('admin.hr.attendance.index', compact('employees', 'attendanceByEmployee', 'selectedDate', 'isPaidHoliday'));
+        return Inertia::render('Admin/Hr/Attendance/Index', [
+            'pageTitle' => 'Attendance',
+            'selectedDate' => $selectedDate,
+            'isPaidHoliday' => $isPaidHoliday,
+            'employees' => $employees->map(function (Employee $employee) use ($attendanceByEmployee, $isPaidHoliday) {
+                $entry = $attendanceByEmployee->get($employee->id);
+
+                return [
+                    'id' => $employee->id,
+                    'name' => $employee->name,
+                    'email' => $employee->email,
+                    'department' => $employee->department ?? '--',
+                    'designation' => $employee->designation ?? '--',
+                    'status' => $entry?->status ?? ($isPaidHoliday ? 'present' : null),
+                    'note' => $entry?->note,
+                    'recorder_name' => $entry?->recorder?->name,
+                    'updated_at' => $entry?->updated_at?->format('Y-m-d H:i'),
+                ];
+            })->values(),
+            'routes' => [
+                'index' => route('admin.hr.attendance.index'),
+                'store' => route('admin.hr.attendance.store'),
+            ],
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -81,6 +105,7 @@ class AttendanceController extends Controller
                     ->where('employee_id', $employeeId)
                     ->whereDate('date', $date)
                     ->delete();
+
                 continue;
             }
 

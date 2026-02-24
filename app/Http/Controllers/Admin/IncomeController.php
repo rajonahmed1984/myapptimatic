@@ -29,7 +29,7 @@ class IncomeController extends Controller
 
     private const WHMCS_MAX_PAGES = 50;
 
-    public function dashboard(Request $request, IncomeEntryService $entryService, GeminiService $geminiService, WhmcsClient $whmcsClient): \Illuminate\View\View
+    public function dashboard(Request $request, IncomeEntryService $entryService, GeminiService $geminiService, WhmcsClient $whmcsClient): InertiaResponse
     {
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
@@ -123,22 +123,42 @@ class IncomeController extends Controller
 
         [$trendLabels, $trendTotals] = $this->buildTrends($entries, $trendStart, $trendEnd);
 
-        return view('admin.income.dashboard', [
-            'categories' => $categories,
-            'filters' => $filters,
-            'totalAmount' => $totalAmount,
-            'manualTotal' => $manualTotal,
-            'systemTotal' => $systemTotal,
-            'creditSettlementTotal' => $creditSettlementTotal,
-            'categoryTotals' => $categoryTotals,
-            'topCustomers' => $topCustomers,
-            'currencySymbol' => $currencySymbol,
-            'currencyCode' => $currencyCode,
-            'aiSummary' => $aiSummary,
-            'aiError' => $aiError,
-            'trendLabels' => $trendLabels,
-            'trendTotals' => $trendTotals,
-            'whmcsErrors' => $whmcsErrors,
+        return Inertia::render('Admin/Income/Dashboard', [
+            'pageTitle' => 'Income Dashboard',
+            'categories' => $categories->map(fn (IncomeCategory $category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])->values(),
+            'filters' => [
+                'start_date' => (string) ($filters['start_date'] ?? ''),
+                'end_date' => (string) ($filters['end_date'] ?? ''),
+                'category_id' => (string) ($filters['category_id'] ?? ''),
+                'sources' => array_values($filters['sources'] ?? []),
+            ],
+            'totals' => [
+                'total_amount' => (float) $totalAmount,
+                'manual_total' => (float) $manualTotal,
+                'system_total' => (float) $systemTotal,
+                'credit_settlement_total' => (float) $creditSettlementTotal,
+            ],
+            'category_totals' => $categoryTotals,
+            'top_customers' => $topCustomers,
+            'currency' => [
+                'symbol' => $currencySymbol,
+                'code' => $currencyCode,
+            ],
+            'ai' => [
+                'summary' => $aiSummary,
+                'error' => $aiError,
+            ],
+            'trend' => [
+                'labels' => $trendLabels,
+                'totals' => $trendTotals,
+            ],
+            'whmcs_errors' => array_values($whmcsErrors),
+            'routes' => [
+                'dashboard' => route('admin.income.dashboard'),
+            ],
         ]);
     }
 

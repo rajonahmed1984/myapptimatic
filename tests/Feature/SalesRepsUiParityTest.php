@@ -14,7 +14,7 @@ class SalesRepsUiParityTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function sales_rep_index_create_and_edit_render_direct_inertia_components(): void
+    public function sales_rep_pages_render_direct_inertia_components(): void
     {
         $admin = User::factory()->create([
             'role' => Role::MASTER_ADMIN,
@@ -43,6 +43,12 @@ class SalesRepsUiParityTest extends TestCase
             ->assertOk()
             ->assertSee('data-page=')
             ->assertSee('Admin\\/SalesReps\\/Form', false);
+
+        $this->actingAs($admin)
+            ->get(route('admin.sales-reps.show', $salesRep))
+            ->assertOk()
+            ->assertSee('data-page=')
+            ->assertSee('Admin\\/SalesReps\\/Show', false);
     }
 
     #[Test]

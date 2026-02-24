@@ -124,4 +124,30 @@ class IncomeUiParityTest extends TestCase
             ->assertRedirect(route('admin.income.index'))
             ->assertSessionHas('status', 'Income recorded.');
     }
+
+    #[Test]
+    public function income_dashboard_renders_direct_inertia_for_admin(): void
+    {
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.income.dashboard'))
+            ->assertOk()
+            ->assertSee('data-page=')
+            ->assertSee('Admin\\/Income\\/Dashboard', false);
+    }
+
+    #[Test]
+    public function income_dashboard_permission_guard_remains_forbidden_for_client(): void
+    {
+        $client = User::factory()->create([
+            'role' => Role::CLIENT,
+        ]);
+
+        $this->actingAs($client)
+            ->get(route('admin.income.dashboard'))
+            ->assertForbidden();
+    }
 }

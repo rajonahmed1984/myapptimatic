@@ -4,33 +4,33 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Order;
-use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectMaintenance;
-use App\Models\ProjectTask;
 use App\Models\ProjectMessageRead;
+use App\Models\ProjectTask;
 use App\Models\SalesRepresentative;
+use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\BillingService;
+use App\Services\CommissionService;
+use App\Services\GeminiService;
+use App\Services\InvoiceTaxService;
+use App\Services\ProjectStatusAiService;
 use App\Services\TaskQueryService;
+use App\Services\TaskStatusNotificationService;
 use App\Support\AjaxResponse;
+use App\Support\Currency;
 use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
-use App\Support\TaskAssignmentManager;
 use App\Support\TaskAssignees;
-use App\Support\Currency;
+use App\Support\TaskAssignmentManager;
 use App\Support\TaskCompletionManager;
 use App\Support\TaskSettings;
-use App\Services\TaskStatusNotificationService;
-use App\Services\CommissionService;
-use App\Services\BillingService;
-use App\Services\InvoiceTaxService;
-use App\Services\GeminiService;
-use App\Services\ProjectStatusAiService;
-use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -40,14 +40,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ProjectController extends Controller
 {
     private const STATUSES = ['ongoing', 'hold', 'complete', 'cancel'];
+
     private const TYPES = ['software', 'website', 'other'];
+
     private const TASK_STATUSES = ['pending', 'in_progress', 'blocked', 'completed'];
 
-    public function index(Request $request)
+    public function index(Request $request): InertiaResponse
     {
         $statusFilter = $request->query('status');
         $typeFilter = $request->query('type');
@@ -72,59 +76,214 @@ class ProjectController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.projects.index', [
-            'projects' => $projects,
+        return Inertia::render('Admin/Projects/Index', [
+            'pageTitle' => 'Projects',
+            'projects' => $projects
+                ->through(fn (Project $project) => $this->serializeProjectIndexRow($project))
+                ->values(),
+            'pagination' => $this->paginationPayload($projects),
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
-            'statusFilter' => $statusFilter,
-            'typeFilter' => $typeFilter,
+            'filters' => [
+                'status' => $statusFilter,
+                'type' => $typeFilter,
+            ],
+            'routes' => [
+                'index' => route('admin.projects.index'),
+                'create' => route('admin.projects.create'),
+            ],
         ]);
     }
 
-    public function create()
+    public function create(): InertiaResponse
     {
         $defaultCurrency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
         if (! Currency::isAllowed($defaultCurrency)) {
             $defaultCurrency = Currency::DEFAULT;
         }
 
-        return view('admin.projects.create', [
+        $customers = Customer::orderBy('name')->get(['id', 'name', 'company_name']);
+        $employees = Employee::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'designation', 'employment_type']);
+        $salesReps = SalesRepresentative::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        $selectedSalesRepIds = collect(old('sales_rep_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->values();
+        $selectedEmployeeIds = collect(old('employee_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        $tasks = old('tasks', [[
+            'title' => '',
+            'task_type' => 'feature',
+            'priority' => 'medium',
+            'descriptions' => [''],
+            'start_date' => now()->toDateString(),
+            'due_date' => '',
+            'assignee' => '',
+            'customer_visible' => false,
+        ]]);
+        $maintenances = old('maintenances', []);
+        $overheads = old('overheads', [['short_details' => '', 'amount' => '']]);
+
+        return Inertia::render('Admin/Projects/Create', [
+            'pageTitle' => 'New Project',
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
-            'customers' => Customer::orderBy('name')->get(['id', 'name', 'company_name']),
+            'customers' => $customers
+                ->map(fn (Customer $customer) => [
+                    'id' => $customer->id,
+                    'display_name' => $customer->display_name,
+                ])
+                ->values(),
             'orders' => Order::latest()->limit(50)->get(['id', 'order_number']),
             'subscriptions' => Subscription::latest()->limit(50)->get(['id']),
             'invoices' => Invoice::latest('issue_date')->limit(50)->get(['id', 'number', 'total']),
-            'employees' => Employee::where('status', 'active')
-                ->orderBy('name')
-                ->get(['id', 'name', 'designation', 'employment_type']),
-            'salesReps' => SalesRepresentative::where('status', 'active')
-                ->orderBy('name')
-                ->get(['id', 'name', 'email']),
-            'defaultCurrency' => $defaultCurrency,
+            'employees' => $employees->map(fn (Employee $employee) => [
+                'id' => $employee->id,
+                'name' => $employee->name,
+                'designation' => $employee->designation,
+                'employment_type' => $employee->employment_type,
+                'selected' => $selectedEmployeeIds->contains($employee->id),
+                'contract_amount' => old('contract_employee_amounts.'.$employee->id, ''),
+            ])->values(),
+            'salesReps' => $salesReps->map(fn (SalesRepresentative $salesRep) => [
+                'id' => $salesRep->id,
+                'name' => $salesRep->name,
+                'email' => $salesRep->email,
+                'selected' => $selectedSalesRepIds->contains($salesRep->id),
+                'amount' => old('sales_rep_amounts.'.$salesRep->id, 0),
+            ])->values(),
             'currencyOptions' => Currency::allowed(),
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),
+            'form' => [
+                'name' => old('name'),
+                'customer_id' => old('customer_id'),
+                'type' => old('type'),
+                'status' => old('status'),
+                'start_date' => old('start_date'),
+                'expected_end_date' => old('expected_end_date'),
+                'due_date' => old('due_date'),
+                'notes' => old('notes'),
+                'total_budget' => old('total_budget'),
+                'initial_payment_amount' => old('initial_payment_amount'),
+                'currency' => old('currency', $defaultCurrency),
+                'budget_amount' => old('budget_amount'),
+                'software_overhead' => old('software_overhead'),
+                'website_overhead' => old('website_overhead'),
+                'selected_sales_rep_ids' => $selectedSalesRepIds->all(),
+                'selected_employee_ids' => $selectedEmployeeIds->all(),
+            ],
+            'tasks' => $tasks,
+            'maintenances' => $maintenances,
+            'overheads' => $overheads,
+            'routes' => [
+                'index' => route('admin.projects.index'),
+                'store' => route('admin.projects.store'),
+            ],
         ]);
     }
 
-    public function edit(Project $project)
+    public function edit(Project $project): InertiaResponse
     {
-        return view('admin.projects.edit', [
-            'project' => $project,
+        $project->loadMissing(['salesRepresentatives', 'employees']);
+
+        $employees = Employee::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'designation', 'employment_type']);
+        $salesReps = SalesRepresentative::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        $selectedSalesRepIds = collect(old('sales_rep_ids', $project->salesRepresentatives->pluck('id')->all()))
+            ->map(fn ($id) => (int) $id)
+            ->values();
+        $selectedEmployeeIds = collect(old('employee_ids', $project->employees->pluck('id')->all()))
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        $assignedContractCount = $project->employees->where('employment_type', 'contract')->count();
+
+        return Inertia::render('Admin/Projects/Edit', [
+            'pageTitle' => 'Edit Project #'.$project->id,
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'contract_file_path' => $project->contract_file_path,
+                'contract_original_name' => $project->contract_original_name,
+                'proposal_file_path' => $project->proposal_file_path,
+                'proposal_original_name' => $project->proposal_original_name,
+            ],
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
-            'customers' => Customer::orderBy('name')->get(['id', 'name', 'company_name']),
-            'orders' => Order::latest()->limit(50)->get(['id', 'order_number']),
-            'subscriptions' => Subscription::latest()->limit(50)->get(['id']),
-            'invoices' => Invoice::latest('issue_date')->limit(50)->get(['id', 'number', 'total']),
-            'employees' => Employee::where('status', 'active')
-                ->orderBy('name')
-                ->get(['id', 'name', 'designation', 'employment_type']),
-            'salesReps' => SalesRepresentative::where('status', 'active')
-                ->orderBy('name')
-                ->get(['id', 'name', 'email']),
+            'customers' => Customer::orderBy('name')
+                ->get(['id', 'name', 'company_name'])
+                ->map(fn (Customer $customer) => [
+                    'id' => $customer->id,
+                    'display_name' => $customer->display_name,
+                ])
+                ->values(),
+            'employees' => $employees->map(function (Employee $employee) use ($project, $selectedEmployeeIds, $assignedContractCount) {
+                $isAssigned = $selectedEmployeeIds->contains($employee->id);
+                $defaultContractAmount = ($assignedContractCount === 1 && $isAssigned && $employee->employment_type === 'contract')
+                    ? ($project->contract_amount ?? '')
+                    : '';
+
+                return [
+                    'id' => $employee->id,
+                    'name' => $employee->name,
+                    'designation' => $employee->designation,
+                    'employment_type' => $employee->employment_type,
+                    'selected' => $isAssigned,
+                    'contract_amount' => old('contract_employee_amounts.'.$employee->id, $defaultContractAmount),
+                ];
+            })->values(),
+            'salesReps' => $salesReps->map(function (SalesRepresentative $salesRep) use ($project, $selectedSalesRepIds) {
+                $assignedRep = $project->salesRepresentatives->firstWhere('id', $salesRep->id);
+
+                return [
+                    'id' => $salesRep->id,
+                    'name' => $salesRep->name,
+                    'email' => $salesRep->email,
+                    'selected' => $selectedSalesRepIds->contains($salesRep->id),
+                    'amount' => old('sales_rep_amounts.'.$salesRep->id, $assignedRep?->pivot?->amount ?? 0),
+                ];
+            })->values(),
             'currencyOptions' => Currency::allowed(),
+            'form' => [
+                'name' => old('name', $project->name),
+                'customer_id' => old('customer_id', $project->customer_id),
+                'type' => old('type', $project->type),
+                'status' => old('status', $project->status),
+                'start_date' => old('start_date', optional($project->start_date)->format('Y-m-d')),
+                'expected_end_date' => old('expected_end_date', optional($project->expected_end_date)->format('Y-m-d')),
+                'due_date' => old('due_date', optional($project->due_date)->format('Y-m-d')),
+                'notes' => old('notes', $project->notes),
+                'total_budget' => old('total_budget', $project->total_budget),
+                'initial_payment_amount' => old('initial_payment_amount', $project->initial_payment_amount),
+                'currency' => old('currency', $project->currency),
+                'budget_amount' => old('budget_amount', $project->budget_amount),
+                'software_overhead' => old('software_overhead', $project->software_overhead),
+                'website_overhead' => old('website_overhead', $project->website_overhead),
+                'selected_sales_rep_ids' => $selectedSalesRepIds->all(),
+                'selected_employee_ids' => $selectedEmployeeIds->all(),
+            ],
+            'routes' => [
+                'index' => route('admin.projects.index'),
+                'show' => route('admin.projects.show', $project),
+                'update' => route('admin.projects.update', $project),
+                'download_contract' => $project->contract_file_path
+                    ? route('admin.projects.download', ['project' => $project, 'type' => 'contract'])
+                    : null,
+                'download_proposal' => $project->proposal_file_path
+                    ? route('admin.projects.download', ['project' => $project, 'type' => 'proposal'])
+                    : null,
+            ],
         ]);
     }
 
@@ -186,7 +345,7 @@ class ProjectController extends Controller
             'tasks.*.start_date' => ['required', 'date'],
             'tasks.*.due_date' => ['required', 'date'],
             'tasks.*.assignee' => ['required', 'string'], // format: type:id
-            'tasks.*.attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:' . ($maxMb * 1024)],
+            'tasks.*.attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf,docx,xlsx', 'max:'.($maxMb * 1024)],
             'tasks.*.customer_visible' => ['nullable', 'boolean'],
         ]);
 
@@ -240,10 +399,12 @@ class ProjectController extends Controller
                 $amount = $amounts[$employeeId] ?? null;
                 if ($amount === null || $amount === '') {
                     $errors["contract_employee_amounts.{$employeeId}"] = 'Amount is required for contract employees.';
+
                     continue;
                 }
                 if (! is_numeric($amount) || (float) $amount < 0) {
                     $errors["contract_employee_amounts.{$employeeId}"] = 'Amount must be at least 0.';
+
                     continue;
                 }
 
@@ -432,7 +593,7 @@ class ProjectController extends Controller
             ->with('status', 'Project created with initial tasks and invoice.');
     }
 
-    public function show(Request $request, Project $project)
+    public function show(Request $request, Project $project): InertiaResponse
     {
         $this->authorize('view', $project);
 
@@ -492,22 +653,43 @@ class ProjectController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        return view('admin.projects.show', [
-            'project' => $project,
+        $financials = $this->financials($project);
+
+        return Inertia::render('Admin/Projects/Show', [
+            'pageTitle' => 'Project #'.$project->id,
+            'project' => $this->serializeProjectShow($project, $financials, (int) $projectChatUnreadCount),
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
             'taskStatuses' => self::TASK_STATUSES,
-            'tasks' => $tasks,
-            'financials' => $this->financials($project),
-            'initialInvoice' => $initialInvoice,
-            'remainingBudgetInvoices' => $remainingBudgetInvoices,
-            'projectChatUnreadCount' => $projectChatUnreadCount,
+            'tasks' => $tasks
+                ->through(fn (ProjectTask $task) => $this->serializeProjectTaskPreview($project, $task))
+                ->values(),
+            'tasksPagination' => $this->paginationPayload($tasks),
+            'initialInvoice' => $initialInvoice ? $this->serializeProjectInvoice($initialInvoice) : null,
+            'remainingBudgetInvoices' => $remainingBudgetInvoices
+                ->map(fn (Invoice $invoice) => $this->serializeProjectInvoice($invoice))
+                ->values(),
+            'projectChatUnreadCount' => (int) $projectChatUnreadCount,
             'aiReady' => (bool) config('google_ai.api_key'),
             'taskStats' => [
                 'total' => $totalTasks,
                 'in_progress' => $inProgressTasks,
                 'completed' => $completedTasks,
                 'unread' => (int) $projectChatUnreadCount,
+            ],
+            'routes' => [
+                'index' => route('admin.projects.index'),
+                'edit' => route('admin.projects.edit', $project),
+                'destroy' => route('admin.projects.destroy', $project),
+                'complete' => route('admin.projects.complete', $project),
+                'invoices' => route('admin.projects.invoices', $project),
+                'tasks' => route('admin.projects.tasks.index', $project),
+                'chat' => route('admin.projects.chat', $project),
+                'ai_summary' => route('admin.projects.ai', $project),
+                'invoice_remaining' => route('admin.projects.invoice-remaining', $project),
+                'overheads_index' => route('admin.projects.overheads.index', $project),
+                'overheads_store' => route('admin.projects.overheads.store', $project),
+                'maintenance_create' => route('admin.project-maintenances.create', ['project_id' => $project->id]),
             ],
         ]);
     }
@@ -533,7 +715,7 @@ class ProjectController extends Controller
         }
     }
 
-    public function tasks(Request $request, Project $project)
+    public function tasks(Request $request, Project $project): InertiaResponse
     {
         $this->authorize('view', $project);
 
@@ -551,6 +733,7 @@ class ProjectController extends Controller
         $tasksQuery->when($statusFilter, function ($query, $status) {
             if ($status === 'completed') {
                 $query->whereIn('status', ['completed', 'done']);
+
                 return;
             }
 
@@ -589,16 +772,73 @@ class ProjectController extends Controller
             ->when($lastReadId, fn ($query) => $query->where('id', '>', $lastReadId))
             ->count();
 
-        return view('admin.projects.tasks', [
-            'project' => $project,
-            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
-            'priorityOptions' => TaskSettings::priorityOptions(),
-            'employees' => Employee::where('status', 'active')->orderBy('name')->get(['id', 'name', 'designation']),
-            'salesReps' => SalesRepresentative::where('status', 'active')->orderBy('name')->get(['id', 'name', 'email']),
-            'tasks' => $tasks,
+        $taskTypeOptions = TaskSettings::taskTypeOptions();
+
+        return Inertia::render('Admin/Projects/Tasks', [
+            'pageTitle' => 'Project #'.$project->id.' Tasks',
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'status' => $project->status,
+                'routes' => [
+                    'show' => route('admin.projects.show', $project),
+                    'chat' => route('admin.projects.chat', $project),
+                    'edit' => route('admin.projects.edit', $project),
+                ],
+            ],
             'summary' => $summary,
             'statusFilter' => $statusFilter,
-            'projectChatUnreadCount' => $projectChatUnreadCount,
+            'projectChatUnreadCount' => (int) $projectChatUnreadCount,
+            'taskTypeOptions' => $taskTypeOptions,
+            'canCreateTask' => (bool) ($user?->can('createTask', $project) ?? false),
+            'taskCreateUrl' => route('admin.projects.tasks.create', array_filter([
+                'project' => $project,
+                'status' => $statusFilter,
+            ], fn ($value) => $value !== null && $value !== '')),
+            'statusUrls' => [
+                'all' => route('admin.projects.tasks.index', $project),
+                'pending' => route('admin.projects.tasks.index', ['project' => $project, 'status' => 'pending']),
+                'in_progress' => route('admin.projects.tasks.index', ['project' => $project, 'status' => 'in_progress']),
+                'blocked' => route('admin.projects.tasks.index', ['project' => $project, 'status' => 'blocked']),
+                'completed' => route('admin.projects.tasks.index', ['project' => $project, 'status' => 'completed']),
+            ],
+            'tasks' => $tasks->through(function (ProjectTask $task) use ($project, $taskTypeOptions, $statusFilter, $user) {
+                $currentStatus = (string) ($task->status ?? 'pending');
+                $assigneeNames = $task->assignments->map(fn ($assignment) => $assignment->assigneeName())->filter()->implode(', ');
+                if ($assigneeNames === '' && $task->assigned_type && $task->assigned_id) {
+                    $assigneeNames = ucfirst(str_replace('_', ' ', $task->assigned_type)).' #'.$task->assigned_id;
+                }
+
+                return [
+                    'id' => $task->id,
+                    'title' => (string) $task->title,
+                    'description' => (string) ($task->description ?? ''),
+                    'task_type_label' => (string) ($taskTypeOptions[$task->task_type] ?? ucfirst((string) ($task->task_type ?? 'Task'))),
+                    'assignee_names' => $assigneeNames ?: '--',
+                    'progress' => max(0, min(100, (int) ($task->progress ?? 0))),
+                    'created_at_date' => $task->created_at?->format('Y-m-d') ?? '--',
+                    'created_at_time' => $task->created_at?->format('H:i') ?? '--',
+                    'creator_name' => $task->creator?->name ?? 'System',
+                    'status' => $currentStatus,
+                    'can_update' => (bool) ($user?->can('update', $task) ?? false),
+                    'can_delete' => (bool) ($user?->can('delete', $task) ?? false),
+                    'routes' => [
+                        'show' => route('admin.projects.tasks.show', [$project, $task]),
+                        'edit' => route('admin.projects.tasks.edit', array_filter([
+                            'project' => $project,
+                            'task' => $task,
+                            'status' => $statusFilter,
+                        ], fn ($value) => $value !== null && $value !== '')),
+                        'change_status' => route('admin.projects.tasks.changeStatus', [$project, $task]),
+                        'destroy' => route('admin.projects.tasks.destroy', [$project, $task]),
+                    ],
+                ];
+            })->values(),
+            'pagination' => [
+                'has_pages' => $tasks->hasPages(),
+                'previous_url' => $tasks->previousPageUrl(),
+                'next_url' => $tasks->nextPageUrl(),
+            ],
         ]);
     }
 
@@ -620,7 +860,7 @@ class ProjectController extends Controller
                 'required',
                 'numeric',
                 'min:0.01',
-                'lte:' . $remainingBudget,
+                'lte:'.$remainingBudget,
             ],
         ]);
 
@@ -730,10 +970,12 @@ class ProjectController extends Controller
                 $amount = $amounts[$employeeId] ?? null;
                 if ($amount === null || $amount === '') {
                     $errors["contract_employee_amounts.{$employeeId}"] = 'Amount is required for contract employees.';
+
                     continue;
                 }
                 if (! is_numeric($amount) || (float) $amount < 0) {
                     $errors["contract_employee_amounts.{$employeeId}"] = 'Amount must be at least 0.';
+
                     continue;
                 }
 
@@ -945,6 +1187,7 @@ class ProjectController extends Controller
             if ($request->expectsJson()) {
                 return AjaxResponse::ajaxError($message, 403);
             }
+
             return back()->withErrors(['task' => $message]);
         }
 
@@ -999,6 +1242,243 @@ class ProjectController extends Controller
         if ($task->project_id !== $project->id) {
             abort(404);
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeProjectIndexRow(Project $project): array
+    {
+        $openTasks = (int) ($project->open_tasks_count ?? 0);
+        $doneTasks = (int) ($project->done_tasks_count ?? 0);
+        $openSubtasks = (int) ($project->open_subtasks_count ?? 0);
+        $hasOpenWork = ($openTasks > 0) || ($openSubtasks > 0);
+
+        return [
+            'id' => $project->id,
+            'name' => (string) $project->name,
+            'type_label' => ucfirst((string) $project->type),
+            'status' => (string) $project->status,
+            'status_label' => ucfirst(str_replace('_', ' ', (string) $project->status)),
+            'status_class' => $this->projectStatusClass((string) $project->status),
+            'customer_name' => (string) ($project->customer?->name ?? '--'),
+            'due_date' => $project->due_date?->format('Y-m-d') ?? '--',
+            'employees' => $project->employees->pluck('name')->filter()->values(),
+            'sales_reps' => $project->salesRepresentatives->pluck('name')->filter()->values(),
+            'tasks' => [
+                'open_count' => $openTasks,
+                'done_count' => $doneTasks,
+                'done_label' => sprintf('%d/%d done', $doneTasks, $openTasks + $doneTasks),
+                'has_open_work' => $hasOpenWork,
+            ],
+            'routes' => [
+                'show' => route('admin.projects.show', $project),
+                'edit' => route('admin.projects.edit', $project),
+                'destroy' => route('admin.projects.destroy', $project),
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $financials
+     * @return array<string, mixed>
+     */
+    private function serializeProjectShow(Project $project, array $financials, int $projectChatUnreadCount): array
+    {
+        $overheadTotal = (float) ($financials['overhead_total'] ?? $project->overhead_total);
+        $budgetWithOverhead = (float) ($financials['budget_with_overhead'] ?? ((float) ($project->total_budget ?? 0) + $overheadTotal));
+        $remainingBudget = (float) ($financials['remaining_budget'] ?? $project->remaining_budget ?? 0);
+        $remainingBudgetInvoiceable = (float) ($financials['remaining_budget_invoiceable'] ?? $remainingBudget);
+        $paidPayment = (float) ($financials['paid_payment'] ?? 0);
+        $employeeSalaryTotal = (float) ($financials['employee_salary_total'] ?? ($project->contract_amount ?? $project->contract_employee_total_earned ?? 0));
+        $salesRepTotal = (float) ($financials['sales_rep_total'] ?? $project->sales_rep_total);
+        $profit = (float) ($financials['profit'] ?? 0);
+
+        return [
+            'id' => $project->id,
+            'name' => (string) $project->name,
+            'status' => (string) $project->status,
+            'status_label' => ucfirst(str_replace('_', ' ', (string) $project->status)),
+            'type_label' => ucfirst((string) $project->type),
+            'description' => $project->description ?: 'No description provided.',
+            'notes' => $project->notes,
+            'currency' => (string) ($project->currency ?? 'USD'),
+            'customer' => [
+                'id' => $project->customer_id,
+                'name' => (string) ($project->customer?->name ?? '--'),
+            ],
+            'dates' => [
+                'start' => $project->start_date?->format('Y-m-d') ?? '--',
+                'expected_end' => $project->expected_end_date?->format('Y-m-d') ?? '--',
+                'due' => $project->due_date?->format('Y-m-d') ?? '--',
+            ],
+            'files' => [
+                'contract' => $project->contract_file_path ? [
+                    'name' => (string) ($project->contract_original_name ?: 'Download contract'),
+                    'url' => route('admin.projects.download', ['project' => $project, 'type' => 'contract']),
+                ] : null,
+                'proposal' => $project->proposal_file_path ? [
+                    'name' => (string) ($project->proposal_original_name ?: 'Download proposal'),
+                    'url' => route('admin.projects.download', ['project' => $project, 'type' => 'proposal']),
+                ] : null,
+            ],
+            'team' => [
+                'employees' => $project->employees->pluck('name')->filter()->values(),
+                'sales_reps' => $project->salesRepresentatives
+                    ->map(function ($rep) use ($project) {
+                        $amount = (float) ($rep->pivot?->amount ?? 0);
+                        $amountText = $amount > 0 ? sprintf(' (%s %s)', $project->currency, number_format($amount, 2)) : '';
+
+                        return trim((string) $rep->name.$amountText);
+                    })
+                    ->filter()
+                    ->values(),
+            ],
+            'financials' => [
+                'total_budget_display' => $project->total_budget !== null ? sprintf('%s %s', $project->currency, number_format((float) $project->total_budget, 2)) : '--',
+                'overhead_total_display' => sprintf('%s %s', $project->currency, number_format($overheadTotal, 2)),
+                'budget_with_overhead_display' => sprintf('%s %s', $project->currency, number_format($budgetWithOverhead, 2)),
+                'initial_payment_display' => $project->initial_payment_amount !== null ? sprintf('%s %s', $project->currency, number_format((float) $project->initial_payment_amount, 2)) : '--',
+                'paid_payment_display' => sprintf('%s %s', $project->currency, number_format($paidPayment, 2)),
+                'remaining_budget_display' => sprintf('%s %s', $project->currency, number_format($remainingBudget, 2)),
+                'remaining_budget_invoiceable_display' => sprintf('%s %s', $project->currency, number_format($remainingBudgetInvoiceable, 2)),
+                'budget_amount_display' => $project->budget_amount !== null ? sprintf('%s %s', $project->currency, number_format((float) $project->budget_amount, 2)) : '--',
+                'employee_salary_total_display' => sprintf('%s %s', $project->currency, number_format($employeeSalaryTotal, 2)),
+                'sales_rep_total_display' => sprintf('%s %s', $project->currency, number_format($salesRepTotal, 2)),
+                'profit_display' => sprintf('%s %s', $project->currency, number_format($profit, 2)),
+                // Contract lines preserved for existing assertions.
+                'remaining_budget_line' => sprintf('Remaining budget: %s %s', $project->currency, number_format($remainingBudget, 2)),
+                'profit_line' => sprintf('Profit: %s %s', $project->currency, number_format($profit, 2)),
+            ],
+            'overheads' => $project->overheads
+                ->map(fn ($overhead) => $this->serializeProjectOverhead($project, $overhead))
+                ->values(),
+            'maintenances' => $project->maintenances
+                ->map(fn (ProjectMaintenance $maintenance) => $this->serializeProjectMaintenance($project, $maintenance))
+                ->values(),
+            'can_mark_complete' => $project->status !== 'complete',
+            'project_chat_unread_count' => $projectChatUnreadCount,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeProjectTaskPreview(Project $project, ProjectTask $task): array
+    {
+        $status = (string) ($task->status ?? 'pending');
+        $statusLabel = match ($status) {
+            'pending', 'todo' => 'Open',
+            'in_progress' => 'Inprogress',
+            'blocked' => 'Blocked',
+            'completed', 'done' => 'Completed',
+            default => ucfirst(str_replace('_', ' ', $status)),
+        };
+
+        return [
+            'id' => $task->id,
+            'title' => (string) $task->title,
+            'description' => (string) ($task->description ?? ''),
+            'created_at' => $task->created_at?->format('Y-m-d H:i') ?? '--',
+            'creator_name' => (string) ($task->creator?->name ?? 'System'),
+            'status' => $status,
+            'status_label' => $statusLabel,
+            'route' => route('admin.projects.tasks.show', [$project, $task]),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeProjectInvoice(Invoice $invoice): array
+    {
+        return [
+            'id' => $invoice->id,
+            'number_display' => '#'.($invoice->number ?: $invoice->id),
+            'total_display' => sprintf('%s %s', $invoice->currency, number_format((float) $invoice->total, 2)),
+            'issue_date' => $invoice->issue_date?->format('Y-m-d') ?? '--',
+            'due_date' => $invoice->due_date?->format('Y-m-d') ?? '--',
+            'paid_at' => $invoice->paid_at?->format('Y-m-d') ?? '--',
+            'status' => (string) $invoice->status,
+            'status_label' => ucfirst((string) $invoice->status),
+            'show_route' => route('admin.invoices.show', $invoice),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeProjectOverhead(Project $project, $overhead): array
+    {
+        $invoice = $overhead->invoice;
+        $invoiceStatus = strtolower((string) ($invoice->status ?? ''));
+
+        $statusLabel = 'Unpaid';
+        if (! $invoice) {
+            $statusLabel = 'Not invoiced';
+        } elseif ($invoiceStatus === 'paid') {
+            $statusLabel = 'Paid';
+        } elseif ($invoiceStatus === 'cancelled') {
+            $statusLabel = 'Cancelled';
+        }
+
+        return [
+            'id' => $overhead->id,
+            'details' => (string) $overhead->short_details,
+            'amount_display' => sprintf('%s %s', $project->currency, number_format((float) $overhead->amount, 2)),
+            'date' => $overhead->created_at?->format('Y-m-d') ?? '--',
+            'status_label' => $statusLabel,
+            'invoice_number' => $invoice ? '#'.($invoice->number ?: $invoice->id) : '--',
+            'invoice_show_route' => $invoice ? route('admin.invoices.show', ['invoice' => $invoice->id]) : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeProjectMaintenance(Project $project, ProjectMaintenance $maintenance): array
+    {
+        return [
+            'id' => $maintenance->id,
+            'title' => (string) $maintenance->title,
+            'cycle' => ucfirst((string) $maintenance->billing_cycle),
+            'next_billing_date' => $maintenance->next_billing_date?->format('Y-m-d') ?? '--',
+            'status' => (string) $maintenance->status,
+            'auto_invoice' => (bool) $maintenance->auto_invoice,
+            'amount_display' => sprintf('%s %s', $maintenance->currency, number_format((float) $maintenance->amount, 2)),
+            'invoices_count' => (int) ($maintenance->invoices_count ?? 0),
+            'invoices_route' => route('admin.invoices.index', ['maintenance_id' => $maintenance->id]),
+            'edit_route' => route('admin.project-maintenances.edit', $maintenance),
+        ];
+    }
+
+    private function projectStatusClass(string $status): string
+    {
+        return match ($status) {
+            'ongoing' => 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+            'hold' => 'bg-amber-100 text-amber-700 ring-amber-200',
+            'complete' => 'bg-blue-100 text-blue-700 ring-blue-200',
+            'cancel' => 'bg-rose-100 text-rose-700 ring-rose-200',
+            default => 'bg-slate-100 text-slate-700 ring-slate-200',
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function paginationPayload($paginator): array
+    {
+        return [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'from' => $paginator->firstItem(),
+            'to' => $paginator->lastItem(),
+            'previous_url' => $paginator->previousPageUrl(),
+            'next_url' => $paginator->nextPageUrl(),
+            'has_pages' => $paginator->hasPages(),
+        ];
     }
 
     private function parseAssignee(string $value): array
@@ -1085,6 +1565,7 @@ class ProjectController extends Controller
         }
 
         $parsed = array_filter(array_map('trim', explode(',', $tags)));
+
         return array_values(array_unique($parsed));
     }
 
@@ -1096,6 +1577,7 @@ class ProjectController extends Controller
 
         $ids = array_filter(array_map('trim', explode(',', $relationships)));
         $ids = array_values(array_unique(array_filter($ids, fn ($id) => is_numeric($id))));
+
         return array_map('intval', $ids);
     }
 
@@ -1104,9 +1586,9 @@ class ProjectController extends Controller
         $name = pathinfo((string) $attachment->getClientOriginalName(), PATHINFO_FILENAME);
         $name = $name !== '' ? Str::slug($name) : 'attachment';
         $extension = $attachment->getClientOriginalExtension();
-        $fileName = $name . '-' . Str::random(8) . '.' . $extension;
+        $fileName = $name.'-'.Str::random(8).'.'.$extension;
 
-        return $attachment->storeAs('project-task-activities/' . $task->id, $fileName, 'public');
+        return $attachment->storeAs('project-task-activities/'.$task->id, $fileName, 'public');
     }
 
     private function storeProjectFile(Project $project, ?UploadedFile $file, string $type): void
@@ -1123,8 +1605,8 @@ class ProjectController extends Controller
             Storage::disk('public')->delete($previousPath);
         }
 
-        $fileName = Str::slug("{$type}-{$project->id}-" . time());
-        $fileName .= '.' . $file->getClientOriginalExtension();
+        $fileName = Str::slug("{$type}-{$project->id}-".time());
+        $fileName .= '.'.$file->getClientOriginalExtension();
         $path = $file->storeAs("projects/{$project->id}", $fileName, 'public');
 
         $project->update([

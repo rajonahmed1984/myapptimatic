@@ -3,29 +3,67 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Project;
-use App\Models\ProjectOverhead;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\Project;
+use App\Models\ProjectOverhead;
 use App\Models\Setting;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
-use Carbon\Carbon;
 use App\Services\BillingService;
 use App\Services\InvoiceTaxService;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ProjectOverheadController extends Controller
 {
-    public function index(Project $project)
+    public function index(Project $project): InertiaResponse
     {
         $this->authorize('view', $project);
 
         $overheads = $project->overheads()->with('invoice')->latest('created_at')->get();
 
-        return view('admin.projects.overheads.index', [
-            'project' => $project,
-            'overheads' => $overheads,
+        $unpaidCount = $overheads->whereNull('invoice_id')->count();
+
+        return Inertia::render('Admin/Projects/Overheads/Index', [
+            'pageTitle' => 'Overhead fees',
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'status_label' => ucfirst(str_replace('_', ' ', (string) $project->status)),
+                'currency' => $project->currency,
+                'remaining_budget_display' => $project->remaining_budget !== null
+                    ? $project->currency.' '.number_format((float) $project->remaining_budget, 2)
+                    : '--',
+            ],
+            'overheads' => $overheads->map(function (ProjectOverhead $overhead) use ($project) {
+                $invoice = $overhead->invoice;
+                $status = 'Unpaid';
+                if (! $invoice) {
+                    $status = 'Not invoiced';
+                } elseif ($invoice->status === 'paid') {
+                    $status = 'Paid';
+                } elseif ($invoice->status === 'cancelled') {
+                    $status = 'Cancelled';
+                }
+
+                return [
+                    'id' => $overhead->id,
+                    'invoice_number' => $invoice ? '#'.($invoice->number ?? $invoice->id) : '--',
+                    'invoice_show_route' => $invoice ? route('admin.invoices.show', ['invoice' => $invoice->id]) : null,
+                    'details' => $overhead->short_details,
+                    'amount_display' => $project->currency.' '.number_format((float) $overhead->amount, 2),
+                    'date' => $overhead->created_at?->format('Y-m-d') ?? '--',
+                    'status_label' => $status,
+                ];
+            })->values(),
+            'unpaid_count' => $unpaidCount,
+            'routes' => [
+                'project_show' => route('admin.projects.show', $project),
+                'store' => route('admin.projects.overheads.store', $project),
+                'invoice_pending' => route('admin.projects.overheads.invoice', $project),
+            ],
         ]);
     }
 

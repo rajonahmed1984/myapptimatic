@@ -6,15 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Requests\UpdateTaskStatusRequest;
+use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\Employee;
 use App\Models\SalesRepresentative;
 use App\Support\AjaxResponse;
 use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
-use App\Support\TaskAssignmentManager;
 use App\Support\TaskAssignees;
+use App\Support\TaskAssignmentManager;
 use App\Support\TaskCompletionManager;
 use App\Support\TaskSettings;
 use Carbon\Carbon;
@@ -23,10 +23,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ProjectTaskController extends Controller
 {
-    public function create(Request $request, Project $project): View
+    public function create(Request $request, Project $project): View|InertiaResponse
     {
         $this->authorize('createTask', $project);
 
@@ -34,13 +36,22 @@ class ProjectTaskController extends Controller
             return view('admin.projects.partials.task-form', $this->taskFormData($project));
         }
 
-        return view('admin.projects.task-form-page', array_merge(
-            $this->taskFormData($project),
-            ['ajaxForm' => false]
-        ));
+        $statusFilter = old('task_status_filter', $request->query('status'));
+        $statusFilter = in_array($statusFilter, ['pending', 'in_progress', 'blocked', 'completed'], true)
+            ? $statusFilter
+            : null;
+        $returnToUrl = route('admin.projects.tasks.index', array_filter([
+            'project' => $project,
+            'status' => $statusFilter,
+        ], fn ($value) => $value !== null && $value !== ''));
+
+        return Inertia::render('Admin/Projects/TaskFormPage', [
+            ...$this->taskFormInertiaData($project, null, false, $statusFilter, $returnToUrl),
+            'pageTitle' => 'Add Task',
+        ]);
     }
 
-    public function edit(Request $request, Project $project, ProjectTask $task): View
+    public function edit(Request $request, Project $project, ProjectTask $task): View|InertiaResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $this->authorize('update', $task);
@@ -49,10 +60,19 @@ class ProjectTaskController extends Controller
             return view('admin.projects.partials.task-form', $this->taskFormData($project, $task));
         }
 
-        return view('admin.projects.task-form-page', array_merge(
-            $this->taskFormData($project, $task),
-            ['ajaxForm' => false]
-        ));
+        $statusFilter = old('task_status_filter', $request->query('status'));
+        $statusFilter = in_array($statusFilter, ['pending', 'in_progress', 'blocked', 'completed'], true)
+            ? $statusFilter
+            : null;
+        $returnToUrl = route('admin.projects.tasks.index', array_filter([
+            'project' => $project,
+            'status' => $statusFilter,
+        ], fn ($value) => $value !== null && $value !== ''));
+
+        return Inertia::render('Admin/Projects/TaskFormPage', [
+            ...$this->taskFormInertiaData($project, $task, true, $statusFilter, $returnToUrl),
+            'pageTitle' => 'Edit Task',
+        ]);
     }
 
     public function store(StoreTaskRequest $request, Project $project): RedirectResponse|JsonResponse
@@ -181,7 +201,7 @@ class ProjectTaskController extends Controller
         $task->update($payload);
 
         if ($previousStatus !== $task->status) {
-            TaskActivityLogger::record($task, $request, 'status', 'Status changed to ' . ucfirst(str_replace('_', ' ', $task->status)) . '.');
+            TaskActivityLogger::record($task, $request, 'status', 'Status changed to '.ucfirst(str_replace('_', ' ', $task->status)).'.');
         }
 
         if (! empty($data['assignees'])) {
@@ -307,7 +327,7 @@ class ProjectTaskController extends Controller
         $task->update($payload);
 
         if ($previousStatus !== $task->status) {
-            TaskActivityLogger::record($task, $request, 'status', 'Status changed to ' . ucfirst(str_replace('_', ' ', $task->status)) . '.');
+            TaskActivityLogger::record($task, $request, 'status', 'Status changed to '.ucfirst(str_replace('_', ' ', $task->status)).'.');
         }
 
         SystemLogger::write('activity', 'Project task status updated.', [
@@ -362,6 +382,7 @@ class ProjectTaskController extends Controller
     {
         if (AjaxResponse::ajaxFromRequest($request)) {
             $message = collect($errors)->flatten()->first() ?? 'Validation failed.';
+
             return AjaxResponse::ajaxValidation($errors, null, $message);
         }
 
@@ -403,6 +424,97 @@ class ProjectTaskController extends Controller
         ];
     }
 
+    private function taskFormInertiaData(
+        Project $project,
+        ?ProjectTask $task,
+        bool $isEdit,
+        ?string $statusFilter,
+        string $returnToUrl
+    ): array {
+        $task?->loadMissing(['assignments.employee', 'assignments.salesRep']);
+        $selectedAssignees = old(
+            'assignees',
+            $isEdit && $task
+                ? $task->assignments
+                    ->map(fn ($assignment) => $assignment->assignee_type.':'.$assignment->assignee_id)
+                    ->filter()
+                    ->values()
+                    ->all()
+                : []
+        );
+
+        return [
+            'isEdit' => $isEdit,
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+            ],
+            'task' => $task ? [
+                'id' => $task->id,
+                'title' => $task->title,
+                'description' => $task->description,
+                'task_type' => $task->task_type,
+                'priority' => $task->priority,
+                'status' => $task->status,
+                'progress' => (int) ($task->progress ?? 0),
+                'time_estimate_minutes' => $task->time_estimate_minutes,
+                'tags' => $task->tags ? implode(', ', $task->tags) : '',
+                'relationship_ids' => $task->relationship_ids ? implode(', ', $task->relationship_ids) : '',
+                'notes' => $task->notes,
+                'customer_visible' => (bool) $task->customer_visible,
+            ] : null,
+            'taskStatusFilter' => $statusFilter,
+            'returnToUrl' => $returnToUrl,
+            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
+            'priorityOptions' => TaskSettings::priorityOptions(),
+            'statusOptions' => ['pending', 'in_progress', 'blocked', 'completed'],
+            'employees' => Employee::query()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'designation'])
+                ->map(fn (Employee $employee) => [
+                    'id' => $employee->id,
+                    'name' => $employee->name,
+                    'designation' => $employee->designation,
+                ])
+                ->values(),
+            'salesReps' => SalesRepresentative::query()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'email'])
+                ->map(fn (SalesRepresentative $salesRep) => [
+                    'id' => $salesRep->id,
+                    'name' => $salesRep->name,
+                    'email' => $salesRep->email,
+                ])
+                ->values(),
+            'form' => [
+                'task_status_filter' => old('task_status_filter', $statusFilter),
+                'return_to' => old('return_to', $returnToUrl),
+                'title' => old('title', $task?->title ?? ''),
+                'start_date' => old('start_date', now()->toDateString()),
+                'due_date' => old('due_date'),
+                'status' => old('status', $task?->status),
+                'task_type' => old('task_type', $task?->task_type),
+                'priority' => old('priority', $task?->priority ?? 'medium'),
+                'progress' => old('progress', (int) ($task?->progress ?? 0)),
+                'time_estimate_minutes' => old('time_estimate_minutes', $task?->time_estimate_minutes),
+                'description' => old('description', $task?->description ?? ''),
+                'tags' => old('tags', $task && $task->tags ? implode(', ', $task->tags) : ''),
+                'relationship_ids' => old('relationship_ids', $task && $task->relationship_ids ? implode(', ', $task->relationship_ids) : ''),
+                'notes' => old('notes', $task?->notes ?? ''),
+                'customer_visible' => (bool) old('customer_visible', $task?->customer_visible ?? false),
+                'assignees' => array_values(array_filter((array) $selectedAssignees)),
+            ],
+            'routes' => [
+                'index' => route('admin.projects.tasks.index', $project),
+                'submit' => $isEdit
+                    ? route('admin.projects.tasks.update', [$project, $task])
+                    : route('admin.projects.tasks.store', $project),
+            ],
+        ];
+    }
+
     private function taskPatches(Request $request, Project $project): array
     {
         $payload = $this->tasksPayload($request, $project);
@@ -434,6 +546,7 @@ class ProjectTaskController extends Controller
             ->when($statusFilter, function ($query, $status) {
                 if ($status === 'completed') {
                     $query->whereIn('status', ['completed', 'done']);
+
                     return;
                 }
 
@@ -497,6 +610,7 @@ class ProjectTaskController extends Controller
     {
         if (! empty($data['descriptions']) && is_array($data['descriptions'])) {
             $description = implode("\n", array_filter($data['descriptions']));
+
             return $description !== '' ? $description : null;
         }
 
@@ -510,6 +624,7 @@ class ProjectTaskController extends Controller
         }
 
         $parsed = array_filter(array_map('trim', explode(',', $tags)));
+
         return array_values(array_unique($parsed));
     }
 
@@ -521,6 +636,7 @@ class ProjectTaskController extends Controller
 
         $ids = array_filter(array_map('trim', explode(',', $relationships)));
         $ids = array_values(array_unique(array_filter($ids, fn ($id) => is_numeric($id))));
+
         return array_map('intval', $ids);
     }
 
@@ -534,8 +650,8 @@ class ProjectTaskController extends Controller
         $name = pathinfo((string) $file->getClientOriginalName(), PATHINFO_FILENAME);
         $name = $name !== '' ? Str::slug($name) : 'attachment';
         $extension = $file->getClientOriginalExtension();
-        $fileName = $name . '-' . Str::random(8) . '.' . $extension;
+        $fileName = $name.'-'.Str::random(8).'.'.$extension;
 
-        return $file->storeAs('project-task-activities/' . $task->id, $fileName, 'public');
+        return $file->storeAs('project-task-activities/'.$task->id, $fileName, 'public');
     }
 }
