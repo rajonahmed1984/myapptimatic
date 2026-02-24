@@ -20,6 +20,10 @@ class HandleInertiaRequests extends Middleware
             return 'react-admin';
         }
 
+        if ($request->routeIs('client.*')) {
+            return 'react-client';
+        }
+
         return 'react-sandbox';
     }
 

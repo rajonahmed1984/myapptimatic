@@ -40,7 +40,8 @@ class ClientInvoiceAccessTest extends TestCase
             ->get(route('client.invoices.pay', $invoice));
 
         $response->assertOk();
-        $response->assertSee('Invoice #' . $invoice->id);
+        $response->assertSee('data-page=');
+        $response->assertSee('Client\\/Invoices\\/Pay', false);
     }
 
     #[Test]
