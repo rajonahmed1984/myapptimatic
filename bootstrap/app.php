@@ -100,7 +100,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'user.activity' => \App\Http\Middleware\TrackAuthenticatedUserActivity::class,
             'nocache' => \App\Http\Middleware\NoCacheHeaders::class,
             'login.trace' => \App\Http\Middleware\LoginTrace::class,
-            'react.ui' => \App\Http\Middleware\ReactUiGate::class,
         ]);
 
         $middleware->web(append: [

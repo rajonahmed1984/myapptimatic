@@ -490,10 +490,10 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
         ->name('apptimatic-email.')
         ->group(function () {
             Route::get('/', [AdminApptimaticEmailController::class, 'inbox'])
-                ->middleware(['react.ui:admin_apptimatic_email_inbox', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('inbox');
             Route::get('/messages/{message}', [AdminApptimaticEmailController::class, 'show'])
-                ->middleware(['react.ui:admin_apptimatic_email_show', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->where('message', '[A-Za-z0-9\-]+')
                 ->name('show');
         });
@@ -578,10 +578,10 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     });
 
     Route::get('users/activity-summary', [UserActivitySummaryController::class, 'index'])
-        ->middleware(['react.ui:admin_users_activity_summary_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('users.activity-summary');
     Route::get('/automation-status', [AutomationStatusController::class, 'index'])
-        ->middleware(['react.ui:admin_automation_status_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('automation-status');
     Route::post('/system/cache/clear', SystemCacheController::class)
         ->name('system.cache.clear');
@@ -617,7 +617,7 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
           ->group(function () {
               Route::get('/dashboard', [AdminExpenseDashboardController::class, 'index'])->name('dashboard');
               Route::get('/', [AdminExpenseController::class, 'index'])
-                ->middleware(['react.ui:admin_expenses_index', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('index');
               Route::get('/one-time', [AdminExpenseController::class, 'create'])->name('create');
               Route::get('/create', fn () => redirect()->route('admin.expenses.create'))->name('create.legacy');
@@ -630,24 +630,24 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
             Route::post('/invoices/{expenseInvoice}/pay', [AdminExpenseInvoiceController::class, 'markPaid'])->name('invoices.pay');
 
             Route::get('/categories', [AdminExpenseCategoryController::class, 'index'])
-                ->middleware(['react.ui:admin_expenses_categories_index', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('categories.index');
             Route::post('/categories', [AdminExpenseCategoryController::class, 'store'])->name('categories.store');
             Route::put('/categories/{category}', [AdminExpenseCategoryController::class, 'update'])->name('categories.update');
             Route::delete('/categories/{category}', [AdminExpenseCategoryController::class, 'destroy'])->name('categories.destroy');
 
             Route::get('/recurring', [AdminRecurringExpenseController::class, 'index'])
-                ->middleware(['react.ui:admin_expenses_recurring_index', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('recurring.index');
             Route::get('/recurring/create', [AdminRecurringExpenseController::class, 'create'])
-                ->middleware(['react.ui:admin_expenses_recurring_create', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('recurring.create');
             Route::post('/recurring', [AdminRecurringExpenseController::class, 'store'])->name('recurring.store');
             Route::get('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'show'])
-                ->middleware(['react.ui:admin_expenses_recurring_show', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('recurring.show');
             Route::get('/recurring/{recurringExpense}/edit', [AdminRecurringExpenseController::class, 'edit'])
-                ->middleware(['react.ui:admin_expenses_recurring_edit', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('recurring.edit');
             Route::put('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'update'])->name('recurring.update');
             Route::post('/recurring/{recurringExpense}/advance', [AdminRecurringExpenseController::class, 'storeAdvance'])->name('recurring.advance.store');
@@ -663,14 +663,14 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
               Route::get('/carrothost', [AdminCarrotHostIncomeController::class, 'index'])->name('carrothost');
               Route::post('/carrothost/sync', [AdminCarrotHostIncomeController::class, 'sync'])->name('carrothost.sync');
               Route::get('/', [AdminIncomeController::class, 'index'])
-                ->middleware(['react.ui:admin_income_index', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('index');
               Route::get('/create', [AdminIncomeController::class, 'create'])->name('create');
             Route::post('/', [AdminIncomeController::class, 'store'])->name('store');
             Route::get('/{income}/attachment', [AdminIncomeController::class, 'attachment'])->name('attachments.show');
 
             Route::get('/categories', [AdminIncomeCategoryController::class, 'index'])
-                ->middleware(['react.ui:admin_income_categories_index', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('categories.index');
             Route::post('/categories', [AdminIncomeCategoryController::class, 'store'])->name('categories.store');
             Route::put('/categories/{category}', [AdminIncomeCategoryController::class, 'update'])->name('categories.update');
@@ -682,10 +682,10 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
         ->name('finance.')
         ->group(function () {
             Route::get('/reports', [AdminFinanceReportController::class, 'index'])
-                ->middleware(['react.ui:admin_finance_reports_index', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('reports.index');
             Route::get('/payment-methods', [AdminPaymentMethodController::class, 'index'])
-                ->middleware(['react.ui:admin_finance_payment_methods_index', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('payment-methods.index');
             Route::get('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'show'])->name('payment-methods.show');
             Route::post('/payment-methods', [AdminPaymentMethodController::class, 'store'])->name('payment-methods.store');
@@ -693,7 +693,7 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
             Route::delete('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 
             Route::get('/tax', [AdminFinanceTaxController::class, 'index'])
-                ->middleware(['react.ui:admin_finance_tax_index', HandleInertiaRequests::class])
+                ->middleware(HandleInertiaRequests::class)
                 ->name('tax.index');
             Route::put('/tax', [AdminFinanceTaxController::class, 'updateSettings'])->name('tax.update');
             Route::post('/tax/rates', [AdminFinanceTaxController::class, 'storeRate'])->name('tax.rates.store');
@@ -718,26 +718,26 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::put('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'update'])->name('customers.project-users.update');
     Route::delete('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'destroy'])->name('customers.project-users.destroy');
     Route::get('products', [ProductController::class, 'index'])
-        ->middleware(['react.ui:admin_products_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('products.index');
     Route::resource('products', ProductController::class)->except(['show', 'index']);
     Route::get('plans', [PlanController::class, 'index'])
-        ->middleware(['react.ui:admin_plans_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('plans.index');
     Route::resource('plans', PlanController::class)->except(['show', 'index']);
     Route::get('subscriptions', [SubscriptionController::class, 'index'])
-        ->middleware(['react.ui:admin_subscriptions_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('subscriptions.index');
     Route::resource('subscriptions', SubscriptionController::class)->except(['show', 'index']);
     Route::get('licenses', [LicenseController::class, 'index'])
-        ->middleware(['react.ui:admin_licenses_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('licenses.index');
     Route::resource('licenses', LicenseController::class)->except(['show', 'index']);
     Route::post('licenses/{license}/domains/{domain}/revoke', [LicenseController::class, 'revokeDomain'])->name('licenses.domains.revoke');
     Route::post('licenses/{license}/sync', [LicenseController::class, 'sync'])->name('licenses.sync');
     Route::get('licenses/{license}/sync-status', [LicenseController::class, 'syncStatus'])->name('licenses.sync-status');
     Route::get('orders', [AdminOrderController::class, 'index'])
-        ->middleware(['react.ui:admin_orders_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('orders.index');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     Route::post('orders/{order}/approve', [AdminOrderController::class, 'approve'])->name('orders.approve');
@@ -838,7 +838,7 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
     Route::post('sales-reps/{sales_rep}/advance-payment', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'storeAdvancePayment'])->name('sales-reps.advance-payment');
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])
-        ->middleware(['react.ui:admin_support_tickets_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('support-tickets.index');
     Route::get('support-tickets/create', [AdminSupportTicketController::class, 'create'])->name('support-tickets.create');
     Route::post('support-tickets', [AdminSupportTicketController::class, 'store'])->name('support-tickets.store');
@@ -875,7 +875,7 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('payment-gateways/{paymentGateway}/edit', [PaymentGatewayController::class, 'edit'])->name('payment-gateways.edit');
     Route::put('payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');
     Route::get('commission-payouts', [CommissionPayoutController::class, 'index'])
-        ->middleware(['react.ui:admin_commission_payouts_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('commission-payouts.index');
     Route::get('commission-payouts/create', [CommissionPayoutController::class, 'create'])->name('commission-payouts.create');
     Route::post('commission-payouts', [CommissionPayoutController::class, 'store'])->name('commission-payouts.store');
@@ -885,12 +885,14 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('commission-earnings/export', [CommissionExportController::class, 'exportEarnings'])->name('commission-earnings.export');
     Route::get('commission-payouts/export', [CommissionExportController::class, 'exportPayouts'])->name('commission-payouts.export');
     Route::get('accounting', [AdminAccountingController::class, 'index'])
-        ->middleware(['react.ui:admin_accounting_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('accounting.index');
     Route::get('accounting/ledger', [AdminAccountingController::class, 'index'])
-        ->middleware(['react.ui:admin_accounting_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('accounting.ledger');
-    Route::get('accounting/transactions', [AdminAccountingController::class, 'transactions'])->name('accounting.transactions');
+    Route::get('accounting/transactions', [AdminAccountingController::class, 'transactions'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('accounting.transactions');
     Route::get('accounting/create', [AdminAccountingController::class, 'create'])->name('accounting.create');
     Route::post('accounting', [AdminAccountingController::class, 'store'])->name('accounting.store');
     Route::get('accounting/{entry}/edit', [AdminAccountingController::class, 'edit'])->name('accounting.edit');
@@ -899,23 +901,23 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('settings', [SettingController::class, 'edit'])->name('settings.edit');
     Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
     Route::get('logs/activity', [SystemLogController::class, 'index'])
-        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('logs.activity')
         ->defaults('type', 'activity');
     Route::get('logs/admin', [SystemLogController::class, 'index'])
-        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('logs.admin')
         ->defaults('type', 'admin');
     Route::get('logs/module', [SystemLogController::class, 'index'])
-        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('logs.module')
         ->defaults('type', 'module');
     Route::get('logs/email', [SystemLogController::class, 'index'])
-        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('logs.email')
         ->defaults('type', 'email');
     Route::get('logs/ticket-mail-import', [SystemLogController::class, 'index'])
-        ->middleware(['react.ui:admin_logs_index', HandleInertiaRequests::class])
+        ->middleware(HandleInertiaRequests::class)
         ->name('logs.ticket-mail-import')
         ->defaults('type', 'ticket-mail-import');
     Route::post('logs/email/{systemLog}/resend', [SystemLogController::class, 'resend'])->name('logs.email.resend');

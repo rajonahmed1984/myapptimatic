@@ -12,23 +12,20 @@ use App\Models\RecurringExpenseAdvance;
 use App\Models\Setting;
 use App\Services\ExpenseInvoiceService;
 use App\Support\Currency;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class RecurringExpenseController extends Controller
 {
     public function index(
         Request $request,
-        ExpenseInvoiceService $invoiceService,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+        ExpenseInvoiceService $invoiceService
+    ): InertiaResponse {
         $invoiceService->syncOverdueStatuses();
         $today = Carbon::today()->toDateString();
 
@@ -60,30 +57,20 @@ class RecurringExpenseController extends Controller
         }
         $currencySymbol = Currency::symbol($currencyCode);
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_EXPENSES_RECURRING_INDEX,
-            'admin.expenses.recurring.index',
-            compact('recurringExpenses', 'paymentMethods', 'currencyCode', 'currencySymbol'),
+        return Inertia::render(
             'Admin/Expenses/Recurring/Index',
             $this->indexInertiaProps($recurringExpenses, $paymentMethods, $currencyCode, $currencySymbol)
         );
     }
 
-    public function create(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function create(): InertiaResponse
+    {
         $categories = ExpenseCategory::query()
             ->where('status', 'active')
             ->orderBy('name')
             ->get();
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_EXPENSES_RECURRING_CREATE,
-            'admin.expenses.recurring.create',
-            compact('categories'),
+        return Inertia::render(
             'Admin/Expenses/Recurring/Create',
             $this->createInertiaProps($categories)
         );
@@ -107,30 +94,22 @@ class RecurringExpenseController extends Controller
     }
 
     public function edit(
-        Request $request,
-        RecurringExpense $recurringExpense,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+        RecurringExpense $recurringExpense
+    ): InertiaResponse {
         $categories = ExpenseCategory::query()
             ->orderBy('name')
             ->get();
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_EXPENSES_RECURRING_EDIT,
-            'admin.expenses.recurring.edit',
-            compact('recurringExpense', 'categories'),
+        return Inertia::render(
             'Admin/Expenses/Recurring/Edit',
             $this->editInertiaProps($recurringExpense, $categories)
         );
     }
 
     public function show(
-        Request $request,
         RecurringExpense $recurringExpense,
-        ExpenseInvoiceService $invoiceService,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+        ExpenseInvoiceService $invoiceService
+    ): InertiaResponse {
         $recurringExpense->load('category');
         $this->backfillMissingDueDates($recurringExpense->id);
         $invoiceService->syncOverdueStatuses($recurringExpense->id);
@@ -185,28 +164,7 @@ class RecurringExpenseController extends Controller
             ->sum('amount');
         $advanceBalance = max(0, $advanceTotal - $advanceUsed);
 
-        $bladeProps = [
-            'recurringExpense' => $recurringExpense,
-            'invoices' => $invoices,
-            'totalInvoices' => $totalInvoices,
-            'paidCount' => $paidCount,
-            'unpaidCount' => $unpaidCount,
-            'overdueCount' => $overdueCount,
-            'nextDueDate' => $nextDueDate,
-            'currencySymbol' => $currencySymbol,
-            'currencyCode' => $currencyCode,
-            'paymentMethods' => $paymentMethods,
-            'advancePayments' => $advancePayments,
-            'advanceTotal' => $advanceTotal,
-            'advanceUsed' => $advanceUsed,
-            'advanceBalance' => $advanceBalance,
-        ];
-
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_EXPENSES_RECURRING_SHOW,
-            'admin.expenses.recurring.show',
-            $bladeProps,
+        return Inertia::render(
             'Admin/Expenses/Recurring/Show',
             $this->showInertiaProps(
                 $recurringExpense,

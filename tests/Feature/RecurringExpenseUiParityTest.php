@@ -15,7 +15,7 @@ class RecurringExpenseUiParityTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function recurring_index_uses_blade_when_react_flag_is_off(): void
+    public function recurring_index_is_inertia_when_legacy_flag_is_off(): void
     {
         config()->set('features.admin_expenses_recurring_index', false);
 
@@ -26,11 +26,12 @@ class RecurringExpenseUiParityTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.index'));
 
         $response->assertOk();
-        $response->assertViewIs('admin.expenses.recurring.index');
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Expenses\\/Recurring\\/Index', false);
     }
 
     #[Test]
-    public function recurring_index_uses_inertia_when_react_flag_is_on(): void
+    public function recurring_index_remains_inertia_when_legacy_flag_is_on(): void
     {
         config()->set('features.admin_expenses_recurring_index', true);
 
@@ -46,7 +47,7 @@ class RecurringExpenseUiParityTest extends TestCase
     }
 
     #[Test]
-    public function recurring_index_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    public function recurring_index_permission_guard_remains_forbidden_for_client_role_with_or_without_legacy_flag(): void
     {
         $client = User::factory()->create([
             'role' => Role::CLIENT,
@@ -64,7 +65,7 @@ class RecurringExpenseUiParityTest extends TestCase
     }
 
     #[Test]
-    public function recurring_create_uses_blade_when_react_flag_is_off(): void
+    public function recurring_create_is_inertia_when_legacy_flag_is_off(): void
     {
         config()->set('features.admin_expenses_recurring_create', false);
 
@@ -75,11 +76,12 @@ class RecurringExpenseUiParityTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.create'));
 
         $response->assertOk();
-        $response->assertViewIs('admin.expenses.recurring.create');
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Expenses\\/Recurring\\/Create', false);
     }
 
     #[Test]
-    public function recurring_create_uses_inertia_when_react_flag_is_on(): void
+    public function recurring_create_remains_inertia_when_legacy_flag_is_on(): void
     {
         config()->set('features.admin_expenses_recurring_create', true);
 
@@ -95,7 +97,7 @@ class RecurringExpenseUiParityTest extends TestCase
     }
 
     #[Test]
-    public function recurring_create_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    public function recurring_create_permission_guard_remains_forbidden_for_client_role_with_or_without_legacy_flag(): void
     {
         $client = User::factory()->create([
             'role' => Role::CLIENT,
@@ -113,7 +115,7 @@ class RecurringExpenseUiParityTest extends TestCase
     }
 
     #[Test]
-    public function recurring_show_uses_blade_when_react_flag_is_off(): void
+    public function recurring_show_is_inertia_when_legacy_flag_is_off(): void
     {
         config()->set('features.admin_expenses_recurring_show', false);
 
@@ -125,11 +127,12 @@ class RecurringExpenseUiParityTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.show', $recurring));
 
         $response->assertOk();
-        $response->assertViewIs('admin.expenses.recurring.show');
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Expenses\\/Recurring\\/Show', false);
     }
 
     #[Test]
-    public function recurring_show_uses_inertia_when_react_flag_is_on(): void
+    public function recurring_show_remains_inertia_when_legacy_flag_is_on(): void
     {
         config()->set('features.admin_expenses_recurring_show', true);
 
@@ -146,7 +149,7 @@ class RecurringExpenseUiParityTest extends TestCase
     }
 
     #[Test]
-    public function recurring_show_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    public function recurring_show_permission_guard_remains_forbidden_for_client_role_with_or_without_legacy_flag(): void
     {
         $admin = User::factory()->create([
             'role' => Role::MASTER_ADMIN,
@@ -169,7 +172,7 @@ class RecurringExpenseUiParityTest extends TestCase
     }
 
     #[Test]
-    public function recurring_edit_uses_blade_when_react_flag_is_off(): void
+    public function recurring_edit_is_inertia_when_legacy_flag_is_off(): void
     {
         config()->set('features.admin_expenses_recurring_edit', false);
 
@@ -181,11 +184,12 @@ class RecurringExpenseUiParityTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.edit', $recurring));
 
         $response->assertOk();
-        $response->assertViewIs('admin.expenses.recurring.edit');
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Expenses\\/Recurring\\/Edit', false);
     }
 
     #[Test]
-    public function recurring_edit_uses_inertia_when_react_flag_is_on(): void
+    public function recurring_edit_remains_inertia_when_legacy_flag_is_on(): void
     {
         config()->set('features.admin_expenses_recurring_edit', true);
 
@@ -202,7 +206,7 @@ class RecurringExpenseUiParityTest extends TestCase
     }
 
     #[Test]
-    public function recurring_edit_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    public function recurring_edit_permission_guard_remains_forbidden_for_client_role_with_or_without_legacy_flag(): void
     {
         $admin = User::factory()->create([
             'role' => Role::MASTER_ADMIN,

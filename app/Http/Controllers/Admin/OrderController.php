@@ -10,24 +10,20 @@ use App\Models\Plan;
 use App\Services\AdminNotificationService;
 use App\Services\BillingService;
 use App\Services\ClientNotificationService;
-use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
-use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class OrderController extends Controller
 {
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): InertiaResponse
+    {
         $status = $request->query('status');
         $allowed = ['pending', 'accepted', 'cancelled'];
 
@@ -40,16 +36,8 @@ class OrderController extends Controller
         }
 
         $orders = $ordersQuery->paginate(25);
-        $payload = [
-            'orders' => $orders,
-            'status' => $status,
-        ];
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_ORDERS_INDEX,
-            'admin.orders.index',
-            $payload,
+        return Inertia::render(
             'Admin/Orders/Index',
             $this->indexInertiaProps($orders, $status)
         );

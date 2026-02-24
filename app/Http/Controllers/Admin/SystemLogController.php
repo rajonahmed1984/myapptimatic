@@ -6,22 +6,17 @@ use App\Enums\MailCategory;
 use App\Http\Controllers\Controller;
 use App\Models\SystemLog;
 use App\Services\Mail\MailSender;
-use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
-use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class SystemLogController extends Controller
 {
-    public function index(
-        Request $request,
-        string $type,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request, string $type): InertiaResponse
+    {
         $types = $this->logTypes();
 
         if (! isset($types[$type])) {
@@ -35,18 +30,7 @@ class SystemLogController extends Controller
             ->latest()
             ->paginate(50);
 
-        $payload = [
-            'logs' => $logs,
-            'logTypes' => $types,
-            'activeType' => $type,
-            'pageTitle' => $config['label'],
-        ];
-
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_LOGS_INDEX,
-            'admin.logs.index',
-            $payload,
+        return Inertia::render(
             'Admin/Logs/Index',
             $this->indexInertiaProps($logs, $types, $type, $config['label'])
         );

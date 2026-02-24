@@ -5,31 +5,23 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Support\AjaxResponse;
-use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
-use App\Support\UiFeature;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class ProductController extends Controller
 {
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): InertiaResponse
+    {
         $products = Product::query()->latest()->get();
-        $payload = compact('products');
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_PRODUCTS_INDEX,
-            'admin.products.index',
-            $payload,
+        return Inertia::render(
             'Admin/Products/Index',
             $this->indexInertiaProps($products)
         );

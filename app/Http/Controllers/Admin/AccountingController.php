@@ -10,8 +10,6 @@ use App\Models\PaymentGateway;
 use App\Models\Setting;
 use App\Support\AjaxResponse;
 use App\Support\Currency;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,34 +18,37 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class AccountingController extends Controller
 {
     private const TYPES = ['payment', 'refund', 'credit', 'expense'];
 
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): InertiaResponse
+    {
         $scope = 'ledger';
         $pageTitle = 'Ledger';
         $search = trim((string) $request->input('search', ''));
         $payload = $this->indexPayload($scope, $pageTitle, $search);
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_ACCOUNTING_INDEX,
-            'admin.accounting.index',
-            $payload,
+        return Inertia::render(
             'Admin/Accounting/Index',
             $this->indexInertiaProps($payload['entries'], $scope, $search, $pageTitle, url()->current())
         );
     }
 
-    public function transactions(Request $request)
+    public function transactions(Request $request): InertiaResponse
     {
-        return $this->renderIndex($request, 'transactions', 'Transactions', ['payment', 'refund']);
+        $scope = 'transactions';
+        $pageTitle = 'Transactions';
+        $search = trim((string) $request->input('search', ''));
+        $payload = $this->indexPayload($scope, $pageTitle, $search);
+
+        return Inertia::render(
+            'Admin/Accounting/Index',
+            $this->indexInertiaProps($payload['entries'], $scope, $search, $pageTitle, url()->current())
+        );
     }
 
     public function create(Request $request): View
@@ -167,14 +168,6 @@ class AccountingController extends Controller
 
         return redirect()->route($this->scopeRoute($this->normalizeScope($request->input('scope', 'ledger'))))
             ->with('status', 'Accounting entry deleted.');
-    }
-
-    private function renderIndex(Request $request, string $scope, string $pageTitle, ?array $types)
-    {
-        $search = trim((string) $request->input('search', ''));
-        $payload = $this->indexPayload($scope, $pageTitle, $search);
-
-        return view('admin.accounting.index', $payload);
     }
 
     private function indexPayload(string $scope, string $pageTitle, string $search): array

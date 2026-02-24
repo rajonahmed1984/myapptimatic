@@ -9,11 +9,9 @@ use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Models\UserActivityDaily;
 use App\Models\UserSession;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class UserActivitySummaryController extends Controller
@@ -21,10 +19,8 @@ class UserActivitySummaryController extends Controller
     /**
      * Display user activity summary with type filtering.
      */
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): InertiaResponse
+    {
         // Authorization check
         $user = auth('web')->user();
         if (! $user || ! in_array($user->role, Role::adminRoles(), true)) {
@@ -59,11 +55,7 @@ class UserActivitySummaryController extends Controller
             Cache::put("user_activity_summary:{$cacheKey}", $payload, now()->addSeconds(60));
         }
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_USERS_ACTIVITY_SUMMARY_INDEX,
-            'admin.users.activity-summary',
-            $payload,
+        return Inertia::render(
             'Admin/Users/ActivitySummary/Index',
             $this->indexInertiaProps($payload)
         );

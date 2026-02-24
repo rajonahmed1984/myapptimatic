@@ -9,9 +9,7 @@ use App\Services\ClientNotificationService;
 use App\Services\GeminiService;
 use App\Services\SupportTicketAiService;
 use App\Support\AjaxResponse;
-use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
-use App\Support\UiFeature;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,14 +17,13 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class SupportTicketController extends Controller
 {
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): InertiaResponse
+    {
         $status = $request->query('status');
         $allowedStatuses = ['open', 'answered', 'customer_reply', 'closed'];
 
@@ -49,17 +46,7 @@ class SupportTicketController extends Controller
             'closed' => SupportTicket::where('status', 'closed')->count(),
         ];
 
-        $payload = [
-            'tickets' => $tickets,
-            'status' => $status,
-            'statusCounts' => $statusCounts,
-        ];
-
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_SUPPORT_TICKETS_INDEX,
-            'admin.support-tickets.index',
-            $payload,
+        return Inertia::render(
             'Admin/SupportTickets/Index',
             $this->indexInertiaProps($tickets, $status, $statusCounts)
         );

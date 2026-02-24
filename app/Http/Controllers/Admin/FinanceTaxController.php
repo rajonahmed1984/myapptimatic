@@ -5,34 +5,23 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\TaxRate;
 use App\Models\TaxSetting;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class FinanceTaxController extends Controller
 {
     public function index(
         Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    ): InertiaResponse {
         $settings = TaxSetting::current();
         $rates = TaxRate::query()->orderByDesc('effective_from')->orderBy('name')->get();
 
-        $payload = [
-            'settings' => $settings,
-            'rates' => $rates,
-        ];
-
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_FINANCE_TAX_INDEX,
-            'admin.finance.tax.index',
-            $payload,
+        return Inertia::render(
             'Admin/Finance/Tax/Index',
             $this->indexInertiaProps($settings, $rates)
         );

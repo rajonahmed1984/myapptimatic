@@ -6,30 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\RecurringExpense;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class ExpenseCategoryController extends Controller
 {
     public function index(
         Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    ): InertiaResponse {
         $categories = ExpenseCategory::query()
             ->orderBy('name')
             ->get();
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_EXPENSES_CATEGORIES_INDEX,
-            'admin.expenses.categories.index',
-            compact('categories'),
+        return Inertia::render(
             'Admin/Expenses/Categories/Index',
             $this->indexInertiaProps($request, $categories)
         );

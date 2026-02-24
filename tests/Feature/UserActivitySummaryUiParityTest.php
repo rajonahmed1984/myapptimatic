@@ -13,7 +13,7 @@ class UserActivitySummaryUiParityTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function user_activity_summary_uses_blade_when_react_flag_is_off(): void
+    public function user_activity_summary_is_inertia_when_legacy_flag_is_off(): void
     {
         config()->set('features.admin_users_activity_summary_index', false);
 
@@ -24,11 +24,12 @@ class UserActivitySummaryUiParityTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.users.activity-summary'));
 
         $response->assertOk();
-        $response->assertViewIs('admin.users.activity-summary');
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Users\\/ActivitySummary\\/Index', false);
     }
 
     #[Test]
-    public function user_activity_summary_uses_inertia_when_react_flag_is_on(): void
+    public function user_activity_summary_remains_inertia_when_legacy_flag_is_on(): void
     {
         config()->set('features.admin_users_activity_summary_index', true);
 
@@ -44,7 +45,7 @@ class UserActivitySummaryUiParityTest extends TestCase
     }
 
     #[Test]
-    public function user_activity_summary_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    public function user_activity_summary_permission_guard_remains_forbidden_for_client_role_with_or_without_legacy_flag(): void
     {
         $client = User::factory()->create([
             'role' => Role::CLIENT,

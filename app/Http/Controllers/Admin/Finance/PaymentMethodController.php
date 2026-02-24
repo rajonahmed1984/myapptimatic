@@ -8,8 +8,6 @@ use App\Models\EmployeePayout;
 use App\Models\PaymentMethod;
 use App\Models\PayrollAuditLog;
 use App\Models\PayrollItem;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,14 +16,14 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class PaymentMethodController extends Controller
 {
     public function index(
         Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    ): InertiaResponse {
         $editMethod = null;
         if ($request->filled('edit')) {
             $editMethod = PaymentMethod::query()->find($request->integer('edit'));
@@ -46,17 +44,7 @@ class PaymentMethodController extends Controller
             );
         }
 
-        $payload = [
-            'methods' => $methods,
-            'editMethod' => $editMethod,
-            'amountByMethod' => $amountByMethod,
-        ];
-
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_FINANCE_PAYMENT_METHODS_INDEX,
-            'admin.finance.payment-methods.index',
-            $payload,
+        return Inertia::render(
             'Admin/Finance/PaymentMethods/Index',
             $this->indexInertiaProps($methods, $editMethod, $amountByMethod, $request)
         );

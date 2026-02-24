@@ -4,19 +4,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\ApptimaticEmailStubRepository;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class ApptimaticEmailController extends Controller
 {
     public function inbox(
         Request $request,
-        ApptimaticEmailStubRepository $mailbox,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+        ApptimaticEmailStubRepository $mailbox
+    ): InertiaResponse {
         $messages = $mailbox->inbox();
         $selectedMessage = $messages[0] ?? null;
         $threadMessages = $selectedMessage
@@ -30,11 +27,7 @@ class ApptimaticEmailController extends Controller
             $threadMessages
         );
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_APPTIMATIC_EMAIL_INBOX,
-            'admin.apptimatic-email.inbox',
-            $payload,
+        return Inertia::render(
             'Admin/ApptimaticEmail/Inbox',
             $this->inboxInertiaProps($payload)
         );
@@ -43,9 +36,8 @@ class ApptimaticEmailController extends Controller
     public function show(
         Request $request,
         string $message,
-        ApptimaticEmailStubRepository $mailbox,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+        ApptimaticEmailStubRepository $mailbox
+    ): InertiaResponse {
         $messages = $mailbox->inbox();
         $selectedMessage = $mailbox->find($message);
         abort_if(! $selectedMessage, 404);
@@ -59,11 +51,7 @@ class ApptimaticEmailController extends Controller
             $threadMessages
         );
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_APPTIMATIC_EMAIL_SHOW,
-            'admin.apptimatic-email.show',
-            $payload,
+        return Inertia::render(
             'Admin/ApptimaticEmail/Inbox',
             $this->inboxInertiaProps($payload)
         );

@@ -5,28 +5,22 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Income;
 use App\Models\IncomeCategory;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class IncomeCategoryController extends Controller
 {
     public function index(
         Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    ): InertiaResponse {
         $categories = IncomeCategory::query()->orderBy('name')->get();
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_INCOME_CATEGORIES_INDEX,
-            'admin.income.categories.index',
-            compact('categories'),
+        return Inertia::render(
             'Admin/Income/Categories/Index',
             $this->indexInertiaProps($request, $categories)
         );

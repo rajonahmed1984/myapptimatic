@@ -11,22 +11,19 @@ use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\AccessBlockService;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class LicenseController extends Controller
 {
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): View|InertiaResponse
+    {
         $search = trim((string) $request->input('search', ''));
 
         $licenses = License::query()
@@ -94,11 +91,7 @@ class LicenseController extends Controller
             return view('admin.licenses.partials.table', $payload);
         }
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_LICENSES_INDEX,
-            'admin.licenses.index',
-            $payload,
+        return Inertia::render(
             'Admin/Licenses/Index',
             $this->indexInertiaProps(
                 $licenses,

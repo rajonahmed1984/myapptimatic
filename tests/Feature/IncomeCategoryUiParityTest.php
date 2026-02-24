@@ -13,7 +13,7 @@ class IncomeCategoryUiParityTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function income_categories_index_uses_blade_when_react_flag_is_off(): void
+    public function income_categories_index_is_inertia_when_legacy_flag_is_off(): void
     {
         config()->set('features.admin_income_categories_index', false);
 
@@ -24,11 +24,12 @@ class IncomeCategoryUiParityTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.income.categories.index'));
 
         $response->assertOk();
-        $response->assertViewIs('admin.income.categories.index');
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Income\\/Categories\\/Index', false);
     }
 
     #[Test]
-    public function income_categories_index_uses_inertia_when_react_flag_is_on(): void
+    public function income_categories_index_remains_inertia_when_legacy_flag_is_on(): void
     {
         config()->set('features.admin_income_categories_index', true);
 
@@ -44,7 +45,7 @@ class IncomeCategoryUiParityTest extends TestCase
     }
 
     #[Test]
-    public function income_categories_index_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    public function income_categories_index_permission_guard_remains_forbidden_for_client_role_with_or_without_legacy_flag(): void
     {
         $client = User::factory()->create([
             'role' => Role::CLIENT,

@@ -4,27 +4,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\AutomationStatusService;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
-use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class AutomationStatusController extends Controller
 {
     public function __construct(private AutomationStatusService $statusService) {}
 
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(): InertiaResponse
+    {
         $payload = $this->statusService->getStatusPayload();
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_AUTOMATION_STATUS_INDEX,
-            'admin.automation-status',
-            $payload,
+        return Inertia::render(
             'Admin/AutomationStatus/Index',
             $this->indexInertiaProps($payload)
         );

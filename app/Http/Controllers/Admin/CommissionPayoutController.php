@@ -8,23 +8,19 @@ use App\Models\CommissionPayout;
 use App\Models\PaymentMethod;
 use App\Models\SalesRepresentative;
 use App\Services\CommissionService;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class CommissionPayoutController extends Controller
 {
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): InertiaResponse
+    {
         $payouts = CommissionPayout::query()
             ->with(['salesRep', 'project:id,name'])
             ->latest()
@@ -42,17 +38,7 @@ class CommissionPayoutController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'status']);
 
-        $payload = [
-            'payouts' => $payouts,
-            'salesReps' => $salesReps,
-            'payableByRep' => $payableByRep,
-        ];
-
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_COMMISSION_PAYOUTS_INDEX,
-            'admin.commission-payouts.index',
-            $payload,
+        return Inertia::render(
             'Admin/CommissionPayouts/Index',
             $this->indexInertiaProps($payouts, $salesReps, $payableByRep)
         );

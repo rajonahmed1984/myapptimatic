@@ -13,7 +13,7 @@ class LicenseUiParityTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function licenses_index_uses_blade_when_react_flag_is_off(): void
+    public function licenses_index_is_inertia_when_legacy_flag_is_off(): void
     {
         config()->set('features.admin_licenses_index', false);
 
@@ -24,11 +24,12 @@ class LicenseUiParityTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.licenses.index'));
 
         $response->assertOk();
-        $response->assertViewIs('admin.licenses.index');
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Licenses\\/Index', false);
     }
 
     #[Test]
-    public function licenses_index_uses_inertia_when_react_flag_is_on(): void
+    public function licenses_index_remains_inertia_when_legacy_flag_is_on(): void
     {
         config()->set('features.admin_licenses_index', true);
 
@@ -44,7 +45,7 @@ class LicenseUiParityTest extends TestCase
     }
 
     #[Test]
-    public function licenses_index_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    public function licenses_index_permission_guard_remains_forbidden_for_client_role_with_or_without_legacy_flag(): void
     {
         $client = User::factory()->create([
             'role' => Role::CLIENT,

@@ -11,11 +11,9 @@ use App\Models\Setting;
 use App\Services\ExpenseEntryService;
 use App\Services\IncomeEntryService;
 use App\Support\Currency;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class FinanceReportController extends Controller
@@ -24,8 +22,7 @@ class FinanceReportController extends Controller
         Request $request,
         IncomeEntryService $incomeService,
         ExpenseEntryService $expenseService,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    ): InertiaResponse {
         $startDate = $request->query('start_date')
             ? Carbon::parse($request->query('start_date'))->startOfDay()
             : now()->startOfMonth();
@@ -221,11 +218,7 @@ class FinanceReportController extends Controller
             'currencySymbol' => $currencySymbol,
         ];
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_FINANCE_REPORTS_INDEX,
-            'admin.finance.reports.index',
-            $payload,
+        return Inertia::render(
             'Admin/Finance/Reports/Index',
             $this->indexInertiaProps($payload)
         );

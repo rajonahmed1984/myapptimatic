@@ -13,7 +13,7 @@ class FinanceTaxUiParityTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function finance_tax_index_uses_blade_when_react_flag_is_off(): void
+    public function finance_tax_index_is_inertia_when_legacy_flag_is_off(): void
     {
         config()->set('features.admin_finance_tax_index', false);
 
@@ -24,11 +24,12 @@ class FinanceTaxUiParityTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.finance.tax.index'));
 
         $response->assertOk();
-        $response->assertViewIs('admin.finance.tax.index');
+        $response->assertSee('data-page=');
+        $response->assertSee('Admin\\/Finance\\/Tax\\/Index', false);
     }
 
     #[Test]
-    public function finance_tax_index_uses_inertia_when_react_flag_is_on(): void
+    public function finance_tax_index_remains_inertia_when_legacy_flag_is_on(): void
     {
         config()->set('features.admin_finance_tax_index', true);
 
@@ -44,7 +45,7 @@ class FinanceTaxUiParityTest extends TestCase
     }
 
     #[Test]
-    public function finance_tax_index_permission_guard_remains_forbidden_for_client_role_with_flag_on_and_off(): void
+    public function finance_tax_index_permission_guard_remains_forbidden_for_client_role_with_or_without_legacy_flag(): void
     {
         $client = User::factory()->create([
             'role' => Role::CLIENT,

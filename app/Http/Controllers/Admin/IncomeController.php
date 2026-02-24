@@ -10,8 +10,6 @@ use App\Services\GeminiService;
 use App\Services\IncomeEntryService;
 use App\Services\WhmcsClient;
 use App\Support\Currency;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +19,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class IncomeController extends Controller
@@ -146,8 +145,7 @@ class IncomeController extends Controller
 
     public function index(
         Request $request,
-        IncomeEntryService $entryService,
-        HybridUiResponder $hybridUiResponder
+        IncomeEntryService $entryService
     ): View|InertiaResponse {
         $search = trim((string) $request->input('search', ''));
         $sourceFilters = $request->input('sources', []);
@@ -231,11 +229,7 @@ class IncomeController extends Controller
             return view('admin.income.partials.table', $payload);
         }
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_INCOME_INDEX,
-            'admin.income.index',
-            $payload,
+        return Inertia::render(
             'Admin/Income/Index',
             $this->indexInertiaProps($incomes, $search, $currencySymbol, $currencyCode)
         );

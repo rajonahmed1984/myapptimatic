@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\IncomeEntryService;
 use App\Services\InvoiceTaxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -113,7 +114,16 @@ class FinanceIncomeTaxTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertViewHas('totalAmount', fn ($value) => abs($value - 300.0) < 0.01);
+        $props = $this->inertiaProps($response);
+        $incomes = collect((array) ($props['incomes'] ?? []));
+        $total = (float) $incomes->sum(function (array $row) {
+            $display = (string) ($row['amount_display'] ?? '');
+            preg_match('/-?\d+(?:\.\d+)?/', $display, $matches);
+
+            return isset($matches[0]) ? (float) $matches[0] : 0.0;
+        });
+
+        $this->assertTrue(abs($total - 300.0) < 0.01);
     }
 
     #[Test]
@@ -334,11 +344,14 @@ class FinanceIncomeTaxTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertViewHas('totalIncome', fn ($value) => abs($value - 500.0) < 0.01);
-        $response->assertViewHas('totalExpense', fn ($value) => abs($value - 500.0) < 0.01);
-        $response->assertViewHas('receivedIncome', fn ($value) => abs($value - 400.0) < 0.01);
-        $response->assertViewHas('payoutExpense', fn ($value) => abs($value - 300.0) < 0.01);
-        $response->assertViewHas('netCashflow', fn ($value) => abs($value - 100.0) < 0.01);
+        $props = $this->inertiaProps($response);
+        $summary = (array) ($props['summary'] ?? []);
+
+        $this->assertTrue(abs(((float) ($summary['total_income'] ?? 0)) - 500.0) < 0.01);
+        $this->assertTrue(abs(((float) ($summary['total_expense'] ?? 0)) - 500.0) < 0.01);
+        $this->assertTrue(abs(((float) ($summary['received_income'] ?? 0)) - 400.0) < 0.01);
+        $this->assertTrue(abs(((float) ($summary['payout_expense'] ?? 0)) - 300.0) < 0.01);
+        $this->assertTrue(abs(((float) ($summary['net_cashflow'] ?? 0)) - 100.0) < 0.01);
     }
 
     #[Test]
@@ -359,5 +372,19 @@ class FinanceIncomeTaxTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.finance.reports.index'))
             ->assertStatus(403);
+    }
+
+    private function inertiaProps(TestResponse $response): array
+    {
+        preg_match('/data-page="([^"]+)"/', (string) $response->getContent(), $matches);
+
+        $this->assertArrayHasKey(1, $matches);
+
+        $decoded = json_decode(html_entity_decode($matches[1], ENT_QUOTES, 'UTF-8'), true);
+
+        $this->assertIsArray($decoded);
+        $this->assertArrayHasKey('props', $decoded);
+
+        return (array) $decoded['props'];
     }
 }

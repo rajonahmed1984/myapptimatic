@@ -11,8 +11,6 @@ use App\Models\Setting;
 use App\Services\ExpenseEntryService;
 use App\Services\ExpenseInvoiceService;
 use App\Support\Currency;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -20,14 +18,14 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class ExpenseController extends Controller
 {
     public function index(
         Request $request,
-        ExpenseEntryService $entryService,
-        HybridUiResponder $hybridUiResponder
+        ExpenseEntryService $entryService
     ): View|InertiaResponse {
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
@@ -145,11 +143,7 @@ class ExpenseController extends Controller
             return view('admin.expenses.partials.table', $payload);
         }
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_EXPENSES_INDEX,
-            'admin.expenses.index',
-            $payload,
+        return Inertia::render(
             'Admin/Expenses/Index',
             $this->indexInertiaProps($expenses, $search, $currencyCode)
         );

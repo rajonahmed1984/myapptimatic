@@ -7,9 +7,7 @@ use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Support\AjaxResponse;
-use App\Support\HybridUiResponder;
 use App\Support\SystemLogger;
-use App\Support\UiFeature;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,23 +15,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class PlanController extends Controller
 {
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): InertiaResponse
+    {
         $plans = Plan::query()->with('product')->latest()->get();
         $defaultCurrency = Setting::getValue('currency');
-        $payload = compact('plans', 'defaultCurrency');
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_PLANS_INDEX,
-            'admin.plans.index',
-            $payload,
+        return Inertia::render(
             'Admin/Plans/Index',
             $this->indexInertiaProps($plans, (string) $defaultCurrency)
         );

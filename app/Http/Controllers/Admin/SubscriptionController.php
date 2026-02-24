@@ -10,8 +10,6 @@ use App\Models\Subscription;
 use App\Services\AccessBlockService;
 use App\Services\BillingService;
 use App\Support\AjaxResponse;
-use App\Support\HybridUiResponder;
-use App\Support\UiFeature;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,25 +17,20 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class SubscriptionController extends Controller
 {
-    public function index(
-        Request $request,
-        HybridUiResponder $hybridUiResponder
-    ): View|InertiaResponse {
+    public function index(Request $request): View|InertiaResponse
+    {
         $payload = $this->indexPayload($request);
 
         if ($request->header('HX-Request')) {
             return view('admin.subscriptions.partials.table', $payload);
         }
 
-        return $hybridUiResponder->render(
-            $request,
-            UiFeature::ADMIN_SUBSCRIPTIONS_INDEX,
-            'admin.subscriptions.index',
-            $payload,
+        return Inertia::render(
             'Admin/Subscriptions/Index',
             $this->indexInertiaProps(
                 $payload['subscriptions'],
