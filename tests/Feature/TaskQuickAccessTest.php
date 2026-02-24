@@ -42,6 +42,7 @@ class TaskQuickAccessTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('tasks', function ($tasks) use ($taskA, $taskB) {
             $ids = $tasks->getCollection()->pluck('id')->all();
+
             return in_array($taskA->id, $ids, true) && in_array($taskB->id, $ids, true);
         });
     }
@@ -82,12 +83,10 @@ class TaskQuickAccessTest extends TestCase
         $response = $this->actingAs($client)->get(route('client.tasks.index'));
 
         $response->assertOk();
-        $response->assertViewHas('tasks', function ($tasks) use ($visibleTask, $hiddenTask, $otherTask) {
-            $ids = $tasks->getCollection()->pluck('id')->all();
-            return in_array($visibleTask->id, $ids, true)
-                && ! in_array($hiddenTask->id, $ids, true)
-                && ! in_array($otherTask->id, $ids, true);
-        });
+        $response->assertSee('data-page=');
+        $response->assertSee($visibleTask->title);
+        $response->assertDontSee($hiddenTask->title);
+        $response->assertDontSee($otherTask->title);
     }
 
     #[Test]
@@ -129,6 +128,7 @@ class TaskQuickAccessTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('tasks', function ($tasks) use ($projectTask, $assignedTask, $otherTask) {
             $ids = $tasks->getCollection()->pluck('id')->all();
+
             return in_array($projectTask->id, $ids, true)
                 && in_array($assignedTask->id, $ids, true)
                 && ! in_array($otherTask->id, $ids, true);
@@ -174,6 +174,7 @@ class TaskQuickAccessTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('tasks', function ($tasks) use ($projectTask, $assignedTask, $otherTask) {
             $ids = $tasks->getCollection()->pluck('id')->all();
+
             return in_array($projectTask->id, $ids, true)
                 && in_array($assignedTask->id, $ids, true)
                 && ! in_array($otherTask->id, $ids, true);

@@ -55,10 +55,9 @@ class ProjectTaskVisibilityTest extends TestCase
             ->get(route('client.projects.show', $project));
 
         $response->assertOk();
-        $response->assertViewHas('tasks', function ($tasks) use ($visibleTask, $hiddenTask) {
-            return $tasks->contains('id', $visibleTask->id)
-                && ! $tasks->contains('id', $hiddenTask->id);
-        });
+        $response->assertSee('data-page=');
+        $response->assertSee($visibleTask->title);
+        $response->assertDontSee($hiddenTask->title);
     }
 
     #[Test]

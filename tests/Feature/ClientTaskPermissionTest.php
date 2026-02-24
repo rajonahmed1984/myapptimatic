@@ -243,7 +243,7 @@ class ClientTaskPermissionTest extends TestCase
             ->get(route('client.projects.show', $project));
 
         $response->assertOk();
-        $response->assertSee(route('client.projects.tasks.show', [$project, $task]) . '#task-edit');
+        $response->assertSee(str_replace('/', '\\/', route('client.projects.tasks.show', [$project, $task])) . '#task-edit', false);
     }
 
     #[Test]
@@ -268,7 +268,7 @@ class ClientTaskPermissionTest extends TestCase
             ->get(route('client.projects.show', $project));
 
         $response->assertOk();
-        $response->assertDontSee(route('client.projects.tasks.show', [$project, $task]) . '#task-edit');
+        $response->assertDontSee(str_replace('/', '\\/', route('client.projects.tasks.show', [$project, $task])) . '#task-edit', false);
     }
 
     #[Test]

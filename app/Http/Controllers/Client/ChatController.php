@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ChatController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         $user = $request->user();
 
@@ -50,9 +51,33 @@ class ChatController extends Controller
             }
         }
 
-        return view('client.chats.index', [
-            'projects' => $projects,
-            'unreadCounts' => $unreadCounts,
+        return Inertia::render('Client/Chats/Index', [
+            'projects' => $projects->getCollection()->map(function (Project $project) use ($unreadCounts) {
+                $projectId = (int) $project->id;
+
+                return [
+                    'id' => $projectId,
+                    'name' => $project->name,
+                    'status_label' => $project->status ? ucfirst(str_replace('_', ' ', (string) $project->status)) : '--',
+                    'unread_count' => (int) $unreadCounts->get($projectId, 0),
+                    'routes' => [
+                        'chat' => route('client.projects.chat', $project),
+                    ],
+                ];
+            })->values()->all(),
+            'pagination' => [
+                'current_page' => $projects->currentPage(),
+                'last_page' => $projects->lastPage(),
+                'per_page' => $projects->perPage(),
+                'total' => $projects->total(),
+                'from' => $projects->firstItem(),
+                'to' => $projects->lastItem(),
+                'prev_page_url' => $projects->previousPageUrl(),
+                'next_page_url' => $projects->nextPageUrl(),
+            ],
+            'routes' => [
+                'projects' => route('client.projects.index'),
+            ],
         ]);
     }
 }

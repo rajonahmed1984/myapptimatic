@@ -941,13 +941,25 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
     ->prefix('client')
     ->name('client.')
     ->group(function () {
-        Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
-        Route::get('/tasks', [ClientTasksController::class, 'index'])->name('tasks.index');
-        Route::get('/chats', [ClientChatController::class, 'index'])->name('chats.index');
+        Route::get('/dashboard', [ClientDashboardController::class, 'index'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('dashboard');
+        Route::get('/tasks', [ClientTasksController::class, 'index'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('tasks.index');
+        Route::get('/chats', [ClientChatController::class, 'index'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('chats.index');
         Route::redirect('/chat', '/client/chats');
         Route::post('/system/cache/clear', SystemCacheController::class)->name('system.cache.clear');
-        Route::get('/orders', [ClientOrderController::class, 'index'])->middleware('project.financial')->name('orders.index');
-        Route::get('/orders/review', [ClientOrderController::class, 'review'])->middleware('project.financial')->name('orders.review');
+        Route::get('/orders', [ClientOrderController::class, 'index'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('orders.index');
+        Route::get('/orders/review', [ClientOrderController::class, 'review'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('orders.review');
         Route::post('/orders', [ClientOrderController::class, 'store'])->middleware('project.financial')->name('orders.store');
         Route::get('/services', [ClientServiceController::class, 'index'])
             ->middleware('project.financial')
@@ -981,9 +993,16 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
             ->middleware('project.financial')
             ->middleware(HandleInertiaRequests::class)
             ->name('domains.show');
-        Route::get('/licenses', [ClientLicenseController::class, 'index'])->middleware('project.financial')->name('licenses.index');
-        Route::get('/projects', [\App\Http\Controllers\Client\ProjectController::class, 'index'])->name('projects.index');
-        Route::get('/projects/{project}', [\App\Http\Controllers\Client\ProjectController::class, 'show'])->name('projects.show');
+        Route::get('/licenses', [ClientLicenseController::class, 'index'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('licenses.index');
+        Route::get('/projects', [\App\Http\Controllers\Client\ProjectController::class, 'index'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('projects.index');
+        Route::get('/projects/{project}', [\App\Http\Controllers\Client\ProjectController::class, 'show'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('projects.show');
         Route::post('/projects/{project}/tasks', [\App\Http\Controllers\Client\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
         Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Client\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
         Route::get('/projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
@@ -1062,13 +1081,31 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::patch('/support-tickets/{ticket}/status', [ClientSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
         
         // Affiliate routes
-        Route::get('/affiliates', [ClientAffiliateController::class, 'index'])->middleware('project.financial')->name('affiliates.index');
-        Route::get('/affiliates/apply', [ClientAffiliateController::class, 'apply'])->middleware('project.financial')->name('affiliates.apply');
+        Route::get('/affiliates', [ClientAffiliateController::class, 'index'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('affiliates.index');
+        Route::get('/affiliates/apply', [ClientAffiliateController::class, 'apply'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('affiliates.apply');
         Route::post('/affiliates/apply', [ClientAffiliateController::class, 'storeApplication'])->middleware('project.financial')->name('affiliates.apply.store');
-        Route::get('/affiliates/referrals', [ClientAffiliateController::class, 'referrals'])->middleware('project.financial')->name('affiliates.referrals');
-        Route::get('/affiliates/commissions', [ClientAffiliateController::class, 'commissions'])->middleware('project.financial')->name('affiliates.commissions');
-        Route::get('/affiliates/payouts', [ClientAffiliateController::class, 'payouts'])->middleware('project.financial')->name('affiliates.payouts');
-        Route::get('/affiliates/settings', [ClientAffiliateController::class, 'settings'])->middleware('project.financial')->name('affiliates.settings');
+        Route::get('/affiliates/referrals', [ClientAffiliateController::class, 'referrals'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('affiliates.referrals');
+        Route::get('/affiliates/commissions', [ClientAffiliateController::class, 'commissions'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('affiliates.commissions');
+        Route::get('/affiliates/payouts', [ClientAffiliateController::class, 'payouts'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('affiliates.payouts');
+        Route::get('/affiliates/settings', [ClientAffiliateController::class, 'settings'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('affiliates.settings');
         Route::put('/affiliates/settings', [ClientAffiliateController::class, 'updateSettings'])->middleware('project.financial')->name('affiliates.settings.update');
     });
 

@@ -8,13 +8,15 @@ use App\Models\ProjectMessageRead;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ProjectController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): InertiaResponse|\Illuminate\Http\RedirectResponse
     {
         $user = $request->user();
-        
+
         // Redirect project-specific users directly to their assigned project
         if ($user->isClientProject() && $user->project_id) {
             return redirect()->route('client.projects.show', $user->project_id);
@@ -26,10 +28,46 @@ class ProjectController extends Controller
 
         $projects = $query->latest()->paginate(20);
 
-        return view('client.projects.index', compact('projects'));
+        return Inertia::render('Client/Projects/Index', [
+            'projects' => $projects->getCollection()->map(function (Project $project) {
+                $projectAmount = $project->total_budget ?? $project->budget_amount;
+
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'status_label' => ucfirst(str_replace('_', ' ', (string) $project->status)),
+                    'amount_label' => $projectAmount !== null
+                        ? ($project->currency.' '.number_format((float) $projectAmount, 2))
+                        : '--',
+                    'routes' => [
+                        'show' => route('client.projects.show', $project),
+                    ],
+                    'maintenances' => $project->maintenances->map(function ($maintenance) {
+                        return [
+                            'id' => $maintenance->id,
+                            'title' => $maintenance->title,
+                            'status' => $maintenance->status,
+                            'status_label' => ucfirst((string) $maintenance->status),
+                            'billing_cycle_label' => ucfirst((string) $maintenance->billing_cycle),
+                            'amount_label' => $maintenance->currency.' '.number_format((float) $maintenance->amount, 2),
+                        ];
+                    })->values()->all(),
+                ];
+            })->values()->all(),
+            'pagination' => [
+                'current_page' => $projects->currentPage(),
+                'last_page' => $projects->lastPage(),
+                'per_page' => $projects->perPage(),
+                'total' => $projects->total(),
+                'from' => $projects->firstItem(),
+                'to' => $projects->lastItem(),
+                'prev_page_url' => $projects->previousPageUrl(),
+                'next_page_url' => $projects->nextPageUrl(),
+            ],
+        ]);
     }
 
-    public function show(Request $request, Project $project)
+    public function show(Request $request, Project $project): InertiaResponse
     {
         $this->authorize('view', $project);
 
@@ -97,12 +135,63 @@ class ProjectController extends Controller
             : null;
 
         $isProjectSpecificUser = $request->user()->isClientProject();
+        $dateFormat = config('app.date_format', 'd-m-Y');
+        $currentUser = $request->user();
 
-        return view('client.projects.show', [
-            'project' => $project,
-            'tasks' => $tasks,
-            'maintenances' => $maintenances,
-            'initialInvoice' => $initialInvoice,
+        return Inertia::render('Client/Projects/Show', [
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'status_label' => ucfirst(str_replace('_', ' ', (string) $project->status)),
+                'start_date_display' => $project->start_date?->format($dateFormat) ?? '--',
+                'expected_end_date_display' => $project->expected_end_date?->format($dateFormat) ?? '--',
+                'due_date_display' => $project->due_date?->format($dateFormat) ?? '--',
+                'currency' => $project->currency ?? '',
+            ],
+            'tasks' => $tasks->map(function ($task) use ($project, $currentUser, $dateFormat) {
+                $canEditTask = $currentUser?->isMasterAdmin()
+                    || ($task->created_by
+                        && $currentUser
+                        && $task->created_by === $currentUser->id
+                        && ! $task->creatorEditWindowExpired($currentUser->id));
+
+                return [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'task_type' => $task->task_type,
+                    'start_date_display' => $task->start_date?->format($dateFormat) ?? '--',
+                    'due_date_display' => $task->due_date?->format($dateFormat) ?? '--',
+                    'can_edit' => (bool) $canEditTask,
+                    'routes' => [
+                        'show' => route('client.projects.tasks.show', [$project, $task]),
+                        'edit_anchor' => $canEditTask ? route('client.projects.tasks.show', [$project, $task]).'#task-edit' : null,
+                    ],
+                ];
+            })->values()->all(),
+            'maintenances' => $maintenances->map(function ($maintenance) use ($dateFormat) {
+                $latestInvoice = $maintenance->invoices->first();
+
+                return [
+                    'id' => $maintenance->id,
+                    'title' => $maintenance->title,
+                    'billing_cycle_label' => ucfirst((string) $maintenance->billing_cycle),
+                    'next_billing_date_display' => $maintenance->next_billing_date?->format($dateFormat) ?? '--',
+                    'status' => $maintenance->status,
+                    'status_label' => ucfirst((string) $maintenance->status),
+                    'amount_label' => $maintenance->currency.' '.number_format((float) $maintenance->amount, 2),
+                    'invoice_count' => (int) ($maintenance->invoices?->count() ?? 0),
+                    'latest_invoice' => $latestInvoice ? [
+                        'label' => '#'.($latestInvoice->number ?? $latestInvoice->id),
+                        'route' => route('client.invoices.show', $latestInvoice),
+                    ] : null,
+                ];
+            })->values()->all(),
+            'initial_invoice' => $initialInvoice ? [
+                'label' => '#'.($initialInvoice->number ?? $initialInvoice->id),
+                'status_label' => ucfirst((string) $initialInvoice->status),
+                'route' => route('client.invoices.show', $initialInvoice),
+            ] : null,
             'financials' => [
                 'budget' => $budgetBase,
                 'initial_payment' => $initialPayment,
@@ -111,9 +200,20 @@ class ProjectController extends Controller
             ],
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),
-            'chatMessages' => $chatMessages,
-            'chatMeta' => $chatMeta,
-            'isProjectSpecificUser' => $isProjectSpecificUser,
+            'chat_messages' => $chatMessages->map(function ($message) use ($dateFormat) {
+                return [
+                    'id' => $message->id,
+                    'author_name' => $message->authorName(),
+                    'message' => $message->message,
+                    'created_at_display' => $message->created_at?->format($dateFormat.' H:i') ?? '--',
+                ];
+            })->values()->all(),
+            'chat_meta' => $chatMeta,
+            'is_project_specific_user' => (bool) $isProjectSpecificUser,
+            'routes' => [
+                'task_store' => route('client.projects.tasks.store', $project),
+                'chat' => route('client.projects.chat', $project),
+            ],
         ]);
     }
 }

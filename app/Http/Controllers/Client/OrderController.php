@@ -3,28 +3,30 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
-use App\Models\License;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\License;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Product;
-use App\Models\Subscription;
 use App\Models\Setting;
-use App\Services\BillingService;
-use App\Services\InvoiceTaxService;
+use App\Models\Subscription;
 use App\Services\AdminNotificationService;
+use App\Services\BillingService;
 use App\Services\ClientNotificationService;
+use App\Services\InvoiceTaxService;
 use App\Support\Currency;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class OrderController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): InertiaResponse
     {
         $customer = $request->user()->customer;
         $products = Product::query()
@@ -36,14 +38,32 @@ class OrderController extends Controller
             ->get()
             ->filter(fn (Product $product) => $product->plans->isNotEmpty());
 
-        return view('client.orders.index', [
-            'customer' => $customer,
-            'products' => $products,
+        return Inertia::render('Client/Orders/Index', [
+            'has_customer' => (bool) $customer,
+            'products' => $products->map(function (Product $product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'plans' => $product->plans->map(function (Plan $plan) {
+                        return [
+                            'id' => $plan->id,
+                            'name' => $plan->name,
+                            'interval_label' => ucfirst((string) $plan->interval),
+                            'price' => (float) $plan->price,
+                        ];
+                    })->values()->all(),
+                ];
+            })->values()->all(),
             'currency' => strtoupper((string) Setting::getValue('currency', Currency::DEFAULT)),
+            'routes' => [
+                'dashboard' => route('client.dashboard'),
+                'review' => route('client.orders.review'),
+            ],
         ]);
     }
 
-    public function review(Request $request)
+    public function review(Request $request): InertiaResponse|RedirectResponse
     {
         $data = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
@@ -77,18 +97,28 @@ class OrderController extends Controller
             && $startDate->day !== 1
             && $periodEnd->isLastOfMonth();
         $dueDays = 0;
+        $dateFormat = config('app.date_format', 'd-m-Y');
 
-        return view('client.orders.review', [
-            'customer' => $customer,
-            'plan' => $plan,
+        return Inertia::render('Client/Orders/Review', [
+            'has_customer' => (bool) $customer,
+            'plan' => [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'interval_label' => ucfirst((string) $plan->interval),
+                'product_name' => $plan->product?->name ?? '--',
+            ],
             'currency' => $currency,
-            'startDate' => $startDate,
-            'periodEnd' => $periodEnd,
+            'start_date_display' => $startDate->format($dateFormat),
+            'period_end_display' => $periodEnd->format($dateFormat),
             'subtotal' => $subtotal,
             'periodDays' => $periodDays,
             'cycleDays' => $cycleDays,
             'showProration' => $showProration,
             'dueDays' => $dueDays,
+            'routes' => [
+                'index' => route('client.orders.index'),
+                'store' => route('client.orders.store'),
+            ],
         ]);
     }
 
@@ -98,8 +128,7 @@ class OrderController extends Controller
         InvoiceTaxService $taxService,
         AdminNotificationService $adminNotifications,
         ClientNotificationService $clientNotifications
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $data = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
         ]);
@@ -273,5 +302,4 @@ class OrderController extends Controller
 
         return $key;
     }
-
 }
