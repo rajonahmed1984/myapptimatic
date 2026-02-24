@@ -1034,10 +1034,16 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
             ->middleware('throttle:10,1')
             ->name('projects.tasks.chat.store');
         Route::get('/projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
-        Route::get('/support-tickets', [ClientSupportTicketController::class, 'index'])->name('support-tickets.index');
-        Route::get('/support-tickets/create', [ClientSupportTicketController::class, 'create'])->name('support-tickets.create');
+        Route::get('/support-tickets', [ClientSupportTicketController::class, 'index'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('support-tickets.index');
+        Route::get('/support-tickets/create', [ClientSupportTicketController::class, 'create'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('support-tickets.create');
         Route::post('/support-tickets', [ClientSupportTicketController::class, 'store'])->name('support-tickets.store');
-        Route::get('/support-tickets/{ticket}', [ClientSupportTicketController::class, 'show'])->name('support-tickets.show');
+        Route::get('/support-tickets/{ticket}', [ClientSupportTicketController::class, 'show'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('support-tickets.show');
         Route::post('/support-tickets/{ticket}/reply', [ClientSupportTicketController::class, 'reply'])->name('support-tickets.reply');
         Route::patch('/support-tickets/{ticket}/status', [ClientSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
         

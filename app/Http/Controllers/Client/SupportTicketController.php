@@ -13,10 +13,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class SupportTicketController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): InertiaResponse
     {
         $customer = $request->user()?->customer;
 
@@ -27,13 +29,36 @@ class SupportTicketController extends Controller
                 ->get()
             : collect();
 
-        return view('client.support-tickets.index', [
-            'customer' => $customer,
-            'tickets' => $tickets,
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return Inertia::render('Client/SupportTickets/Index', [
+            'tickets' => $tickets->map(function (SupportTicket $ticket) use ($dateFormat) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => 'TKT-'.str_pad((string) $ticket->id, 5, '0', STR_PAD_LEFT),
+                    'subject' => (string) $ticket->subject,
+                    'status' => (string) $ticket->status,
+                    'status_label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)),
+                    'status_classes' => match ($ticket->status) {
+                        'open' => 'bg-amber-100 text-amber-700',
+                        'answered' => 'bg-emerald-100 text-emerald-700',
+                        'customer_reply' => 'bg-blue-100 text-blue-700',
+                        'closed' => 'bg-slate-100 text-slate-600',
+                        default => 'bg-slate-100 text-slate-600',
+                    },
+                    'last_reply_at_display' => $ticket->last_reply_at?->format($dateFormat.' H:i') ?: '--',
+                    'routes' => [
+                        'show' => route('client.support-tickets.show', $ticket),
+                    ],
+                ];
+            })->values()->all(),
+            'routes' => [
+                'create' => route('client.support-tickets.create'),
+            ],
         ]);
     }
 
-    public function create(Request $request)
+    public function create(Request $request): InertiaResponse
     {
         $customer = $request->user()?->customer;
 
@@ -41,8 +66,16 @@ class SupportTicketController extends Controller
             abort(403);
         }
 
-        return view('client.support-tickets.create', [
-            'customer' => $customer,
+        return Inertia::render('Client/SupportTickets/Create', [
+            'form' => [
+                'subject' => old('subject'),
+                'priority' => old('priority', 'medium'),
+                'message' => old('message'),
+            ],
+            'routes' => [
+                'index' => route('client.support-tickets.index'),
+                'store' => route('client.support-tickets.store'),
+            ],
         ]);
     }
 
@@ -89,7 +122,7 @@ class SupportTicketController extends Controller
 
         SystemLogger::write('ticket_mail_import', 'Client opened support ticket.', [
             'ticket_id' => $ticket->id,
-            'ticket_number' => 'TKT-' . str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
+            'ticket_number' => 'TKT-'.str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
             'customer_id' => $customer->id,
             'customer_name' => $customer->name,
             'subject' => $ticket->subject,
@@ -109,14 +142,52 @@ class SupportTicketController extends Controller
             ->with('status', 'Ticket created.');
     }
 
-    public function show(Request $request, SupportTicket $ticket)
+    public function show(Request $request, SupportTicket $ticket): InertiaResponse
     {
         $this->ensureOwnership($request, $ticket);
 
         $ticket->load(['replies.user', 'customer']);
 
-        return view('client.support-tickets.show', [
-            'ticket' => $ticket,
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return Inertia::render('Client/SupportTickets/Show', [
+            'ticket' => [
+                'id' => $ticket->id,
+                'number' => 'TKT-'.str_pad((string) $ticket->id, 5, '0', STR_PAD_LEFT),
+                'subject' => (string) $ticket->subject,
+                'priority' => (string) $ticket->priority,
+                'priority_label' => ucfirst((string) $ticket->priority),
+                'status' => (string) $ticket->status,
+                'status_label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)),
+                'status_classes' => match ($ticket->status) {
+                    'open' => 'bg-amber-100 text-amber-700',
+                    'answered' => 'bg-emerald-100 text-emerald-700',
+                    'customer_reply' => 'bg-blue-100 text-blue-700',
+                    'closed' => 'bg-slate-100 text-slate-600',
+                    default => 'bg-slate-100 text-slate-600',
+                },
+                'created_at_display' => $ticket->created_at?->format($dateFormat.' H:i') ?: '--',
+                'is_closed' => $ticket->isClosed(),
+            ],
+            'replies' => $ticket->replies->map(function ($reply) use ($dateFormat) {
+                return [
+                    'id' => $reply->id,
+                    'is_admin' => (bool) $reply->is_admin,
+                    'user_name' => $reply->user?->name ?? ($reply->is_admin ? 'Support' : 'You'),
+                    'created_at_display' => $reply->created_at?->format($dateFormat.' H:i') ?: '--',
+                    'message' => (string) $reply->message,
+                    'attachment_url' => $reply->attachmentUrl(),
+                    'attachment_name' => $reply->attachmentName(),
+                ];
+            })->values()->all(),
+            'form' => [
+                'message' => old('message'),
+            ],
+            'routes' => [
+                'index' => route('client.support-tickets.index'),
+                'reply' => route('client.support-tickets.reply', $ticket),
+                'status' => route('client.support-tickets.status', $ticket),
+            ],
         ]);
     }
 
@@ -154,7 +225,7 @@ class SupportTicketController extends Controller
 
         SystemLogger::write('ticket_mail_import', 'Client replied to support ticket.', [
             'ticket_id' => $ticket->id,
-            'ticket_number' => 'TKT-' . str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
+            'ticket_number' => 'TKT-'.str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
             'customer_id' => $ticket->customer_id,
             'customer_name' => $ticket->customer->name,
             'subject' => $ticket->subject,

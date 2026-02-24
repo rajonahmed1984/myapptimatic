@@ -102,6 +102,7 @@
             "@php artisan test --filter=SystemLogUiParityTest",
             "@php artisan test --filter=UserActivitySummaryUiParityTest",
             "@php artisan test --filter=ClientInvoicesUiParityTest",
+            "@php artisan test --filter=ClientSupportTicketUiParityTest",
             "@php artisan test --filter=ExpenseCategoryActionContractParityTest",
             "@php artisan test --filter=FinanceTaxActionContractParityTest",
             "@php artisan test --filter=IncomeCategoryActionContractParityTest",
