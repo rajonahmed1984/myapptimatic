@@ -4,13 +4,14 @@ namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ChatController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         $employee = $request->attributes->get('employee');
         if (! ($employee instanceof Employee)) {
@@ -60,9 +61,30 @@ class ChatController extends Controller
             }
         }
 
-        return view('employee.chats.index', [
-            'projects' => $projects,
-            'unreadCounts' => $unreadCounts,
+        return Inertia::render('Employee/Chats/Index', [
+            'projects' => $projects->getCollection()->map(function ($project) use ($unreadCounts) {
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'status_label' => $project->status ? ucfirst(str_replace('_', ' ', $project->status)) : '--',
+                    'unread_count' => (int) ($unreadCounts[$project->id] ?? 0),
+                    'routes' => [
+                        'chat' => route('employee.projects.chat', $project),
+                    ],
+                ];
+            })->values()->all(),
+            'pagination' => [
+                'current_page' => $projects->currentPage(),
+                'last_page' => $projects->lastPage(),
+                'total' => $projects->total(),
+                'from' => $projects->firstItem(),
+                'to' => $projects->lastItem(),
+                'prev_page_url' => $projects->previousPageUrl(),
+                'next_page_url' => $projects->nextPageUrl(),
+            ],
+            'routes' => [
+                'projects_index' => route('employee.projects.index'),
+            ],
         ]);
     }
 }

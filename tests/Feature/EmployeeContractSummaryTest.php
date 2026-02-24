@@ -49,8 +49,8 @@ class EmployeeContractSummaryTest extends TestCase
             ->get(route('employee.dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Contract earnings');
-        $response->assertSee(number_format(500, 2));
+        $response->assertSee('Employee\\/Dashboard\\/Index', false);
+        $response->assertSee('&quot;contract_summary&quot;:{&quot;total_earned&quot;:500,&quot;payable&quot;:0}', false);
     }
 
     #[Test]
@@ -68,6 +68,7 @@ class EmployeeContractSummaryTest extends TestCase
             ->get(route('employee.dashboard'));
 
         $response->assertOk();
-        $response->assertDontSee('Contract earnings');
+        $response->assertSee('Employee\\/Dashboard\\/Index', false);
+        $response->assertSee('&quot;contract_summary&quot;:null', false);
     }
 }

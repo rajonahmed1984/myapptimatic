@@ -9,7 +9,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class CarrotHostIncomeController extends Controller
 {
@@ -17,7 +18,7 @@ class CarrotHostIncomeController extends Controller
     private const PAGE_SIZE = 100;
     private const MAX_PAGES = 50;
 
-    public function index(Request $request, WhmcsClient $client): View
+    public function index(Request $request, WhmcsClient $client): InertiaResponse
     {
         $selectedMonth = $this->resolveMonth($request->query('month'));
         [$startDate, $endDate] = $this->monthRange($selectedMonth);
@@ -40,7 +41,45 @@ class CarrotHostIncomeController extends Controller
         $payload['nextMonth'] = $hasNext ? $nextMonth->format('Y-m') : null;
         $payload['nextMonthLabel'] = $hasNext ? $nextMonth->format('F Y') : null;
 
-        return view('admin.income.carrothost', $payload);
+        return Inertia::render('Admin/Income/CarrotHost', [
+            'pageTitle' => 'CarrotHost Income',
+            'sectionLabel' => 'Income Sync',
+            'title' => 'CarrotHost',
+            'month_label' => (string) ($payload['monthLabel'] ?? ''),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'month' => (string) ($payload['month'] ?? ''),
+            'prev_month' => $payload['prevMonth'] ?? null,
+            'prev_month_label' => $payload['prevMonthLabel'] ?? null,
+            'next_month' => $payload['nextMonth'] ?? null,
+            'next_month_label' => $payload['nextMonthLabel'] ?? null,
+            'last_refreshed_display' => now()->format((string) config('app.date_format', 'd-m-Y') . ' H:i'),
+            'amount_in_subtotal_display' => (string) ($payload['amountInSubtotalDisplay'] ?? '0.00'),
+            'fees_subtotal_display' => (string) ($payload['feesSubtotalDisplay'] ?? '0.00'),
+            'whmcs_errors' => collect((array) ($payload['whmcsErrors'] ?? []))
+                ->map(fn ($error) => (string) $error)
+                ->values()
+                ->all(),
+            'transactions' => collect((array) ($payload['transactions'] ?? []))
+                ->map(function (array $row) {
+                    return [
+                        'user_id' => (string) ($row['userid'] ?? ($row['clientid'] ?? '--')),
+                        'client_name' => (string) ($row['clientname'] ?? '--'),
+                        'date' => (string) ($row['date'] ?? '--'),
+                        'invoice_id' => (string) ($row['invoiceid'] ?? '--'),
+                        'transaction_id' => (string) ($row['transid'] ?? '--'),
+                        'amount_in' => (string) ($row['amountin'] ?? '--'),
+                        'fees' => (string) ($row['fees'] ?? '--'),
+                        'gateway' => (string) ($row['gateway'] ?? '--'),
+                    ];
+                })
+                ->values()
+                ->all(),
+            'routes' => [
+                'index' => route('admin.income.carrothost'),
+                'sync' => route('admin.income.carrothost.sync'),
+            ],
+        ]);
     }
 
     public function sync(Request $request, WhmcsClient $client): JsonResponse|RedirectResponse

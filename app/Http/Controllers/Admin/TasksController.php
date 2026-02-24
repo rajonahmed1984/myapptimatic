@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Services\TaskQueryService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class TasksController extends Controller
 {
-    public function index(Request $request, TaskQueryService $taskQueryService): View
+    public function index(Request $request, TaskQueryService $taskQueryService): View|InertiaResponse
     {
         $user = $request->user();
         if (! $taskQueryService->canViewTasks($user)) {
@@ -52,6 +54,13 @@ class TasksController extends Controller
             return view('tasks.partials.index', $payload);
         }
 
-        return view('admin.tasks.index', $payload);
+        return Inertia::render(
+            'Admin/Tasks/Index',
+            [
+                'pageTitle' => 'Tasks',
+                // Preserve existing task table/actions HTML to avoid behavior drift.
+                'table_html' => view('tasks.partials.index', $payload)->render(),
+            ]
+        );
     }
 }

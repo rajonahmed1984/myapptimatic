@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\EmployeeAttendance;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class AttendanceController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         $validated = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
@@ -35,11 +36,38 @@ class AttendanceController extends Controller
             ->groupBy('status')
             ->map(fn ($rows) => $rows->count());
 
-        return view('employee.attendance.index', [
-            'attendances' => $attendances,
-            'selectedMonth' => $selectedMonth,
-            'statusSummary' => $statusSummary,
+        return Inertia::render('Employee/Attendance/Index', [
+            'attendances' => $attendances->getCollection()->map(function (EmployeeAttendance $attendance) {
+                $dateFormat = config('app.date_format', 'Y-m-d');
+
+                return [
+                    'date_display' => $attendance->date?->format($dateFormat) ?? '--',
+                    'status_label' => ucfirst(str_replace('_', ' ', (string) $attendance->status)),
+                    'note' => $attendance->note ?? '--',
+                    'recorder_name' => $attendance->recorder?->name ?? '--',
+                    'updated_at_display' => $attendance->updated_at?->format($dateFormat.' H:i') ?? '--',
+                ];
+            })->values()->all(),
+            'selected_month' => $selectedMonth,
+            'status_summary' => [
+                'present' => (int) ($statusSummary['present'] ?? 0),
+                'absent' => (int) ($statusSummary['absent'] ?? 0),
+                'leave' => (int) ($statusSummary['leave'] ?? 0),
+                'half_day' => (int) ($statusSummary['half_day'] ?? 0),
+            ],
+            'pagination' => [
+                'current_page' => $attendances->currentPage(),
+                'last_page' => $attendances->lastPage(),
+                'per_page' => $attendances->perPage(),
+                'total' => $attendances->total(),
+                'from' => $attendances->firstItem(),
+                'to' => $attendances->lastItem(),
+                'prev_page_url' => $attendances->previousPageUrl(),
+                'next_page_url' => $attendances->nextPageUrl(),
+            ],
+            'routes' => [
+                'index' => route('employee.attendance.index'),
+            ],
         ]);
     }
 }
-

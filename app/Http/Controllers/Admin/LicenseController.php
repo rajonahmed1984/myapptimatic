@@ -102,12 +102,15 @@ class LicenseController extends Controller
         );
     }
 
-    public function create()
+    public function create(): InertiaResponse
     {
-        return view('admin.licenses.create', [
-            'products' => Product::query()->orderBy('name')->get(),
-            'subscriptions' => Subscription::query()->with('customer')->orderBy('id', 'desc')->get(),
-        ]);
+        $products = Product::query()->orderBy('name')->get();
+        $subscriptions = Subscription::query()->with('customer')->orderBy('id', 'desc')->get();
+
+        return Inertia::render(
+            'Admin/Licenses/Form',
+            $this->formInertiaProps(null, $products, $subscriptions)
+        );
     }
 
     public function store(Request $request)
@@ -162,13 +165,16 @@ class LicenseController extends Controller
             ->with('status', 'License created.');
     }
 
-    public function edit(License $license)
+    public function edit(License $license): InertiaResponse
     {
-        return view('admin.licenses.edit', [
-            'license' => $license->load(['product', 'subscription.customer', 'subscription.plan.product', 'domains']),
-            'products' => Product::query()->orderBy('name')->get(),
-            'subscriptions' => Subscription::query()->with(['customer', 'plan.product'])->orderBy('id', 'desc')->get(),
-        ]);
+        $license = $license->load(['product', 'subscription.customer', 'subscription.plan.product', 'domains']);
+        $products = Product::query()->orderBy('name')->get();
+        $subscriptions = Subscription::query()->with(['customer', 'plan.product'])->orderBy('id', 'desc')->get();
+
+        return Inertia::render(
+            'Admin/Licenses/Form',
+            $this->formInertiaProps($license, $products, $subscriptions)
+        );
     }
 
     public function update(Request $request, License $license)
@@ -443,5 +449,66 @@ class LicenseController extends Controller
         }
 
         return $value;
+    }
+
+    private function formInertiaProps(
+        ?License $license,
+        $products,
+        $subscriptions
+    ): array {
+        $isEdit = $license !== null;
+        $activeDomain = $license?->domains?->firstWhere('status', 'active')?->domain
+            ?? $license?->domains?->first()?->domain;
+
+        return [
+            'pageTitle' => $isEdit ? 'Edit License' : 'Add License',
+            'is_edit' => $isEdit,
+            'products' => $products->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => (string) $product->name,
+            ])->values()->all(),
+            'subscriptions' => $subscriptions->map(function (Subscription $subscription) {
+                return [
+                    'id' => $subscription->id,
+                    'label' => sprintf(
+                        '#%d - %s%s',
+                        $subscription->id,
+                        (string) ($subscription->customer?->name ?? 'Unknown customer'),
+                        $subscription->plan?->name ? ' ('.$subscription->plan->name.')' : ''
+                    ),
+                ];
+            })->values()->all(),
+            'domains' => collect($license?->domains ?? [])->map(function (LicenseDomain $domain) use ($license) {
+                return [
+                    'id' => $domain->id,
+                    'domain' => (string) $domain->domain,
+                    'status' => (string) $domain->status,
+                    'status_label' => ucfirst((string) $domain->status),
+                    'can_revoke' => $domain->status !== 'revoked',
+                    'routes' => [
+                        'revoke' => route('admin.licenses.domains.revoke', [$license, $domain]),
+                    ],
+                ];
+            })->values()->all(),
+            'form' => [
+                'action' => $isEdit
+                    ? route('admin.licenses.update', $license)
+                    : route('admin.licenses.store'),
+                'method' => $isEdit ? 'PUT' : 'POST',
+                'fields' => [
+                    'subscription_id' => (string) old('subscription_id', (string) ($license?->subscription_id ?? '')),
+                    'product_id' => (string) old('product_id', (string) ($license?->product_id ?? '')),
+                    'license_key' => (string) old('license_key', (string) ($license?->license_key ?? '')),
+                    'status' => (string) old('status', (string) ($license?->status ?? 'active')),
+                    'starts_at' => (string) old('starts_at', (string) ($license?->starts_at?->toDateString() ?? now()->toDateString())),
+                    'expires_at' => (string) old('expires_at', (string) ($license?->expires_at?->toDateString() ?? '')),
+                    'allowed_domains' => (string) old('allowed_domains', (string) ($activeDomain ?? '')),
+                    'notes' => (string) old('notes', (string) ($license?->notes ?? '')),
+                ],
+            ],
+            'routes' => [
+                'index' => route('admin.licenses.index'),
+            ],
+        ];
     }
 }

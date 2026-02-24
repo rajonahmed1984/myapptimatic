@@ -9,7 +9,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -70,9 +69,12 @@ class FinanceTaxController extends Controller
         return back()->with('status', 'Tax rate created.');
     }
 
-    public function editRate(TaxRate $rate): View
+    public function editRate(TaxRate $rate): InertiaResponse
     {
-        return view('admin.finance.tax.edit-rate', compact('rate'));
+        return Inertia::render(
+            'Admin/Finance/Tax/EditRate',
+            $this->editRateInertiaProps($rate)
+        );
     }
 
     public function updateRate(Request $request, TaxRate $rate): RedirectResponse
@@ -170,6 +172,25 @@ class FinanceTaxController extends Controller
                     ],
                 ];
             })->all(),
+        ];
+    }
+
+    private function editRateInertiaProps(TaxRate $rate): array
+    {
+        return [
+            'pageTitle' => 'Edit Tax Rate',
+            'rate' => [
+                'id' => $rate->id,
+                'name' => (string) old('name', (string) $rate->name),
+                'rate_percent' => (string) old('rate_percent', (string) $rate->rate_percent),
+                'effective_from' => (string) old('effective_from', (string) $rate->effective_from?->toDateString()),
+                'effective_to' => (string) old('effective_to', (string) ($rate->effective_to?->toDateString() ?? '')),
+                'is_active' => (bool) old('is_active', (bool) $rate->is_active),
+            ],
+            'routes' => [
+                'index' => route('admin.finance.tax.index'),
+                'update' => route('admin.finance.tax.rates.update', $rate),
+            ],
         ];
     }
 }

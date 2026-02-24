@@ -118,7 +118,7 @@ class EmployeeAttendanceFeatureTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertSee('Attendance Details');
+        $response->assertSee('Employee\\/Attendance\\/Index', false);
         $response->assertSee('Came early');
         $response->assertSee('Medical leave');
         $response->assertDontSee('Previous month');

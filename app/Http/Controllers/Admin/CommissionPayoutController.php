@@ -44,7 +44,7 @@ class CommissionPayoutController extends Controller
         );
     }
 
-    public function create(Request $request)
+    public function create(Request $request): InertiaResponse
     {
         $salesRepId = $request->query('sales_rep_id');
 
@@ -66,12 +66,10 @@ class CommissionPayoutController extends Controller
             $repBalance = app(CommissionService::class)->computeRepBalance((int) $salesRepId);
         }
 
-        return view('admin.commission-payouts.create', [
-            'earnings' => $earnings,
-            'salesReps' => $salesReps,
-            'selectedRep' => $salesRepId,
-            'repBalance' => $repBalance,
-        ]);
+        return Inertia::render(
+            'Admin/CommissionPayouts/Create',
+            $this->createInertiaProps($earnings, $salesReps, $salesRepId, $repBalance)
+        );
     }
 
     public function store(Request $request, CommissionService $commissionService): RedirectResponse
@@ -122,15 +120,16 @@ class CommissionPayoutController extends Controller
             ->with('status', 'Payout draft created.');
     }
 
-    public function show(CommissionPayout $commissionPayout)
+    public function show(CommissionPayout $commissionPayout): InertiaResponse
     {
         $commissionPayout->load(['salesRep', 'project', 'earnings' => function ($query) {
             $query->with(['invoice', 'subscription', 'project', 'customer']);
         }]);
 
-        return view('admin.commission-payouts.show', [
-            'payout' => $commissionPayout,
-        ]);
+        return Inertia::render(
+            'Admin/CommissionPayouts/Show',
+            $this->showInertiaProps($commissionPayout)
+        );
     }
 
     public function markPaid(Request $request, CommissionPayout $commissionPayout, CommissionService $commissionService): RedirectResponse
@@ -217,6 +216,91 @@ class CommissionPayoutController extends Controller
                 'has_pages' => $payouts->hasPages(),
                 'previous_url' => $payouts->previousPageUrl(),
                 'next_url' => $payouts->nextPageUrl(),
+            ],
+        ];
+    }
+
+    private function createInertiaProps(
+        Collection $earnings,
+        Collection $salesReps,
+        mixed $selectedRep,
+        ?array $repBalance
+    ): array {
+        $currency = config('app.currency', 'BDT');
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return [
+            'pageTitle' => 'Create Commission Payout',
+            'selected_rep' => $selectedRep !== null ? (string) $selectedRep : '',
+            'rep_balance' => $repBalance,
+            'sales_reps' => $salesReps->map(fn (SalesRepresentative $rep) => [
+                'id' => $rep->id,
+                'name' => (string) $rep->name,
+                'status' => (string) $rep->status,
+            ])->values()->all(),
+            'payout_methods' => PaymentMethod::commissionPayoutDropdownOptions()
+                ->map(fn (object $method) => [
+                    'code' => (string) $method->code,
+                    'name' => (string) $method->name,
+                ])->values()->all(),
+            'earnings' => $earnings->map(function (CommissionEarning $earning) use ($currency, $dateFormat) {
+                return [
+                    'id' => $earning->id,
+                    'sales_rep_id' => $earning->sales_representative_id,
+                    'earned_at_display' => $earning->earned_at?->format($dateFormat) ?? '--',
+                    'invoice_label' => $earning->invoice ? (string) ($earning->invoice->number ?? $earning->invoice->id) : '--',
+                    'customer_name' => (string) ($earning->customer?->name ?? '--'),
+                    'project_name' => (string) ($earning->project?->name ?? '--'),
+                    'subscription_id' => $earning->subscription_id,
+                    'commission_display' => number_format((float) $earning->commission_amount, 2).' '.$currency,
+                ];
+            })->values()->all(),
+            'routes' => [
+                'index' => route('admin.commission-payouts.index'),
+                'store' => route('admin.commission-payouts.store'),
+            ],
+        ];
+    }
+
+    private function showInertiaProps(CommissionPayout $payout): array
+    {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return [
+            'pageTitle' => 'Commission Payout',
+            'payout' => [
+                'id' => $payout->id,
+                'sales_rep_name' => (string) ($payout->salesRep?->name ?? '--'),
+                'project_name' => (string) ($payout->project?->name ?? '--'),
+                'currency' => (string) $payout->currency,
+                'status' => (string) $payout->status,
+                'status_label' => ucfirst((string) $payout->status),
+                'type_label' => ucfirst((string) ($payout->type ?? 'regular')),
+                'total_amount_display' => number_format((float) $payout->total_amount, 2).' '.(string) $payout->currency,
+                'paid_at_display' => $payout->paid_at?->format($dateFormat.' H:i') ?? '--',
+                'note' => (string) ($payout->note ?? ''),
+                'reference' => (string) ($payout->reference ?? ''),
+                'payout_method' => (string) ($payout->payout_method ?? ''),
+            ],
+            'earnings' => $payout->earnings->map(function (CommissionEarning $earning) use ($dateFormat) {
+                return [
+                    'id' => $earning->id,
+                    'earned_at_display' => $earning->earned_at?->format($dateFormat) ?? '--',
+                    'invoice_label' => $earning->invoice ? (string) ($earning->invoice->number ?? $earning->invoice->id) : '--',
+                    'customer_name' => (string) ($earning->customer?->name ?? '--'),
+                    'project_name' => (string) ($earning->project?->name ?? '--'),
+                    'commission_display' => number_format((float) $earning->commission_amount, 2).' '.(string) $earning->currency,
+                ];
+            })->values()->all(),
+            'payout_methods' => PaymentMethod::commissionPayoutDropdownOptions()
+                ->map(fn (object $method) => [
+                    'code' => (string) $method->code,
+                    'name' => (string) $method->name,
+                ])->values()->all(),
+            'routes' => [
+                'index' => route('admin.commission-payouts.index'),
+                'mark_paid' => route('admin.commission-payouts.pay', $payout),
+                'reverse' => route('admin.commission-payouts.reverse', $payout),
             ],
         ];
     }

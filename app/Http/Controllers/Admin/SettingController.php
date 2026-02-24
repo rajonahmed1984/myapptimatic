@@ -15,11 +15,13 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use DateTimeZone;
 
 class SettingController extends Controller
 {
-    public function edit(Request $request)
+    public function edit(Request $request): InertiaResponse
     {
         $tabs = ['general', 'invoices', 'automation', 'billing', 'tasks', 'email-templates'];
         $activeTab = $request->query('tab', 'general');
@@ -59,75 +61,112 @@ class SettingController extends Controller
             $taskTypesEnabled = array_keys(TaskSettings::TYPE_LABELS);
         }
 
-        return view('admin.settings.edit', [
-            'settings' => [
-                'company_name' => Setting::getValue('company_name'),
-                'company_email' => Setting::getValue('company_email'),
-                'pay_to_text' => Setting::getValue('pay_to_text'),
-                'company_country' => Setting::getValue('company_country'),
-                'app_url' => Setting::getValue('app_url', config('app.url')),
-                'company_logo_path' => $logoPath,
-                'company_logo_url' => Branding::url($logoPath),
-                'company_favicon_path' => $faviconPath,
-                'company_favicon_url' => Branding::url($faviconPath),
-                'cron_token' => $cronToken,
-                'cron_url' => $cronUrl,
-                'billing_last_run_at' => Setting::getValue('billing_last_run_at'),
-                'billing_last_started_at' => Setting::getValue('billing_last_started_at'),
-                'billing_last_status' => Setting::getValue('billing_last_status'),
-                'billing_last_error' => Setting::getValue('billing_last_error'),
-                'currency' => Setting::getValue('currency'),
-                'invoice_generation_days' => (int) Setting::getValue('invoice_generation_days'),
-                'invoice_due_days' => (int) Setting::getValue('invoice_due_days'),
-                'grace_period_days' => (int) Setting::getValue('grace_period_days'),
-                'late_fee_days' => (int) Setting::getValue('late_fee_days'),
-                'late_fee_type' => Setting::getValue('late_fee_type'),
-                'late_fee_amount' => Setting::getValue('late_fee_amount'),
-                'payment_reminder_emails' => (int) Setting::getValue('payment_reminder_emails'),
-                'invoice_unpaid_reminder_days' => (int) Setting::getValue('invoice_unpaid_reminder_days'),
-                'first_overdue_reminder_days' => (int) Setting::getValue('first_overdue_reminder_days'),
-                'second_overdue_reminder_days' => (int) Setting::getValue('second_overdue_reminder_days'),
-                'third_overdue_reminder_days' => (int) Setting::getValue('third_overdue_reminder_days'),
-                'enable_suspension' => (int) Setting::getValue('enable_suspension'),
-                'suspend_days' => (int) Setting::getValue('suspend_days'),
-                'send_suspension_email' => (int) Setting::getValue('send_suspension_email'),
-                'enable_unsuspension' => (int) Setting::getValue('enable_unsuspension'),
-                'send_unsuspension_email' => (int) Setting::getValue('send_unsuspension_email'),
-                'enable_termination' => (int) Setting::getValue('enable_termination'),
-                'termination_days' => (int) Setting::getValue('termination_days'),
-                'overage_billing_mode' => Setting::getValue('overage_billing_mode'),
-                'change_invoice_status_on_reversal' => (int) Setting::getValue('change_invoice_status_on_reversal'),
-                'change_due_dates_on_reversal' => (int) Setting::getValue('change_due_dates_on_reversal'),
-                'enable_auto_cancellation' => (int) Setting::getValue('enable_auto_cancellation'),
-                'auto_cancellation_days' => (int) Setting::getValue('auto_cancellation_days'),
-                'auto_bind_domains' => (int) Setting::getValue('auto_bind_domains'),
-                'payment_instructions' => Setting::getValue('payment_instructions'),
-                'ticket_auto_close_days' => (int) Setting::getValue('ticket_auto_close_days'),
-                'ticket_admin_reminder_days' => (int) Setting::getValue('ticket_admin_reminder_days'),
-                'ticket_feedback_days' => (int) Setting::getValue('ticket_feedback_days'),
-                'ticket_cleanup_days' => (int) Setting::getValue('ticket_cleanup_days'),
-                'license_expiry_first_notice_days' => (int) Setting::getValue('license_expiry_first_notice_days'),
-                'license_expiry_second_notice_days' => (int) Setting::getValue('license_expiry_second_notice_days'),
-                'recaptcha_enabled' => (bool) Setting::getValue('recaptcha_enabled', config('recaptcha.enabled')),
-                'recaptcha_site_key' => Setting::getValue('recaptcha_site_key', config('recaptcha.site_key')),
-                'recaptcha_secret_key' => Setting::getValue('recaptcha_secret_key', config('recaptcha.secret_key')),
-                'recaptcha_project_id' => Setting::getValue('recaptcha_project_id', config('recaptcha.project_id')),
-                'recaptcha_api_key' => Setting::getValue('recaptcha_api_key', config('recaptcha.api_key')),
-                'recaptcha_score_threshold' => Setting::getValue('recaptcha_score_threshold', config('recaptcha.score_threshold')),
-                'date_format' => Setting::getValue('date_format'),
-                'time_zone' => Setting::getValue('time_zone', config('app.timezone')),
-                'automation_time_of_day' => Setting::getValue('automation_time_of_day', '00:00'),
-                'task_types_enabled' => $taskTypesEnabled,
-                'task_custom_type_label' => Setting::getValue('task_custom_type_label'),
-                'task_upload_max_mb' => (int) Setting::getValue('task_upload_max_mb', 10),
-                'task_customer_visible_default' => (int) Setting::getValue('task_customer_visible_default', 0),
+        $settings = [
+            'company_name' => Setting::getValue('company_name'),
+            'company_email' => Setting::getValue('company_email'),
+            'pay_to_text' => Setting::getValue('pay_to_text'),
+            'company_country' => Setting::getValue('company_country'),
+            'app_url' => Setting::getValue('app_url', config('app.url')),
+            'company_logo_path' => $logoPath,
+            'company_logo_url' => Branding::url($logoPath),
+            'company_favicon_path' => $faviconPath,
+            'company_favicon_url' => Branding::url($faviconPath),
+            'cron_token' => $cronToken,
+            'cron_url' => $cronUrl,
+            'billing_last_run_at' => Setting::getValue('billing_last_run_at'),
+            'billing_last_started_at' => Setting::getValue('billing_last_started_at'),
+            'billing_last_status' => Setting::getValue('billing_last_status'),
+            'billing_last_error' => Setting::getValue('billing_last_error'),
+            'currency' => Setting::getValue('currency'),
+            'invoice_generation_days' => (int) Setting::getValue('invoice_generation_days'),
+            'invoice_due_days' => (int) Setting::getValue('invoice_due_days'),
+            'grace_period_days' => (int) Setting::getValue('grace_period_days'),
+            'late_fee_days' => (int) Setting::getValue('late_fee_days'),
+            'late_fee_type' => Setting::getValue('late_fee_type'),
+            'late_fee_amount' => Setting::getValue('late_fee_amount'),
+            'payment_reminder_emails' => (int) Setting::getValue('payment_reminder_emails'),
+            'invoice_unpaid_reminder_days' => (int) Setting::getValue('invoice_unpaid_reminder_days'),
+            'first_overdue_reminder_days' => (int) Setting::getValue('first_overdue_reminder_days'),
+            'second_overdue_reminder_days' => (int) Setting::getValue('second_overdue_reminder_days'),
+            'third_overdue_reminder_days' => (int) Setting::getValue('third_overdue_reminder_days'),
+            'enable_suspension' => (int) Setting::getValue('enable_suspension'),
+            'suspend_days' => (int) Setting::getValue('suspend_days'),
+            'send_suspension_email' => (int) Setting::getValue('send_suspension_email'),
+            'enable_unsuspension' => (int) Setting::getValue('enable_unsuspension'),
+            'send_unsuspension_email' => (int) Setting::getValue('send_unsuspension_email'),
+            'enable_termination' => (int) Setting::getValue('enable_termination'),
+            'termination_days' => (int) Setting::getValue('termination_days'),
+            'overage_billing_mode' => Setting::getValue('overage_billing_mode'),
+            'change_invoice_status_on_reversal' => (int) Setting::getValue('change_invoice_status_on_reversal'),
+            'change_due_dates_on_reversal' => (int) Setting::getValue('change_due_dates_on_reversal'),
+            'enable_auto_cancellation' => (int) Setting::getValue('enable_auto_cancellation'),
+            'auto_cancellation_days' => (int) Setting::getValue('auto_cancellation_days'),
+            'auto_bind_domains' => (int) Setting::getValue('auto_bind_domains'),
+            'payment_instructions' => Setting::getValue('payment_instructions'),
+            'ticket_auto_close_days' => (int) Setting::getValue('ticket_auto_close_days'),
+            'ticket_admin_reminder_days' => (int) Setting::getValue('ticket_admin_reminder_days'),
+            'ticket_feedback_days' => (int) Setting::getValue('ticket_feedback_days'),
+            'ticket_cleanup_days' => (int) Setting::getValue('ticket_cleanup_days'),
+            'license_expiry_first_notice_days' => (int) Setting::getValue('license_expiry_first_notice_days'),
+            'license_expiry_second_notice_days' => (int) Setting::getValue('license_expiry_second_notice_days'),
+            'recaptcha_enabled' => (bool) Setting::getValue('recaptcha_enabled', config('recaptcha.enabled')),
+            'recaptcha_site_key' => Setting::getValue('recaptcha_site_key', config('recaptcha.site_key')),
+            'recaptcha_secret_key' => Setting::getValue('recaptcha_secret_key', config('recaptcha.secret_key')),
+            'recaptcha_project_id' => Setting::getValue('recaptcha_project_id', config('recaptcha.project_id')),
+            'recaptcha_api_key' => Setting::getValue('recaptcha_api_key', config('recaptcha.api_key')),
+            'recaptcha_score_threshold' => Setting::getValue('recaptcha_score_threshold', config('recaptcha.score_threshold')),
+            'date_format' => Setting::getValue('date_format'),
+            'time_zone' => Setting::getValue('time_zone', config('app.timezone')),
+            'automation_time_of_day' => Setting::getValue('automation_time_of_day', '00:00'),
+            'task_types_enabled' => $taskTypesEnabled,
+            'task_custom_type_label' => Setting::getValue('task_custom_type_label'),
+            'task_upload_max_mb' => (int) Setting::getValue('task_upload_max_mb', 10),
+            'task_customer_visible_default' => (int) Setting::getValue('task_customer_visible_default', 0),
+        ];
+
+        foreach (array_keys($settings) as $key) {
+            $settings[$key] = old($key, $settings[$key]);
+        }
+        if (! is_array($settings['task_types_enabled'])) {
+            $settings['task_types_enabled'] = $taskTypesEnabled;
+        }
+
+        $templatesByCategory = $emailTemplates
+            ->groupBy(fn (EmailTemplate $template) => $template->category ?: 'Other Messages')
+            ->map(function ($templates, $category) {
+                return [
+                    'category' => (string) $category,
+                    'templates' => $templates->map(function (EmailTemplate $template) {
+                        $templateId = (int) $template->id;
+
+                        return [
+                            'id' => $templateId,
+                            'key' => (string) $template->key,
+                            'name' => (string) $template->name,
+                            'from_email' => (string) old("templates.{$templateId}.from_email", (string) ($template->from_email ?? '')),
+                            'subject' => (string) old("templates.{$templateId}.subject", (string) ($template->subject ?? '')),
+                            'body' => (string) old("templates.{$templateId}.body", (string) ($template->body ?? '')),
+                        ];
+                    })->values()->all(),
+                ];
+            })
+            ->values()
+            ->all();
+
+        return Inertia::render('Admin/Settings/Edit', [
+            'pageTitle' => 'Settings',
+            'active_tab' => $activeTab,
+            'tabs' => $tabs,
+            'settings' => $settings,
+            'countries' => array_values($countries),
+            'date_formats' => $dateFormats,
+            'time_zones' => $timeZones,
+            'task_type_labels' => TaskSettings::TYPE_LABELS,
+            'email_template_groups' => $templatesByCategory,
+            'routes' => [
+                'edit' => route('admin.settings.edit'),
+                'update' => route('admin.settings.update'),
             ],
-            'emailTemplates' => $emailTemplates,
-            'activeTab' => $activeTab,
-            'countries' => $countries,
-            'dateFormats' => $dateFormats,
-            'timeZones' => $timeZones,
-            'taskTypeLabels' => TaskSettings::TYPE_LABELS,
         ]);
     }
 

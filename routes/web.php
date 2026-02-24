@@ -95,6 +95,7 @@ use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskActivityController;
 use App\Http\Controllers\ProjectTaskViewController;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ConvertAdminViewToInertia;
 use App\Support\UiFeature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -104,6 +105,7 @@ use App\Models\Project;
 use Inertia\Inertia;
 
 Route::get('/', [PublicProductController::class, 'index'])
+    ->middleware(HandleInertiaRequests::class)
     ->name('products.public.home');
 
 Route::get('/__ui/react-sandbox', function () {
@@ -385,28 +387,36 @@ Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
     ->name('impersonate.stop')
     ->middleware('auth');
 
-Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activity:employee', 'nocache'])
+Route::middleware([
+    'auth:employee',
+    'employee',
+    'employee.activity',
+    'user.activity:employee',
+    'nocache',
+    HandleInertiaRequests::class,
+    ConvertAdminViewToInertia::class,
+])
     ->prefix('employee')
     ->name('employee.')
     ->group(function () {
-        Route::get('/dashboard', EmployeeDashboardController::class)->name('dashboard');
-        Route::get('/tasks', [EmployeeTasksController::class, 'index'])->name('tasks.index');
-        Route::get('/chats', [EmployeeChatController::class, 'index'])->name('chats.index');
+        Route::get('/dashboard', EmployeeDashboardController::class)->middleware(HandleInertiaRequests::class)->name('dashboard');
+        Route::get('/tasks', [EmployeeTasksController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('tasks.index');
+        Route::get('/chats', [EmployeeChatController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('chats.index');
         Route::redirect('/chat', '/employee/chats');
         Route::post('/work-sessions/start', [EmployeeWorkSessionController::class, 'start'])->name('work-sessions.start');
         Route::post('/work-sessions/ping', [EmployeeWorkSessionController::class, 'ping'])->name('work-sessions.ping');
         Route::post('/work-sessions/stop', [EmployeeWorkSessionController::class, 'stop'])->name('work-sessions.stop');
         Route::get('/work-summaries/today', [EmployeeWorkSessionController::class, 'today'])->name('work-summaries.today');
-        Route::get('/profile', [EmployeeProfileController::class, 'edit'])->name('profile.edit');
+        Route::get('/profile', [EmployeeProfileController::class, 'edit'])->middleware(HandleInertiaRequests::class)->name('profile.edit');
         Route::put('/profile', [EmployeeProfileController::class, 'update'])->name('profile.update');
-        Route::get('/work-logs', [EmployeeTimesheetController::class, 'index'])->name('timesheets.index');
+        Route::get('/work-logs', [EmployeeTimesheetController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('timesheets.index');
         Route::redirect('/timesheets', '/employee/work-logs');
-        Route::get('/leave-requests', [EmployeeLeaveRequestController::class, 'index'])->name('leave-requests.index');
+        Route::get('/leave-requests', [EmployeeLeaveRequestController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('leave-requests.index');
         Route::post('/leave-requests', [EmployeeLeaveRequestController::class, 'store'])->name('leave-requests.store');
-        Route::get('/attendance', [EmployeeAttendanceController::class, 'index'])->name('attendance.index');
-        Route::get('/payroll', [EmployeePayrollController::class, 'index'])->name('payroll.index');
-        Route::get('/projects', [\App\Http\Controllers\Employee\ProjectController::class, 'index'])->name('projects.index');
-        Route::get('/projects/{project}', [\App\Http\Controllers\Employee\ProjectController::class, 'show'])->name('projects.show');
+        Route::get('/attendance', [EmployeeAttendanceController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('attendance.index');
+        Route::get('/payroll', [EmployeePayrollController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('payroll.index');
+        Route::get('/projects', [\App\Http\Controllers\Employee\ProjectController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('projects.index');
+        Route::get('/projects/{project}', [\App\Http\Controllers\Employee\ProjectController::class, 'show'])->middleware(HandleInertiaRequests::class)->name('projects.show');
         Route::post('/projects/{project}/tasks', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
         Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
         Route::patch('/projects/{project}/tasks/{task}/start', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'start'])->name('projects.tasks.start');
@@ -475,11 +485,21 @@ Route::middleware(['auth:employee', 'employee', 'employee.activity', 'user.activ
         Route::get('/projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
     });
 
-Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware([
+    'admin.panel',
+    'user.activity:web',
+    'nocache',
+    HandleInertiaRequests::class,
+    ConvertAdminViewToInertia::class,
+])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/ai/business-status', [AiBusinessStatusController::class, 'index'])->name('ai.business-status');
+    Route::get('/ai/business-status', [AiBusinessStatusController::class, 'index'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('ai.business-status');
     Route::post('/ai/business-status/generate', [AiBusinessStatusController::class, 'generate'])->name('ai.business-status.generate');
-    Route::get('/tasks', [AdminTasksController::class, 'index'])->name('tasks.index');
+    Route::get('/tasks', [AdminTasksController::class, 'index'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('tasks.index');
     Route::get('/chats', [AdminChatController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('chats.index');
@@ -585,22 +605,27 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
         ->name('automation-status');
     Route::post('/system/cache/clear', SystemCacheController::class)
         ->name('system.cache.clear');
-    Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/profile', [AdminProfileController::class, 'edit'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('profile.edit');
     Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
     Route::prefix('user')
         ->name('users.')
         ->middleware('admin.role:master_admin')
         ->group(function () {
             Route::get('{role}', [UserController::class, 'index'])
+                ->middleware(HandleInertiaRequests::class)
                 ->whereIn('role', ['master_admin', 'sub_admin', 'support'])
                 ->name('index');
             Route::get('{role}/create', [UserController::class, 'create'])
+                ->middleware(HandleInertiaRequests::class)
                 ->whereIn('role', ['master_admin', 'sub_admin', 'support'])
                 ->name('create');
             Route::post('{role}', [UserController::class, 'store'])
                 ->whereIn('role', ['master_admin', 'sub_admin', 'support'])
                 ->name('store');
             Route::get('{user}/edit', [UserController::class, 'edit'])
+                ->middleware(HandleInertiaRequests::class)
                 ->whereNumber('user')
                 ->name('edit');
             Route::put('{user}', [UserController::class, 'update'])
@@ -687,7 +712,9 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
             Route::get('/payment-methods', [AdminPaymentMethodController::class, 'index'])
                 ->middleware(HandleInertiaRequests::class)
                 ->name('payment-methods.index');
-            Route::get('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'show'])->name('payment-methods.show');
+            Route::get('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'show'])
+                ->middleware(HandleInertiaRequests::class)
+                ->name('payment-methods.show');
             Route::post('/payment-methods', [AdminPaymentMethodController::class, 'store'])->name('payment-methods.store');
             Route::put('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'update'])->name('payment-methods.update');
             Route::delete('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
@@ -697,21 +724,41 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
                 ->name('tax.index');
             Route::put('/tax', [AdminFinanceTaxController::class, 'updateSettings'])->name('tax.update');
             Route::post('/tax/rates', [AdminFinanceTaxController::class, 'storeRate'])->name('tax.rates.store');
-            Route::get('/tax/rates/{rate}/edit', [AdminFinanceTaxController::class, 'editRate'])->name('tax.rates.edit');
+            Route::get('/tax/rates/{rate}/edit', [AdminFinanceTaxController::class, 'editRate'])
+                ->middleware(HandleInertiaRequests::class)
+                ->name('tax.rates.edit');
             Route::put('/tax/rates/{rate}', [AdminFinanceTaxController::class, 'updateRate'])->name('tax.rates.update');
             Route::delete('/tax/rates/{rate}', [AdminFinanceTaxController::class, 'destroyRate'])->name('tax.rates.destroy');
         });
 
     // Legacy route names for backward compatibility with old /admin/admins URLs.
     Route::middleware('admin.role:master_admin')->group(function () {
-        Route::get('admins', [UserController::class, 'index'])->defaults('role', 'master_admin')->name('admins.index');
-        Route::get('admins/create', [UserController::class, 'create'])->defaults('role', 'master_admin')->name('admins.create');
+        Route::get('admins', [UserController::class, 'index'])
+            ->middleware(HandleInertiaRequests::class)
+            ->defaults('role', 'master_admin')
+            ->name('admins.index');
+        Route::get('admins/create', [UserController::class, 'create'])
+            ->middleware(HandleInertiaRequests::class)
+            ->defaults('role', 'master_admin')
+            ->name('admins.create');
         Route::post('admins', [UserController::class, 'store'])->defaults('role', 'master_admin')->name('admins.store');
-        Route::get('admins/{user}/edit', [UserController::class, 'edit'])->whereNumber('user')->name('admins.edit');
+        Route::get('admins/{user}/edit', [UserController::class, 'edit'])
+            ->middleware(HandleInertiaRequests::class)
+            ->whereNumber('user')
+            ->name('admins.edit');
         Route::put('admins/{user}', [UserController::class, 'update'])->whereNumber('user')->name('admins.update');
         Route::delete('admins/{user}', [UserController::class, 'destroy'])->whereNumber('user')->name('admins.destroy');
     });
-    Route::resource('customers', CustomerController::class);
+    Route::get('customers', [CustomerController::class, 'index'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('customers.index');
+    Route::get('customers/create', [CustomerController::class, 'create'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('customers.create');
+    Route::get('customers/{customer}/edit', [CustomerController::class, 'edit'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('customers.edit');
+    Route::resource('customers', CustomerController::class)->except(['index', 'create', 'edit']);
     Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])->name('customers.impersonate');
     Route::post('customers/{customer}/project-users', [CustomerProjectUserController::class, 'store'])->name('customers.project-users.store');
     Route::get('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'show'])->name('customers.project-users.show');
@@ -720,26 +767,52 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('products', [ProductController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('products.index');
-    Route::resource('products', ProductController::class)->except(['show', 'index']);
+    Route::get('products/create', [ProductController::class, 'create'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('products.create');
+    Route::get('products/{product}/edit', [ProductController::class, 'edit'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('products.edit');
+    Route::resource('products', ProductController::class)->except(['show', 'index', 'create', 'edit']);
     Route::get('plans', [PlanController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('plans.index');
-    Route::resource('plans', PlanController::class)->except(['show', 'index']);
+    Route::get('plans/create', [PlanController::class, 'create'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('plans.create');
+    Route::get('plans/{plan}/edit', [PlanController::class, 'edit'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('plans.edit');
+    Route::resource('plans', PlanController::class)->except(['show', 'index', 'create', 'edit']);
     Route::get('subscriptions', [SubscriptionController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('subscriptions.index');
-    Route::resource('subscriptions', SubscriptionController::class)->except(['show', 'index']);
+    Route::get('subscriptions/create', [SubscriptionController::class, 'create'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('subscriptions.create');
+    Route::get('subscriptions/{subscription}/edit', [SubscriptionController::class, 'edit'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('subscriptions.edit');
+    Route::resource('subscriptions', SubscriptionController::class)->except(['show', 'index', 'create', 'edit']);
     Route::get('licenses', [LicenseController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('licenses.index');
-    Route::resource('licenses', LicenseController::class)->except(['show', 'index']);
+    Route::get('licenses/create', [LicenseController::class, 'create'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('licenses.create');
+    Route::get('licenses/{license}/edit', [LicenseController::class, 'edit'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('licenses.edit');
+    Route::resource('licenses', LicenseController::class)->except(['show', 'index', 'create', 'edit']);
     Route::post('licenses/{license}/domains/{domain}/revoke', [LicenseController::class, 'revokeDomain'])->name('licenses.domains.revoke');
     Route::post('licenses/{license}/sync', [LicenseController::class, 'sync'])->name('licenses.sync');
     Route::get('licenses/{license}/sync-status', [LicenseController::class, 'syncStatus'])->name('licenses.sync-status');
     Route::get('orders', [AdminOrderController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('orders.index');
-    Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::get('orders/{order}', [AdminOrderController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('orders.show');
     Route::post('orders/{order}/approve', [AdminOrderController::class, 'approve'])->name('orders.approve');
     Route::post('orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('orders.cancel');
     Route::patch('orders/{order}/plan', [AdminOrderController::class, 'updatePlan'])->name('orders.plan');
@@ -840,9 +913,13 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('support-tickets.index');
-    Route::get('support-tickets/create', [AdminSupportTicketController::class, 'create'])->name('support-tickets.create');
+    Route::get('support-tickets/create', [AdminSupportTicketController::class, 'create'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('support-tickets.create');
     Route::post('support-tickets', [AdminSupportTicketController::class, 'store'])->name('support-tickets.store');
-    Route::get('support-tickets/{ticket}', [AdminSupportTicketController::class, 'show'])->name('support-tickets.show');
+    Route::get('support-tickets/{ticket}', [AdminSupportTicketController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('support-tickets.show');
     Route::post('support-tickets/{ticket}/ai-summary', [AdminSupportTicketController::class, 'aiSummary'])->name('support-tickets.ai');
     Route::post('support-tickets/{ticket}/reply', [AdminSupportTicketController::class, 'reply'])->name('support-tickets.reply');
     Route::patch('support-tickets/{ticket}/status', [AdminSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
@@ -872,14 +949,20 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('payment-gateways', [PaymentGatewayController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('payment-gateways.index');
-    Route::get('payment-gateways/{paymentGateway}/edit', [PaymentGatewayController::class, 'edit'])->name('payment-gateways.edit');
+    Route::get('payment-gateways/{paymentGateway}/edit', [PaymentGatewayController::class, 'edit'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('payment-gateways.edit');
     Route::put('payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');
     Route::get('commission-payouts', [CommissionPayoutController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('commission-payouts.index');
-    Route::get('commission-payouts/create', [CommissionPayoutController::class, 'create'])->name('commission-payouts.create');
+    Route::get('commission-payouts/create', [CommissionPayoutController::class, 'create'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('commission-payouts.create');
     Route::post('commission-payouts', [CommissionPayoutController::class, 'store'])->name('commission-payouts.store');
-    Route::get('commission-payouts/{commissionPayout}', [CommissionPayoutController::class, 'show'])->name('commission-payouts.show');
+    Route::get('commission-payouts/{commissionPayout}', [CommissionPayoutController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('commission-payouts.show');
     Route::post('commission-payouts/{commissionPayout}/pay', [CommissionPayoutController::class, 'markPaid'])->name('commission-payouts.pay');
     Route::post('commission-payouts/{commissionPayout}/reverse', [CommissionPayoutController::class, 'reverse'])->name('commission-payouts.reverse');
     Route::get('commission-earnings/export', [CommissionExportController::class, 'exportEarnings'])->name('commission-earnings.export');
@@ -893,9 +976,13 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::get('accounting/transactions', [AdminAccountingController::class, 'transactions'])
         ->middleware(HandleInertiaRequests::class)
         ->name('accounting.transactions');
-    Route::get('accounting/create', [AdminAccountingController::class, 'create'])->name('accounting.create');
+    Route::get('accounting/create', [AdminAccountingController::class, 'create'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('accounting.create');
     Route::post('accounting', [AdminAccountingController::class, 'store'])->name('accounting.store');
-    Route::get('accounting/{entry}/edit', [AdminAccountingController::class, 'edit'])->name('accounting.edit');
+    Route::get('accounting/{entry}/edit', [AdminAccountingController::class, 'edit'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('accounting.edit');
     Route::put('accounting/{entry}', [AdminAccountingController::class, 'update'])->name('accounting.update');
     Route::delete('accounting/{entry}', [AdminAccountingController::class, 'destroy'])->name('accounting.destroy');
     Route::get('settings', [SettingController::class, 'edit'])->name('settings.edit');
@@ -924,7 +1011,7 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::delete('logs/email/{systemLog}', [SystemLogController::class, 'destroy'])->name('logs.email.delete');
     
     // Affiliate routes
-    Route::resource('affiliates', AdminAffiliateController::class);
+    Route::resource('affiliates', AdminAffiliateController::class)->whereNumber('affiliate');
     Route::get('affiliates/commissions', [AffiliateCommissionController::class, 'index'])->name('affiliates.commissions.index');
     Route::post('affiliates/commissions/{commission}/approve', [AffiliateCommissionController::class, 'approve'])->name('affiliates.commissions.approve');
     Route::post('affiliates/commissions/{commission}/reject', [AffiliateCommissionController::class, 'reject'])->name('affiliates.commissions.reject');
@@ -937,7 +1024,17 @@ Route::middleware(['admin.panel', 'user.activity:web', 'nocache'])->prefix('admi
     Route::delete('affiliates/payouts/{payout}', [AffiliatePayoutController::class, 'destroy'])->name('affiliates.payouts.destroy');
 });
 
-Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.activity:web', 'project.client', 'nocache'])
+Route::middleware([
+    'auth',
+    'client',
+    'client.block',
+    'client.notice',
+    'user.activity:web',
+    'project.client',
+    'nocache',
+    HandleInertiaRequests::class,
+    ConvertAdminViewToInertia::class,
+])
     ->prefix('client')
     ->name('client.')
     ->group(function () {
@@ -1109,22 +1206,28 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::put('/affiliates/settings', [ClientAffiliateController::class, 'updateSettings'])->middleware('project.financial')->name('affiliates.settings.update');
     });
 
-Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
+Route::middleware([
+    'salesrep',
+    'user.activity:sales',
+    'nocache',
+    HandleInertiaRequests::class,
+    ConvertAdminViewToInertia::class,
+])
     ->prefix('sales')
     ->name('rep.')
     ->group(function () {
-        Route::get('/dashboard', SalesRepDashboardController::class)->name('dashboard');
-        Route::get('/tasks', [SalesRepTasksController::class, 'index'])->name('tasks.index');
-        Route::get('/chats', [SalesRepChatController::class, 'index'])->name('chats.index');
+        Route::get('/dashboard', SalesRepDashboardController::class)->middleware(HandleInertiaRequests::class)->name('dashboard');
+        Route::get('/tasks', [SalesRepTasksController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('tasks.index');
+        Route::get('/chats', [SalesRepChatController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('chats.index');
         Route::redirect('/chat', '/sales/chats');
-        Route::get('/profile', [SalesRepProfileController::class, 'edit'])->name('profile.edit');
+        Route::get('/profile', [SalesRepProfileController::class, 'edit'])->middleware(HandleInertiaRequests::class)->name('profile.edit');
         Route::put('/profile', [SalesRepProfileController::class, 'update'])->name('profile.update');
         Route::post('/system/cache/clear', SystemCacheController::class)
             ->name('system.cache.clear');
-        Route::get('/earnings', [SalesRepEarningController::class, 'index'])->name('earnings.index');
-        Route::get('/payouts', [SalesRepPayoutController::class, 'index'])->name('payouts.index');
-        Route::get('/projects', [\App\Http\Controllers\SalesRep\ProjectController::class, 'index'])->name('projects.index');
-        Route::get('/projects/{project}', [\App\Http\Controllers\SalesRep\ProjectController::class, 'show'])->name('projects.show');
+        Route::get('/earnings', [SalesRepEarningController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('earnings.index');
+        Route::get('/payouts', [SalesRepPayoutController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('payouts.index');
+        Route::get('/projects', [\App\Http\Controllers\SalesRep\ProjectController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('projects.index');
+        Route::get('/projects/{project}', [\App\Http\Controllers\SalesRep\ProjectController::class, 'show'])->middleware(HandleInertiaRequests::class)->name('projects.show');
         Route::post('/projects/{project}/tasks', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
         Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
         Route::delete('/projects/{project}/tasks/{task}', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
@@ -1192,14 +1295,20 @@ Route::middleware(['salesrep', 'user.activity:sales', 'nocache'])
         Route::get('/projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
     });
 
-Route::middleware(['support', 'user.activity:support', 'nocache'])
+Route::middleware([
+    'support',
+    'user.activity:support',
+    'nocache',
+    HandleInertiaRequests::class,
+    ConvertAdminViewToInertia::class,
+])
     ->prefix('support')
     ->name('support.')
     ->group(function () {
-        Route::get('/dashboard', SupportDashboardController::class)->name('dashboard');
+        Route::get('/dashboard', SupportDashboardController::class)->middleware(HandleInertiaRequests::class)->name('dashboard');
         Route::get('/tasks', [SupportTasksController::class, 'index'])->name('tasks.index');
-        Route::get('/support-tickets', [SupportSupportTicketController::class, 'index'])->name('support-tickets.index');
-        Route::get('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'show'])->name('support-tickets.show');
+        Route::get('/support-tickets', [SupportSupportTicketController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('support-tickets.index');
+        Route::get('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'show'])->middleware(HandleInertiaRequests::class)->name('support-tickets.show');
         Route::post('/support-tickets/{ticket}/ai-summary', [SupportSupportTicketController::class, 'aiSummary'])->name('support-tickets.ai');
         Route::post('/support-tickets/{ticket}/reply', [SupportSupportTicketController::class, 'reply'])->name('support-tickets.reply');
         Route::patch('/support-tickets/{ticket}/status', [SupportSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
@@ -1215,10 +1324,13 @@ Route::middleware('signed:relative')->group(function () {
 });
 
 Route::get('/products', [PublicProductController::class, 'index'])
+    ->middleware(HandleInertiaRequests::class)
     ->name('products.public.index');
 
 Route::get('/{product:slug}/plans/{plan:slug}', [PublicProductController::class, 'showPlan'])
+    ->middleware(HandleInertiaRequests::class)
     ->name('products.public.plan');
 
 Route::get('/{product:slug}', [PublicProductController::class, 'show'])
+    ->middleware(HandleInertiaRequests::class)
     ->name('products.public.show');

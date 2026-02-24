@@ -201,8 +201,9 @@ class ClientTaskPermissionTest extends TestCase
             ->get(route('client.projects.tasks.show', [$project, $task]));
 
         $response->assertOk();
-        $response->assertSee('subtask-edit-btn', false);
-        $response->assertSee('>Open<', false);
+        $content = $this->extractRenderableHtml($response->getContent());
+        $this->assertStringContainsString('subtask-edit-btn', $content);
+        $this->assertStringContainsString('>Open<', $content);
     }
 
     #[Test]
@@ -289,7 +290,8 @@ class ClientTaskPermissionTest extends TestCase
             ->get(route('client.projects.tasks.show', [$project, $task]));
 
         $response->assertOk();
-        $response->assertSee('id="task-edit"', false);
+        $content = $this->extractRenderableHtml($response->getContent());
+        $this->assertStringContainsString('id="task-edit"', $content);
     }
 
     private function setupClientProject(): array
@@ -314,5 +316,18 @@ class ClientTaskPermissionTest extends TestCase
         ]);
 
         return [$client, $project];
+    }
+
+    private function extractRenderableHtml(string $content): string
+    {
+        if (preg_match('/data-page="([^"]+)"/', $content, $matches) === 1) {
+            $payload = json_decode(html_entity_decode($matches[1], ENT_QUOTES), true);
+            $legacyHtml = (string) data_get($payload, 'props.content_html', '');
+            if ($legacyHtml !== '') {
+                return html_entity_decode($legacyHtml, ENT_QUOTES);
+            }
+        }
+
+        return $content;
     }
 }

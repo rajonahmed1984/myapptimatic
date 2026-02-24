@@ -43,7 +43,7 @@ class OrderController extends Controller
         );
     }
 
-    public function show(Order $order)
+    public function show(Order $order): InertiaResponse
     {
         $order->load([
             'customer',
@@ -61,11 +61,10 @@ class OrderController extends Controller
             ->unique()
             ->values();
 
-        return view('admin.orders.show', [
-            'order' => $order,
-            'planOptions' => $planOptions,
-            'intervalOptions' => $intervalOptions,
-        ]);
+        return Inertia::render(
+            'Admin/Orders/Show',
+            $this->showInertiaProps($order, $planOptions, $intervalOptions)
+        );
     }
 
     public function approve(
@@ -357,6 +356,51 @@ class OrderController extends Controller
                 'has_pages' => $orders->hasPages(),
                 'previous_url' => $orders->previousPageUrl(),
                 'next_url' => $orders->nextPageUrl(),
+            ],
+        ];
+    }
+
+    private function showInertiaProps(Order $order, $planOptions, $intervalOptions): array
+    {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+        $invoice = $order->invoice;
+
+        return [
+            'pageTitle' => 'Order Details',
+            'order' => [
+                'id' => $order->id,
+                'order_number' => (string) ($order->order_number ?? $order->id),
+                'status' => (string) $order->status,
+                'status_label' => ucfirst((string) $order->status),
+                'customer_name' => (string) ($order->customer?->name ?? '--'),
+                'customer_email' => (string) ($order->customer?->email ?? '--'),
+                'plan_name' => (string) ($order->plan?->name ?? '--'),
+                'product_name' => (string) ($order->plan?->product?->name ?? '--'),
+                'created_at_display' => $order->created_at?->format($dateFormat.' H:i') ?? '--',
+                'approved_at_display' => $order->approved_at?->format($dateFormat.' H:i') ?? '--',
+                'cancelled_at_display' => $order->cancelled_at?->format($dateFormat.' H:i') ?? '--',
+                'invoice_number' => $invoice ? (string) ($invoice->number ?? $invoice->id) : '--',
+                'invoice_total_display' => $invoice
+                    ? trim((string) (($invoice->currency ?? '').' '.number_format((float) ($invoice->total ?? 0), 2)))
+                    : '--',
+                'invoice_url' => $invoice ? route('admin.invoices.show', $invoice) : null,
+                'license_key' => (string) ($order->subscription?->licenses?->first()?->license_key ?? ''),
+                'license_url' => (string) ($order->subscription?->licenses?->first()?->domains?->firstWhere('status', 'active')?->domain ?? ''),
+            ],
+            'plan_options' => collect($planOptions)->values()->map(fn (Plan $plan) => [
+                'id' => $plan->id,
+                'name' => (string) $plan->name,
+                'interval' => (string) $plan->interval,
+                'price' => (float) $plan->price,
+                'currency' => (string) ($plan->currency ?? ''),
+            ])->all(),
+            'interval_options' => collect($intervalOptions)->values()->map(fn ($interval) => (string) $interval)->all(),
+            'routes' => [
+                'index' => route('admin.orders.index'),
+                'approve' => route('admin.orders.approve', $order),
+                'cancel' => route('admin.orders.cancel', $order),
+                'update_plan' => route('admin.orders.plan', $order),
+                'destroy' => route('admin.orders.destroy', $order),
             ],
         ];
     }

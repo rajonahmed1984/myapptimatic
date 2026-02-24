@@ -18,7 +18,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -30,7 +29,7 @@ class IncomeController extends Controller
 
     private const WHMCS_MAX_PAGES = 50;
 
-    public function dashboard(Request $request, IncomeEntryService $entryService, GeminiService $geminiService, WhmcsClient $whmcsClient): View
+    public function dashboard(Request $request, IncomeEntryService $entryService, GeminiService $geminiService, WhmcsClient $whmcsClient): \Illuminate\View\View
     {
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
@@ -146,7 +145,7 @@ class IncomeController extends Controller
     public function index(
         Request $request,
         IncomeEntryService $entryService
-    ): View|InertiaResponse {
+    ): \Illuminate\View\View|InertiaResponse {
         $search = trim((string) $request->input('search', ''));
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
@@ -235,14 +234,35 @@ class IncomeController extends Controller
         );
     }
 
-    public function create(): View
+    public function create(): InertiaResponse
     {
         $categories = IncomeCategory::query()
             ->where('status', 'active')
             ->orderBy('name')
             ->get();
 
-        return view('admin.income.create', compact('categories'));
+        return Inertia::render('Admin/Income/Create', [
+            'pageTitle' => 'Add Income',
+            'routes' => [
+                'index' => route('admin.income.index'),
+                'store' => route('admin.income.store'),
+            ],
+            'categories' => $categories->map(function (IncomeCategory $category) {
+                return [
+                    'id' => $category->id,
+                    'name' => (string) $category->name,
+                ];
+            })->values()->all(),
+            'form' => [
+                'fields' => [
+                    'income_category_id' => (string) old('income_category_id', ''),
+                    'title' => (string) old('title', ''),
+                    'amount' => (string) old('amount', ''),
+                    'income_date' => (string) old('income_date', now()->toDateString()),
+                    'notes' => (string) old('notes', ''),
+                ],
+            ],
+        ]);
     }
 
     public function store(Request $request): RedirectResponse

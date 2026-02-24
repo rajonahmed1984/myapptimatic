@@ -8,13 +8,28 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ProfileController extends Controller
 {
-    public function edit(Request $request)
+    public function edit(Request $request): InertiaResponse
     {
-        return view('admin.profile.edit', [
-            'user' => $request->user(),
+        $user = $request->user();
+
+        return Inertia::render('Admin/Profile/Edit', [
+            'pageTitle' => 'Profile',
+            'form' => [
+                'action' => route('admin.profile.update'),
+                'method' => 'PUT',
+                'fields' => [
+                    'name' => (string) old('name', (string) ($user?->name ?? '')),
+                    'email' => (string) old('email', (string) ($user?->email ?? '')),
+                ],
+                'avatar_url' => (is_string($user?->avatar_path) && $user->avatar_path !== '')
+                    ? Storage::disk('public')->url($user->avatar_path)
+                    : null,
+            ],
         ]);
     }
 

@@ -30,10 +30,13 @@ use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class CustomerController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): View|InertiaResponse
     {
         $search = trim((string) $request->query('search', ''));
 
@@ -68,14 +71,20 @@ class CustomerController extends Controller
             return view('admin.customers.partials.table', compact('customers', 'loginStatuses'));
         }
 
-        return view('admin.customers.index', compact('customers', 'loginStatuses', 'search'));
+        return Inertia::render(
+            'Admin/Customers/Index',
+            $this->indexInertiaProps($customers, $loginStatuses, $search)
+        );
     }
 
-    public function create()
+    public function create(): InertiaResponse
     {
-        return view('admin.customers.create', [
-            'salesReps' => SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']),
-        ]);
+        $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
+
+        return Inertia::render(
+            'Admin/Customers/Form',
+            $this->formInertiaProps(null, $salesReps)
+        );
     }
 
     public function store(StoreClientUserRequest $request)
@@ -187,7 +196,7 @@ class CustomerController extends Controller
         return nl2br(e($trimmed));
     }
 
-    public function edit(Customer $customer)
+    public function edit(Customer $customer): InertiaResponse
     {
         $activeServices = $customer->subscriptions()->where('status', 'active')->count();
         $activeProjects = $customer->projects()->whereIn('status', ['ongoing', 'complete'])->count();
@@ -196,13 +205,12 @@ class CustomerController extends Controller
             ? 'active'
             : $customer->status;
 
-        return view('admin.customers.edit', [
-            'customer' => $customer,
-            'salesReps' => SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']),
-            'projectClients' => $customer->projectUsers()->with('project')->get(),
-            'projects' => $customer->projects()->orderBy('name')->get(['id', 'name']),
-            'effectiveStatus' => $effectiveStatus,
-        ]);
+        $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
+
+        return Inertia::render(
+            'Admin/Customers/Form',
+            $this->formInertiaProps($customer, $salesReps, $effectiveStatus)
+        );
     }
 
     public function show(Request $request, Customer $customer)
@@ -583,5 +591,66 @@ class CustomerController extends Controller
         }
 
         return $statuses;
+    }
+
+    private function indexInertiaProps($customers, array $loginStatuses, string $search): array
+    {
+        return [
+            'pageTitle' => 'Customers',
+            'search' => $search,
+            'routes' => [
+                'index' => route('admin.customers.index'),
+                'create' => route('admin.customers.create'),
+            ],
+            // Keep existing table markup for zero-regression rollout.
+            'table_html' => view('admin.customers.partials.table', [
+                'customers' => $customers,
+                'loginStatuses' => $loginStatuses,
+            ])->render(),
+        ];
+    }
+
+    private function formInertiaProps(?Customer $customer, $salesReps, ?string $effectiveStatus = null): array
+    {
+        $isEdit = $customer !== null;
+
+        return [
+            'pageTitle' => $isEdit ? 'Edit Customer' : 'New Customer',
+            'is_edit' => $isEdit,
+            'effective_status' => $effectiveStatus,
+            'customer_id' => $customer?->id,
+            'created_at' => $customer?->created_at?->toDateString(),
+            'sales_reps' => $salesReps->values()->map(fn (SalesRepresentative $rep) => [
+                'id' => $rep->id,
+                'name' => (string) $rep->name,
+                'status' => (string) $rep->status,
+            ])->all(),
+            'form' => [
+                'action' => $isEdit
+                    ? route('admin.customers.update', $customer)
+                    : route('admin.customers.store'),
+                'method' => $isEdit ? 'PUT' : 'POST',
+                'fields' => [
+                    'name' => (string) old('name', (string) ($customer?->name ?? '')),
+                    'company_name' => (string) old('company_name', (string) ($customer?->company_name ?? '')),
+                    'email' => (string) old('email', (string) ($customer?->email ?? '')),
+                    'phone' => (string) old('phone', (string) ($customer?->phone ?? '')),
+                    'status' => (string) old('status', (string) ($effectiveStatus ?? $customer?->status ?? 'active')),
+                    'default_sales_rep_id' => (string) old('default_sales_rep_id', (string) ($customer?->default_sales_rep_id ?? '')),
+                    'access_override_until' => (string) old(
+                        'access_override_until',
+                        $customer?->access_override_until?->format('Y-m-d') ?? ''
+                    ),
+                    'address' => (string) old('address', (string) ($customer?->address ?? '')),
+                    'notes' => (string) old('notes', (string) ($customer?->notes ?? '')),
+                    'send_account_message' => (bool) old('send_account_message', false),
+                ],
+            ],
+            'routes' => [
+                'index' => route('admin.customers.index'),
+                'show' => $isEdit ? route('admin.customers.show', $customer) : null,
+                'destroy' => $isEdit ? route('admin.customers.destroy', $customer) : null,
+            ],
+        ];
     }
 }

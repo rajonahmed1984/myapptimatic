@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\SalesRepresentative;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ChatController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         $salesRep = $request->attributes->get('salesRep');
         if (! ($salesRep instanceof SalesRepresentative)) {
@@ -43,9 +44,30 @@ class ChatController extends Controller
                 ->pluck('unread', 'project_id');
         }
 
-        return view('rep.chats.index', [
-            'projects' => $projects,
-            'unreadCounts' => $unreadCounts,
+        return Inertia::render('Rep/Chats/Index', [
+            'projects' => $projects->getCollection()->map(function ($project) use ($unreadCounts) {
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'status_label' => $project->status ? ucfirst(str_replace('_', ' ', $project->status)) : '--',
+                    'unread_count' => (int) ($unreadCounts[$project->id] ?? 0),
+                    'routes' => [
+                        'chat' => route('rep.projects.chat', $project),
+                    ],
+                ];
+            })->values()->all(),
+            'pagination' => [
+                'current_page' => $projects->currentPage(),
+                'last_page' => $projects->lastPage(),
+                'total' => $projects->total(),
+                'from' => $projects->firstItem(),
+                'to' => $projects->lastItem(),
+                'prev_page_url' => $projects->previousPageUrl(),
+                'next_page_url' => $projects->nextPageUrl(),
+            ],
+            'routes' => [
+                'projects_index' => route('rep.projects.index'),
+            ],
         ]);
     }
 }

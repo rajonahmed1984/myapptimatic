@@ -27,13 +27,16 @@ class ProductController extends Controller
         );
     }
 
-    public function create(Request $request): View|RedirectResponse
+    public function create(Request $request): View|InertiaResponse|RedirectResponse
     {
         if (AjaxResponse::ajaxFromRequest($request)) {
             return view('admin.products.partials.form');
         }
 
-        return view('admin.products.create');
+        return Inertia::render(
+            'Admin/Products/Form',
+            $this->formInertiaProps(null)
+        );
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse
@@ -62,13 +65,16 @@ class ProductController extends Controller
             ->with('status', 'Product created.');
     }
 
-    public function edit(Request $request, Product $product): View
+    public function edit(Request $request, Product $product): View|InertiaResponse
     {
         if (AjaxResponse::ajaxFromRequest($request)) {
             return view('admin.products.partials.form', compact('product'));
         }
 
-        return view('admin.products.edit', compact('product'));
+        return Inertia::render(
+            'Admin/Products/Form',
+            $this->formInertiaProps($product)
+        );
     }
 
     public function update(Request $request, Product $product): RedirectResponse|JsonResponse
@@ -150,6 +156,31 @@ class ProductController extends Controller
                     ],
                 ];
             })->all(),
+        ];
+    }
+
+    private function formInertiaProps(?Product $product): array
+    {
+        $isEdit = $product !== null;
+
+        return [
+            'pageTitle' => $isEdit ? 'Edit Product' : 'Add Product',
+            'is_edit' => $isEdit,
+            'form' => [
+                'action' => $isEdit
+                    ? route('admin.products.update', $product)
+                    : route('admin.products.store'),
+                'method' => $isEdit ? 'PUT' : 'POST',
+                'fields' => [
+                    'name' => (string) old('name', (string) ($product?->name ?? '')),
+                    'slug' => (string) old('slug', (string) ($product?->slug ?? '')),
+                    'description' => (string) old('description', (string) ($product?->description ?? '')),
+                    'status' => (string) old('status', (string) ($product?->status ?? 'active')),
+                ],
+            ],
+            'routes' => [
+                'index' => route('admin.products.index'),
+            ],
         ];
     }
 }

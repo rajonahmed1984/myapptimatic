@@ -61,14 +61,19 @@ class ProjectTaskOrderingTest extends TestCase
         $admin = User::factory()->create(['role' => 'master_admin']);
 
         $response = $this->actingAs($admin)
-            ->get(route('admin.projects.show', $project));
+            ->get(route('admin.projects.tasks.index', $project));
 
         $response->assertOk();
+        $content = $this->extractRenderableHtml($response->getContent());
+        $newestPosition = strpos($content, $newest->title);
+        $middlePosition = strpos($content, $middle->title);
+        $oldestPosition = strpos($content, $oldest->title);
 
-        $tasks = $response->viewData('tasks');
-        $ids = $tasks->getCollection()->pluck('id')->all();
-
-        $this->assertSame([$newest->id, $middle->id, $oldest->id], $ids);
+        $this->assertNotFalse($newestPosition);
+        $this->assertNotFalse($middlePosition);
+        $this->assertNotFalse($oldestPosition);
+        $this->assertTrue($newestPosition < $middlePosition);
+        $this->assertTrue($middlePosition < $oldestPosition);
     }
 
     #[Test]
@@ -82,6 +87,20 @@ class ProjectTaskOrderingTest extends TestCase
         $response->assertOk();
 
         $today = now()->toDateString();
-        $response->assertSee('name="tasks[0][start_date]" value="'.$today.'"', false);
+        $content = $this->extractRenderableHtml($response->getContent());
+        $this->assertStringContainsString('name="tasks[0][start_date]" value="'.$today.'"', $content);
+    }
+
+    private function extractRenderableHtml(string $content): string
+    {
+        if (preg_match('/data-page="([^"]+)"/', $content, $matches) === 1) {
+            $payload = json_decode(html_entity_decode($matches[1], ENT_QUOTES), true);
+            $legacyHtml = (string) data_get($payload, 'props.content_html', '');
+            if ($legacyHtml !== '') {
+                return html_entity_decode($legacyHtml, ENT_QUOTES);
+            }
+        }
+
+        return $content;
     }
 }

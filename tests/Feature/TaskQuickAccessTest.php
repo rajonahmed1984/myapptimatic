@@ -40,11 +40,9 @@ class TaskQuickAccessTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.tasks.index'));
 
         $response->assertOk();
-        $response->assertViewHas('tasks', function ($tasks) use ($taskA, $taskB) {
-            $ids = $tasks->getCollection()->pluck('id')->all();
-
-            return in_array($taskA->id, $ids, true) && in_array($taskB->id, $ids, true);
-        });
+        $response->assertSee('Admin\\/Tasks\\/Index', false);
+        $response->assertSee($taskA->title);
+        $response->assertSee($taskB->title);
     }
 
     #[Test]
@@ -126,13 +124,10 @@ class TaskQuickAccessTest extends TestCase
             ->get(route('employee.tasks.index'));
 
         $response->assertOk();
-        $response->assertViewHas('tasks', function ($tasks) use ($projectTask, $assignedTask, $otherTask) {
-            $ids = $tasks->getCollection()->pluck('id')->all();
-
-            return in_array($projectTask->id, $ids, true)
-                && in_array($assignedTask->id, $ids, true)
-                && ! in_array($otherTask->id, $ids, true);
-        });
+        $response->assertSee('Employee\\/Tasks\\/Index', false);
+        $response->assertSee($projectTask->title);
+        $response->assertSee($assignedTask->title);
+        $response->assertDontSee($otherTask->title);
     }
 
     #[Test]
@@ -172,13 +167,10 @@ class TaskQuickAccessTest extends TestCase
             ->get(route('rep.tasks.index'));
 
         $response->assertOk();
-        $response->assertViewHas('tasks', function ($tasks) use ($projectTask, $assignedTask, $otherTask) {
-            $ids = $tasks->getCollection()->pluck('id')->all();
-
-            return in_array($projectTask->id, $ids, true)
-                && in_array($assignedTask->id, $ids, true)
-                && ! in_array($otherTask->id, $ids, true);
-        });
+        $response->assertSee('Rep\\/Tasks\\/Index', false);
+        $response->assertSee($projectTask->title);
+        $response->assertSee($assignedTask->title);
+        $response->assertDontSee($otherTask->title);
     }
 
     #[Test]
@@ -218,8 +210,16 @@ class TaskQuickAccessTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.tasks.index'));
 
         $response->assertOk();
-        $ids = $response->viewData('tasks')->getCollection()->pluck('id')->all();
-        $this->assertSame([$newest->id, $middle->id, $oldest->id], $ids);
+        $content = $response->getContent();
+        $newestPosition = strpos($content, $newest->title);
+        $middlePosition = strpos($content, $middle->title);
+        $oldestPosition = strpos($content, $oldest->title);
+
+        $this->assertNotFalse($newestPosition);
+        $this->assertNotFalse($middlePosition);
+        $this->assertNotFalse($oldestPosition);
+        $this->assertTrue($newestPosition < $middlePosition);
+        $this->assertTrue($middlePosition < $oldestPosition);
     }
 
     #[Test]
@@ -335,14 +335,16 @@ class TaskQuickAccessTest extends TestCase
             ->get(route('employee.dashboard'));
 
         $employeeResponse->assertOk();
-        $employeeResponse->assertSee('My Open Tasks');
+        $employeeResponse->assertSee('Employee\\/Dashboard\\/Index', false);
+        $employeeResponse->assertSee('&quot;tasks_widget&quot;:{&quot;show&quot;:true', false);
 
         $supportUser = User::factory()->create(['role' => 'support']);
         $supportResponse = $this->actingAs($supportUser, 'support')
             ->get(route('support.dashboard'));
 
         $supportResponse->assertOk();
-        $supportResponse->assertDontSee('My Open Tasks');
+        $supportResponse->assertSee('Support\\/Dashboard\\/Index', false);
+        $supportResponse->assertDontSee('&quot;tasks_widget&quot;:{&quot;show&quot;:true', false);
     }
 
     private function createProject(Customer $customer, array $overrides = []): Project

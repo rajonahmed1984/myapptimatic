@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Inertia\Inertia;
@@ -39,7 +40,7 @@ class SubscriptionController extends Controller
         );
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): View|InertiaResponse
     {
         $customers = Customer::query()->orderBy('name')->get();
         $plans = Plan::query()->with('product')->orderBy('name')->get();
@@ -49,7 +50,10 @@ class SubscriptionController extends Controller
             return view('admin.subscriptions.partials.form', compact('customers', 'plans', 'salesReps'));
         }
 
-        return view('admin.subscriptions.create', compact('customers', 'plans', 'salesReps'));
+        return Inertia::render(
+            'Admin/Subscriptions/Form',
+            $this->formInertiaProps(null, $customers, $plans, $salesReps)
+        );
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse
@@ -101,7 +105,7 @@ class SubscriptionController extends Controller
             ->with('status', 'Subscription created.');
     }
 
-    public function edit(Request $request, Subscription $subscription): View
+    public function edit(Request $request, Subscription $subscription): View|InertiaResponse
     {
         $subscription = $subscription->load(['customer', 'plan.product']);
         $customers = Customer::query()->orderBy('name')->get();
@@ -112,7 +116,10 @@ class SubscriptionController extends Controller
             return view('admin.subscriptions.partials.form', compact('subscription', 'customers', 'plans', 'salesReps'));
         }
 
-        return view('admin.subscriptions.edit', compact('subscription', 'customers', 'plans', 'salesReps'));
+        return Inertia::render(
+            'Admin/Subscriptions/Form',
+            $this->formInertiaProps($subscription, $customers, $plans, $salesReps)
+        );
     }
 
     public function update(Request $request, Subscription $subscription): RedirectResponse|JsonResponse
@@ -281,6 +288,61 @@ class SubscriptionController extends Controller
                 'has_pages' => $subscriptions->hasPages(),
                 'previous_url' => $subscriptions->previousPageUrl(),
                 'next_url' => $subscriptions->nextPageUrl(),
+            ],
+        ];
+    }
+
+    private function formInertiaProps(
+        ?Subscription $subscription,
+        Collection $customers,
+        Collection $plans,
+        Collection $salesReps
+    ): array {
+        $isEdit = $subscription !== null;
+
+        return [
+            'pageTitle' => $isEdit ? 'Edit Subscription' : 'Add Subscription',
+            'is_edit' => $isEdit,
+            'customers' => $customers->map(fn (Customer $customer) => [
+                'id' => $customer->id,
+                'name' => (string) $customer->name,
+            ])->values()->all(),
+            'plans' => $plans->map(fn (Plan $plan) => [
+                'id' => $plan->id,
+                'name' => (string) $plan->name,
+                'product_name' => (string) ($plan->product?->name ?? '--'),
+                'interval' => (string) $plan->interval,
+                'price' => (float) $plan->price,
+                'currency' => (string) ($plan->currency ?? ''),
+            ])->values()->all(),
+            'sales_reps' => $salesReps->map(fn (SalesRepresentative $rep) => [
+                'id' => $rep->id,
+                'name' => (string) $rep->name,
+                'status' => (string) $rep->status,
+            ])->values()->all(),
+            'form' => [
+                'action' => $isEdit
+                    ? route('admin.subscriptions.update', $subscription)
+                    : route('admin.subscriptions.store'),
+                'method' => $isEdit ? 'PUT' : 'POST',
+                'fields' => [
+                    'customer_id' => (string) old('customer_id', (string) ($subscription?->customer_id ?? '')),
+                    'plan_id' => (string) old('plan_id', (string) ($subscription?->plan_id ?? '')),
+                    'sales_rep_id' => (string) old('sales_rep_id', (string) ($subscription?->sales_rep_id ?? '')),
+                    'status' => (string) old('status', (string) ($subscription?->status ?? 'active')),
+                    'start_date' => (string) old('start_date', (string) ($subscription?->start_date?->toDateString() ?? now()->toDateString())),
+                    'current_period_start' => (string) old('current_period_start', (string) ($subscription?->current_period_start?->toDateString() ?? '')),
+                    'current_period_end' => (string) old('current_period_end', (string) ($subscription?->current_period_end?->toDateString() ?? '')),
+                    'next_invoice_at' => (string) old('next_invoice_at', (string) ($subscription?->next_invoice_at?->toDateString() ?? '')),
+                    'access_override_until' => (string) old('access_override_until', (string) ($subscription?->customer?->access_override_until?->toDateString() ?? '')),
+                    'cancelled_at' => (string) old('cancelled_at', (string) ($subscription?->cancelled_at?->toDateString() ?? '')),
+                    'auto_renew' => (bool) old('auto_renew', (bool) ($subscription?->auto_renew ?? false)),
+                    'cancel_at_period_end' => (bool) old('cancel_at_period_end', (bool) ($subscription?->cancel_at_period_end ?? false)),
+                    'notes' => (string) old('notes', (string) ($subscription?->notes ?? '')),
+                ],
+            ],
+            'routes' => [
+                'index' => route('admin.subscriptions.index'),
             ],
         ];
     }

@@ -52,16 +52,16 @@ class SupportTicketController extends Controller
         );
     }
 
-    public function create(Request $request)
+    public function create(Request $request): InertiaResponse
     {
         $customers = Customer::query()
             ->orderBy('name')
             ->get(['id', 'name', 'company_name', 'email']);
 
-        return view('admin.support-tickets.create', [
-            'customers' => $customers,
-            'selectedCustomerId' => $request->query('customer_id'),
-        ]);
+        return Inertia::render(
+            'Admin/SupportTickets/Create',
+            $this->createInertiaProps($customers, $request->query('customer_id'))
+        );
     }
 
     public function store(Request $request, ClientNotificationService $clientNotifications)
@@ -125,14 +125,14 @@ class SupportTicketController extends Controller
             ->with('status', 'Ticket created.');
     }
 
-    public function show(SupportTicket $ticket): View
+    public function show(SupportTicket $ticket): InertiaResponse
     {
         $ticket->load(['customer', 'replies.user']);
 
-        return view('admin.support-tickets.show', [
-            'ticket' => $ticket,
-            'aiReady' => (bool) config('google_ai.api_key'),
-        ]);
+        return Inertia::render(
+            'Admin/SupportTickets/Show',
+            $this->showInertiaProps($ticket)
+        );
     }
 
     public function aiSummary(
@@ -361,6 +361,65 @@ class SupportTicketController extends Controller
                 'has_pages' => $tickets->hasPages(),
                 'previous_url' => $tickets->previousPageUrl(),
                 'next_url' => $tickets->nextPageUrl(),
+            ],
+        ];
+    }
+
+    private function createInertiaProps($customers, mixed $selectedCustomerId): array
+    {
+        return [
+            'pageTitle' => 'Create Support Ticket',
+            'selected_customer_id' => $selectedCustomerId !== null ? (string) $selectedCustomerId : '',
+            'customers' => collect($customers)->map(fn (Customer $customer) => [
+                'id' => $customer->id,
+                'name' => (string) $customer->name,
+                'email' => (string) ($customer->email ?? ''),
+                'company_name' => (string) ($customer->company_name ?? ''),
+            ])->values()->all(),
+            'routes' => [
+                'index' => route('admin.support-tickets.index'),
+                'store' => route('admin.support-tickets.store'),
+            ],
+        ];
+    }
+
+    private function showInertiaProps(SupportTicket $ticket): array
+    {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return [
+            'pageTitle' => 'Support Ticket',
+            'ai_ready' => (bool) config('google_ai.api_key'),
+            'ticket' => [
+                'id' => $ticket->id,
+                'ticket_number' => 'TKT-'.str_pad((string) $ticket->id, 5, '0', STR_PAD_LEFT),
+                'subject' => (string) $ticket->subject,
+                'priority' => (string) $ticket->priority,
+                'status' => (string) $ticket->status,
+                'status_label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)),
+                'customer_name' => (string) ($ticket->customer?->name ?? '--'),
+                'created_at_display' => $ticket->created_at?->format($dateFormat.' H:i') ?? '--',
+                'last_reply_at_display' => $ticket->last_reply_at?->format($dateFormat.' H:i') ?? '--',
+            ],
+            'replies' => $ticket->replies->map(function ($reply) use ($dateFormat) {
+                return [
+                    'id' => $reply->id,
+                    'message' => (string) $reply->message,
+                    'is_admin' => (bool) $reply->is_admin,
+                    'author_name' => (string) ($reply->user?->name ?? 'System'),
+                    'created_at_display' => $reply->created_at?->format($dateFormat.' H:i') ?? '--',
+                    'attachment_url' => $reply->attachment_path
+                        ? route('support-ticket-replies.attachment', $reply)
+                        : null,
+                ];
+            })->values()->all(),
+            'routes' => [
+                'index' => route('admin.support-tickets.index'),
+                'reply' => route('admin.support-tickets.reply', $ticket),
+                'update' => route('admin.support-tickets.update', $ticket),
+                'status' => route('admin.support-tickets.status', $ticket),
+                'destroy' => route('admin.support-tickets.destroy', $ticket),
+                'ai_summary' => route('admin.support-tickets.ai', $ticket),
             ],
         ];
     }

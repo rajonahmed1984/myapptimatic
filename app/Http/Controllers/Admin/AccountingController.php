@@ -51,7 +51,7 @@ class AccountingController extends Controller
         );
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): View|InertiaResponse
     {
         $type = $this->normalizeType($request->query('type', 'payment'));
         $scope = $this->normalizeScope($request->query('scope', 'ledger'));
@@ -72,7 +72,16 @@ class AccountingController extends Controller
             ));
         }
 
-        return view('admin.accounting.create', $this->formData($type, $selectedInvoice));
+        return Inertia::render(
+            'Admin/Accounting/Form',
+            $this->formInertiaProps(
+                null,
+                $type,
+                $scope,
+                $search,
+                $this->formData($type, $selectedInvoice)
+            )
+        );
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse
@@ -107,7 +116,7 @@ class AccountingController extends Controller
             ->with('status', 'Accounting entry added.');
     }
 
-    public function edit(Request $request, AccountingEntry $entry): View
+    public function edit(Request $request, AccountingEntry $entry): View|InertiaResponse
     {
         $scope = $this->normalizeScope($request->query('scope', 'ledger'));
         $search = trim((string) $request->query('search', ''));
@@ -124,7 +133,16 @@ class AccountingController extends Controller
             ));
         }
 
-        return view('admin.accounting.edit', $this->formData($entry->type, $entry->invoice, $entry));
+        return Inertia::render(
+            'Admin/Accounting/Form',
+            $this->formInertiaProps(
+                $entry,
+                $entry->type,
+                $scope,
+                $search,
+                $this->formData($entry->type, $entry->invoice, $entry)
+            )
+        );
     }
 
     public function update(Request $request, AccountingEntry $entry): RedirectResponse|JsonResponse
@@ -423,6 +441,65 @@ class AccountingController extends Controller
                     ],
                 ];
             })->values()->all(),
+        ];
+    }
+
+    private function formInertiaProps(
+        ?AccountingEntry $entry,
+        string $type,
+        string $scope,
+        string $search,
+        array $formData
+    ): array {
+        $isEdit = $entry !== null;
+        $selectedInvoice = $formData['selectedInvoice'] ?? null;
+
+        return [
+            'pageTitle' => $isEdit ? 'Edit Accounting Entry' : 'Add Accounting Entry',
+            'is_edit' => $isEdit,
+            'scope' => $scope,
+            'search' => $search,
+            'types' => self::TYPES,
+            'customers' => collect($formData['customers'] ?? [])->map(function (Customer $customer) {
+                return [
+                    'id' => $customer->id,
+                    'name' => (string) $customer->name,
+                ];
+            })->values()->all(),
+            'invoices' => collect($formData['invoices'] ?? [])->map(function (Invoice $invoice) {
+                return [
+                    'id' => $invoice->id,
+                    'label' => (string) ($invoice->number ?? $invoice->id),
+                    'customer_name' => (string) ($invoice->customer?->name ?? '--'),
+                ];
+            })->values()->all(),
+            'gateways' => collect($formData['gateways'] ?? [])->map(function (PaymentGateway $gateway) {
+                return [
+                    'id' => $gateway->id,
+                    'name' => (string) $gateway->name,
+                ];
+            })->values()->all(),
+            'form' => [
+                'action' => $isEdit
+                    ? route('admin.accounting.update', $entry)
+                    : route('admin.accounting.store'),
+                'method' => $isEdit ? 'PUT' : 'POST',
+                'fields' => [
+                    'type' => (string) old('type', $type),
+                    'entry_date' => (string) old('entry_date', (string) ($entry?->entry_date?->toDateString() ?? now()->toDateString())),
+                    'amount' => (string) old('amount', (string) ($entry?->amount ?? '')),
+                    'currency' => (string) old('currency', (string) ($entry?->currency ?? ($formData['currency'] ?? ''))),
+                    'description' => (string) old('description', (string) ($entry?->description ?? '')),
+                    'reference' => (string) old('reference', (string) ($entry?->reference ?? '')),
+                    'customer_id' => (string) old('customer_id', (string) ($entry?->customer_id ?? '')),
+                    'invoice_id' => (string) old('invoice_id', (string) ($entry?->invoice_id ?? ($selectedInvoice?->id ?? ''))),
+                    'payment_gateway_id' => (string) old('payment_gateway_id', (string) ($entry?->payment_gateway_id ?? '')),
+                ],
+                'due_amount' => $formData['dueAmount'] ?? null,
+            ],
+            'routes' => [
+                'index' => route($this->scopeRoute($scope)),
+            ],
         ];
     }
 }

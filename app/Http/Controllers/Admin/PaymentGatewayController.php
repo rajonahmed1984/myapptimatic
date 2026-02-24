@@ -25,18 +25,17 @@ class PaymentGatewayController extends Controller
         );
     }
 
-    public function edit(PaymentGateway $paymentGateway)
+    public function edit(PaymentGateway $paymentGateway): InertiaResponse
     {
         $defaultCurrency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
         if (! Currency::isAllowed($defaultCurrency)) {
             $defaultCurrency = Currency::DEFAULT;
         }
 
-        return view('admin.payment-gateways.edit', [
-            'gateway' => $paymentGateway,
-            'currencyOptions' => Currency::allowed(),
-            'defaultCurrency' => $defaultCurrency,
-        ]);
+        return Inertia::render(
+            'Admin/PaymentGateways/Edit',
+            $this->editInertiaProps($paymentGateway, $defaultCurrency)
+        );
     }
 
     public function update(Request $request, PaymentGateway $paymentGateway): RedirectResponse
@@ -183,6 +182,62 @@ class PaymentGatewayController extends Controller
                     ],
                 ];
             })->values()->all(),
+        ];
+    }
+
+    private function editInertiaProps(PaymentGateway $gateway, string $defaultCurrency): array
+    {
+        $settings = is_array($gateway->settings) ? $gateway->settings : [];
+
+        return [
+            'pageTitle' => 'Edit Payment Gateway',
+            'gateway' => [
+                'id' => $gateway->id,
+                'driver' => (string) $gateway->driver,
+                'name' => (string) old('name', (string) $gateway->name),
+                'sort_order' => (int) old('sort_order', (int) $gateway->sort_order),
+                'is_active' => (bool) old('is_active', (bool) $gateway->is_active),
+                'deactivate' => (bool) old('deactivate', false),
+                'fields' => [
+                    'instructions' => (string) old('instructions', (string) ($settings['instructions'] ?? '')),
+                    'payment_url' => (string) old('payment_url', (string) ($settings['payment_url'] ?? '')),
+                    'account_name' => (string) old('account_name', (string) ($settings['account_name'] ?? '')),
+                    'account_number' => (string) old('account_number', (string) ($settings['account_number'] ?? '')),
+                    'bank_name' => (string) old('bank_name', (string) ($settings['bank_name'] ?? '')),
+                    'branch' => (string) old('branch', (string) ($settings['branch'] ?? '')),
+                    'routing_number' => (string) old('routing_number', (string) ($settings['routing_number'] ?? '')),
+                    'merchant_number' => (string) old('merchant_number', (string) ($settings['merchant_number'] ?? '')),
+                    'api_key' => (string) old('api_key', (string) ($settings['api_key'] ?? '')),
+                    'merchant_short_code' => (string) old('merchant_short_code', (string) ($settings['merchant_short_code'] ?? '')),
+                    'service_id' => (string) old('service_id', (string) ($settings['service_id'] ?? '')),
+                    'username' => (string) old('username', (string) ($settings['username'] ?? '')),
+                    'password' => (string) old('password', (string) ($settings['password'] ?? '')),
+                    'app_key' => (string) old('app_key', (string) ($settings['app_key'] ?? '')),
+                    'app_secret' => (string) old('app_secret', (string) ($settings['app_secret'] ?? '')),
+                    'button_label' => (string) old('button_label', (string) ($settings['button_label'] ?? '')),
+                    'store_id' => (string) old('store_id', (string) ($settings['store_id'] ?? '')),
+                    'store_password' => (string) old('store_password', (string) ($settings['store_password'] ?? '')),
+                    'client_id' => (string) old('client_id', (string) ($settings['client_id'] ?? '')),
+                    'client_secret' => (string) old('client_secret', (string) ($settings['client_secret'] ?? '')),
+                    'paypal_email' => (string) old('paypal_email', (string) ($settings['paypal_email'] ?? '')),
+                    'api_username' => (string) old('api_username', (string) ($settings['api_username'] ?? '')),
+                    'api_password' => (string) old('api_password', (string) ($settings['api_password'] ?? '')),
+                    'api_signature' => (string) old('api_signature', (string) ($settings['api_signature'] ?? '')),
+                    'processing_currency' => (string) old('processing_currency', (string) ($settings['processing_currency'] ?? $defaultCurrency)),
+                    'sandbox' => (bool) old('sandbox', (bool) ($settings['sandbox'] ?? false)),
+                    'easy_checkout' => (bool) old('easy_checkout', (bool) ($settings['easy_checkout'] ?? false)),
+                    'force_one_time' => (bool) old('force_one_time', (bool) ($settings['force_one_time'] ?? false)),
+                    'force_subscriptions' => (bool) old('force_subscriptions', (bool) ($settings['force_subscriptions'] ?? false)),
+                    'require_shipping' => (bool) old('require_shipping', (bool) ($settings['require_shipping'] ?? false)),
+                    'client_address_matching' => (bool) old('client_address_matching', (bool) ($settings['client_address_matching'] ?? false)),
+                ],
+            ],
+            'currency_options' => array_values(Currency::allowed()),
+            'default_currency' => $defaultCurrency,
+            'routes' => [
+                'index' => route('admin.payment-gateways.index'),
+                'update' => route('admin.payment-gateways.update', $gateway),
+            ],
         ];
     }
 }

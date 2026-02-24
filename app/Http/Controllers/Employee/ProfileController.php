@@ -9,14 +9,33 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ProfileController extends Controller
 {
-    public function edit(Request $request)
+    public function edit(Request $request): InertiaResponse
     {
-        return view('employee.profile.edit', [
-            'user' => $request->user(),
-            'employee' => $request->user()?->employee,
+        $user = $request->user();
+        $employee = $user?->employee;
+
+        return Inertia::render('Employee/Profile/Edit', [
+            'user' => $user ? [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar_path' => $user->avatar_path,
+            ] : null,
+            'employee' => $employee ? [
+                'id' => $employee->id,
+                'name' => $employee->name,
+                'phone' => $employee->phone,
+                'photo_path' => $employee->photo_path,
+            ] : null,
+            'form' => [
+                'method' => 'PUT',
+                'action' => route('employee.profile.update'),
+            ],
         ]);
     }
 
@@ -84,7 +103,7 @@ class ProfileController extends Controller
             ? "avatars/employees/{$employee->id}"
             : "avatars/users/{$user->id}";
 
-        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $filename = Str::uuid().'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs($basePath, $filename, 'public');
 
         $user->avatar_path = $path;

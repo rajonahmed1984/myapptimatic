@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Services\TaskQueryService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class TasksController extends Controller
 {
-    public function index(Request $request, TaskQueryService $taskQueryService): View
+    public function index(Request $request, TaskQueryService $taskQueryService): View|InertiaResponse
     {
         $user = $request->user();
         if (! $taskQueryService->canViewTasks($user)) {
@@ -33,7 +35,7 @@ class TasksController extends Controller
         }
 
         if ($search !== '') {
-            $tasksQuery->where('title', 'like', '%' . $search . '%');
+            $tasksQuery->where('title', 'like', '%'.$search.'%');
         }
 
         $tasks = $tasksQuery->paginate(25)->withQueryString();
@@ -52,6 +54,48 @@ class TasksController extends Controller
             return view('tasks.partials.index', $payload);
         }
 
-        return view('rep.tasks.index', $payload);
+        return Inertia::render('Rep/Tasks/Index', [
+            'status_filter' => $statusFilter,
+            'search' => $search,
+            'status_counts' => $payload['statusCounts'],
+            'tasks' => $tasks->getCollection()->map(function ($task) {
+                $status = (string) ($task->status ?? 'pending');
+
+                return [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'status' => $status,
+                    'created_at_date' => $task->created_at?->format(config('app.date_format', 'Y-m-d')),
+                    'created_at_time' => $task->created_at?->format('H:i'),
+                    'subtasks_count' => (int) ($task->subtasks_count ?? 0),
+                    'can_start' => (bool) ($task->can_start ?? false),
+                    'can_complete' => (bool) ($task->can_complete ?? false),
+                    'project' => $task->project ? [
+                        'id' => $task->project->id,
+                        'name' => $task->project->name,
+                    ] : null,
+                    'routes' => $task->project ? [
+                        'project_show' => route('rep.projects.show', $task->project),
+                        'task_show' => route('rep.projects.tasks.show', [$task->project, $task]),
+                        'task_update' => route('rep.projects.tasks.update', [$task->project, $task]),
+                    ] : null,
+                ];
+            })->values()->all(),
+            'pagination' => [
+                'current_page' => $tasks->currentPage(),
+                'last_page' => $tasks->lastPage(),
+                'per_page' => $tasks->perPage(),
+                'total' => $tasks->total(),
+                'from' => $tasks->firstItem(),
+                'to' => $tasks->lastItem(),
+                'prev_page_url' => $tasks->previousPageUrl(),
+                'next_page_url' => $tasks->nextPageUrl(),
+            ],
+            'routes' => [
+                'index' => route('rep.tasks.index'),
+                'projects_index' => route('rep.projects.index'),
+            ],
+        ]);
     }
 }

@@ -11,7 +11,8 @@ use App\Services\TaskQueryService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class AiBusinessStatusController extends Controller
 {
@@ -21,7 +22,7 @@ class AiBusinessStatusController extends Controller
         IncomeEntryService $incomeService,
         ExpenseEntryService $expenseService,
         TaskQueryService $taskQueryService
-    ): View {
+    ): InertiaResponse {
         [$startDate, $endDate, $projectionDays] = $this->resolvePeriod($request);
 
         $metrics = $summaryService->buildMetrics(
@@ -34,7 +35,7 @@ class AiBusinessStatusController extends Controller
             $taskQueryService
         );
 
-        return view('admin.ai.business-status', [
+        return Inertia::render('Admin/AiBusinessStatus/Index', [
             'metrics' => $metrics,
             'filters' => [
                 'start_date' => $startDate->toDateString(),
@@ -42,6 +43,9 @@ class AiBusinessStatusController extends Controller
                 'projection_days' => $projectionDays,
             ],
             'aiReady' => (bool) config('google_ai.api_key'),
+            'routes' => [
+                'generate' => route('admin.ai.business-status.generate'),
+            ],
         ]);
     }
 

@@ -13,12 +13,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class SupportTicketController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): InertiaResponse
     {
         $status = $request->query('status');
         $allowedStatuses = ['open', 'answered', 'customer_reply', 'closed'];
@@ -42,20 +43,77 @@ class SupportTicketController extends Controller
             'closed' => SupportTicket::where('status', 'closed')->count(),
         ];
 
-        return view('support.support-tickets.index', [
-            'tickets' => $tickets,
+        return Inertia::render('Support/SupportTickets/Index', [
+            'tickets' => $tickets->getCollection()->map(function (SupportTicket $ticket, int $index) use ($tickets) {
+                return [
+                    'id' => $ticket->id,
+                    'serial' => $tickets->firstItem() ? $tickets->firstItem() + $index : $ticket->id,
+                    'ticket_no' => 'TKT-'.str_pad((string) $ticket->id, 5, '0', STR_PAD_LEFT),
+                    'subject' => $ticket->subject,
+                    'customer_name' => $ticket->customer->name,
+                    'status' => $ticket->status,
+                    'status_label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)),
+                    'last_reply_at_display' => $ticket->last_reply_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+                    'routes' => [
+                        'show' => route('support.support-tickets.show', $ticket),
+                        'destroy' => route('support.support-tickets.destroy', $ticket),
+                    ],
+                ];
+            })->values()->all(),
             'status' => $status,
-            'statusCounts' => $statusCounts,
+            'status_counts' => $statusCounts,
+            'pagination' => [
+                'current_page' => $tickets->currentPage(),
+                'last_page' => $tickets->lastPage(),
+                'per_page' => $tickets->perPage(),
+                'total' => $tickets->total(),
+                'from' => $tickets->firstItem(),
+                'to' => $tickets->lastItem(),
+                'prev_page_url' => $tickets->previousPageUrl(),
+                'next_page_url' => $tickets->nextPageUrl(),
+            ],
+            'routes' => [
+                'index' => route('support.support-tickets.index'),
+            ],
         ]);
     }
 
-    public function show(SupportTicket $ticket): View
+    public function show(SupportTicket $ticket): InertiaResponse
     {
         $ticket->load(['customer', 'replies.user']);
 
-        return view('support.support-tickets.show', [
-            'ticket' => $ticket,
-            'aiReady' => (bool) config('google_ai.api_key'),
+        return Inertia::render('Support/SupportTickets/Show', [
+            'ticket' => [
+                'id' => $ticket->id,
+                'ticket_no' => 'TKT-'.str_pad((string) $ticket->id, 5, '0', STR_PAD_LEFT),
+                'subject' => $ticket->subject,
+                'status' => $ticket->status,
+                'status_label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)),
+                'priority' => $ticket->priority,
+                'priority_label' => ucfirst((string) $ticket->priority),
+                'customer_name' => $ticket->customer->name,
+                'created_at_display' => $ticket->created_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+            ],
+            'replies' => $ticket->replies->map(function ($reply) {
+                return [
+                    'id' => $reply->id,
+                    'is_admin' => (bool) $reply->is_admin,
+                    'author_name' => $reply->user?->name ?? ($reply->is_admin ? 'Support' : 'Client'),
+                    'message' => $reply->message,
+                    'created_at_display' => $reply->created_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+                    'attachment_url' => $reply->attachment_path ? $reply->attachmentUrl() : null,
+                    'attachment_name' => $reply->attachment_path ? $reply->attachmentName() : null,
+                ];
+            })->values()->all(),
+            'ai_ready' => (bool) config('google_ai.api_key'),
+            'routes' => [
+                'index' => route('support.support-tickets.index'),
+                'status' => route('support.support-tickets.status', $ticket),
+                'update' => route('support.support-tickets.update', $ticket),
+                'destroy' => route('support.support-tickets.destroy', $ticket),
+                'reply' => route('support.support-tickets.reply', $ticket),
+                'ai' => route('support.support-tickets.ai', $ticket),
+            ],
         ]);
     }
 
@@ -118,7 +176,7 @@ class SupportTicketController extends Controller
 
         SystemLogger::write('ticket_mail_import', 'Support replied to support ticket.', [
             'ticket_id' => $ticket->id,
-            'ticket_number' => 'TKT-' . str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
+            'ticket_number' => 'TKT-'.str_pad($ticket->id, 5, '0', STR_PAD_LEFT),
             'customer_id' => $ticket->customer_id,
             'customer_name' => $ticket->customer->name,
             'admin_name' => $request->user()->name,

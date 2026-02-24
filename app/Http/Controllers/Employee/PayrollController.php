@@ -5,11 +5,12 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\PayrollItem;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class PayrollController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         $employee = $request->attributes->get('employee');
 
@@ -43,16 +44,45 @@ class PayrollController extends Controller
             $remainingByItem[$item->id] = round(max(0, $netPayable - $paidAmount), 2);
         }
 
-        return view('employee.payroll.index', compact(
-            'items',
-            'paidAmountByItem',
-            'bonusByItem',
-            'penaltyByItem',
-            'advancePaidByItem',
-            'deductionByItem',
-            'netPayableByItem',
-            'remainingByItem'
-        ));
+        return Inertia::render('Employee/Payroll/Index', [
+            'items' => $items->getCollection()->map(function (PayrollItem $item) use (
+                $paidAmountByItem,
+                $bonusByItem,
+                $penaltyByItem,
+                $advancePaidByItem,
+                $deductionByItem,
+                $netPayableByItem,
+                $remainingByItem
+            ) {
+                $dateFormat = config('app.date_format', 'Y-m-d');
+
+                return [
+                    'id' => $item->id,
+                    'period_key' => $item->period?->period_key ?? '--',
+                    'gross_pay' => (float) ($item->gross_pay ?? 0),
+                    'bonus' => (float) ($bonusByItem[$item->id] ?? 0),
+                    'penalty' => (float) ($penaltyByItem[$item->id] ?? 0),
+                    'advance' => (float) ($advancePaidByItem[$item->id] ?? 0),
+                    'deduction' => (float) ($deductionByItem[$item->id] ?? 0),
+                    'net_payable' => (float) ($netPayableByItem[$item->id] ?? 0),
+                    'paid' => (float) ($paidAmountByItem[$item->id] ?? 0),
+                    'remaining' => (float) ($remainingByItem[$item->id] ?? 0),
+                    'status_label' => ucfirst((string) $item->status),
+                    'paid_at_display' => $item->paid_at?->format($dateFormat.' H:i') ?? '--',
+                    'currency' => $item->currency,
+                ];
+            })->values()->all(),
+            'pagination' => [
+                'current_page' => $items->currentPage(),
+                'last_page' => $items->lastPage(),
+                'per_page' => $items->perPage(),
+                'total' => $items->total(),
+                'from' => $items->firstItem(),
+                'to' => $items->lastItem(),
+                'prev_page_url' => $items->previousPageUrl(),
+                'next_page_url' => $items->nextPageUrl(),
+            ],
+        ]);
     }
 
     private function sumAdjustment(mixed $value): float

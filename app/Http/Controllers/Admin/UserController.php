@@ -10,34 +10,41 @@ use App\Support\AjaxResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class UserController extends Controller
 {
-    public function index(string $role)
+    public function index(string $role): InertiaResponse
     {
         $role = $this->normalizeRole($role);
         $roles = $this->adminRoles();
+        $users = User::query()
+            ->whereIn('role', array_keys($roles))
+            ->when($role, fn ($q) => $q->where('role', $role))
+            ->orderBy('name')
+            ->get();
 
-        return view('admin.users.index', [
-            'users' => User::query()
-                ->whereIn('role', array_keys($roles))
-                ->when($role, fn ($q) => $q->where('role', $role))
-                ->orderBy('name')
-                ->get(),
-            'selectedRole' => $role,
-            'roles' => $roles,
-        ]);
+        return Inertia::render(
+            'Admin/Users/Index',
+            $this->indexInertiaProps($users, $role, $roles)
+        );
     }
 
-    public function create(string $role)
+    public function create(string $role): InertiaResponse
     {
         $role = $this->normalizeRole($role);
 
-        return view('admin.users.create', [
-            'selectedRole' => $role,
-            'roles' => $this->adminRoles(),
-        ]);
+        return Inertia::render(
+            'Admin/Users/Form',
+            $this->formInertiaProps(
+                user: null,
+                selectedRole: $role,
+                roles: $this->adminRoles()
+            )
+        );
     }
 
     public function store(Request $request, string $role): RedirectResponse|JsonResponse
@@ -69,14 +76,18 @@ class UserController extends Controller
         return redirect()->route('admin.users.index', $role)->with('status', 'User created.');
     }
 
-    public function edit(User $user)
+    public function edit(User $user): InertiaResponse
     {
         $this->abortIfNotAdminRole($user);
 
-        return view('admin.users.edit', [
-            'user' => $user,
-            'roles' => $this->adminRoles(),
-        ]);
+        return Inertia::render(
+            'Admin/Users/Form',
+            $this->formInertiaProps(
+                user: $user,
+                selectedRole: (string) old('role', $user->role),
+                roles: $this->adminRoles()
+            )
+        );
     }
 
     public function update(Request $request, User $user): RedirectResponse|JsonResponse
@@ -257,5 +268,85 @@ class UserController extends Controller
         }
 
         return $paths;
+    }
+
+    private function indexInertiaProps($users, string $selectedRole, array $roles): array
+    {
+        return [
+            'pageTitle' => 'Admin Users',
+            'selected_role' => $selectedRole,
+            'selected_role_label' => $roles[$selectedRole] ?? ucfirst(str_replace('_', ' ', $selectedRole)),
+            'roles' => collect($roles)->map(fn ($label, $value) => [
+                'value' => (string) $value,
+                'label' => (string) $label,
+                'route' => route('admin.users.index', $value),
+            ])->values()->all(),
+            'routes' => [
+                'create' => route('admin.users.create', $selectedRole),
+            ],
+            'users' => $users->values()->map(function (User $user) use ($roles) {
+                return [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'email' => (string) $user->email,
+                    'role' => (string) $user->role,
+                    'role_label' => (string) ($roles[$user->role] ?? $user->role),
+                    'avatar_url' => $this->fileUrl($user->avatar_path),
+                    'routes' => [
+                        'edit' => route('admin.users.edit', $user),
+                        'destroy' => route('admin.users.destroy', $user),
+                    ],
+                ];
+            })->all(),
+        ];
+    }
+
+    private function formInertiaProps(?User $user, string $selectedRole, array $roles): array
+    {
+        $isEdit = $user !== null;
+        $selectedRole = $this->normalizeRole($selectedRole);
+
+        return [
+            'pageTitle' => $isEdit ? 'Edit User' : 'Create User',
+            'is_edit' => $isEdit,
+            'roles' => collect($roles)->map(fn ($label, $value) => [
+                'value' => (string) $value,
+                'label' => (string) $label,
+            ])->values()->all(),
+            'selected_role' => $selectedRole,
+            'selected_role_label' => (string) ($roles[$selectedRole] ?? ucfirst($selectedRole)),
+            'form' => [
+                'action' => $isEdit
+                    ? route('admin.users.update', $user)
+                    : route('admin.users.store', $selectedRole),
+                'method' => $isEdit ? 'PUT' : 'POST',
+                'fields' => [
+                    'name' => (string) old('name', (string) ($user?->name ?? '')),
+                    'email' => (string) old('email', (string) ($user?->email ?? '')),
+                    'role' => (string) old('role', (string) ($user?->role ?? $selectedRole)),
+                ],
+                'documents' => [
+                    'avatar_url' => $isEdit ? $this->fileUrl($user?->avatar_path) : null,
+                    'nid_url' => ($isEdit && $user?->nid_path)
+                        ? route('admin.user-documents.show', ['type' => 'user', 'id' => $user->id, 'doc' => 'nid'])
+                        : null,
+                    'cv_url' => ($isEdit && $user?->cv_path)
+                        ? route('admin.user-documents.show', ['type' => 'user', 'id' => $user->id, 'doc' => 'cv'])
+                        : null,
+                ],
+            ],
+            'routes' => [
+                'index' => route('admin.users.index', $selectedRole),
+            ],
+        ];
+    }
+
+    private function fileUrl(?string $path): ?string
+    {
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 }

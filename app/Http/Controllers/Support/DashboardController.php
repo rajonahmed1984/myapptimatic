@@ -3,12 +3,17 @@
 namespace App\Http\Controllers\Support;
 
 use App\Http\Controllers\Controller;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class DashboardController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(): InertiaResponse
     {
-        return view('support.dashboard');
+        return Inertia::render('Support/Dashboard/Index', [
+            'routes' => [
+                'tickets' => route('support.support-tickets.index'),
+            ],
+        ]);
     }
 }

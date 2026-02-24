@@ -15,7 +15,6 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -50,7 +49,7 @@ class PaymentMethodController extends Controller
         );
     }
 
-    public function show(Request $request, PaymentMethod $paymentMethod): View
+    public function show(Request $request, PaymentMethod $paymentMethod): InertiaResponse
     {
         $entries = $this->ledgerEntriesForMethod($paymentMethod)
             ->sortByDesc(fn (array $row) => (string) $row['date'])
@@ -77,11 +76,10 @@ class PaymentMethodController extends Controller
             ['path' => route('admin.finance.payment-methods.show', $paymentMethod)]
         );
 
-        return view('admin.finance.payment-methods.show', [
-            'paymentMethod' => $paymentMethod,
-            'ledger' => $ledger,
-            'summary' => $summary,
-        ]);
+        return Inertia::render(
+            'Admin/Finance/PaymentMethods/Show',
+            $this->showInertiaProps($paymentMethod, $ledger, $summary)
+        );
     }
 
     public function store(Request $request): RedirectResponse
@@ -343,6 +341,46 @@ class PaymentMethodController extends Controller
                     ],
                 ];
             })->values()->all(),
+        ];
+    }
+
+    private function showInertiaProps(PaymentMethod $paymentMethod, LengthAwarePaginator $ledger, array $summary): array
+    {
+        $dateFormat = config('app.date_format', 'd-m-Y');
+
+        return [
+            'pageTitle' => 'Payment Method Ledger',
+            'payment_method' => [
+                'id' => $paymentMethod->id,
+                'name' => (string) $paymentMethod->name,
+                'code' => (string) $paymentMethod->code,
+                'account_details' => (string) ($paymentMethod->account_details ?? ''),
+            ],
+            'summary' => [
+                'total_entries' => (int) ($summary['total_entries'] ?? 0),
+                'total_amount' => (string) ($summary['total_amount'] ?? '0.00'),
+            ],
+            'rows' => collect($ledger->items())->map(function (array $row) use ($dateFormat) {
+                $date = (string) ($row['date'] ?? '');
+
+                return [
+                    'date_display' => $date !== ''
+                        ? Carbon::parse($date)->format($dateFormat)
+                        : '--',
+                    'type' => (string) ($row['type'] ?? '--'),
+                    'party' => (string) ($row['party'] ?? '--'),
+                    'reference' => (string) ($row['reference'] ?? '--'),
+                    'amount_display' => number_format((float) ($row['amount'] ?? 0), 2).' '.(string) ($row['currency'] ?? ''),
+                ];
+            })->values()->all(),
+            'pagination' => [
+                'has_pages' => $ledger->hasPages(),
+                'previous_url' => $ledger->previousPageUrl(),
+                'next_url' => $ledger->nextPageUrl(),
+            ],
+            'routes' => [
+                'index' => route('admin.finance.payment-methods.index'),
+            ],
         ];
     }
 }

@@ -31,7 +31,7 @@ class PlanController extends Controller
         );
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): View|InertiaResponse
     {
         $products = Product::query()->orderBy('name')->get();
         $defaultCurrency = Setting::getValue('currency');
@@ -40,7 +40,14 @@ class PlanController extends Controller
             return view('admin.plans.partials.form', compact('products', 'defaultCurrency'));
         }
 
-        return view('admin.plans.create', compact('products', 'defaultCurrency'));
+        return Inertia::render(
+            'Admin/Plans/Form',
+            $this->formInertiaProps(
+                null,
+                $products,
+                (string) $defaultCurrency
+            )
+        );
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse
@@ -77,7 +84,7 @@ class PlanController extends Controller
             ->with('status', 'Plan created.');
     }
 
-    public function edit(Request $request, Plan $plan): View
+    public function edit(Request $request, Plan $plan): View|InertiaResponse
     {
         $products = Product::query()->orderBy('name')->get();
         $defaultCurrency = Setting::getValue('currency');
@@ -86,7 +93,14 @@ class PlanController extends Controller
             return view('admin.plans.partials.form', compact('plan', 'products', 'defaultCurrency'));
         }
 
-        return view('admin.plans.edit', compact('plan', 'products', 'defaultCurrency'));
+        return Inertia::render(
+            'Admin/Plans/Form',
+            $this->formInertiaProps(
+                $plan,
+                $products,
+                (string) $defaultCurrency
+            )
+        );
     }
 
     public function update(Request $request, Plan $plan): RedirectResponse|JsonResponse
@@ -210,6 +224,38 @@ class PlanController extends Controller
                     ],
                 ];
             })->all(),
+        ];
+    }
+
+    private function formInertiaProps(?Plan $plan, EloquentCollection $products, string $defaultCurrency): array
+    {
+        $isEdit = $plan !== null;
+
+        return [
+            'pageTitle' => $isEdit ? 'Edit Plan' : 'Add Plan',
+            'default_currency' => $defaultCurrency,
+            'is_edit' => $isEdit,
+            'products' => $products->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => (string) $product->name,
+            ])->values()->all(),
+            'form' => [
+                'action' => $isEdit
+                    ? route('admin.plans.update', $plan)
+                    : route('admin.plans.store'),
+                'method' => $isEdit ? 'PUT' : 'POST',
+                'fields' => [
+                    'product_id' => (string) old('product_id', (string) ($plan?->product_id ?? '')),
+                    'name' => (string) old('name', (string) ($plan?->name ?? '')),
+                    'slug' => (string) old('slug', (string) ($plan?->slug ?? '')),
+                    'interval' => (string) old('interval', (string) ($plan?->interval ?? 'monthly')),
+                    'price' => (string) old('price', (string) ($plan?->price ?? '')),
+                    'is_active' => (bool) old('is_active', (bool) ($plan?->is_active ?? true)),
+                ],
+            ],
+            'routes' => [
+                'index' => route('admin.plans.index'),
+            ],
         ];
     }
 }

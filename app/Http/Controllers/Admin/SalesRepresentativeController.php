@@ -2,29 +2,34 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
-use App\Models\CommissionEarning;
 use App\Models\CommissionAuditLog;
+use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
 use App\Models\Employee;
+use App\Models\PaymentMethod;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\PaymentMethod;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
-use App\Models\UserSession;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Validation\Rule;
-use App\Enums\Role;
+use App\Models\UserSession;
 use App\Services\CommissionService;
 use App\Services\SalesRepBalanceService;
 use App\Support\AjaxResponse;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection as BaseCollection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class SalesRepresentativeController extends Controller
 {
@@ -35,15 +40,15 @@ class SalesRepresentativeController extends Controller
         $reps = SalesRepresentative::query()
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('email', 'like', '%' . $search . '%')
-                        ->orWhere('phone', 'like', '%' . $search . '%')
+                    $inner->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('email', 'like', '%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%')
                         ->orWhereHas('user', function ($userQuery) use ($search) {
-                            $userQuery->where('name', 'like', '%' . $search . '%')
-                                ->orWhere('email', 'like', '%' . $search . '%');
+                            $userQuery->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('email', 'like', '%'.$search.'%');
                         })
                         ->orWhereHas('employee', function ($employeeQuery) use ($search) {
-                            $employeeQuery->where('name', 'like', '%' . $search . '%');
+                            $employeeQuery->where('name', 'like', '%'.$search.'%');
                         });
                 });
             })
@@ -71,20 +76,39 @@ class SalesRepresentativeController extends Controller
             ]);
         }
 
-        return view('admin.sales-reps.index', [
-            'reps' => $reps,
-            'totals' => $totals,
-            'loginStatuses' => $loginStatuses,
-            'search' => $search,
+        return Inertia::render('Admin/SalesReps/Index', [
+            'pageTitle' => 'Sales Representatives',
+            'filters' => [
+                'search' => $search,
+            ],
+            'reps' => $this->serializeRepIndexRows($reps, $totals, $loginStatuses),
+            'routes' => [
+                'index' => route('admin.sales-reps.index'),
+                'create' => route('admin.sales-reps.create'),
+            ],
         ]);
     }
 
-    public function create()
+    public function create(): InertiaResponse
     {
         $employees = Employee::orderBy('name')->get(['id', 'name']);
 
-        return view('admin.sales-reps.create', [
-            'employees' => $employees,
+        return Inertia::render('Admin/SalesReps/Form', [
+            'pageTitle' => 'Add Sales Representative',
+            'is_edit' => false,
+            'employees' => $employees->map(fn (Employee $employee) => [
+                'id' => $employee->id,
+                'name' => $employee->name,
+            ])->values(),
+            'form' => [
+                'action' => route('admin.sales-reps.store'),
+                'method' => 'POST',
+                'fields' => $this->salesRepFormFields(null),
+                'documents' => [],
+            ],
+            'routes' => [
+                'index' => route('admin.sales-reps.index'),
+            ],
         ]);
     }
 
@@ -159,13 +183,42 @@ class SalesRepresentativeController extends Controller
             ->with('status', 'Sales representative created.');
     }
 
-    public function edit(SalesRepresentative $salesRep)
+    public function edit(SalesRepresentative $salesRep): InertiaResponse
     {
         $employees = Employee::orderBy('name')->get(['id', 'name']);
 
-        return view('admin.sales-reps.edit', [
-            'rep' => $salesRep,
-            'employees' => $employees,
+        return Inertia::render('Admin/SalesReps/Form', [
+            'pageTitle' => 'Edit Sales Representative',
+            'is_edit' => true,
+            'rep' => [
+                'id' => $salesRep->id,
+                'user_name' => $salesRep->user?->name,
+                'user_email' => $salesRep->user?->email,
+            ],
+            'employees' => $employees->map(fn (Employee $employee) => [
+                'id' => $employee->id,
+                'name' => $employee->name,
+            ])->values(),
+            'form' => [
+                'action' => route('admin.sales-reps.update', $salesRep),
+                'method' => 'PUT',
+                'fields' => $this->salesRepFormFields($salesRep),
+                'documents' => [
+                    'avatar_url' => $salesRep->avatar_path ? asset('storage/'.$salesRep->avatar_path) : null,
+                    'nid_url' => $salesRep->nid_path
+                        ? route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $salesRep->id, 'doc' => 'nid'], false)
+                        : null,
+                    'nid_is_image' => $salesRep->nid_path
+                        ? Str::endsWith(strtolower($salesRep->nid_path), ['.jpg', '.jpeg', '.png', '.webp'])
+                        : false,
+                    'cv_url' => $salesRep->cv_path
+                        ? route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $salesRep->id, 'doc' => 'cv'], false)
+                        : null,
+                ],
+            ],
+            'routes' => [
+                'index' => route('admin.sales-reps.index'),
+            ],
         ]);
     }
 
@@ -206,8 +259,7 @@ class SalesRepresentativeController extends Controller
         SalesRepresentative $salesRep,
         CommissionService $commissionService,
         SalesRepBalanceService $salesRepBalanceService
-    )
-    {
+    ) {
         $salesRep->load(['user:id,name,email', 'employee:id,name']);
         $tab = $request->query('tab', 'profile');
         $allowedTabs = ['profile', 'services', 'invoices', 'emails', 'log', 'earnings', 'payouts', 'projects'];
@@ -455,17 +507,17 @@ class SalesRepresentativeController extends Controller
 
         if ($request->hasFile('avatar')) {
             $paths['avatar_path'] = $request->file('avatar')
-                ->store('avatars/sales-reps/' . $salesRep->id, 'public');
+                ->store('avatars/sales-reps/'.$salesRep->id, 'public');
         }
 
         if ($request->hasFile('nid_file')) {
             $paths['nid_path'] = $request->file('nid_file')
-                ->store('nid/sales-reps/' . $salesRep->id, 'public');
+                ->store('nid/sales-reps/'.$salesRep->id, 'public');
         }
 
         if ($request->hasFile('cv_file')) {
             $paths['cv_path'] = $request->file('cv_file')
-                ->store('cv/sales-reps/' . $salesRep->id, 'public');
+                ->store('cv/sales-reps/'.$salesRep->id, 'public');
         }
 
         return $paths;
@@ -509,6 +561,7 @@ class SalesRepresentativeController extends Controller
                     'status' => 'logout',
                     'last_login_at' => null,
                 ];
+
                 continue;
             }
 
@@ -522,6 +575,7 @@ class SalesRepresentativeController extends Controller
                     'status' => 'logout',
                     'last_login_at' => $candidate,
                 ];
+
                 continue;
             }
 
@@ -537,5 +591,58 @@ class SalesRepresentativeController extends Controller
         }
 
         return $statuses;
+    }
+
+    /**
+     * @param  array<int, array{status:string,last_login_at:Carbon|null}>  $loginStatuses
+     * @return array<int, array<string, mixed>>
+     */
+    private function serializeRepIndexRows(Collection $reps, BaseCollection $totals, array $loginStatuses): array
+    {
+        $dateTimeFormat = (string) config('app.date_format', 'Y-m-d').' H:i';
+
+        return $reps->map(function (SalesRepresentative $rep) use ($totals, $loginStatuses, $dateTimeFormat): array {
+            $repTotals = $totals[$rep->id] ?? null;
+            $loginMeta = $loginStatuses[$rep->id] ?? ['status' => 'logout', 'last_login_at' => null];
+            $loginStatus = is_array($loginMeta) ? (string) ($loginMeta['status'] ?? 'logout') : 'logout';
+            $lastLoginAt = is_array($loginMeta) ? ($loginMeta['last_login_at'] ?? null) : null;
+            if ($lastLoginAt && ! $lastLoginAt instanceof Carbon) {
+                $lastLoginAt = Carbon::parse($lastLoginAt);
+            }
+
+            return [
+                'id' => $rep->id,
+                'name' => $rep->name,
+                'email' => $rep->email,
+                'employee_name' => $rep->employee?->name,
+                'active_subscriptions_count' => (int) ($rep->active_subscriptions_count ?? 0),
+                'subscriptions_count' => (int) ($rep->subscriptions_count ?? 0),
+                'projects_count' => (int) ($rep->projects_count ?? 0),
+                'maintenances_count' => (int) ($rep->maintenances_count ?? 0),
+                'last_login_label' => $lastLoginAt ? $lastLoginAt->format($dateTimeFormat) : '--',
+                'total_earned' => number_format((float) ($repTotals->total_earned ?? 0), 2),
+                'total_payable' => number_format((float) ($repTotals->total_payable ?? 0), 2),
+                'total_paid' => number_format((float) ($repTotals->total_paid ?? 0), 2),
+                'status' => $rep->status,
+                'status_label' => ucfirst((string) $rep->status),
+                'routes' => [
+                    'show' => route('admin.sales-reps.show', $rep),
+                ],
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function salesRepFormFields(?SalesRepresentative $salesRep): array
+    {
+        return [
+            'employee_id' => (string) old('employee_id', (string) ($salesRep?->employee_id ?? '')),
+            'name' => (string) old('name', $salesRep?->name ?? ''),
+            'email' => (string) old('email', $salesRep?->email ?? ''),
+            'phone' => (string) old('phone', $salesRep?->phone ?? ''),
+            'status' => (string) old('status', $salesRep?->status ?? 'active'),
+        ];
     }
 }

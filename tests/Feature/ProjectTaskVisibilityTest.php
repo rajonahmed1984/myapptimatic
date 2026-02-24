@@ -25,10 +25,9 @@ class ProjectTaskVisibilityTest extends TestCase
             ->get(route('employee.projects.show', $project));
 
         $response->assertOk();
-        $response->assertViewHas('tasks', function ($tasks) use ($visibleTask, $hiddenTask) {
-            return $tasks->contains('id', $visibleTask->id)
-                && $tasks->contains('id', $hiddenTask->id);
-        });
+        $response->assertSee('Employee\\/Projects\\/Show', false);
+        $response->assertSee($visibleTask->title);
+        $response->assertSee($hiddenTask->title);
     }
 
     #[Test]
@@ -40,10 +39,9 @@ class ProjectTaskVisibilityTest extends TestCase
             ->get(route('rep.projects.show', $project));
 
         $response->assertOk();
-        $response->assertViewHas('tasks', function ($tasks) use ($visibleTask, $hiddenTask) {
-            return $tasks->contains('id', $visibleTask->id)
-                && $tasks->contains('id', $hiddenTask->id);
-        });
+        $response->assertSee('Rep\\/Projects\\/Show', false);
+        $response->assertSee($visibleTask->title);
+        $response->assertSee($hiddenTask->title);
     }
 
     #[Test]

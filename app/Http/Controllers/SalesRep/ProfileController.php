@@ -9,18 +9,34 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ProfileController extends Controller
 {
-    public function edit(Request $request)
+    public function edit(Request $request): InertiaResponse
     {
         $user = $request->user();
         $salesRep = $request->attributes->get('salesRep')
             ?? SalesRepresentative::where('user_id', $user?->id)->first();
 
-        return view('rep.profile.edit', [
-            'user' => $user,
-            'salesRep' => $salesRep,
+        return Inertia::render('Rep/Profile/Edit', [
+            'user' => $user ? [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar_path' => $user->avatar_path,
+            ] : null,
+            'sales_rep' => $salesRep ? [
+                'id' => $salesRep->id,
+                'name' => $salesRep->name,
+                'phone' => $salesRep->phone,
+                'avatar_path' => $salesRep->avatar_path,
+            ] : null,
+            'form' => [
+                'method' => 'PUT',
+                'action' => route('rep.profile.update'),
+            ],
         ]);
     }
 
@@ -87,7 +103,7 @@ class ProfileController extends Controller
             ? "avatars/sales-reps/{$salesRep->id}"
             : "avatars/users/{$user->id}";
 
-        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $filename = Str::uuid().'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs($basePath, $filename, 'public');
 
         $user->avatar_path = $path;

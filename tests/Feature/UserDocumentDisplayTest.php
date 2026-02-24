@@ -113,6 +113,15 @@ class UserDocumentDisplayTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.customers.index'));
 
         $response->assertOk();
+
+        $content = $response->getContent();
+        if (preg_match('/data-page="([^"]+)"/', $content, $matches) === 1) {
+            $payload = json_decode(html_entity_decode($matches[1], ENT_QUOTES), true);
+            $tableHtml = (string) data_get($payload, 'props.table_html', '');
+            $this->assertStringContainsString(Storage::disk('public')->url($path), $tableHtml);
+            return;
+        }
+
         $response->assertSee(Storage::disk('public')->url($path));
     }
 }

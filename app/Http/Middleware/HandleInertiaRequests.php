@@ -16,12 +16,28 @@ class HandleInertiaRequests extends Middleware
 
     public function rootView(Request $request): string
     {
+        if ($request->routeIs('products.public.*')) {
+            return 'react-public';
+        }
+
         if ($request->routeIs('admin.*')) {
             return 'react-admin';
         }
 
+        if ($request->routeIs('employee.*')) {
+            return 'react-employee';
+        }
+
         if ($request->routeIs('client.*')) {
             return 'react-client';
+        }
+
+        if ($request->routeIs('rep.*')) {
+            return 'react-rep';
+        }
+
+        if ($request->routeIs('support.*')) {
+            return 'react-support';
         }
 
         return 'react-sandbox';
