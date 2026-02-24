@@ -105,6 +105,7 @@
             "@php artisan test --filter=ClientSupportTicketUiParityTest",
             "@php artisan test --filter=ClientProfileUiParityTest",
             "@php artisan test --filter=ClientServicesUiParityTest",
+            "@php artisan test --filter=ClientDomainsUiParityTest",
             "@php artisan test --filter=ExpenseCategoryActionContractParityTest",
             "@php artisan test --filter=FinanceTaxActionContractParityTest",
             "@php artisan test --filter=IncomeCategoryActionContractParityTest",

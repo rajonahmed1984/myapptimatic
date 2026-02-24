@@ -973,8 +973,14 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::get('/invoices/{invoice}/manual/{attempt}', [ManualPaymentController::class, 'create'])->middleware('project.financial')->middleware(HandleInertiaRequests::class)->name('invoices.manual');
         Route::post('/invoices/{invoice}/manual/{attempt}', [ManualPaymentController::class, 'store'])->middleware('project.financial')->name('invoices.manual.store');
         Route::get('/invoices/{invoice}/download', [ClientInvoiceController::class, 'download'])->middleware('project.financial')->name('invoices.download');
-        Route::get('/domains', [ClientDomainController::class, 'index'])->middleware('project.financial')->name('domains.index');
-        Route::get('/domains/{domain}', [ClientDomainController::class, 'show'])->middleware('project.financial')->name('domains.show');
+        Route::get('/domains', [ClientDomainController::class, 'index'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('domains.index');
+        Route::get('/domains/{domain}', [ClientDomainController::class, 'show'])
+            ->middleware('project.financial')
+            ->middleware(HandleInertiaRequests::class)
+            ->name('domains.show');
         Route::get('/licenses', [ClientLicenseController::class, 'index'])->middleware('project.financial')->name('licenses.index');
         Route::get('/projects', [\App\Http\Controllers\Client\ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/{project}', [\App\Http\Controllers\Client\ProjectController::class, 'show'])->name('projects.show');
