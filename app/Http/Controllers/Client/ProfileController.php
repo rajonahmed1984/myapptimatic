@@ -4,17 +4,32 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ProfileController extends Controller
 {
-    public function edit(Request $request)
+    public function edit(Request $request): InertiaResponse
     {
-        return view('client.profile.edit', [
-            'user' => $request->user(),
+        $user = $request->user();
+
+        return Inertia::render('Client/Profile/Edit', [
+            'user' => [
+                'name' => (string) $user->name,
+                'email' => (string) $user->email,
+                'avatar_path' => $user->avatar_path,
+            ],
+            'form' => [
+                'name' => old('name', $user->name),
+                'email' => old('email', $user->email),
+            ],
+            'routes' => [
+                'update' => route('client.profile.update'),
+            ],
         ]);
     }
 
@@ -76,7 +91,7 @@ class ProfileController extends Controller
             ? "avatars/customers/{$customer->id}"
             : "avatars/users/{$user->id}";
 
-        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $filename = Str::uuid().'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs($basePath, $filename, 'public');
 
         if ($customer) {

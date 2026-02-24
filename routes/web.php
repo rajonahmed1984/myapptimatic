@@ -958,7 +958,9 @@ Route::middleware(['auth', 'client', 'client.block', 'client.notice', 'user.acti
         Route::get('/invoices/cancelled', [ClientInvoiceController::class, 'cancelled'])->middleware('project.financial')->middleware(HandleInertiaRequests::class)->name('invoices.cancelled');
         Route::get('/invoices/refunded', [ClientInvoiceController::class, 'refunded'])->middleware('project.financial')->middleware(HandleInertiaRequests::class)->name('invoices.refunded');
         Route::get('/invoices/{invoice}', [ClientInvoiceController::class, 'show'])->middleware('project.financial')->middleware(HandleInertiaRequests::class)->name('invoices.show');
-        Route::get('/profile', [ClientProfileController::class, 'edit'])->name('profile.edit');
+        Route::get('/profile', [ClientProfileController::class, 'edit'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('profile.edit');
         Route::put('/profile', [ClientProfileController::class, 'update'])->name('profile.update');
         Route::get('/invoices/{invoice}/pay', [ClientInvoiceController::class, 'pay'])->middleware('project.financial')->middleware(HandleInertiaRequests::class)->name('invoices.pay');
         Route::post('/invoices/{invoice}/checkout', [ClientInvoiceController::class, 'checkout'])->middleware('project.financial')->name('invoices.checkout');
