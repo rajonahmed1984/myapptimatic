@@ -14,6 +14,18 @@ class ProjectTaskMessage extends Model
         'author_id',
         'message',
         'attachment_path',
+        'reply_to_message_id',
+        'reactions',
+        'is_pinned',
+        'pinned_by_type',
+        'pinned_by_id',
+        'pinned_at',
+    ];
+
+    protected $casts = [
+        'reactions' => 'array',
+        'is_pinned' => 'boolean',
+        'pinned_at' => 'datetime',
     ];
 
     public function task(): BelongsTo
@@ -34,6 +46,11 @@ class ProjectTaskMessage extends Model
     public function salesRepAuthor(): BelongsTo
     {
         return $this->belongsTo(SalesRepresentative::class, 'author_id');
+    }
+
+    public function replyToMessage(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reply_to_message_id');
     }
 
     public function authorName(): string

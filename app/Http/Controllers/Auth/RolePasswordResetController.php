@@ -10,13 +10,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class RolePasswordResetController extends Controller
 {
-    public function showEmployeeForgot(): View|RedirectResponse
+    public function showEmployeeForgot(): InertiaResponse|RedirectResponse
     {
-        return $this->showForgot('employee');
+        $config = $this->roleConfig('employee');
+
+        if (auth($config['guard'])->check()) {
+            return redirect()->route($config['dashboard_route']);
+        }
+
+        return Inertia::render('Auth/ForgotPassword', $this->forgotPasswordProps('employee', $config));
     }
 
     public function sendEmployeeResetLink(Request $request): RedirectResponse
@@ -24,9 +31,15 @@ class RolePasswordResetController extends Controller
         return $this->sendResetLink($request, 'employee');
     }
 
-    public function showEmployeeReset(string $token): View|RedirectResponse
+    public function showEmployeeReset(Request $request, string $token): InertiaResponse|RedirectResponse
     {
-        return $this->showResetForm('employee', $token);
+        $config = $this->roleConfig('employee');
+
+        if (auth($config['guard'])->check()) {
+            return redirect()->route($config['dashboard_route']);
+        }
+
+        return Inertia::render('Auth/ResetPassword', $this->resetPasswordProps('employee', $config, $request, $token));
     }
 
     public function resetEmployee(Request $request): RedirectResponse
@@ -34,9 +47,15 @@ class RolePasswordResetController extends Controller
         return $this->resetPassword($request, 'employee');
     }
 
-    public function showSalesForgot(): View|RedirectResponse
+    public function showSalesForgot(): InertiaResponse|RedirectResponse
     {
-        return $this->showForgot('sales');
+        $config = $this->roleConfig('sales');
+
+        if (auth($config['guard'])->check()) {
+            return redirect()->route($config['dashboard_route']);
+        }
+
+        return Inertia::render('Auth/ForgotPassword', $this->forgotPasswordProps('sales', $config));
     }
 
     public function sendSalesResetLink(Request $request): RedirectResponse
@@ -44,9 +63,15 @@ class RolePasswordResetController extends Controller
         return $this->sendResetLink($request, 'sales');
     }
 
-    public function showSalesReset(string $token): View|RedirectResponse
+    public function showSalesReset(Request $request, string $token): InertiaResponse|RedirectResponse
     {
-        return $this->showResetForm('sales', $token);
+        $config = $this->roleConfig('sales');
+
+        if (auth($config['guard'])->check()) {
+            return redirect()->route($config['dashboard_route']);
+        }
+
+        return Inertia::render('Auth/ResetPassword', $this->resetPasswordProps('sales', $config, $request, $token));
     }
 
     public function resetSales(Request $request): RedirectResponse
@@ -54,9 +79,15 @@ class RolePasswordResetController extends Controller
         return $this->resetPassword($request, 'sales');
     }
 
-    public function showSupportForgot(): View|RedirectResponse
+    public function showSupportForgot(): InertiaResponse|RedirectResponse
     {
-        return $this->showForgot('support');
+        $config = $this->roleConfig('support');
+
+        if (auth($config['guard'])->check()) {
+            return redirect()->route($config['dashboard_route']);
+        }
+
+        return Inertia::render('Auth/ForgotPassword', $this->forgotPasswordProps('support', $config));
     }
 
     public function sendSupportResetLink(Request $request): RedirectResponse
@@ -64,9 +95,15 @@ class RolePasswordResetController extends Controller
         return $this->sendResetLink($request, 'support');
     }
 
-    public function showSupportReset(string $token): View|RedirectResponse
+    public function showSupportReset(Request $request, string $token): InertiaResponse|RedirectResponse
     {
-        return $this->showResetForm('support', $token);
+        $config = $this->roleConfig('support');
+
+        if (auth($config['guard'])->check()) {
+            return redirect()->route($config['dashboard_route']);
+        }
+
+        return Inertia::render('Auth/ResetPassword', $this->resetPasswordProps('support', $config, $request, $token));
     }
 
     public function resetSupport(Request $request): RedirectResponse
@@ -74,26 +111,61 @@ class RolePasswordResetController extends Controller
         return $this->resetPassword($request, 'support');
     }
 
-    private function showForgot(string $role): View|RedirectResponse
+    /**
+     * @param array<string, mixed> $config
+     * @return array<string, mixed>
+     */
+    private function forgotPasswordProps(string $role, array $config): array
     {
-        $config = $this->roleConfig($role);
-
-        if (auth($config['guard'])->check()) {
-            return redirect()->route($config['dashboard_route']);
-        }
-
-        return $this->forgotView($role, route($config['login_route']));
+        return [
+            'pageTitle' => match ($role) {
+                'employee' => 'Employee Password Reset',
+                'sales' => 'Sales Password Reset',
+                default => 'Support Password Reset',
+            },
+            'form' => [
+                'email' => old('email', ''),
+            ],
+            'routes' => [
+                'email' => route($config['password_email_route'], [], false),
+                'login' => route($config['login_route'], [], false),
+            ],
+            'messages' => [
+                'status' => session('status'),
+                'email_error_warning' => true,
+            ],
+            'recaptcha' => [
+                'enabled' => false,
+                'site_key' => '',
+                'action' => '',
+            ],
+        ];
     }
 
-    private function showResetForm(string $role, string $token): View|RedirectResponse
+    /**
+     * @param array<string, mixed> $config
+     * @return array<string, mixed>
+     */
+    private function resetPasswordProps(string $role, array $config, Request $request, string $token): array
     {
-        $config = $this->roleConfig($role);
-
-        if (auth($config['guard'])->check()) {
-            return redirect()->route($config['dashboard_route']);
-        }
-
-        return $this->resetView($role, $token, route($config['login_route']));
+        return [
+            'pageTitle' => match ($role) {
+                'employee' => 'Employee Reset Password',
+                'sales' => 'Sales Reset Password',
+                default => 'Support Reset Password',
+            },
+            'form' => [
+                'token' => $token,
+                'email' => old('email', (string) $request->query('email', '')),
+            ],
+            'routes' => [
+                'submit' => route($config['password_update_route'], [], false),
+                'login' => route($config['login_route'], [], false),
+            ],
+            'messages' => [
+                'status' => session('status'),
+            ],
+        ];
     }
 
     private function sendResetLink(Request $request, string $role): RedirectResponse
@@ -160,6 +232,8 @@ class RolePasswordResetController extends Controller
                 'broker' => 'employees',
                 'login_route' => 'employee.login',
                 'dashboard_route' => 'employee.dashboard',
+                'password_email_route' => 'employee.password.email',
+                'password_update_route' => 'employee.password.update',
             ],
             'sales' => [
                 'role' => Role::SALES,
@@ -167,6 +241,8 @@ class RolePasswordResetController extends Controller
                 'broker' => 'sales',
                 'login_route' => 'sales.login',
                 'dashboard_route' => 'rep.dashboard',
+                'password_email_route' => 'sales.password.email',
+                'password_update_route' => 'sales.password.update',
             ],
             default => [
                 'role' => Role::SUPPORT,
@@ -174,30 +250,9 @@ class RolePasswordResetController extends Controller
                 'broker' => 'support',
                 'login_route' => 'support.login',
                 'dashboard_route' => 'support.dashboard',
+                'password_email_route' => 'support.password.email',
+                'password_update_route' => 'support.password.update',
             ],
-        };
-    }
-
-    private function forgotView(string $role, string $loginRoute): View
-    {
-        return match ($role) {
-            'employee' => view('auth.employee.forgot-password', ['loginRoute' => $loginRoute]),
-            'sales' => view('auth.sales.forgot-password', ['loginRoute' => $loginRoute]),
-            default => view('auth.support.forgot-password', ['loginRoute' => $loginRoute]),
-        };
-    }
-
-    private function resetView(string $role, string $token, string $loginRoute): View
-    {
-        $payload = [
-            'token' => $token,
-            'loginRoute' => $loginRoute,
-        ];
-
-        return match ($role) {
-            'employee' => view('auth.employee.reset-password', $payload),
-            'sales' => view('auth.sales.reset-password', $payload),
-            default => view('auth.support.reset-password', $payload),
         };
     }
 }

@@ -88,6 +88,7 @@ export default function Index({ status_filter = '', search = '', status_counts =
                     <table className="min-w-full text-left text-sm">
                         <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                             <tr>
+                                <th className="px-4 py-3">Task ID</th>
                                 <th className="px-4 py-3">Created</th>
                                 <th className="px-4 py-3">Project Task</th>
                                 <th className="px-4 py-3">Status</th>
@@ -96,9 +97,10 @@ export default function Index({ status_filter = '', search = '', status_counts =
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {tasks.length === 0 ? (
-                                <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">No tasks found.</td></tr>
+                                <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No tasks found.</td></tr>
                             ) : tasks.map((task) => (
                                 <tr key={task.id}>
+                                    <td className="px-4 py-3 font-semibold text-slate-600">{task.id ?? '--'}</td>
                                     <td className="px-4 py-3 text-slate-500">
                                         <div>{task.created_at_date || '--'}</div>
                                         <div className="text-xs text-slate-400">{task.created_at_time || '--'}</div>

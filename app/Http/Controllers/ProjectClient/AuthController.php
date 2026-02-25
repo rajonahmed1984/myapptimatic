@@ -8,12 +8,27 @@ use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class AuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin(): InertiaResponse
     {
-        return view('project-client.login');
+        return Inertia::render('Auth/ProjectLogin', [
+            'form' => [
+                'email' => old('email', ''),
+                'remember' => (bool) old('remember', false),
+            ],
+            'routes' => [
+                'submit' => route('project-client.login.attempt', [], false),
+            ],
+            'recaptcha' => [
+                'enabled' => (bool) config('recaptcha.enabled') && is_string(config('recaptcha.site_key')) && config('recaptcha.site_key') !== '',
+                'site_key' => (string) config('recaptcha.site_key', ''),
+                'action' => 'PROJECT_CLIENT_LOGIN',
+            ],
+        ]);
     }
 
     public function login(Request $request, RecaptchaService $recaptcha): RedirectResponse

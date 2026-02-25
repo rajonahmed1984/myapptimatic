@@ -16,6 +16,27 @@ class HandleInertiaRequests extends Middleware
 
     public function rootView(Request $request): string
     {
+        if ($request->routeIs(
+            'login',
+            'admin.login',
+            'employee.login',
+            'sales.login',
+            'support.login',
+            'register',
+            'password.request',
+            'password.reset',
+            'admin.password.request',
+            'employee.password.request',
+            'employee.password.reset',
+            'sales.password.request',
+            'sales.password.reset',
+            'support.password.request',
+            'support.password.reset',
+            'project-client.login'
+        )) {
+            return 'react-guest';
+        }
+
         if ($request->routeIs('products.public.*')) {
             return 'react-public';
         }
@@ -47,12 +68,26 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         $portal = Portal::fromRequest($request);
+        $portalBranding = view()->shared('portalBranding');
+        if (! is_array($portalBranding)) {
+            $portalBranding = [];
+        }
 
         return array_merge(parent::share($request), [
             'app' => [
                 'name' => config('app.name'),
                 'env' => config('app.env'),
                 'date_format' => config('app.date_format', 'd-m-Y'),
+            ],
+            'branding' => [
+                'company_name' => (string) ($portalBranding['company_name'] ?? config('app.name')),
+                'logo_url' => $portalBranding['logo_url'] ?? null,
+                'favicon_url' => $portalBranding['favicon_url'] ?? null,
+            ],
+            'routes' => [
+                'home' => url('/'),
+                'login' => route('login', [], false),
+                'register' => route('register', [], false),
             ],
             'auth' => [
                 'user' => $user?->only(['id', 'name', 'email', 'role']),
