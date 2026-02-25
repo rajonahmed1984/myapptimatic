@@ -109,6 +109,7 @@ const normalizePath = (path) => {
 };
 
 const looksLikeDocument = (html) => /<html[\s>]|<!doctype/i.test(String(html || ''));
+const hasInertiaRoot = (root) => Boolean(root?.querySelector?.('#app[data-page]'));
 
 const isSessionFailureStatus = (status) => status === 401 || status === 419;
 
@@ -633,6 +634,7 @@ const parseDocumentPayload = (html, fallbackPageKey = '') => {
         title: contentNode.getAttribute('data-page-title') || doc.title || '',
         heading: contentNode.getAttribute('data-page-heading') || '',
         pageKey: contentNode.getAttribute('data-page-key') || fallbackPageKey || '',
+        inertia: hasInertiaRoot(contentNode),
     };
 };
 
@@ -649,6 +651,7 @@ const parseHtmlPayloadFromResponse = async (response) => {
             title: headerTitle,
             heading: headerHeading,
             pageKey: headerPageKey,
+            inertia: false,
         };
     }
 
@@ -662,6 +665,7 @@ const parseHtmlPayloadFromResponse = async (response) => {
         title: parsed.title || headerTitle,
         heading: parsed.heading || headerHeading,
         pageKey: parsed.pageKey || headerPageKey,
+        inertia: Boolean(parsed.inertia),
     };
 };
 
@@ -841,6 +845,11 @@ const navigate = async (urlLike, options = {}) => {
             throw new Error('Missing app content payload');
         }
 
+        if (payload.inertia) {
+            fallbackToNative(url.href, historyMode === 'replace');
+            return;
+        }
+
         applyContentPayload(payload);
         updateSidebarActiveState(state.sidebar, url);
 
@@ -869,6 +878,10 @@ const navigate = async (urlLike, options = {}) => {
 };
 
 const shouldAjaxLink = (link, event) => {
+    if (hasInertiaRoot(document)) {
+        return false;
+    }
+
     if (!(link instanceof HTMLAnchorElement)) {
         return false;
     }
@@ -925,6 +938,10 @@ const hasLargeUpload = (form) => {
 };
 
 const shouldAjaxForm = (form) => {
+    if (hasInertiaRoot(document)) {
+        return false;
+    }
+
     if (!(form instanceof HTMLFormElement)) {
         return false;
     }
@@ -1153,6 +1170,11 @@ const submitFormAjax = async (form, submitter = null) => {
 
         const htmlPayload = await parseHtmlPayloadFromResponse(response);
         if (htmlPayload) {
+            if (htmlPayload.inertia) {
+                fallbackToNative(response.url || actionUrl.href);
+                return;
+            }
+
             applyContentPayload(htmlPayload);
             const nextUrl = response.url || actionUrl.href;
             history.pushState({ ajaxHybrid: true, key: nextHistoryKey(), url: nextUrl }, '', nextUrl);

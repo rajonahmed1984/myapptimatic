@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class WhmcsClient
 {
@@ -72,9 +73,19 @@ class WhmcsClient
         $attemptErrors = [];
 
         foreach ($endpoints as $endpoint) {
-            $response = Http::asForm()
-                ->timeout((int) config('whmcs.timeout', 10))
-                ->post($endpoint, $payload);
+            try {
+                $response = Http::asForm()
+                    ->timeout((int) config('whmcs.timeout', 10))
+                    ->post($endpoint, $payload);
+            } catch (Throwable $exception) {
+                $attemptErrors[] = sprintf(
+                    '%s request failed: %s',
+                    $endpoint,
+                    $exception->getMessage()
+                );
+
+                continue;
+            }
 
             $lastStatus = $response->status();
             if ($primaryStatus === null || ($primaryStatus === 404 && $lastStatus !== 404)) {

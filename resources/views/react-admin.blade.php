@@ -4,6 +4,7 @@
 @section('page-title', 'Overview')
 
 @push('styles')
+    @viteReactRefresh
     @vite(['resources/js/react/app.jsx'])
     @inertiaHead
 @endpush
