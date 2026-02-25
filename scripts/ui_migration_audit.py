@@ -27,6 +27,12 @@ def read_json_auto(path: Path) -> Any:
     return json.loads(read_text_auto(path))
 
 
+def read_json_optional(path: Path, default: Any) -> Any:
+    if not path.exists():
+        return default
+    return read_json_auto(path)
+
+
 def php_class_to_file(class_name: str) -> Path | None:
     if not class_name.startswith("App\\"):
         return None
@@ -476,9 +482,9 @@ def map_blade_references(blade_inventory: list[dict[str, Any]]) -> list[dict[str
 
 def main() -> None:
     routes_latest = read_json_auto(ROOT / "storage/app/routes-latest.json")
-    routes_current = read_json_auto(ROOT / "storage/app/routes-current.json")
-    blade_route_candidates = read_json_auto(ROOT / "storage/app/blade-route-candidates.json")
-    blade_ui_get_candidates = read_json_auto(ROOT / "storage/app/blade-ui-get-candidates.json")
+    routes_current = read_json_optional(ROOT / "storage/app/routes-current.json", [])
+    blade_route_candidates = read_json_optional(ROOT / "storage/app/blade-route-candidates.json", [])
+    blade_ui_get_candidates = read_json_optional(ROOT / "storage/app/blade-ui-get-candidates.json", [])
 
     blade_inventory, blade_categories = build_blade_inventory()
     blade_inventory = map_blade_references(blade_inventory)
