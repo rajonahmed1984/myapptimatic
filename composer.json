@@ -13,10 +13,12 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "larastan/larastan": "^3.9",
         "laravel/pint": "^1.13",
         "laravel/sail": "^1.26",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.9",
+        "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^11.5",
         "spatie/laravel-ignition": "^2.11"
     },
@@ -143,6 +145,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.5.0"
         }
     },
     "minimum-stability": "stable",

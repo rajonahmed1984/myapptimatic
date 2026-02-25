@@ -16,25 +16,30 @@ trait UsesMailCategory
     protected function withMailCategoryHeader(MailMessage $message): MailMessage
     {
         return $message->withSymfonyMessage(function (Email $email) {
-            $headers = $email->getHeaders();
-            $headerName = 'X-Apptimatic-Mail-Category';
-            if ($headers->has($headerName)) {
-                $headers->remove($headerName);
-            }
-            $headers->addTextHeader($headerName, MailCategory::normalize($this->mailCategory()));
+            $this->applyCategoryHeader($email);
         });
     }
 
     protected function withMailableCategoryHeader(): static
     {
-        return $this->withSymfonyMessage(function (Email $email) {
-            $headers = $email->getHeaders();
-            $headerName = 'X-Apptimatic-Mail-Category';
-            if ($headers->has($headerName)) {
-                $headers->remove($headerName);
-            }
-            $headers->addTextHeader($headerName, MailCategory::normalize($this->mailCategory()));
-        });
+        $callable = [$this, 'withSymfonyMessage'];
+
+        if (is_callable($callable)) {
+            $callable(function (Email $email): void {
+                $this->applyCategoryHeader($email);
+            });
+        }
+
+        return $this;
+    }
+
+    private function applyCategoryHeader(Email $email): void
+    {
+        $headers = $email->getHeaders();
+        $headerName = 'X-Apptimatic-Mail-Category';
+        if ($headers->has($headerName)) {
+            $headers->remove($headerName);
+        }
+        $headers->addTextHeader($headerName, MailCategory::normalize($this->mailCategory()));
     }
 }
-

@@ -7,6 +7,7 @@ use App\Models\UserActivityDaily;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class TrackAuthenticatedUserActivity
@@ -34,7 +35,7 @@ class TrackAuthenticatedUserActivity
         try {
             $this->trackUserActivity($request, $guard);
         } catch (\Exception $e) {
-            \Log::error('Failed to track user activity: ' . $e->getMessage());
+            Log::error('Failed to track user activity: ' . $e->getMessage());
         }
 
         return $response;

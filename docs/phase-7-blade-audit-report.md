@@ -1,9 +1,9 @@
 # Phase 7 Blade Audit Report
 
-- Generated at: 2026-02-25T11:22:54+06:00
-- Total Blade views: 93
-- Referenced views: 90
-- Unreferenced views: 3
+- Generated at: 2026-02-25T16:58:50+06:00
+- Total Blade views: 92
+- Referenced views: 92
+- Unreferenced views: 0
 - Conservative cleanup candidates: 0
 
 ## Safety Decision
@@ -15,9 +15,7 @@
 - None.
 
 ## Unreferenced Views (Top 50)
-- `errors.403`
-- `errors.500`
-- `layouts.app`
+- None.
 
 ## Rollback Matrix
 - Trigger: Any route 500/404 mismatch or parity test failure.
