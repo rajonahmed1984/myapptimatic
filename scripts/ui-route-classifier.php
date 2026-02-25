@@ -57,6 +57,117 @@ if (is_file($bladeCandidatesPath)) {
     }
 }
 
+$inertiaActions = [];
+$viewActions = [];
+$jsonActions = [];
+$downloadActions = [];
+$abortActions = [];
+$returnTypeByAction = [];
+$calledMethodsByAction = [];
+$controllerFiles = new RecursiveIteratorIterator(
+    new RecursiveDirectoryIterator($root . '/app/Http/Controllers')
+);
+
+foreach ($controllerFiles as $fileInfo) {
+    if (! $fileInfo->isFile() || $fileInfo->getExtension() !== 'php') {
+        continue;
+    }
+
+    $path = $fileInfo->getPathname();
+    $relative = str_replace('\\', '/', substr($path, strlen($root) + 1));
+    $class = 'App\\Http\\Controllers\\' . str_replace('/', '\\', preg_replace('/^app\/Http\/Controllers\//', '', substr($relative, 0, -4)));
+
+    $lines = file($path, FILE_IGNORE_NEW_LINES);
+    if (! is_array($lines)) {
+        continue;
+    }
+
+    $currentMethod = null;
+    foreach ($lines as $line) {
+        if (preg_match('/function\s+([A-Za-z0-9_]+)\s*\(/', $line, $matches) === 1) {
+            $currentMethod = $matches[1];
+            $action = $class . '@' . $currentMethod;
+            if (! isset($returnTypeByAction[$action])) {
+                $returnTypeByAction[$action] = '';
+            }
+
+            if (preg_match('/\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
+                $returnTypeByAction[$action] = strtolower(trim((string) ($typeMatch[1] ?? '')));
+            }
+
+            continue;
+        }
+
+        if (! $currentMethod) {
+            continue;
+        }
+
+        $action = $class . '@' . $currentMethod;
+        if (($returnTypeByAction[$action] ?? '') === '' && preg_match('/^\s*\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
+            $returnTypeByAction[$action] = strtolower(trim((string) ($typeMatch[1] ?? '')));
+        }
+
+        if (str_contains($line, 'Inertia::render(') || str_contains($line, 'inertia(')) {
+            $inertiaActions[$action] = true;
+        }
+        if (str_contains($line, 'return view(') || str_contains($line, 'response()->view(')) {
+            $viewActions[$action] = true;
+        }
+        if (str_contains($line, 'response()->json(') || str_contains($line, '->json(')) {
+            $jsonActions[$action] = true;
+        }
+        if (
+            str_contains($line, '->download(')
+            || str_contains($line, 'streamDownload(')
+            || str_contains($line, "Content-Disposition' => 'inline")
+            || str_contains($line, "Content-Disposition' => 'attachment")
+        ) {
+            $downloadActions[$action] = true;
+        }
+        if (preg_match('/\babort\s*\(/', $line) === 1) {
+            $abortActions[$action] = true;
+        }
+        if (preg_match_all('/\$this->([A-Za-z0-9_]+)\s*\(/', $line, $calls) > 0) {
+            $calledMethodsByAction[$action] = $calledMethodsByAction[$action] ?? [];
+            foreach ($calls[1] as $calledMethod) {
+                $calledMethodsByAction[$action][$calledMethod] = true;
+            }
+        }
+    }
+}
+
+$propagateByInternalCalls = static function (array $seedActions, array $calledMethodsByAction): array {
+    $resolvedActions = $seedActions;
+    $changed = true;
+
+    while ($changed) {
+        $changed = false;
+
+        foreach ($calledMethodsByAction as $action => $calledMethods) {
+            if (isset($resolvedActions[$action])) {
+                continue;
+            }
+
+            [$className] = explode('@', $action, 2);
+            foreach (array_keys($calledMethods) as $calledMethod) {
+                $calledAction = $className . '@' . $calledMethod;
+                if (isset($resolvedActions[$calledAction])) {
+                    $resolvedActions[$action] = true;
+                    $changed = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    return $resolvedActions;
+};
+
+$inertiaActions = $propagateByInternalCalls($inertiaActions, $calledMethodsByAction);
+$viewActions = $propagateByInternalCalls($viewActions, $calledMethodsByAction);
+$jsonActions = $propagateByInternalCalls($jsonActions, $calledMethodsByAction);
+$downloadActions = $propagateByInternalCalls($downloadActions, $calledMethodsByAction);
+
 $summary = [
     'total_routes' => count($routes),
     'ui_page_get_routes' => 0,
@@ -83,6 +194,22 @@ $nonUiNeedles = [
     'cron/',
 ];
 
+$nonUiUriRules = [
+    ['regex' => '#/(export|download)(?:/|$)#i', 'reason' => 'non_ui_pattern:download_export'],
+    ['regex' => '#/(proof|receipt)(?:/|$)#i', 'reason' => 'non_ui_pattern:download_export'],
+    ['regex' => '#/(branding|media)/#i', 'reason' => 'non_ui_pattern:media_asset'],
+    ['regex' => '#/user-documents/\{[^/]+\}/\{[^/]+\}/\{[^/]+\}$#i', 'reason' => 'non_ui_pattern:media_asset'],
+    ['regex' => '#/chat/(project-messages|task-messages)/\{[^/]+\}/inline$#i', 'reason' => 'non_ui_pattern:chat_inline_attachment'],
+    ['regex' => '#/chat/(messages|participants)(?:/|$)#i', 'reason' => 'non_ui_pattern:chat_inline_data'],
+    ['regex' => '#/tasks/\{[^/]+\}/activity(?:/items)?(?:/|$)#i', 'reason' => 'non_ui_pattern:chat_inline_data'],
+    ['regex' => '#/sync-status(?:/|$)#i', 'reason' => 'non_ui_pattern:status_probe'],
+    ['regex' => '#/work-summaries/today(?:/|$)#i', 'reason' => 'non_ui_pattern:status_probe'],
+];
+
+$nonUiMethodRules = [
+    ['regex' => '/^(export|export[a-z0-9_]*|download|receipt|proof|attachment|inlineattachment|syncstatus|messages|participants|items|avatar|today)$/i', 'reason' => 'non_ui_method:payload_or_file'],
+];
+
 foreach ($routes as $route) {
     if (! is_array($route)) {
         continue;
@@ -94,6 +221,11 @@ foreach ($routes as $route) {
     $name = (string) ($route['name'] ?? '');
     $middleware = $route['middleware'] ?? [];
     $middlewareList = is_array($middleware) ? $middleware : [(string) $middleware];
+    $normalizedUri = '/' . ltrim($uri, '/');
+    $methodName = '';
+    if (str_contains($action, '@')) {
+        [, $methodName] = explode('@', $action, 2);
+    }
 
     $verbs = array_filter(array_map('trim', explode('|', $method)));
     $isGetRoute = in_array('GET', $verbs, true) || in_array('HEAD', $verbs, true);
@@ -117,9 +249,55 @@ foreach ($routes as $route) {
         }
     }
 
+    if ($classification === 'ambiguous' && $action !== '' && ! isset($inertiaActions[$action]) && ! isset($viewActions[$action])) {
+        $returnType = strtolower((string) ($returnTypeByAction[$action] ?? ''));
+        if (isset($jsonActions[$action])) {
+            $classification = 'non_ui_endpoint';
+            $reason = 'non_ui_action:json_payload';
+        } elseif (
+            str_contains($returnType, 'jsonresponse')
+            || str_contains($returnType, 'streamedresponse')
+            || str_contains($returnType, 'binaryfileresponse')
+        ) {
+            $classification = 'non_ui_endpoint';
+            $reason = 'non_ui_action:non_html_return_type';
+        } elseif (isset($downloadActions[$action])) {
+            $classification = 'non_ui_endpoint';
+            $reason = 'non_ui_action:file_delivery';
+        } elseif (isset($abortActions[$action])) {
+            $classification = 'non_ui_endpoint';
+            $reason = 'non_ui_action:abort_only';
+        }
+    }
+
+    if ($classification === 'ambiguous') {
+        foreach ($nonUiUriRules as $rule) {
+            if (preg_match($rule['regex'], $normalizedUri) === 1) {
+                $classification = 'non_ui_endpoint';
+                $reason = $rule['reason'];
+                break;
+            }
+        }
+    }
+
+    if ($classification === 'ambiguous' && $methodName !== '') {
+        foreach ($nonUiMethodRules as $rule) {
+            if (preg_match($rule['regex'], $methodName) === 1) {
+                $classification = 'non_ui_endpoint';
+                $reason = $rule['reason'];
+                break;
+            }
+        }
+    }
+
     if ($classification === 'ambiguous' && isset($partialUris[$uri])) {
-        $classification = 'partial_fragment';
-        $reason = 'blade_partial_candidate';
+        if ($action !== '' && isset($inertiaActions[$action])) {
+            $classification = 'ui_page_candidate';
+            $reason = 'partial_uri_with_inertia_action';
+        } else {
+            $classification = 'partial_fragment';
+            $reason = 'blade_partial_candidate';
+        }
     }
 
     if ($classification === 'ambiguous' && isset($fullBladeUris[$uri])) {

@@ -78,6 +78,8 @@ class HandleInertiaRequests extends Middleware
                 'name' => config('app.name'),
                 'env' => config('app.env'),
                 'date_format' => config('app.date_format', 'd-m-Y'),
+                'time_format' => config('app.time_format', 'h:i A'),
+                'datetime_format' => config('app.datetime_format', 'd-m-Y h:i A'),
             ],
             'branding' => [
                 'company_name' => (string) ($portalBranding['company_name'] ?? config('app.name')),

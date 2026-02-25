@@ -494,7 +494,7 @@
                                         $proofUrl = $proofPath ? route('admin.hr.employee-payouts.proof', $advance) : null;
                                     @endphp
                                     <tr class="border-b border-slate-100">
-                                        <td class="py-2">{{ $advance->paid_at?->format(($globalDateFormat ?? 'Y-m-d') . ' H:i') ?? '--' }}</td>
+                                        <td class="py-2">{{ $advance->paid_at?->format(($globalDateTimeFormat ?? 'd-m-Y h:i A')) ?? '--' }}</td>
                                         <td class="py-2">{{ $advance->currency ?? 'BDT' }} {{ number_format((float) ($advance->amount ?? 0), 2) }}</td>
                                         <td class="py-2">{{ $advance->payout_method ? ucfirst(str_replace('_', ' ', (string) $advance->payout_method)) : '--' }}</td>
                                         <td class="py-2">{{ $advance->reference ?? '--' }}</td>
@@ -561,7 +561,7 @@
                                     <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_deduction ?? 0), 2) }}</td>
                                     <td class="py-2 text-right">{{ $payrollItem->currency ?? '' }} {{ number_format((float) ($payrollItem->computed_net_pay ?? $payrollItem->net_pay ?? 0), 2) }}</td>
                                     <td class="py-2">{{ ucfirst((string) ($payrollItem->status ?? '--')) }}</td>
-                                    <td class="py-2">{{ $payrollItem->paid_at?->format(($globalDateFormat ?? 'Y-m-d') . ' H:i') ?? '--' }}</td>
+                                    <td class="py-2">{{ $payrollItem->paid_at?->format(($globalDateTimeFormat ?? 'd-m-Y h:i A')) ?? '--' }}</td>
                                 </tr>
                             @empty
                                 <tr>
@@ -710,7 +710,7 @@
                                 $scope = $advance->metadata['advance_scope'] ?? null;
                             @endphp
                             <tr class="border-b border-slate-100">
-                                <td class="py-2">{{ $advance->paid_at?->format(($globalDateFormat ?? 'Y-m-d') . ' H:i') ?? '--' }}</td>
+                                <td class="py-2">{{ $advance->paid_at?->format(($globalDateTimeFormat ?? 'd-m-Y h:i A')) ?? '--' }}</td>
                                 <td class="py-2">{{ $advance->currency ?? 'BDT' }} {{ number_format((float) ($advance->amount ?? 0), 2) }}</td>
                                 <td class="py-2">{{ $advance->payout_method ? ucfirst(str_replace('_', ' ', (string) $advance->payout_method)) : '--' }}</td>
                                 <td class="py-2">{{ $advance->reference ?? '--' }}</td>

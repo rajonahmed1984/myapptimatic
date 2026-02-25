@@ -19,10 +19,13 @@ use App\Services\ChatAiSummaryCache;
 use App\Support\ChatPresence;
 use App\Support\ChatMentions;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -32,7 +35,7 @@ class ProjectChatController extends Controller
 {
     private const EDITABLE_WINDOW_SECONDS = 30;
 
-    public function show(Request $request, Project $project, ChatAiSummaryCache $summaryCache)
+    public function show(Request $request, Project $project, ChatAiSummaryCache $summaryCache): Response|InertiaResponse
     {
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('view', $project);
@@ -74,7 +77,7 @@ class ProjectChatController extends Controller
         }
 
         if ($request->boolean('partial')) {
-            return view('projects.partials.project-chat-messages', [
+            return response()->view('projects.partials.project-chat-messages', [
                 'messages' => $messages,
                 'project' => $project,
                 'attachmentRouteName' => $attachmentRouteName,
@@ -94,7 +97,7 @@ class ProjectChatController extends Controller
             ]);
         }
 
-        return view('projects.project-chat', [
+        $viewData = [
             'layout' => $this->layoutForPrefix($routePrefix),
             'routePrefix' => $routePrefix,
             'project' => $project,
@@ -128,6 +131,18 @@ class ProjectChatController extends Controller
             'messagePinRouteName' => $messagePinRouteName,
             'messageReactionRouteName' => $messageReactionRouteName,
             'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
+        ];
+
+        $legacyHtml = view('projects.project-chat', $viewData)->render();
+        $payload = $this->extractLegacyPayload($legacyHtml);
+
+        return Inertia::render('Projects/ProjectChat', [
+            'pageTitle' => (string) ($payload['page_title'] ?? 'Project Chat'),
+            'pageHeading' => (string) ($payload['page_heading'] ?? 'Project Chat'),
+            'pageKey' => $routePrefix . '.projects.chat',
+            'content_html' => (string) ($payload['content_html'] ?? ''),
+            'script_html' => (string) ($payload['script_html'] ?? ''),
+            'style_html' => (string) ($payload['style_html'] ?? ''),
         ]);
     }
 
@@ -1826,5 +1841,52 @@ class ProjectChatController extends Controller
             'message_id' => $message->id,
             'label' => $message->created_at?->format('M d, Y H:i') ?? ('#' . $message->id),
         ];
+    }
+
+    /**
+     * @return array{page_title: string, page_heading: string, content_html: string, script_html: string, style_html: string}|null
+     */
+    private function extractLegacyPayload(string $html): ?array
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $internalErrors = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET | LIBXML_COMPACT);
+        libxml_clear_errors();
+        libxml_use_internal_errors($internalErrors);
+
+        if (! $loaded) {
+            return null;
+        }
+
+        $contentNode = $dom->getElementById('appContent');
+        if (! $contentNode) {
+            return null;
+        }
+
+        $scriptsNode = $dom->getElementById('pageScriptStack');
+        $styleHtml = '';
+
+        foreach ($dom->getElementsByTagName('style') as $styleNode) {
+            $styleHtml .= $dom->saveHTML($styleNode);
+        }
+
+        return [
+            'page_title' => (string) $contentNode->getAttribute('data-page-title'),
+            'page_heading' => (string) $contentNode->getAttribute('data-page-heading'),
+            'content_html' => $this->innerHtml($contentNode),
+            'script_html' => $scriptsNode ? $this->innerHtml($scriptsNode) : '',
+            'style_html' => $styleHtml,
+        ];
+    }
+
+    private function innerHtml(\DOMNode $node): string
+    {
+        $html = '';
+
+        foreach ($node->childNodes as $child) {
+            $html .= $node->ownerDocument?->saveHTML($child) ?? '';
+        }
+
+        return $html;
     }
 }

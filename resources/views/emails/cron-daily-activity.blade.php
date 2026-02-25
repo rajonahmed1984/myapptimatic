@@ -12,7 +12,7 @@
     </div>
 
     <div style="font-family:Arial, sans-serif;color:#475569;margin-top:16px;text-align:center;font-size:13px;">
-        Range: {{ $rangeStart->format($dateFormat . ' H:i') }} - {{ $rangeEnd->format($dateFormat . ' H:i') }} ({{ $timeZone }})
+        Range: {{ $rangeStart->format($dateFormat . ' h:i A') }} - {{ $rangeEnd->format($dateFormat . ' h:i A') }} ({{ $timeZone }})
     </div>
 
     <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:16px;font-family:Arial, sans-serif;color:#475569;font-size:13px;">
@@ -59,7 +59,7 @@
             <tr>
                 <td style="padding:8px;border-bottom:1px solid #f1f5f9;">{{ $row['command'] }}</td>
                 <td style="padding:8px;border-bottom:1px solid #f1f5f9;">
-                    {{ $row['last_run_at']?->format($dateFormat . ' H:i') ?? '--' }}
+                    {{ $row['last_run_at']?->format($dateFormat . ' h:i A') ?? '--' }}
                 </td>
                 <td style="padding:8px;border-bottom:1px solid #f1f5f9;">
                     {{ ucfirst($row['status'] ?? 'unknown') }}

@@ -43,6 +43,6 @@ class AdminLegacyBridgeUiParityTest extends TestCase
             ->get(route('admin.projects.tasks.show', [$project, $task]))
             ->assertOk()
             ->assertSee('data-page=')
-            ->assertSee('Admin\\/Legacy\\/HtmlPage', false);
+            ->assertSee('Projects\\/TaskDetailClickup', false);
     }
 }

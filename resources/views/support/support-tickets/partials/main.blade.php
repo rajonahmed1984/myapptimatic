@@ -20,7 +20,7 @@
         </div>
         <div class="flex flex-col items-end gap-3 text-sm">
             <span class="rounded-full px-4 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $statusLabel }}</span>
-            <div class="text-slate-500">Opened {{ $ticket->created_at->format($globalDateFormat . ' H:i') }}</div>
+            <div class="text-slate-500">Opened {{ $ticket->created_at->format($globalDateTimeFormat) }}</div>
             <form method="POST" action="{{ route('support.support-tickets.status', $ticket) }}" data-ajax-form="true">
                 @csrf
                 @method('PATCH')
@@ -85,7 +85,7 @@
                 <div class="max-w-2xl rounded-2xl border border-slate-300 bg-white px-5 py-4 text-sm shadow-sm">
                     <div class="flex items-center justify-between text-xs text-slate-500">
                         <span>{{ $reply->user?->name ?? ($reply->is_admin ? 'Support' : 'Client') }}</span>
-                        <span>{{ $reply->created_at->format($globalDateFormat . ' H:i') }}</span>
+                        <span>{{ $reply->created_at->format($globalDateTimeFormat) }}</span>
                     </div>
                     <div class="mt-3 whitespace-pre-line text-slate-700">{{ $reply->message }}</div>
                     @if($reply->attachment_path)

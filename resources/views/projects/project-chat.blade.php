@@ -126,7 +126,11 @@
 
         .chat-composer-input {
             max-height: 112px;
-            min-height: 36px;
+            min-height: 40px;
+            line-height: 1.5;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
             resize: none;
         }
 
@@ -263,7 +267,7 @@
                             <button type="button" id="chatAttachButton" class="wa-composer-icon text-3xl font-light leading-none" title="Attach file" aria-label="Attach file">+</button>
                             <button type="button" id="chatEmojiButton" class="wa-composer-icon text-lg" title="Emoji">🙂</button>
                             <div class="relative flex-1">
-                                <textarea id="chatMessageInput" name="message" rows="1" class="chat-composer-input w-full border-0 bg-transparent px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-0" placeholder="Message">{{ old('message') }}</textarea>
+                                <textarea id="chatMessageInput" name="message" rows="1" class="chat-composer-input w-full border-0 bg-transparent px-2 py-2 leading-6 text-sm text-slate-700 focus:outline-none focus:ring-0" placeholder="Message">{{ old('message') }}</textarea>
                                 <div id="chatMentionDropdown" class="absolute bottom-full left-0 z-20 mb-2 hidden w-72 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg"></div>
                             </div>
                             <button type="submit" id="chatSendButton" class="wa-send-btn" aria-label="Send message">
@@ -350,7 +354,7 @@
         const readUrl = container?.dataset?.readUrl || @json($readUrl ?? '');
         let attachmentPreviewUrl = null;
 
-        if (!container || !messagesUrl) {
+        if (!container) {
             return;
         }
         if (container.dataset.chatBound === '1') {
@@ -645,7 +649,7 @@
                 return;
             }
             textarea.style.height = 'auto';
-            const nextHeight = Math.max(36, Math.min(textarea.scrollHeight, 112));
+            const nextHeight = Math.max(40, Math.min(textarea.scrollHeight, 112));
             textarea.style.height = `${nextHeight}px`;
         };
 
@@ -931,6 +935,9 @@
         };
 
         const fetchMessages = async (params) => {
+            if (!messagesUrl) {
+                return [];
+            }
             const url = new URL(messagesUrl, window.location.origin);
             Object.entries(params).forEach(([key, value]) => {
                 if (value !== null && value !== undefined) {
@@ -992,7 +999,7 @@
         };
 
         const startPolling = () => {
-            if (pollTimer) {
+            if (pollTimer || !messagesUrl) {
                 return;
             }
             pollTimer = setInterval(async () => {
@@ -1354,6 +1361,19 @@
                 updateComposerState();
             });
             textarea.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && event.shiftKey) {
+                    event.preventDefault();
+                    if (form?.dataset?.submitting === '1') {
+                        return;
+                    }
+                    if (!composerHasContent()) {
+                        return;
+                    }
+                    closeMentionDropdown();
+                    form?.requestSubmit(sendButton || undefined);
+                    return;
+                }
+
                 if (!dropdown || dropdown.classList.contains('hidden')) {
                     return;
                 }
@@ -1847,9 +1867,18 @@
         window.addEventListener('beforeunload', cleanup);
     };
 
-    const activePageKey = document.querySelector('#appContent')?.dataset?.pageKey || '';
-    if (activePageKey === pageKey || document.getElementById('project-chat-messages')) {
-        window.PageInit[pageKey]();
+    const tryInitProjectChat = () => {
+        const activePageKey = document.querySelector('#appContent')?.dataset?.pageKey || '';
+        if (activePageKey === pageKey || document.getElementById('project-chat-messages') || document.getElementById('chatMessageForm')) {
+            window.PageInit[pageKey]();
+        }
+    };
+
+    tryInitProjectChat();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryInitProjectChat, { once: true });
+    } else {
+        window.setTimeout(tryInitProjectChat, 0);
     }
     })();
 </script>

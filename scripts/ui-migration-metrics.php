@@ -63,18 +63,44 @@ foreach ($bladeCandidates as $row) {
     $partialOnly = (bool) ($row['PartialOnly'] ?? false);
 
     if ($partialOnly) {
-        $partialBlade[] = [
-            'uri' => $uri,
-            'name' => (string) ($row['Name'] ?? ''),
-            'action' => $action,
-        ];
+        if (empty($classifiedRoutes)) {
+            $partialBlade[] = [
+                'uri' => $uri,
+                'name' => (string) ($row['Name'] ?? ''),
+                'action' => $action,
+            ];
+        }
     } else {
         $fullBladeActions[$action] = true;
     }
 }
 
+if (! empty($classifiedRoutes)) {
+    $partialBlade = [];
+    foreach ($classifiedRoutes as $row) {
+        if (! is_array($row)) {
+            continue;
+        }
+
+        if ((string) ($row['classification'] ?? '') !== 'partial_fragment') {
+            continue;
+        }
+
+        $partialBlade[] = [
+            'uri' => (string) ($row['uri'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+            'action' => (string) ($row['action'] ?? ''),
+        ];
+    }
+}
+
 $inertiaActions = [];
+$directInertiaActions = [];
 $viewActions = [];
+$jsonActions = [];
+$abortActions = [];
+$returnTypeByAction = [];
+$calledMethodsByAction = [];
 $controllerFiles = new RecursiveIteratorIterator(
     new RecursiveDirectoryIterator($root . '/app/Http/Controllers')
 );
@@ -97,7 +123,23 @@ foreach ($controllerFiles as $fileInfo) {
     foreach ($lines as $line) {
         if (preg_match('/function\s+([A-Za-z0-9_]+)\s*\(/', $line, $matches) === 1) {
             $currentMethod = $matches[1];
+            $action = $class . '@' . $currentMethod;
+            if (! isset($returnTypeByAction[$action])) {
+                $returnTypeByAction[$action] = '';
+            }
+
+            if (preg_match('/\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
+                $returnTypeByAction[$action] = strtolower(trim((string) ($typeMatch[1] ?? '')));
+            }
+
             continue;
+        }
+
+        if ($currentMethod) {
+            $action = $class . '@' . $currentMethod;
+            if (($returnTypeByAction[$action] ?? '') === '' && preg_match('/^\s*\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
+                $returnTypeByAction[$action] = strtolower(trim((string) ($typeMatch[1] ?? '')));
+            }
         }
 
         if (! $currentMethod) {
@@ -106,10 +148,44 @@ foreach ($controllerFiles as $fileInfo) {
 
         $action = $class . '@' . $currentMethod;
         if (str_contains($line, 'Inertia::render(') || str_contains($line, 'inertia(')) {
-            $inertiaActions[$action] = true;
+            $directInertiaActions[$action] = true;
         }
-        if (str_contains($line, 'return view(') || preg_match('/\bview\(/', $line) === 1) {
+        if (str_contains($line, 'response()->json(') || str_contains($line, '->json(')) {
+            $jsonActions[$action] = true;
+        }
+        if (preg_match('/\babort\s*\(/', $line) === 1) {
+            $abortActions[$action] = true;
+        }
+        if (preg_match_all('/\$this->([A-Za-z0-9_]+)\s*\(/', $line, $calls) === 1) {
+            $calledMethodsByAction[$action] = $calledMethodsByAction[$action] ?? [];
+            foreach ($calls[1] as $calledMethod) {
+                $calledMethodsByAction[$action][$calledMethod] = true;
+            }
+        }
+        if (str_contains($line, 'return view(')) {
             $viewActions[$action] = true;
+        }
+    }
+}
+
+$inertiaActions = $directInertiaActions;
+$changed = true;
+while ($changed) {
+    $changed = false;
+
+    foreach ($calledMethodsByAction as $action => $calledMethods) {
+        if (isset($inertiaActions[$action])) {
+            continue;
+        }
+
+        [$className] = explode('@', $action, 2);
+        foreach (array_keys($calledMethods) as $calledMethod) {
+            $calledAction = $className . '@' . $calledMethod;
+            if (isset($inertiaActions[$calledAction])) {
+                $inertiaActions[$action] = true;
+                $changed = true;
+                break;
+            }
         }
     }
 }
@@ -178,18 +254,95 @@ foreach ($uiRoutes as $route) {
 }
 
 $wrapperRoutes = 0;
+$wrapperRouteDetails = [];
+$classificationByRoute = [];
+foreach ($classifiedRoutes as $row) {
+    if (! is_array($row)) {
+        continue;
+    }
+
+    $key = sprintf(
+        '%s|%s|%s|%s',
+        (string) ($row['method'] ?? ''),
+        (string) ($row['uri'] ?? ''),
+        (string) ($row['name'] ?? ''),
+        (string) ($row['action'] ?? '')
+    );
+
+    $classificationByRoute[$key] = (string) ($row['classification'] ?? '');
+}
+
 foreach ($routes as $route) {
     if (! is_array($route)) {
         continue;
     }
+
+    $method = (string) ($route['method'] ?? '');
+    $uri = (string) ($route['uri'] ?? '');
+    $name = (string) ($route['name'] ?? '');
+    $action = (string) ($route['action'] ?? '');
+
     $middleware = $route['middleware'] ?? [];
     $list = is_array($middleware) ? $middleware : [(string) $middleware];
+    $usesWrapper = false;
     foreach ($list as $value) {
         if (str_contains((string) $value, 'ConvertAdminViewToInertia')) {
-            $wrapperRoutes++;
+            $usesWrapper = true;
             break;
         }
     }
+
+    if (! $usesWrapper) {
+        continue;
+    }
+
+    $routeKey = sprintf('%s|%s|%s|%s', $method, $uri, $name, $action);
+    $classification = $classificationByRoute[$routeKey] ?? '';
+
+    if ($classification !== '' && ! in_array($classification, ['ui_page_candidate', 'ui_page_blade_full', 'partial_fragment'], true)) {
+        continue;
+    }
+
+    if ($classification === '' && ! str_contains($method, 'GET')) {
+        continue;
+    }
+
+    if ($action !== '' && isset($inertiaActions[$action])) {
+        continue;
+    }
+
+    if ($action !== '' && isset($jsonActions[$action])) {
+        continue;
+    }
+
+    if ($action !== '' && isset($abortActions[$action]) && ! isset($inertiaActions[$action])) {
+        continue;
+    }
+
+    $returnType = strtolower((string) ($returnTypeByAction[$action] ?? ''));
+    if ($returnType !== '') {
+        if (str_contains($returnType, 'jsonresponse') || str_contains($returnType, 'streamedresponse')) {
+            continue;
+        }
+    }
+
+    $methodName = '';
+    if ($action !== '' && str_contains($action, '@')) {
+        [, $methodName] = explode('@', $action, 2);
+    }
+
+    if ($methodName !== '' && preg_match('/(export|download|receipt|proof|attachment|inline|messages|participants|items|stream|presence|syncstatus)$/i', $methodName) === 1) {
+        continue;
+    }
+
+    $wrapperRoutes++;
+    $wrapperRouteDetails[] = [
+        'method' => $method,
+        'uri' => $uri,
+        'name' => $name,
+        'action' => $action,
+        'classification' => $classification,
+    ];
 }
 
 $summary = [
@@ -213,6 +366,7 @@ $report = [
     'summary' => $summary,
     'remaining_full_blade_ui_pages' => $remainingBladeUi,
     'remaining_partial_blade_fragments' => $partialBlade,
+    'wrapper_dependent_route_details' => $wrapperRouteDetails,
     'ui_not_detected' => $notDetectedUi,
 ];
 

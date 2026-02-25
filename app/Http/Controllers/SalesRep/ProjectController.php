@@ -128,7 +128,7 @@ class ProjectController extends Controller
             ->groupBy('status')
             ->pluck('aggregate', 'status');
 
-        $dateFormat = config('app.date_format', 'Y-m-d');
+        $dateFormat = config('app.date_format', 'd-m-Y');
 
         return Inertia::render('Rep/Projects/Show', [
             'project' => [

@@ -12,7 +12,7 @@
     </div>
 
     <div style="font-family:Arial, sans-serif;color:#475569;margin-top:16px;text-align:center;font-size:13px;">
-        Range: {{ $rangeStart->format($dateFormat . ' H:i') }} - {{ $rangeEnd->format($dateFormat . ' H:i') }} ({{ $timeZone }})
+        Range: {{ $rangeStart->format($dateFormat . ' h:i A') }} - {{ $rangeEnd->format($dateFormat . ' h:i A') }} ({{ $timeZone }})
     </div>
 
     @if(! $hasRun)

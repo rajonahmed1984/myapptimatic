@@ -12,10 +12,12 @@ use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ProjectTaskViewController extends Controller
 {
-    public function show(Request $request, Project $project, ProjectTask $task)
+    public function show(Request $request, Project $project, ProjectTask $task): InertiaResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $actor = $this->resolveActor($request);
@@ -89,7 +91,7 @@ class ProjectTaskViewController extends Controller
             ? route($tasksIndexRouteName, $project)
             : route($projectShowRouteName, $project);
 
-        return view('projects.task-detail-clickup', [
+        $viewData = [
             'layout' => $this->layoutForPrefix($routePrefix),
             'routePrefix' => $routePrefix,
             'project' => $project,
@@ -132,7 +134,66 @@ class ProjectTaskViewController extends Controller
             'backRoute' => $backRoute,
             'attachmentRouteName' => $attachmentRouteName,
             'uploadMaxMb' => TaskSettings::uploadMaxMb(),
+        ];
+
+        $legacyHtml = view('projects.task-detail-clickup', $viewData)->render();
+        $payload = $this->extractLegacyPayload($legacyHtml);
+
+        return Inertia::render('Projects/TaskDetailClickup', [
+            'pageTitle' => (string) ($payload['page_title'] ?? ($task->title ?: 'Task Details')),
+            'pageHeading' => (string) ($payload['page_heading'] ?? ($task->title ?: 'Task Details')),
+            'pageKey' => $routePrefix . '.projects.tasks.show',
+            'content_html' => (string) ($payload['content_html'] ?? ''),
+            'script_html' => (string) ($payload['script_html'] ?? ''),
+            'style_html' => (string) ($payload['style_html'] ?? ''),
         ]);
+    }
+
+    /**
+     * @return array{page_title: string, page_heading: string, content_html: string, script_html: string, style_html: string}|null
+     */
+    private function extractLegacyPayload(string $html): ?array
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $internalErrors = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET | LIBXML_COMPACT);
+        libxml_clear_errors();
+        libxml_use_internal_errors($internalErrors);
+
+        if (! $loaded) {
+            return null;
+        }
+
+        $contentNode = $dom->getElementById('appContent');
+        if (! $contentNode) {
+            return null;
+        }
+
+        $scriptsNode = $dom->getElementById('pageScriptStack');
+        $styleHtml = '';
+
+        foreach ($dom->getElementsByTagName('style') as $styleNode) {
+            $styleHtml .= $dom->saveHTML($styleNode);
+        }
+
+        return [
+            'page_title' => (string) $contentNode->getAttribute('data-page-title'),
+            'page_heading' => (string) $contentNode->getAttribute('data-page-heading'),
+            'content_html' => $this->innerHtml($contentNode),
+            'script_html' => $scriptsNode ? $this->innerHtml($scriptsNode) : '',
+            'style_html' => $styleHtml,
+        ];
+    }
+
+    private function innerHtml(\DOMNode $node): string
+    {
+        $html = '';
+
+        foreach ($node->childNodes as $child) {
+            $html .= $node->ownerDocument?->saveHTML($child) ?? '';
+        }
+
+        return $html;
     }
 
     private function ensureTaskBelongsToProject(Project $project, ProjectTask $task): void

@@ -582,7 +582,8 @@ const runEmbeddedScripts = (root, pageKey = '') => {
     const scripts = Array.from(root.querySelectorAll('script'));
     scripts.forEach((script, index) => {
         const runtimeKey = scriptRuntimeKey(script, pageKey, index);
-        if (runtimeKey && state.scriptHashes.has(runtimeKey)) {
+        const persistRuntimeKey = Boolean(runtimeKey && runtimeKey.startsWith('src:'));
+        if (persistRuntimeKey && state.scriptHashes.has(runtimeKey)) {
             script.remove();
             return;
         }
@@ -605,7 +606,7 @@ const runEmbeddedScripts = (root, pageKey = '') => {
             restore();
         }
 
-        if (runtimeKey) {
+        if (persistRuntimeKey) {
             state.scriptHashes.add(runtimeKey);
         }
     });

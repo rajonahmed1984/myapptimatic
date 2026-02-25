@@ -146,7 +146,11 @@
 
         .chat-composer-input {
             max-height: 112px;
-            min-height: 36px;
+            min-height: 40px;
+            line-height: 1.5;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
             resize: none;
         }
 
@@ -228,7 +232,7 @@
                             <button type="button" id="taskChatAttachButton" class="wa-composer-icon text-3xl font-light leading-none" title="Attach file" aria-label="Attach file">+</button>
                             <button type="button" id="taskChatEmojiButton" class="wa-composer-icon text-lg" title="Emoji">🙂</button>
                             <div class="flex-1">
-                                <textarea id="taskChatMessageInput" name="message" rows="1" class="chat-composer-input w-full border-0 bg-transparent px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-0" placeholder="Message">{{ old('message') }}</textarea>
+                                <textarea id="taskChatMessageInput" name="message" rows="1" class="chat-composer-input w-full border-0 bg-transparent px-2 py-2 leading-6 text-sm text-slate-700 focus:outline-none focus:ring-0" placeholder="Message">{{ old('message') }}</textarea>
                             </div>
                             <button type="submit" id="taskChatSendButton" class="wa-send-btn" aria-label="Send message">
                                 <span id="taskChatSendIcon" class="text-base">➤</span>
@@ -299,7 +303,7 @@
         const messagesUrl = @json($messagesUrl);
         const readUrl = container?.dataset?.readUrl || @json($readUrl ?? '');
         let attachmentPreviewUrl = null;
-        if (!container || !messagesUrl) {
+        if (!container) {
             return;
         }
         if (container.dataset.chatBound === '1') {
@@ -496,7 +500,7 @@
                     return;
                 }
                 textarea.style.height = 'auto';
-                const nextHeight = Math.max(36, Math.min(textarea.scrollHeight, 112));
+                const nextHeight = Math.max(40, Math.min(textarea.scrollHeight, 112));
                 textarea.style.height = `${nextHeight}px`;
             };
 
@@ -688,6 +692,18 @@
                 textarea.addEventListener('input', () => {
                     resizeComposerInput();
                     updateComposerState();
+                });
+                textarea.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' && event.shiftKey) {
+                        event.preventDefault();
+                        if (form?.dataset?.submitting === '1') {
+                            return;
+                        }
+                        if (!composerHasContent()) {
+                            return;
+                        }
+                        form?.requestSubmit(sendButton || undefined);
+                    }
                 });
             }
 
@@ -1076,6 +1092,9 @@
             };
 
             const fetchMessages = async (params) => {
+                if (!messagesUrl) {
+                    return [];
+                }
                 const url = new URL(messagesUrl, window.location.origin);
                 Object.entries(params).forEach(([key, value]) => {
                     if (value !== null && value !== undefined) {
@@ -1262,17 +1281,20 @@
                 }
             });
 
-            let pollTimer = setInterval(async () => {
-                const keepAtBottom = isNearBottom();
-                const items = await fetchMessages({ after_id: lastId, limit: 30 });
-                if (items.length) {
-                    appendItems(items);
-                    if (keepAtBottom) {
-                        scrollToBottom();
-                        updateReadStatus(lastId);
+            let pollTimer = null;
+            if (messagesUrl) {
+                pollTimer = setInterval(async () => {
+                    const keepAtBottom = isNearBottom();
+                    const items = await fetchMessages({ after_id: lastId, limit: 30 });
+                    if (items.length) {
+                        appendItems(items);
+                        if (keepAtBottom) {
+                            scrollToBottom();
+                            updateReadStatus(lastId);
+                        }
                     }
-                }
-            }, 2000);
+                }, 2000);
+            }
 
             let editWindowTimer = setInterval(() => {
                 refreshMessageActionAvailability();
@@ -1297,8 +1319,18 @@
             window.addEventListener('beforeunload', cleanup);
         };
 
-        if (document.querySelector('#appContent')?.dataset?.pageKey === pageKey) {
-            window.PageInit[pageKey]();
+        const tryInitTaskChat = () => {
+            const activePageKey = document.querySelector('#appContent')?.dataset?.pageKey || '';
+            if (activePageKey === pageKey || document.getElementById('task-chat-messages') || document.getElementById('chatMessageForm')) {
+                window.PageInit[pageKey]();
+            }
+        };
+
+        tryInitTaskChat();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', tryInitTaskChat, { once: true });
+        } else {
+            window.setTimeout(tryInitTaskChat, 0);
         }
         })();
     </script>

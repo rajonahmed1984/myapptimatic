@@ -11,6 +11,7 @@ use App\Http\Requests\StoreTaskActivityRequest;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskSettings;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -21,7 +22,7 @@ use Illuminate\Support\Str;
 
 class ProjectTaskActivityController extends Controller
 {
-    public function index(Request $request, Project $project, ProjectTask $task)
+    public function index(Request $request, Project $project, ProjectTask $task): JsonResponse|Response
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $actor = $this->resolveActor($request);
@@ -40,7 +41,7 @@ class ProjectTaskActivityController extends Controller
         $attachmentRouteName = $routePrefix . '.projects.tasks.activity.attachment';
 
         if ($request->boolean('partial')) {
-            return view('projects.partials.task-activity-feed', [
+            return response()->view('projects.partials.task-activity-feed', [
                 'activities' => $activities,
                 'project' => $project,
                 'task' => $task,

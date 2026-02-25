@@ -53,7 +53,7 @@ class CarrotHostIncomeController extends Controller
             'prev_month_label' => $payload['prevMonthLabel'] ?? null,
             'next_month' => $payload['nextMonth'] ?? null,
             'next_month_label' => $payload['nextMonthLabel'] ?? null,
-            'last_refreshed_display' => now()->format((string) config('app.date_format', 'd-m-Y') . ' H:i'),
+            'last_refreshed_display' => now()->format((string) config('app.datetime_format', 'd-m-Y h:i A')),
             'amount_in_subtotal_display' => (string) ($payload['amountInSubtotalDisplay'] ?? '0.00'),
             'fees_subtotal_display' => (string) ($payload['feesSubtotalDisplay'] ?? '0.00'),
             'whmcs_errors' => collect((array) ($payload['whmcsErrors'] ?? []))

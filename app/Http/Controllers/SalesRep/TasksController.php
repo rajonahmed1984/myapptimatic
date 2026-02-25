@@ -4,14 +4,14 @@ namespace App\Http\Controllers\SalesRep;
 
 use App\Http\Controllers\Controller;
 use App\Services\TaskQueryService;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class TasksController extends Controller
 {
-    public function index(Request $request, TaskQueryService $taskQueryService): View|InertiaResponse
+    public function index(Request $request, TaskQueryService $taskQueryService): Response|InertiaResponse
     {
         $user = $request->user();
         if (! $taskQueryService->canViewTasks($user)) {
@@ -51,7 +51,7 @@ class TasksController extends Controller
         ];
 
         if ($request->header('HX-Request')) {
-            return view('tasks.partials.index', $payload);
+            return response()->view('tasks.partials.index', $payload);
         }
 
         return Inertia::render('Rep/Tasks/Index', [
@@ -66,8 +66,8 @@ class TasksController extends Controller
                     'title' => $task->title,
                     'description' => $task->description,
                     'status' => $status,
-                    'created_at_date' => $task->created_at?->format(config('app.date_format', 'Y-m-d')),
-                    'created_at_time' => $task->created_at?->format('H:i'),
+                    'created_at_date' => $task->created_at?->format(config('app.date_format', 'd-m-Y')),
+                    'created_at_time' => $task->created_at?->format('h:i A'),
                     'subtasks_count' => (int) ($task->subtasks_count ?? 0),
                     'can_start' => (bool) ($task->can_start ?? false),
                     'can_complete' => (bool) ($task->can_complete ?? false),

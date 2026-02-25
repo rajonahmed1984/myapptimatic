@@ -63,7 +63,7 @@ class DashboardController extends Controller
                     'commission_amount' => (float) $earning->commission_amount,
                     'currency' => $earning->currency,
                     'status_label' => ucfirst((string) $earning->status),
-                    'earned_at_display' => $earning->earned_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+                    'earned_at_display' => $earning->earned_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values()->all(),
             'recent_payouts' => $recentPayouts->map(function (CommissionPayout $payout) {
@@ -72,7 +72,7 @@ class DashboardController extends Controller
                     'total_amount' => (float) $payout->total_amount,
                     'currency' => $payout->currency,
                     'status_label' => ucfirst((string) $payout->status),
-                    'paid_at_display' => $payout->paid_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? 'Draft',
+                    'paid_at_display' => $payout->paid_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? 'Draft',
                 ];
             })->values()->all(),
             'tasks_widget' => [

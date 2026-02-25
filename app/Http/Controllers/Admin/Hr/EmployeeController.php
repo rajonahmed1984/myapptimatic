@@ -28,7 +28,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -383,7 +382,7 @@ class EmployeeController extends Controller
             ->with('status', 'Employee removed.');
     }
 
-    public function show(Employee $employee, EmployeeWorkSummaryService $workSummaryService): View
+    public function show(Employee $employee, EmployeeWorkSummaryService $workSummaryService): InertiaResponse
     {
         $employee->load(['manager:id,name', 'user:id,name,email,avatar_path', 'activeCompensation']);
 
@@ -890,28 +889,58 @@ class EmployeeController extends Controller
             }
         }
 
-        return view('admin.hr.employees.show', [
-            'employee' => $employee,
+        return Inertia::render('Admin/Hr/Employees/Show', [
+            'pageTitle' => $employee->name,
+            'employee' => [
+                'id' => $employee->id,
+                'name' => $employee->name,
+                'email' => $employee->email,
+                'status' => $employee->status,
+                'department' => $employee->department,
+                'designation' => $employee->designation,
+                'employment_type' => $employee->employment_type,
+                'work_mode' => $employee->work_mode,
+                'address' => $employee->address,
+                'join_date' => $employee->join_date?->format('Y-m-d'),
+                'manager' => [
+                    'id' => $employee->manager?->id,
+                    'name' => $employee->manager?->name,
+                ],
+                'user' => [
+                    'id' => $employee->user?->id,
+                    'name' => $employee->user?->name,
+                    'email' => $employee->user?->email,
+                ],
+                'active_compensation' => [
+                    'effective_from' => $employee->activeCompensation?->effective_from?->format('Y-m-d'),
+                ],
+            ],
             'tab' => $tab,
             'summary' => $summary,
-            'projects' => $projects,
+            'projects' => $projects->values(),
             'projectStatusCounts' => $projectStatusCounts,
             'projectTaskStatusCounts' => $projectTaskStatusCounts,
             'taskSummary' => $taskSummary,
             'subtaskSummary' => $subtaskSummary,
             'taskProgress' => $taskProgress,
             'projectBaseEarnings' => $projectBaseEarnings,
-            'recentEarnings' => $recentEarnings,
-            'recentPayouts' => $recentPayouts,
-            'advanceProjects' => $advanceProjects,
-            'recentWorkSessions' => $recentWorkSessions,
-            'recentWorkSummaries' => $recentWorkSummaries,
-            'recentPayrollItems' => $recentPayrollItems,
-            'recentSalaryAdvances' => $recentSalaryAdvances,
-            'recentAdvanceTransactions' => $recentAdvanceTransactions,
+            'recentEarnings' => $recentEarnings->values(),
+            'recentPayouts' => $recentPayouts->values(),
+            'advanceProjects' => $advanceProjects->values(),
+            'recentWorkSessions' => $recentWorkSessions->values(),
+            'recentWorkSummaries' => $recentWorkSummaries->values(),
+            'recentPayrollItems' => $recentPayrollItems->values(),
+            'recentSalaryAdvances' => $recentSalaryAdvances->values(),
+            'recentAdvanceTransactions' => $recentAdvanceTransactions->values(),
             'draftPayrollItem' => $draftPayrollItem,
             'workSessionStats' => $workSessionStats,
             'payrollSourceNote' => $payrollSourceNote,
+            'routes' => [
+                'index' => route('admin.hr.employees.index', [], false),
+                'edit' => route('admin.hr.employees.edit', $employee, false),
+                'impersonate' => route('admin.hr.employees.impersonate', $employee, false),
+                'show' => route('admin.hr.employees.show', $employee, false),
+            ],
         ]);
     }
 

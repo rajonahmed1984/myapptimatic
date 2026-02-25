@@ -48,7 +48,7 @@ class EarningController extends Controller
                     'commission_amount' => (float) ($earning->commission_amount ?? 0),
                     'currency' => $earning->currency,
                     'status_label' => ucfirst((string) $earning->status),
-                    'earned_at_display' => $earning->earned_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+                    'earned_at_display' => $earning->earned_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values()->all(),
             'status' => $status,

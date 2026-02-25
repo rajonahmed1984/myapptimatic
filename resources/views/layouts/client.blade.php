@@ -228,7 +228,7 @@
                     @if(!empty($clientAccessBlock['blocked']) && !auth()->user()->isClientProject())
                         @php
                             $graceEnds = $clientAccessBlock['grace_ends_at']
-                                ? \Illuminate\Support\Carbon::parse($clientAccessBlock['grace_ends_at'])->format($globalDateFormat . ' H:i')
+                                ? \Illuminate\Support\Carbon::parse($clientAccessBlock['grace_ends_at'])->format($globalDateTimeFormat)
                                 : null;
                             $invoiceLabel = $clientAccessBlock['invoice_number'] ? "Invoice #{$clientAccessBlock['invoice_number']}" : 'your outstanding invoice';
                             $accessMessage = "Please pay {$invoiceLabel} to restore access" . ($graceEnds ? " before {$graceEnds}" : '') . '.';

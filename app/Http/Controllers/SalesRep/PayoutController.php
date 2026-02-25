@@ -28,7 +28,7 @@ class PayoutController extends Controller
                     'currency' => $payout->currency,
                     'status_label' => ucfirst((string) $payout->status),
                     'payout_method' => $payout->payout_method ?? '--',
-                    'paid_at_display' => $payout->paid_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+                    'paid_at_display' => $payout->paid_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values()->all(),
             'pagination' => [

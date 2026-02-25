@@ -155,7 +155,7 @@
                                 <div class="space-y-3 text-xs text-slate-600">
                                     <div>
                                         <div class="text-slate-500 mb-1">Created</div>
-                                        <div class="font-medium text-slate-900">{{ $task->created_at->format($globalDateFormat . ' H:i') }}</div>
+                                        <div class="font-medium text-slate-900">{{ $task->created_at->format($globalDateTimeFormat) }}</div>
                                     </div>
                                     <div>
                                         <div class="text-slate-500 mb-1">Opened by</div>
@@ -164,7 +164,7 @@
                                     @if($task->status === 'completed')
                                         <div class="pt-3 border-t border-slate-200">
                                             <div class="text-slate-500 mb-1">Completed</div>
-                                            <div class="font-medium text-slate-900">{{ $task->updated_at->format($globalDateFormat . ' H:i') }}</div>
+                                            <div class="font-medium text-slate-900">{{ $task->updated_at->format($globalDateTimeFormat) }}</div>
                                         </div>
                                     @endif
                                 </div>
@@ -191,7 +191,7 @@
                         </a>
                         <div>
                             <div class="font-semibold text-slate-900">{{ $latestUpload?->attachmentName() ?? 'Attachment' }}</div>
-                            <div class="text-xs text-slate-500">{{ $latestUpload?->created_at->format($globalDateFormat . ' H:i') }}</div>
+                            <div class="text-xs text-slate-500">{{ $latestUpload?->created_at->format($globalDateTimeFormat) }}</div>
                         </div>
                     </div>
                 </div>
@@ -371,15 +371,15 @@
                                         @endif
                                     </div>
                                     <div class="text-xs text-slate-400 mt-1 space-x-2">
-                                        <span>Created: {{ $subtask->created_at->format($globalDateFormat . ' H:i') }}</span>
+                                        <span>Created: {{ $subtask->created_at->format($globalDateTimeFormat) }}</span>
                                         @if(in_array($routePrefix, ['admin', 'employee'], true))
                                             <span>Added by: {{ $subtask->createdBy?->name ?? 'System' }}</span>
                                         @endif
                                         @if($subtask->updated_at && $subtask->created_at && $subtask->updated_at->greaterThan($subtask->created_at))
-                                            <span>Edited: {{ $subtask->updated_at->format($globalDateFormat . ' H:i') }}</span>
+                                            <span>Edited: {{ $subtask->updated_at->format($globalDateTimeFormat) }}</span>
                                         @endif
                                         @if($subtask->is_completed)
-                                            <span>• Completed: {{ $subtask->completed_at->format($globalDateFormat . ' H:i') }}</span>
+                                            <span>• Completed: {{ $subtask->completed_at->format($globalDateTimeFormat) }}</span>
                                         @endif
                                     </div>
                                     @if($subtask->attachment_path)
@@ -505,7 +505,7 @@
                                                 <div class="flex-1 min-w-0">
                                                     <div class="text-sm font-medium text-slate-900 truncate">{{ $upload->attachmentName() }}</div>
                                                     <div class="text-xs text-slate-500">Uploaded by {{ $upload->actorName() }}</div>
-                                                    <div class="text-xs text-slate-500">{{ $upload->created_at->format($globalDateFormat . ' H:i') }}</div>
+                                                    <div class="text-xs text-slate-500">{{ $upload->created_at->format($globalDateTimeFormat) }}</div>
                                                     @if($upload->message)
                                                         <div class="text-xs text-slate-600">{{ $upload->message }}</div>
                                                     @endif

@@ -4,14 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\TaskQueryService;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class TasksController extends Controller
 {
-    public function index(Request $request, TaskQueryService $taskQueryService): View|InertiaResponse
+    public function index(Request $request, TaskQueryService $taskQueryService): Response|InertiaResponse
     {
         $user = $request->user();
         if (! $taskQueryService->canViewTasks($user)) {
@@ -51,7 +51,7 @@ class TasksController extends Controller
         ];
 
         if ($request->header('HX-Request')) {
-            return view('tasks.partials.index', $payload);
+            return response()->view('tasks.partials.index', $payload);
         }
 
         return Inertia::render(

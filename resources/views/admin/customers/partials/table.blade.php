@@ -58,7 +58,7 @@
                                     {{ $loginLabel }}
                                 </span> --}}
                                 <div class="mt-1 text-[11px] text-slate-400">
-                                    Last login: {{ $lastLoginAt ? $lastLoginAt->format($globalDateFormat . ' H:i') : '--' }}
+                                    Last login: {{ $lastLoginAt ? $lastLoginAt->format($globalDateTimeFormat) : '--' }}
                                 </div>
                             </td>
                             <td class="px-4 py-3">

@@ -53,7 +53,7 @@ class SupportTicketController extends Controller
                     'customer_name' => $ticket->customer->name,
                     'status' => $ticket->status,
                     'status_label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)),
-                    'last_reply_at_display' => $ticket->last_reply_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+                    'last_reply_at_display' => $ticket->last_reply_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                     'routes' => [
                         'show' => route('support.support-tickets.show', $ticket),
                         'destroy' => route('support.support-tickets.destroy', $ticket),
@@ -92,7 +92,7 @@ class SupportTicketController extends Controller
                 'priority' => $ticket->priority,
                 'priority_label' => ucfirst((string) $ticket->priority),
                 'customer_name' => $ticket->customer->name,
-                'created_at_display' => $ticket->created_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+                'created_at_display' => $ticket->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
             ],
             'replies' => $ticket->replies->map(function ($reply) {
                 return [
@@ -100,7 +100,7 @@ class SupportTicketController extends Controller
                     'is_admin' => (bool) $reply->is_admin,
                     'author_name' => $reply->user?->name ?? ($reply->is_admin ? 'Support' : 'Client'),
                     'message' => $reply->message,
-                    'created_at_display' => $reply->created_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+                    'created_at_display' => $reply->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                     'attachment_url' => $reply->attachment_path ? $reply->attachmentUrl() : null,
                     'attachment_name' => $reply->attachment_path ? $reply->attachmentName() : null,
                 ];

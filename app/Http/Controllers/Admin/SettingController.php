@@ -7,6 +7,7 @@ use App\Models\EmailTemplate;
 use App\Models\Setting;
 use App\Models\Plan;
 use App\Support\Branding;
+use App\Support\DateTimeFormat;
 use App\Support\UrlResolver;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
@@ -48,10 +49,7 @@ class SettingController extends Controller
 
         $countries = config('countries', []);
         $dateFormats = [
-            'd-m-Y' => 'DD-MM-YYYY (31-12-2025)',
-            'm-d-Y' => 'MM-DD-YYYY (12-31-2025)',
-            'Y-m-d' => 'YYYY-MM-DD (2025-12-31)',
-            'd/m/Y' => 'DD/MM/YYYY (31/12/2025)',
+            DateTimeFormat::datePattern() => 'DD-MM-YYYY (31-12-2025)',
         ];
         $timeZones = DateTimeZone::listIdentifiers();
 
@@ -115,7 +113,7 @@ class SettingController extends Controller
             'recaptcha_project_id' => Setting::getValue('recaptcha_project_id', config('recaptcha.project_id')),
             'recaptcha_api_key' => Setting::getValue('recaptcha_api_key', config('recaptcha.api_key')),
             'recaptcha_score_threshold' => Setting::getValue('recaptcha_score_threshold', config('recaptcha.score_threshold')),
-            'date_format' => Setting::getValue('date_format'),
+            'date_format' => DateTimeFormat::datePattern(),
             'time_zone' => Setting::getValue('time_zone', config('app.timezone')),
             'automation_time_of_day' => Setting::getValue('automation_time_of_day', '00:00'),
             'task_types_enabled' => $taskTypesEnabled,
@@ -174,7 +172,7 @@ class SettingController extends Controller
     {
         $countries = config('countries', []);
         $countryOptions = array_merge([''], $countries);
-        $dateFormatKeys = ['d-m-Y', 'm-d-Y', 'Y-m-d', 'd/m/Y'];
+        $dateFormatKeys = [DateTimeFormat::datePattern()];
         $timeZones = DateTimeZone::listIdentifiers();
 
         $data = $request->validate([
@@ -300,7 +298,7 @@ class SettingController extends Controller
         Cache::forget('settings.recaptcha_project_id');
         Cache::forget('settings.recaptcha_api_key');
         Cache::forget('settings.recaptcha_score_threshold');
-        Setting::setValue('date_format', $data['date_format']);
+        Setting::setValue('date_format', DateTimeFormat::datePattern());
         Setting::setValue('time_zone', $data['time_zone']);
         Setting::setValue('automation_time_of_day', $data['automation_time_of_day']);
         $taskTypesEnabled = $data['task_types_enabled'] ?? array_keys(TaskSettings::TYPE_LABELS);

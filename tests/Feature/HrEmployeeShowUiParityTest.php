@@ -20,11 +20,13 @@ class HrEmployeeShowUiParityTest extends TestCase
         $admin = $this->makeAdmin();
         $employee = $this->makeEmployee('show-employee@example.test', 'monthly');
 
-        $this->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->get(route('admin.hr.employees.show', $employee))
-            ->assertOk()
-            ->assertSee('data-page=')
-            ->assertSee('Admin\\/', false);
+            ->assertOk();
+
+        $props = $this->inertiaProps($response->getContent());
+        $this->assertSame('Admin/Hr/Employees/Show', data_get($props, 'component'));
+        $this->assertSame($employee->id, data_get($props, 'props.employee.id'));
     }
 
     #[Test]
@@ -33,11 +35,12 @@ class HrEmployeeShowUiParityTest extends TestCase
         $admin = $this->makeAdmin();
         $employee = $this->makeEmployee('tab-fallback@example.test', 'monthly');
 
-        $this->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->get(route('admin.hr.employees.show', ['employee' => $employee->id, 'tab' => 'unknown']))
-            ->assertOk()
-            ->assertSee('Profile')
-            ->assertSee('tab=profile');
+            ->assertOk();
+
+        $props = $this->inertiaProps($response->getContent());
+        $this->assertSame('profile', data_get($props, 'props.tab'));
     }
 
     #[Test]
@@ -123,5 +126,20 @@ class HrEmployeeShowUiParityTest extends TestCase
         }
 
         return $employee;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function inertiaProps(string $html): array
+    {
+        preg_match('/data-page="([^"]+)"/', $html, $matches);
+        $this->assertArrayHasKey(1, $matches, 'Inertia payload is missing in response.');
+
+        $decoded = html_entity_decode($matches[1], ENT_QUOTES, 'UTF-8');
+        $payload = json_decode($decoded, true);
+        $this->assertIsArray($payload);
+
+        return $payload;
     }
 }

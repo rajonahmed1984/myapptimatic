@@ -13,9 +13,12 @@ use App\Services\ChatAiService;
 use App\Services\GeminiService;
 use App\Services\ChatAiSummaryCache;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -24,7 +27,7 @@ class ProjectTaskChatController extends Controller
 {
     private const EDITABLE_WINDOW_SECONDS = 30;
 
-    public function show(Request $request, Project $project, ProjectTask $task, ChatAiSummaryCache $summaryCache)
+    public function show(Request $request, Project $project, ProjectTask $task, ChatAiSummaryCache $summaryCache): Response|InertiaResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $actor = $this->resolveActor($request);
@@ -49,7 +52,7 @@ class ProjectTaskChatController extends Controller
         $canPost = Gate::forUser($actor)->check('comment', $task);
 
         if ($request->boolean('partial')) {
-            return view('projects.partials.task-chat-messages', [
+            return response()->view('projects.partials.task-chat-messages', [
                 'messages' => $messages,
                 'project' => $project,
                 'task' => $task,
@@ -64,7 +67,7 @@ class ProjectTaskChatController extends Controller
             ]);
         }
 
-        return view('projects.task-chat', [
+        $viewData = [
             'layout' => $this->layoutForPrefix($routePrefix),
             'routePrefix' => $routePrefix,
             'project' => $project,
@@ -87,6 +90,18 @@ class ProjectTaskChatController extends Controller
             'messagePinRouteName' => $messagePinRouteName,
             'messageReactionRouteName' => $messageReactionRouteName,
             'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
+        ];
+
+        $legacyHtml = view('projects.task-chat', $viewData)->render();
+        $payload = $this->extractLegacyPayload($legacyHtml);
+
+        return Inertia::render('Projects/TaskChat', [
+            'pageTitle' => (string) ($payload['page_title'] ?? 'Task Chat'),
+            'pageHeading' => (string) ($payload['page_heading'] ?? 'Task Chat'),
+            'pageKey' => $routePrefix . '.projects.tasks.chat',
+            'content_html' => (string) ($payload['content_html'] ?? ''),
+            'script_html' => (string) ($payload['script_html'] ?? ''),
+            'style_html' => (string) ($payload['style_html'] ?? ''),
         ]);
     }
 
@@ -843,5 +858,52 @@ class ProjectTaskChatController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @return array{page_title: string, page_heading: string, content_html: string, script_html: string, style_html: string}|null
+     */
+    private function extractLegacyPayload(string $html): ?array
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $internalErrors = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET | LIBXML_COMPACT);
+        libxml_clear_errors();
+        libxml_use_internal_errors($internalErrors);
+
+        if (! $loaded) {
+            return null;
+        }
+
+        $contentNode = $dom->getElementById('appContent');
+        if (! $contentNode) {
+            return null;
+        }
+
+        $scriptsNode = $dom->getElementById('pageScriptStack');
+        $styleHtml = '';
+
+        foreach ($dom->getElementsByTagName('style') as $styleNode) {
+            $styleHtml .= $dom->saveHTML($styleNode);
+        }
+
+        return [
+            'page_title' => (string) $contentNode->getAttribute('data-page-title'),
+            'page_heading' => (string) $contentNode->getAttribute('data-page-heading'),
+            'content_html' => $this->innerHtml($contentNode),
+            'script_html' => $scriptsNode ? $this->innerHtml($scriptsNode) : '',
+            'style_html' => $styleHtml,
+        ];
+    }
+
+    private function innerHtml(\DOMNode $node): string
+    {
+        $html = '';
+
+        foreach ($node->childNodes as $child) {
+            $html .= $node->ownerDocument?->saveHTML($child) ?? '';
+        }
+
+        return $html;
     }
 }

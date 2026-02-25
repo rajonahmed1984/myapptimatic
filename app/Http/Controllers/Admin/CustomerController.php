@@ -213,7 +213,7 @@ class CustomerController extends Controller
         );
     }
 
-    public function show(Request $request, Customer $customer)
+    public function show(Request $request, Customer $customer): InertiaResponse
     {
         $tab = $request->query('tab', 'summary');
         $allowedTabs = ['summary', 'project-specific', 'services', 'projects', 'invoices', 'tickets', 'emails', 'log'];
@@ -362,7 +362,7 @@ class CustomerController extends Controller
             ? 'active'
             : $customer->status;
 
-        return view('admin.customers.show', [
+        return Inertia::render('Admin/Customers/Show', $this->showInertiaProps([
             'customer' => $customer,
             'tab' => $tab,
             'activityLogs' => $activityLogs,
@@ -378,7 +378,7 @@ class CustomerController extends Controller
             'projects' => $projects,
             'salesRepSummaries' => $salesRepSummaries,
             'effectiveStatus' => $effectiveStatus,
-        ]);
+        ]));
     }
 
     public function impersonate(Request $request, Customer $customer)
@@ -608,6 +608,68 @@ class CustomerController extends Controller
                 'loginStatuses' => $loginStatuses,
             ])->render(),
         ];
+    }
+
+    private function showInertiaProps(array $viewData): array
+    {
+        $legacyHtml = view('admin.customers.show', $viewData)->render();
+        $payload = $this->extractLegacyPayload($legacyHtml);
+
+        return [
+            'pageTitle' => (string) ($payload['page_title'] ?? 'Customer Details'),
+            'pageHeading' => (string) ($payload['page_heading'] ?? 'Customer Details'),
+            'pageKey' => 'admin.customers.show',
+            'content_html' => (string) ($payload['content_html'] ?? ''),
+            'script_html' => (string) ($payload['script_html'] ?? ''),
+            'style_html' => (string) ($payload['style_html'] ?? ''),
+        ];
+    }
+
+    /**
+     * @return array{page_title: string, page_heading: string, content_html: string, script_html: string, style_html: string}|null
+     */
+    private function extractLegacyPayload(string $html): ?array
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $internalErrors = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET | LIBXML_COMPACT);
+        libxml_clear_errors();
+        libxml_use_internal_errors($internalErrors);
+
+        if (! $loaded) {
+            return null;
+        }
+
+        $contentNode = $dom->getElementById('appContent');
+        if (! $contentNode) {
+            return null;
+        }
+
+        $scriptsNode = $dom->getElementById('pageScriptStack');
+        $styleHtml = '';
+
+        foreach ($dom->getElementsByTagName('style') as $styleNode) {
+            $styleHtml .= $dom->saveHTML($styleNode);
+        }
+
+        return [
+            'page_title' => (string) $contentNode->getAttribute('data-page-title'),
+            'page_heading' => (string) $contentNode->getAttribute('data-page-heading'),
+            'content_html' => $this->innerHtml($contentNode),
+            'script_html' => $scriptsNode ? $this->innerHtml($scriptsNode) : '',
+            'style_html' => $styleHtml,
+        ];
+    }
+
+    private function innerHtml(\DOMNode $node): string
+    {
+        $html = '';
+
+        foreach ($node->childNodes as $child) {
+            $html .= $node->ownerDocument?->saveHTML($child) ?? '';
+        }
+
+        return $html;
     }
 
     private function formInertiaProps(?Customer $customer, $salesReps, ?string $effectiveStatus = null): array

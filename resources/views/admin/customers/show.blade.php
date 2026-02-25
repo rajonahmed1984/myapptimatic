@@ -536,7 +536,7 @@
                                 <td class="px-4 py-3">
                                     <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $label }}</span>
                                 </td>
-                                <td class="px-4 py-3 text-slate-500">{{ $ticket->last_reply_at?->format($globalDateFormat . ' H:i') ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ $ticket->last_reply_at?->format($globalDateTimeFormat) ?? '--' }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="text-slate-500 hover:text-teal-600">View</a>
                                 </td>

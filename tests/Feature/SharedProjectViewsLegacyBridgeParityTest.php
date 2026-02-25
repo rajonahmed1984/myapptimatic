@@ -30,7 +30,7 @@ class SharedProjectViewsLegacyBridgeParityTest extends TestCase
             ->get(route('client.projects.tasks.show', [$project, $task]))
             ->assertOk()
             ->assertSee('data-page=')
-            ->assertSee('Client\\/Legacy\\/HtmlPage', false);
+            ->assertSee('Projects\\/TaskDetailClickup', false);
     }
 
     #[Test]
@@ -55,7 +55,7 @@ class SharedProjectViewsLegacyBridgeParityTest extends TestCase
             ->get(route('employee.projects.tasks.show', [$project, $task]))
             ->assertOk()
             ->assertSee('data-page=')
-            ->assertSee('Employee\\/Legacy\\/HtmlPage', false);
+            ->assertSee('Projects\\/TaskDetailClickup', false);
     }
 
     #[Test]
@@ -80,7 +80,7 @@ class SharedProjectViewsLegacyBridgeParityTest extends TestCase
             ->get(route('rep.projects.tasks.show', [$project, $task]))
             ->assertOk()
             ->assertSee('data-page=')
-            ->assertSee('Rep\\/Legacy\\/HtmlPage', false);
+            ->assertSee('Projects\\/TaskDetailClickup', false);
     }
 
     /**

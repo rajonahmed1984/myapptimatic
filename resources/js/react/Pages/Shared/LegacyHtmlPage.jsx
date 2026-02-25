@@ -28,7 +28,11 @@ const runInlineScript = (code) => {
     };
 
     try {
-        window.eval(`(() => {\n${code}\n})();`);
+        const scriptEl = document.createElement('script');
+        scriptEl.textContent = `(function(){\n${code}\n})();`;
+        scriptEl.setAttribute('data-legacy-inline-script', 'true');
+        document.body.appendChild(scriptEl);
+        scriptEl.remove();
     } finally {
         document.addEventListener = originalAddEventListener;
     }

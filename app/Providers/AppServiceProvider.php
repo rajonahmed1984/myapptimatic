@@ -17,6 +17,7 @@ use App\Observers\ProjectTaskObserver;
 use App\Services\AuthFresh\LoginService;
 use App\Services\ApptimaticEmailStubRepository;
 use App\Support\Branding;
+use App\Support\DateTimeFormat;
 use App\Support\MailCategoryContext;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
@@ -84,17 +85,18 @@ class AppServiceProvider extends ServiceProvider
             $logoPath = Setting::getValue('company_logo_path');
             $faviconPath = Setting::getValue('company_favicon_path');
             $timeZone = Setting::getValue('time_zone', config('app.timezone'));
-            $dateFormat = Setting::getValue('date_format', 'd-m-Y');
+            $dateFormat = DateTimeFormat::datePattern();
+            $timeFormat = DateTimeFormat::timePattern();
+            $dateTimeFormat = DateTimeFormat::dateTimePattern();
 
             if (is_string($timeZone) && $timeZone !== '' && in_array($timeZone, DateTimeZone::listIdentifiers(), true)) {
                 config(['app.timezone' => $timeZone]);
                 date_default_timezone_set($timeZone);
             }
 
-            if (! is_string($dateFormat) || $dateFormat === '') {
-                $dateFormat = 'd-m-Y';
-            }
             config(['app.date_format' => $dateFormat]);
+            config(['app.time_format' => $timeFormat]);
+            config(['app.datetime_format' => $dateTimeFormat]);
 
             $brand = [
                 'company_name' => $companyName ?: 'MyApptimatic',
@@ -106,6 +108,8 @@ class AppServiceProvider extends ServiceProvider
 
             View::share('portalBranding', $brand);
             View::share('globalDateFormat', $dateFormat);
+            View::share('globalTimeFormat', $timeFormat);
+            View::share('globalDateTimeFormat', $dateTimeFormat);
             View::share('globalTimeZone', $timeZone);
 
             View::composer('layouts.admin', function ($view) {
@@ -279,6 +283,8 @@ class AppServiceProvider extends ServiceProvider
             ]);
 
             View::share('globalDateFormat', 'd-m-Y');
+            View::share('globalTimeFormat', 'h:i A');
+            View::share('globalDateTimeFormat', 'd-m-Y h:i A');
             View::share('globalTimeZone', config('app.timezone'));
 
             View::share('adminHeaderStats', [

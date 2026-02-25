@@ -80,6 +80,22 @@ return [
     'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
+    |----------------------------------------------------------------------
+    | Presentation Date & Time Format
+    |----------------------------------------------------------------------
+    |
+    | These formats are used for user-facing presentation only. Storage
+    | remains unchanged (database timestamps stay in their native format).
+    |
+    */
+
+    'date_format' => 'd-m-Y',
+
+    'time_format' => 'h:i A',
+
+    'datetime_format' => 'd-m-Y h:i A',
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
