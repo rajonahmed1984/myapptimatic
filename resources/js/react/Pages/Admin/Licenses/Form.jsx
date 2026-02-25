@@ -71,12 +71,12 @@ export default function Form({ pageTitle = 'License', is_edit = false, products 
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Starts At</label>
-                            <input type="date" name="starts_at" defaultValue={fields?.starts_at || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="starts_at" defaultValue={fields?.starts_at || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
                             {errors?.starts_at ? <p className="mt-1 text-xs text-rose-600">{errors.starts_at}</p> : null}
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Expires At</label>
-                            <input type="date" name="expires_at" defaultValue={fields?.expires_at || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="expires_at" defaultValue={fields?.expires_at || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
                             {errors?.expires_at ? <p className="mt-1 text-xs text-rose-600">{errors.expires_at}</p> : null}
                         </div>
                     </div>

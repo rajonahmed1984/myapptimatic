@@ -131,7 +131,7 @@ class ProjectController extends Controller
             ->groupBy('status')
             ->pluck('aggregate', 'status');
 
-        $dateFormat = config('app.date_format', 'Y-m-d');
+        $dateFormat = config('app.date_format', 'd-m-Y');
         $currentUser = $request->user();
         $employeeId = $currentUser?->employee?->id;
 
@@ -194,7 +194,7 @@ class ProjectController extends Controller
                     'id' => $message->id,
                     'author_name' => $message->authorName(),
                     'message' => $message->message,
-                    'created_at_display' => $message->created_at?->format($dateFormat.' H:i') ?? '--',
+                    'created_at_display' => $message->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values()->all(),
             'chat_meta' => $chatMeta,

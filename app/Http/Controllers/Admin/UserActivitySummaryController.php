@@ -481,7 +481,7 @@ class UserActivitySummaryController extends Controller
         $lastLoginDisplay = '--';
         if ($lastLoginAt) {
             try {
-                $lastLoginDisplay = \Carbon\Carbon::parse($lastLoginAt)->format('M d, Y H:i');
+                $lastLoginDisplay = \Carbon\Carbon::parse($lastLoginAt)->format(config('app.datetime_format', 'd-m-Y h:i A'));
             } catch (\Throwable) {
                 $lastLoginDisplay = '--';
             }

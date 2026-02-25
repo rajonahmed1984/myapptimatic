@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import { formatDate } from '@/react/utils/datetime';
 
 const formatCurrency = (amount, symbol, code) => {
     const numeric = Number.parseFloat(String(amount ?? 0));
@@ -382,9 +383,9 @@ export default function Show({
                                 </label>
                                 <input
                                     id="expensePaymentDate"
-                                    type="date"
+                                    type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                     name="paid_at"
-                                    defaultValue={new Date().toISOString().slice(0, 10)}
+                                    defaultValue={formatDate(new Date())}
                                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                                     required
                                 />

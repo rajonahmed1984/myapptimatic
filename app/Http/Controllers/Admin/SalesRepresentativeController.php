@@ -424,7 +424,7 @@ class SalesRepresentativeController extends Controller
                     'amount' => (float) $earning->amount,
                     'currency' => $earning->currency,
                     'status' => $earning->status,
-                    'earned_at' => $earning->earned_at?->format('Y-m-d H:i') ?? '--',
+                    'earned_at' => $earning->earned_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values(),
             'recentPayouts' => $recentPayouts->map(function (CommissionPayout $payout) {
@@ -434,7 +434,7 @@ class SalesRepresentativeController extends Controller
                     'status' => $payout->status,
                     'total_amount' => (float) $payout->total_amount,
                     'currency' => $payout->currency,
-                    'paid_at' => $payout->paid_at?->format('Y-m-d H:i') ?? '--',
+                    'paid_at' => $payout->paid_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                     'reference' => $payout->reference,
                 ];
             })->values(),
@@ -444,7 +444,7 @@ class SalesRepresentativeController extends Controller
                     'customer_name' => $subscription->customer?->name ?? '--',
                     'plan_name' => $subscription->plan?->name ?? '--',
                     'status' => ucfirst((string) ($subscription->status ?? '--')),
-                    'next_invoice_at' => $subscription->next_invoice_at?->format('Y-m-d') ?? '--',
+                    'next_invoice_at' => $subscription->next_invoice_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 ];
             })->values(),
             'invoiceEarnings' => $invoiceEarnings->map(function (CommissionEarning $earning) {
@@ -458,8 +458,8 @@ class SalesRepresentativeController extends Controller
                     'project_name' => $earning->project?->name ?? '--',
                     'status' => ucfirst((string) ($invoice->status ?? '--')),
                     'total_display' => $invoice ? ($invoice->currency.' '.number_format((float) $invoice->total, 2)) : '--',
-                    'issue_date' => $invoice?->issue_date?->format('Y-m-d') ?? '--',
-                    'due_date' => $invoice?->due_date?->format('Y-m-d') ?? '--',
+                    'issue_date' => $invoice?->issue_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                    'due_date' => $invoice?->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 ];
             })->values(),
             'projects' => $projects->map(function (Project $project) use ($projectTaskStatusCounts) {
@@ -715,7 +715,7 @@ class SalesRepresentativeController extends Controller
      */
     private function serializeRepIndexRows(Collection $reps, BaseCollection $totals, array $loginStatuses): array
     {
-        $dateTimeFormat = (string) config('app.date_format', 'Y-m-d').' H:i';
+        $dateTimeFormat = (string) config('app.datetime_format', 'd-m-Y h:i A');
 
         return $reps->map(function (SalesRepresentative $rep) use ($totals, $loginStatuses, $dateTimeFormat): array {
             $repTotals = $totals[$rep->id] ?? null;

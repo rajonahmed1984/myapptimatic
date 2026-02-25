@@ -173,7 +173,7 @@ export default function Form({
                                     <label className="text-sm text-slate-600">Access Override Until</label>
                                     <input
                                         name="access_override_until"
-                                        type="date"
+                                        type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                         defaultValue={fields?.access_override_until || ''}
                                         className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                                     />

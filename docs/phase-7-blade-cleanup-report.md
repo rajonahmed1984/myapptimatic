@@ -1,15 +1,14 @@
 # Phase 7 Blade Cleanup Report
 
-- Generated at: 2026-02-25T16:09:04+06:00
+- Generated at: 2026-02-26T04:03:49+06:00
 - Dry run: no
-- Selected: 3
+- Selected: 1
 - Eligible: 1
-- Blocked: 2
+- Blocked: 0
 - Deleted: 1
 
 ## Deleted Views
-- `layouts.app`
+- `projects.task-detail-clickup`
 
 ## Blocked Views
-- `errors.403` (protected-view)
-- `errors.500` (protected-view)
+- None.

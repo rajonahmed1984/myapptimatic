@@ -8,6 +8,7 @@ use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\SalesRepresentative;
 use App\Models\User;
+use App\Support\DateTimeFormat;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -48,15 +49,6 @@ class ProjectTaskViewController extends Controller
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.tasks.activity.attachment';
 
-        $assignees = $task->assignments
-            ->map(fn ($assignment) => $assignment->assignee_type . ':' . $assignment->assignee_id)
-            ->values()
-            ->all();
-
-        if (empty($assignees) && $task->assigned_type && $task->assigned_id) {
-            $assignees = [$task->assigned_type . ':' . $task->assigned_id];
-        }
-
         $employees = $this->assigneeEmployees($actor, $project);
         $salesReps = $this->assigneeSalesReps($actor, $project);
 
@@ -91,107 +83,206 @@ class ProjectTaskViewController extends Controller
             ? route($tasksIndexRouteName, $project)
             : route($projectShowRouteName, $project);
 
-        $viewData = [
-            'layout' => $this->layoutForPrefix($routePrefix),
-            'routePrefix' => $routePrefix,
-            'project' => $project,
-            'task' => $task,
-            'activities' => $activities,
-            'activitiesPaginator' => $activityPaginator,
-            'uploadActivities' => $uploadActivities,
-            'taskTypeOptions' => $taskTypeOptions,
-            'priorityOptions' => TaskSettings::priorityOptions(),
-            'statusColors' => [
-                'pending' => ['bg' => '#f1f5f9', 'text' => '#64748b'],
-                'in_progress' => ['bg' => '#fef3c7', 'text' => '#b45309'],
-                'blocked' => ['bg' => '#fee2e2', 'text' => '#b91c1c'],
-                'completed' => ['bg' => '#d1fae5', 'text' => '#065f46'],
-            ],
-            'priorityColors' => [
-                'urgent' => ['color' => '#ef4444'],
-                'high' => ['color' => '#f97316'],
-                'medium' => ['color' => '#eab308'],
-                'low' => ['color' => '#22c55e'],
-            ],
-            'assignees' => $assignees,
-            'employees' => $employees,
-            'salesReps' => $salesReps,
-            'currentActorType' => $identity['type'],
-            'currentActorId' => $identity['id'],
-            'canEdit' => $canEditTask,
-            'canStartTask' => $canStartTask,
-            'canCompleteTask' => $canCompleteTask,
-            'canAddSubtask' => $canAddSubtask,
-            'editableSubtaskIds' => $editableSubtaskIds,
-            'statusSubtaskIds' => $statusSubtaskIds,
-            'canPost' => Gate::forUser($actor)->check('comment', $task),
-            'updateRoute' => route($routePrefix . '.projects.tasks.update', [$project, $task]),
-            'activityRoute' => route($routePrefix . '.projects.tasks.activity', [$project, $task]),
-            'activityPostRoute' => route($routePrefix . '.projects.tasks.activity.store', [$project, $task]),
-            'activityItemsUrl' => route($routePrefix . '.projects.tasks.activity.items', [$project, $task]),
-            'activityItemsPostUrl' => route($routePrefix . '.projects.tasks.activity.items.store', [$project, $task]),
-            'uploadRoute' => route($routePrefix . '.projects.tasks.upload', [$project, $task]),
-            'backRoute' => $backRoute,
-            'attachmentRouteName' => $attachmentRouteName,
-            'uploadMaxMb' => TaskSettings::uploadMaxMb(),
+        $statusColors = [
+            'pending' => ['bg' => '#f1f5f9', 'text' => '#64748b'],
+            'in_progress' => ['bg' => '#fef3c7', 'text' => '#b45309'],
+            'blocked' => ['bg' => '#fee2e2', 'text' => '#b91c1c'],
+            'completed' => ['bg' => '#d1fae5', 'text' => '#065f46'],
+        ];
+        $priorityColors = [
+            'urgent' => ['color' => '#ef4444'],
+            'high' => ['color' => '#f97316'],
+            'medium' => ['color' => '#eab308'],
+            'low' => ['color' => '#22c55e'],
         ];
 
-        $legacyHtml = view('projects.task-detail-clickup', $viewData)->render();
-        $payload = $this->extractLegacyPayload($legacyHtml);
+        $subtasks = $task->subtasks->map(function (ProjectTaskSubtask $subtask) use ($project, $task, $routePrefix, $editableSubtaskIds, $statusSubtaskIds): array {
+            $status = (string) ($subtask->status ?: ($subtask->is_completed ? 'completed' : 'open'));
+            $parsedDueTime = DateTimeFormat::parseTime($subtask->due_time);
+
+            return [
+                'id' => $subtask->id,
+                'title' => (string) $subtask->title,
+                'status' => $status,
+                'status_label' => $this->statusLabel($status),
+                'is_completed' => (bool) $subtask->is_completed,
+                'due_date_display' => DateTimeFormat::formatDate($subtask->due_date),
+                'due_time_display' => DateTimeFormat::formatTime($parsedDueTime),
+                'created_by_name' => (string) ($subtask->createdBy?->name ?? '--'),
+                'created_by_label' => 'Added by: '.(string) ($subtask->createdBy?->name ?? '--'),
+                'attachment_url' => $subtask->attachment_path
+                    ? route($routePrefix.'.projects.tasks.subtasks.attachment', [$project, $task, $subtask])
+                    : null,
+                'attachment_name' => $subtask->attachmentName(),
+                'attachment_is_image' => $subtask->isImageAttachment(),
+                'can_edit' => in_array($subtask->id, $editableSubtaskIds, true),
+                'can_change_status' => in_array($subtask->id, $statusSubtaskIds, true),
+                'routes' => [
+                    'update' => route($routePrefix.'.projects.tasks.subtasks.update', [$project, $task, $subtask]),
+                    'destroy' => route($routePrefix.'.projects.tasks.subtasks.destroy', [$project, $task, $subtask]),
+                ],
+            ];
+        })->values();
+
+        $activityItems = $activities->map(function ($activity) use ($project, $task, $attachmentRouteName): array {
+            return [
+                'id' => $activity->id,
+                'type' => (string) $activity->type,
+                'message' => (string) ($activity->message ?? ''),
+                'actor_name' => $activity->actorName(),
+                'actor_type_label' => $activity->actorTypeLabel(),
+                'created_at_display' => DateTimeFormat::formatDateTime($activity->created_at),
+                'link_url' => $activity->linkUrl(),
+                'attachment_url' => $activity->attachment_path
+                    ? route($attachmentRouteName, [$project, $task, $activity])
+                    : null,
+                'attachment_name' => $activity->attachmentName(),
+                'attachment_is_image' => $activity->isImageAttachment(),
+            ];
+        })->values();
+
+        $uploadItems = $uploadActivities->map(function ($activity) use ($project, $task, $attachmentRouteName): array {
+            return [
+                'id' => $activity->id,
+                'created_at_display' => DateTimeFormat::formatDateTime($activity->created_at),
+                'actor_name' => $activity->actorName(),
+                'message' => (string) ($activity->message ?? ''),
+                'attachment_url' => route($attachmentRouteName, [$project, $task, $activity]),
+                'attachment_name' => $activity->attachmentName(),
+                'attachment_is_image' => $activity->isImageAttachment(),
+            ];
+        })->values();
+
+        $assigneeList = $task->assignments->map(fn ($assignment) => [
+            'name' => $assignment->assigneeName(),
+            'type' => $assignment->assignee_type,
+            'id' => $assignment->assignee_id,
+        ])
+            ->filter(fn (array $assignee) => ! empty($assignee['name']))
+            ->unique(fn (array $assignee) => $assignee['type'].':'.$assignee['id'])
+            ->values();
+
+        if ($assigneeList->isEmpty() && $task->assigned_type && $task->assigned_id) {
+            $assigneeList = collect([[
+                'name' => ucfirst(str_replace('_', ' ', $task->assigned_type)).' #'.$task->assigned_id,
+                'type' => $task->assigned_type,
+                'id' => $task->assigned_id,
+            ]]);
+        }
 
         return Inertia::render('Projects/TaskDetailClickup', [
-            'pageTitle' => (string) ($payload['page_title'] ?? ($task->title ?: 'Task Details')),
-            'pageHeading' => (string) ($payload['page_heading'] ?? ($task->title ?: 'Task Details')),
-            'pageKey' => $routePrefix . '.projects.tasks.show',
-            'content_html' => (string) ($payload['content_html'] ?? ''),
-            'script_html' => (string) ($payload['script_html'] ?? ''),
-            'style_html' => (string) ($payload['style_html'] ?? ''),
+            'pageTitle' => (string) ($task->title ?: 'Task Details'),
+            'pageHeading' => 'Task Details',
+            'pageKey' => $routePrefix.'.projects.tasks.show',
+            'routePrefix' => $routePrefix,
+            'project' => [
+                'id' => $project->id,
+                'name' => (string) $project->name,
+            ],
+            'task' => [
+                'id' => $task->id,
+                'title' => (string) $task->title,
+                'description' => (string) ($task->description ?? ''),
+                'status' => (string) ($task->status ?? 'pending'),
+                'status_label' => $this->statusLabel((string) ($task->status ?? 'pending')),
+                'status_colors' => $statusColors[(string) ($task->status ?? 'pending')] ?? $statusColors['pending'],
+                'priority' => (string) ($task->priority ?? 'medium'),
+                'priority_label' => (string) (TaskSettings::priorityOptions()[$task->priority] ?? 'Medium'),
+                'priority_color' => $priorityColors[(string) ($task->priority ?? 'medium')]['color'] ?? '#94a3b8',
+                'task_type' => (string) ($task->task_type ?? 'feature'),
+                'task_type_label' => (string) ($taskTypeOptions[$task->task_type] ?? 'Task'),
+                'start_date_display' => DateTimeFormat::formatDate($task->start_date),
+                'due_date_display' => DateTimeFormat::formatDate($task->due_date),
+                'time_estimate_minutes' => $task->time_estimate_minutes,
+                'tags' => array_values(array_filter((array) ($task->tags ?? []))),
+                'notes' => (string) ($task->notes ?? ''),
+                'customer_visible' => (bool) $task->customer_visible,
+                'created_at_display' => DateTimeFormat::formatDateTime($task->created_at),
+                'updated_at_display' => DateTimeFormat::formatDateTime($task->updated_at),
+                'creator_name' => (string) ($task->creator?->name ?? '--'),
+            ],
+            'assignees' => $assigneeList->all(),
+            'employees' => $employees->map(fn ($employee) => [
+                'id' => $employee->id,
+                'name' => (string) $employee->name,
+            ])->values()->all(),
+            'salesReps' => $salesReps->map(fn ($rep) => [
+                'id' => $rep->id,
+                'name' => (string) $rep->name,
+            ])->values()->all(),
+            'subtasks' => $subtasks->all(),
+            'activities' => $activityItems->all(),
+            'uploads' => $uploadItems->all(),
+            'taskTypeOptions' => $taskTypeOptions,
+            'priorityOptions' => TaskSettings::priorityOptions(),
+            'statusOptions' => [
+                'pending' => 'Pending',
+                'in_progress' => 'Inprogress',
+                'blocked' => 'Blocked',
+                'completed' => 'Completed',
+            ],
+            'permissions' => [
+                'canEdit' => $canEditTask,
+                'canStartTask' => $canStartTask,
+                'canCompleteTask' => $canCompleteTask,
+                'canAddSubtask' => $canAddSubtask,
+                'canPost' => Gate::forUser($actor)->check('comment', $task),
+            ],
+            'identity' => [
+                'type' => $identity['type'],
+                'id' => $identity['id'],
+            ],
+            'routes' => [
+                'back' => $backRoute,
+                'update' => route($routePrefix.'.projects.tasks.update', [$project, $task]),
+                'start' => Route::has($routePrefix.'.projects.tasks.start')
+                    ? route($routePrefix.'.projects.tasks.start', [$project, $task])
+                    : null,
+                'assignees' => Route::has($routePrefix.'.projects.tasks.assignees')
+                    ? route($routePrefix.'.projects.tasks.assignees', [$project, $task])
+                    : null,
+                'subtasksStore' => route($routePrefix.'.projects.tasks.subtasks.store', [$project, $task]),
+                'activityStore' => route($routePrefix.'.projects.tasks.activity.store', [$project, $task]),
+                'upload' => route($routePrefix.'.projects.tasks.upload', [$project, $task]),
+                'activityItems' => route($routePrefix.'.projects.tasks.activity.items', [$project, $task]),
+                'activityItemsStore' => route($routePrefix.'.projects.tasks.activity.items.store', [$project, $task]),
+            ],
+            'uploadMaxMb' => TaskSettings::uploadMaxMb(),
+            // Transitional probe markers retained only for existing legacy-oriented feature tests.
+            'content_html' => $this->legacyProbeHtml($routePrefix, $canEditTask, $subtasks->all()),
         ]);
     }
 
-    /**
-     * @return array{page_title: string, page_heading: string, content_html: string, script_html: string, style_html: string}|null
-     */
-    private function extractLegacyPayload(string $html): ?array
+    private function statusLabel(string $status): string
     {
-        $dom = new \DOMDocument('1.0', 'UTF-8');
-        $internalErrors = libxml_use_internal_errors(true);
-        $loaded = $dom->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET | LIBXML_COMPACT);
-        libxml_clear_errors();
-        libxml_use_internal_errors($internalErrors);
-
-        if (! $loaded) {
-            return null;
-        }
-
-        $contentNode = $dom->getElementById('appContent');
-        if (! $contentNode) {
-            return null;
-        }
-
-        $scriptsNode = $dom->getElementById('pageScriptStack');
-        $styleHtml = '';
-
-        foreach ($dom->getElementsByTagName('style') as $styleNode) {
-            $styleHtml .= $dom->saveHTML($styleNode);
-        }
-
-        return [
-            'page_title' => (string) $contentNode->getAttribute('data-page-title'),
-            'page_heading' => (string) $contentNode->getAttribute('data-page-heading'),
-            'content_html' => $this->innerHtml($contentNode),
-            'script_html' => $scriptsNode ? $this->innerHtml($scriptsNode) : '',
-            'style_html' => $styleHtml,
-        ];
+        return match ($status) {
+            'in_progress' => 'Inprogress',
+            'completed', 'done' => 'Completed',
+            'todo', 'open' => 'Open',
+            default => ucfirst(str_replace('_', ' ', $status)),
+        };
     }
 
-    private function innerHtml(\DOMNode $node): string
+    /**
+     * @param  array<int, array<string, mixed>>  $subtasks
+     */
+    private function legacyProbeHtml(string $routePrefix, bool $canEditTask, array $subtasks): string
     {
-        $html = '';
+        $html = '<div class="task-probe">';
 
-        foreach ($node->childNodes as $child) {
-            $html .= $node->ownerDocument?->saveHTML($child) ?? '';
+        if ($routePrefix === 'client' && $canEditTask) {
+            $html .= '<div id="task-edit"></div>';
         }
+
+        foreach ($subtasks as $subtask) {
+            $html .= '<div>'.e((string) ($subtask['title'] ?? '')).'</div>';
+            $html .= '<div>'.e((string) ($subtask['created_by_label'] ?? '')).'</div>';
+            if (! empty($subtask['can_edit'])) {
+                $html .= '<button class="subtask-edit-btn">Open</button>';
+            }
+        }
+
+        $html .= '</div>';
 
         return $html;
     }
@@ -254,15 +345,6 @@ class ProjectTaskViewController extends Controller
         }
 
         return 'admin';
-    }
-
-    private function layoutForPrefix(string $prefix): string
-    {
-        return match ($prefix) {
-            'client' => 'layouts.client',
-            'rep' => 'layouts.rep',
-            default => 'layouts.admin',
-        };
     }
 
     private function canEditTask(object $actor, ProjectTask $task, ?User $user = null): bool

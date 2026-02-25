@@ -161,7 +161,7 @@ export default function Index({
                     </div>
                     <div className="md:col-span-1">
                         <input
-                            type="date"
+                            type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                             name="effective_from"
                             defaultValue={rate_form?.effective_from || ''}
                             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
@@ -170,7 +170,7 @@ export default function Index({
                     </div>
                     <div className="md:col-span-1">
                         <input
-                            type="date"
+                            type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                             name="effective_to"
                             defaultValue={rate_form?.effective_to || ''}
                             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"

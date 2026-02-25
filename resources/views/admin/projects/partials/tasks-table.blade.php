@@ -65,7 +65,7 @@
                         <td class="px-4 py-3 text-slate-600 whitespace-nowrap font-semibold">{{ $task->id ?? '--' }}</td>
                         <td class="px-4 py-3 text-slate-500 whitespace-nowrap">
                             <div class="whitespace-nowrap">{{ $task->created_at?->format($globalDateFormat) ?? '--' }}</div>
-                            <div class="text-xs text-slate-400 whitespace-nowrap">{{ $task->created_at?->format('H:i') ?? '--' }}</div>
+                            <div class="text-xs text-slate-400 whitespace-nowrap">{{ $task->created_at?->format($globalTimeFormat ?? 'h:i A') ?? '--' }}</div>
                         </td>
                         <td class="px-4 py-3">
                             <div class="font-semibold text-slate-900">

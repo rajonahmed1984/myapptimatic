@@ -107,19 +107,19 @@ class DashboardController extends Controller
             'payrollToPay' => $payrollToPay,
             'recentWorkLogs' => $recentWorkLogs->map(fn (EmployeeWorkSession $log) => [
                 'employee_name' => $log->employee?->name ?? '--',
-                'work_date' => $log->work_date?->format('Y-m-d') ?? '--',
+                'work_date' => $log->work_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 'active_hours' => number_format(((int) ($log->active_seconds ?? 0)) / 3600, 2),
             ])->values(),
             'recentLeaveRequests' => $recentLeaveRequests->map(fn (LeaveRequest $leave) => [
                 'employee_name' => $leave->employee?->name ?? '--',
                 'leave_type' => $leave->leaveType?->name ?? 'Leave',
                 'status' => ucfirst((string) $leave->status),
-                'start_date' => $leave->start_date?->format('Y-m-d') ?? '--',
+                'start_date' => $leave->start_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
             ])->values(),
             'recentAttendance' => $recentAttendance->map(fn (EmployeeAttendance $attendance) => [
                 'employee_name' => $attendance->employee?->name ?? '--',
                 'status' => ucfirst(str_replace('_', ' ', (string) $attendance->status)),
-                'date' => $attendance->date?->format('Y-m-d') ?? '--',
+                'date' => $attendance->date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
             ])->values(),
             'currentMonth' => Carbon::now()->format('Y-m'),
             'routes' => [

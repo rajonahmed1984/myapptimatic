@@ -29,11 +29,11 @@ class LeaveRequestController extends Controller
                 return [
                     'id' => $leave->id,
                     'type_name' => $leave->leaveType?->name ?? '--',
-                    'start_date_display' => $leave->start_date?->format(config('app.date_format', 'Y-m-d')) ?? '--',
-                    'end_date_display' => $leave->end_date?->format(config('app.date_format', 'Y-m-d')) ?? '--',
+                    'start_date_display' => $leave->start_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                    'end_date_display' => $leave->end_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'total_days' => (int) ($leave->total_days ?? 0),
                     'status_label' => ucfirst((string) $leave->status),
-                    'approved_at_display' => $leave->approved_at?->format(config('app.date_format', 'Y-m-d').' H:i') ?? '--',
+                    'approved_at_display' => $leave->approved_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values()->all(),
             'leave_types' => $leaveTypes->map(fn (LeaveType $type) => [

@@ -567,7 +567,7 @@
                             <tbody>
                                 @foreach($emailLogs as $log)
                                     <tr class="border-b border-slate-100">
-                                        <td class="px-4 py-3 text-slate-500">{{ $log->created_at?->format($globalDateFormat.' H:i') ?? '--' }}</td>
+                                        <td class="px-4 py-3 text-slate-500">{{ $log->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--' }}</td>
                                         <td class="px-4 py-3 text-slate-700">{{ $log->context['subject'] ?? $log->message }}</td>
                                         <td class="px-4 py-3 text-right">
                                             <div class="flex flex-wrap items-center justify-end gap-2">
@@ -624,7 +624,7 @@
                                         };
                                     @endphp
                                     <tr class="border-b border-slate-100">
-                                        <td class="px-4 py-3 text-slate-500">{{ $log->created_at?->format($globalDateFormat.' H:i') ?? '--' }}</td>
+                                        <td class="px-4 py-3 text-slate-500">{{ $log->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--' }}</td>
                                         <td class="px-4 py-3 text-slate-600">{{ ucfirst($log->category) }}</td>
                                         <td class="px-4 py-3">
                                             <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $levelClasses }}">{{ strtoupper($level) }}</span>

@@ -110,7 +110,7 @@ export default function Form({
                         <div>
                             <label className="text-xs text-slate-500">Start date</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="start_date"
                                 defaultValue={form.start_date ?? ''}
                                 required
@@ -122,7 +122,7 @@ export default function Form({
                         <div>
                             <label className="text-xs text-slate-500">End date (optional)</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="end_date"
                                 defaultValue={form.end_date ?? ''}
                                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"

@@ -74,9 +74,13 @@ class DateTimeFormat
         ];
 
         foreach ($formats as $format) {
-            $parsed = CarbonImmutable::createFromFormat($format, $value, $timezone);
-            if ($parsed && $parsed->format($format) === $value) {
-                return $parsed->startOfDay();
+            try {
+                $parsed = CarbonImmutable::createFromFormat($format, $value, $timezone);
+                if ($parsed && $parsed->format($format) === $value) {
+                    return $parsed->startOfDay();
+                }
+            } catch (\Throwable) {
+                continue;
             }
         }
 
@@ -100,9 +104,13 @@ class DateTimeFormat
         ];
 
         foreach ($formats as $format) {
-            $parsed = CarbonImmutable::createFromFormat($format, $value, $timezone);
-            if ($parsed && $parsed->format($format) === $value) {
-                return $parsed;
+            try {
+                $parsed = CarbonImmutable::createFromFormat($format, $value, $timezone);
+                if ($parsed && $parsed->format($format) === $value) {
+                    return $parsed;
+                }
+            } catch (\Throwable) {
+                continue;
             }
         }
 
@@ -128,9 +136,13 @@ class DateTimeFormat
         ];
 
         foreach ($formats as $format) {
-            $parsed = CarbonImmutable::createFromFormat($format, $value, $timezone);
-            if ($parsed && $parsed->format($format) === $value) {
-                return $parsed;
+            try {
+                $parsed = CarbonImmutable::createFromFormat($format, $value, $timezone);
+                if ($parsed && $parsed->format($format) === $value) {
+                    return $parsed;
+                }
+            } catch (\Throwable) {
+                continue;
             }
         }
 

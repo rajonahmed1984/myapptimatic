@@ -20,7 +20,7 @@
 
     <div>
         <label class="text-sm text-slate-600">Entry date</label>
-        <input name="entry_date" type="date" value="{{ old('entry_date', optional($entry?->entry_date)->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+        <input name="entry_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" value="{{ old('entry_date', optional($entry?->entry_date)->format(config('app.date_format', 'd-m-Y')) ?? now()->format(config('app.date_format', 'd-m-Y'))) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
     </div>
 
     <div>

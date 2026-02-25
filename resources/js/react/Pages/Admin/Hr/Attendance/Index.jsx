@@ -29,7 +29,7 @@ export default function Index({
                 <form method="GET" action={routes?.index} data-native="true" className="mb-5 flex flex-wrap items-end gap-2">
                     <div>
                         <label htmlFor="attendanceDate" className="text-xs uppercase tracking-[0.2em] text-slate-500">Date</label>
-                        <input id="attendanceDate" type="date" name="date" defaultValue={selectedDate} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input id="attendanceDate" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="date" defaultValue={selectedDate} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                     </div>
                     <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Load</button>
                     <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Today</a>

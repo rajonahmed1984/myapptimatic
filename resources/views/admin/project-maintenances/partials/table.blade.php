@@ -41,7 +41,7 @@
                             </td>
                             <td class="px-4 py-3">{{ $maintenance->title }}</td>
                             <td class="px-4 py-3">{{ ucfirst($maintenance->billing_cycle) }}</td>
-                            <td class="px-4 py-3 text-xs text-slate-600">{{ $maintenance->next_billing_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
+                            <td class="px-4 py-3 text-xs text-slate-600">{{ $maintenance->next_billing_date?->format($globalDateFormat ?? 'd-m-Y') ?? '--' }}</td>
                             <td class="px-4 py-3">
                                 <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ $maintenance->status === 'active' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : ($maintenance->status === 'paused' ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-slate-200 text-slate-600 bg-slate-50') }}">
                                     {{ ucfirst($maintenance->status) }}

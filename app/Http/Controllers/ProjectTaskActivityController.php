@@ -6,12 +6,11 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskActivity;
-use App\Models\SalesRepresentative;
 use App\Http\Requests\StoreTaskActivityRequest;
+use App\Support\DateTimeFormat;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskSettings;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -22,7 +21,7 @@ use Illuminate\Support\Str;
 
 class ProjectTaskActivityController extends Controller
 {
-    public function index(Request $request, Project $project, ProjectTask $task): JsonResponse|Response
+    public function index(Request $request, Project $project, ProjectTask $task): JsonResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $actor = $this->resolveActor($request);
@@ -33,23 +32,6 @@ class ProjectTaskActivityController extends Controller
             ->latest('created_at')
             ->paginate(30)
             ->withQueryString();
-
-        $activities = $activityPaginator->getCollection()->reverse()->values();
-
-        $identity = $this->resolveActorIdentity($request);
-        $routePrefix = $this->resolveRoutePrefix($request);
-        $attachmentRouteName = $routePrefix . '.projects.tasks.activity.attachment';
-
-        if ($request->boolean('partial')) {
-            return response()->view('projects.partials.task-activity-feed', [
-                'activities' => $activities,
-                'project' => $project,
-                'task' => $task,
-                'attachmentRouteName' => $attachmentRouteName,
-                'currentActorType' => $identity['type'],
-                'currentActorId' => $identity['id'],
-            ]);
-        }
 
         return response()->json($activityPaginator->items());
     }
@@ -80,7 +62,6 @@ class ProjectTaskActivityController extends Controller
             $activities = $activities->reverse()->values();
         }
 
-        $identity = $this->resolveActorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.tasks.activity.attachment';
 
@@ -88,8 +69,7 @@ class ProjectTaskActivityController extends Controller
             $activity,
             $project,
             $task,
-            $attachmentRouteName,
-            $identity
+            $attachmentRouteName
         ))->values();
 
         $nextAfterId = $activities->max('id') ?? $afterId;
@@ -159,7 +139,6 @@ class ProjectTaskActivityController extends Controller
 
         collect($activities)->each->load(['userActor', 'employeeActor', 'salesRepActor']);
 
-        $identity = $this->resolveActorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.tasks.activity.attachment';
 
@@ -169,8 +148,7 @@ class ProjectTaskActivityController extends Controller
                 $activity,
                 $project,
                 $task,
-                $attachmentRouteName,
-                $identity
+                $attachmentRouteName
             ))
             ->values();
 
@@ -277,26 +255,6 @@ class ProjectTaskActivityController extends Controller
         abort(403, 'Authentication required.');
     }
 
-    private function resolveActorIdentity(Request $request): array
-    {
-        $employee = $request->attributes->get('employee');
-        if ($employee instanceof Employee) {
-            return ['type' => 'employee', 'id' => $employee->id];
-        }
-
-        $salesRep = $request->attributes->get('salesRep');
-        if ($salesRep instanceof SalesRepresentative) {
-            return ['type' => 'sales_rep', 'id' => $salesRep->id];
-        }
-
-        $user = $request->user();
-        if ($user?->isAdmin()) {
-            return ['type' => 'admin', 'id' => $user?->id];
-        }
-
-        return ['type' => 'client', 'id' => $user?->id];
-    }
-
     private function resolveRoutePrefix(Request $request): string
     {
         $name = (string) $request->route()?->getName();
@@ -331,19 +289,25 @@ class ProjectTaskActivityController extends Controller
         ProjectTaskActivity $activity,
         Project $project,
         ProjectTask $task,
-        string $attachmentRouteName,
-        array $identity
+        string $attachmentRouteName
     ): array {
         return [
             'id' => $activity->id,
-            'html' => view('projects.partials.task-activity-item', [
-                'activity' => $activity,
-                'project' => $project,
-                'task' => $task,
-                'attachmentRouteName' => $attachmentRouteName,
-                'currentActorType' => $identity['type'],
-                'currentActorId' => $identity['id'],
-            ])->render(),
+            'activity' => [
+                'id' => $activity->id,
+                'type' => (string) $activity->type,
+                'message' => (string) ($activity->message ?? ''),
+                'actor_name' => $activity->actorName(),
+                'actor_type_label' => $activity->actorTypeLabel(),
+                'created_at' => $activity->created_at?->toIso8601String(),
+                'created_at_display' => DateTimeFormat::formatDateTime($activity->created_at),
+                'link_url' => $activity->linkUrl(),
+                'attachment_url' => $activity->attachment_path
+                    ? route($attachmentRouteName, [$project, $task, $activity])
+                    : null,
+                'attachment_name' => $activity->attachmentName(),
+                'attachment_is_image' => $activity->isImageAttachment(),
+            ],
         ];
     }
 }

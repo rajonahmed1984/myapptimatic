@@ -38,14 +38,14 @@ class AttendanceController extends Controller
 
         return Inertia::render('Employee/Attendance/Index', [
             'attendances' => $attendances->getCollection()->map(function (EmployeeAttendance $attendance) {
-                $dateFormat = config('app.date_format', 'Y-m-d');
+                $dateFormat = config('app.date_format', 'd-m-Y');
 
                 return [
                     'date_display' => $attendance->date?->format($dateFormat) ?? '--',
                     'status_label' => ucfirst(str_replace('_', ' ', (string) $attendance->status)),
                     'note' => $attendance->note ?? '--',
                     'recorder_name' => $attendance->recorder?->name ?? '--',
-                    'updated_at_display' => $attendance->updated_at?->format($dateFormat.' H:i') ?? '--',
+                    'updated_at_display' => $attendance->updated_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values()->all(),
             'selected_month' => $selectedMonth,

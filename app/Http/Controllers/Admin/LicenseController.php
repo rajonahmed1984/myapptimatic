@@ -295,7 +295,7 @@ class LicenseController extends Controller
         }
 
         $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
-        $displayAt = $syncAt ? $syncAt->format($dateFormat.' H:i') : 'No sync yet';
+        $displayAt = $syncAt ? $syncAt->format(config('app.datetime_format', 'd-m-Y h:i A')) : 'No sync yet';
 
         return response()->json([
             'ok' => true,
@@ -417,7 +417,7 @@ class LicenseController extends Controller
                     'license_status' => (string) $license->status,
                     'sync_label' => $syncLabel,
                     'sync_class' => $syncClass,
-                    'sync_time_display' => $syncAt ? $syncAt->format($dateFormat.' H:i') : 'No sync yet',
+                    'sync_time_display' => $syncAt ? $syncAt->format(config('app.datetime_format', 'd-m-Y h:i A')) : 'No sync yet',
                     'can_sync' => (bool) ($request->user()?->can('update', $license)),
                     'routes' => [
                         'edit' => route('admin.licenses.edit', $license),

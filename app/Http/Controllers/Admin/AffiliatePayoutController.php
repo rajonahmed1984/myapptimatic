@@ -45,8 +45,8 @@ class AffiliatePayoutController extends Controller
                     'amount_display' => '$' . number_format((float) $payout->amount, 2),
                     'status' => (string) $payout->status,
                     'status_label' => ucfirst((string) $payout->status),
-                    'created_at_display' => $payout->created_at?->format('M d, Y H:i') ?? '--',
-                    'completed_at_display' => $payout->completed_at?->format('M d, Y H:i') ?? '--',
+                    'created_at_display' => $payout->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
+                    'completed_at_display' => $payout->completed_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                     'routes' => [
                         'show' => route('admin.affiliates.payouts.show', $payout),
                     ],
@@ -179,8 +179,8 @@ class AffiliatePayoutController extends Controller
                 'payment_method' => (string) ($payout->payment_method ?? '--'),
                 'payment_details' => (string) ($payout->payment_details ?? '--'),
                 'notes' => (string) ($payout->notes ?? '--'),
-                'created_at_display' => $payout->created_at?->format('M d, Y H:i') ?? '--',
-                'completed_at_display' => $payout->completed_at?->format('M d, Y H:i') ?? '--',
+                'created_at_display' => $payout->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
+                'completed_at_display' => $payout->completed_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
             ],
             'commissions' => $payout->commissions->map(function (AffiliateCommission $commission) {
                 return [

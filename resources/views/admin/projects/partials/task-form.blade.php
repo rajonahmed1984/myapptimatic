@@ -48,11 +48,11 @@
                 </div>
                 <div>
                     <label class="text-xs uppercase tracking-[0.2em] text-slate-500">Start date</label>
-                    <input type="date" name="start_date" value="{{ old('start_date', now()->toDateString()) }}" required class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                    <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" value="{{ old('start_date', now()->format(config('app.date_format', 'd-m-Y'))) }}" required class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                 </div>
                 <div>
                     <label class="text-xs uppercase tracking-[0.2em] text-slate-500">Due date</label>
-                    <input type="date" name="due_date" value="{{ old('due_date') }}" required class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                    <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="due_date" value="{{ old('due_date') }}" required class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                 </div>
             @endif
 

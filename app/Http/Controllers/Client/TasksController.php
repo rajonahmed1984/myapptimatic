@@ -79,7 +79,7 @@ class TasksController extends Controller
                     'title' => $task->title,
                     'description' => $task->description,
                     'created_date' => $task->created_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
-                    'created_time' => $task->created_at?->format('H:i') ?? '--',
+                    'created_time' => $task->created_at?->format(config('app.time_format', 'h:i A')) ?? '--',
                     'status' => $currentStatus,
                     'status_label' => $statusLabels[$currentStatus] ?? ucfirst(str_replace('_', ' ', $currentStatus)),
                     'project' => $task->project ? [

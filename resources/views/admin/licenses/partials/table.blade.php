@@ -111,7 +111,7 @@
                             <div class="mt-1 text-xs text-slate-500">
                                 {{ $verificationHint }}
                                 <span class="mt-1 text-xs text-slate-500" data-sync-time="{{ $license->id }}">
-                                    {{ $syncAt ? $syncAt->format($globalDateFormat.' H:i') : 'No sync yet' }}
+                                    {{ $syncAt ? $syncAt->format(config('app.datetime_format', 'd-m-Y h:i A')) : 'No sync yet' }}
                                 </span>
                             </div>
                             

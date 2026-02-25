@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import { formatDate } from '@/react/utils/datetime';
 
 function formatCurrency(code, amount) {
     const value = Number.parseFloat(amount ?? 0);
@@ -320,7 +321,7 @@ export default function Create({
                             <div>
                                 <label className="text-xs text-slate-500">Expense date</label>
                                 <input
-                                    type="date"
+                                    type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                     name="expense_date"
                                     defaultValue={form?.expense_date ?? ''}
                                     required
@@ -436,9 +437,9 @@ export default function Create({
                         <div>
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Date</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="paid_at"
-                                defaultValue={new Date().toISOString().slice(0, 10)}
+                                defaultValue={formatDate(new Date())}
                                 className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                                 required
                             />

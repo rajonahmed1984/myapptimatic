@@ -54,7 +54,7 @@ class PayrollController extends Controller
                 $netPayableByItem,
                 $remainingByItem
             ) {
-                $dateFormat = config('app.date_format', 'Y-m-d');
+                $dateFormat = config('app.date_format', 'd-m-Y');
 
                 return [
                     'id' => $item->id,
@@ -68,7 +68,7 @@ class PayrollController extends Controller
                     'paid' => (float) ($paidAmountByItem[$item->id] ?? 0),
                     'remaining' => (float) ($remainingByItem[$item->id] ?? 0),
                     'status_label' => ucfirst((string) $item->status),
-                    'paid_at_display' => $item->paid_at?->format($dateFormat.' H:i') ?? '--',
+                    'paid_at_display' => $item->paid_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                     'currency' => $item->currency,
                 ];
             })->values()->all(),

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import { formatDate } from '@/react/utils/datetime';
 
 const statusClass = (status) => {
     if (status === 'active') {
@@ -264,9 +265,9 @@ export default function Index({
                                 </label>
                                 <input
                                     id="recurringAdvanceDate"
-                                    type="date"
+                                    type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                     name="paid_at"
-                                    defaultValue={new Date().toISOString().slice(0, 10)}
+                                    defaultValue={formatDate(new Date())}
                                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                                     required
                                 />

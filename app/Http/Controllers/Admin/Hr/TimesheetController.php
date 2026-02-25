@@ -162,15 +162,15 @@ class TimesheetController extends Controller
             ])->values(),
             'dailyLogs' => $dailyLogs->getCollection()->map(function ($log) use ($formatDuration) {
                 $workDate = $log->work_date instanceof Carbon
-                    ? $log->work_date->format('Y-m-d')
-                    : Carbon::parse((string) $log->work_date)->format('Y-m-d');
+                    ? $log->work_date->format(config('app.date_format', 'd-m-Y'))
+                    : Carbon::parse((string) $log->work_date)->format(config('app.date_format', 'd-m-Y'));
 
                 return [
                     'employee_name' => $log->employee?->name ?? '--',
                     'work_date' => $workDate,
                     'sessions_count' => (int) ($log->sessions_count ?? 0),
-                    'first_started_at' => $log->first_started_at ? Carbon::parse((string) $log->first_started_at)->format('H:i:s') : '--',
-                    'last_activity_at' => $log->last_activity_at ? Carbon::parse((string) $log->last_activity_at)->format('H:i:s') : '--',
+                    'first_started_at' => $log->first_started_at ? Carbon::parse((string) $log->first_started_at)->format(config('app.datetime_format', 'd-m-Y h:i A')) : '--',
+                    'last_activity_at' => $log->last_activity_at ? Carbon::parse((string) $log->last_activity_at)->format(config('app.datetime_format', 'd-m-Y h:i A')) : '--',
                     'active_duration' => $formatDuration((int) ($log->active_seconds ?? 0)),
                     'required_duration' => $formatDuration((int) ($log->required_seconds ?? 0)),
                     'coverage_percent' => (int) ($log->coverage_percent ?? 0),

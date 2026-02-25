@@ -1,48 +1,60 @@
 # Phase 7 Final Release Notes
 
-Date: 2026-02-24
-Scope: Blade decommission completion for migrated admin modules
+Date: 2026-02-25  
+Scope: full Blade UI to React + Inertia migration closeout (including Phase D)
 
 ## Summary
 
-- Completed Phase 7 batches 1 through 5.
-- Removed admin Blade fallbacks for migrated modules.
-- Kept existing route names, URLs, guards, permissions, redirects, and validation behavior unchanged.
-- Removed now-unused hybrid scaffolding:
-  - `app/Http/Middleware/ReactUiGate.php`
-  - `app/Support/HybridUiResponder.php`
-  - middleware alias `react.ui` from `bootstrap/app.php`
-- Retained React sandbox feature flag support:
-  - `features.react_sandbox`
-  - `UiFeature::REACT_SANDBOX`
+- UI migration objective reached:
+  - full Blade UI pages remaining: `0`
+  - wrapper-dependent UI routes remaining: `0`
+  - undetected UI routes (`ui_not_detected`): `0`
+- All UI page GET routes are now Inertia-rendered (`204/204`).
+- Chat and task activity flows are now JSON-only payload contracts (no HTML fragment field).
+- Legacy chat/activity Blade pages and partials removed.
+- Route classifier hardened for non-UI buckets (`download/export/media/chat-inline` patterns).
 
-## Verification
+## Verification Snapshot
 
-Command executed:
+Latest migration report:
+- `storage/app/migration-reports/2026-02-25-phase-d-test-method-name-cleanup.json`
 
-- `composer phase7:verify`
+Summary values:
+- `total_routes=566`
+- `total_ui_page_get_routes=204`
+- `converted_ui_pages=204`
+- `remaining_full_blade_ui_pages=0`
+- `remaining_partial_blade_fragments=0`
+- `wrapper_dependent_routes=0`
+- `ui_not_detected=0`
 
-Result:
+Latest gate runs:
+- `php artisan test --filter="(ProjectTaskActivityJsonEndpointTest|ProjectTaskChatJsonEndpointTest|ProjectChatJsonEndpointTest|ProjectTaskChatTest|ProjectChatTest|NoBreakSmokeTest)"` => PASS
+- `npm run build` => PASS
+- `php artisan ui:audit-blade --write` => PASS (`72 total`, `72 referenced`, `0 unreferenced`)
 
-- PASS parity suites for migrated admin modules
-- PASS complex transport contract tests (payment/upload/PDF/SSE headers)
-- PASS smoke tests
-- PASS `npm run build`
-- PASS `php artisan config:cache`
-- PASS `php artisan route:cache`
-- PASS full test suite (`400 passed`, `1618 assertions`)
+## Contract Notes
 
-## Operational Notes
+- Chat/activity JSON contract documentation:
+  - `docs/chat-activity-json-contract.md`
+- Legacy request markers are tolerated but ignored:
+  - `structured=1`
+  - `X-Fragment-Format: structured`
 
-- No controller action contracts were rewritten for payment, upload, PDF, or SSE endpoints.
-- Backend remains canonical; React is UI-only for migrated pages.
-- Sandbox route remains feature-flagged and isolated from legacy AJAX interception.
+## Safety Constraints Preserved
+
+- No behavior change to:
+  - payment callbacks/webhooks
+  - upload endpoints
+  - SSE stream endpoints
+  - download/PDF endpoints
+  - utility redirect/abort endpoints
 
 ## Rollback
 
 If regression appears after deployment:
 
-1. Revert the Phase 7 commit.
+1. Revert the migration closeout commit(s).
 2. Run:
    - `php artisan optimize:clear`
    - `php artisan config:cache`

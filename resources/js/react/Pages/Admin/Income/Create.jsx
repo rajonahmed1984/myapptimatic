@@ -86,7 +86,7 @@ export default function Create({
                         <div>
                             <label className="text-xs text-slate-500">Income date</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="income_date"
                                 required
                                 defaultValue={fields?.income_date ?? ''}

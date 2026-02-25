@@ -195,8 +195,8 @@ class OrderController extends Controller
                     '%s (%s) %s to %s',
                     $plan->name,
                     $plan->interval,
-                    $startDate->format('Y-m-d'),
-                    $periodEnd->format('Y-m-d')
+                    $startDate->format(config('app.date_format', 'd-m-Y')),
+                    $periodEnd->format(config('app.date_format', 'd-m-Y'))
                 ),
                 'quantity' => 1,
                 'unit_price' => $subtotal,

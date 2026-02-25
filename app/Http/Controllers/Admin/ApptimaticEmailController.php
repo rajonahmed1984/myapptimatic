@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\ApptimaticEmailStubRepository;
+use App\Support\DateTimeFormat;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -101,7 +102,7 @@ class ApptimaticEmailController extends Controller
                     'snippet' => (string) ($message['snippet'] ?? ''),
                     'unread' => (bool) ($message['unread'] ?? false),
                     'is_selected' => $selectedMessageId !== '' && $selectedMessageId === $id,
-                    'received_at_display' => $this->formatDate($message['received_at'] ?? null, 'M d, H:i'),
+                    'received_at_display' => $this->formatDate($message['received_at'] ?? null),
                     'routes' => [
                         'show' => route('admin.apptimatic-email.show', ['message' => $id]),
                     ],
@@ -113,7 +114,7 @@ class ApptimaticEmailController extends Controller
                 'sender_email' => (string) ($selectedMessage['sender_email'] ?? ''),
                 'to' => (string) ($selectedMessage['to'] ?? ''),
                 'subject' => (string) ($selectedMessage['subject'] ?? '(No subject)'),
-                'received_at_display' => $this->formatDate($selectedMessage['received_at'] ?? null, 'M d, Y H:i'),
+                'received_at_display' => $this->formatDate($selectedMessage['received_at'] ?? null),
                 'thread_count' => count($threadMessages),
             ] : null,
             'thread_messages' => collect($threadMessages)->map(function (array $threadMessage) {
@@ -124,18 +125,14 @@ class ApptimaticEmailController extends Controller
                     'to' => (string) ($threadMessage['to'] ?? ''),
                     'subject' => (string) ($threadMessage['subject'] ?? '(No subject)'),
                     'body' => (string) ($threadMessage['body'] ?? ''),
-                    'received_at_display' => $this->formatDate($threadMessage['received_at'] ?? null, 'M d, Y H:i'),
+                    'received_at_display' => $this->formatDate($threadMessage['received_at'] ?? null),
                 ];
             })->values()->all(),
         ];
     }
 
-    private function formatDate(mixed $value, string $format): string
+    private function formatDate(mixed $value): string
     {
-        if ($value instanceof \DateTimeInterface) {
-            return $value->format($format);
-        }
-
-        return '';
+        return DateTimeFormat::formatDateTime($value, '');
     }
 }

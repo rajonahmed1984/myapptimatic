@@ -46,7 +46,7 @@ class SupportTicketController extends Controller
                         'closed' => 'bg-slate-100 text-slate-600',
                         default => 'bg-slate-100 text-slate-600',
                     },
-                    'last_reply_at_display' => $ticket->last_reply_at?->format($dateFormat.' H:i') ?: '--',
+                    'last_reply_at_display' => $ticket->last_reply_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?: '--',
                     'routes' => [
                         'show' => route('client.support-tickets.show', $ticket),
                     ],
@@ -166,7 +166,7 @@ class SupportTicketController extends Controller
                     'closed' => 'bg-slate-100 text-slate-600',
                     default => 'bg-slate-100 text-slate-600',
                 },
-                'created_at_display' => $ticket->created_at?->format($dateFormat.' H:i') ?: '--',
+                'created_at_display' => $ticket->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?: '--',
                 'is_closed' => $ticket->isClosed(),
             ],
             'replies' => $ticket->replies->map(function ($reply) use ($dateFormat) {
@@ -174,7 +174,7 @@ class SupportTicketController extends Controller
                     'id' => $reply->id,
                     'is_admin' => (bool) $reply->is_admin,
                     'user_name' => $reply->user?->name ?? ($reply->is_admin ? 'Support' : 'You'),
-                    'created_at_display' => $reply->created_at?->format($dateFormat.' H:i') ?: '--',
+                    'created_at_display' => $reply->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?: '--',
                     'message' => (string) $reply->message,
                     'attachment_url' => $reply->attachmentUrl(),
                     'attachment_name' => $reply->attachmentName(),

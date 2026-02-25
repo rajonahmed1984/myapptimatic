@@ -80,7 +80,7 @@ export default function Index({
                             From Date (Optional)
                         </label>
                         <input
-                            type="date"
+                            type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                             name="from"
                             id="from"
                             defaultValue={filters?.from || ''}
@@ -93,7 +93,7 @@ export default function Index({
                             To Date (Optional)
                         </label>
                         <input
-                            type="date"
+                            type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                             name="to"
                             id="to"
                             defaultValue={filters?.to || ''}

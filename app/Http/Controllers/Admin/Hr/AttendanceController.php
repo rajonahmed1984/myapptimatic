@@ -54,7 +54,7 @@ class AttendanceController extends Controller
                     'status' => $entry?->status ?? ($isPaidHoliday ? 'present' : null),
                     'note' => $entry?->note,
                     'recorder_name' => $entry?->recorder?->name,
-                    'updated_at' => $entry?->updated_at?->format('Y-m-d H:i'),
+                    'updated_at' => $entry?->updated_at?->format(config('app.datetime_format', 'd-m-Y h:i A')),
                 ];
             })->values(),
             'routes' => [

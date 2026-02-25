@@ -11,6 +11,9 @@ class AutomationStatusService
 {
     public function getStatusPayload(): array
     {
+        $dateTimeFormat = (string) config('app.datetime_format', 'd-m-Y h:i A');
+        $timeFormat = (string) config('app.time_format', 'h:i A');
+
         $cronToken = (string) Setting::getValue('cron_token');
         $baseUrl = UrlResolver::portalUrl();
         $cronUrl = $cronToken !== '' ? "{$baseUrl}/cron/billing?token={$cronToken}" : null;
@@ -134,11 +137,11 @@ class AutomationStatusService
             'lastStatus' => $lastStatus,
             'lastError' => $lastError,
             'lastInvocationText' => $lastStarted ? $lastStarted->diffForHumans() : 'Never',
-            'lastInvocationAt' => $lastStarted ? $lastStarted->format('M d, Y H:i:s') : 'Not yet invoked',
+            'lastInvocationAt' => $lastStarted ? $lastStarted->format($dateTimeFormat) : 'Not yet invoked',
             'lastCompletionText' => $lastRun ? $lastRun->diffForHumans() : 'Never',
-            'lastCompletionAt' => $lastRun ? $lastRun->format('M d, Y H:i:s') : 'Not yet completed',
+            'lastCompletionAt' => $lastRun ? $lastRun->format($dateTimeFormat) : 'Not yet completed',
             'nextDailyRunText' => $nextDailyRun ? $nextDailyRun->diffForHumans() : 'Not scheduled',
-            'nextDailyRunAt' => $nextDailyRun ? $nextDailyRun->format('M d, Y H:i:s') : 'No historical run',
+            'nextDailyRunAt' => $nextDailyRun ? $nextDailyRun->format($dateTimeFormat) : 'No historical run',
             'dailyActions' => $dailyActions,
             'cronSetup' => $cronSetup,
             'cronInvoked' => $cronInvoked,
@@ -150,7 +153,7 @@ class AutomationStatusService
             'cronInvocationWindowHours' => $cronInvocationWindowHours,
             'dailyCronWindowHours' => $dailyCronWindowHours,
             'portalTimeZone' => $timeZone,
-            'portalTimeLabel' => $portalTime->format('g:i:s A'),
+            'portalTimeLabel' => $portalTime->format($timeFormat),
             'automationConfig' => $this->automationConfig(),
             'aiHealth' => [
                 'enabled' => $aiEnabled,
@@ -246,9 +249,9 @@ class AutomationStatusService
     private function formatAutomationTime(string $value): string
     {
         try {
-            return Carbon::createFromFormat('H:i', $value)->format('g:ia');
+            return Carbon::createFromFormat('H:i', $value)->format((string) config('app.time_format', 'h:i A'));
         } catch (\Throwable) {
-            return '12:00am';
+            return '12:00 AM';
         }
     }
 

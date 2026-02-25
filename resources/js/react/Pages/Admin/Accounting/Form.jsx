@@ -38,7 +38,7 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Entry Date</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="entry_date"
                                 defaultValue={fields?.entry_date || ''}
                                 className="w-full rounded-lg border border-slate-300 px-3 py-2"

@@ -39,7 +39,7 @@ export default function Index({
                     <div className="section-label">Add paid holiday</div>
                     <form method="POST" action={routes?.store} data-native="true" className="mt-4 grid gap-3 text-sm md:grid-cols-4">
                         <input type="hidden" name="_token" value={csrf} />
-                        <input type="date" name="holiday_date" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
+                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="holiday_date" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
                         <select name="name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm md:col-span-2" required>
                             <option value="">Select holiday type</option>
                             {holidayTypes.map((holidayType) => (

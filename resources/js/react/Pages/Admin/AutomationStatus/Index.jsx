@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import { formatTimeInTimeZone } from '@/react/utils/datetime';
 
 const metricBadgeClass = (okClass, warningClass, value) => (value ? okClass : warningClass);
 
@@ -36,16 +37,11 @@ export default function Index({
     const visibleActions = useMemo(() => enabledActions(dailyActions), [dailyActions]);
 
     useEffect(() => {
-        const formatter = new Intl.DateTimeFormat(undefined, {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
-            timeZone: portalTimeZone || 'UTC',
-        });
-
         const updateTime = () => {
-            setPortalTime(formatter.format(new Date()));
+            const now = new Date();
+            const base = formatTimeInTimeZone(now, portalTimeZone || 'UTC', '--');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            setPortalTime(base === '--' ? '--' : `${base}:${seconds}`);
         };
 
         updateTime();

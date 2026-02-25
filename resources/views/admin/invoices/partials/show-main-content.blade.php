@@ -140,11 +140,11 @@
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Issue date</label>
-                    <input name="issue_date" type="date" value="{{ old('issue_date', $invoice->issue_date->format('Y-m-d')) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <input name="issue_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" value="{{ old('issue_date', $invoice->issue_date->format(config('app.date_format', 'd-m-Y'))) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div>
                     <label class="text-sm text-slate-600">Due date</label>
-                    <input name="due_date" type="date" value="{{ old('due_date', $invoice->due_date->format('Y-m-d')) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                    <input name="due_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" value="{{ old('due_date', $invoice->due_date->format(config('app.date_format', 'd-m-Y'))) }}" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                 </div>
                 <div class="md:col-span-2">
                     <label class="text-sm text-slate-600">Notes</label>

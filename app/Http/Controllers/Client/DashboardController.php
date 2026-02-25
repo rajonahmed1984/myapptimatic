@@ -291,7 +291,7 @@ class DashboardController extends Controller
                     'id' => $message->id,
                     'author_name' => $message->authorName(),
                     'message' => \Illuminate\Support\Str::limit((string) ($message->message ?? 'Attachment'), 120),
-                    'created_at_display' => $message->created_at?->format($dateFormat.' H:i') ?? '--',
+                    'created_at_display' => $message->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values()->all(),
             'showTasksWidget' => (bool) $showTasksWidget,

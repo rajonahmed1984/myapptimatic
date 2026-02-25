@@ -46,8 +46,8 @@ class ExpenseInvoiceController extends Controller
                 if ($item->period) {
                     $notes = sprintf(
                         'Period: %s to %s',
-                        $item->period->start_date?->format('Y-m-d'),
-                        $item->period->end_date?->format('Y-m-d')
+                        $item->period->start_date?->format(config('app.date_format', 'd-m-Y')),
+                        $item->period->end_date?->format(config('app.date_format', 'd-m-Y'))
                     );
                 }
                 $invoiceService->createForSource(

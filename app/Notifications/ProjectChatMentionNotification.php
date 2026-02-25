@@ -7,6 +7,7 @@ use App\Mail\Concerns\UsesMailCategory;
 use App\Models\Project;
 use App\Models\Setting;
 use App\Support\Branding;
+use App\Support\DateTimeFormat;
 use App\Support\UrlResolver;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -51,7 +52,7 @@ class ProjectChatMentionNotification extends Notification
             '<strong>' . e($this->authorName) . '</strong> mentioned you in project chat.',
             'Project: ' . e($projectName),
             'Message: ' . e($this->snippet !== '' ? $this->snippet : 'Attachment'),
-            'Time: ' . e((string) now()->format('Y-m-d H:i')),
+            'Time: ' . e(DateTimeFormat::formatDateTime(now())),
         ];
 
         if ($this->chatUrl) {

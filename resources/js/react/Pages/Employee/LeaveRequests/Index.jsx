@@ -24,12 +24,12 @@ export default function Index({ leave_requests = [], leave_types = [], paginatio
                     </div>
                     <div>
                         <label className="text-xs text-slate-500">Start date</label>
-                        <input type="date" name="start_date" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                         {errors?.start_date ? <div className="mt-1 text-xs text-rose-600">{errors.start_date}</div> : null}
                     </div>
                     <div>
                         <label className="text-xs text-slate-500">End date</label>
-                        <input type="date" name="end_date" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="end_date" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                         {errors?.end_date ? <div className="mt-1 text-xs text-rose-600">{errors.end_date}</div> : null}
                     </div>
                     <div>

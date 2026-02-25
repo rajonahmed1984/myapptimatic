@@ -421,6 +421,20 @@ Route::middleware([
     'user.activity:employee',
     'nocache',
     HandleInertiaRequests::class,
+])
+    ->prefix('employee')
+    ->name('employee.')
+    ->group(function () {
+        Route::get('/projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
+    });
+
+Route::middleware([
+    'auth:employee',
+    'employee',
+    'employee.activity',
+    'user.activity:employee',
+    'nocache',
+    HandleInertiaRequests::class,
     ConvertAdminViewToInertia::class,
 ])
     ->prefix('employee')
@@ -448,7 +462,6 @@ Route::middleware([
         Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
         Route::patch('/projects/{project}/tasks/{task}/start', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'start'])->name('projects.tasks.start');
         Route::delete('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Employee\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
-        Route::get('/projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
         Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
         Route::delete('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
@@ -529,9 +542,21 @@ Route::middleware([
     'user.activity:web',
     'nocache',
     HandleInertiaRequests::class,
-    ConvertAdminViewToInertia::class,
 ])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+    Route::get('hr/employees/{employee}', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'show'])->name('hr.employees.show');
+    Route::get('invoices/{invoice}/client-view', [AdminInvoiceController::class, 'clientView'])->name('invoices.client-view');
+    Route::get('projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
+});
+
+Route::middleware([
+    'admin.panel',
+    'user.activity:web',
+    'nocache',
+    HandleInertiaRequests::class,
+    ConvertAdminViewToInertia::class,
+])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/ai/business-status', [AiBusinessStatusController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('ai.business-status');
@@ -614,7 +639,7 @@ Route::middleware([
     Route::prefix('hr')->name('hr.')->group(function () {
         Route::get('/dashboard', HrDashboardController::class)->name('dashboard');
         Route::post('employees/{employee}/impersonate', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'impersonate'])->name('employees.impersonate');
-        Route::resource('employees', \App\Http\Controllers\Admin\Hr\EmployeeController::class);
+        Route::resource('employees', \App\Http\Controllers\Admin\Hr\EmployeeController::class)->except(['show']);
         Route::post('employees/{employee}/advance-payout', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'storeAdvance'])
             ->name('employees.advance-payout');
         Route::get('employee-payouts/create', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'create'])->name('employee-payouts.create');
@@ -809,7 +834,7 @@ Route::middleware([
     Route::get('customers/{customer}/edit', [CustomerController::class, 'edit'])
         ->middleware(HandleInertiaRequests::class)
         ->name('customers.edit');
-    Route::resource('customers', CustomerController::class)->except(['index', 'create', 'edit']);
+    Route::resource('customers', CustomerController::class)->except(['index', 'create', 'edit', 'show']);
     Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])->name('customers.impersonate');
     Route::post('customers/{customer}/project-users', [CustomerProjectUserController::class, 'store'])->name('customers.project-users.store');
     Route::get('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'show'])->name('customers.project-users.show');
@@ -899,7 +924,6 @@ Route::middleware([
         ->name('projects.tasks.assignees');
     Route::patch('projects/{project}/tasks/{task}/status', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'changeStatus'])->name('projects.tasks.changeStatus');
     Route::delete('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
-    Route::get('projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
     Route::post('projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
     Route::patch('projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
     Route::delete('projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
@@ -996,7 +1020,6 @@ Route::middleware([
     Route::get('invoices/overdue', [AdminInvoiceController::class, 'overdue'])->name('invoices.overdue');
     Route::get('invoices/cancelled', [AdminInvoiceController::class, 'cancelled'])->name('invoices.cancelled');
     Route::get('invoices/refunded', [AdminInvoiceController::class, 'refunded'])->name('invoices.refunded');
-    Route::get('invoices/{invoice}/client-view', [AdminInvoiceController::class, 'clientView'])->name('invoices.client-view');
     Route::get('invoices/{invoice}/download', [AdminInvoiceController::class, 'download'])->name('invoices.download');
     Route::get('invoices/{invoice}', [AdminInvoiceController::class, 'show'])->name('invoices.show');
     Route::post('invoices/{invoice}/mark-paid', [AdminInvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
@@ -1096,6 +1119,22 @@ Route::middleware([
     'project.client',
     'nocache',
     HandleInertiaRequests::class,
+])
+    ->prefix('client')
+    ->name('client.')
+    ->group(function () {
+        Route::get('/projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
+    });
+
+Route::middleware([
+    'auth',
+    'client',
+    'client.block',
+    'client.notice',
+    'user.activity:web',
+    'project.client',
+    'nocache',
+    HandleInertiaRequests::class,
     ConvertAdminViewToInertia::class,
 ])
     ->prefix('client')
@@ -1165,7 +1204,6 @@ Route::middleware([
             ->name('projects.show');
         Route::post('/projects/{project}/tasks', [\App\Http\Controllers\Client\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
         Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\Client\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
-        Route::get('/projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
         Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
         Route::delete('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
@@ -1286,6 +1324,18 @@ Route::middleware([
     'user.activity:sales',
     'nocache',
     HandleInertiaRequests::class,
+])
+    ->prefix('sales')
+    ->name('rep.')
+    ->group(function () {
+        Route::get('/projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
+    });
+
+Route::middleware([
+    'salesrep',
+    'user.activity:sales',
+    'nocache',
+    HandleInertiaRequests::class,
     ConvertAdminViewToInertia::class,
 ])
     ->prefix('sales')
@@ -1306,7 +1356,6 @@ Route::middleware([
         Route::post('/projects/{project}/tasks', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
         Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
         Route::delete('/projects/{project}/tasks/{task}', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
-        Route::get('/projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
         Route::get('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'index'])->name('projects.tasks.activity');
         Route::get('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'items'])->name('projects.tasks.activity.items');
         Route::post('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'storeItem'])

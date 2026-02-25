@@ -27,11 +27,11 @@ export default function Edit({ pageTitle = 'Edit Payroll Period', period = {}, r
                     </div>
                     <div>
                         <label htmlFor="startDate" className="text-xs uppercase tracking-[0.2em] text-slate-500">Start Date</label>
-                        <input id="startDate" type="date" name="start_date" defaultValue={period?.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
+                        <input id="startDate" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={period?.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
                     </div>
                     <div>
                         <label htmlFor="endDate" className="text-xs uppercase tracking-[0.2em] text-slate-500">End Date</label>
-                        <input id="endDate" type="date" name="end_date" defaultValue={period?.end_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
+                        <input id="endDate" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="end_date" defaultValue={period?.end_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
                     </div>
                     <div className="md:col-span-2 flex items-center gap-3">
                         <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Save Changes</button>

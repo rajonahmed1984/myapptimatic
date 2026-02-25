@@ -92,7 +92,7 @@ class DashboardController extends Controller
         return collect($tasks)->map(function ($task) {
             $dueDate = $task->due_date ?? null;
             if ($dueDate instanceof \DateTimeInterface) {
-                $dueDate = $dueDate->format('Y-m-d');
+                $dueDate = $dueDate->format(config('app.date_format', 'd-m-Y'));
             }
 
             return [

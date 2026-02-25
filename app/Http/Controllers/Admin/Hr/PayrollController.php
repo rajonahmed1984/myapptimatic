@@ -92,8 +92,8 @@ class PayrollController extends Controller
             'periods' => $periods->through(fn (PayrollPeriod $period) => [
                 'id' => $period->id,
                 'period_key' => $period->period_key,
-                'start_date' => $period->start_date?->format('Y-m-d') ?? '--',
-                'end_date' => $period->end_date?->format('Y-m-d') ?? '--',
+                'start_date' => $period->start_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                'end_date' => $period->end_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 'status' => $period->status,
                 'is_draft' => $period->status === 'draft',
                 'month_closed' => (bool) ($period->end_date?->lt(today())),
@@ -148,8 +148,8 @@ class PayrollController extends Controller
             'period' => [
                 'id' => $payrollPeriod->id,
                 'period_key' => $payrollPeriod->period_key,
-                'start_date' => $payrollPeriod->start_date?->format('Y-m-d'),
-                'end_date' => $payrollPeriod->end_date?->format('Y-m-d'),
+                'start_date' => $payrollPeriod->start_date?->format(config('app.date_format', 'd-m-Y')),
+                'end_date' => $payrollPeriod->end_date?->format(config('app.date_format', 'd-m-Y')),
             ],
             'routes' => [
                 'index' => route('admin.hr.payroll.index'),
@@ -573,8 +573,8 @@ class PayrollController extends Controller
                 'id' => $payrollPeriod->id,
                 'period_key' => $payrollPeriod->period_key,
                 'status' => $payrollPeriod->status,
-                'start_date' => $payrollPeriod->start_date?->format('Y-m-d') ?? '--',
-                'end_date' => $payrollPeriod->end_date?->format('Y-m-d') ?? '--',
+                'start_date' => $payrollPeriod->start_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                'end_date' => $payrollPeriod->end_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 'month_closed' => (bool) ($payrollPeriod->end_date?->lt(today())),
             ],
             'totals' => $totals->map(fn ($total) => [
@@ -644,7 +644,7 @@ class PayrollController extends Controller
                     'computed_net' => number_format($computedNet, 2),
                     'display_status' => $displayStatus,
                     'paid_amount' => number_format($paidAmount, 2),
-                    'paid_at' => $item->paid_at?->format('Y-m-d H:i') ?? '--',
+                    'paid_at' => $item->paid_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                     'payment_reference' => $item->payment_reference ?? '--',
                     'can_adjust' => in_array($item->status, ['draft', 'approved'], true),
                     'can_pay' => in_array($item->status, ['approved', 'partial'], true) && $remainingAmount > 0,
@@ -667,7 +667,7 @@ class PayrollController extends Controller
                 'has_pages' => $items->hasPages(),
             ],
             'paymentMethods' => $paymentMethods,
-            'today' => now()->format('Y-m-d'),
+            'today' => now()->format(config('app.date_format', 'd-m-Y')),
             'routes' => [
                 'index' => route('admin.hr.payroll.index'),
                 'export' => route('admin.hr.payroll.export', $payrollPeriod),

@@ -70,11 +70,11 @@ export default function Index({ metrics = {}, filters = {}, aiReady = false, rou
                         <form className="mt-4 grid gap-4" onSubmit={generate}>
                             <div>
                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Start date</label>
-                                <input type="date" name="start_date" defaultValue={filters?.start_date || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={filters?.start_date || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                             </div>
                             <div>
                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-400">End date</label>
-                                <input type="date" name="end_date" defaultValue={filters?.end_date || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="end_date" defaultValue={filters?.end_date || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                             </div>
                             <div>
                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Projection days</label>

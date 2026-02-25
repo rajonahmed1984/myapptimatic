@@ -83,10 +83,10 @@ class TimesheetController extends Controller
                 $rSeconds = (int) ($required % 60);
 
                 return [
-                    'work_date_display' => $log->work_date?->format(config('app.date_format', 'Y-m-d')) ?? '--',
+                    'work_date_display' => $log->work_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'sessions_count' => (int) ($log->sessions_count ?? 0),
-                    'first_started_at' => $log->first_started_at ? Carbon::parse($log->first_started_at)->format('H:i:s') : '--',
-                    'last_activity_at' => $log->last_activity_at ? Carbon::parse($log->last_activity_at)->format('H:i:s') : '--',
+                    'first_started_at' => $log->first_started_at ? Carbon::parse($log->first_started_at)->format(config('app.datetime_format', 'd-m-Y h:i A')) : '--',
+                    'last_activity_at' => $log->last_activity_at ? Carbon::parse($log->last_activity_at)->format(config('app.datetime_format', 'd-m-Y h:i A')) : '--',
                     'active_time_label' => sprintf('%02d:%02d:%02d', $hours, $minutes, $secs),
                     'required_time_label' => sprintf('%02d:%02d:%02d', $rHours, $rMinutes, $rSeconds),
                     'coverage_percent' => (int) ($log->coverage_percent ?? 0),

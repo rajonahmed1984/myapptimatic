@@ -52,7 +52,7 @@ class PaidHolidayController extends Controller
             'holidayTypes' => $holidayTypes,
             'holidays' => $holidays->through(fn (PaidHoliday $holiday) => [
                 'id' => $holiday->id,
-                'holiday_date' => $holiday->holiday_date?->format('Y-m-d') ?? '--',
+                'holiday_date' => $holiday->holiday_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 'name' => $holiday->name,
                 'note' => $holiday->note,
                 'is_paid' => (bool) $holiday->is_paid,

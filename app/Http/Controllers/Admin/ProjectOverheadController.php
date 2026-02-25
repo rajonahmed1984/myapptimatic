@@ -54,7 +54,7 @@ class ProjectOverheadController extends Controller
                     'invoice_show_route' => $invoice ? route('admin.invoices.show', ['invoice' => $invoice->id]) : null,
                     'details' => $overhead->short_details,
                     'amount_display' => $project->currency.' '.number_format((float) $overhead->amount, 2),
-                    'date' => $overhead->created_at?->format('Y-m-d') ?? '--',
+                    'date' => $overhead->created_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'status_label' => $status,
                 ];
             })->values(),

@@ -138,7 +138,7 @@ class SystemLogController extends Controller
 
                 return [
                     'id' => $log->id,
-                    'created_at_display' => $log->created_at?->format($dateFormat.' H:i') ?? '--',
+                    'created_at_display' => $log->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                     'user_name' => $log->user?->name ?? 'System',
                     'ip_address' => $log->ip_address ?? '--',
                     'level' => $level,

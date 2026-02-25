@@ -101,7 +101,7 @@ class DashboardController extends Controller
         $showTasksWidget = $taskQueryService->canViewTasks($user);
         $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
 
-        $dateFormat = config('app.date_format', 'Y-m-d');
+        $dateFormat = config('app.date_format', 'd-m-Y');
 
         return Inertia::render('Employee/Dashboard/Index', [
             'employee' => $employee ? [

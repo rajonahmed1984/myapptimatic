@@ -160,7 +160,7 @@ export default function Show({
                                     <label className="text-sm text-slate-600">Issue date</label>
                                     <input
                                         name="issue_date"
-                                        type="date"
+                                        type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                         defaultValue={invoice.issue_date_value}
                                         required
                                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
@@ -170,7 +170,7 @@ export default function Show({
                                     <label className="text-sm text-slate-600">Due date</label>
                                     <input
                                         name="due_date"
-                                        type="date"
+                                        type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                         defaultValue={invoice.due_date_value}
                                         required
                                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"

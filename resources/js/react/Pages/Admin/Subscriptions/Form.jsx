@@ -86,13 +86,13 @@ export default function Form({
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Start Date</label>
-                            <input type="date" name="start_date" defaultValue={fields?.start_date || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={fields?.start_date || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
                             {errors?.start_date ? <p className="mt-1 text-xs text-rose-600">{errors.start_date}</p> : null}
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Current Period Start</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="current_period_start"
                                 defaultValue={fields?.current_period_start || ''}
                                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
@@ -105,7 +105,7 @@ export default function Form({
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Current Period End</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="current_period_end"
                                 defaultValue={fields?.current_period_end || ''}
                                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
@@ -115,7 +115,7 @@ export default function Form({
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Next Invoice Date</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="next_invoice_at"
                                 defaultValue={fields?.next_invoice_at || ''}
                                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
@@ -128,7 +128,7 @@ export default function Form({
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Access Override Until</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="access_override_until"
                                 defaultValue={fields?.access_override_until || ''}
                                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
@@ -137,7 +137,7 @@ export default function Form({
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Cancelled At</label>
-                            <input type="date" name="cancelled_at" defaultValue={fields?.cancelled_at || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="cancelled_at" defaultValue={fields?.cancelled_at || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
                             {errors?.cancelled_at ? <p className="mt-1 text-xs text-rose-600">{errors.cancelled_at}</p> : null}
                         </div>
                     </div>

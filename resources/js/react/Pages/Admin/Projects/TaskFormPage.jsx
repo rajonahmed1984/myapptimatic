@@ -68,7 +68,7 @@ export default function TaskFormPage({
                                 <div>
                                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Start date</label>
                                     <input
-                                        type="date"
+                                        type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                         name="start_date"
                                         defaultValue={form.start_date || ''}
                                         required
@@ -78,7 +78,7 @@ export default function TaskFormPage({
                                 <div>
                                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Due date</label>
                                     <input
-                                        type="date"
+                                        type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                         name="due_date"
                                         defaultValue={form.due_date || ''}
                                         required

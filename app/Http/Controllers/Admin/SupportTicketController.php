@@ -349,7 +349,7 @@ class SupportTicketController extends Controller
                     'customer_name' => (string) ($ticket->customer->name ?? '--'),
                     'status' => (string) $ticket->status,
                     'status_label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)),
-                    'last_reply_at_display' => $ticket->last_reply_at?->format($dateFormat.' H:i') ?? '--',
+                    'last_reply_at_display' => $ticket->last_reply_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                     'routes' => [
                         'show' => route('admin.support-tickets.show', $ticket),
                         'reply' => route('admin.support-tickets.show', $ticket).'#replies',
@@ -398,8 +398,8 @@ class SupportTicketController extends Controller
                 'status' => (string) $ticket->status,
                 'status_label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)),
                 'customer_name' => (string) ($ticket->customer?->name ?? '--'),
-                'created_at_display' => $ticket->created_at?->format($dateFormat.' H:i') ?? '--',
-                'last_reply_at_display' => $ticket->last_reply_at?->format($dateFormat.' H:i') ?? '--',
+                'created_at_display' => $ticket->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
+                'last_reply_at_display' => $ticket->last_reply_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
             ],
             'replies' => $ticket->replies->map(function ($reply) use ($dateFormat) {
                 return [
@@ -407,7 +407,7 @@ class SupportTicketController extends Controller
                     'message' => (string) $reply->message,
                     'is_admin' => (bool) $reply->is_admin,
                     'author_name' => (string) ($reply->user?->name ?? 'System'),
-                    'created_at_display' => $reply->created_at?->format($dateFormat.' H:i') ?? '--',
+                    'created_at_display' => $reply->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                     'attachment_url' => $reply->attachment_path
                         ? route('support-ticket-replies.attachment', $reply)
                         : null,

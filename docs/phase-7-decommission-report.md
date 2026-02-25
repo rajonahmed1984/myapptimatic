@@ -158,11 +158,19 @@ Batch 5 removals:
   - expenses/expense-categories/recurring actions
 - SSE/PDF/upload/payment transport contracts remain green.
 
-Phase 7 final state:
+Phase 7 final state (updated 2026-02-25):
 
 - All admin React migration feature gates were removed.
 - No remaining `react.ui:admin_*` route middleware gates.
 - Legacy Blade decommission for migrated admin pages is complete.
+- Full UI migration closeout metrics:
+  - `total_ui_page_get_routes=204`
+  - `converted_ui_pages=204`
+  - `remaining_full_blade_ui_pages=0`
+  - `remaining_partial_blade_fragments=0`
+  - `wrapper_dependent_routes=0`
+  - `ui_not_detected=0`
+- Chat/task activity endpoints now return JSON-only payloads (no HTML fragment field).
 
 ## Verification
 
@@ -178,6 +186,13 @@ Latest run (2026-02-24): PASS
 - `php artisan route:cache`: PASS
 - Full suite in same run: 400 passed, 1618 assertions
 
+Additional closeout verification (2026-02-25/26):
+
+- `php artisan test --filter="(ProjectTaskActivityJsonEndpointTest|ProjectTaskChatJsonEndpointTest|ProjectChatJsonEndpointTest|ProjectTaskChatTest|ProjectChatTest|NoBreakSmokeTest)"`: PASS
+- `npm run build`: PASS
+- `php artisan ui:audit-blade --write`: PASS (`72 total`, `72 referenced`, `0 unreferenced`)
+- `php scripts/run-ui-migration-phase.php phase-d-test-method-name-cleanup`: PASS
+
 ## Rollback
 
 If any regression appears:
@@ -187,3 +202,6 @@ If any regression appears:
    - `php artisan optimize:clear`
    - `php artisan config:cache`
    - `php artisan route:cache`
+3. Re-run:
+   - `php artisan test`
+   - `npm run build`

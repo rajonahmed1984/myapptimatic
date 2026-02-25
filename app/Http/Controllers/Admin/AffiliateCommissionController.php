@@ -54,7 +54,7 @@ class AffiliateCommissionController extends Controller
             'commissions' => $commissions->getCollection()->map(function (AffiliateCommission $commission) {
                 return [
                     'id' => $commission->id,
-                    'date_display' => $commission->created_at?->format('M d, Y') ?? '--',
+                    'date_display' => $commission->created_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'affiliate_name' => (string) ($commission->affiliate?->customer?->name ?? 'Unknown'),
                     'affiliate_code' => (string) ($commission->affiliate?->affiliate_code ?? ''),
                     'description' => (string) $commission->description,

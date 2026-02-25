@@ -701,7 +701,7 @@ class CustomerController extends Controller
                     'default_sales_rep_id' => (string) old('default_sales_rep_id', (string) ($customer?->default_sales_rep_id ?? '')),
                     'access_override_until' => (string) old(
                         'access_override_until',
-                        $customer?->access_override_until?->format('Y-m-d') ?? ''
+                        $customer?->access_override_until?->format(config('app.date_format', 'd-m-Y')) ?? ''
                     ),
                     'address' => (string) old('address', (string) ($customer?->address ?? '')),
                     'notes' => (string) old('notes', (string) ($customer?->notes ?? '')),

@@ -68,7 +68,7 @@ export default function FormPage({
                         </div>
                         <Input label="Login password (optional)" name="user_password" type="password" />
                         <Input label="Confirm password" name="user_password_confirmation" type="password" />
-                        <Input label="Join date" name="join_date" type="date" defaultValue={values.join_date || ''} required />
+                        <Input label="Join date" name="join_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={values.join_date || ''} required />
                     </div>
 
                     <div className="section-label">Employment</div>

@@ -137,7 +137,7 @@
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Payment Date</label>
-                        <input name="paid_at" type="date" value="{{ old('paid_at', now()->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                        <input name="paid_at" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" value="{{ old('paid_at', now()->format(config('app.date_format', 'd-m-Y'))) }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                     </div>
                     <div class="md:col-span-2">
                         <label class="text-xs text-slate-500">Payment Proof</label>
@@ -230,13 +230,13 @@
             <div class="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
                 <div><span class="font-semibold text-slate-900">Salary Type:</span> {{ ucwords(str_replace('_', ' ', $summary['salary_type'] ?? '--')) }}</div>
                 <div><span class="font-semibold text-slate-900">Basic Pay:</span> {{ $summary['currency'] ?? '' }} {{ number_format($summary['basic_pay'] ?? 0, 2) }}</div>
-                <div><span class="font-semibold text-slate-900">Effective From:</span> {{ $employee->activeCompensation?->effective_from?->format('Y-m-d') ?? '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Effective From:</span> {{ $employee->activeCompensation?->effective_from?->format(config('app.date_format', 'd-m-Y')) ?? '--' }}</div>
                 <div><span class="font-semibold text-slate-900">Department:</span> {{ $employee->department ?? '--' }}</div>
                 <div><span class="font-semibold text-slate-900">Designation:</span> {{ $employee->designation ?? '--' }}</div>
                 <div><span class="font-semibold text-slate-900">Manager:</span> {{ $employee->manager?->name ?? '--' }}</div>
                 <div><span class="font-semibold text-slate-900">Employment Type:</span> {{ ucfirst($employee->employment_type) }}</div>
                 <div><span class="font-semibold text-slate-900">Work Mode:</span> {{ ucfirst(str_replace('_',' ',$employee->work_mode)) }}</div>
-                <div><span class="font-semibold text-slate-900">Join Date:</span> {{ $employee->join_date?->format('Y-m-d') ?? '--' }}</div>
+                <div><span class="font-semibold text-slate-900">Join Date:</span> {{ $employee->join_date?->format(config('app.date_format', 'd-m-Y')) ?? '--' }}</div>
                 <div class="md:col-span-2"><span class="font-semibold text-slate-900">Address:</span> {{ $employee->address ?? '--' }}</div>
                 <div class="md:col-span-2"><span class="font-semibold text-slate-900">Linked User:</span> {{ $employee->user?->name ? $employee->user->name.' ('.$employee->user->email.')' : '--' }}</div>
             </div>
@@ -385,7 +385,7 @@
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Payment Date</label>
-                            <input name="paid_at" type="date" value="{{ old('paid_at', now()->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                            <input name="paid_at" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" value="{{ old('paid_at', now()->format(config('app.date_format', 'd-m-Y'))) }}" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                         </div>
                         <div class="md:col-span-2">
                             <label class="text-xs text-slate-500">Payment Proof</label>
@@ -422,10 +422,10 @@
                         <tbody>
                             @forelse($recentWorkSessions as $session)
                                 <tr class="border-b border-slate-100">
-                                    <td class="py-2">{{ $session->work_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
-                                    <td class="py-2">{{ $session->started_at?->format('H:i:s') ?? '--' }}</td>
-                                    <td class="py-2">{{ $session->ended_at?->format('H:i:s') ?? '--' }}</td>
-                                    <td class="py-2">{{ $session->last_activity_at?->format('H:i:s') ?? '--' }}</td>
+                                    <td class="py-2">{{ $session->work_date?->format($globalDateFormat ?? 'd-m-Y') ?? '--' }}</td>
+                                    <td class="py-2">{{ $session->started_at?->format($globalTimeFormat ?? 'h:i A') ?? '--' }}</td>
+                                    <td class="py-2">{{ $session->ended_at?->format($globalTimeFormat ?? 'h:i A') ?? '--' }}</td>
+                                    <td class="py-2">{{ $session->last_activity_at?->format($globalTimeFormat ?? 'h:i A') ?? '--' }}</td>
                                     <td class="py-2 text-right">{{ $formatDuration((int) ($session->active_seconds ?? 0)) }}</td>
                                 </tr>
                             @empty
@@ -454,7 +454,7 @@
                         <tbody>
                             @forelse($recentWorkSummaries as $summaryRow)
                                 <tr class="border-b border-slate-100">
-                                    <td class="py-2">{{ $summaryRow->work_date?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
+                                    <td class="py-2">{{ $summaryRow->work_date?->format($globalDateFormat ?? 'd-m-Y') ?? '--' }}</td>
                                     <td class="py-2 text-right">{{ $formatDuration((int) ($summaryRow->active_seconds ?? 0)) }}</td>
                                     <td class="py-2 text-right">{{ $formatDuration((int) ($summaryRow->required_seconds ?? 0)) }}</td>
                                     <td class="py-2 text-right">{{ $summary['currency'] ?? 'BDT' }} {{ number_format((float) ($summaryRow->generated_salary_amount ?? 0), 2) }}</td>
@@ -625,7 +625,7 @@
                     <tbody>
                         @forelse($recentEarnings as $earning)
                             <tr class="border-b border-slate-100">
-                                <td class="py-2">{{ $earning->updated_at?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
+                                <td class="py-2">{{ $earning->updated_at?->format($globalDateFormat ?? 'd-m-Y') ?? '--' }}</td>
                                 <td class="py-2">{{ ucfirst($earning->contract_employee_payout_status ?? 'earned') }}</td>
                                 <td class="py-2">Project</td>
                                 <td class="py-2 text-xs text-slate-600">{{ $earning->name ?? '--' }}</td>
@@ -664,7 +664,7 @@
                                 $proofUrl = $proofPath ? route('admin.hr.employee-payouts.proof', $payout) : null;
                             @endphp
                             <tr class="border-b border-slate-100">
-                                <td class="py-2">{{ $payout->paid_at?->format($globalDateFormat ?? 'Y-m-d') ?? '--' }}</td>
+                                <td class="py-2">{{ $payout->paid_at?->format($globalDateFormat ?? 'd-m-Y') ?? '--' }}</td>
                                 <td class="py-2">{{ $payout->reference ?? 'Employee payout' }}</td>
                                 <td class="py-2">
                                     @if($proofUrl)

@@ -376,9 +376,9 @@ class OrderController extends Controller
                 'customer_email' => (string) ($order->customer?->email ?? '--'),
                 'plan_name' => (string) ($order->plan?->name ?? '--'),
                 'product_name' => (string) ($order->plan?->product?->name ?? '--'),
-                'created_at_display' => $order->created_at?->format($dateFormat.' H:i') ?? '--',
-                'approved_at_display' => $order->approved_at?->format($dateFormat.' H:i') ?? '--',
-                'cancelled_at_display' => $order->cancelled_at?->format($dateFormat.' H:i') ?? '--',
+                'created_at_display' => $order->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
+                'approved_at_display' => $order->approved_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
+                'cancelled_at_display' => $order->cancelled_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 'invoice_number' => $invoice ? (string) ($invoice->number ?? $invoice->id) : '--',
                 'invoice_total_display' => $invoice
                     ? trim((string) (($invoice->currency ?? '').' '.number_format((float) ($invoice->total ?? 0), 2)))

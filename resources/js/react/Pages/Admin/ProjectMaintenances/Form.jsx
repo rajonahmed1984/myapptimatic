@@ -208,7 +208,7 @@ export default function Form({
                                 <label className="text-xs text-slate-500">Start date</label>
                                 <input
                                     name="start_date"
-                                    type="date"
+                                    type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                     defaultValue={fields?.start_date || ''}
                                     required
                                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"

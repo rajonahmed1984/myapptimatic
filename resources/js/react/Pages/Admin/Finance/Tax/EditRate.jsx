@@ -45,7 +45,7 @@ export default function EditRate({ pageTitle = 'Edit Tax Rate', rate = {}, route
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Effective From</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="effective_from"
                                 defaultValue={rate?.effective_from || ''}
                                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
@@ -55,7 +55,7 @@ export default function EditRate({ pageTitle = 'Edit Tax Rate', rate = {}, route
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Effective To</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="effective_to"
                                 defaultValue={rate?.effective_to || ''}
                                 className="w-full rounded-lg border border-slate-300 px-3 py-2"

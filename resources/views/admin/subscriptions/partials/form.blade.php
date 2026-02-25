@@ -39,21 +39,21 @@
         </div>
         <div>
             <label class="text-sm text-slate-600">Start date</label>
-            <input name="start_date" type="date" value="{{ old('start_date', optional($subscription->start_date ?? now())->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+            <input name="start_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" value="{{ old('start_date', optional($subscription->start_date ?? now())->format(config('app.date_format', 'd-m-Y'))) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
         </div>
 
         @if($isEdit)
             <div>
                 <label class="text-sm text-slate-600">Current period start</label>
-                <input name="current_period_start" type="date" value="{{ old('current_period_start', optional($subscription->current_period_start)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" required />
+                <input name="current_period_start" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" value="{{ old('current_period_start', optional($subscription->current_period_start)->format(config('app.date_format', 'd-m-Y'))) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" required />
             </div>
             <div>
                 <label class="text-sm text-slate-600">Current period end</label>
-                <input name="current_period_end" type="date" value="{{ old('current_period_end', optional($subscription->current_period_end)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" required />
+                <input name="current_period_end" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" value="{{ old('current_period_end', optional($subscription->current_period_end)->format(config('app.date_format', 'd-m-Y'))) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" required />
             </div>
             <div>
                 <label class="text-sm text-slate-600">Next invoice at</label>
-                <input name="next_invoice_at" type="date" value="{{ old('next_invoice_at', optional($subscription->next_invoice_at)->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" required />
+                <input name="next_invoice_at" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" value="{{ old('next_invoice_at', optional($subscription->next_invoice_at)->format(config('app.date_format', 'd-m-Y'))) }}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" required />
             </div>
         @endif
 

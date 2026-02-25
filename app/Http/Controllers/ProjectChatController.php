@@ -18,8 +18,8 @@ use App\Services\GeminiService;
 use App\Services\ChatAiSummaryCache;
 use App\Support\ChatPresence;
 use App\Support\ChatMentions;
+use App\Support\DateTimeFormat;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -35,7 +35,7 @@ class ProjectChatController extends Controller
 {
     private const EDITABLE_WINDOW_SECONDS = 30;
 
-    public function show(Request $request, Project $project, ChatAiSummaryCache $summaryCache): Response|InertiaResponse
+    public function show(Request $request, Project $project, ChatAiSummaryCache $summaryCache): InertiaResponse
     {
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('view', $project);
@@ -58,8 +58,6 @@ class ProjectChatController extends Controller
         $messageDeleteRouteName = $routePrefix . '.projects.chat.messages.destroy';
         $messagePinRouteName = $routePrefix . '.projects.chat.messages.pin';
         $messageReactionRouteName = $routePrefix . '.projects.chat.messages.react';
-        $messagePinRouteName = $routePrefix . '.projects.chat.messages.pin';
-        $messageReactionRouteName = $routePrefix . '.projects.chat.messages.react';
         $readReceipts = $this->readReceiptsForMessages($project, $messages, $identity);
         $authorStatuses = ChatPresence::authorStatusesForMessages($messages);
         $messageMentions = $this->mentionsForMessages($messages);
@@ -72,77 +70,57 @@ class ProjectChatController extends Controller
 
         $canPost = Gate::forUser($actor)->check('view', $project);
 
-        if (! $request->boolean('partial') && $latestMessageId > 0 && $identity['id']) {
+        if ($latestMessageId > 0 && $identity['id']) {
             $this->markProjectChatReadUpTo($project, $identity, $latestMessageId);
         }
 
-        if ($request->boolean('partial')) {
-            return response()->view('projects.partials.project-chat-messages', [
-                'messages' => $messages,
-                'project' => $project,
-                'attachmentRouteName' => $attachmentRouteName,
-                'taskShowRouteName' => $taskShowRouteName,
-                'currentAuthorType' => $identity['type'],
-                'currentAuthorId' => $identity['id'],
-                'readReceipts' => $readReceipts,
-                'authorStatuses' => $authorStatuses,
-                'messageMentions' => $messageMentions,
-                'latestMessageId' => $latestMessageId,
-                'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
-                'updateRouteName' => $messageUpdateRouteName,
-                'deleteRouteName' => $messageDeleteRouteName,
-                'pinRouteName' => $messagePinRouteName,
-                'reactionRouteName' => $messageReactionRouteName,
-                'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
-            ]);
-        }
+        $initialItems = $messages->map(fn (ProjectMessage $message) => $this->messageItem(
+            $message,
+            $project,
+            $attachmentRouteName,
+            $taskShowRouteName,
+            $identity,
+            $readReceipts[$message->id] ?? [],
+            $authorStatuses[$message->author_type . ':' . $message->author_id] ?? 'offline',
+            $messageMentions[$message->id] ?? [],
+            $latestMessageId,
+            $allParticipantsReadUpTo,
+            $messageUpdateRouteName,
+            $messageDeleteRouteName,
+            $messagePinRouteName,
+            $messageReactionRouteName
+        ))->values();
 
-        $viewData = [
-            'layout' => $this->layoutForPrefix($routePrefix),
+        return Inertia::render('Projects/ProjectChat', [
+            'pageTitle' => 'Project Chat',
+            'pageHeading' => 'Project Chat',
+            'pageKey' => $routePrefix . '.projects.chat',
             'routePrefix' => $routePrefix,
-            'project' => $project,
-            'messages' => $messages,
-            'postRoute' => route($routePrefix . '.projects.chat.store', $project),
-            'backRoute' => route($routePrefix . '.projects.show', $project),
-            'attachmentRouteName' => $attachmentRouteName,
-            'taskShowRouteName' => $taskShowRouteName,
-            'messagesUrl' => route($routePrefix . '.projects.chat.messages', $project),
-            'streamUrl' => route($routePrefix . '.projects.chat.stream', $project),
-            'postMessagesUrl' => route($routePrefix . '.projects.chat.messages.store', $project),
-            'readUrl' => route($routePrefix . '.projects.chat.read', $project),
-            'participantsUrl' => route($routePrefix . '.projects.chat.participants', $project),
-            'presenceUrl' => route($routePrefix . '.projects.chat.presence', $project),
-            'aiSummaryRoute' => route($routePrefix . '.projects.chat.ai', $project),
+            'project' => [
+                'id' => $project->id,
+                'name' => (string) $project->name,
+            ],
+            'initialItems' => $initialItems->all(),
+            'canPost' => $canPost,
             'aiReady' => (bool) config('google_ai.api_key'),
             'pinnedSummary' => $summaryCache->getProject($project->id) ?? [],
-            'currentAuthorType' => $identity['type'],
-            'currentAuthorId' => $identity['id'],
-            'canPost' => $canPost,
-            'readReceipts' => $readReceipts,
-            'authorStatuses' => $authorStatuses,
-            'messageMentions' => $messageMentions,
             'participants' => $participants,
             'mentionables' => $mentionables,
             'participantStatuses' => $participantStatuses,
             'latestMessageId' => $latestMessageId,
             'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
-            'messageUpdateRouteName' => $messageUpdateRouteName,
-            'messageDeleteRouteName' => $messageDeleteRouteName,
-            'messagePinRouteName' => $messagePinRouteName,
-            'messageReactionRouteName' => $messageReactionRouteName,
             'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
-        ];
-
-        $legacyHtml = view('projects.project-chat', $viewData)->render();
-        $payload = $this->extractLegacyPayload($legacyHtml);
-
-        return Inertia::render('Projects/ProjectChat', [
-            'pageTitle' => (string) ($payload['page_title'] ?? 'Project Chat'),
-            'pageHeading' => (string) ($payload['page_heading'] ?? 'Project Chat'),
-            'pageKey' => $routePrefix . '.projects.chat',
-            'content_html' => (string) ($payload['content_html'] ?? ''),
-            'script_html' => (string) ($payload['script_html'] ?? ''),
-            'style_html' => (string) ($payload['style_html'] ?? ''),
+            'routes' => [
+                'back' => route($routePrefix . '.projects.show', $project),
+                'messages' => route($routePrefix . '.projects.chat.messages', $project),
+                'storeForm' => route($routePrefix . '.projects.chat.store', $project),
+                'storeMessage' => route($routePrefix . '.projects.chat.messages.store', $project),
+                'read' => route($routePrefix . '.projects.chat.read', $project),
+                'participants' => route($routePrefix . '.projects.chat.participants', $project),
+                'presence' => route($routePrefix . '.projects.chat.presence', $project),
+                'stream' => route($routePrefix . '.projects.chat.stream', $project),
+                'aiSummary' => route($routePrefix . '.projects.chat.ai', $project),
+            ],
         ]);
     }
 
@@ -229,8 +207,7 @@ class ProjectChatController extends Controller
             $messageUpdateRouteName,
             $messageDeleteRouteName,
             $messagePinRouteName,
-            $messageReactionRouteName,
-            self::EDITABLE_WINDOW_SECONDS
+            $messageReactionRouteName
         ))->values();
 
         $nextAfterId = $messages->max('id') ?? $afterId;
@@ -377,8 +354,7 @@ class ProjectChatController extends Controller
                         $messageUpdateRouteName,
                         $messageDeleteRouteName,
                         $messagePinRouteName,
-                        $messageReactionRouteName,
-                        self::EDITABLE_WINDOW_SECONDS
+                        $messageReactionRouteName
                     ))->values();
 
                     $lastId = (int) ($messages->max('id') ?? $lastId);
@@ -512,8 +488,7 @@ class ProjectChatController extends Controller
                     $messageUpdateRouteName,
                     $messageDeleteRouteName,
                     $messagePinRouteName,
-                    $messageReactionRouteName,
-                    self::EDITABLE_WINDOW_SECONDS
+                    $messageReactionRouteName
                 );
 
                 return response()->json([
@@ -580,8 +555,7 @@ class ProjectChatController extends Controller
             $messageUpdateRouteName,
             $messageDeleteRouteName,
             $messagePinRouteName,
-            $messageReactionRouteName,
-            self::EDITABLE_WINDOW_SECONDS
+            $messageReactionRouteName
         );
 
         return response()->json([
@@ -666,8 +640,7 @@ class ProjectChatController extends Controller
             $messageUpdateRouteName,
             $messageDeleteRouteName,
             $messagePinRouteName,
-            $messageReactionRouteName,
-            self::EDITABLE_WINDOW_SECONDS
+            $messageReactionRouteName
         );
 
         return response()->json([
@@ -1083,15 +1056,6 @@ class ProjectChatController extends Controller
         return 'admin';
     }
 
-    private function layoutForPrefix(string $prefix): string
-    {
-        return match ($prefix) {
-            'client' => 'layouts.client',
-            'rep' => 'layouts.rep',
-            default => 'layouts.admin',
-        };
-    }
-
     private function storeAttachment(Request $request, Project $project): ?string
     {
         if (! $request->hasFile('attachment')) {
@@ -1442,30 +1406,10 @@ class ProjectChatController extends Controller
         string $updateRouteName,
         string $deleteRouteName,
         string $pinRouteName,
-        string $reactionRouteName,
-        int $editableWindowSeconds
+        string $reactionRouteName
     ): array {
         return [
             'id' => $message->id,
-            'html' => view('projects.partials.project-chat-message', [
-                'message' => $message,
-                'project' => $project,
-                'attachmentRouteName' => $attachmentRouteName,
-                'taskShowRouteName' => $taskShowRouteName,
-                'currentAuthorType' => $identity['type'],
-                'currentAuthorId' => $identity['id'],
-                'seenBy' => $seenBy,
-                'authorStatus' => $authorStatus,
-                'mentionMatches' => $mentionMatches,
-                'latestMessageId' => $latestMessageId,
-                'allParticipantsReadUpTo' => $allParticipantsReadUpTo,
-                'updateRouteName' => $updateRouteName,
-                'deleteRouteName' => $deleteRouteName,
-                'pinRouteName' => $pinRouteName,
-                'reactionRouteName' => $reactionRouteName,
-                'reactionSummary' => $this->reactionSummary($message, $identity),
-                'editableWindowSeconds' => $editableWindowSeconds,
-            ])->render(),
             'meta' => [
                 'author' => $message->authorName(),
                 'author_type' => $message->author_type,
@@ -1474,6 +1418,79 @@ class ProjectChatController extends Controller
                 'project' => $project->name,
                 'is_pinned' => (bool) $message->is_pinned,
                 'reply_to_message_id' => (int) ($message->reply_to_message_id ?? 0),
+            ],
+            'message' => $this->messagePayload(
+                $message,
+                $project,
+                $attachmentRouteName,
+                $taskShowRouteName,
+                $identity,
+                $seenBy,
+                $authorStatus,
+                $mentionMatches,
+                $latestMessageId,
+                $allParticipantsReadUpTo,
+                $updateRouteName,
+                $deleteRouteName,
+                $pinRouteName,
+                $reactionRouteName
+            ),
+        ];
+    }
+
+    private function messagePayload(
+        ProjectMessage $message,
+        Project $project,
+        string $attachmentRouteName,
+        string $taskShowRouteName,
+        array $identity,
+        array $seenBy,
+        string $authorStatus,
+        array $mentionMatches,
+        int $latestMessageId,
+        ?array $allParticipantsReadUpTo,
+        string $updateRouteName,
+        string $deleteRouteName,
+        string $pinRouteName,
+        string $reactionRouteName
+    ): array {
+        $taskLink = null;
+        if ($message->replyToMessage?->project_task_id && \Route::has($taskShowRouteName)) {
+            $taskLink = route($taskShowRouteName, [$project, $message->replyToMessage->project_task_id]);
+        }
+
+        return [
+            'id' => $message->id,
+            'author_name' => $message->authorName(),
+            'author_type' => (string) $message->author_type,
+            'author_type_label' => $message->authorTypeLabel(),
+            'author_id' => (int) $message->author_id,
+            'author_status' => $authorStatus,
+            'message' => (string) ($message->message ?? ''),
+            'created_at' => $message->created_at?->toIso8601String(),
+            'created_at_display' => DateTimeFormat::formatDateTime($message->created_at),
+            'attachment_url' => $message->attachment_path
+                ? route($attachmentRouteName, [$project, $message])
+                : null,
+            'attachment_name' => $message->attachmentName(),
+            'attachment_is_image' => $message->isImageAttachment(),
+            'reply_to_message_id' => (int) ($message->reply_to_message_id ?? 0),
+            'reply_to_message_text' => (string) ($message->replyToMessage?->message ?? ''),
+            'reply_to_task_url' => $taskLink,
+            'mentions' => array_values((array) ($message->mentions ?? [])),
+            'mention_matches' => $mentionMatches,
+            'seen_by' => $seenBy,
+            'latest_message_id' => $latestMessageId,
+            'all_participants_read_up_to' => $allParticipantsReadUpTo,
+            'is_pinned' => (bool) $message->is_pinned,
+            'can_edit' => (string) $message->author_type === (string) $identity['type']
+                && (int) $message->author_id === (int) ($identity['id'] ?? 0),
+            'reactions' => $this->reactionSummary($message, $identity),
+            'routes' => [
+                'update' => route($updateRouteName, [$project, $message]),
+                'delete' => route($deleteRouteName, [$project, $message]),
+                'pin' => route($pinRouteName, [$project, $message]),
+                'react' => route($reactionRouteName, [$project, $message]),
             ],
         ];
     }
@@ -1839,54 +1856,8 @@ class ProjectChatController extends Controller
 
         return [
             'message_id' => $message->id,
-            'label' => $message->created_at?->format('M d, Y H:i') ?? ('#' . $message->id),
+            'label' => $message->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? ('#' . $message->id),
         ];
     }
 
-    /**
-     * @return array{page_title: string, page_heading: string, content_html: string, script_html: string, style_html: string}|null
-     */
-    private function extractLegacyPayload(string $html): ?array
-    {
-        $dom = new \DOMDocument('1.0', 'UTF-8');
-        $internalErrors = libxml_use_internal_errors(true);
-        $loaded = $dom->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET | LIBXML_COMPACT);
-        libxml_clear_errors();
-        libxml_use_internal_errors($internalErrors);
-
-        if (! $loaded) {
-            return null;
-        }
-
-        $contentNode = $dom->getElementById('appContent');
-        if (! $contentNode) {
-            return null;
-        }
-
-        $scriptsNode = $dom->getElementById('pageScriptStack');
-        $styleHtml = '';
-
-        foreach ($dom->getElementsByTagName('style') as $styleNode) {
-            $styleHtml .= $dom->saveHTML($styleNode);
-        }
-
-        return [
-            'page_title' => (string) $contentNode->getAttribute('data-page-title'),
-            'page_heading' => (string) $contentNode->getAttribute('data-page-heading'),
-            'content_html' => $this->innerHtml($contentNode),
-            'script_html' => $scriptsNode ? $this->innerHtml($scriptsNode) : '',
-            'style_html' => $styleHtml,
-        ];
-    }
-
-    private function innerHtml(\DOMNode $node): string
-    {
-        $html = '';
-
-        foreach ($node->childNodes as $child) {
-            $html .= $node->ownerDocument?->saveHTML($child) ?? '';
-        }
-
-        return $html;
-    }
 }

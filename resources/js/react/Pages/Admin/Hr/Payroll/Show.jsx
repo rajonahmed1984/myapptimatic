@@ -216,7 +216,7 @@ export default function Show({
                             </div>
                             <div>
                                 <label htmlFor="paidAt" className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Date</label>
-                                <input id="paidAt" type="date" name="paid_at" defaultValue={today} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
+                                <input id="paidAt" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="paid_at" defaultValue={today} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
                             </div>
                             <div className="flex items-center justify-end gap-3 pt-2">
                                 <button type="button" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" onClick={() => setPaymentItem(null)}>Cancel</button>

@@ -65,7 +65,7 @@ class AffiliateController extends Controller
                         'customer_name' => $referral->customer?->name ?? 'Visitor',
                         'status_label' => ucfirst((string) $referral->status),
                         'status' => (string) $referral->status,
-                        'created_at_display' => $referral->created_at?->format('M d, Y') ?? '--',
+                        'created_at_display' => $referral->created_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     ];
                 })->values()->all(),
             ],
@@ -156,7 +156,7 @@ class AffiliateController extends Controller
                     'customer_name' => $referral->customer?->name ?? 'Visitor',
                     'status' => (string) $referral->status,
                     'status_label' => ucfirst((string) $referral->status),
-                    'created_at_display' => $referral->created_at?->format('M d, Y') ?? '--',
+                    'created_at_display' => $referral->created_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 ];
             })->values()->all(),
             'pagination' => [
@@ -203,7 +203,7 @@ class AffiliateController extends Controller
                     'status_label' => ucfirst((string) $commission->status),
                     'invoice_label' => $commission->invoice ? '#'.($commission->invoice->number ?? $commission->invoice->id) : '--',
                     'order_label' => $commission->order ? '#'.($commission->order->order_number ?? $commission->order->id) : '--',
-                    'created_at_display' => $commission->created_at?->format('M d, Y') ?? '--',
+                    'created_at_display' => $commission->created_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 ];
             })->values()->all(),
             'pagination' => [
@@ -249,8 +249,8 @@ class AffiliateController extends Controller
                     'status' => (string) $payout->status,
                     'status_label' => ucfirst((string) $payout->status),
                     'payment_method' => $payout->payment_method,
-                    'processed_at_display' => $payout->processed_at?->format('M d, Y') ?? '--',
-                    'completed_at_display' => $payout->completed_at?->format('M d, Y') ?? '--',
+                    'processed_at_display' => $payout->processed_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                    'completed_at_display' => $payout->completed_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'commissions_count' => (int) $payout->commissions->count(),
                 ];
             })->values()->all(),

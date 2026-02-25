@@ -85,7 +85,7 @@ export default function Create({
                             <label className="text-sm text-slate-600">Issue Date</label>
                             <input
                                 name="issue_date"
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 defaultValue={fields?.issue_date || ''}
                                 required
                                 className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
@@ -96,7 +96,7 @@ export default function Create({
                             <label className="text-sm text-slate-600">Due Date</label>
                             <input
                                 name="due_date"
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 defaultValue={fields?.due_date || ''}
                                 required
                                 className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"

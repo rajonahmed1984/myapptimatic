@@ -456,7 +456,7 @@ class ProjectMaintenanceController extends Controller
             'billing_cycle' => (string) old('billing_cycle', $maintenance?->billing_cycle ?? 'monthly'),
             'start_date' => (string) old(
                 'start_date',
-                $maintenance?->start_date?->format('Y-m-d') ?? ''
+                $maintenance?->start_date?->format(config('app.date_format', 'd-m-Y')) ?? ''
             ),
             'status' => (string) old('status', $maintenance?->status ?? 'active'),
             'auto_invoice' => (string) old(
@@ -478,7 +478,7 @@ class ProjectMaintenanceController extends Controller
             return '--';
         }
 
-        return Carbon::parse($value)->format((string) config('app.date_format', 'Y-m-d'));
+        return Carbon::parse($value)->format((string) config('app.date_format', 'd-m-Y'));
     }
 
     private function displayDateTime(Carbon|string|null $value): string
@@ -487,6 +487,6 @@ class ProjectMaintenanceController extends Controller
             return '--';
         }
 
-        return Carbon::parse($value)->format((string) config('app.date_format', 'Y-m-d').' H:i');
+        return Carbon::parse($value)->format((string) config('app.datetime_format', 'd-m-Y h:i A'));
     }
 }

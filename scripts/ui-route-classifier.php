@@ -83,16 +83,27 @@ foreach ($controllerFiles as $fileInfo) {
     }
 
     $currentMethod = null;
+    $currentAliases = [];
     foreach ($lines as $line) {
         if (preg_match('/function\s+([A-Za-z0-9_]+)\s*\(/', $line, $matches) === 1) {
             $currentMethod = $matches[1];
             $action = $class . '@' . $currentMethod;
-            if (! isset($returnTypeByAction[$action])) {
-                $returnTypeByAction[$action] = '';
+            $currentAliases = [$action];
+            if ($currentMethod === '__invoke') {
+                $currentAliases[] = $class;
             }
 
             if (preg_match('/\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
-                $returnTypeByAction[$action] = strtolower(trim((string) ($typeMatch[1] ?? '')));
+                $returnType = strtolower(trim((string) ($typeMatch[1] ?? '')));
+                foreach ($currentAliases as $alias) {
+                    $returnTypeByAction[$alias] = $returnType;
+                }
+            } else {
+                foreach ($currentAliases as $alias) {
+                    if (! isset($returnTypeByAction[$alias])) {
+                        $returnTypeByAction[$alias] = '';
+                    }
+                }
             }
 
             continue;
@@ -102,35 +113,43 @@ foreach ($controllerFiles as $fileInfo) {
             continue;
         }
 
-        $action = $class . '@' . $currentMethod;
-        if (($returnTypeByAction[$action] ?? '') === '' && preg_match('/^\s*\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
-            $returnTypeByAction[$action] = strtolower(trim((string) ($typeMatch[1] ?? '')));
+        if (preg_match('/^\s*\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
+            $returnType = strtolower(trim((string) ($typeMatch[1] ?? '')));
+            foreach ($currentAliases as $alias) {
+                if (($returnTypeByAction[$alias] ?? '') === '') {
+                    $returnTypeByAction[$alias] = $returnType;
+                }
+            }
         }
 
-        if (str_contains($line, 'Inertia::render(') || str_contains($line, 'inertia(')) {
-            $inertiaActions[$action] = true;
+        foreach ($currentAliases as $alias) {
+            if (str_contains($line, 'Inertia::render(') || str_contains($line, 'inertia(')) {
+                $inertiaActions[$alias] = true;
+            }
+            if (str_contains($line, 'return view(') || str_contains($line, 'response()->view(')) {
+                $viewActions[$alias] = true;
+            }
+            if (str_contains($line, 'response()->json(') || str_contains($line, '->json(')) {
+                $jsonActions[$alias] = true;
+            }
+            if (
+                str_contains($line, '->download(')
+                || str_contains($line, 'streamDownload(')
+                || str_contains($line, "Content-Disposition' => 'inline")
+                || str_contains($line, "Content-Disposition' => 'attachment")
+            ) {
+                $downloadActions[$alias] = true;
+            }
+            if (preg_match('/\babort\s*\(/', $line) === 1) {
+                $abortActions[$alias] = true;
+            }
         }
-        if (str_contains($line, 'return view(') || str_contains($line, 'response()->view(')) {
-            $viewActions[$action] = true;
-        }
-        if (str_contains($line, 'response()->json(') || str_contains($line, '->json(')) {
-            $jsonActions[$action] = true;
-        }
-        if (
-            str_contains($line, '->download(')
-            || str_contains($line, 'streamDownload(')
-            || str_contains($line, "Content-Disposition' => 'inline")
-            || str_contains($line, "Content-Disposition' => 'attachment")
-        ) {
-            $downloadActions[$action] = true;
-        }
-        if (preg_match('/\babort\s*\(/', $line) === 1) {
-            $abortActions[$action] = true;
-        }
+
+        $primaryAction = $class . '@' . $currentMethod;
         if (preg_match_all('/\$this->([A-Za-z0-9_]+)\s*\(/', $line, $calls) > 0) {
-            $calledMethodsByAction[$action] = $calledMethodsByAction[$action] ?? [];
+            $calledMethodsByAction[$primaryAction] = $calledMethodsByAction[$primaryAction] ?? [];
             foreach ($calls[1] as $calledMethod) {
-                $calledMethodsByAction[$action][$calledMethod] = true;
+                $calledMethodsByAction[$primaryAction][$calledMethod] = true;
             }
         }
     }
@@ -181,6 +200,8 @@ $summary = [
 $classified = [];
 
 $nonUiNeedles = [
+    '/_ignition/',
+    '_ignition/',
     '/payments/',
     'payments/',
     '/callback',
@@ -206,8 +227,12 @@ $nonUiUriRules = [
     ['regex' => '#/work-summaries/today(?:/|$)#i', 'reason' => 'non_ui_pattern:status_probe'],
 ];
 
+$nonUiRouteNameRules = [
+    ['regex' => '/\.(download|export|receipt|proof|attachment|inline|messages|participants|presence|stream|upload|sync-status|syncstatus)$/i', 'reason' => 'non_ui_route_name:payload_or_file'],
+];
+
 $nonUiMethodRules = [
-    ['regex' => '/^(export|export[a-z0-9_]*|download|receipt|proof|attachment|inlineattachment|syncstatus|messages|participants|items|avatar|today)$/i', 'reason' => 'non_ui_method:payload_or_file'],
+    ['regex' => '/^(export|export[a-z0-9_]*|download|receipt|proof|attachment|inlineattachment|inline|syncstatus|messages|participants|items|avatar|today|presence|stream|upload)$/i', 'reason' => 'non_ui_method:payload_or_file'],
 ];
 
 foreach ($routes as $route) {
@@ -280,6 +305,16 @@ foreach ($routes as $route) {
         }
     }
 
+    if ($classification === 'ambiguous' && $name !== '') {
+        foreach ($nonUiRouteNameRules as $rule) {
+            if (preg_match($rule['regex'], $name) === 1) {
+                $classification = 'non_ui_endpoint';
+                $reason = $rule['reason'];
+                break;
+            }
+        }
+    }
+
     if ($classification === 'ambiguous' && $methodName !== '') {
         foreach ($nonUiMethodRules as $rule) {
             if (preg_match($rule['regex'], $methodName) === 1) {
@@ -305,7 +340,12 @@ foreach ($routes as $route) {
         $reason = 'blade_full_candidate';
     }
 
-    if ($classification === 'ambiguous' && $isGetRoute && str_contains($action, '@')) {
+    if (
+        $classification === 'ambiguous'
+        && $isGetRoute
+        && $action !== ''
+        && (str_contains($action, '@') || str_starts_with($action, 'App\\Http\\Controllers\\'))
+    ) {
         $classification = 'ui_page_candidate';
         $reason = 'controller_get_candidate';
     }

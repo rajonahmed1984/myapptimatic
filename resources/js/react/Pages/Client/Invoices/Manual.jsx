@@ -90,7 +90,7 @@ export default function Manual({
                             <label className="text-sm text-slate-600">Payment date</label>
                             <input
                                 name="paid_at"
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 defaultValue={form.paid_at || ''}
                                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
                             />

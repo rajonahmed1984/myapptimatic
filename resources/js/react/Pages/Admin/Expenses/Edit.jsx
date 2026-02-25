@@ -80,7 +80,7 @@ export default function Edit({
                         <div>
                             <label className="text-xs text-slate-500">Expense date</label>
                             <input
-                                type="date"
+                                type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="expense_date"
                                 defaultValue={expense?.expense_date ?? ''}
                                 required

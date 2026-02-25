@@ -116,12 +116,12 @@ export default function Edit({
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="text-xs text-slate-500">Start date</label>
-                                <input type="date" name="start_date" defaultValue={form.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={form.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Expected end date</label>
                                 <input
-                                    type="date"
+                                    type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                     name="expected_end_date"
                                     defaultValue={form.expected_end_date || ''}
                                     className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -132,7 +132,7 @@ export default function Edit({
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="text-xs text-slate-500">Due date (internal)</label>
-                                <input type="date" name="due_date" defaultValue={form.due_date || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="due_date" defaultValue={form.due_date || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                             </div>
                         </div>
 

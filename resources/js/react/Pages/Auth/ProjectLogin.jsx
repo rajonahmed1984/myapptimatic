@@ -1,31 +1,13 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import AlertStack from '../../Components/Flash/AlertStack';
 import InputField from '../../Components/Form/InputField';
+import RecaptchaField from '../../Components/Form/RecaptchaField';
 import SubmitButton from '../../Components/Form/SubmitButton';
 import GuestAuthLayout from '../../Layouts/GuestAuthLayout';
 
-const loadRecaptcha = () => {
-    if (document.querySelector('script[data-recaptcha-enterprise]')) {
-        return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://www.google.com/recaptcha/enterprise.js';
-    script.async = true;
-    script.defer = true;
-    script.dataset.recaptchaEnterprise = 'true';
-    document.head.appendChild(script);
-};
-
 export default function ProjectLogin({ form = {}, routes = {}, recaptcha = {} }) {
     const { errors = {}, flash = {} } = usePage().props;
-
-    useEffect(() => {
-        if (recaptcha?.enabled && recaptcha?.site_key) {
-            loadRecaptcha();
-        }
-    }, [recaptcha]);
 
     return (
         <>
@@ -59,11 +41,11 @@ export default function ProjectLogin({ form = {}, routes = {}, recaptcha = {} })
                                     Remember me
                                 </label>
                             </div>
-                            {recaptcha?.enabled && recaptcha?.site_key ? (
-                                <div className="flex justify-center">
-                                    <div className="g-recaptcha" data-sitekey={recaptcha.site_key} data-action={recaptcha.action || 'PROJECT_CLIENT_LOGIN'}></div>
-                                </div>
-                            ) : null}
+                            <RecaptchaField
+                                enabled={Boolean(recaptcha?.enabled)}
+                                siteKey={recaptcha?.site_key || ''}
+                                action={recaptcha?.action || 'PROJECT_CLIENT_LOGIN'}
+                            />
                             <SubmitButton>Sign in to project</SubmitButton>
                         </form>
                     </div>

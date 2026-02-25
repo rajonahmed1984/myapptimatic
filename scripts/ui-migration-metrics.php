@@ -120,25 +120,40 @@ foreach ($controllerFiles as $fileInfo) {
     }
 
     $currentMethod = null;
+    $currentAliases = [];
     foreach ($lines as $line) {
         if (preg_match('/function\s+([A-Za-z0-9_]+)\s*\(/', $line, $matches) === 1) {
             $currentMethod = $matches[1];
             $action = $class . '@' . $currentMethod;
-            if (! isset($returnTypeByAction[$action])) {
-                $returnTypeByAction[$action] = '';
+            $currentAliases = [$action];
+            if ($currentMethod === '__invoke') {
+                $currentAliases[] = $class;
             }
 
             if (preg_match('/\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
-                $returnTypeByAction[$action] = strtolower(trim((string) ($typeMatch[1] ?? '')));
+                $returnType = strtolower(trim((string) ($typeMatch[1] ?? '')));
+                foreach ($currentAliases as $alias) {
+                    $returnTypeByAction[$alias] = $returnType;
+                }
+            } else {
+                foreach ($currentAliases as $alias) {
+                    if (! isset($returnTypeByAction[$alias])) {
+                        $returnTypeByAction[$alias] = '';
+                    }
+                }
             }
 
             continue;
         }
 
         if ($currentMethod) {
-            $action = $class . '@' . $currentMethod;
-            if (($returnTypeByAction[$action] ?? '') === '' && preg_match('/^\s*\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
-                $returnTypeByAction[$action] = strtolower(trim((string) ($typeMatch[1] ?? '')));
+            if (preg_match('/^\s*\)\s*:\s*([^\{]+)\{?/', $line, $typeMatch) === 1) {
+                $returnType = strtolower(trim((string) ($typeMatch[1] ?? '')));
+                foreach ($currentAliases as $alias) {
+                    if (($returnTypeByAction[$alias] ?? '') === '') {
+                        $returnTypeByAction[$alias] = $returnType;
+                    }
+                }
             }
         }
 
@@ -146,24 +161,27 @@ foreach ($controllerFiles as $fileInfo) {
             continue;
         }
 
-        $action = $class . '@' . $currentMethod;
-        if (str_contains($line, 'Inertia::render(') || str_contains($line, 'inertia(')) {
-            $directInertiaActions[$action] = true;
-        }
-        if (str_contains($line, 'response()->json(') || str_contains($line, '->json(')) {
-            $jsonActions[$action] = true;
-        }
-        if (preg_match('/\babort\s*\(/', $line) === 1) {
-            $abortActions[$action] = true;
-        }
-        if (preg_match_all('/\$this->([A-Za-z0-9_]+)\s*\(/', $line, $calls) === 1) {
-            $calledMethodsByAction[$action] = $calledMethodsByAction[$action] ?? [];
-            foreach ($calls[1] as $calledMethod) {
-                $calledMethodsByAction[$action][$calledMethod] = true;
+        foreach ($currentAliases as $alias) {
+            if (str_contains($line, 'Inertia::render(') || str_contains($line, 'inertia(')) {
+                $directInertiaActions[$alias] = true;
+            }
+            if (str_contains($line, 'response()->json(') || str_contains($line, '->json(')) {
+                $jsonActions[$alias] = true;
+            }
+            if (preg_match('/\babort\s*\(/', $line) === 1) {
+                $abortActions[$alias] = true;
+            }
+            if (str_contains($line, 'return view(')) {
+                $viewActions[$alias] = true;
             }
         }
-        if (str_contains($line, 'return view(')) {
-            $viewActions[$action] = true;
+
+        $primaryAction = $class . '@' . $currentMethod;
+        if (preg_match_all('/\$this->([A-Za-z0-9_]+)\s*\(/', $line, $calls) === 1) {
+            $calledMethodsByAction[$primaryAction] = $calledMethodsByAction[$primaryAction] ?? [];
+            foreach ($calls[1] as $calledMethod) {
+                $calledMethodsByAction[$primaryAction][$calledMethod] = true;
+            }
         }
     }
 }
