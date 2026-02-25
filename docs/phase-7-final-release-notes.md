@@ -17,7 +17,7 @@ Scope: full Blade UI to React + Inertia migration closeout (including Phase D)
 ## Verification Snapshot
 
 Latest migration report:
-- `storage/app/migration-reports/2026-02-25-phase-d-test-method-name-cleanup.json`
+- `storage/app/migration-reports/2026-02-25-phase-d-route-collision-fix.json`
 
 Summary values:
 - `total_routes=566`
@@ -40,6 +40,17 @@ Latest gate runs:
 - Legacy request markers are tolerated but ignored:
   - `structured=1`
   - `X-Fragment-Format: structured`
+
+## Post-Gate Fixes
+
+- Fixed admin route collisions that were causing create/edit parity checks to hit dynamic show routes.
+- Added numeric constraints to dynamic GET show routes:
+  - `admin/customers/{customer}` -> `whereNumber('customer')`
+  - `admin/hr/employees/{employee}` -> `whereNumber('employee')`
+  - `admin/invoices/{invoice}/client-view` -> `whereNumber('invoice')`
+  - `admin/projects/{project}/tasks/{task}` -> `whereNumber('project')->whereNumber('task')`
+- Verification:
+  - `php artisan test --filter="(AdminCustomerTasksAiUiParityTest|AdminProjectTaskFormPageUiParityTest|HrEmployeesFormUiParityTest)"` => PASS
 
 ## Safety Constraints Preserved
 

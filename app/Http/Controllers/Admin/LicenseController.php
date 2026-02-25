@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SyncLicenseJob;
-use App\Models\AnomalyFlag;
 use App\Models\License;
 use App\Models\LicenseDomain;
 use App\Models\Product;
@@ -16,13 +15,12 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class LicenseController extends Controller
 {
-    public function index(Request $request): View|InertiaResponse
+    public function index(Request $request): InertiaResponse
     {
         $search = trim((string) $request->input('search', ''));
 
@@ -71,24 +69,6 @@ class LicenseController extends Controller
             }
 
             $accessBlockedCustomers[$customerId] = $accessBlockService->isCustomerBlocked($customer);
-        }
-
-        $anomalyCounts = AnomalyFlag::query()
-            ->selectRaw('model_id, COUNT(*) as total')
-            ->where('model_type', License::class)
-            ->where('state', 'open')
-            ->groupBy('model_id')
-            ->pluck('total', 'model_id');
-
-        $payload = [
-            'licenses' => $licenses,
-            'accessBlockedCustomers' => $accessBlockedCustomers,
-            'anomalyCounts' => $anomalyCounts,
-            'search' => $search,
-        ];
-
-        if ($request->header('HX-Request')) {
-            return view('admin.licenses.partials.table', $payload);
         }
 
         return Inertia::render(

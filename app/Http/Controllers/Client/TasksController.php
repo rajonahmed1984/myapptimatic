@@ -5,13 +5,12 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Services\TaskQueryService;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class TasksController extends Controller
 {
-    public function index(Request $request, TaskQueryService $taskQueryService): InertiaResponse|Response
+    public function index(Request $request, TaskQueryService $taskQueryService): InertiaResponse
     {
         $user = $request->user();
         if (! $taskQueryService->canViewTasks($user)) {
@@ -49,10 +48,6 @@ class TasksController extends Controller
             'routePrefix' => 'client',
             'usesStartRoute' => false,
         ];
-
-        if ($request->header('HX-Request')) {
-            return response()->view('tasks.partials.index', $payload);
-        }
 
         return Inertia::render('Client/Tasks/Index', [
             'status_filter' => $statusFilter,

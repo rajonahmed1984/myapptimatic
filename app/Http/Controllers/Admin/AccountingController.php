@@ -17,7 +17,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -51,7 +50,7 @@ class AccountingController extends Controller
         );
     }
 
-    public function create(Request $request): View|InertiaResponse
+    public function create(Request $request): InertiaResponse
     {
         $type = $this->normalizeType($request->query('type', 'payment'));
         $scope = $this->normalizeScope($request->query('scope', 'ledger'));
@@ -59,18 +58,6 @@ class AccountingController extends Controller
         $selectedInvoice = $request->query('invoice_id')
             ? Invoice::query()->with('customer')->find($request->query('invoice_id'))
             : null;
-
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.accounting.partials.form', array_merge(
-                $this->formData($type, $selectedInvoice),
-                [
-                    'formAction' => route('admin.accounting.store'),
-                    'formMethod' => 'POST',
-                    'scope' => $scope,
-                    'search' => $search,
-                ]
-            ));
-        }
 
         return Inertia::render(
             'Admin/Accounting/Form',
@@ -109,29 +96,20 @@ class AccountingController extends Controller
         }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Accounting entry added.', $this->tablePatches($request));
+            return AjaxResponse::ajaxRedirect(
+                route($this->scopeRoute($this->normalizeScope($request->input('scope', 'ledger')))),
+                'Accounting entry added.'
+            );
         }
 
         return redirect()->route($this->scopeRoute($this->normalizeScope($request->input('scope', 'ledger'))))
             ->with('status', 'Accounting entry added.');
     }
 
-    public function edit(Request $request, AccountingEntry $entry): View|InertiaResponse
+    public function edit(Request $request, AccountingEntry $entry): InertiaResponse
     {
         $scope = $this->normalizeScope($request->query('scope', 'ledger'));
         $search = trim((string) $request->query('search', ''));
-
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.accounting.partials.form', array_merge(
-                $this->formData($entry->type, $entry->invoice, $entry),
-                [
-                    'formAction' => route('admin.accounting.update', $entry),
-                    'formMethod' => 'PUT',
-                    'scope' => $scope,
-                    'search' => $search,
-                ]
-            ));
-        }
 
         return Inertia::render(
             'Admin/Accounting/Form',
@@ -169,7 +147,10 @@ class AccountingController extends Controller
         }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Accounting entry updated.', $this->tablePatches($request));
+            return AjaxResponse::ajaxRedirect(
+                route($this->scopeRoute($this->normalizeScope($request->input('scope', 'ledger')))),
+                'Accounting entry updated.'
+            );
         }
 
         return redirect()->route($this->scopeRoute($this->normalizeScope($request->input('scope', 'ledger'))))
@@ -181,7 +162,10 @@ class AccountingController extends Controller
         $entry->delete();
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Accounting entry deleted.', $this->tablePatches($request), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route($this->scopeRoute($this->normalizeScope($request->input('scope', 'ledger')))),
+                'Accounting entry deleted.'
+            );
         }
 
         return redirect()->route($this->scopeRoute($this->normalizeScope($request->input('scope', 'ledger'))))
@@ -266,24 +250,6 @@ class AccountingController extends Controller
 
             return 'credit-settlement:'.$entry->invoice_id.':'.strtoupper((string) $entry->currency).':'.$amount;
         })->values();
-    }
-
-    private function tablePatches(Request $request): array
-    {
-        $scope = $this->normalizeScope($request->input('scope', $request->query('scope', 'ledger')));
-        $search = trim((string) $request->input('search', $request->query('search', '')));
-
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#accountingTableWrap',
-                'html' => view('admin.accounting.partials.table', [
-                    'entries' => $this->entriesForScope($scope, $search),
-                    'scope' => $scope,
-                    'search' => $search,
-                ])->render(),
-            ],
-        ];
     }
 
     private function normalizeScope(string $scope): string

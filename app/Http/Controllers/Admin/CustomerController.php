@@ -30,13 +30,12 @@ use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class CustomerController extends Controller
 {
-    public function index(Request $request): View|InertiaResponse
+    public function index(Request $request): InertiaResponse
     {
         $search = trim((string) $request->query('search', ''));
 
@@ -66,10 +65,6 @@ class CustomerController extends Controller
             ->withQueryString();
 
         $loginStatuses = $this->resolveCustomerLoginStatuses($customers);
-
-        if ($request->boolean('partial') || $request->header('HX-Request')) {
-            return view('admin.customers.partials.table', compact('customers', 'loginStatuses'));
-        }
 
         return Inertia::render(
             'Admin/Customers/Index',
@@ -595,6 +590,9 @@ class CustomerController extends Controller
 
     private function indexInertiaProps($customers, array $loginStatuses, string $search): array
     {
+        $dateFormat = (string) config('app.date_format', 'd-m-Y');
+        $dateTimeFormat = (string) config('app.datetime_format', 'd-m-Y h:i A');
+
         return [
             'pageTitle' => 'Customers',
             'search' => $search,
@@ -602,11 +600,75 @@ class CustomerController extends Controller
                 'index' => route('admin.customers.index'),
                 'create' => route('admin.customers.create'),
             ],
-            // Keep existing table markup for zero-regression rollout.
-            'table_html' => view('admin.customers.partials.table', [
-                'customers' => $customers,
-                'loginStatuses' => $loginStatuses,
-            ])->render(),
+            'customers' => $customers->getCollection()
+                ->values()
+                ->map(function (Customer $customer) use ($loginStatuses, $dateFormat, $dateTimeFormat) {
+                    $loginMeta = $loginStatuses[$customer->id] ?? ['status' => 'logout', 'last_login_at' => null];
+                    $loginStatus = is_array($loginMeta) ? ($loginMeta['status'] ?? 'logout') : 'logout';
+                    $lastLoginAt = is_array($loginMeta) ? ($loginMeta['last_login_at'] ?? null) : null;
+                    if ($lastLoginAt && ! $lastLoginAt instanceof Carbon) {
+                        $lastLoginAt = Carbon::parse($lastLoginAt);
+                    }
+
+                    $loginLabel = match ($loginStatus) {
+                        'login' => 'Login',
+                        'idle' => 'Idle',
+                        default => 'Logout',
+                    };
+                    $loginClasses = match ($loginStatus) {
+                        'login' => 'border-emerald-200 text-emerald-700 bg-emerald-50',
+                        'idle' => 'border-amber-200 text-amber-700 bg-amber-50',
+                        default => 'border-rose-200 text-rose-700 bg-rose-50',
+                    };
+
+                    $hasActiveService = ($customer->active_subscriptions_count ?? 0) > 0;
+                    $hasActiveProject = ($customer->active_projects_count ?? 0) > 0;
+                    $hasActiveMaintenance = ($customer->active_project_maintenances_count ?? 0) > 0;
+                    $effectiveStatus = ($hasActiveService || $hasActiveProject || $hasActiveMaintenance)
+                        ? 'active'
+                        : (string) $customer->status;
+                    $statusClasses = match ($effectiveStatus) {
+                        'active' => 'bg-emerald-100 text-emerald-700',
+                        'inactive' => 'bg-slate-200 text-slate-700',
+                        default => 'bg-amber-100 text-amber-700',
+                    };
+
+                    return [
+                        'id' => $customer->id,
+                        'name' => (string) $customer->name,
+                        'company_name' => (string) ($customer->company_name ?: '--'),
+                        'email' => (string) ($customer->email ?: '--'),
+                        'avatar_url' => $customer->avatar_path ? asset('storage/'.$customer->avatar_path) : null,
+                        'active_subscriptions_count' => (int) ($customer->active_subscriptions_count ?? 0),
+                        'subscriptions_count' => (int) ($customer->subscriptions_count ?? 0),
+                        'projects_count' => (int) ($customer->projects_count ?? 0),
+                        'project_maintenances_count' => (int) ($customer->project_maintenances_count ?? 0),
+                        'created_at' => $customer->created_at?->format($dateFormat) ?? '--',
+                        'login' => [
+                            'status' => (string) $loginStatus,
+                            'label' => $loginLabel,
+                            'classes' => $loginClasses,
+                            'last_login_at' => $lastLoginAt?->format($dateTimeFormat) ?? '--',
+                        ],
+                        'status' => [
+                            'value' => $effectiveStatus,
+                            'label' => ucfirst($effectiveStatus),
+                            'classes' => $statusClasses,
+                        ],
+                        'routes' => [
+                            'show' => route('admin.customers.show', $customer),
+                            'edit' => route('admin.customers.edit', $customer),
+                        ],
+                    ];
+                })
+                ->all(),
+            'pagination' => [
+                'has_pages' => $customers->hasPages(),
+                'current_page' => $customers->currentPage(),
+                'last_page' => $customers->lastPage(),
+                'previous_url' => $customers->previousPageUrl(),
+                'next_url' => $customers->nextPageUrl(),
+            ],
         ];
     }
 

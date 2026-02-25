@@ -27,6 +27,11 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -38,6 +43,53 @@ jobs:
 
       - name: Run tests
         run: php artisan test
+
+      - name: Generate latest route snapshot
+        run: |
+          mkdir -p storage/app
+          php artisan route:list --json > storage/app/routes-latest.json
+
+      - name: Run UI migration audit
+        run: python scripts/ui_migration_audit.py
+
+      - name: Enforce UI migration gate
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          summary_path = Path("storage/app/migration-reports/ui-migration-audit-summary.json")
+          if not summary_path.exists():
+              print("UI migration gate failed: summary report not found:", summary_path)
+              sys.exit(1)
+
+          summary = json.loads(summary_path.read_text(encoding="utf-8"))
+          totals = summary.get("totals", {})
+          zero_keys = [
+              "remaining_blade_ui_routes",
+              "partial_fragment_endpoints",
+              "unknown_ui_routes",
+              "convert_admin_view_to_inertia_ui_subset",
+          ]
+          failures = {k: totals.get(k) for k in zero_keys if totals.get(k) != 0}
+
+          missing_components = summary.get("inertia_pages", {}).get("missing_components", [])
+          if missing_components:
+              failures["missing_inertia_components"] = len(missing_components)
+
+          if failures:
+              print("UI migration gate failed.")
+              print("Unexpected non-zero metrics:", failures)
+              print("Summary totals:", totals)
+              if missing_components:
+                  print("Missing Inertia components:", missing_components)
+              sys.exit(1)
+
+          print("UI migration gate passed.")
+          print({k: totals.get(k) for k in zero_keys})
+          print({"missing_inertia_components": 0})
+          PY
 
       - name: Build frontend
         run: npm run build

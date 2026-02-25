@@ -4,14 +4,13 @@ namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Services\TaskQueryService;
-use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class TasksController extends Controller
 {
-    public function index(Request $request, TaskQueryService $taskQueryService): Response|InertiaResponse
+    public function index(Request $request, TaskQueryService $taskQueryService): InertiaResponse
     {
         $user = $request->user();
         if (! $taskQueryService->canViewTasks($user)) {
@@ -52,10 +51,6 @@ class TasksController extends Controller
             'routePrefix' => 'employee',
             'usesStartRoute' => true,
         ];
-
-        if ($request->header('HX-Request')) {
-            return response()->view('tasks.partials.index', $payload);
-        }
 
         return Inertia::render('Employee/Tasks/Index', [
             'status_filter' => $statusFilter,

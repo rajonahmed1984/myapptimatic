@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -23,7 +22,7 @@ class ProjectMaintenanceController extends Controller
         private MaintenanceBillingService $maintenanceBillingService
     ) {}
 
-    public function index(Request $request): View|InertiaResponse
+    public function index(Request $request): InertiaResponse
     {
         $search = trim((string) $request->input('search', ''));
 
@@ -49,15 +48,6 @@ class ProjectMaintenanceController extends Controller
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
-
-        $payload = [
-            'maintenances' => $maintenances,
-            'search' => $search,
-        ];
-
-        if ($request->header('HX-Request')) {
-            return view('admin.project-maintenances.partials.table', $payload);
-        }
 
         return Inertia::render('Admin/ProjectMaintenances/Index', [
             'pageTitle' => 'Project Maintenance',

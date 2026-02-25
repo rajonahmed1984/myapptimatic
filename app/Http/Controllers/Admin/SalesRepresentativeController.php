@@ -68,14 +68,6 @@ class SalesRepresentativeController extends Controller
 
         $loginStatuses = $this->resolveRepLoginStatuses($reps);
 
-        if (request()->boolean('partial') || request()->header('HX-Request')) {
-            return view('admin.sales-reps.partials.table', [
-                'reps' => $reps,
-                'totals' => $totals,
-                'loginStatuses' => $loginStatuses,
-            ]);
-        }
-
         return Inertia::render('Admin/SalesReps/Index', [
             'pageTitle' => 'Sales Representatives',
             'filters' => [

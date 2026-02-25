@@ -4,14 +4,13 @@ namespace App\Http\Controllers\SalesRep;
 
 use App\Http\Controllers\Controller;
 use App\Services\TaskQueryService;
-use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class TasksController extends Controller
 {
-    public function index(Request $request, TaskQueryService $taskQueryService): Response|InertiaResponse
+    public function index(Request $request, TaskQueryService $taskQueryService): InertiaResponse
     {
         $user = $request->user();
         if (! $taskQueryService->canViewTasks($user)) {
@@ -49,10 +48,6 @@ class TasksController extends Controller
             'routePrefix' => 'rep',
             'usesStartRoute' => false,
         ];
-
-        if ($request->header('HX-Request')) {
-            return response()->view('tasks.partials.index', $payload);
-        }
 
         return Inertia::render('Rep/Tasks/Index', [
             'status_filter' => $statusFilter,

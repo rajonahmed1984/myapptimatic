@@ -17,7 +17,6 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -26,7 +25,7 @@ class ExpenseController extends Controller
     public function index(
         Request $request,
         ExpenseEntryService $entryService
-    ): View|InertiaResponse {
+    ): InertiaResponse {
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
             $sourceFilters = ['manual', 'salary', 'contract_payout', 'sales_payout'];
@@ -121,27 +120,6 @@ class ExpenseController extends Controller
 
             return "{$currencyCode} {$formatted}";
         };
-
-        $payload = [
-            'expenses' => $expenses,
-            'categories' => $categories,
-            'recurringTemplates' => $recurringTemplates,
-            'peopleOptions' => $peopleOptions,
-            'filters' => $filters,
-            'totalAmount' => $totalAmount,
-            'categoryTotals' => $categoryTotals,
-            'monthlyTotal' => $monthlyTotal,
-            'yearlyTotal' => $yearlyTotal,
-            'topCategories' => $topCategories,
-            'search' => $search,
-            'currencySymbol' => $currencySymbol,
-            'currencyCode' => $currencyCode,
-            'formatCurrency' => $formatCurrency,
-        ];
-
-        if ($request->header('HX-Request')) {
-            return view('admin.expenses.partials.table', $payload);
-        }
 
         return Inertia::render(
             'Admin/Expenses/Index',

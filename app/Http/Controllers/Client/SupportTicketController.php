@@ -235,7 +235,10 @@ class SupportTicketController extends Controller
         $adminNotifications->sendTicketReplyFromClient($ticket, $reply);
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Reply sent.', $this->mainPatches($ticket), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('client.support-tickets.show', $ticket),
+                'Reply sent.'
+            );
         }
 
         return redirect()
@@ -263,7 +266,10 @@ class SupportTicketController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Ticket updated.', $this->mainPatches($ticket), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('client.support-tickets.show', $ticket),
+                'Ticket updated.'
+            );
         }
 
         return redirect()
@@ -296,18 +302,4 @@ class SupportTicketController extends Controller
         return $file->storeAs('support-ticket-replies', $fileName, 'public');
     }
 
-    private function mainPatches(SupportTicket $ticket): array
-    {
-        $ticket->refresh()->load(['replies.user', 'customer']);
-
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#ticketMainWrap',
-                'html' => view('client.support-tickets.partials.main', [
-                    'ticket' => $ticket,
-                ])->render(),
-            ],
-        ];
-    }
 }

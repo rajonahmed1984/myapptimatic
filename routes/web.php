@@ -95,7 +95,6 @@ use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskActivityController;
 use App\Http\Controllers\ProjectTaskViewController;
 use App\Http\Middleware\HandleInertiaRequests;
-use App\Http\Middleware\ConvertAdminViewToInertia;
 use App\Support\UiFeature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -435,7 +434,6 @@ Route::middleware([
     'user.activity:employee',
     'nocache',
     HandleInertiaRequests::class,
-    ConvertAdminViewToInertia::class,
 ])
     ->prefix('employee')
     ->name('employee.')
@@ -544,10 +542,19 @@ Route::middleware([
     HandleInertiaRequests::class,
 ])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
-    Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
-    Route::get('hr/employees/{employee}', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'show'])->name('hr.employees.show');
-    Route::get('invoices/{invoice}/client-view', [AdminInvoiceController::class, 'clientView'])->name('invoices.client-view');
-    Route::get('projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])->name('projects.tasks.show');
+    Route::get('customers/{customer}', [CustomerController::class, 'show'])
+        ->whereNumber('customer')
+        ->name('customers.show');
+    Route::get('hr/employees/{employee}', [\App\Http\Controllers\Admin\Hr\EmployeeController::class, 'show'])
+        ->whereNumber('employee')
+        ->name('hr.employees.show');
+    Route::get('invoices/{invoice}/client-view', [AdminInvoiceController::class, 'clientView'])
+        ->whereNumber('invoice')
+        ->name('invoices.client-view');
+    Route::get('projects/{project}/tasks/{task}', [ProjectTaskViewController::class, 'show'])
+        ->whereNumber('project')
+        ->whereNumber('task')
+        ->name('projects.tasks.show');
 });
 
 Route::middleware([
@@ -555,7 +562,6 @@ Route::middleware([
     'user.activity:web',
     'nocache',
     HandleInertiaRequests::class,
-    ConvertAdminViewToInertia::class,
 ])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/ai/business-status', [AiBusinessStatusController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
@@ -1135,7 +1141,6 @@ Route::middleware([
     'project.client',
     'nocache',
     HandleInertiaRequests::class,
-    ConvertAdminViewToInertia::class,
 ])
     ->prefix('client')
     ->name('client.')
@@ -1336,7 +1341,6 @@ Route::middleware([
     'user.activity:sales',
     'nocache',
     HandleInertiaRequests::class,
-    ConvertAdminViewToInertia::class,
 ])
     ->prefix('sales')
     ->name('rep.')
@@ -1436,7 +1440,6 @@ Route::middleware([
     'user.activity:support',
     'nocache',
     HandleInertiaRequests::class,
-    ConvertAdminViewToInertia::class,
 ])
     ->prefix('support')
     ->name('support.')

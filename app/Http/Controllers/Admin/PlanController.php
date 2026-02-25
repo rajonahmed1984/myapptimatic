@@ -14,7 +14,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -31,14 +30,10 @@ class PlanController extends Controller
         );
     }
 
-    public function create(Request $request): View|InertiaResponse
+    public function create(Request $request): InertiaResponse
     {
         $products = Product::query()->orderBy('name')->get();
         $defaultCurrency = Setting::getValue('currency');
-
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.plans.partials.form', compact('products', 'defaultCurrency'));
-        }
 
         return Inertia::render(
             'Admin/Plans/Form',
@@ -77,21 +72,20 @@ class PlanController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Plan created.', $this->patches());
+            return AjaxResponse::ajaxRedirect(
+                route('admin.plans.index'),
+                'Plan created.'
+            );
         }
 
         return redirect()->route('admin.plans.index')
             ->with('status', 'Plan created.');
     }
 
-    public function edit(Request $request, Plan $plan): View|InertiaResponse
+    public function edit(Request $request, Plan $plan): InertiaResponse
     {
         $products = Product::query()->orderBy('name')->get();
         $defaultCurrency = Setting::getValue('currency');
-
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.plans.partials.form', compact('plan', 'products', 'defaultCurrency'));
-        }
 
         return Inertia::render(
             'Admin/Plans/Form',
@@ -130,7 +124,10 @@ class PlanController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Plan updated.', $this->patches());
+            return AjaxResponse::ajaxRedirect(
+                route('admin.plans.edit', $plan),
+                'Plan updated.'
+            );
         }
 
         return redirect()->route('admin.plans.edit', $plan)
@@ -151,7 +148,10 @@ class PlanController extends Controller
         $plan->delete();
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Plan deleted.', $this->patches(), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('admin.plans.index'),
+                'Plan deleted.'
+            );
         }
 
         return redirect()->route('admin.plans.index')
@@ -179,20 +179,6 @@ class PlanController extends Controller
         }
 
         return $slug;
-    }
-
-    private function patches(): array
-    {
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#plansTableWrap',
-                'html' => view('admin.plans.partials.table', [
-                    'plans' => Plan::query()->with('product')->latest()->get(),
-                    'defaultCurrency' => Setting::getValue('currency'),
-                ])->render(),
-            ],
-        ];
     }
 
     private function indexInertiaProps(EloquentCollection $plans, string $defaultCurrency): array

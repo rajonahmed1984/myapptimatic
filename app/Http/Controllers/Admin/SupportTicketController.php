@@ -16,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -205,7 +204,10 @@ class SupportTicketController extends Controller
         $clientNotifications->sendTicketReplyFromAdmin($ticket, $reply);
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Reply sent.', $this->mainPatches($ticket), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('admin.support-tickets.show', $ticket),
+                'Reply sent.'
+            );
         }
 
         return redirect()
@@ -233,7 +235,10 @@ class SupportTicketController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Ticket updated.', $this->mainPatches($ticket), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('admin.support-tickets.show', $ticket),
+                'Ticket updated.'
+            );
         }
 
         return redirect()
@@ -266,7 +271,10 @@ class SupportTicketController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Ticket updated.', $this->mainPatches($ticket), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('admin.support-tickets.show', $ticket),
+                'Ticket updated.'
+            );
         }
 
         return redirect()
@@ -291,21 +299,6 @@ class SupportTicketController extends Controller
         return redirect()
             ->route('admin.support-tickets.index')
             ->with('status', 'Ticket deleted.');
-    }
-
-    private function mainPatches(SupportTicket $ticket): array
-    {
-        $ticket->refresh()->load(['customer', 'replies.user']);
-
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#ticketMainWrap',
-                'html' => view('admin.support-tickets.partials.main', [
-                    'ticket' => $ticket,
-                ])->render(),
-            ],
-        ];
     }
 
     private function indexInertiaProps(

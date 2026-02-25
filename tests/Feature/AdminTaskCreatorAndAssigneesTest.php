@@ -37,8 +37,16 @@ class AdminTaskCreatorAndAssigneesTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.tasks.index'));
 
         $response->assertOk();
-        $response->assertSee('Created By');
-        $response->assertSee('Task Creator');
+
+        $content = $response->getContent();
+        $this->assertSame(1, preg_match('/data-page="([^"]+)"/', $content, $matches));
+
+        $payload = json_decode(html_entity_decode($matches[1], ENT_QUOTES), true);
+        $this->assertIsArray($payload);
+        $tasks = data_get($payload, 'props.tasks', []);
+
+        $this->assertNotEmpty($tasks);
+        $this->assertSame('Task Creator', data_get($tasks[0], 'creator_name'));
     }
 
     #[Test]

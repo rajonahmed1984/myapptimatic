@@ -117,8 +117,17 @@ class UserDocumentDisplayTest extends TestCase
         $content = $response->getContent();
         if (preg_match('/data-page="([^"]+)"/', $content, $matches) === 1) {
             $payload = json_decode(html_entity_decode($matches[1], ENT_QUOTES), true);
-            $tableHtml = (string) data_get($payload, 'props.table_html', '');
-            $this->assertStringContainsString(Storage::disk('public')->url($path), $tableHtml);
+            $avatarUrls = collect(data_get($payload, 'props.customers', []))
+                ->pluck('avatar_url')
+                ->filter()
+                ->values()
+                ->all();
+
+            $expectedPath = Storage::disk('public')->url($path);
+            $this->assertTrue(
+                collect($avatarUrls)->contains(fn ($url) => is_string($url) && str_contains($url, $expectedPath)),
+                'Expected at least one customer avatar URL to contain: '.$expectedPath
+            );
             return;
         }
 

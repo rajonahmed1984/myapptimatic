@@ -22,19 +22,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class ProjectTaskController extends Controller
 {
-    public function create(Request $request, Project $project): View|InertiaResponse
+    public function create(Request $request, Project $project): InertiaResponse
     {
         $this->authorize('createTask', $project);
-
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.projects.partials.task-form', $this->taskFormData($project));
-        }
 
         $statusFilter = old('task_status_filter', $request->query('status'));
         $statusFilter = in_array($statusFilter, ['pending', 'in_progress', 'blocked', 'completed'], true)
@@ -51,14 +46,10 @@ class ProjectTaskController extends Controller
         ]);
     }
 
-    public function edit(Request $request, Project $project, ProjectTask $task): View|InertiaResponse
+    public function edit(Request $request, Project $project, ProjectTask $task): InertiaResponse
     {
         $this->ensureTaskBelongsToProject($project, $task);
         $this->authorize('update', $task);
-
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.projects.partials.task-form', $this->taskFormData($project, $task));
-        }
 
         $statusFilter = old('task_status_filter', $request->query('status'));
         $statusFilter = in_array($statusFilter, ['pending', 'in_progress', 'blocked', 'completed'], true)
@@ -135,9 +126,9 @@ class ProjectTaskController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk(
+            return AjaxResponse::ajaxRedirect(
+                $this->tasksRedirectUrl($request, $project),
                 'Task added.',
-                $this->taskPatches($request, $project),
                 closeModal: true
             );
         }
@@ -228,9 +219,9 @@ class ProjectTaskController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk(
+            return AjaxResponse::ajaxRedirect(
+                $this->tasksRedirectUrl($request, $project),
                 'Task updated.',
-                $this->taskPatches($request, $project),
                 closeModal: true
             );
         }
@@ -339,10 +330,9 @@ class ProjectTaskController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk(
-                'Task status updated.',
-                $this->taskPatches($request, $project),
-                closeModal: false
+            return AjaxResponse::ajaxRedirect(
+                $this->tasksRedirectUrl($request, $project),
+                'Task status updated.'
             );
         }
 
@@ -368,10 +358,9 @@ class ProjectTaskController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk(
-                'Task removed.',
-                $this->taskPatches($request, $project),
-                closeModal: false
+            return AjaxResponse::ajaxRedirect(
+                $this->tasksRedirectUrl($request, $project),
+                'Task removed.'
             );
         }
 
@@ -515,75 +504,21 @@ class ProjectTaskController extends Controller
         ];
     }
 
-    private function taskPatches(Request $request, Project $project): array
+    private function tasksRedirectUrl(Request $request, Project $project): string
     {
-        $payload = $this->tasksPayload($request, $project);
+        if ($request->filled('return_to')) {
+            return (string) $request->input('return_to');
+        }
 
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#tasksTableWrap',
-                'html' => view('admin.projects.partials.tasks-table', $payload)->render(),
-            ],
-            [
-                'action' => 'replace',
-                'selector' => '#projectTaskStats',
-                'html' => view('admin.projects.partials.tasks-stats', $payload)->render(),
-            ],
-        ];
-    }
-
-    private function tasksPayload(Request $request, Project $project): array
-    {
-        $user = $request->user();
         $statusFilter = (string) ($request->query('status') ?? $request->input('task_status_filter', ''));
         $statusFilter = in_array($statusFilter, ['pending', 'in_progress', 'blocked', 'completed'], true)
             ? $statusFilter
             : null;
-        $tasks = $project->tasks()
-            ->with(['assignments.employee', 'assignments.salesRep', 'creator'])
-            ->when($user?->isClient(), fn ($query) => $query->where('customer_visible', true))
-            ->when($statusFilter, function ($query, $status) {
-                if ($status === 'completed') {
-                    $query->whereIn('status', ['completed', 'done']);
 
-                    return;
-                }
-
-                $query->where('status', $status);
-            })
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->paginate(25);
-
-        if ($statusFilter) {
-            $tasks->appends(['status' => $statusFilter]);
-        } else {
-            $tasks->withQueryString();
-        }
-
-        $baseSummary = $project->tasks()
-            ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count")
-            ->selectRaw("SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_count")
-            ->selectRaw("SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END) as blocked_count")
-            ->selectRaw("SUM(CASE WHEN status IN ('completed', 'done') THEN 1 ELSE 0 END) as completed_count")
-            ->first();
-
-        $summary = [
-            'total' => (int) $project->tasks()->count(),
-            'pending' => (int) ($baseSummary->pending_count ?? 0),
-            'in_progress' => (int) ($baseSummary->in_progress_count ?? 0),
-            'blocked' => (int) ($baseSummary->blocked_count ?? 0),
-            'completed' => (int) ($baseSummary->completed_count ?? 0),
-        ];
-
-        return [
+        return route('admin.projects.tasks.index', array_filter([
             'project' => $project,
-            'tasks' => $tasks,
-            'taskTypeOptions' => TaskSettings::taskTypeOptions(),
-            'summary' => $summary,
-            'statusFilter' => $statusFilter,
-        ];
+            'status' => $statusFilter,
+        ], fn ($value) => $value !== null && $value !== ''));
     }
 
     private function parseAssignee(string $value): array

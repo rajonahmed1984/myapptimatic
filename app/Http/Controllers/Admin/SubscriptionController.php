@@ -17,19 +17,14 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class SubscriptionController extends Controller
 {
-    public function index(Request $request): View|InertiaResponse
+    public function index(Request $request): InertiaResponse
     {
         $payload = $this->indexPayload($request);
-
-        if ($request->header('HX-Request')) {
-            return view('admin.subscriptions.partials.table', $payload);
-        }
 
         return Inertia::render(
             'Admin/Subscriptions/Index',
@@ -40,15 +35,11 @@ class SubscriptionController extends Controller
         );
     }
 
-    public function create(Request $request): View|InertiaResponse
+    public function create(Request $request): InertiaResponse
     {
         $customers = Customer::query()->orderBy('name')->get();
         $plans = Plan::query()->with('product')->orderBy('name')->get();
         $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
-
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.subscriptions.partials.form', compact('customers', 'plans', 'salesReps'));
-        }
 
         return Inertia::render(
             'Admin/Subscriptions/Form',
@@ -94,10 +85,9 @@ class SubscriptionController extends Controller
         }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk(
+            return AjaxResponse::ajaxRedirect(
+                route('admin.subscriptions.edit', $subscription),
                 'Subscription created.',
-                $this->patches($request),
-                closeModal: true
             );
         }
 
@@ -105,16 +95,12 @@ class SubscriptionController extends Controller
             ->with('status', 'Subscription created.');
     }
 
-    public function edit(Request $request, Subscription $subscription): View|InertiaResponse
+    public function edit(Request $request, Subscription $subscription): InertiaResponse
     {
         $subscription = $subscription->load(['customer', 'plan.product']);
         $customers = Customer::query()->orderBy('name')->get();
         $plans = Plan::query()->with('product')->orderBy('name')->get();
         $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
-
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.subscriptions.partials.form', compact('subscription', 'customers', 'plans', 'salesReps'));
-        }
 
         return Inertia::render(
             'Admin/Subscriptions/Form',
@@ -160,10 +146,9 @@ class SubscriptionController extends Controller
         }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk(
+            return AjaxResponse::ajaxRedirect(
+                route('admin.subscriptions.edit', $subscription),
                 'Subscription updated.',
-                $this->patches($request),
-                closeModal: true
             );
         }
 
@@ -176,10 +161,9 @@ class SubscriptionController extends Controller
         $subscription->delete();
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk(
+            return AjaxResponse::ajaxRedirect(
+                route('admin.subscriptions.index'),
                 'Subscription deleted.',
-                $this->patches($request),
-                closeModal: false
             );
         }
 
@@ -232,17 +216,6 @@ class SubscriptionController extends Controller
             'subscriptions' => $subscriptions,
             'accessBlockedCustomers' => $accessBlockedCustomers,
             'search' => $search,
-        ];
-    }
-
-    private function patches(Request $request): array
-    {
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#subscriptionsTable',
-                'html' => view('admin.subscriptions.partials.table', $this->indexPayload($request))->render(),
-            ],
         ];
     }
 

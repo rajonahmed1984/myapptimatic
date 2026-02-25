@@ -96,13 +96,11 @@ export default function Tasks({
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Add Task</div>
-                                <div className="text-xs text-slate-500">Create tasks with modal form, no page reload.</div>
+                                <div className="text-xs text-slate-500">Create a new task using the dedicated task form page.</div>
                             </div>
                             <a
                                 href={taskCreateUrl}
-                                data-ajax-modal="true"
-                                data-modal-title="Add Task"
-                                data-url={taskCreateUrl}
+                                data-native="true"
                                 className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
                             >
                                 + Add Task
@@ -227,16 +225,14 @@ export default function Tasks({
                                                             <>
                                                                 <a
                                                                     href={task.routes?.edit}
-                                                                    data-ajax-modal="true"
-                                                                    data-modal-title="Edit Task"
-                                                                    data-url={task.routes?.edit}
+                                                                    data-native="true"
                                                                     className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300"
                                                                 >
                                                                     Edit
                                                                 </a>
 
                                                                 {statusFilter !== 'in_progress' && !isInProgress && !isCompleted ? (
-                                                                    <form method="POST" action={task.routes?.change_status} data-ajax-form="true">
+                                                                    <form method="POST" action={task.routes?.change_status} data-native="true">
                                                                         <input type="hidden" name="_token" value={csrf} />
                                                                         <input type="hidden" name="_method" value="PATCH" />
                                                                         <input type="hidden" name="task_status_filter" value={statusFilter || ''} />
@@ -252,7 +248,7 @@ export default function Tasks({
                                                                 ) : null}
 
                                                                 {statusFilter !== 'completed' && !isCompleted ? (
-                                                                    <form method="POST" action={task.routes?.change_status} data-ajax-form="true">
+                                                                    <form method="POST" action={task.routes?.change_status} data-native="true">
                                                                         <input type="hidden" name="_token" value={csrf} />
                                                                         <input type="hidden" name="_method" value="PATCH" />
                                                                         <input type="hidden" name="task_status_filter" value={statusFilter || ''} />
@@ -273,7 +269,7 @@ export default function Tasks({
                                                             <form
                                                                 method="POST"
                                                                 action={task.routes?.destroy}
-                                                                data-ajax-form="true"
+                                                                data-native="true"
                                                                 onSubmit={(event) => {
                                                                     if (!window.confirm('Delete this task?')) {
                                                                         event.preventDefault();

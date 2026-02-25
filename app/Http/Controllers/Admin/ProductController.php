@@ -11,7 +11,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -27,12 +26,8 @@ class ProductController extends Controller
         );
     }
 
-    public function create(Request $request): View|InertiaResponse|RedirectResponse
+    public function create(Request $request): InertiaResponse
     {
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.products.partials.form');
-        }
-
         return Inertia::render(
             'Admin/Products/Form',
             $this->formInertiaProps(null)
@@ -58,19 +53,18 @@ class ProductController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Product created.', $this->patches());
+            return AjaxResponse::ajaxRedirect(
+                route('admin.products.index'),
+                'Product created.'
+            );
         }
 
         return redirect()->route('admin.products.index')
             ->with('status', 'Product created.');
     }
 
-    public function edit(Request $request, Product $product): View|InertiaResponse
+    public function edit(Request $request, Product $product): InertiaResponse
     {
-        if (AjaxResponse::ajaxFromRequest($request)) {
-            return view('admin.products.partials.form', compact('product'));
-        }
-
         return Inertia::render(
             'Admin/Products/Form',
             $this->formInertiaProps($product)
@@ -96,7 +90,10 @@ class ProductController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Product updated.', $this->patches());
+            return AjaxResponse::ajaxRedirect(
+                route('admin.products.edit', $product),
+                'Product updated.'
+            );
         }
 
         return redirect()->route('admin.products.edit', $product)
@@ -115,24 +112,14 @@ class ProductController extends Controller
         $product->delete();
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Product deleted.', $this->patches(), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('admin.products.index'),
+                'Product deleted.'
+            );
         }
 
         return redirect()->route('admin.products.index')
             ->with('status', 'Product deleted.');
-    }
-
-    private function patches(): array
-    {
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#productsTableWrap',
-                'html' => view('admin.products.partials.table', [
-                    'products' => Product::query()->latest()->get(),
-                ])->render(),
-            ],
-        ];
     }
 
     private function indexInertiaProps(EloquentCollection $products): array

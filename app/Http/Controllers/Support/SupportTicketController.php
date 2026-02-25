@@ -187,7 +187,10 @@ class SupportTicketController extends Controller
         $clientNotifications->sendTicketReplyFromAdmin($ticket, $reply);
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Reply sent.', $this->mainPatches($ticket), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('support.support-tickets.show', $ticket),
+                'Reply sent.'
+            );
         }
 
         return redirect()
@@ -215,7 +218,10 @@ class SupportTicketController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Ticket updated.', $this->mainPatches($ticket), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('support.support-tickets.show', $ticket),
+                'Ticket updated.'
+            );
         }
 
         return redirect()
@@ -248,7 +254,10 @@ class SupportTicketController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Ticket updated.', $this->mainPatches($ticket), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('support.support-tickets.show', $ticket),
+                'Ticket updated.'
+            );
         }
 
         return redirect()
@@ -275,18 +284,4 @@ class SupportTicketController extends Controller
             ->with('status', 'Ticket deleted.');
     }
 
-    private function mainPatches(SupportTicket $ticket): array
-    {
-        $ticket->refresh()->load(['customer', 'replies.user']);
-
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#ticketMainWrap',
-                'html' => view('support.support-tickets.partials.main', [
-                    'ticket' => $ticket,
-                ])->render(),
-            ],
-        ];
-    }
 }

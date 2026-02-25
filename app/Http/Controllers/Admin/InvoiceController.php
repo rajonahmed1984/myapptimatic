@@ -292,7 +292,10 @@ class InvoiceController extends Controller
         }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Invoice marked as paid.', $this->showPatches($invoice), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('admin.invoices.show', $invoice),
+                'Invoice marked as paid.'
+            );
         }
 
         return redirect()->route('admin.invoices.show', $invoice)
@@ -318,7 +321,10 @@ class InvoiceController extends Controller
         ]);
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Invoice recalculated.', $this->showPatches($invoice), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('admin.invoices.show', $invoice),
+                'Invoice recalculated.'
+            );
         }
 
         return redirect()->route('admin.invoices.show', $invoice)
@@ -414,7 +420,10 @@ class InvoiceController extends Controller
         }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Invoice updated.', $this->showPatches($invoice), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                route('admin.invoices.show', $invoice),
+                'Invoice updated.'
+            );
         }
 
         return redirect()->route('admin.invoices.show', $invoice)
@@ -432,7 +441,10 @@ class InvoiceController extends Controller
         $invoice->delete();
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxOk('Invoice deleted.', $this->listPatchesFromRequest($request), closeModal: false);
+            return AjaxResponse::ajaxRedirect(
+                $this->listRedirectFromRequest($request),
+                'Invoice deleted.'
+            );
         }
 
         return redirect()->route('admin.invoices.index')
@@ -516,28 +528,7 @@ class InvoiceController extends Controller
         ]);
     }
 
-    private function showPatches(Invoice $invoice): array
-    {
-        $invoice = $invoice->fresh([
-            'customer',
-            'items',
-            'accountingEntries.paymentGateway',
-            'paymentProofs.paymentGateway',
-            'paymentProofs.reviewer',
-        ]);
-
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#invoiceShowWrap',
-                'html' => view('admin.invoices.partials.show-main', [
-                    'invoice' => $invoice,
-                ])->render(),
-            ],
-        ];
-    }
-
-    private function listPatchesFromRequest(Request $request): array
+    private function listRedirectFromRequest(Request $request): string
     {
         $statusFilter = trim((string) $request->input('status_filter', ''));
         $status = in_array($statusFilter, ['paid', 'unpaid', 'overdue', 'cancelled', 'refunded'], true)
@@ -549,62 +540,14 @@ class InvoiceController extends Controller
         if ($projectId > 0) {
             $project = Project::query()->find($projectId);
         }
-
-        $query = Invoice::query()
-            ->with(['customer', 'paymentProofs', 'subscription.plan.product', 'maintenance.project', 'accountingEntries'])
-            ->latest('issue_date');
-
-        if ($project) {
-            $query->where('project_id', $project->id);
-        }
-
-        if ($status) {
-            $query->where('status', $status);
-        }
-
-        if ($search !== '') {
-            $query->where(function ($inner) use ($search) {
-                $inner->where('number', 'like', '%'.$search.'%')
-                    ->orWhere('status', 'like', '%'.$search.'%')
-                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                        $customerQuery->where('name', 'like', '%'.$search.'%');
-                    })
-                    ->orWhereHas('subscription.plan', function ($planQuery) use ($search) {
-                        $planQuery->where('name', 'like', '%'.$search.'%')
-                            ->orWhereHas('product', function ($productQuery) use ($search) {
-                                $productQuery->where('name', 'like', '%'.$search.'%');
-                            });
-                    })
-                    ->orWhereHas('maintenance', function ($maintenanceQuery) use ($search) {
-                        $maintenanceQuery->where('title', 'like', '%'.$search.'%');
-                    });
-
-                if (is_numeric($search)) {
-                    $inner->orWhere('id', (int) $search);
-                }
-            });
-        }
-
         $listUrl = $this->statusListUrl($status, $project);
-        $paginator = $query->paginate(25);
-        $paginator->withPath($listUrl);
-        if ($search !== '') {
-            $paginator->appends(['search' => $search]);
+        if ($search === '') {
+            return $listUrl;
         }
 
-        return [
-            [
-                'action' => 'replace',
-                'selector' => '#invoicesTableWrap',
-                'html' => view('admin.invoices.partials.table', [
-                    'invoices' => $paginator,
-                    'statusFilter' => $status,
-                    'search' => $search,
-                    'project' => $project,
-                    'title' => $this->statusTitle($status),
-                ])->render(),
-            ],
-        ];
+        $separator = str_contains($listUrl, '?') ? '&' : '?';
+
+        return $listUrl.$separator.http_build_query(['search' => $search]);
     }
 
     private function customerLabel(Customer $customer): string

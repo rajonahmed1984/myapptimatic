@@ -165,7 +165,7 @@ class IncomeController extends Controller
     public function index(
         Request $request,
         IncomeEntryService $entryService
-    ): \Illuminate\View\View|InertiaResponse {
+    ): InertiaResponse {
         $search = trim((string) $request->input('search', ''));
         $sourceFilters = $request->input('sources', []);
         if (! is_array($sourceFilters) || empty($sourceFilters)) {
@@ -232,21 +232,6 @@ class IncomeController extends Controller
             $currencyCode = Currency::DEFAULT;
         }
         $currencySymbol = Currency::symbol($currencyCode);
-
-        $payload = [
-            'incomes' => $incomes,
-            'categories' => $categories,
-            'filters' => $filters,
-            'totalAmount' => $totalAmount,
-            'categoryTotals' => $categoryTotals,
-            'currencySymbol' => $currencySymbol,
-            'currencyCode' => $currencyCode,
-            'search' => $search,
-        ];
-
-        if ($request->header('HX-Request')) {
-            return view('admin.income.partials.table', $payload);
-        }
 
         return Inertia::render(
             'Admin/Income/Index',
