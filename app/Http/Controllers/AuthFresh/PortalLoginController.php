@@ -27,7 +27,13 @@ class PortalLoginController extends Controller
             return redirect($this->loginService->defaultRedirectUrlFor($portal, Auth::guard($guard)->user()));
         }
 
-        return view(Portal::loginView($portal));
+        return match ($portal) {
+            'admin' => view('auth.admin-login'),
+            'employee' => view('employee.auth.login'),
+            'sales' => view('sales.auth.login'),
+            'support' => view('support.auth.login'),
+            default => view('auth.login'),
+        };
     }
 
     public function login(Request $request, string $portal): RedirectResponse

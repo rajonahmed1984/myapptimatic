@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Models\UserSession;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RecordUserLogoutSession
 {
@@ -39,7 +40,7 @@ class RecordUserLogoutSession
             });
         } catch (\Exception $e) {
             // Silently fail to not impact user logout
-            \Log::error('Failed to record user logout session: ' . $e->getMessage());
+            Log::error('Failed to record user logout session: ' . $e->getMessage());
         }
     }
 

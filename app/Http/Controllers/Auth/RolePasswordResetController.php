@@ -82,9 +82,7 @@ class RolePasswordResetController extends Controller
             return redirect()->route($config['dashboard_route']);
         }
 
-        return view($config['forgot_view'], [
-            'loginRoute' => route($config['login_route']),
-        ]);
+        return $this->forgotView($role, route($config['login_route']));
     }
 
     private function showResetForm(string $role, string $token): View|RedirectResponse
@@ -95,10 +93,7 @@ class RolePasswordResetController extends Controller
             return redirect()->route($config['dashboard_route']);
         }
 
-        return view($config['reset_view'], [
-            'token' => $token,
-            'loginRoute' => route($config['login_route']),
-        ]);
+        return $this->resetView($role, $token, route($config['login_route']));
     }
 
     private function sendResetLink(Request $request, string $role): RedirectResponse
@@ -165,8 +160,6 @@ class RolePasswordResetController extends Controller
                 'broker' => 'employees',
                 'login_route' => 'employee.login',
                 'dashboard_route' => 'employee.dashboard',
-                'forgot_view' => 'auth.employee.forgot-password',
-                'reset_view' => 'auth.employee.reset-password',
             ],
             'sales' => [
                 'role' => Role::SALES,
@@ -174,8 +167,6 @@ class RolePasswordResetController extends Controller
                 'broker' => 'sales',
                 'login_route' => 'sales.login',
                 'dashboard_route' => 'rep.dashboard',
-                'forgot_view' => 'auth.sales.forgot-password',
-                'reset_view' => 'auth.sales.reset-password',
             ],
             default => [
                 'role' => Role::SUPPORT,
@@ -183,9 +174,30 @@ class RolePasswordResetController extends Controller
                 'broker' => 'support',
                 'login_route' => 'support.login',
                 'dashboard_route' => 'support.dashboard',
-                'forgot_view' => 'auth.support.forgot-password',
-                'reset_view' => 'auth.support.reset-password',
             ],
+        };
+    }
+
+    private function forgotView(string $role, string $loginRoute): View
+    {
+        return match ($role) {
+            'employee' => view('auth.employee.forgot-password', ['loginRoute' => $loginRoute]),
+            'sales' => view('auth.sales.forgot-password', ['loginRoute' => $loginRoute]),
+            default => view('auth.support.forgot-password', ['loginRoute' => $loginRoute]),
+        };
+    }
+
+    private function resetView(string $role, string $token, string $loginRoute): View
+    {
+        $payload = [
+            'token' => $token,
+            'loginRoute' => $loginRoute,
+        ];
+
+        return match ($role) {
+            'employee' => view('auth.employee.reset-password', $payload),
+            'sales' => view('auth.sales.reset-password', $payload),
+            default => view('auth.support.reset-password', $payload),
         };
     }
 }

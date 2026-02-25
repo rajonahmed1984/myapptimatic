@@ -6,6 +6,7 @@ use App\Models\UserSession;
 use App\Models\UserActivityDaily;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 
 class RecordUserLoginSession
@@ -76,7 +77,7 @@ class RecordUserLoginSession
             });
         } catch (\Exception $e) {
             // Silently fail to not impact user login
-            \Log::error('Failed to record user login session: ' . $e->getMessage());
+            Log::error('Failed to record user login session: ' . $e->getMessage());
         }
     }
 

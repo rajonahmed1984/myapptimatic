@@ -192,7 +192,7 @@ class ProjectTaskController extends Controller
             'project_id' => $project->id,
             'task_id' => $task->id,
             'actor_type' => 'employee',
-            'actor_id' => $request->user()->id,
+            'actor_id' => auth()->id(),
         ]);
 
         return back()->with('status', 'Task removed.');

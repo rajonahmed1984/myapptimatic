@@ -29,7 +29,6 @@ use Illuminate\Cache\RateLimiting\Limit;
 use App\Events\InvoiceOverdue;
 use App\Events\LicenseBlocked;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Mail\Events\MessageFailed;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\ServiceProvider;
@@ -356,13 +355,29 @@ class AppServiceProvider extends ServiceProvider
             $this->logEmailEvent('Email sent.', $event->message, $mailer, $category, 'info');
         });
 
-        Event::listen(MessageFailed::class, function (MessageFailed $event) {
-            $mailer = property_exists($event, 'mailer') ? $event->mailer : null;
-            $category = $this->resolveCategoryForMessage($event->message);
-            $this->logEmailEvent('Email failed to send.', $event->message, $mailer, $category, 'error', [
-                'failure' => $event->exception?->getMessage(),
-            ]);
-        });
+        $failedEventClass = 'Illuminate\\Mail\\Events\\MessageFailed';
+        if (class_exists($failedEventClass)) {
+            Event::listen($failedEventClass, function (object $event): void {
+                if (! property_exists($event, 'message')) {
+                    return;
+                }
+
+                $mailer = property_exists($event, 'mailer') ? (is_string($event->mailer) ? $event->mailer : null) : null;
+                $message = $event->message;
+                if (! is_object($message)) {
+                    return;
+                }
+
+                $category = $this->resolveCategoryForMessage($message);
+                $failure = property_exists($event, 'exception') && $event->exception instanceof \Throwable
+                    ? $event->exception->getMessage()
+                    : null;
+
+                $this->logEmailEvent('Email failed to send.', $message, $mailer, $category, 'error', [
+                    'failure' => $failure,
+                ]);
+            });
+        }
     }
 
     private function logEmailEvent(

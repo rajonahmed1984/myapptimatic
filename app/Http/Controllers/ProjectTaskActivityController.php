@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -233,7 +234,7 @@ class ProjectTaskActivityController extends Controller
 
         $disk = Storage::disk('public');
         if (! $disk->exists($activity->attachment_path)) {
-            \Log::warning('Attachment file not found in storage', [
+            Log::warning('Attachment file not found in storage', [
                 'activity_id' => $activity->id,
                 'attachment_path' => $activity->attachment_path,
                 'task_id' => $task->id,
