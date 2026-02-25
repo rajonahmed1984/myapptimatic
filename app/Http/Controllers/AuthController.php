@@ -12,12 +12,35 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class AuthController extends Controller
 {
-    public function showRegister()
+    public function showRegister(Request $request): InertiaResponse
     {
-        return view('auth.register');
+        $redirect = $this->redirectTarget($request);
+
+        return Inertia::render('Auth/Register', [
+            'form' => [
+                'name' => old('name', ''),
+                'company_name' => old('company_name', ''),
+                'email' => old('email', ''),
+                'phone' => old('phone', ''),
+                'address' => old('address', ''),
+                'currency' => old('currency', 'BDT'),
+                'redirect' => $redirect,
+            ],
+            'routes' => [
+                'submit' => route('register.store', [], false),
+                'login' => route('login', $redirect ? ['redirect' => $redirect] : [], false),
+            ],
+            'recaptcha' => [
+                'enabled' => (bool) config('recaptcha.enabled') && is_string(config('recaptcha.site_key')) && config('recaptcha.site_key') !== '',
+                'site_key' => (string) config('recaptcha.site_key', ''),
+                'action' => 'REGISTER',
+            ],
+        ]);
     }
 
     public function register(Request $request, ClientNotificationService $clientNotifications, RecaptchaService $recaptcha): RedirectResponse

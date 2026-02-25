@@ -211,28 +211,40 @@ Route::match(['GET', 'POST'], '/payments/bkash/{attempt}/callback', [PaymentCall
 
 Route::middleware(['guest:web', 'nocache'])->group(function () {
     Route::get('/login', [PortalLoginController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
         ->defaults('portal', 'web')
         ->name('login');
     Route::post('/login', [PortalLoginController::class, 'login'])
         ->defaults('portal', 'web')
         ->middleware(['throttle:login', 'login.trace'])
         ->name('login.attempt');
-    Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])->name('project-client.login');
+    Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('project-client.login');
     Route::post('/project-login', [ProjectClientAuthController::class, 'login'])->name('project-client.login.attempt');
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::get('/register', [AuthController::class, 'showRegister'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
     Route::get('/admin/login', [PortalLoginController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
         ->defaults('portal', 'admin')
         ->name('admin.login');
     Route::post('/admin/login', [PortalLoginController::class, 'login'])
         ->defaults('portal', 'admin')
         ->middleware(['throttle:login', 'login.trace'])
         ->name('admin.login.attempt');
-    Route::get('/admin/forgot-password', [PasswordResetController::class, 'requestAdmin'])->name('admin.password.request');
+    Route::get('/admin/forgot-password', [PasswordResetController::class, 'requestAdmin'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('admin.password.request');
     Route::post('/admin/forgot-password', [PasswordResetController::class, 'emailAdmin'])->name('admin.password.email');
-    Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
+    Route::get('/forgot-password', [PasswordResetController::class, 'request'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('password.request');
     Route::post('/forgot-password', [PasswordResetController::class, 'email'])->name('password.email');
-    Route::get('/reset-password/{token}', [PasswordResetController::class, 'resetForm'])->name('password.reset');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'resetForm'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('password.reset');
     Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
 });
 
@@ -241,17 +253,22 @@ Route::middleware(['guest:employee', 'nocache'])
     ->name('employee.')
     ->group(function () {
         Route::get('/login', [PortalLoginController::class, 'show'])
+            ->middleware(HandleInertiaRequests::class)
             ->defaults('portal', 'employee')
             ->name('login');
         Route::post('/login', [PortalLoginController::class, 'login'])
             ->defaults('portal', 'employee')
             ->middleware(['throttle:login', 'login.trace'])
             ->name('login.attempt');
-        Route::get('/forgot-password', [RolePasswordResetController::class, 'showEmployeeForgot'])->name('password.request');
+        Route::get('/forgot-password', [RolePasswordResetController::class, 'showEmployeeForgot'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendEmployeeResetLink'])
             ->middleware('throttle:3,10')
             ->name('password.email');
-        Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showEmployeeReset'])->name('password.reset');
+        Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showEmployeeReset'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('password.reset');
         Route::post('/reset-password', [RolePasswordResetController::class, 'resetEmployee'])->name('password.update');
     });
 
@@ -260,17 +277,22 @@ Route::middleware(['guest:sales', 'nocache'])
     ->name('sales.')
     ->group(function () {
         Route::get('/login', [PortalLoginController::class, 'show'])
+            ->middleware(HandleInertiaRequests::class)
             ->defaults('portal', 'sales')
             ->name('login');
         Route::post('/login', [PortalLoginController::class, 'login'])
             ->defaults('portal', 'sales')
             ->middleware(['throttle:login', 'login.trace'])
             ->name('login.attempt');
-        Route::get('/forgot-password', [RolePasswordResetController::class, 'showSalesForgot'])->name('password.request');
+        Route::get('/forgot-password', [RolePasswordResetController::class, 'showSalesForgot'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSalesResetLink'])
             ->middleware('throttle:3,10')
             ->name('password.email');
-        Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showSalesReset'])->name('password.reset');
+        Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showSalesReset'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('password.reset');
         Route::post('/reset-password', [RolePasswordResetController::class, 'resetSales'])->name('password.update');
     });
 
@@ -279,17 +301,22 @@ Route::middleware(['guest:support', 'nocache'])
     ->name('support.')
     ->group(function () {
         Route::get('/login', [PortalLoginController::class, 'show'])
+            ->middleware(HandleInertiaRequests::class)
             ->defaults('portal', 'support')
             ->name('login');
         Route::post('/login', [PortalLoginController::class, 'login'])
             ->defaults('portal', 'support')
             ->middleware(['throttle:login', 'login.trace'])
             ->name('login.attempt');
-        Route::get('/forgot-password', [RolePasswordResetController::class, 'showSupportForgot'])->name('password.request');
+        Route::get('/forgot-password', [RolePasswordResetController::class, 'showSupportForgot'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('password.request');
         Route::post('/forgot-password', [RolePasswordResetController::class, 'sendSupportResetLink'])
             ->middleware('throttle:3,10')
             ->name('password.email');
-        Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showSupportReset'])->name('password.reset');
+        Route::get('/reset-password/{token}', [RolePasswordResetController::class, 'showSupportReset'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('password.reset');
         Route::post('/reset-password', [RolePasswordResetController::class, 'resetSupport'])->name('password.update');
     });
 
@@ -456,6 +483,12 @@ Route::middleware([
         Route::delete('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
             ->middleware('throttle:20,1')
             ->name('projects.chat.messages.destroy');
+        Route::post('/projects/{project}/chat/messages/{message}/pin', [ProjectChatController::class, 'togglePin'])
+            ->middleware('throttle:20,1')
+            ->name('projects.chat.messages.pin');
+        Route::post('/projects/{project}/chat/messages/{message}/react', [ProjectChatController::class, 'toggleReaction'])
+            ->middleware('throttle:40,1')
+            ->name('projects.chat.messages.react');
         Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
             ->name('projects.chat.read');
         Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
@@ -477,6 +510,12 @@ Route::middleware([
         Route::delete('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
             ->middleware('throttle:20,1')
             ->name('projects.tasks.chat.messages.destroy');
+        Route::post('/projects/{project}/tasks/{task}/chat/messages/{message}/pin', [ProjectTaskChatController::class, 'togglePin'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.chat.messages.pin');
+        Route::post('/projects/{project}/tasks/{task}/chat/messages/{message}/react', [ProjectTaskChatController::class, 'toggleReaction'])
+            ->middleware('throttle:40,1')
+            ->name('projects.tasks.chat.messages.react');
         Route::patch('/projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
             ->name('projects.tasks.chat.read');
         Route::post('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
@@ -533,6 +572,12 @@ Route::middleware([
     Route::delete('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
         ->middleware('throttle:20,1')
         ->name('projects.chat.messages.destroy');
+    Route::post('/projects/{project}/chat/messages/{message}/pin', [ProjectChatController::class, 'togglePin'])
+        ->middleware('throttle:20,1')
+        ->name('projects.chat.messages.pin');
+    Route::post('/projects/{project}/chat/messages/{message}/react', [ProjectChatController::class, 'toggleReaction'])
+        ->middleware('throttle:40,1')
+        ->name('projects.chat.messages.react');
     Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
         ->name('projects.chat.read');
     Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
@@ -554,6 +599,12 @@ Route::middleware([
     Route::delete('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
         ->middleware('throttle:20,1')
         ->name('projects.tasks.chat.messages.destroy');
+    Route::post('/projects/{project}/tasks/{task}/chat/messages/{message}/pin', [ProjectTaskChatController::class, 'togglePin'])
+        ->middleware('throttle:20,1')
+        ->name('projects.tasks.chat.messages.pin');
+    Route::post('/projects/{project}/tasks/{task}/chat/messages/{message}/react', [ProjectTaskChatController::class, 'toggleReaction'])
+        ->middleware('throttle:40,1')
+        ->name('projects.tasks.chat.messages.react');
     Route::patch('/projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
         ->name('projects.tasks.chat.read');
     Route::post('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
@@ -882,6 +933,12 @@ Route::middleware([
     Route::delete('projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
         ->middleware('throttle:20,1')
         ->name('projects.chat.messages.destroy');
+    Route::post('projects/{project}/chat/messages/{message}/pin', [ProjectChatController::class, 'togglePin'])
+        ->middleware('throttle:20,1')
+        ->name('projects.chat.messages.pin');
+    Route::post('projects/{project}/chat/messages/{message}/react', [ProjectChatController::class, 'toggleReaction'])
+        ->middleware('throttle:40,1')
+        ->name('projects.chat.messages.react');
     Route::patch('projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
         ->name('projects.chat.read');
     Route::post('projects/{project}/chat', [ProjectChatController::class, 'store'])
@@ -901,6 +958,12 @@ Route::middleware([
     Route::delete('projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
         ->middleware('throttle:20,1')
         ->name('projects.tasks.chat.messages.destroy');
+    Route::post('projects/{project}/tasks/{task}/chat/messages/{message}/pin', [ProjectTaskChatController::class, 'togglePin'])
+        ->middleware('throttle:20,1')
+        ->name('projects.tasks.chat.messages.pin');
+    Route::post('projects/{project}/tasks/{task}/chat/messages/{message}/react', [ProjectTaskChatController::class, 'toggleReaction'])
+        ->middleware('throttle:40,1')
+        ->name('projects.tasks.chat.messages.react');
     Route::patch('projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
         ->name('projects.tasks.chat.read');
     Route::post('projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
@@ -1137,6 +1200,12 @@ Route::middleware([
         Route::delete('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
             ->middleware('throttle:20,1')
             ->name('projects.chat.messages.destroy');
+        Route::post('/projects/{project}/chat/messages/{message}/pin', [ProjectChatController::class, 'togglePin'])
+            ->middleware('throttle:20,1')
+            ->name('projects.chat.messages.pin');
+        Route::post('/projects/{project}/chat/messages/{message}/react', [ProjectChatController::class, 'toggleReaction'])
+            ->middleware('throttle:40,1')
+            ->name('projects.chat.messages.react');
         Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
             ->name('projects.chat.read');
         Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
@@ -1158,6 +1227,12 @@ Route::middleware([
         Route::delete('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
             ->middleware('throttle:20,1')
             ->name('projects.tasks.chat.messages.destroy');
+        Route::post('/projects/{project}/tasks/{task}/chat/messages/{message}/pin', [ProjectTaskChatController::class, 'togglePin'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.chat.messages.pin');
+        Route::post('/projects/{project}/tasks/{task}/chat/messages/{message}/react', [ProjectTaskChatController::class, 'toggleReaction'])
+            ->middleware('throttle:40,1')
+            ->name('projects.tasks.chat.messages.react');
         Route::patch('/projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
             ->name('projects.tasks.chat.read');
         Route::post('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])
@@ -1266,6 +1341,12 @@ Route::middleware([
         Route::delete('/projects/{project}/chat/messages/{message}', [ProjectChatController::class, 'destroyMessage'])
             ->middleware('throttle:20,1')
             ->name('projects.chat.messages.destroy');
+        Route::post('/projects/{project}/chat/messages/{message}/pin', [ProjectChatController::class, 'togglePin'])
+            ->middleware('throttle:20,1')
+            ->name('projects.chat.messages.pin');
+        Route::post('/projects/{project}/chat/messages/{message}/react', [ProjectChatController::class, 'toggleReaction'])
+            ->middleware('throttle:40,1')
+            ->name('projects.chat.messages.react');
         Route::patch('/projects/{project}/chat/read', [ProjectChatController::class, 'markRead'])
             ->name('projects.chat.read');
         Route::post('/projects/{project}/chat/presence', [ProjectChatController::class, 'presence'])
@@ -1287,6 +1368,12 @@ Route::middleware([
         Route::delete('/projects/{project}/tasks/{task}/chat/messages/{message}', [ProjectTaskChatController::class, 'destroyMessage'])
             ->middleware('throttle:20,1')
             ->name('projects.tasks.chat.messages.destroy');
+        Route::post('/projects/{project}/tasks/{task}/chat/messages/{message}/pin', [ProjectTaskChatController::class, 'togglePin'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.chat.messages.pin');
+        Route::post('/projects/{project}/tasks/{task}/chat/messages/{message}/react', [ProjectTaskChatController::class, 'toggleReaction'])
+            ->middleware('throttle:40,1')
+            ->name('projects.tasks.chat.messages.react');
         Route::patch('/projects/{project}/tasks/{task}/chat/read', [ProjectTaskChatController::class, 'markRead'])
             ->name('projects.tasks.chat.read');
         Route::post('/projects/{project}/tasks/{task}/chat', [ProjectTaskChatController::class, 'store'])

@@ -138,6 +138,24 @@
             font-weight: 600;
         }
 
+        .wa-reaction-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            padding: 2px 8px;
+            font-size: 11px;
+            color: #334155;
+        }
+
+        .wa-reaction-pill-active {
+            border-color: #86efac;
+            background: #dcfce7;
+            color: #166534;
+        }
+
         @keyframes wa-pop-in {
             from {
                 opacity: 0;
@@ -196,7 +214,16 @@
                 $lastMessageId = $messages->last()?->id ?? 0;
                 $oldestMessageId = $messages->first()?->id ?? 0;
             @endphp
+            <div id="chatPinnedMeta" class="mb-3 hidden items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <div class="truncate"><span class="font-semibold">📌 Pinned:</span> <span id="chatPinnedMetaText" class="font-normal"></span></div>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="chatPinnedJumpButton" class="font-semibold hover:text-amber-900">Go</button>
+                    <button type="button" id="chatPinnedClearButton" class="font-semibold hover:text-rose-700">Unpin</button>
+                </div>
+            </div>
             <div id="project-chat-messages"
+                 data-project-id="{{ $project->id }}"
+                  data-csrf-token="{{ csrf_token() }}"
                  data-messages-url="{{ $messagesUrl }}"
                  data-stream-url="{{ $streamUrl ?? '' }}"
                  data-read-url="{{ $readUrl }}"
@@ -215,6 +242,8 @@
                     'messageMentions' => $messageMentions ?? [],
                     'updateRouteName' => $messageUpdateRouteName ?? null,
                     'deleteRouteName' => $messageDeleteRouteName ?? null,
+                    'pinRouteName' => $messagePinRouteName ?? null,
+                    'reactionRouteName' => $messageReactionRouteName ?? null,
                     'editableWindowSeconds' => $editableWindowSeconds ?? 30,
                 ])
             </div>
@@ -225,25 +254,22 @@
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Post a message</div>
                 <form method="POST" action="{{ $postRoute }}" data-post-url="{{ $postMessagesUrl }}" enctype="multipart/form-data" class="mt-4 space-y-2" id="chatMessageForm">
                     @csrf
+                    <input type="hidden" name="reply_to_message_id" id="chatReplyToMessageInput" value="" />
                     <input type="hidden" name="mentions" id="chatMentionsField" value="" />
                     <input id="chatAttachmentInput" name="attachment" type="file" accept="image/*,.pdf" class="hidden" />
 
-                    <div class="flex gap-2">
-                        <div class="flex min-h-[50px] flex-1 items-end gap-1 rounded-3xl border border-slate-300 bg-white px-2 py-1.5 shadow-sm">
+                    <div class="flex">
+                        <div class="flex min-h-[50px] flex-1 items-center gap-1 rounded-3xl border border-slate-300 bg-white px-2 py-1.5 shadow-sm">
+                            <button type="button" id="chatAttachButton" class="wa-composer-icon text-3xl font-light leading-none" title="Attach file" aria-label="Attach file">+</button>
                             <button type="button" id="chatEmojiButton" class="wa-composer-icon text-lg" title="Emoji">🙂</button>
                             <div class="relative flex-1">
                                 <textarea id="chatMessageInput" name="message" rows="1" class="chat-composer-input w-full border-0 bg-transparent px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-0" placeholder="Message">{{ old('message') }}</textarea>
                                 <div id="chatMentionDropdown" class="absolute bottom-full left-0 z-20 mb-2 hidden w-72 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg"></div>
                             </div>
-                            <button type="button" id="chatAttachButton" class="wa-composer-icon" title="Attach file" aria-label="Attach file">
-                                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21.44 11.05l-8.49 8.49a5.5 5.5 0 01-7.78-7.78l9.2-9.19a3.5 3.5 0 114.95 4.95l-9.19 9.2a1.5 1.5 0 11-2.12-2.12l8.49-8.48"/>
-                                </svg>
+                            <button type="submit" id="chatSendButton" class="wa-send-btn" aria-label="Send message">
+                                <span id="chatSendIcon" class="text-base">➤</span>
                             </button>
                         </div>
-                        <button type="submit" id="chatSendButton" class="wa-send-btn" aria-label="Send message">
-                            <span id="chatSendIcon" class="hidden text-base">➤</span>
-                        </button>
                     </div>
 
                     <div id="chatEmojiPanel" class="hidden flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
@@ -256,6 +282,10 @@
                     <button type="button" id="chatAttachmentClearButton" class="hidden text-xs font-semibold text-rose-600 hover:text-rose-700">
                         Remove selected file
                     </button>
+                    <div id="chatReplyMeta" class="hidden items-center justify-between gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                        <div class="truncate"><span class="font-semibold">Replying:</span> <span id="chatReplyMetaText" class="font-normal"></span></div>
+                        <button type="button" id="chatReplyCancelButton" class="font-semibold hover:text-sky-900">Cancel</button>
+                    </div>
                     <div id="chatEditMeta" class="hidden items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                         <span>Editing message</span>
                         <button type="button" id="chatEditCancelButton" class="font-semibold text-amber-800 hover:text-amber-900">Cancel</button>
@@ -289,6 +319,7 @@
         const container = document.getElementById('project-chat-messages');
         const form = document.getElementById('chatMessageForm');
         const textarea = document.getElementById('chatMessageInput');
+        const replyToMessageInput = document.getElementById('chatReplyToMessageInput');
         const mentionsField = document.getElementById('chatMentionsField');
         const dropdown = document.getElementById('chatMentionDropdown');
         const attachmentInput = document.getElementById('chatAttachmentInput');
@@ -303,6 +334,13 @@
         const attachButton = document.getElementById('chatAttachButton');
         const sendButton = document.getElementById('chatSendButton');
         const sendIcon = document.getElementById('chatSendIcon');
+        const replyMeta = document.getElementById('chatReplyMeta');
+        const replyMetaText = document.getElementById('chatReplyMetaText');
+        const replyCancelButton = document.getElementById('chatReplyCancelButton');
+        const pinnedMeta = document.getElementById('chatPinnedMeta');
+        const pinnedMetaText = document.getElementById('chatPinnedMetaText');
+        const pinnedJumpButton = document.getElementById('chatPinnedJumpButton');
+        const pinnedClearButton = document.getElementById('chatPinnedClearButton');
         const participants = @json($participants ?? []);
         const mentionables = @json($mentionables ?? $participants ?? []);
         const participantsUrl = @json($participantsUrl ?? '');
@@ -329,6 +367,8 @@
         let eventSource = null;
         let editingMessageId = 0;
         let editingMessageUrl = '';
+        let replyingMessageId = 0;
+        let pinnedMessageId = 0;
         const seenMessageIds = new Set();
         const defaultPlaceholder = textarea?.getAttribute('placeholder') || 'Message';
 
@@ -339,7 +379,15 @@
             }
         });
 
+        const detectPinnedFromDom = () => {
+            const pinnedRow = container.querySelector('[data-message-id][data-is-pinned="1"]');
+            pinnedMessageId = Number(pinnedRow?.dataset?.messageId || 0);
+        };
+
+        detectPinnedFromDom();
+
         const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content
+            || container?.dataset?.csrfToken
             || document.querySelector('[name="_token"]')?.value
             || '';
 
@@ -368,6 +416,162 @@
             });
         };
 
+        const messageTextSnippet = (row) => {
+            const rawText = (row?.dataset?.messagePlain || '').trim();
+            if (rawText !== '') {
+                return rawText;
+            }
+            const messageNode = row?.querySelector?.('[data-chat-message-text]');
+            const uiText = (messageNode?.textContent || '').trim();
+            return uiText !== '' ? uiText : 'Attachment';
+        };
+
+        const renderReactionsForRow = (row) => {
+            const messageId = Number(row?.dataset?.messageId || 0);
+            const holder = row?.querySelector('[data-chat-reactions]');
+            if (!messageId || !holder) {
+                return;
+            }
+
+            let summary = [];
+            try {
+                const raw = row?.dataset?.reactions || '[]';
+                const parsed = JSON.parse(raw);
+                summary = Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                summary = [];
+            }
+
+            holder.innerHTML = '';
+            summary.forEach((reaction) => {
+                const emoji = String(reaction?.emoji || '');
+                const count = Number(reaction?.count || 0);
+                if (!emoji || count <= 0) {
+                    return;
+                }
+                const pill = document.createElement('span');
+                pill.className = `wa-reaction-pill ${reaction?.reacted ? 'wa-reaction-pill-active' : ''}`;
+                pill.textContent = `${emoji} ${count}`;
+                holder.appendChild(pill);
+            });
+        };
+
+        const renderAllReactions = () => {
+            container.querySelectorAll('[data-message-id]').forEach((row) => {
+                renderReactionsForRow(row);
+            });
+        };
+
+        const updatePinnedMeta = () => {
+            let activeRow = pinnedMessageId
+                ? container.querySelector(`[data-message-id="${pinnedMessageId}"]`)
+                : null;
+
+            if (!activeRow) {
+                detectPinnedFromDom();
+                activeRow = pinnedMessageId
+                    ? container.querySelector(`[data-message-id="${pinnedMessageId}"]`)
+                    : null;
+            }
+
+            container.querySelectorAll('[data-chat-pin-badge]').forEach((badge) => {
+                badge.classList.add('hidden');
+            });
+
+            if (!activeRow) {
+                if (pinnedMeta) {
+                    pinnedMeta.classList.add('hidden');
+                    pinnedMeta.classList.remove('flex');
+                }
+                return;
+            }
+
+            const activeBadge = activeRow.querySelector('[data-chat-pin-badge]');
+            if (activeBadge) {
+                activeBadge.classList.remove('hidden');
+            }
+
+            if (pinnedMeta && pinnedMetaText) {
+                pinnedMetaText.textContent = messageTextSnippet(activeRow).slice(0, 120);
+                pinnedMeta.classList.remove('hidden');
+                pinnedMeta.classList.add('flex');
+            }
+        };
+
+        const setPinnedMessage = (messageId) => {
+            pinnedMessageId = Number(messageId || 0);
+            container.querySelectorAll('[data-message-id]').forEach((row) => {
+                row.dataset.isPinned = Number(row.dataset.messageId || 0) === pinnedMessageId ? '1' : '0';
+            });
+            updatePinnedMeta();
+        };
+
+        const clearReplyMessage = () => {
+            replyingMessageId = 0;
+            if (replyToMessageInput) {
+                replyToMessageInput.value = '';
+            }
+            if (replyMeta) {
+                replyMeta.classList.add('hidden');
+                replyMeta.classList.remove('flex');
+            }
+            if (replyMetaText) {
+                replyMetaText.textContent = '';
+            }
+        };
+
+        const setReplyMessage = (row) => {
+            const messageId = Number(row?.dataset?.messageId || 0);
+            if (!messageId || !replyMeta || !replyMetaText) {
+                return;
+            }
+            replyingMessageId = messageId;
+            if (replyToMessageInput) {
+                replyToMessageInput.value = String(messageId);
+            }
+            const author = (row?.dataset?.messageAuthor || 'User').trim();
+            const snippet = messageTextSnippet(row).slice(0, 100);
+            replyMetaText.textContent = `${author}: ${snippet}`;
+            replyMeta.classList.remove('hidden');
+            replyMeta.classList.add('flex');
+            textarea?.focus();
+        };
+
+        const toggleReaction = async (row, emoji) => {
+            const messageId = Number(row?.dataset?.messageId || 0);
+            if (!messageId || !emoji) {
+                return;
+            }
+
+            const url = row?.dataset?.reactUrl || '';
+            if (!url) {
+                return;
+            }
+
+            const body = new FormData();
+            body.append('_token', getCsrfToken());
+            body.append('emoji', emoji);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body,
+            });
+
+            if (!response.ok) {
+                window.notify(await parseErrorMessage(response, 'Reaction update failed.'), 'error');
+                return;
+            }
+
+            const payload = await response.json();
+            const reactions = Array.isArray(payload?.data?.reactions) ? payload.data.reactions : [];
+            row.dataset.reactions = JSON.stringify(reactions);
+            renderReactionsForRow(row);
+        };
+
         const recalculateMessageBounds = () => {
             const ids = Array.from(container.querySelectorAll('[data-message-id]'))
                 .map((node) => Number(node.dataset.messageId || 0))
@@ -393,6 +597,8 @@
             existing.replaceWith(next);
             seenMessageIds.add(Number(item.id));
             refreshMessageActionAvailability();
+            updatePinnedMeta();
+            renderAllReactions();
         };
 
         const removeMessageItem = (id) => {
@@ -406,6 +612,12 @@
             seenMessageIds.delete(Number(id));
             recalculateMessageBounds();
             refreshMessageActionAvailability();
+            if (Number(id) === pinnedMessageId) {
+                setPinnedMessage(0);
+            } else {
+                updatePinnedMeta();
+            }
+            renderAllReactions();
         };
 
         const presenceClasses = {
@@ -518,6 +730,7 @@
 
             editingMessageId = id;
             editingMessageUrl = url;
+            clearReplyMessage();
             textarea.value = currentText;
             textarea.setAttribute('placeholder', 'Edit message');
             textarea.focus();
@@ -611,6 +824,23 @@
                 updateComposerState();
             });
         }
+        if (replyCancelButton) {
+            replyCancelButton.addEventListener('click', clearReplyMessage);
+        }
+        if (pinnedJumpButton) {
+            pinnedJumpButton.addEventListener('click', () => {
+                if (!pinnedMessageId) {
+                    return;
+                }
+                const row = container.querySelector(`[data-message-id="${pinnedMessageId}"]`);
+                if (row) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+        if (pinnedClearButton) {
+            pinnedClearButton.addEventListener('click', () => setPinnedMessage(0));
+        }
 
         const escapePresenceKey = (value) => {
             if (window.CSS && CSS.escape) {
@@ -668,6 +898,8 @@
                 }
             });
             refreshMessageActionAvailability();
+            updatePinnedMeta();
+            renderAllReactions();
         };
 
         const prependItems = (items) => {
@@ -694,6 +926,8 @@
             const heightDiff = container.scrollHeight - previousHeight;
             container.scrollTop = previousTop + heightDiff;
             refreshMessageActionAvailability();
+            updatePinnedMeta();
+            renderAllReactions();
         };
 
         const fetchMessages = async (params) => {
@@ -1328,12 +1562,54 @@
             const inlineCancelButton = event.target.closest('[data-chat-inline-cancel]');
             const editButton = event.target.closest('[data-chat-edit]');
             const deleteButton = event.target.closest('[data-chat-delete]');
-            if (!inlineSaveButton && !inlineCancelButton && !editButton && !deleteButton) {
+            const replyButton = event.target.closest('[data-chat-reply]');
+            const pinButton = event.target.closest('[data-chat-pin]');
+            const reactionButton = event.target.closest('[data-chat-react]');
+            if (!inlineSaveButton && !inlineCancelButton && !editButton && !deleteButton && !replyButton && !pinButton && !reactionButton) {
                 return;
             }
 
             const row = event.target.closest('[data-message-id]');
             if (!row) {
+                return;
+            }
+
+            if (replyButton) {
+                setReplyMessage(row);
+                return;
+            }
+
+            if (pinButton) {
+                const pinUrl = row?.dataset?.pinUrl || '';
+                if (!pinUrl) {
+                    return;
+                }
+
+                const body = new FormData();
+                body.append('_token', getCsrfToken());
+
+                const response = await fetch(pinUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body,
+                });
+
+                if (!response.ok) {
+                    window.notify(await parseErrorMessage(response, 'Pin update failed.'), 'error');
+                    return;
+                }
+
+                const payload = await response.json();
+                const nextPinnedId = Number(payload?.data?.pinned_message_id || 0);
+                setPinnedMessage(nextPinnedId);
+                return;
+            }
+
+            if (reactionButton) {
+                await toggleReaction(row, reactionButton.dataset.emoji || '');
                 return;
             }
 
@@ -1452,6 +1728,11 @@
                             body: formData
                         });
                     } else {
+                        if (replyingMessageId) {
+                            formData.set('reply_to_message_id', String(replyingMessageId));
+                        } else {
+                            formData.delete('reply_to_message_id');
+                        }
                         response = await fetch(requestUrl, {
                             method: 'POST',
                             headers: {
@@ -1497,6 +1778,7 @@
                     }
                     form.reset();
                     stopEditingMessage();
+                    clearReplyMessage();
                     resizeComposerInput();
                     selectedMentions = [];
                     syncMentionsField();
@@ -1517,6 +1799,8 @@
         updateAttachmentMeta();
         updateComposerState();
         refreshMessageActionAvailability();
+        updatePinnedMeta();
+        renderAllReactions();
         scrollToBottom();
         updateReadStatus(lastId);
         sendPresence('active');
@@ -1563,7 +1847,8 @@
         window.addEventListener('beforeunload', cleanup);
     };
 
-    if (document.querySelector('#appContent')?.dataset?.pageKey === pageKey) {
+    const activePageKey = document.querySelector('#appContent')?.dataset?.pageKey || '';
+    if (activePageKey === pageKey || document.getElementById('project-chat-messages')) {
         window.PageInit[pageKey]();
     }
     })();

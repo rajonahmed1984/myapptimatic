@@ -77,6 +77,24 @@
             color: #6b7280;
         }
 
+        .wa-reaction-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: 999px;
+            border: 1px solid #d1d5db;
+            background: #f8fafc;
+            padding: 1px 7px;
+            font-size: 11px;
+            color: #374151;
+        }
+
+        .wa-reaction-pill-active {
+            border-color: #86efac;
+            background: #dcfce7;
+            color: #166534;
+        }
+
         .wa-file-link {
             display: inline-flex;
             align-items: center;
@@ -184,6 +202,8 @@
                     'currentAuthorId' => $currentAuthorId,
                     'updateRouteName' => $messageUpdateRouteName ?? null,
                     'deleteRouteName' => $messageDeleteRouteName ?? null,
+                    'pinRouteName' => $messagePinRouteName ?? null,
+                    'reactionRouteName' => $messageReactionRouteName ?? null,
                     'editableWindowSeconds' => $editableWindowSeconds ?? 30,
                 ])
             </div>
@@ -194,30 +214,26 @@
                 <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Post a message</div>
                 <form method="POST" action="{{ $postRoute }}" data-post-url="{{ $postMessagesUrl }}" enctype="multipart/form-data" class="mt-4 space-y-2" id="chatMessageForm">
                     @csrf
+                    <input type="hidden" name="reply_to_message_id" id="taskChatReplyInput" value="">
                     <input id="taskChatAttachmentInput" name="attachment" type="file" accept="image/*,.pdf" class="hidden" />
 
-                    <div class="flex items-end gap-2">
-                        <div class="flex min-h-[50px] flex-1 items-end gap-1 rounded-3xl border border-slate-300 bg-white px-2 py-1.5 shadow-sm">
+                    <div id="taskChatPinnedMeta" class="hidden rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700"></div>
+                    <div id="taskChatReplyMeta" class="hidden items-center justify-between gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
+                        <span id="taskChatReplyMetaText"></span>
+                        <button type="button" id="taskChatReplyCancelButton" class="font-semibold text-sky-800 hover:text-sky-900">Cancel</button>
+                    </div>
+
+                    <div class="flex items-end">
+                        <div class="flex min-h-[50px] flex-1 items-center gap-1 rounded-3xl border border-slate-300 bg-white px-2 py-1.5 shadow-sm">
+                            <button type="button" id="taskChatAttachButton" class="wa-composer-icon text-3xl font-light leading-none" title="Attach file" aria-label="Attach file">+</button>
                             <button type="button" id="taskChatEmojiButton" class="wa-composer-icon text-lg" title="Emoji">🙂</button>
                             <div class="flex-1">
                                 <textarea id="taskChatMessageInput" name="message" rows="1" class="chat-composer-input w-full border-0 bg-transparent px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-0" placeholder="Message">{{ old('message') }}</textarea>
                             </div>
-                            <button type="button" id="taskChatAttachButton" class="wa-composer-icon" title="Attach file" aria-label="Attach file">
-                                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21.44 11.05l-8.49 8.49a5.5 5.5 0 01-7.78-7.78l9.2-9.19a3.5 3.5 0 114.95 4.95l-9.19 9.2a1.5 1.5 0 11-2.12-2.12l8.49-8.48"/>
-                                </svg>
-                            </button>
-                            <button type="button" id="taskChatCameraButton" class="wa-composer-icon" title="Camera" aria-label="Camera">
-                                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 7h3l2-2h6l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/>
-                                    <circle cx="12" cy="13" r="3.5"/>
-                                </svg>
+                            <button type="submit" id="taskChatSendButton" class="wa-send-btn" aria-label="Send message">
+                                <span id="taskChatSendIcon" class="text-base">➤</span>
                             </button>
                         </div>
-                        <button type="submit" id="taskChatSendButton" class="wa-send-btn" aria-label="Send message">
-                            <span id="taskChatSendIcon" class="hidden text-base">➤</span>
-                            <span id="taskChatMicIcon" class="text-base">🎤</span>
-                        </button>
                     </div>
 
                     <div id="taskChatEmojiPanel" class="hidden flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
@@ -267,6 +283,11 @@
         const attachmentClearButton = document.getElementById('taskChatAttachmentClearButton');
         const editMeta = document.getElementById('taskChatEditMeta');
         const editCancelButton = document.getElementById('taskChatEditCancelButton');
+        const replyInput = document.getElementById('taskChatReplyInput');
+        const replyMeta = document.getElementById('taskChatReplyMeta');
+        const replyMetaText = document.getElementById('taskChatReplyMetaText');
+        const replyCancelButton = document.getElementById('taskChatReplyCancelButton');
+        const pinnedMeta = document.getElementById('taskChatPinnedMeta');
         const attachmentPreview = document.getElementById('taskChatAttachmentPreview');
         const attachmentPreviewImg = document.getElementById('taskChatAttachmentPreviewImg');
         const emojiButton = document.getElementById('taskChatEmojiButton');
@@ -275,7 +296,6 @@
         const cameraButton = document.getElementById('taskChatCameraButton');
         const sendButton = document.getElementById('taskChatSendButton');
         const sendIcon = document.getElementById('taskChatSendIcon');
-        const micIcon = document.getElementById('taskChatMicIcon');
         const messagesUrl = @json($messagesUrl);
         const readUrl = container?.dataset?.readUrl || @json($readUrl ?? '');
         let attachmentPreviewUrl = null;
@@ -293,6 +313,7 @@
             let reachedStart = false;
             let editingMessageId = 0;
             let editingMessageUrl = '';
+            let replyingToMessageId = 0;
             const seenMessageIds = new Set();
             const defaultPlaceholder = textarea?.getAttribute('placeholder') || 'Message';
 
@@ -332,6 +353,90 @@
                 });
             };
 
+            const parseReactions = (row) => {
+                if (!row) {
+                    return [];
+                }
+                const raw = row.dataset.reactions || '[]';
+                try {
+                    const parsed = JSON.parse(raw);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    return [];
+                }
+            };
+
+            const renderReactions = (row, summary) => {
+                if (!row) {
+                    return;
+                }
+                const wrapper = row.querySelector('[data-chat-reactions]');
+                const items = Array.isArray(summary) ? summary : [];
+                row.dataset.reactions = JSON.stringify(items);
+                if (!wrapper) {
+                    return;
+                }
+                wrapper.innerHTML = items.map((reaction) => {
+                    const emoji = reaction?.emoji || '';
+                    const count = Number(reaction?.count || 0);
+                    if (!emoji || !count) {
+                        return '';
+                    }
+                    const activeClass = reaction?.reacted ? ' wa-reaction-pill-active' : '';
+                    return `<span class="wa-reaction-pill${activeClass}">${emoji} ${count}</span>`;
+                }).join('');
+            };
+
+            const refreshPinnedBanner = () => {
+                if (!pinnedMeta) {
+                    return;
+                }
+                const pinnedRow = container.querySelector('[data-message-id][data-is-pinned="1"]');
+                if (!pinnedRow) {
+                    pinnedMeta.classList.add('hidden');
+                    pinnedMeta.textContent = '';
+                    return;
+                }
+                const id = Number(pinnedRow.dataset.messageId || 0);
+                const text = (pinnedRow.dataset.messagePlain || '').trim() || 'Attachment';
+                pinnedMeta.textContent = `📌 Pinned #${id}: ${text}`;
+                pinnedMeta.classList.remove('hidden');
+            };
+
+            const clearReplyTarget = () => {
+                replyingToMessageId = 0;
+                if (replyInput) {
+                    replyInput.value = '';
+                }
+                if (replyMeta) {
+                    replyMeta.classList.add('hidden');
+                    replyMeta.classList.remove('flex');
+                }
+                if (replyMetaText) {
+                    replyMetaText.textContent = '';
+                }
+            };
+
+            const setReplyTarget = (row) => {
+                const id = Number(row?.dataset?.messageId || 0);
+                if (!id) {
+                    return;
+                }
+                replyingToMessageId = id;
+                if (replyInput) {
+                    replyInput.value = String(id);
+                }
+                const author = row.dataset.messageAuthor || 'User';
+                const text = (row.dataset.messagePlain || '').trim() || 'Attachment';
+                if (replyMetaText) {
+                    replyMetaText.textContent = `Replying to #${id} (${author}): ${text}`;
+                }
+                if (replyMeta) {
+                    replyMeta.classList.remove('hidden');
+                    replyMeta.classList.add('flex');
+                }
+            };
+
             const recalculateMessageBounds = () => {
                 const ids = Array.from(container.querySelectorAll('[data-message-id]'))
                     .map((node) => Number(node.dataset.messageId || 0))
@@ -357,6 +462,7 @@
                 existing.replaceWith(next);
                 seenMessageIds.add(Number(item.id));
                 refreshMessageActionAvailability();
+                refreshPinnedBanner();
             };
 
             const removeMessageItem = (id) => {
@@ -367,9 +473,13 @@
                 if (row) {
                     row.remove();
                 }
+                if (replyingToMessageId === Number(id)) {
+                    clearReplyTarget();
+                }
                 seenMessageIds.delete(Number(id));
                 recalculateMessageBounds();
                 refreshMessageActionAvailability();
+                refreshPinnedBanner();
             };
 
             const scrollToBottom = () => {
@@ -491,9 +601,8 @@
                     sendButton.disabled = !canSend;
                     sendButton.classList.toggle('opacity-70', !canSend);
                 }
-                if (sendIcon && micIcon) {
-                    sendIcon.classList.toggle('hidden', !canSend);
-                    micIcon.classList.toggle('hidden', canSend);
+                if (sendIcon) {
+                    sendIcon.classList.remove('hidden');
                 }
             };
 
@@ -569,6 +678,9 @@
                     }
                     updateComposerState();
                 });
+            }
+            if (replyCancelButton) {
+                replyCancelButton.addEventListener('click', clearReplyTarget);
             }
 
             if (textarea) {
@@ -758,7 +870,10 @@
                 const inlineCancelButton = event.target.closest('[data-chat-inline-cancel]');
                 const editButton = event.target.closest('[data-chat-edit]');
                 const deleteButton = event.target.closest('[data-chat-delete]');
-                if (!inlineSaveButton && !inlineCancelButton && !editButton && !deleteButton) {
+                const replyButton = event.target.closest('[data-chat-reply]');
+                const pinButton = event.target.closest('[data-chat-pin]');
+                const reactButton = event.target.closest('[data-chat-react]');
+                if (!inlineSaveButton && !inlineCancelButton && !editButton && !deleteButton && !replyButton && !pinButton && !reactButton) {
                     return;
                 }
 
@@ -777,23 +892,95 @@
                     return;
                 }
 
-                if (row.dataset.mutating === '1') {
+                if (replyButton) {
+                    setReplyTarget(row);
+                    textarea?.focus();
                     return;
                 }
 
-                if (isEditWindowExpired(row)) {
-                    refreshMessageActionAvailability();
+                if (row.dataset.mutating === '1') {
                     return;
                 }
 
                 row.dataset.mutating = '1';
                 try {
+                    if (pinButton) {
+                        const pinUrl = row.dataset.pinUrl || '';
+                        if (!pinUrl) {
+                            return;
+                        }
+
+                        const response = await fetch(pinUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': getCsrfToken(),
+                            },
+                        });
+
+                        if (!response.ok) {
+                            window.notify(await parseErrorMessage(response, 'Pin action failed.'), 'error');
+                            return;
+                        }
+
+                        const payload = await response.json();
+                        const pinnedId = Number(payload?.data?.pinned_message_id || 0);
+                        container.querySelectorAll('[data-message-id]').forEach((candidate) => {
+                            const candidateId = Number(candidate.dataset.messageId || 0);
+                            const isPinned = pinnedId > 0 && candidateId === pinnedId;
+                            candidate.dataset.isPinned = isPinned ? '1' : '0';
+                            const badge = candidate.querySelector('[data-chat-pin-badge]');
+                            if (badge) {
+                                badge.classList.toggle('hidden', !isPinned);
+                            }
+                        });
+                        refreshPinnedBanner();
+                        return;
+                    }
+
+                    if (reactButton) {
+                        const reactUrl = row.dataset.reactUrl || '';
+                        const emoji = reactButton.dataset.emoji || '';
+                        if (!reactUrl || !emoji) {
+                            return;
+                        }
+
+                        const response = await fetch(reactUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': getCsrfToken(),
+                            },
+                            body: JSON.stringify({ emoji }),
+                        });
+
+                        if (!response.ok) {
+                            window.notify(await parseErrorMessage(response, 'Reaction failed.'), 'error');
+                            return;
+                        }
+
+                        const payload = await response.json();
+                        renderReactions(row, payload?.data?.reaction_summary || parseReactions(row));
+                        return;
+                    }
+
                     if (editButton) {
+                        if (isEditWindowExpired(row)) {
+                            refreshMessageActionAvailability();
+                            return;
+                        }
                         beginInlineEdit(row);
                         return;
                     }
 
                     if (deleteButton) {
+                        if (isEditWindowExpired(row)) {
+                            refreshMessageActionAvailability();
+                            return;
+                        }
                         const deleteUrl = row.dataset.deleteUrl || '';
                         if (!deleteUrl) {
                             refreshMessageActionAvailability();
@@ -858,6 +1045,7 @@
                     }
                 });
                 refreshMessageActionAvailability();
+                refreshPinnedBanner();
             };
 
             const prependItems = (items) => {
@@ -884,6 +1072,7 @@
                 const heightDiff = container.scrollHeight - previousHeight;
                 container.scrollTop = previousTop + heightDiff;
                 refreshMessageActionAvailability();
+                refreshPinnedBanner();
             };
 
             const fetchMessages = async (params) => {
@@ -977,6 +1166,7 @@
                                 return;
                             }
                             formData.delete('attachment');
+                            formData.delete('reply_to_message_id');
                             formData.append('_method', 'PATCH');
                             formData.append('_token', getCsrfToken());
                             formData.set('message', nextText);
@@ -989,6 +1179,11 @@
                                 body: formData
                             });
                         } else {
+                            if (replyingToMessageId > 0) {
+                                formData.set('reply_to_message_id', String(replyingToMessageId));
+                            } else {
+                                formData.delete('reply_to_message_id');
+                            }
                             response = await fetch(requestUrl, {
                                 method: 'POST',
                                 headers: {
@@ -1023,6 +1218,7 @@
                                 appendItems([item]);
                                 scrollToBottom();
                                 updateReadStatus(lastId);
+                                clearReplyTarget();
                             }
                         } else if (!isEditing) {
                             const latestItems = await fetchMessages({ after_id: lastId, limit: 30 });
@@ -1030,6 +1226,7 @@
                                 appendItems(latestItems);
                                 scrollToBottom();
                                 updateReadStatus(lastId);
+                                clearReplyTarget();
                             }
                         }
                     form.reset();
@@ -1051,6 +1248,8 @@
             updateAttachmentMeta();
             updateComposerState();
             refreshMessageActionAvailability();
+            refreshPinnedBanner();
+            clearReplyTarget();
             scrollToBottom();
             updateReadStatus(lastId);
 

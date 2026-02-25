@@ -8,6 +8,9 @@
         'currentAuthorId' => $currentAuthorId,
         'updateRouteName' => $updateRouteName ?? null,
         'deleteRouteName' => $deleteRouteName ?? null,
+          'pinRouteName' => $pinRouteName ?? null,
+          'reactionRouteName' => $reactionRouteName ?? null,
+          'reactionSummary' => $message['reaction_summary'] ?? [],
         'editableWindowSeconds' => $editableWindowSeconds ?? 30,
     ])
 @empty

@@ -164,6 +164,7 @@ export default function Tasks({
                         <table className="min-w-full text-left text-sm">
                             <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <tr>
+                                    <th className="px-4 py-3">Task ID</th>
                                     <th className="px-4 py-3">Created</th>
                                     <th className="px-4 py-3">Project Task</th>
                                     <th className="px-4 py-3">Created By</th>
@@ -174,7 +175,7 @@ export default function Tasks({
                             <tbody className="divide-y divide-slate-100">
                                 {tasks.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                                        <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                                             {statusFilter ? 'No tasks found for this status.' : 'No tasks found.'}
                                         </td>
                                     </tr>
@@ -190,6 +191,7 @@ export default function Tasks({
 
                                         return (
                                             <tr key={task.id} className="align-top">
+                                                <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-600">{task.id ?? '--'}</td>
                                                 <td className="whitespace-nowrap px-4 py-3 text-slate-500">
                                                     <div className="whitespace-nowrap">{task.created_at_date || '--'}</div>
                                                     <div className="whitespace-nowrap text-xs text-slate-400">{task.created_at_time || '--'}</div>

@@ -15,10 +15,19 @@ class ProjectMessage extends Model
         'message',
         'mentions',
         'attachment_path',
+        'reply_to_message_id',
+        'reactions',
+        'is_pinned',
+        'pinned_by_type',
+        'pinned_by_id',
+        'pinned_at',
     ];
 
     protected $casts = [
         'mentions' => 'array',
+        'reactions' => 'array',
+        'is_pinned' => 'boolean',
+        'pinned_at' => 'datetime',
     ];
 
     public function project(): BelongsTo
@@ -39,6 +48,11 @@ class ProjectMessage extends Model
     public function salesRepAuthor(): BelongsTo
     {
         return $this->belongsTo(SalesRepresentative::class, 'author_id');
+    }
+
+    public function replyToMessage(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reply_to_message_id');
     }
 
     public function authorName(): string

@@ -15,6 +15,7 @@ use App\Services\ChatAiSummaryCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -31,7 +32,7 @@ class ProjectTaskChatController extends Controller
 
         $routePrefix = $this->resolveRoutePrefix($request);
         $messages = $task->messages()
-            ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor'])
+            ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor', 'replyToMessage'])
             ->latest('id')
             ->limit(30)
             ->get()
@@ -42,6 +43,8 @@ class ProjectTaskChatController extends Controller
         $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
         $messageUpdateRouteName = $routePrefix . '.projects.tasks.chat.messages.update';
         $messageDeleteRouteName = $routePrefix . '.projects.tasks.chat.messages.destroy';
+        $messagePinRouteName = $routePrefix . '.projects.tasks.chat.messages.pin';
+        $messageReactionRouteName = $routePrefix . '.projects.tasks.chat.messages.react';
 
         $canPost = Gate::forUser($actor)->check('comment', $task);
 
@@ -55,6 +58,8 @@ class ProjectTaskChatController extends Controller
                 'currentAuthorId' => $identity['id'],
                 'updateRouteName' => $messageUpdateRouteName,
                 'deleteRouteName' => $messageDeleteRouteName,
+                'messagePinRouteName' => $messagePinRouteName,
+                'messageReactionRouteName' => $messageReactionRouteName,
                 'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
             ]);
         }
@@ -79,6 +84,8 @@ class ProjectTaskChatController extends Controller
             'canPost' => $canPost,
             'messageUpdateRouteName' => $messageUpdateRouteName,
             'messageDeleteRouteName' => $messageDeleteRouteName,
+            'messagePinRouteName' => $messagePinRouteName,
+            'messageReactionRouteName' => $messageReactionRouteName,
             'editableWindowSeconds' => self::EDITABLE_WINDOW_SECONDS,
         ]);
     }
@@ -123,7 +130,7 @@ class ProjectTaskChatController extends Controller
         $beforeId = (int) $request->query('before_id', 0);
 
         $query = $task->messages()
-            ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor']);
+            ->with(['userAuthor', 'employeeAuthor', 'salesRepAuthor', 'replyToMessage']);
 
         if ($afterId > 0) {
             $query->where('id', '>', $afterId)->orderBy('id');
@@ -143,6 +150,8 @@ class ProjectTaskChatController extends Controller
         $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
         $messageUpdateRouteName = $routePrefix . '.projects.tasks.chat.messages.update';
         $messageDeleteRouteName = $routePrefix . '.projects.tasks.chat.messages.destroy';
+        $messagePinRouteName = $routePrefix . '.projects.tasks.chat.messages.pin';
+        $messageReactionRouteName = $routePrefix . '.projects.tasks.chat.messages.react';
 
         $items = $messages->map(fn (ProjectTaskMessage $message) => $this->messageItem(
             $message,
@@ -152,6 +161,8 @@ class ProjectTaskChatController extends Controller
             $identity,
             $messageUpdateRouteName,
             $messageDeleteRouteName,
+            $messagePinRouteName,
+            $messageReactionRouteName,
             self::EDITABLE_WINDOW_SECONDS
         ))->values();
 
@@ -175,9 +186,13 @@ class ProjectTaskChatController extends Controller
         Gate::forUser($actor)->authorize('comment', $task);
 
         $data = $request->validated();
+        $replyData = $request->validate([
+            'reply_to_message_id' => ['nullable', 'integer', 'min:1'],
+        ]);
 
         $message = isset($data['message']) ? trim((string) $data['message']) : null;
         $message = $message === '' ? null : $message;
+        $replyToMessageId = $this->resolveReplyTarget($task, (int) ($replyData['reply_to_message_id'] ?? 0));
 
         $attachmentPath = $this->storeAttachment($request, $task);
         if (! $attachmentPath && $message === null) {
@@ -195,6 +210,7 @@ class ProjectTaskChatController extends Controller
             'author_id' => $identity['id'],
             'message' => $message,
             'attachment_path' => $attachmentPath,
+            'reply_to_message_id' => $replyToMessageId,
         ]);
 
         return back()->with('status', 'Message sent.');
@@ -207,8 +223,49 @@ class ProjectTaskChatController extends Controller
         Gate::forUser($actor)->authorize('comment', $task);
 
         $data = $request->validated();
+        $replyData = $request->validate([
+            'reply_to_message_id' => ['nullable', 'integer', 'min:1'],
+        ]);
         $message = isset($data['message']) ? trim((string) $data['message']) : null;
         $message = $message === '' ? null : $message;
+        $replyToMessageId = $this->resolveReplyTarget($task, (int) ($replyData['reply_to_message_id'] ?? 0));
+
+        if (! $request->hasFile('attachment')) {
+            $duplicate = $this->findRecentDuplicate($task, $request, $message);
+            if ($duplicate) {
+                $duplicate->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor', 'replyToMessage']);
+                $identity = $this->resolveAuthorIdentity($request);
+                $routePrefix = $this->resolveRoutePrefix($request);
+                $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
+                $messageUpdateRouteName = $routePrefix . '.projects.tasks.chat.messages.update';
+                $messageDeleteRouteName = $routePrefix . '.projects.tasks.chat.messages.destroy';
+                $messagePinRouteName = $routePrefix . '.projects.tasks.chat.messages.pin';
+                $messageReactionRouteName = $routePrefix . '.projects.tasks.chat.messages.react';
+
+                $item = $this->messageItem(
+                    $duplicate,
+                    $project,
+                    $task,
+                    $attachmentRouteName,
+                    $identity,
+                    $messageUpdateRouteName,
+                    $messageDeleteRouteName,
+                    $messagePinRouteName,
+                    $messageReactionRouteName,
+                    self::EDITABLE_WINDOW_SECONDS
+                );
+
+                return response()->json([
+                    'ok' => true,
+                    'message' => 'Message sent.',
+                    'data' => [
+                        'item' => $item,
+                        'next_after_id' => $duplicate->id,
+                        'next_before_id' => $duplicate->id,
+                    ],
+                ]);
+            }
+        }
 
         $attachmentPath = $this->storeAttachment($request, $task);
         if (! $attachmentPath && $message === null) {
@@ -229,13 +286,16 @@ class ProjectTaskChatController extends Controller
             'author_id' => $identity['id'],
             'message' => $message,
             'attachment_path' => $attachmentPath,
+            'reply_to_message_id' => $replyToMessageId,
         ]);
-        $messageModel->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor']);
+        $messageModel->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor', 'replyToMessage']);
 
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
         $messageUpdateRouteName = $routePrefix . '.projects.tasks.chat.messages.update';
         $messageDeleteRouteName = $routePrefix . '.projects.tasks.chat.messages.destroy';
+        $messagePinRouteName = $routePrefix . '.projects.tasks.chat.messages.pin';
+        $messageReactionRouteName = $routePrefix . '.projects.tasks.chat.messages.react';
         $item = $this->messageItem(
             $messageModel,
             $project,
@@ -244,6 +304,8 @@ class ProjectTaskChatController extends Controller
             $identity,
             $messageUpdateRouteName,
             $messageDeleteRouteName,
+            $messagePinRouteName,
+            $messageReactionRouteName,
             self::EDITABLE_WINDOW_SECONDS
         );
 
@@ -299,12 +361,14 @@ class ProjectTaskChatController extends Controller
         $message->update([
             'message' => $nextMessage,
         ]);
-        $message->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor']);
+        $message->load(['userAuthor', 'employeeAuthor', 'salesRepAuthor', 'replyToMessage']);
 
         $routePrefix = $this->resolveRoutePrefix($request);
         $attachmentRouteName = $routePrefix . '.projects.tasks.messages.attachment';
         $messageUpdateRouteName = $routePrefix . '.projects.tasks.chat.messages.update';
         $messageDeleteRouteName = $routePrefix . '.projects.tasks.chat.messages.destroy';
+        $messagePinRouteName = $routePrefix . '.projects.tasks.chat.messages.pin';
+        $messageReactionRouteName = $routePrefix . '.projects.tasks.chat.messages.react';
         $item = $this->messageItem(
             $message,
             $project,
@@ -313,6 +377,8 @@ class ProjectTaskChatController extends Controller
             $identity,
             $messageUpdateRouteName,
             $messageDeleteRouteName,
+            $messagePinRouteName,
+            $messageReactionRouteName,
             self::EDITABLE_WINDOW_SECONDS
         );
 
@@ -362,6 +428,111 @@ class ProjectTaskChatController extends Controller
             'message' => 'Message deleted.',
             'data' => [
                 'id' => $deletedId,
+            ],
+        ]);
+    }
+
+    public function togglePin(Request $request, Project $project, ProjectTask $task, ProjectTaskMessage $message): JsonResponse
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        if ($message->project_task_id !== $task->id) {
+            abort(404);
+        }
+
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $task);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            abort(403, 'Author identity not available.');
+        }
+
+        $previousPinnedId = (int) ($task->messages()->where('is_pinned', true)->value('id') ?? 0);
+        $nextPinnedId = 0;
+
+        if (! $message->is_pinned) {
+            $task->messages()->where('is_pinned', true)->update([
+                'is_pinned' => false,
+                'pinned_by_type' => null,
+                'pinned_by_id' => null,
+                'pinned_at' => null,
+            ]);
+
+            $message->update([
+                'is_pinned' => true,
+                'pinned_by_type' => $identity['type'],
+                'pinned_by_id' => (int) $identity['id'],
+                'pinned_at' => now(),
+            ]);
+            $nextPinnedId = $message->id;
+        } else {
+            $message->update([
+                'is_pinned' => false,
+                'pinned_by_type' => null,
+                'pinned_by_id' => null,
+                'pinned_at' => null,
+            ]);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => $nextPinnedId > 0 ? 'Message pinned.' : 'Message unpinned.',
+            'data' => [
+                'message_id' => $message->id,
+                'previous_pinned_id' => $previousPinnedId,
+                'pinned_message_id' => $nextPinnedId,
+            ],
+        ]);
+    }
+
+    public function toggleReaction(Request $request, Project $project, ProjectTask $task, ProjectTaskMessage $message): JsonResponse
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        if ($message->project_task_id !== $task->id) {
+            abort(404);
+        }
+
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('view', $task);
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            abort(403, 'Author identity not available.');
+        }
+
+        $data = $request->validate([
+            'emoji' => ['required', 'string', Rule::in(['👍', '❤️', '😂', '😮', '🙏'])],
+        ]);
+        $emoji = (string) $data['emoji'];
+
+        $reactions = collect((array) ($message->reactions ?? []))->values();
+        $existingIndex = $reactions->search(function ($reaction) use ($emoji, $identity) {
+            return (string) ($reaction['emoji'] ?? '') === $emoji
+                && (string) ($reaction['author_type'] ?? '') === (string) $identity['type']
+                && (int) ($reaction['author_id'] ?? 0) === (int) $identity['id'];
+        });
+
+        if ($existingIndex !== false) {
+            $reactions->forget($existingIndex);
+        } else {
+            $reactions->push([
+                'emoji' => $emoji,
+                'author_type' => $identity['type'],
+                'author_id' => (int) $identity['id'],
+                'at' => now()->toIso8601String(),
+            ]);
+        }
+
+        $message->update([
+            'reactions' => $reactions->values()->all(),
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Reaction updated.',
+            'data' => [
+                'message_id' => $message->id,
+                'reactions' => $this->reactionSummary($message->refresh(), $identity),
             ],
         ]);
     }
@@ -556,6 +727,27 @@ class ProjectTaskChatController extends Controller
         return $file->storeAs('project-task-messages/' . $task->id, $fileName, 'public');
     }
 
+    private function findRecentDuplicate(ProjectTask $task, Request $request, ?string $message): ?ProjectTaskMessage
+    {
+        if ($message === null) {
+            return null;
+        }
+
+        $identity = $this->resolveAuthorIdentity($request);
+        if (! $identity['id']) {
+            return null;
+        }
+
+        return ProjectTaskMessage::query()
+            ->where('project_task_id', $task->id)
+            ->where('author_type', $identity['type'])
+            ->where('author_id', $identity['id'])
+            ->where('message', $message)
+            ->where('created_at', '>=', now()->subSeconds(5))
+            ->latest('id')
+            ->first();
+    }
+
     private function messageItem(
         ProjectTaskMessage $message,
         Project $project,
@@ -564,6 +756,8 @@ class ProjectTaskChatController extends Controller
         array $identity,
         string $updateRouteName,
         string $deleteRouteName,
+        string $pinRouteName,
+        string $reactionRouteName,
         int $editableWindowSeconds
     ): array {
         return [
@@ -577,9 +771,57 @@ class ProjectTaskChatController extends Controller
                 'currentAuthorId' => $identity['id'],
                 'updateRouteName' => $updateRouteName,
                 'deleteRouteName' => $deleteRouteName,
+                'pinRouteName' => $pinRouteName,
+                'reactionRouteName' => $reactionRouteName,
+                'reactionSummary' => $this->reactionSummary($message, $identity),
                 'editableWindowSeconds' => $editableWindowSeconds,
             ])->render(),
+            'meta' => [
+                'is_pinned' => (bool) $message->is_pinned,
+                'reply_to_message_id' => (int) ($message->reply_to_message_id ?? 0),
+            ],
         ];
+    }
+
+    private function reactionSummary(ProjectTaskMessage $message, array $identity): array
+    {
+        $normalized = collect((array) ($message->reactions ?? []))
+            ->filter(function ($reaction) {
+                return is_array($reaction)
+                    && is_string($reaction['emoji'] ?? null)
+                    && ($reaction['emoji'] ?? '') !== '';
+            })
+            ->values();
+
+        return $normalized
+            ->groupBy(fn ($reaction) => (string) ($reaction['emoji'] ?? ''))
+            ->map(function ($items, $emoji) use ($identity) {
+                return [
+                    'emoji' => (string) $emoji,
+                    'count' => $items->count(),
+                    'reacted' => $items->contains(function ($item) use ($identity) {
+                        return (string) ($item['author_type'] ?? '') === (string) $identity['type']
+                            && (int) ($item['author_id'] ?? 0) === (int) $identity['id'];
+                    }),
+                ];
+            })
+            ->sortBy('emoji')
+            ->values()
+            ->all();
+    }
+
+    private function resolveReplyTarget(ProjectTask $task, int $replyToMessageId): ?int
+    {
+        if ($replyToMessageId <= 0) {
+            return null;
+        }
+
+        $exists = $task->messages()->whereKey($replyToMessageId)->exists();
+        if (! $exists) {
+            abort(422, 'Invalid reply reference.');
+        }
+
+        return $replyToMessageId;
     }
 
     private function messageMutationGuard(ProjectTaskMessage $message, array $identity): ?JsonResponse

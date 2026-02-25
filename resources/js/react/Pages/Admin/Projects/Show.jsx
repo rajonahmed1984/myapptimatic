@@ -340,11 +340,12 @@ export default function Show({
                             <div className="overflow-x-auto">
                                 <table className="min-w-full text-left text-sm">
                                     <thead>
-                                        <tr className="text-xs uppercase tracking-[0.2em] text-slate-500"><th className="px-3 py-2">Created</th><th className="px-3 py-2">Task</th><th className="px-3 py-2">Created By</th><th className="px-3 py-2">Status</th></tr>
+                                        <tr className="text-xs uppercase tracking-[0.2em] text-slate-500"><th className="px-3 py-2">Task ID</th><th className="px-3 py-2">Created</th><th className="px-3 py-2">Task</th><th className="px-3 py-2">Created By</th><th className="px-3 py-2">Status</th></tr>
                                     </thead>
                                     <tbody>
                                         {tasks.map((task) => (
                                             <tr key={task.id} className="border-t border-slate-100">
+                                                <td className="px-3 py-2 font-semibold text-slate-700">{task.id ?? '--'}</td>
                                                 <td className="px-3 py-2">{task.created_at}</td>
                                                 <td className="px-3 py-2"><a href={task.route} className="text-teal-600 hover:text-teal-500">{task.title}</a></td>
                                                 <td className="px-3 py-2">{task.creator_name}</td>

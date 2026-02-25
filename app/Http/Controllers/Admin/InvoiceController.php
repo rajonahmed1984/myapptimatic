@@ -9,6 +9,7 @@ use App\Models\InvoiceItem;
 use App\Models\PaymentGateway;
 use App\Models\Project;
 use App\Models\Setting;
+use App\Models\TaxSetting;
 use App\Services\AdminNotificationService;
 use App\Services\BillingService;
 use App\Services\CommissionService;
@@ -215,23 +216,9 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function clientView(Invoice $invoice)
+    public function clientView(Request $request, Invoice $invoice): InertiaResponse
     {
-        return view('client.invoices.pay', [
-            'invoice' => $invoice->load([
-                'customer',
-                'items',
-                'customer',
-                'subscription.plan.product',
-                'accountingEntries.paymentGateway',
-                'paymentProofs.paymentGateway',
-                'paymentProofs.paymentAttempt',
-            ]),
-            'paymentInstructions' => Setting::getValue('payment_instructions'),
-            'gateways' => PaymentGateway::query()->where('is_active', true)->orderBy('sort_order')->get(),
-            'payToText' => Setting::getValue('pay_to_text'),
-            'companyEmail' => Setting::getValue('company_email'),
-        ]);
+        return Inertia::render('Client/Invoices/Pay', $this->invoicePayProps($request, $invoice, 'admin.invoices.download'));
     }
 
     public function download(Invoice $invoice): Response
@@ -765,6 +752,98 @@ class InvoiceController extends Controller
             })->values(),
             'can_record_payment' => $invoice->status !== 'paid',
             'can_record_refund' => $invoice->status === 'paid',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function invoicePayProps(Request $request, Invoice $invoice, string $downloadRouteName): array
+    {
+        $invoice->load([
+            'items',
+            'customer',
+            'subscription.plan.product',
+            'accountingEntries.paymentGateway',
+            'paymentProofs.paymentGateway',
+            'paymentProofs.paymentAttempt',
+        ]);
+
+        $taxSetting = TaxSetting::current();
+        $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
+        $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
+        $payableAmount = max(0, (float) $invoice->total - $creditTotal);
+        $displayNumber = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
+        $dateFormat = config('app.date_format', 'd-m-Y');
+        $portalBranding = (array) $request->attributes->get('portalBranding', []);
+        $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
+        $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
+
+        $gateways = PaymentGateway::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+
+        return [
+            'invoice' => [
+                'id' => $invoice->id,
+                'number_display' => $displayNumber,
+                'status' => (string) $invoice->status,
+                'status_label' => strtoupper((string) $invoice->status),
+                'status_class' => strtolower((string) $invoice->status),
+                'issue_date_display' => $invoice->issue_date?->format($dateFormat) ?? '--',
+                'due_date_display' => $invoice->due_date?->format($dateFormat) ?? '--',
+                'paid_at_display' => $invoice->paid_at?->format($dateFormat),
+                'currency' => (string) $invoice->currency,
+                'customer' => [
+                    'name' => $invoice->customer?->name ?? '--',
+                    'email' => $invoice->customer?->email ?? '--',
+                    'address' => $invoice->customer?->address ?? '--',
+                ],
+                'items' => $invoice->items->map(function ($item) use ($invoice) {
+                    return [
+                        'id' => $item->id,
+                        'description' => (string) $item->description,
+                        'line_total_display' => (string) $invoice->currency.' '.number_format((float) $item->line_total, 2),
+                    ];
+                })->values()->all(),
+                'subtotal_display' => (string) $invoice->currency.' '.number_format((float) $invoice->subtotal, 2),
+                'has_tax' => (bool) $hasTax,
+                'tax_mode' => $invoice->tax_mode,
+                'tax_amount_display' => (string) $invoice->currency.' '.number_format((float) $invoice->tax_amount, 2),
+                'tax_rate_percent_display' => $invoice->tax_rate_percent !== null
+                    ? rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.')
+                    : null,
+                'discount_display' => (string) $invoice->currency.' '.number_format($creditTotal, 2),
+                'payable_amount_display' => (string) $invoice->currency.' '.number_format($payableAmount, 2),
+                'is_payable' => in_array($invoice->status, ['unpaid', 'overdue'], true),
+                'pending_proof' => (bool) $pendingProof,
+                'rejected_proof' => (bool) $rejectedProof,
+            ],
+            'tax' => [
+                'label' => $taxSetting->invoice_tax_label ?: 'Tax',
+                'note' => $taxSetting->renderNote($invoice->tax_rate_percent),
+            ],
+            'company' => [
+                'name' => $portalBranding['company_name'] ?? config('app.name', 'Apptimatic'),
+                'email' => Setting::getValue('company_email') ?: 'support@example.com',
+                'pay_to' => Setting::getValue('pay_to_text') ?: 'Billing Department',
+            ],
+            'payment_instructions' => Setting::getValue('payment_instructions'),
+            'gateways' => $gateways->map(function ($gateway) {
+                return [
+                    'id' => $gateway->id,
+                    'name' => (string) $gateway->name,
+                    'driver' => (string) $gateway->driver,
+                    'payment_url' => (string) ($gateway->settings['payment_url'] ?? ''),
+                    'instructions' => (string) ($gateway->settings['instructions'] ?? ''),
+                    'button_label' => (string) ($gateway->settings['button_label'] ?? ''),
+                ];
+            })->values()->all(),
+            'routes' => [
+                'checkout' => route('client.invoices.checkout', $invoice),
+                'download' => route($downloadRouteName, $invoice),
+            ],
         ];
     }
 

@@ -6,20 +6,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class PasswordResetController extends Controller
 {
-    public function request()
+    public function request(): InertiaResponse
     {
-        return view('auth.forgot-password');
+        return Inertia::render('Auth/ForgotPassword', $this->forgotPasswordProps(
+            route('password.email', [], false),
+            route('login', [], false),
+        ));
     }
 
-    public function requestAdmin()
+    public function requestAdmin(): InertiaResponse
     {
-        return view('auth.forgot-password', [
-            'emailRoute' => route('admin.password.email'),
-            'loginRoute' => route('admin.login'),
-        ]);
+        return Inertia::render('Auth/ForgotPassword', $this->forgotPasswordProps(
+            route('admin.password.email', [], false),
+            route('admin.login', [], false),
+        ));
     }
 
     public function email(Request $request)
@@ -75,10 +80,20 @@ class PasswordResetController extends Controller
         return $this->email($request);
     }
 
-    public function resetForm(string $token)
+    public function resetForm(Request $request, string $token): InertiaResponse
     {
-        return view('auth.reset-password', [
-            'token' => $token,
+        return Inertia::render('Auth/ResetPassword', [
+            'form' => [
+                'token' => $token,
+                'email' => old('email', (string) $request->query('email', '')),
+            ],
+            'routes' => [
+                'submit' => route('password.update', [], false),
+                'login' => route('login', [], false),
+            ],
+            'messages' => [
+                'status' => session('status'),
+            ],
         ]);
     }
 
@@ -102,6 +117,31 @@ class PasswordResetController extends Controller
         return $status === Password::PASSWORD_RESET
             ? redirect()->route('login')->with('status', __($status))
             : back()->withErrors(['email' => __($status)]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function forgotPasswordProps(string $emailRoute, string $loginRoute): array
+    {
+        return [
+            'form' => [
+                'email' => old('email', ''),
+            ],
+            'routes' => [
+                'email' => $emailRoute,
+                'login' => $loginRoute,
+            ],
+            'messages' => [
+                'status' => session('status'),
+                'throttled' => __('passwords.throttled'),
+            ],
+            'recaptcha' => [
+                'enabled' => (bool) config('recaptcha.enabled') && is_string(config('recaptcha.site_key')) && config('recaptcha.site_key') !== '',
+                'site_key' => (string) config('recaptcha.site_key', ''),
+                'action' => 'FORGOT_PASSWORD',
+            ],
+        ];
     }
 
     private function ensureRecaptcha(Request $request, string $action): void

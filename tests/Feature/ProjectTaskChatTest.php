@@ -183,6 +183,104 @@ class ProjectTaskChatTest extends TestCase
         ]);
     }
 
+    #[Test]
+    public function client_can_store_reply_target_for_task_chat_message(): void
+    {
+        [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser, $clientUser] = $this->setupProjectWithMembers();
+
+        $parent = ProjectTaskMessage::create([
+            'project_task_id' => $visibleTask->id,
+            'author_type' => 'user',
+            'author_id' => $clientUser->id,
+            'message' => 'Parent message',
+        ]);
+
+        $response = $this->actingAs($clientUser)
+            ->postJson(route('client.projects.tasks.chat.messages.store', [$project, $visibleTask]), [
+                'message' => 'Reply message',
+                'reply_to_message_id' => $parent->id,
+            ]);
+
+        $response->assertOk()->assertJsonPath('ok', true);
+        $this->assertDatabaseHas('project_task_messages', [
+            'project_task_id' => $visibleTask->id,
+            'message' => 'Reply message',
+            'reply_to_message_id' => $parent->id,
+        ]);
+    }
+
+    #[Test]
+    public function client_can_pin_and_unpin_task_chat_message(): void
+    {
+        [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser, $clientUser] = $this->setupProjectWithMembers();
+
+        $message = ProjectTaskMessage::create([
+            'project_task_id' => $visibleTask->id,
+            'author_type' => 'user',
+            'author_id' => $clientUser->id,
+            'message' => 'Pin me',
+        ]);
+
+        $pinResponse = $this->actingAs($clientUser)
+            ->postJson(route('client.projects.tasks.chat.messages.pin', [$project, $visibleTask, $message]));
+
+        $pinResponse->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('data.pinned_message_id', $message->id);
+
+        $this->assertDatabaseHas('project_task_messages', [
+            'id' => $message->id,
+            'is_pinned' => 1,
+            'pinned_by_type' => 'user',
+            'pinned_by_id' => $clientUser->id,
+        ]);
+
+        $unpinResponse = $this->actingAs($clientUser)
+            ->postJson(route('client.projects.tasks.chat.messages.pin', [$project, $visibleTask, $message]));
+
+        $unpinResponse->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('data.pinned_message_id', 0);
+
+        $this->assertDatabaseHas('project_task_messages', [
+            'id' => $message->id,
+            'is_pinned' => 0,
+        ]);
+    }
+
+    #[Test]
+    public function client_can_toggle_task_chat_reaction(): void
+    {
+        [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser, $clientUser] = $this->setupProjectWithMembers();
+
+        $message = ProjectTaskMessage::create([
+            'project_task_id' => $visibleTask->id,
+            'author_type' => 'user',
+            'author_id' => $clientUser->id,
+            'message' => 'React here',
+        ]);
+
+        $addResponse = $this->actingAs($clientUser)
+            ->postJson(route('client.projects.tasks.chat.messages.react', [$project, $visibleTask, $message]), [
+                'emoji' => '👍',
+            ]);
+
+        $addResponse->assertOk()->assertJsonPath('ok', true);
+
+        $message->refresh();
+        $this->assertCount(1, (array) $message->reactions);
+
+        $removeResponse = $this->actingAs($clientUser)
+            ->postJson(route('client.projects.tasks.chat.messages.react', [$project, $visibleTask, $message]), [
+                'emoji' => '👍',
+            ]);
+
+        $removeResponse->assertOk()->assertJsonPath('ok', true);
+
+        $message->refresh();
+        $this->assertCount(0, (array) $message->reactions);
+    }
+
     private function setupProjectWithMembers(): array
     {
         $customer = Customer::create([

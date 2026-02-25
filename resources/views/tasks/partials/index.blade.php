@@ -85,6 +85,7 @@
         <table class="min-w-full text-left text-sm">
             <thead class="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                 <tr>
+                    <th class="px-4 py-3">Task ID</th>
                     <th class="px-4 py-3">Created</th>
                     <th class="px-4 py-3">Project Task</th>
                     @if($showSubtasks)
@@ -105,6 +106,9 @@
                         $statusClass = $statusClasses[$currentStatus] ?? 'bg-slate-100 text-slate-600';
                     @endphp
                     <tr class="align-top">
+                        <td class="px-4 py-3 text-slate-600 whitespace-nowrap font-semibold">
+                            {{ $task->id ?? '--' }}
+                        </td>
                         <td class="px-4 py-3 text-slate-500 whitespace-nowrap">
                             <div class="whitespace-nowrap">{{ $task->created_at?->format($globalDateFormat) ?? '--' }}</div>
                             <div class="text-xs text-slate-400 whitespace-nowrap">{{ $task->created_at?->format('H:i') ?? '--' }}</div>
@@ -177,7 +181,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ 5 + ($showCreator ? 1 : 0) + ($showSubtasks ? 1 : 0) }}" class="px-4 py-6 text-center text-slate-500">No tasks found.</td>
+                        <td colspan="{{ 6 + ($showCreator ? 1 : 0) + ($showSubtasks ? 1 : 0) }}" class="px-4 py-6 text-center text-slate-500">No tasks found.</td>
                     </tr>
                 @endforelse
             </tbody>
