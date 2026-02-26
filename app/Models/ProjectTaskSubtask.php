@@ -17,6 +17,7 @@ class ProjectTaskSubtask extends Model
         'is_completed',
         'status',
         'completed_at',
+        'completed_by',
         'created_by',
         'attachment_path',
     ];
@@ -35,6 +36,11 @@ class ProjectTaskSubtask extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function completedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'completed_by');
     }
 
     public function creatorEditWindowExpired(?int $userId): bool

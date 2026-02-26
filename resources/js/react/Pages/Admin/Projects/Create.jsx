@@ -4,6 +4,28 @@ import { Head, usePage } from '@inertiajs/react';
 const asArray = (value) => (Array.isArray(value) ? value : []);
 const rowId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+function StepSection({ step, title, description, children, optional = false }) {
+    return (
+        <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 md:p-5">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Step {step}
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-slate-900">{title}</div>
+                    {description ? <div className="mt-1 text-xs text-slate-600">{description}</div> : null}
+                </div>
+                {optional ? (
+                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                        Optional
+                    </span>
+                ) : null}
+            </div>
+            {children}
+        </section>
+    );
+}
+
 export default function Create({
     pageTitle = 'New Project',
     statuses = [],
@@ -93,108 +115,149 @@ export default function Create({
             </div>
 
             <div className="card p-6">
-                <form method="POST" action={routes.store} data-native="true" className="mt-2 grid gap-4 rounded-2xl border border-slate-300 bg-white/80 p-5" encType="multipart/form-data">
+                <form method="POST" action={routes.store} data-native="true" className="mt-2 space-y-5 rounded-2xl border border-slate-200 bg-white/90 p-5" encType="multipart/form-data">
                     <input type="hidden" name="_token" value={csrf} />
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label className="text-xs text-slate-500">Project name</label>
-                            <input name="name" defaultValue={form.name || ''} required className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                            {errors.name ? <div className="mt-1 text-xs text-rose-600">{errors.name}</div> : null}
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-500">Customer</label>
-                            <select name="customer_id" defaultValue={form.customer_id || ''} required className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                <option value="">Select customer</option>
-                                {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.display_name}</option>)}
-                            </select>
-                            {errors.customer_id ? <div className="mt-1 text-xs text-rose-600">{errors.customer_id}</div> : null}
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                            <span className="rounded-full bg-white px-2.5 py-1">1 Basic Info</span>
+                            <span className="rounded-full bg-white px-2.5 py-1">2 Team</span>
+                            <span className="rounded-full bg-white px-2.5 py-1">3 Timeline & Files</span>
+                            <span className="rounded-full bg-white px-2.5 py-1">4 Budget</span>
+                            <span className="rounded-full bg-white px-2.5 py-1">5 Maintenance</span>
+                            <span className="rounded-full bg-white px-2.5 py-1">6 Overhead</span>
+                            <span className="rounded-full bg-white px-2.5 py-1">7 Initial Tasks</span>
                         </div>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <div>
-                            <label className="text-xs text-slate-500">Type</label>
-                            <select name="type" defaultValue={form.type || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                {types.map((type) => <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-500">Status</label>
-                            <select name="status" defaultValue={form.status || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                {statuses.map((status) => <option key={status} value={status}>{status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-500">Sales representatives</label>
-                            <div className="mt-2 space-y-2 rounded-2xl border border-slate-300 bg-white/80 p-3">
-                                {salesReps.map((rep) => (
-                                    <div key={rep.id} className="flex flex-wrap items-center justify-between gap-3">
-                                        <label className="flex items-center gap-2 text-xs text-slate-600">
-                                            <input type="checkbox" name="sales_rep_ids[]" value={rep.id} checked={selectedSalesRepIds.includes(Number(rep.id))} onChange={() => toggleId(setSelectedSalesRepIds, selectedSalesRepIds, Number(rep.id))} />
-                                            <span>{rep.name} ({rep.email})</span>
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-slate-500">Amount</span>
-                                            <input type="number" min="0" step="0.01" name={`sales_rep_amounts[${rep.id}]`} defaultValue={rep.amount ?? 0} className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
-                                        </div>
-                                    </div>
-                                ))}
+
+                    <StepSection
+                        step="1"
+                        title="Project Basics"
+                        description="Start with core project identity and customer mapping."
+                    >
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label className="text-xs text-slate-500">Project name</label>
+                                <input name="name" defaultValue={form.name || ''} required className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                {errors.name ? <div className="mt-1 text-xs text-rose-600">{errors.name}</div> : null}
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">Customer</label>
+                                <select name="customer_id" defaultValue={form.customer_id || ''} required className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                                    <option value="">Select customer</option>
+                                    {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.display_name}</option>)}
+                                </select>
+                                {errors.customer_id ? <div className="mt-1 text-xs text-rose-600">{errors.customer_id}</div> : null}
                             </div>
                         </div>
-                    </div>
+                        <div className="mt-4 grid gap-4 md:grid-cols-3">
+                            <div>
+                                <label className="text-xs text-slate-500">Type</label>
+                                <select name="type" defaultValue={form.type || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                                    {types.map((type) => <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">Status</label>
+                                <select name="status" defaultValue={form.status || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                                    {statuses.map((status) => <option key={status} value={status}>{status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">Notes</label>
+                                <textarea name="notes" rows={2} defaultValue={form.notes || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                            </div>
+                        </div>
+                    </StepSection>
 
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <div><label className="text-xs text-slate-500">Start date</label><input name="start_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                        <div><label className="text-xs text-slate-500">Expected end date</label><input name="expected_end_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.expected_end_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                        <div><label className="text-xs text-slate-500">Due date (internal)</label><input name="due_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.due_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                    </div>
+                    <StepSection
+                        step="2"
+                        title="Assign Team"
+                        description="Select delivery members and sales reps with optional amount mapping."
+                    >
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label className="text-xs text-slate-500">Assign employees</label>
+                                <div className="mt-2 space-y-2 rounded-2xl border border-slate-300 bg-white/90 p-3">
+                                    {employees.map((employee) => {
+                                        const employeeId = Number(employee.id);
+                                        const isSelected = selectedEmployeeIds.includes(employeeId);
+                                        const isContract = employee.employment_type === 'contract';
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label className="text-xs text-slate-500">Assign employees</label>
-                            <div className="mt-2 space-y-2 rounded-2xl border border-slate-300 bg-white/80 p-3">
-                                {employees.map((employee) => {
-                                    const employeeId = Number(employee.id);
-                                    const isSelected = selectedEmployeeIds.includes(employeeId);
-                                    const isContract = employee.employment_type === 'contract';
-
-                                    return (
-                                        <div key={employee.id} className="flex flex-wrap items-center justify-between gap-3">
+                                        return (
+                                            <div key={employee.id} className="flex flex-wrap items-center justify-between gap-3">
+                                                <label className="flex items-center gap-2 text-xs text-slate-600">
+                                                    <input type="checkbox" name="employee_ids[]" value={employee.id} checked={isSelected} onChange={() => toggleId(setSelectedEmployeeIds, selectedEmployeeIds, employeeId)} />
+                                                    <span>{employee.name} {employee.designation ? <span className="text-slate-500">({employee.designation})</span> : null}</span>
+                                                </label>
+                                                {isContract ? (
+                                                    <div className={`flex items-center gap-2 ${isSelected ? '' : 'hidden'}`}>
+                                                        <span className="text-xs text-slate-500">Amount</span>
+                                                        <input type="number" min="0" step="0.01" name={`contract_employee_amounts[${employee.id}]`} defaultValue={employee.contract_amount ?? ''} disabled={!isSelected} className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">Sales representatives</label>
+                                <div className="mt-2 space-y-2 rounded-2xl border border-slate-300 bg-white/90 p-3">
+                                    {salesReps.map((rep) => (
+                                        <div key={rep.id} className="flex flex-wrap items-center justify-between gap-3">
                                             <label className="flex items-center gap-2 text-xs text-slate-600">
-                                                <input type="checkbox" name="employee_ids[]" value={employee.id} checked={isSelected} onChange={() => toggleId(setSelectedEmployeeIds, selectedEmployeeIds, employeeId)} />
-                                                <span>{employee.name} {employee.designation ? <span className="text-slate-500">({employee.designation})</span> : null}</span>
+                                                <input type="checkbox" name="sales_rep_ids[]" value={rep.id} checked={selectedSalesRepIds.includes(Number(rep.id))} onChange={() => toggleId(setSelectedSalesRepIds, selectedSalesRepIds, Number(rep.id))} />
+                                                <span>{rep.name} ({rep.email})</span>
                                             </label>
-                                            {isContract ? (
-                                                <div className={`flex items-center gap-2 ${isSelected ? '' : 'hidden'}`}>
-                                                    <span className="text-xs text-slate-500">Amount</span>
-                                                    <input type="number" min="0" step="0.01" name={`contract_employee_amounts[${employee.id}]`} defaultValue={employee.contract_amount ?? ''} disabled={!isSelected} className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
-                                                </div>
-                                            ) : null}
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-slate-500">Amount</span>
+                                                <input type="number" min="0" step="0.01" name={`sales_rep_amounts[${rep.id}]`} defaultValue={rep.amount ?? 0} className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+                                            </div>
                                         </div>
-                                    );
-                                })}
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <label className="text-xs text-slate-500">Notes</label>
-                            <textarea name="notes" rows={2} defaultValue={form.notes || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                    </StepSection>
+
+                    <StepSection
+                        step="3"
+                        title="Timeline And Documents"
+                        description="Set delivery dates and attach project source files."
+                    >
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <div><label className="text-xs text-slate-500">Start date</label><input name="start_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
+                            <div><label className="text-xs text-slate-500">Expected end date</label><input name="expected_end_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.expected_end_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
+                            <div><label className="text-xs text-slate-500">Due date (internal)</label><input name="due_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.due_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
                         </div>
-                    </div>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <div><label className="text-xs text-slate-500">Contract file</label><input type="file" name="contract_file" accept=".pdf,.doc,.docx,image/*" className="mt-1 w-full text-xs text-slate-600" /></div>
+                            <div><label className="text-xs text-slate-500">Proposal file</label><input type="file" name="proposal_file" accept=".pdf,.doc,.docx,image/*" className="mt-1 w-full text-xs text-slate-600" /></div>
+                        </div>
+                    </StepSection>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div><label className="text-xs text-slate-500">Contract file</label><input type="file" name="contract_file" accept=".pdf,.doc,.docx,image/*" className="mt-1 w-full text-xs text-slate-600" /></div>
-                        <div><label className="text-xs text-slate-500">Proposal file</label><input type="file" name="proposal_file" accept=".pdf,.doc,.docx,image/*" className="mt-1 w-full text-xs text-slate-600" /></div>
-                    </div>
+                    <StepSection
+                        step="4"
+                        title="Budget And Billing"
+                        description="Define project budget, initial payment, and currency."
+                    >
+                        <div className="grid gap-4 md:grid-cols-4">
+                            <div><label className="text-xs text-slate-500">Total budget</label><input name="total_budget" type="number" step="0.01" defaultValue={form.total_budget || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
+                            <div><label className="text-xs text-slate-500">Initial payment</label><input name="initial_payment_amount" type="number" step="0.01" defaultValue={form.initial_payment_amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
+                            <div><label className="text-xs text-slate-500">Currency</label><select name="currency" defaultValue={form.currency || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>{currencyOptions.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></div>
+                            <div><label className="text-xs text-slate-500">Budget (legacy)</label><input name="budget_amount" type="number" step="0.01" defaultValue={form.budget_amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
+                        </div>
+                    </StepSection>
 
-                    <div className="grid gap-4 md:grid-cols-4">
-                        <div><label className="text-xs text-slate-500">Total budget</label><input name="total_budget" type="number" step="0.01" defaultValue={form.total_budget || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
-                        <div><label className="text-xs text-slate-500">Initial payment</label><input name="initial_payment_amount" type="number" step="0.01" defaultValue={form.initial_payment_amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
-                        <div><label className="text-xs text-slate-500">Currency</label><select name="currency" defaultValue={form.currency || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>{currencyOptions.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></div>
-                        <div><label className="text-xs text-slate-500">Budget (legacy)</label><input name="budget_amount" type="number" step="0.01" defaultValue={form.budget_amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-300 bg-white/60 p-4">
+                    <StepSection
+                        step="5"
+                        title="Maintenance Plan"
+                        description="Optional recurring billing tied to this project."
+                        optional
+                    >
                         <div className="mb-3 flex items-center justify-between">
-                            <div><div className="section-label">Add Maintenance Plan</div><div className="text-sm text-slate-600">Optional recurring billing tied to this project.</div></div>
+                            <div className="section-label">Add Maintenance Plan</div>
                             <button type="button" onClick={addMaintenance} className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add plan</button>
                         </div>
                         <div className="space-y-3">
@@ -214,11 +277,16 @@ export default function Create({
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </StepSection>
 
-                    <div className="rounded-2xl border border-slate-300 bg-white/60 p-4">
+                    <StepSection
+                        step="6"
+                        title="Overhead Fees"
+                        description="Optional project overhead line items."
+                        optional
+                    >
                         <div className="mb-3 flex items-center justify-between">
-                            <div><div className="section-label">Overhead fees (optional)</div><div className="text-sm text-slate-600">Add per-project overhead line items.</div></div>
+                            <div className="section-label">Overhead Fees</div>
                             <button type="button" onClick={addOverhead} className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add fee</button>
                         </div>
                         <div className="space-y-3">
@@ -235,10 +303,14 @@ export default function Create({
                                 </div>
                             ))}
                         </div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-300 bg-white/60 p-4">
+                    </StepSection>
+                    <StepSection
+                        step="7"
+                        title="Initial Tasks"
+                        description="Add at least one task with assignee and dates."
+                    >
                         <div className="mb-3 flex items-center justify-between">
-                            <div><div className="section-label">Initial tasks</div><div className="text-sm text-slate-600">Add at least one task with dates and assignee.</div></div>
+                            <div className="section-label">Initial Tasks</div>
                             <button type="button" onClick={addTask} className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add task</button>
                         </div>
                         <div className="space-y-3">
@@ -274,7 +346,7 @@ export default function Create({
                             ))}
                         </div>
                         {errors.tasks ? <div className="mt-2 text-xs text-rose-600">{errors.tasks}</div> : null}
-                    </div>
+                    </StepSection>
 
                     <div className="flex justify-end gap-3 pt-2">
                         <a href={routes.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Cancel</a>

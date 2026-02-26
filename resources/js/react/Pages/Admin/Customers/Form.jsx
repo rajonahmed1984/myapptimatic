@@ -15,6 +15,7 @@ export default function Form({
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
+    const avatarUrl = form?.avatar_url || '';
     const statusLabel = String(effective_status || fields?.status || 'active');
 
     return (
@@ -54,6 +55,26 @@ export default function Form({
                     <input type="hidden" name="_token" value={csrf} />
                     {String(form?.method || 'POST').toUpperCase() !== 'POST' ? (
                         <input type="hidden" name="_method" value={form?.method} />
+                    ) : null}
+
+                    {is_edit ? (
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="flex flex-wrap items-center gap-4">
+                                <div className="h-20 w-20 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                    {avatarUrl ? (
+                                        <img src={avatarUrl} alt={fields?.name || 'Customer logo'} className="h-full w-full object-cover" />
+                                    ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-500">No logo</div>
+                                    )}
+                                </div>
+                                <div className="min-w-[220px] flex-1">
+                                    <label className="text-sm text-slate-600">Customer logo</label>
+                                    <input name="avatar" type="file" accept="image/*" className="mt-2 block w-full text-sm text-slate-600" />
+                                    <p className="mt-1 text-xs text-slate-500">PNG/JPG/WEBP, max 2MB.</p>
+                                    {errors?.avatar ? <p className="mt-1 text-xs text-rose-500">{errors.avatar}</p> : null}
+                                </div>
+                            </div>
+                        </div>
                     ) : null}
 
                     <div className="grid gap-4 md:grid-cols-2">

@@ -13,6 +13,7 @@ use App\Models\EmployeeSession;
 use App\Models\EmployeeWorkSession;
 use App\Models\EmployeeWorkSummary;
 use App\Models\PaidHoliday;
+use App\Models\PaymentMethod;
 use App\Models\PayrollItem;
 use App\Models\Project;
 use App\Models\ProjectTask;
@@ -47,11 +48,9 @@ class EmployeeController extends Controller
             'pageTitle' => 'Employees',
             'employees' => $employees->through(function (Employee $employee) use ($loginStatuses, $lastLoginByEmployee) {
                 $loginStatus = $loginStatuses[$employee->id] ?? 'logout';
-                $showLoginBadge = in_array($loginStatus, ['login', 'idle'], true);
-                $loginLabel = $loginStatus === 'idle' ? 'Idle' : 'Login';
-                $loginClasses = $loginStatus === 'idle'
-                    ? 'border-amber-200 text-amber-700 bg-amber-50'
-                    : 'border-emerald-200 text-emerald-700 bg-emerald-50';
+                $showLoginBadge = $loginStatus === 'login';
+                $loginLabel = 'Login';
+                $loginClasses = 'border-emerald-200 text-emerald-700 bg-emerald-50';
                 $lastLoginAt = $lastLoginByEmployee[$employee->id] ?? null;
 
                 return [
@@ -895,6 +894,7 @@ class EmployeeController extends Controller
                 'id' => $employee->id,
                 'name' => $employee->name,
                 'email' => $employee->email,
+                'phone' => $employee->phone,
                 'status' => $employee->status,
                 'department' => $employee->department,
                 'designation' => $employee->designation,
@@ -902,6 +902,9 @@ class EmployeeController extends Controller
                 'work_mode' => $employee->work_mode,
                 'address' => $employee->address,
                 'join_date' => $employee->join_date?->format(config('app.date_format', 'd-m-Y')),
+                'photo_path' => $employee->photo_path,
+                'nid_path' => $employee->nid_path,
+                'cv_path' => $employee->cv_path,
                 'manager' => [
                     'id' => $employee->manager?->id,
                     'name' => $employee->manager?->name,
@@ -910,6 +913,7 @@ class EmployeeController extends Controller
                     'id' => $employee->user?->id,
                     'name' => $employee->user?->name,
                     'email' => $employee->user?->email,
+                    'avatar_path' => $employee->user?->avatar_path,
                 ],
                 'active_compensation' => [
                     'effective_from' => $employee->activeCompensation?->effective_from?->format(config('app.date_format', 'd-m-Y')),
@@ -935,11 +939,23 @@ class EmployeeController extends Controller
             'draftPayrollItem' => $draftPayrollItem,
             'workSessionStats' => $workSessionStats,
             'payrollSourceNote' => $payrollSourceNote,
+            'paymentMethods' => PaymentMethod::dropdownOptions()
+                ->map(fn ($method) => [
+                    'code' => $method->code,
+                    'name' => $method->name,
+                ])
+                ->values(),
+            'documentLinks' => [
+                'nid' => $employee->nid_path ? route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'nid']) : null,
+                'cv' => $employee->cv_path ? route('admin.user-documents.show', ['type' => 'employee', 'id' => $employee->id, 'doc' => 'cv']) : null,
+            ],
             'routes' => [
                 'index' => route('admin.hr.employees.index', [], false),
                 'edit' => route('admin.hr.employees.edit', $employee, false),
                 'impersonate' => route('admin.hr.employees.impersonate', $employee, false),
                 'show' => route('admin.hr.employees.show', $employee, false),
+                'advancePayout' => route('admin.hr.employees.advance-payout', $employee, false),
+                'payoutProof' => route('admin.hr.employee-payouts.proof', ['employeePayout' => '__ID__'], false),
             ],
         ]);
     }

@@ -28,6 +28,7 @@ class ProjectTaskViewController extends Controller
             'assignments.employee',
             'assignments.salesRep',
             'subtasks.createdBy',
+            'subtasks.completedBy',
             'creator',
         ]);
 
@@ -106,10 +107,14 @@ class ProjectTaskViewController extends Controller
                 'status' => $status,
                 'status_label' => $this->statusLabel($status),
                 'is_completed' => (bool) $subtask->is_completed,
+                'created_at_display' => DateTimeFormat::formatDateTime($subtask->created_at),
+                'completed_at_display' => DateTimeFormat::formatDateTime($subtask->completed_at),
                 'due_date_display' => DateTimeFormat::formatDate($subtask->due_date),
                 'due_time_display' => DateTimeFormat::formatTime($parsedDueTime),
                 'created_by_name' => (string) ($subtask->createdBy?->name ?? '--'),
                 'created_by_label' => 'Added by: '.(string) ($subtask->createdBy?->name ?? '--'),
+                'completed_by_name' => (string) ($subtask->completedBy?->name ?? $subtask->createdBy?->name ?? '--'),
+                'completed_by_label' => 'Completed by: '.(string) ($subtask->completedBy?->name ?? $subtask->createdBy?->name ?? '--'),
                 'attachment_url' => $subtask->attachment_path
                     ? route($routePrefix.'.projects.tasks.subtasks.attachment', [$project, $task, $subtask])
                     : null,

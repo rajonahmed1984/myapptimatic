@@ -480,22 +480,10 @@ export default function Dashboard({
             </div>
 
             <div className="mt-8 card p-6">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="shrink-0">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
                         <div className="section-label">System Overview</div>
-                        <div className="mt-1 text-sm text-slate-500">Period activity snapshot</div>
-                    </div>
-
-                    <div className="grid flex-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                        <CompactOverviewStat label="New Orders" value={metricValue(activeMetrics?.new_orders)} />
-                        <CompactOverviewStat label="Activated Orders" value={metricValue(activeMetrics?.active_orders)} tone="text-blue-600" />
-                        <CompactOverviewStat label="Total Income" value={money(currency, activeMetrics?.income)} tone="text-emerald-600" />
-                        <CompactOverviewStat label="Hosting Income" value={money(currency, activeMetrics?.hosting_income)} tone="text-emerald-600" />
-                        <CompactOverviewStat
-                            label="Avg Per Order"
-                            value={money(currency, Number(activeMetrics?.new_orders || 0) > 0 ? Number(activeMetrics?.income || 0) / Number(activeMetrics?.new_orders || 1) : 0)}
-                            tone="text-emerald-600"
-                        />
+                        <div className="mt-1 text-sm text-slate-500">Orders and income snapshot</div>
                     </div>
 
                     <div className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-1 text-xs font-semibold">
@@ -512,7 +500,19 @@ export default function Dashboard({
                     </div>
                 </div>
 
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                    <CompactOverviewStat label="New Orders" value={metricValue(activeMetrics?.new_orders)} />
+                    <CompactOverviewStat label="Activated Orders" value={metricValue(activeMetrics?.active_orders)} tone="text-blue-600" />
+                    <CompactOverviewStat label="Total Income" value={money(currency, activeMetrics?.income)} tone="text-emerald-600" />
+                    <CompactOverviewStat label="Hosting Income" value={money(currency, activeMetrics?.hosting_income)} tone="text-emerald-600" />
+                    <CompactOverviewStat
+                        label="Avg Per Order"
+                        value={money(currency, Number(activeMetrics?.new_orders || 0) > 0 ? Number(activeMetrics?.income || 0) / Number(activeMetrics?.new_orders || 1) : 0)}
+                        tone="text-emerald-600"
+                    />
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
                     <div className="mb-3 flex flex-wrap items-center justify-start gap-2 sm:justify-center">
                         {Object.entries(CHART_SERIES).map(([key, config]) => (
                             <button
@@ -857,9 +857,9 @@ function SmallLinkCard({ href, title, value, tone = 'text-slate-900' }) {
 
 function CompactOverviewStat({ label, value, tone = 'text-slate-900' }) {
     return (
-        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{label}</div>
-            <div className={`mt-1 text-sm font-semibold leading-tight md:text-[15px] ${tone} break-words`}>{value}</div>
+        <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+            <div className="text-[9px] uppercase tracking-[0.16em] text-slate-400">{label}</div>
+            <div className={`mt-1 text-xs font-semibold leading-tight sm:text-sm ${tone} break-words`}>{value}</div>
         </div>
     );
 }

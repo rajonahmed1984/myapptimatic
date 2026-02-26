@@ -58,7 +58,24 @@
 
             @php
                 // Nested menu: Projects/Maintenance
-                $projectsMenuActive = isActive(['admin.projects.*', 'admin.project-maintenances.*']);
+                $projectsMenuRoutes = [
+                    'admin.projects.index',
+                    'admin.projects.create',
+                    'admin.projects.store',
+                    'admin.projects.show',
+                    'admin.projects.edit',
+                    'admin.projects.update',
+                    'admin.projects.destroy',
+                    'admin.projects.ai',
+                    'admin.projects.complete',
+                    'admin.projects.invoices',
+                    'admin.projects.invoice-remaining',
+                    'admin.projects.download',
+                    'admin.projects.overheads.*',
+                    'admin.project-maintenances.*',
+                ];
+                $projectsMenuActive = isActive($projectsMenuRoutes);
+                $tasksMenuRoutes = ['admin.tasks.*', 'admin.projects.tasks.*'];
 
                 // Nested menu: Invoices
                 $invoiceMenuActive = isActive('admin.invoices.*');
@@ -114,7 +131,7 @@
                         {{-- Nested menu: Projects --}}
                         <x-nav-menu
                             :href="route('admin.projects.index')"
-                            :routes="['admin.projects.*', 'admin.project-maintenances.*']"
+                            :routes="$projectsMenuRoutes"
                             label="Projects"
                             :alwaysOpen="true"
                         >
@@ -125,7 +142,7 @@
                         @if($canViewTasks)
                             <x-nav-link
                                 :href="route('admin.tasks.index')"
-                                routes="admin.tasks.*"
+                                :routes="$tasksMenuRoutes"
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 <span>Tasks</span>

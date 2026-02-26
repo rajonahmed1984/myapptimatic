@@ -320,6 +320,7 @@ export default function Show({
                                                                 {task.title}
                                                             </a>
                                                         </div>
+                                                        <div className="mt-1 text-xs font-semibold text-slate-600">Task ID: {task.id ?? '--'}</div>
                                                         <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-400">
                                                             {taskTypeOptions[task.task_type] || task.task_type}
                                                         </div>
@@ -388,6 +389,7 @@ export default function Show({
                                                                 >
                                                                     {task.title}
                                                                 </a>
+                                                                <div className="mt-1 text-xs font-semibold text-slate-600">Task ID: {task.id ?? '--'}</div>
                                                                 <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-slate-400">
                                                                     {taskTypeOptions[task.task_type] || task.task_type}
                                                                 </div>

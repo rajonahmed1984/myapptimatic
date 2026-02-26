@@ -22,7 +22,6 @@ const STATUS_CLASSES = {
 const BOARD_COLUMNS = [
     { key: 'pending', label: 'To Do' },
     { key: 'in_progress', label: 'In Progress' },
-    { key: 'blocked', label: 'Blocked' },
     { key: 'completed', label: 'Completed' },
 ];
 
@@ -69,12 +68,15 @@ export default function Tasks({
         const groups = {
             pending: [],
             in_progress: [],
-            blocked: [],
             completed: [],
         };
 
         tasks.forEach((task) => {
             const normalized = normalizeStatus(String(task.status || 'pending'));
+            if (normalized === 'blocked') {
+                groups.in_progress.push(task);
+                return;
+            }
             if (!groups[normalized]) {
                 groups.pending.push(task);
                 return;
@@ -230,7 +232,7 @@ export default function Tasks({
                     </div>
                 ) : null}
 
-                <div id="projectTaskStats" className="grid gap-3 md:grid-cols-5">
+                <div id="projectTaskStats" className="grid gap-3 md:grid-cols-4">
                     <a
                         href={statusUrls?.all}
                         className={`rounded-2xl border px-4 py-3 transition ${statusFilter === null ? 'border-teal-300 bg-teal-50 ring-1 ring-teal-200' : 'border-slate-200 bg-white hover:border-teal-200'}`}
@@ -251,13 +253,6 @@ export default function Tasks({
                     >
                         <div className="text-[11px] uppercase tracking-[0.2em] text-sky-600">In Progress</div>
                         <div className="mt-1 text-lg font-semibold text-sky-900">{Number(summary.in_progress || 0)}</div>
-                    </a>
-                    <a
-                        href={statusUrls?.blocked}
-                        className={`rounded-2xl border px-4 py-3 transition ${statusFilter === 'blocked' ? 'border-rose-300 bg-rose-100 ring-1 ring-rose-200' : 'border-rose-200 bg-rose-50 hover:border-rose-300'}`}
-                    >
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-rose-600">Blocked</div>
-                        <div className="mt-1 text-lg font-semibold text-rose-900">{Number(summary.blocked || 0)}</div>
                     </a>
                     <a
                         href={statusUrls?.completed}
@@ -338,6 +333,7 @@ export default function Tasks({
                                                             {task.title}
                                                         </a>
                                                     </div>
+                                                    <div className="mt-1 text-xs font-semibold text-slate-600">Task ID: {task.id ?? '--'}</div>
                                                     {task.description ? <div className="mt-1 whitespace-pre-line text-xs text-slate-500">{task.description}</div> : null}
                                                     <div className="mt-1 text-xs text-slate-500">
                                                         {task.task_type_label} | Assignee: {task.assignee_names} | Progress: {Number(task.progress || 0)}%
@@ -363,7 +359,7 @@ export default function Tasks({
                         </div>
                     ) : (
                         <div className="mt-6 overflow-x-auto pb-2">
-                            <div className="grid min-w-[1000px] grid-cols-4 gap-4">
+                            <div className="grid min-w-[1000px] grid-cols-3 gap-4">
                                 {BOARD_COLUMNS.map((column) => (
                                     <div key={column.key} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
                                         <div className="mb-3 flex items-center justify-between">
@@ -395,6 +391,7 @@ export default function Tasks({
                                                             >
                                                                 {task.title}
                                                             </a>
+                                                            <div className="mt-1 text-xs font-semibold text-slate-600">Task ID: {task.id ?? '--'}</div>
                                                             <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-slate-400">{task.task_type_label}</div>
                                                             <div className="mt-2">
                                                                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass}`}>

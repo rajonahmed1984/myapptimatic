@@ -189,6 +189,7 @@ export default function Show({
                                                 <tr key={task.id} className="border-t border-slate-100 align-top">
                                                     <td className="px-3 py-2">
                                                         <div className="font-semibold text-slate-900">{task.title}</div>
+                                                        <div className="mt-1 text-xs font-semibold text-slate-600">Task ID: {task.id ?? '--'}</div>
                                                         <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-400">
                                                             {task_type_options?.[task.task_type] || task.task_type}
                                                         </div>
@@ -269,6 +270,7 @@ export default function Show({
                                                         return (
                                                             <div key={task.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                                                                 <div className="text-sm font-semibold text-slate-900">{task.title}</div>
+                                                                <div className="mt-1 text-xs font-semibold text-slate-600">Task ID: {task.id ?? '--'}</div>
                                                                 <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-slate-400">
                                                                     {task_type_options?.[task.task_type] || task.task_type}
                                                                 </div>

@@ -81,6 +81,12 @@ class ProjectTaskSubtaskController extends Controller
             'is_completed' => ['sometimes', 'boolean'],
             'status' => ['sometimes', 'string', 'in:open,in_progress,completed'],
         ]);
+        $completerId = null;
+        if ($user instanceof User) {
+            $completerId = $user->id;
+        } elseif ($actor instanceof Employee) {
+            $completerId = $actor->user_id;
+        }
 
         if (! $this->isMasterAdmin($user) && $isAssigned && ! $isCreator) {
             $extraFields = array_diff(array_keys($data), ['is_completed', 'status']);
@@ -93,9 +99,11 @@ class ProjectTaskSubtaskController extends Controller
             if ($data['status'] === 'completed') {
                 $data['is_completed'] = true;
                 $data['completed_at'] = $subtask->completed_at ?: now();
+                $data['completed_by'] = $completerId ?: $subtask->completed_by;
             } else {
                 $data['is_completed'] = false;
                 $data['completed_at'] = null;
+                $data['completed_by'] = null;
             }
         } elseif (array_key_exists('is_completed', $data)) {
             $data['status'] = $data['is_completed'] ? 'completed' : 'open';
@@ -104,8 +112,10 @@ class ProjectTaskSubtaskController extends Controller
         if (array_key_exists('is_completed', $data)) {
             if ($data['is_completed'] && !$subtask->completed_at) {
                 $data['completed_at'] = now();
+                $data['completed_by'] = $completerId ?: $subtask->completed_by;
             } elseif (!$data['is_completed']) {
                 $data['completed_at'] = null;
+                $data['completed_by'] = null;
             }
         }
 

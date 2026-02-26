@@ -26,9 +26,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -451,12 +453,17 @@ class CustomerController extends Controller
             'access_override_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
-            'avatar' => ['prohibited'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'nid_file' => ['prohibited'],
             'cv_file' => ['prohibited'],
         ]);
 
-        $customer->update($data);
+        $customer->update(collect($data)->except(['avatar', 'nid_file', 'cv_file'])->all());
+
+        if ($request->hasFile('avatar')) {
+            $path = $this->storeCustomerAvatar($request->file('avatar'), $customer);
+            $customer->forceFill(['avatar_path' => $path])->save();
+        }
 
         SystemLogger::write('activity', 'Customer updated.', [
             'customer_id' => $customer->id,
@@ -756,6 +763,7 @@ class CustomerController extends Controller
                     ? route('admin.customers.update', $customer)
                     : route('admin.customers.store'),
                 'method' => $isEdit ? 'PUT' : 'POST',
+                'avatar_url' => $isEdit && $customer?->avatar_path ? asset('storage/'.$customer->avatar_path) : null,
                 'fields' => [
                     'name' => (string) old('name', (string) ($customer?->name ?? '')),
                     'company_name' => (string) old('company_name', (string) ($customer?->company_name ?? '')),
@@ -778,5 +786,21 @@ class CustomerController extends Controller
                 'destroy' => $isEdit ? route('admin.customers.destroy', $customer) : null,
             ],
         ];
+    }
+
+    private function storeCustomerAvatar(UploadedFile $file, Customer $customer): string
+    {
+        $disk = Storage::disk('public');
+
+        if ($customer->avatar_path && $disk->exists($customer->avatar_path)) {
+            $disk->delete($customer->avatar_path);
+        }
+
+        $name = pathinfo((string) $file->getClientOriginalName(), PATHINFO_FILENAME);
+        $name = $name !== '' ? Str::slug($name) : 'customer-logo';
+        $extension = strtolower((string) ($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'jpg'));
+        $filename = $name.'-'.Str::random(8).'.'.$extension;
+
+        return $file->storeAs('avatars/customers/'.$customer->id, $filename, 'public');
     }
 }

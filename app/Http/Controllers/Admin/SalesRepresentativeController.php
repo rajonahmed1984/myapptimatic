@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
+use App\Models\SystemLog;
 use App\Models\User;
 use App\Models\UserSession;
 use App\Services\CommissionService;
@@ -291,11 +292,14 @@ class SalesRepresentativeController extends Controller
         $subscriptions = collect();
         $invoiceEarnings = collect();
         $projects = collect();
+        $emailLogs = collect();
+        $activityLogs = collect();
         $projectStatusCounts = collect();
         $projectTaskStatusCounts = collect();
 
         if ($tab === 'earnings') {
             $recentEarnings = $salesRep->earnings()
+                ->with('project:id,name')
                 ->latest()
                 ->take(10)
                 ->get();
@@ -324,6 +328,36 @@ class SalesRepresentativeController extends Controller
                 ->whereNotNull('invoice_id')
                 ->latest('earned_at')
                 ->take(20)
+                ->get();
+        }
+
+        if ($tab === 'emails') {
+            $targetEmail = strtolower(trim((string) $salesRep->email));
+
+            if ($targetEmail !== '') {
+                $emailLogs = SystemLog::query()
+                    ->where('category', 'email')
+                    ->latest()
+                    ->limit(500)
+                    ->get(['id', 'level', 'message', 'context', 'created_at'])
+                    ->filter(function (SystemLog $log) use ($targetEmail): bool {
+                        $to = collect((array) data_get($log->context, 'to', []))
+                            ->map(fn ($item) => strtolower(trim((string) $item)))
+                            ->filter();
+
+                        return $to->contains($targetEmail);
+                    })
+                    ->take(100)
+                    ->values();
+            }
+        }
+
+        if ($tab === 'log') {
+            $activityLogs = CommissionAuditLog::query()
+                ->with('creator:id,name')
+                ->where('sales_representative_id', $salesRep->id)
+                ->latest()
+                ->limit(100)
                 ->get();
         }
 
@@ -416,6 +450,10 @@ class SalesRepresentativeController extends Controller
                     'amount' => (float) $earning->amount,
                     'currency' => $earning->currency,
                     'status' => $earning->status,
+                    'status_label' => ucfirst((string) $earning->status),
+                    'source_label' => ucfirst((string) $earning->source_type),
+                    'details' => $earning->project?->name ?: '--',
+                    'earned_date' => $earning->earned_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'earned_at' => $earning->earned_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values(),
@@ -424,6 +462,7 @@ class SalesRepresentativeController extends Controller
                     'id' => $payout->id,
                     'type' => $payout->type,
                     'status' => $payout->status,
+                    'payout_method' => $payout->payout_method,
                     'total_amount' => (float) $payout->total_amount,
                     'currency' => $payout->currency,
                     'paid_at' => $payout->paid_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
@@ -469,6 +508,42 @@ class SalesRepresentativeController extends Controller
                         'blocked' => (int) $taskCounts->get('blocked', 0),
                         'completed' => (int) ($taskCounts->get('completed', 0) + $taskCounts->get('done', 0)),
                     ],
+                ];
+            })->values(),
+            'emailLogs' => $emailLogs->map(function (SystemLog $log) {
+                $context = (array) ($log->context ?? []);
+                $to = collect((array) ($context['to'] ?? []))
+                    ->map(fn ($item) => (string) $item)
+                    ->filter()
+                    ->values();
+
+                return [
+                    'id' => $log->id,
+                    'created_at' => $log->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
+                    'subject' => (string) ($context['subject'] ?? '--'),
+                    'to' => $to->all(),
+                    'to_count' => (int) ($context['to_count'] ?? $to->count()),
+                    'category' => (string) ($context['category'] ?? '--'),
+                    'mailer' => (string) ($context['mailer'] ?? '--'),
+                    'message_id' => (string) ($context['message_id'] ?? '--'),
+                    'status' => strtoupper((string) ($log->level ?? 'info')),
+                    'event' => (string) $log->message,
+                ];
+            })->values(),
+            'activityLogs' => $activityLogs->map(function (CommissionAuditLog $log) {
+                $metadata = (array) ($log->metadata ?? []);
+
+                return [
+                    'id' => $log->id,
+                    'created_at' => $log->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
+                    'action' => (string) ($log->action ?? '--'),
+                    'status_from' => (string) ($log->status_from ?? '--'),
+                    'status_to' => (string) ($log->status_to ?? '--'),
+                    'description' => (string) ($log->description ?? '--'),
+                    'created_by' => (string) ($log->creator?->name ?? 'System'),
+                    'amount' => isset($metadata['amount']) ? (float) $metadata['amount'] : null,
+                    'currency' => isset($metadata['currency']) ? (string) $metadata['currency'] : null,
+                    'project_name' => isset($metadata['project_name']) ? (string) $metadata['project_name'] : null,
                 ];
             })->values(),
             'projectStatusCounts' => $projectStatusCounts->all(),

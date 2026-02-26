@@ -1,5 +1,5 @@
-import React from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Head, router } from '@inertiajs/react';
 
 const initials = (value) => {
     const text = String(value || '').trim();
@@ -12,29 +12,58 @@ const initials = (value) => {
 };
 
 export default function Index({ pageTitle = 'Customers', search = '', routes = {}, customers = [], pagination = {} }) {
+    const [searchTerm, setSearchTerm] = useState(String(search || ''));
+    const isFirstRender = useRef(true);
+
+    useEffect(() => {
+        setSearchTerm(String(search || ''));
+    }, [search]);
+
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+
+        const current = String(searchTerm || '').trim();
+        const server = String(search || '').trim();
+        if (current === server) {
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            router.get(
+                routes?.index || '/admin/customers',
+                current === '' ? {} : { search: current },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                }
+            );
+        }, 350);
+
+        return () => window.clearTimeout(timeout);
+    }, [searchTerm, search, routes?.index]);
+
     return (
         <>
             <Head title={pageTitle} />
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex-1">
-                    <form method="GET" action={routes?.index} data-native="true" className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
                         <div className="relative">
                             <input
                                 type="text"
                                 name="search"
-                                defaultValue={search}
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search customers..."
                                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
                             />
                         </div>
-                        <button
-                            type="submit"
-                            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                        >
-                            Search
-                        </button>
-                    </form>
+                    </div>
                 </div>
                 <a
                     href={routes?.create}

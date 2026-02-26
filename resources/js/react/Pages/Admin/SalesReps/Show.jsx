@@ -14,6 +14,8 @@ export default function Show({
     subscriptions = [],
     invoiceEarnings = [],
     projects = [],
+    emailLogs = [],
+    activityLogs = [],
     advanceProjects = [],
     paymentMethods = [],
     routes = {},
@@ -149,8 +151,8 @@ export default function Show({
 
             {tab === 'projects' ? <ProjectsTable rows={projects} /> : null}
 
-            {tab === 'emails' ? <div className="card p-6 text-sm text-slate-600">No email history available.</div> : null}
-            {tab === 'log' ? <div className="card p-6 text-sm text-slate-600">No activity log entries.</div> : null}
+            {tab === 'emails' ? <EmailsTable rows={emailLogs} /> : null}
+            {tab === 'log' ? <ActivityLogTable rows={activityLogs} /> : null}
         </>
     );
 }
@@ -186,22 +188,229 @@ function EarningsTable({ rows, summary, route }) {
                 <Metric title="Payable (Net)" value={money(summary?.payable)} note="Ready for payout after advances." />
             </div>
             <div className="mt-4 card p-4">
-                <div className="mb-3 flex items-center justify-between"><div className="text-sm font-semibold text-slate-800">Recent Earnings</div><a href={route} data-native="true" className="text-xs font-semibold text-teal-700">Pay payable ({money(summary?.payable)})</a></div>
-                <SimpleTable title="" headers={['Source', 'Amount', 'Status', 'Earned At']} rows={rows.map((r) => [String(r.source_type || '--'), `${r.currency || ''} ${money(r.amount)}`, String(r.status || '--'), r.earned_at])} empty="No earnings yet." />
+                <div className="mb-3 flex items-center justify-between">
+                    <div className="text-2xl font-semibold text-slate-800">Recent Earnings</div>
+                    <a href={route} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">
+                        Pay payable ({money(summary?.payable)})
+                    </a>
+                </div>
+                {rows.length === 0 ? (
+                    <div className="text-sm text-slate-600">No earnings yet.</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-left text-sm">
+                            <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                <tr>
+                                    <th className="px-3 py-2">Date</th>
+                                    <th className="px-3 py-2">Status</th>
+                                    <th className="px-3 py-2">Source</th>
+                                    <th className="px-3 py-2">Details</th>
+                                    <th className="px-3 py-2 text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row) => (
+                                    <tr key={row.id} className="border-t border-slate-100">
+                                        <td className="px-3 py-2">{row.earned_date || '--'}</td>
+                                        <td className="px-3 py-2">{row.status_label || row.status || '--'}</td>
+                                        <td className="px-3 py-2">{row.source_label || row.source_type || '--'}</td>
+                                        <td className="px-3 py-2">{row.details || '--'}</td>
+                                        <td className="px-3 py-2 text-right">{`${row.currency || ''} ${money(row.amount)}`.trim()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </>
     );
 }
 
 function PayoutsTable({ rows }) {
-    return <SimpleTable title="Recent Payouts" headers={['ID', 'Type', 'Status', 'Amount', 'Paid At', 'Reference']} rows={rows.map((r) => [String(r.id), String(r.type || '--'), String(r.status || '--'), `${r.currency || ''} ${money(r.total_amount)}`, r.paid_at, String(r.reference || '--')])} empty="No payouts yet." />;
+    return <SimpleTable title="Recent Payouts" headers={['ID', 'Type', 'Status', 'Method', 'Amount', 'Paid At', 'Reference']} rows={rows.map((r) => [String(r.id), String(r.type || '--'), String(r.status || '--'), String(r.payout_method || '--'), `${r.currency || ''} ${money(r.total_amount)}`, r.paid_at, String(r.reference || '--')])} empty="No payouts yet." />;
+}
+
+function EmailsTable({ rows }) {
+    const list = Array.isArray(rows) ? rows : [];
+
+    return (
+        <div className="card p-6">
+            <div className="mb-3 text-xl font-semibold text-slate-800">Email Log</div>
+            {list.length === 0 ? (
+                <div className="text-sm text-slate-600">No email history available for this sales representative.</div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-left text-sm">
+                        <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <tr>
+                                <th className="px-3 py-2">Date</th>
+                                <th className="px-3 py-2">Subject</th>
+                                <th className="px-3 py-2">To</th>
+                                <th className="px-3 py-2">Status</th>
+                                <th className="px-3 py-2">Mailer</th>
+                                <th className="px-3 py-2">Event</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {list.map((row) => (
+                                <tr key={row.id} className="border-t border-slate-100 align-top">
+                                    <td className="px-3 py-2 whitespace-nowrap">{row.created_at || '--'}</td>
+                                    <td className="px-3 py-2">{row.subject || '--'}</td>
+                                    <td className="px-3 py-2">
+                                        <div>{Array.isArray(row.to) ? row.to.join(', ') : '--'}</div>
+                                        <div className="text-xs text-slate-500">Recipients: {row.to_count ?? 0}</div>
+                                    </td>
+                                    <td className="px-3 py-2">{row.status || '--'}</td>
+                                    <td className="px-3 py-2">{row.mailer || '--'}</td>
+                                    <td className="px-3 py-2">
+                                        <div>{row.event || '--'}</div>
+                                        <div className="text-xs text-slate-500">Message ID: {row.message_id || '--'}</div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ActivityLogTable({ rows }) {
+    const list = Array.isArray(rows) ? rows : [];
+
+    return (
+        <div className="card p-6">
+            <div className="mb-3 text-xl font-semibold text-slate-800">Activity Log</div>
+            {list.length === 0 ? (
+                <div className="text-sm text-slate-600">No activity log entries.</div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-left text-sm">
+                        <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <tr>
+                                <th className="px-3 py-2">Date</th>
+                                <th className="px-3 py-2">Action</th>
+                                <th className="px-3 py-2">Status</th>
+                                <th className="px-3 py-2">Details</th>
+                                <th className="px-3 py-2">By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {list.map((row) => (
+                                <tr key={row.id} className="border-t border-slate-100 align-top">
+                                    <td className="px-3 py-2 whitespace-nowrap">{row.created_at || '--'}</td>
+                                    <td className="px-3 py-2">{row.action || '--'}</td>
+                                    <td className="px-3 py-2">{`${row.status_from || '--'} -> ${row.status_to || '--'}`}</td>
+                                    <td className="px-3 py-2">
+                                        <div>{row.description || '--'}</div>
+                                        {row.amount !== null ? (
+                                            <div className="text-xs text-slate-500">
+                                                Amount: {row.currency || ''} {money(row.amount)}
+                                            </div>
+                                        ) : null}
+                                        {row.project_name ? <div className="text-xs text-slate-500">Project: {row.project_name}</div> : null}
+                                    </td>
+                                    <td className="px-3 py-2">{row.created_by || 'System'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
 }
 
 function ProjectsTable({ rows }) {
+    const list = Array.isArray(rows) ? rows : [];
+    const normalizeStatus = (status) => String(status || '').toLowerCase().replace(/\s+/g, '_');
+    const statusBadgeClass = (status) => {
+        const key = normalizeStatus(status);
+        if (key === 'completed' || key === 'complete') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+        if (key === 'ongoing' || key === 'in_progress') return 'border-amber-200 bg-amber-50 text-amber-700';
+        if (key === 'on_hold') return 'border-slate-300 bg-slate-50 text-slate-700';
+        if (key === 'cancelled' || key === 'canceled') return 'border-rose-200 bg-rose-50 text-rose-700';
+        return 'border-slate-300 bg-slate-50 text-slate-700';
+    };
+
+    const projectStatusCounts = list.reduce(
+        (acc, row) => {
+            const key = normalizeStatus(row?.status);
+            if (key === 'ongoing' || key === 'in_progress') acc.ongoing += 1;
+            else if (key === 'on_hold') acc.on_hold += 1;
+            else if (key === 'completed' || key === 'complete') acc.completed += 1;
+            else if (key === 'cancelled' || key === 'canceled') acc.cancelled += 1;
+            return acc;
+        },
+        { ongoing: 0, on_hold: 0, completed: 0, cancelled: 0 }
+    );
+
     return (
-        <div className="card p-6">
-            <div className="mb-3 text-sm font-semibold text-slate-800">Projects</div>
-            {rows.length === 0 ? <div className="text-sm text-slate-600">No projects linked to this rep.</div> : <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="text-xs uppercase tracking-[0.2em] text-slate-500"><tr><th className="px-3 py-2">Project</th><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Tasks</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-slate-100"><td className="px-3 py-2"><a href={row.route} data-native="true" className="text-teal-700 hover:text-teal-600">{row.name}</a></td><td className="px-3 py-2">{row.customer_name}</td><td className="px-3 py-2">{row.status}</td><td className="px-3 py-2">Open {row.tasks?.pending || 0}, Progress {row.tasks?.in_progress || 0}, Blocked {row.tasks?.blocked || 0}, Done {row.tasks?.completed || 0}</td></tr>)}</tbody></table></div>}
+        <div className="space-y-4">
+            <div className="card p-4">
+                <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Assigned Projects</div>
+                <div className="mt-2 text-4xl font-semibold leading-none text-slate-900">{list.length}</div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Ongoing: {projectStatusCounts.ongoing}</span>
+                    <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-slate-700">On hold: {projectStatusCounts.on_hold}</span>
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">Completed: {projectStatusCounts.completed}</span>
+                    <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">Cancelled: {projectStatusCounts.cancelled}</span>
+                </div>
+            </div>
+
+            <div className="card p-6">
+                <div className="mb-3 text-xl font-semibold text-slate-800">Projects</div>
+                {list.length === 0 ? (
+                    <div className="text-sm text-slate-600">No projects linked to this rep.</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-left text-sm">
+                            <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                <tr>
+                                    <th className="px-3 py-2">Project</th>
+                                    <th className="px-3 py-2">Status</th>
+                                    <th className="px-3 py-2">Customer</th>
+                                    <th className="px-3 py-2">Assigned Tasks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {list.map((row) => {
+                                    const tasks = row?.tasks || {};
+                                    const pending = Number(tasks.pending || 0);
+                                    const inProgress = Number(tasks.in_progress || 0);
+                                    const blocked = Number(tasks.blocked || 0);
+                                    const completed = Number(tasks.completed || 0);
+                                    const assignedTotal = pending + inProgress + blocked + completed;
+
+                                    return (
+                                        <tr key={row.id} className="border-t border-slate-100 align-top">
+                                            <td className="px-3 py-3">
+                                                <a href={row.route} data-native="true" className="font-semibold text-teal-700 hover:text-teal-600">{row.name}</a>
+                                                <div className="text-xs text-slate-500">Project ID: {row.id}</div>
+                                            </td>
+                                            <td className="px-3 py-3">
+                                                <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusBadgeClass(row.status)}`}>{row.status}</span>
+                                            </td>
+                                            <td className="px-3 py-3">{row.customer_name}</td>
+                                            <td className="px-3 py-3">
+                                                <div className="font-medium text-slate-800">Assigned tasks: {assignedTotal}</div>
+                                                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Pending: {pending}</span>
+                                                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">In progress: {inProgress}</span>
+                                                    <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-slate-700">Blocked: {blocked}</span>
+                                                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">Completed: {completed}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
