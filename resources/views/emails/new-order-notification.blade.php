@@ -6,7 +6,7 @@
         <p>
             Order ID: {{ $order->id }}<br>
             Order Number: {{ $orderNumber }}<br>
-            Date/Time: {{ $order->created_at?->format($dateFormat . ' h:i A') ?? '--' }} ({{ $timeZone }})<br>
+            Date/Time: <span style="white-space:nowrap;">{{ $order->created_at?->format($dateFormat . ' h:i A') ?? '--' }} ({{ $timeZone }})</span><br>
             Invoice Number: {{ $order->invoice ? (is_numeric($order->invoice->number) ? $order->invoice->number : $order->invoice->id) : '--' }}<br>
             Payment Method: {{ $paymentMethod }}
         </p>

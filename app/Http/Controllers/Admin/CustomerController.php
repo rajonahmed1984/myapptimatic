@@ -235,6 +235,7 @@ class CustomerController extends Controller
         $emailLogs = collect();
         $projectClients = collect();
         $projects = collect();
+        $projectMaintenances = collect();
         if ($tab === 'log') {
             $userIds = $customer->users()->pluck('id');
             $activityLogs = SystemLog::query()
@@ -259,6 +260,13 @@ class CustomerController extends Controller
         if ($tab === 'project-specific') {
             $projectClients = $customer->projectUsers()->with('project')->get();
             $projects = $customer->projects()->orderBy('name')->get(['id', 'name']);
+        }
+        if ($tab === 'projects') {
+            $projectMaintenances = $customer->projectMaintenances()
+                ->with('project:id,name')
+                ->withCount('invoices')
+                ->latest('id')
+                ->get();
         }
 
         $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
@@ -373,6 +381,7 @@ class CustomerController extends Controller
             'currencySymbol' => $currencySymbol,
             'projectClients' => $projectClients,
             'projects' => $projects,
+            'projectMaintenances' => $projectMaintenances,
             'salesRepSummaries' => $salesRepSummaries,
             'effectiveStatus' => $effectiveStatus,
         ]));

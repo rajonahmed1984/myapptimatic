@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DateTimeText from '../../../Components/DateTimeText';
 
 export default function Index({
     title = 'Invoices',
@@ -97,9 +98,15 @@ export default function Index({
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-slate-700">{invoice.total_display}</td>
-                                    <td className="px-4 py-3 text-slate-500">{invoice.issue_date_display}</td>
-                                    <td className="px-4 py-3 text-slate-500">{invoice.due_date_display}</td>
-                                    <td className="px-4 py-3 text-slate-500">{invoice.paid_at_display}</td>
+                                    <td className="px-4 py-3 text-slate-500">
+                                        <DateTimeText value={invoice.issue_date_display} mode="date" />
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-500">
+                                        <DateTimeText value={invoice.due_date_display} mode="date" />
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-500">
+                                        <DateTimeText value={invoice.paid_at_display} mode="datetime" />
+                                    </td>
                                     <td className="px-4 py-3 text-slate-600">
                                         <div>
                                             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${invoice.status_class}`}>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DateTimeText from '../../../Components/DateTimeText';
 
 const levelClasses = (level) => {
     if (level === 'error') {
@@ -64,7 +65,9 @@ export default function Index({
                             <tbody>
                                 {logs.map((log) => (
                                     <tr key={log.id} className="border-b border-slate-100">
-                                        <td className="px-4 py-3 text-slate-500">{log.created_at_display}</td>
+                                        <td className="px-4 py-3 text-slate-500">
+                                            <DateTimeText value={log.created_at_display} mode="datetime" />
+                                        </td>
                                         <td className="px-4 py-3 text-slate-700">{log.user_name}</td>
                                         <td className="px-4 py-3 text-slate-500">{log.ip_address}</td>
                                         <td className="px-4 py-3">

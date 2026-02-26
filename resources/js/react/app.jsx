@@ -7,6 +7,9 @@ import { formatDate, parseDate } from './utils/datetime';
 const DISPLAY_DATE_PLACEHOLDER = 'DD-MM-YYYY';
 const DEFAULT_APP_NAME = 'MyApptimatic';
 const INITIAL_APP_NAME = (typeof document !== 'undefined' && document.title ? document.title : DEFAULT_APP_NAME).trim();
+const DATETIME_TOKEN_REGEX = /\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2}-\d{2})(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?\b|\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)\b/g;
+const DATETIME_TOKEN_TEST_REGEX = /\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2}-\d{2})(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?\b|\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)\b/;
+const DATETIME_SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'OPTION', 'SELECT']);
 
 const normalizeDisplayDateValue = (value) => {
     if (typeof value !== 'string') {
@@ -145,6 +148,91 @@ const syncLayoutPageHeading = (heading) => {
     });
 };
 
+const textNodeParentIsValid = (node) => {
+    const parent = node.parentElement;
+    if (!parent) {
+        return false;
+    }
+
+    if (DATETIME_SKIP_TAGS.has(parent.tagName)) {
+        return false;
+    }
+
+    if (parent.closest('.datetime-nowrap')) {
+        return false;
+    }
+
+    return true;
+};
+
+const wrapDateTimeTokensInNode = (node) => {
+    if (node.nodeType !== Node.TEXT_NODE) {
+        return false;
+    }
+
+    if (!textNodeParentIsValid(node)) {
+        return false;
+    }
+
+    const text = node.textContent ?? '';
+    if (!DATETIME_TOKEN_TEST_REGEX.test(text)) {
+        return false;
+    }
+
+    DATETIME_TOKEN_REGEX.lastIndex = 0;
+    const matches = [...text.matchAll(DATETIME_TOKEN_REGEX)];
+    if (matches.length === 0) {
+        return false;
+    }
+
+    const fragment = document.createDocumentFragment();
+    let cursor = 0;
+
+    matches.forEach((match) => {
+        const token = match[0];
+        const start = match.index ?? 0;
+        const end = start + token.length;
+
+        if (start > cursor) {
+            fragment.append(document.createTextNode(text.slice(cursor, start)));
+        }
+
+        const span = document.createElement('span');
+        span.className = 'datetime-nowrap tabular-nums';
+        span.textContent = token;
+        span.title = token;
+        fragment.append(span);
+
+        cursor = end;
+    });
+
+    if (cursor < text.length) {
+        fragment.append(document.createTextNode(text.slice(cursor)));
+    }
+
+    node.parentNode?.replaceChild(fragment, node);
+    return true;
+};
+
+const applyDateTimeNoWrapInDocument = (root = document.body) => {
+    if (!root) {
+        return;
+    }
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    let current = walker.nextNode();
+
+    while (current) {
+        nodes.push(current);
+        current = walker.nextNode();
+    }
+
+    nodes.forEach((node) => {
+        wrapDateTimeTokensInNode(node);
+    });
+};
+
 function DateInputRuntimeAdapter({ App, props }) {
     const appNameFromPage = props?.initialPage?.props?.app?.name || INITIAL_APP_NAME;
 
@@ -172,6 +260,49 @@ function DateInputRuntimeAdapter({ App, props }) {
 
         return () => {
             document.removeEventListener('focusout', handleFocusOut, true);
+        };
+    }, []);
+
+    useEffect(() => {
+        applyDateTimeNoWrapInDocument();
+
+        let frame = null;
+        const scheduleApply = () => {
+            if (frame !== null) {
+                return;
+            }
+
+            frame = window.requestAnimationFrame(() => {
+                frame = null;
+                applyDateTimeNoWrapInDocument();
+            });
+        };
+
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'characterData') {
+                    scheduleApply();
+                    break;
+                }
+
+                if (mutation.addedNodes.length > 0) {
+                    scheduleApply();
+                    break;
+                }
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+        });
+
+        return () => {
+            observer.disconnect();
+            if (frame !== null) {
+                window.cancelAnimationFrame(frame);
+            }
         };
     }, []);
 

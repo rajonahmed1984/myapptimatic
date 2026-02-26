@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DateTimeText from '../../../Components/DateTimeText';
 
 export default function Index({ tickets = [], routes = {} }) {
     return (
@@ -46,7 +47,9 @@ export default function Index({ tickets = [], routes = {} }) {
                                     <td className="px-4 py-3">
                                         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ticket.status_classes}`}>{ticket.status_label}</span>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500">{ticket.last_reply_at_display}</td>
+                                    <td className="px-4 py-3 text-slate-500">
+                                        <DateTimeText value={ticket.last_reply_at_display} mode="datetime" />
+                                    </td>
                                     <td className="px-4 py-3 text-right">
                                         <a href={ticket.routes.show} data-native="true" className="text-teal-600 hover:text-teal-500">
                                             View

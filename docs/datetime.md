@@ -65,3 +65,4 @@ Snapshot counts from this run:
 - Prefer `DateTimeFormat::*` in PHP for all UI-bound display values.
 - Prefer `datetime.js` helper functions in React for all client formatting.
 - Do not add inline hardcoded formats like `'Y-m-d'`, `'H:i'`, `'M d, Y'` for UI output.
+- All date/time must be `nowrap` in UI output (`whitespace-nowrap` / `white-space: nowrap;`) so date/time never wraps to a second line.

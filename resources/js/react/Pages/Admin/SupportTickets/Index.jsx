@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DateTimeText from '../../../Components/DateTimeText';
 
 const statusClass = (status) => {
     if (status === 'open') {
@@ -95,7 +96,9 @@ export default function Index({
                                             {ticket.status_label}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500">{ticket.last_reply_at_display}</td>
+                                    <td className="px-4 py-3 text-slate-500">
+                                        <DateTimeText value={ticket.last_reply_at_display} mode="datetime" />
+                                    </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-3">
                                             <a

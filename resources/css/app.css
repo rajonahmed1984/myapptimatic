@@ -328,3 +328,17 @@ body.bg-dashboard {
     margin-left: auto;
     color: #64748b;
 }
+
+.datetime-nowrap {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+td .datetime-nowrap,
+th .datetime-nowrap {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}

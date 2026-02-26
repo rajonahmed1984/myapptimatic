@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DateTimeText from '../../../Components/DateTimeText';
 
 const statusClass = (status) => {
     if (status === 'accepted') {
@@ -71,7 +72,9 @@ export default function Index({
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-slate-500">{order.invoice_amount}</td>
-                                    <td className="px-4 py-3 text-slate-500">{order.created_at_display}</td>
+                                    <td className="px-4 py-3 text-slate-500">
+                                        <DateTimeText value={order.created_at_display} mode="datetime" />
+                                    </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-3">
                                             <a href={order?.routes?.show} data-native="true" className="text-teal-500">

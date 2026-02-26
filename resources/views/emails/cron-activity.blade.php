@@ -15,9 +15,9 @@
 
     <div style="font-family:Arial, sans-serif;color:#475569;margin-top:16px;">
         <div style="text-align:center;font-size:13px;">
-            Run started: {{ $startedAt->format($dateFormat . ' h:i A') }} ({{ $timeZone }})
+            Run started: <span style="white-space:nowrap;">{{ $startedAt->format($dateFormat . ' h:i A') }} ({{ $timeZone }})</span>
             <br>
-            Run finished: {{ $finishedAt->format($dateFormat . ' h:i A') }} ({{ $timeZone }})
+            Run finished: <span style="white-space:nowrap;">{{ $finishedAt->format($dateFormat . ' h:i A') }} ({{ $timeZone }})</span>
         </div>
     </div>
 

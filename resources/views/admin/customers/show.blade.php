@@ -16,7 +16,7 @@
         <div>
             <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $customer->name }}</div>
             <div class="mt-1 text-sm text-slate-500">
-                Client ID: {{ $customer->id }} | Created: {{ $customer->created_at?->format($globalDateFormat) ?? '--' }} | Status: {{ ucfirst($effectiveStatus ?? $customer->status) }}
+                Client ID: {{ $customer->id }} | Created: <span class="whitespace-nowrap tabular-nums">{{ $customer->created_at?->format($globalDateFormat) ?? '--' }}</span> | Status: {{ ucfirst($effectiveStatus ?? $customer->status) }}
             </div>
         </div>
         <div class="text-sm text-slate-600">
@@ -144,7 +144,7 @@
                                             TKT-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}
                                         </a>
                                         <span class="mx-1">•</span>
-                                        {{ $ticket->created_at?->format($globalDateFormat) ?? '--' }}
+                                        <span class="whitespace-nowrap tabular-nums">{{ $ticket->created_at?->format($globalDateFormat) ?? '--' }}</span>
                                     </div>
                                 </div>
                                 @php
@@ -205,7 +205,7 @@
                                             <x-status-badge :status="$clientUser->status ?? 'active'" />
                                         </td>
                                         <td class="py-2" data-user-field="project">{{ $clientUser->project?->name ?? 'ƒ?"' }}</td>
-                                        <td class="py-2" data-user-field="created">{{ $clientUser->created_at?->format($globalDateFormat) ?? '--' }}</td>
+                                        <td class="py-2 whitespace-nowrap tabular-nums" data-user-field="created">{{ $clientUser->created_at?->format($globalDateFormat) ?? '--' }}</td>
                                         <td class="py-2 text-right">
                                             <button
                                                 type="button"
@@ -393,8 +393,8 @@
                                 <td class="px-4 py-3 text-slate-600">{{ $subscription->plan?->name ?? '--' }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ ucfirst($subscription->status) }}</td>
                                 <td class="px-4 py-3 text-slate-500">{{ $subscription->latestOrder?->order_number ?? '--' }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $subscription->next_invoice_at?->format($globalDateFormat) ?? '--' }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $subscription->current_period_end?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $subscription->next_invoice_at?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $subscription->current_period_end?->format($globalDateFormat) ?? '--' }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <a href="{{ route('admin.subscriptions.edit', $subscription) }}" class="text-teal-600 hover:text-teal-500">Manage</a>
                                 </td>
@@ -408,64 +408,182 @@
                 </table>
             </div>
         @elseif($tab === 'projects')
+            @php
+                $projectRows = $customer->projects;
+                $maintenanceRows = $projectMaintenances ?? collect();
+                $maintenanceByProject = $maintenanceRows->groupBy('project_id');
+                $activeMaintenanceCount = $maintenanceRows->where('status', 'active')->count();
+                $autoInvoiceMaintenanceCount = $maintenanceRows->where('auto_invoice', true)->count();
+                $totalMaintenanceAmount = (float) $maintenanceRows->sum('amount');
+            @endphp
+
             <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-                <p class="text-sm text-slate-500">Start a new project for this customer.</p>
+                <div>
+                    <p class="text-sm font-semibold text-slate-700">Projects and maintenance overview</p>
+                    <p class="text-xs text-slate-500">Projects: {{ $projectRows->count() }} | Maintenance: {{ $maintenanceRows->count() }}</p>
+                </div>
                 <a href="{{ route('admin.projects.create') }}" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Create project</a>
             </div>
 
-            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-300">
-                <table class="w-full min-w-[900px] text-left text-sm">
+            <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Projects</div>
+                    <div class="mt-1 text-xl font-semibold text-slate-900">{{ $projectRows->count() }}</div>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Maintenances</div>
+                    <div class="mt-1 text-xl font-semibold text-slate-900">{{ $maintenanceRows->count() }}</div>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Active Maintenance</div>
+                    <div class="mt-1 text-xl font-semibold text-emerald-700">{{ $activeMaintenanceCount }}</div>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Maintenance Value</div>
+                    <div class="mt-1 text-xl font-semibold text-slate-900">{{ $currencySymbol }}{{ number_format($totalMaintenanceAmount, 2) }}</div>
+                    <div class="mt-1 text-[11px] text-slate-500">Auto invoice: {{ $autoInvoiceMaintenanceCount }}</div>
+                </div>
+            </div>
+
+            <div class="mt-5 rounded-2xl border border-slate-300 bg-white/80 p-4">
+                <div class="mb-3 text-sm font-semibold text-slate-800">Projects</div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full min-w-[980px] text-left text-sm">
+                        <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
+                            <tr>
+                                <th class="px-4 py-3">SL</th>
+                                <th class="px-4 py-3">Project name</th>
+                                <th class="px-4 py-3">Type</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3">Start date</th>
+                                <th class="px-4 py-3">Due date</th>
+                                <th class="px-4 py-3">Budget</th>
+                                <th class="px-4 py-3">Maintenances</th>
+                                <th class="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($projectRows as $project)
+                                @php
+                                    $statusClasses = match ($project->status) {
+                                        'ongoing' => 'bg-emerald-100 text-emerald-700',
+                                        'complete' => 'bg-blue-100 text-blue-700',
+                                        'hold' => 'bg-amber-100 text-amber-700',
+                                        'cancel' => 'bg-rose-100 text-rose-700',
+                                        default => 'bg-slate-100 text-slate-600',
+                                    };
+                                    $projectMaintenanceItems = $maintenanceByProject->get($project->id, collect());
+                                    $projectMaintenanceAmount = (float) $projectMaintenanceItems->sum('amount');
+                                @endphp
+                                <tr class="border-b border-slate-100">
+                                    <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
+                                    <td class="px-4 py-3 font-medium text-slate-900">
+                                        <a href="{{ route('admin.projects.show', $project) }}" class="text-teal-700 hover:text-teal-500">
+                                            {{ $project->name }}
+                                        </a>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-600">{{ ucfirst($project->type) }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ ucfirst(str_replace('_', ' ', $project->status)) }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $project->start_date?->format($globalDateFormat) ?? '--' }}</td>
+                                    <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $project->due_date?->format($globalDateFormat) ?? '--' }}</td>
+                                    <td class="px-4 py-3 text-slate-600">{{ $project->currency }} {{ number_format($project->total_budget, 2) }}</td>
+                                    <td class="px-4 py-3 text-slate-600">
+                                        <div class="font-semibold text-slate-700">{{ $projectMaintenanceItems->count() }}</div>
+                                        <div class="text-xs text-slate-500">{{ $currencySymbol }}{{ number_format($projectMaintenanceAmount, 2) }}</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <div class="inline-flex items-center gap-3">
+                                            <a href="{{ route('admin.projects.show', $project) }}" class="text-teal-600 hover:text-teal-500">View</a>
+                                            <a href="{{ route('admin.projects.edit', $project) }}" class="text-slate-600 hover:text-teal-600">Edit</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="9" class="px-4 py-6 text-center text-slate-500">No projects yet.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-5 rounded-2xl border border-slate-300 bg-white/80 p-4">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div class="text-sm font-semibold text-slate-800">Project Maintenances</div>
+                    <a href="{{ route('admin.project-maintenances.create') }}" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Create maintenance</a>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full min-w-[1180px] text-left text-sm">
                     <thead class="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">SL</th>
-                            <th class="px-4 py-3">Project name</th>
-                            <th class="px-4 py-3">Type</th>
+                            <th class="px-4 py-3">Title</th>
+                            <th class="px-4 py-3">Project</th>
                             <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Cycle</th>
                             <th class="px-4 py-3">Start date</th>
-                            <th class="px-4 py-3">Due date</th>
-                            <th class="px-4 py-3">Budget</th>
+                            <th class="px-4 py-3">Next billing</th>
+                            <th class="px-4 py-3">Last billed</th>
+                            <th class="px-4 py-3">Auto invoice</th>
+                            <th class="px-4 py-3">Invoices</th>
+                            <th class="px-4 py-3">Amount</th>
                             <th class="px-4 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($customer->projects as $project)
+                        @forelse($maintenanceRows as $maintenance)
                             @php
-                                $statusClasses = match ($project->status) {
-                                    'ongoing' => 'bg-emerald-100 text-emerald-700',
-                                    'complete' => 'bg-blue-100 text-blue-700',
-                                    'hold' => 'bg-amber-100 text-amber-700',
-                                    'cancel' => 'bg-rose-100 text-rose-700',
+                                $maintenanceStatusClasses = match ($maintenance->status) {
+                                    'active' => 'bg-emerald-100 text-emerald-700',
+                                    'paused' => 'bg-amber-100 text-amber-700',
+                                    'cancelled' => 'bg-rose-100 text-rose-700',
                                     default => 'bg-slate-100 text-slate-600',
                                 };
                             @endphp
                             <tr class="border-b border-slate-100">
                                 <td class="px-4 py-3 text-slate-500">{{ $loop->iteration }}</td>
                                 <td class="px-4 py-3 font-medium text-slate-900">
-                                    <a href="{{ route('admin.projects.show', $project) }}" class="text-teal-700 hover:text-teal-500">
-                                        {{ $project->name }}
+                                    <a href="{{ route('admin.project-maintenances.show', $maintenance) }}" class="text-teal-700 hover:text-teal-500">
+                                        {{ $maintenance->title }}
                                     </a>
                                 </td>
-                                <td class="px-4 py-3 text-slate-600">{{ ucfirst($project->type) }}</td>
-                                <td class="px-4 py-3">
-                                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ ucfirst(str_replace('_', ' ', $project->status)) }}</span>
+                                <td class="px-4 py-3 text-slate-600">
+                                    @if($maintenance->project)
+                                        <a href="{{ route('admin.projects.show', $maintenance->project) }}" class="text-teal-700 hover:text-teal-500">
+                                            {{ $maintenance->project->name }}
+                                        </a>
+                                    @else
+                                        --
+                                    @endif
                                 </td>
-                                <td class="px-4 py-3 text-slate-500">{{ $project->start_date?->format($globalDateFormat) ?? '--' }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $project->due_date?->format($globalDateFormat) ?? '--' }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ $project->currency }} {{ number_format($project->total_budget, 2) }}</td>
+                                <td class="px-4 py-3">
+                                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $maintenanceStatusClasses }}">{{ ucfirst(str_replace('_', ' ', (string) $maintenance->status)) }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-slate-600">{{ ucfirst((string) $maintenance->billing_cycle) }}</td>
+                                <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $maintenance->start_date?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $maintenance->next_billing_date?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $maintenance->last_billed_at?->format($globalDateTimeFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $maintenance->auto_invoice ? 'Yes' : 'No' }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ (int) ($maintenance->invoices_count ?? 0) }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $maintenance->currency }} {{ number_format((float) $maintenance->amount, 2) }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="inline-flex items-center gap-3">
-                                        <a href="{{ route('admin.projects.show', $project) }}" class="text-teal-600 hover:text-teal-500">View</a>
-                                        <a href="{{ route('admin.projects.edit', $project) }}" class="text-slate-600 hover:text-teal-600">Edit</a>
+                                        <a href="{{ route('admin.project-maintenances.show', $maintenance) }}" class="text-teal-600 hover:text-teal-500">View</a>
+                                        <a href="{{ route('admin.project-maintenances.edit', $maintenance) }}" class="text-slate-600 hover:text-teal-600">Edit</a>
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-4 py-6 text-center text-slate-500">No projects yet.</td>
+                                <td colspan="12" class="px-4 py-6 text-center text-slate-500">No maintenance items yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
+                </div>
             </div>
         @elseif($tab === 'invoices')
             <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-300">
@@ -488,8 +606,8 @@
                                     <x-status-badge :status="$invoice->status" :label="ucfirst($invoice->status)" />
                                 </td>
                                 <td class="px-4 py-3 text-slate-600">{{ $invoice->currency }} {{ $invoice->total }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $invoice->issue_date?->format($globalDateFormat) ?? '--' }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $invoice->due_date?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $invoice->issue_date?->format($globalDateFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $invoice->due_date?->format($globalDateFormat) ?? '--' }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <a href="{{ route('admin.invoices.show', $invoice) }}" class="text-slate-500 hover:text-teal-600">View</a>
                                 </td>
@@ -536,7 +654,7 @@
                                 <td class="px-4 py-3">
                                     <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses }}">{{ $label }}</span>
                                 </td>
-                                <td class="px-4 py-3 text-slate-500">{{ $ticket->last_reply_at?->format($globalDateTimeFormat) ?? '--' }}</td>
+                                <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $ticket->last_reply_at?->format($globalDateTimeFormat) ?? '--' }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <a href="{{ route('admin.support-tickets.show', $ticket) }}" class="text-slate-500 hover:text-teal-600">View</a>
                                 </td>
@@ -567,7 +685,7 @@
                             <tbody>
                                 @foreach($emailLogs as $log)
                                     <tr class="border-b border-slate-100">
-                                        <td class="px-4 py-3 text-slate-500">{{ $log->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--' }}</td>
+                                        <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $log->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--' }}</td>
                                         <td class="px-4 py-3 text-slate-700">{{ $log->context['subject'] ?? $log->message }}</td>
                                         <td class="px-4 py-3 text-right">
                                             <div class="flex flex-wrap items-center justify-end gap-2">
@@ -624,7 +742,7 @@
                                         };
                                     @endphp
                                     <tr class="border-b border-slate-100">
-                                        <td class="px-4 py-3 text-slate-500">{{ $log->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--' }}</td>
+                                        <td class="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{{ $log->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--' }}</td>
                                         <td class="px-4 py-3 text-slate-600">{{ ucfirst($log->category) }}</td>
                                         <td class="px-4 py-3">
                                             <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $levelClasses }}">{{ strtoupper($level) }}</span>

@@ -848,9 +848,11 @@ function SmallMetric({ label, value, note, tone = 'text-slate-900', href = null,
 
 function SmallLinkCard({ href, title, value, tone = 'text-slate-900' }) {
     return (
-        <a href={href} data-native="true" className="card px-4 py-3 leading-tight transition hover:border-teal-300 hover:shadow-sm">
-            <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{title}</div>
-            <div className={`mt-1 text-xl font-semibold ${tone}`}>{value}</div>
+        <a href={href} data-native="true" className="card px-4 py-3 transition hover:border-teal-300 hover:shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 truncate text-sm font-medium text-slate-600" title={title}>{title}</div>
+                <div className={`shrink-0 text-lg font-semibold ${tone}`}>{value}</div>
+            </div>
         </a>
     );
 }
