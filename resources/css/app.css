@@ -56,6 +56,20 @@ body.bg-dashboard {
     border-radius: 16px;
 }
 
+.auth-glass-card {
+    background: linear-gradient(140deg, #0a18383b, #0f172a3b);
+    border: 1px solid rgb(255 255 255 / 0%);
+    box-shadow: 0 24px 50px #0f172a47;
+    backdrop-filter: blur(14px) saturate(130%);
+    -webkit-backdrop-filter: blur(14px) saturate(130%);
+}
+
+.auth-glass-overlay {
+    background-image:
+        radial-gradient(circle at 25% 20%, rgb(45 212 191 / 0.55), transparent 45%),
+        radial-gradient(circle at 80% 75%, rgb(59 130 246 / 0.34), transparent 44%);
+}
+
 .section-label {
     font-size: 0.65rem;
     text-transform: uppercase;
@@ -216,4 +230,101 @@ body.bg-dashboard {
 .intl-tel-input {
     display: block;
     width: 100%;
+}
+
+.iti {
+    width: 100%;
+}
+
+.iti input {
+    width: 100%;
+}
+
+.iti__country-list {
+    z-index: 60;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
+}
+
+.register-phone-field .iti {
+    width: 100%;
+    --iti-border-color: #cbd5e1;
+    --iti-dropdown-bg: #ffffff;
+    --iti-dialcode-color: #64748b;
+    --iti-hover-color: #f1f5f9;
+}
+
+.register-phone-field .iti .iti__selected-country,
+.register-phone-field .iti .iti__selected-dial-code {
+    color: #0f172a;
+}
+
+.register-phone-field .iti .iti__selected-country-primary {
+    padding-left: 10px;
+    padding-right: 8px;
+}
+
+.register-phone-field .iti .iti__dropdown-content {
+    border-radius: 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    overflow: hidden !important;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
+}
+
+.register-phone-field .iti--inline-dropdown .iti__dropdown-content {
+    margin-top: 6px;
+}
+
+.register-phone-field .iti__search-input-wrapper {
+    padding: 8px;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.register-phone-field .iti__search-input {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    height: 34px;
+    line-height: 34px;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px !important;
+    padding-left: 34px;
+    padding-right: 10px;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.register-phone-field .iti__search-input:focus {
+    border-color: #14b8a6;
+    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.35) !important;
+}
+
+.register-phone-field .iti__search-icon {
+    left: 16px;
+    color: #64748b;
+}
+
+.register-phone-field .iti__country-list {
+    max-height: 220px;
+    color: #0f172a;
+    margin: 0;
+    border: 0;
+}
+
+.register-phone-field .iti__country {
+    gap: 8px;
+    padding: 10px 12px;
+}
+
+.register-phone-field .iti__country-name {
+    color: #0f172a;
+    font-weight: 500;
+}
+
+.register-phone-field .iti__dial-code {
+    margin-left: auto;
+    color: #64748b;
 }

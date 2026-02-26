@@ -26,9 +26,11 @@ class AuthController extends Controller
                 'name' => old('name', ''),
                 'company_name' => old('company_name', ''),
                 'email' => old('email', ''),
+                'phone_country' => old('phone_country', '+880'),
                 'phone' => old('phone', ''),
                 'address' => old('address', ''),
                 'currency' => old('currency', 'BDT'),
+                'accepttos' => (bool) old('accepttos', false),
                 'redirect' => $redirect,
             ],
             'routes' => [
@@ -52,9 +54,13 @@ class AuthController extends Controller
             'company_name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
+            'phone_country' => ['nullable', 'string', 'max:6'],
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
             'currency' => ['nullable', Rule::in(Currency::allowed())],
+            'accepttos' => ['accepted'],
+        ], [
+            'accepttos.accepted' => 'Please accept the Terms of Service to continue registration.',
         ]);
 
         $currency = strtoupper((string) ($data['currency'] ?? Currency::DEFAULT));
@@ -62,11 +68,24 @@ class AuthController extends Controller
             $currency = Currency::DEFAULT;
         }
 
+        $phoneCountry = trim((string) ($data['phone_country'] ?? '+880'));
+        if ($phoneCountry === '' || ! str_starts_with($phoneCountry, '+')) {
+            $phoneCountry = '+880';
+        }
+
+        $phoneNumber = preg_replace('/\s+/', '', (string) ($data['phone'] ?? ''));
+        $phone = null;
+        if ($phoneNumber !== '') {
+            $phone = str_starts_with($phoneNumber, '+')
+                ? $phoneNumber
+                : ($phoneCountry . ltrim($phoneNumber, '0'));
+        }
+
         $customer = Customer::create([
             'name' => $data['name'],
             'company_name' => $data['company_name'] ?? null,
             'email' => $data['email'],
-            'phone' => $data['phone'] ?? null,
+            'phone' => $phone,
             'address' => $data['address'] ?? null,
             'status' => 'active',
         ]);

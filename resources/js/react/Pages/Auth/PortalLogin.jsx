@@ -7,15 +7,24 @@ import SubmitButton from '../../Components/Form/SubmitButton';
 import GuestAuthLayout from '../../Layouts/GuestAuthLayout';
 
 export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', form = {}, routes = {}, hint = null, recaptcha = {} }) {
-    const { errors = {}, flash = {}, csrf_token: csrfToken = '' } = usePage().props;
+    const { errors = {}, flash = {}, branding = {}, csrf_token: csrfToken = '' } = usePage().props;
 
     return (
         <>
             <Head title={pageTitle} />
             <GuestAuthLayout>
-                <section className="relative -m-8 overflow-hidden rounded-2xl bg-slate-900 px-8 py-10 text-white sm:px-10">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(45,212,191,0.35),transparent_45%),radial-gradient(circle_at_80%_75%,rgba(59,130,246,0.26),transparent_44%)]"></div>
+                <section className="auth-glass-card relative overflow-hidden rounded-2xl px-8 py-10 text-white sm:px-10">
+                    <div className="auth-glass-overlay absolute inset-0"></div>
                     <div className="relative z-10">
+                        <div className="mb-6 flex justify-center">
+                            <a href="/" className="flex items-center gap-3" data-native="true">
+                                {branding?.logo_url ? (
+                                    <img src={branding.logo_url} alt="Company logo" className="h-12 rounded-xl p-1" />
+                                ) : (
+                                    <div className="text-lg font-semibold text-white">MyApptimatic</div>
+                                )}
+                            </a>
+                        </div>
                         <AlertStack status={flash?.status} errors={errors} singleError />
                         <p className="text-xs font-semibold uppercase tracking-[0.36em] text-teal-200/90">Welcome Back</p>
 

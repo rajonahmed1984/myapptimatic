@@ -1,13 +1,12 @@
-@extends('layouts.guest')
-
-@section('title', config('app.name', 'MyApptimatic'))
-
-@push('styles')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    @include('layouts.partials.head')
     @viteReactRefresh
     @vite(['resources/js/react/app.jsx'])
     @inertiaHead
-@endpush
-
-@section('content')
+</head>
+<body class="bg-guest">
     @inertia
-@endsection
+</body>
+</html>

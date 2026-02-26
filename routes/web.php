@@ -103,9 +103,9 @@ use Illuminate\Support\Facades\Gate;
 use App\Models\Project;
 use Inertia\Inertia;
 
-Route::get('/', [PublicProductController::class, 'index'])
-    ->middleware(HandleInertiaRequests::class)
-    ->name('products.public.home');
+Route::get('/', function () {
+    return redirect()->route('login');
+})->name('products.public.home');
 
 Route::get('/__ui/react-sandbox', function () {
     abort_unless(UiFeature::enabled(UiFeature::REACT_SANDBOX), 404);
@@ -217,10 +217,8 @@ Route::middleware(['guest:web', 'nocache'])->group(function () {
         ->defaults('portal', 'web')
         ->middleware(['throttle:login', 'login.trace'])
         ->name('login.attempt');
-    Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])
-        ->middleware(HandleInertiaRequests::class)
-        ->name('project-client.login');
-    Route::post('/project-login', [ProjectClientAuthController::class, 'login'])->name('project-client.login.attempt');
+    Route::get('/project-login', fn () => redirect()->route('login'))->name('project-client.login');
+    Route::post('/project-login', fn () => redirect()->route('login'))->name('project-client.login.attempt');
     Route::get('/register', [AuthController::class, 'showRegister'])
         ->middleware(HandleInertiaRequests::class)
         ->name('register');
@@ -1463,13 +1461,13 @@ Route::middleware('signed:relative')->group(function () {
 });
 
 Route::get('/products', [PublicProductController::class, 'index'])
-    ->middleware(HandleInertiaRequests::class)
+    ->middleware(['auth:web', HandleInertiaRequests::class])
     ->name('products.public.index');
 
 Route::get('/{product:slug}/plans/{plan:slug}', [PublicProductController::class, 'showPlan'])
-    ->middleware(HandleInertiaRequests::class)
+    ->middleware(['auth:web', HandleInertiaRequests::class])
     ->name('products.public.plan');
 
 Route::get('/{product:slug}', [PublicProductController::class, 'show'])
-    ->middleware(HandleInertiaRequests::class)
+    ->middleware(['auth:web', HandleInertiaRequests::class])
     ->name('products.public.show');
