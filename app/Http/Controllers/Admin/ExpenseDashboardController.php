@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\AccountingEntry;
 use App\Models\ExpenseCategory;
-use App\Models\RecurringExpense;
 use App\Services\ExpenseEntryService;
 use App\Services\GeminiService;
 use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -46,22 +45,14 @@ class ExpenseDashboardController extends Controller
         ];
 
         $entries = $entryService->entries($filters);
-
         $expenseTotal = (float) $entries->sum('amount');
-        $totalAmount = $expenseTotal;
 
-        $incomeReceived = (float) AccountingEntry::query()
-            ->where('type', 'payment')
-            ->whereDate('entry_date', '>=', $startDate->toDateString())
-            ->whereDate('entry_date', '<=', $endDate->toDateString())
-            ->sum('amount');
-
-        $payoutExpenseTotal = (float) $entries
-            ->whereIn('expense_type', ['salary', 'contract_payout', 'sales_payout'])
-            ->sum('amount');
-
-        $netIncome = $incomeReceived - $expenseTotal;
-        $netCashflow = $incomeReceived - $payoutExpenseTotal;
+        $expenseBySource = [
+            'manual' => (float) $entries->where('source_type', 'expense')->sum('amount'),
+            'salary' => (float) $entries->where('expense_type', 'salary')->sum('amount'),
+            'contract_payout' => (float) $entries->where('expense_type', 'contract_payout')->sum('amount'),
+            'sales_payout' => (float) $entries->where('expense_type', 'sales_payout')->sum('amount'),
+        ];
 
         $categoryTotals = $entries
             ->groupBy('category_id')
@@ -108,24 +99,19 @@ class ExpenseDashboardController extends Controller
         $now = now();
         $monthStart = $now->copy()->startOfMonth()->toDateString();
         $yearStart = $now->copy()->startOfYear()->toDateString();
+        $baseFilters = collect($filters)->except(['start_date', 'end_date'])->toArray();
 
-        $monthlyTotal = (float) $entryService->entries([
+        $monthlyTotal = (float) $entryService->entries(array_merge($baseFilters, [
             'start_date' => $monthStart,
             'end_date' => $now->toDateString(),
-            'sources' => ['manual', 'salary', 'contract_payout', 'sales_payout'],
-        ])->sum('amount');
+        ]))->sum('amount');
 
-        $yearlyTotal = (float) $entryService->entries([
+        $yearlyTotal = (float) $entryService->entries(array_merge($baseFilters, [
             'start_date' => $yearStart,
             'end_date' => $now->toDateString(),
-            'sources' => ['manual', 'salary', 'contract_payout', 'sales_payout'],
-        ])->sum('amount');
+        ]))->sum('amount');
 
-        $topCategories = $entryService->entries([
-            'start_date' => $monthStart,
-            'end_date' => $now->toDateString(),
-            'sources' => ['manual', 'salary', 'contract_payout', 'sales_payout'],
-        ])->groupBy('category_id')
+        $topCategories = $entries->groupBy('category_id')
             ->map(function ($items) {
                 $first = $items->first();
 
@@ -139,10 +125,10 @@ class ExpenseDashboardController extends Controller
             ->sortByDesc('total')
             ->take(5);
 
-        [$labels, $expenseSeries, $incomeSeries] = $this->buildTrends($entries, $startDate, $endDate);
+        $periodSeries = $this->buildPeriodSeries($entries, $startDate, $endDate);
+        $expenseStatus = $this->buildExpenseStatus($entryService, $baseFilters, $expenseTotal, $now);
 
         $categories = ExpenseCategory::query()->orderBy('name')->get();
-        $recurringTemplates = RecurringExpense::query()->orderBy('title')->get();
         $peopleOptions = $entryService->peopleOptions();
         $currencyCode = strtoupper((string) \App\Models\Setting::getValue('currency', Currency::DEFAULT));
         if (! Currency::isAllowed($currencyCode)) {
@@ -157,10 +143,7 @@ class ExpenseDashboardController extends Controller
             $endDate,
             $currencyCode,
             $expenseTotal,
-            $incomeReceived,
-            $payoutExpenseTotal,
-            $netIncome,
-            $netCashflow,
+            $expenseBySource,
             $categoryTotals,
             $employeeTotals,
             $filters,
@@ -171,27 +154,18 @@ class ExpenseDashboardController extends Controller
             'pageTitle' => 'Expense Dashboard',
             'filters' => $filters,
             'expenseTotal' => $expenseTotal,
-            'incomeReceived' => $incomeReceived,
-            'payoutExpenseTotal' => $payoutExpenseTotal,
-            'netIncome' => $netIncome,
-            'netCashflow' => $netCashflow,
+            'expenseBySource' => $expenseBySource,
+            'expenseStatus' => $expenseStatus,
             'categoryTotals' => $categoryTotals->values(),
             'employeeTotals' => $employeeTotals->values(),
             'salesRepTotals' => $salesRepTotals->values(),
-            'totalAmount' => $totalAmount,
             'monthlyTotal' => $monthlyTotal,
             'yearlyTotal' => $yearlyTotal,
             'topCategories' => $topCategories->values(),
-            'trendLabels' => $labels,
-            'trendExpenses' => $expenseSeries,
-            'trendIncome' => $incomeSeries,
+            'periodSeries' => $periodSeries,
             'categories' => $categories->map(fn (ExpenseCategory $category) => [
                 'id' => $category->id,
                 'name' => $category->name,
-            ])->values(),
-            'recurringTemplates' => $recurringTemplates->map(fn (RecurringExpense $template) => [
-                'id' => $template->id,
-                'title' => $template->title,
             ])->values(),
             'peopleOptions' => collect($peopleOptions)->values(),
             'currencyCode' => $currencyCode,
@@ -205,43 +179,194 @@ class ExpenseDashboardController extends Controller
         ]);
     }
 
-    private function buildTrends($entries, Carbon $startDate, Carbon $endDate): array
+    private function buildPeriodSeries(Collection $entries, Carbon $startDate, Carbon $endDate): array
     {
-        $days = $startDate->diffInDays($endDate);
-        $format = $days > 62 ? 'Y-m' : 'Y-m-d';
+        $normalized = $entries
+            ->map(function ($entry) {
+                $date = ! empty($entry['expense_date']) ? Carbon::parse($entry['expense_date']) : null;
+                if (! $date) {
+                    return null;
+                }
 
-        $expenseGroups = $entries->groupBy(function ($entry) use ($format) {
-            $date = $entry['expense_date'] ? Carbon::parse($entry['expense_date']) : now();
+                $entry['_date'] = $date;
 
-            return $date->format($format);
-        });
+                return $entry;
+            })
+            ->filter()
+            ->values();
 
-        $incomeGroups = AccountingEntry::query()
-            ->where('type', 'payment')
-            ->whereDate('entry_date', '>=', $startDate->toDateString())
-            ->whereDate('entry_date', '<=', $endDate->toDateString())
-            ->get(['entry_date', 'amount'])
-            ->groupBy(fn ($entry) => Carbon::parse($entry->entry_date)->format($format));
+        return [
+            'day' => $this->buildSeriesForGranularity($normalized, $startDate, $endDate, 'day'),
+            'week' => $this->buildSeriesForGranularity($normalized, $startDate, $endDate, 'week'),
+            'month' => $this->buildSeriesForGranularity($normalized, $startDate, $endDate, 'month'),
+        ];
+    }
 
-        $labels = [];
-        $expenseSeries = [];
-        $incomeSeries = [];
-
-        $cursor = $startDate->copy();
-        while ($cursor->lessThanOrEqualTo($endDate)) {
-            $label = $cursor->format($format);
-            $labels[] = $label;
-            $expenseSeries[] = (float) collect($expenseGroups->get($label, []))->sum('amount');
-            $incomeSeries[] = (float) collect($incomeGroups->get($label, []))->sum('amount');
-
-            if ($days > 62) {
-                $cursor->addMonth();
+    private function buildSeriesForGranularity(Collection $entries, Carbon $startDate, Carbon $endDate, string $granularity): array
+    {
+        $seriesMap = [];
+        foreach ($entries as $entry) {
+            /** @var Carbon $date */
+            $date = $entry['_date'];
+            if ($granularity === 'day') {
+                $key = $date->format('Y-m-d');
+            } elseif ($granularity === 'week') {
+                $key = $date->format('o-\WW');
             } else {
-                $cursor->addDay();
+                $key = $date->format('Y-m');
+            }
+
+            if (! isset($seriesMap[$key])) {
+                $seriesMap[$key] = [
+                    'total' => 0.0,
+                    'manual' => 0.0,
+                    'salary' => 0.0,
+                    'contract' => 0.0,
+                    'sales' => 0.0,
+                ];
+            }
+
+            $amount = (float) ($entry['amount'] ?? 0);
+            $seriesMap[$key]['total'] += $amount;
+
+            if (($entry['source_type'] ?? null) === 'expense') {
+                $seriesMap[$key]['manual'] += $amount;
+            }
+            if (($entry['expense_type'] ?? null) === 'salary') {
+                $seriesMap[$key]['salary'] += $amount;
+            }
+            if (($entry['expense_type'] ?? null) === 'contract_payout') {
+                $seriesMap[$key]['contract'] += $amount;
+            }
+            if (($entry['expense_type'] ?? null) === 'sales_payout') {
+                $seriesMap[$key]['sales'] += $amount;
             }
         }
 
-        return [$labels, $expenseSeries, $incomeSeries];
+        $labels = [];
+        $total = [];
+        $manual = [];
+        $salary = [];
+        $contract = [];
+        $sales = [];
+
+        $cursor = $startDate->copy();
+        if ($granularity === 'week') {
+            $cursor->startOfWeek(Carbon::MONDAY);
+        } elseif ($granularity === 'month') {
+            $cursor->startOfMonth();
+        } else {
+            $cursor->startOfDay();
+        }
+
+        $endCursor = $endDate->copy();
+        if ($granularity === 'week') {
+            $endCursor->endOfWeek(Carbon::SUNDAY);
+        } elseif ($granularity === 'month') {
+            $endCursor->endOfMonth();
+        } else {
+            $endCursor->endOfDay();
+        }
+
+        while ($cursor->lessThanOrEqualTo($endCursor)) {
+            if ($granularity === 'day') {
+                $key = $cursor->format('Y-m-d');
+                $labels[] = $cursor->format('d M');
+                $cursor->addDay();
+            } elseif ($granularity === 'week') {
+                $key = $cursor->format('o-\WW');
+                $labels[] = 'W'.$cursor->format('W').' '.$cursor->format('d M');
+                $cursor->addWeek();
+            } else {
+                $key = $cursor->format('Y-m');
+                $labels[] = $cursor->format('M Y');
+                $cursor->addMonth();
+            }
+
+            $bucket = $seriesMap[$key] ?? [
+                'total' => 0.0,
+                'manual' => 0.0,
+                'salary' => 0.0,
+                'contract' => 0.0,
+                'sales' => 0.0,
+            ];
+
+            $total[] = (float) $bucket['total'];
+            $manual[] = (float) $bucket['manual'];
+            $salary[] = (float) $bucket['salary'];
+            $contract[] = (float) $bucket['contract'];
+            $sales[] = (float) $bucket['sales'];
+        }
+
+        return [
+            'labels' => $labels,
+            'total' => $total,
+            'manual' => $manual,
+            'salary' => $salary,
+            'contract' => $contract,
+            'sales' => $sales,
+        ];
+    }
+
+    private function buildExpenseStatus(ExpenseEntryService $entryService, array $baseFilters, float $filteredTotal, Carbon $now): array
+    {
+        $sumForRange = function (Carbon $start, Carbon $end) use ($entryService, $baseFilters): float {
+            return (float) $entryService->entries(array_merge($baseFilters, [
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+            ]))->sum('amount');
+        };
+
+        $today = $sumForRange($now->copy()->startOfDay(), $now->copy()->endOfDay());
+        $yesterday = $sumForRange($now->copy()->subDay()->startOfDay(), $now->copy()->subDay()->endOfDay());
+
+        $thisWeek = $sumForRange($now->copy()->startOfWeek(Carbon::MONDAY), $now->copy()->endOfWeek(Carbon::SUNDAY));
+        $lastWeek = $sumForRange(
+            $now->copy()->subWeek()->startOfWeek(Carbon::MONDAY),
+            $now->copy()->subWeek()->endOfWeek(Carbon::SUNDAY)
+        );
+
+        $thisMonth = $sumForRange($now->copy()->startOfMonth(), $now->copy()->endOfMonth());
+        $lastMonth = $sumForRange(
+            $now->copy()->subMonthNoOverflow()->startOfMonth(),
+            $now->copy()->subMonthNoOverflow()->endOfMonth()
+        );
+
+        return [
+            'today' => [
+                'label' => 'Today',
+                'amount' => $today,
+                'change_percent' => $this->percentChange($today, $yesterday),
+                'comparison_label' => 'vs yesterday',
+            ],
+            'week' => [
+                'label' => 'This Week',
+                'amount' => $thisWeek,
+                'change_percent' => $this->percentChange($thisWeek, $lastWeek),
+                'comparison_label' => 'vs last week',
+            ],
+            'month' => [
+                'label' => 'This Month',
+                'amount' => $thisMonth,
+                'change_percent' => $this->percentChange($thisMonth, $lastMonth),
+                'comparison_label' => 'vs last month',
+            ],
+            'filtered' => [
+                'label' => 'Filtered Total',
+                'amount' => $filteredTotal,
+                'change_percent' => null,
+                'comparison_label' => 'selected filters',
+            ],
+        ];
+    }
+
+    private function percentChange(float $current, float $previous): ?float
+    {
+        if ($previous <= 0) {
+            return null;
+        }
+
+        return (($current - $previous) / $previous) * 100;
     }
 
     private function buildAiSummary(
@@ -250,10 +375,7 @@ class ExpenseDashboardController extends Controller
         Carbon $endDate,
         string $currencyCode,
         float $expenseTotal,
-        float $incomeReceived,
-        float $payoutExpenseTotal,
-        float $netIncome,
-        float $netCashflow,
+        array $expenseBySource,
         $categoryTotals,
         $employeeTotals,
         array $filters,
@@ -276,10 +398,7 @@ class ExpenseDashboardController extends Controller
                 $endDate,
                 $currencyCode,
                 $expenseTotal,
-                $incomeReceived,
-                $payoutExpenseTotal,
-                $netIncome,
-                $netCashflow,
+                $expenseBySource,
                 $categoryTotals,
                 $employeeTotals
             ) {
@@ -295,16 +414,21 @@ class ExpenseDashboardController extends Controller
                     return "{$item['label']}: {$currencyCode} {$amount}";
                 })->implode(', ');
 
+                $manualTotal = number_format((float) ($expenseBySource['manual'] ?? 0), 2);
+                $salaryTotal = number_format((float) ($expenseBySource['salary'] ?? 0), 2);
+                $contractTotal = number_format((float) ($expenseBySource['contract_payout'] ?? 0), 2);
+                $salesTotal = number_format((float) ($expenseBySource['sales_payout'] ?? 0), 2);
+
                 $prompt = <<<PROMPT
 You are a finance analyst. Summarize the expense dashboard in Bengali.
 
 Period: {$startDate->toDateString()} to {$endDate->toDateString()}
 Totals:
 - Total expenses: {$currencyCode} {$expenseTotal}
-- Income received: {$currencyCode} {$incomeReceived}
-- Payout expenses: {$currencyCode} {$payoutExpenseTotal}
-- Net (Income - Expense): {$currencyCode} {$netIncome}
-- Cashflow (Received - Payout): {$currencyCode} {$netCashflow}
+- Manual expenses: {$currencyCode} {$manualTotal}
+- Salary expenses: {$currencyCode} {$salaryTotal}
+- Contract payouts: {$currencyCode} {$contractTotal}
+- Sales rep payouts: {$currencyCode} {$salesTotal}
 
 Top categories: {$topCategories}
 Top employees: {$topEmployees}

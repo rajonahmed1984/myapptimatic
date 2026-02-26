@@ -61,12 +61,18 @@ class IncomeController extends Controller
 
         $entries = $entries->sortByDesc(fn ($entry) => $entry['income_date'] ?? now());
 
-        $totalAmount = (float) $entries->sum('amount');
-        $manualTotal = (float) $entries->where('source_type', 'manual')->sum('amount');
-        $systemTotal = (float) $entries->where('source_type', 'system')->sum('amount');
-        $creditSettlementTotal = (float) $entries->where('source_type', 'credit_settlement')->sum('amount');
+        $entriesWithDate = $entries->map(function ($entry) {
+            $entry['parsed_income_date'] = $this->parseEntryDate($entry['income_date'] ?? null);
 
-        $categoryTotals = $entries
+            return $entry;
+        })->values();
+
+        $totalAmount = (float) $entriesWithDate->sum('amount');
+        $manualTotal = (float) $entriesWithDate->where('source_type', 'manual')->sum('amount');
+        $systemTotal = (float) $entriesWithDate->where('source_type', 'system')->sum('amount');
+        $creditSettlementTotal = (float) $entriesWithDate->where('source_type', 'credit_settlement')->sum('amount');
+
+        $categoryTotals = $entriesWithDate
             ->groupBy(fn ($entry) => $entry['category_id'] ?? 'system')
             ->map(function ($items) {
                 $first = $items->first();
@@ -78,7 +84,9 @@ class IncomeController extends Controller
                 ];
             })
             ->values()
-            ->sortByDesc('total');
+            ->sortByDesc('total')
+            ->values()
+            ->all();
 
         $categories = IncomeCategory::query()->orderBy('name')->get();
 
@@ -88,7 +96,7 @@ class IncomeController extends Controller
         }
         $currencySymbol = Currency::symbol($currencyCode);
 
-        $topCustomers = $entries
+        $topCustomers = $entriesWithDate
             ->filter(fn ($entry) => ! empty($entry['customer_name']))
             ->groupBy(fn ($entry) => $entry['customer_name'])
             ->map(fn ($items) => [
@@ -97,7 +105,9 @@ class IncomeController extends Controller
             ])
             ->values()
             ->sortByDesc('total')
-            ->take(5);
+            ->take(5)
+            ->values()
+            ->all();
 
         $forceAiRefresh = $request->query('ai') === 'refresh';
         [$aiSummary, $aiError] = $this->buildAiSummary(
@@ -114,14 +124,29 @@ class IncomeController extends Controller
             $forceAiRefresh
         );
 
-        $trendStart = $filters['start_date']
-            ? Carbon::parse($filters['start_date'])->startOfDay()
-            : now()->startOfMonth();
-        $trendEnd = $filters['end_date']
-            ? Carbon::parse($filters['end_date'])->endOfDay()
-            : now()->endOfDay();
+        $incomeStatus = $this->buildIncomeStatusCards($entriesWithDate);
+        $periodSeries = $this->buildPeriodSeries($entriesWithDate);
+        $trendStart = $this->parseDateOrDefault($filters['start_date'] ?? null, now()->startOfMonth(), false);
+        $trendEnd = $this->parseDateOrDefault($filters['end_date'] ?? null, now()->endOfDay(), true);
 
-        [$trendLabels, $trendTotals] = $this->buildTrends($entries, $trendStart, $trendEnd);
+        [$trendLabels, $trendTotals] = $this->buildTrends($entriesWithDate, $trendStart, $trendEnd);
+        $globalDateFormat = (string) config('app.date_format', 'd-m-Y');
+        $recentEntries = $entriesWithDate
+            ->take(15)
+            ->values()
+            ->map(function (array $entry) use ($globalDateFormat, $currencySymbol, $currencyCode) {
+                return [
+                    'key' => (string) ($entry['key'] ?? uniqid('income:', true)),
+                    'income_date_display' => $this->formatEntryDate($entry['income_date'] ?? null, $globalDateFormat),
+                    'title' => (string) ($entry['title'] ?? '--'),
+                    'source_label' => (string) ($entry['source_label'] ?? '--'),
+                    'category_name' => (string) ($entry['category_name'] ?? '--'),
+                    'customer_name' => (string) (($entry['customer_name'] ?? '') ?: '--'),
+                    'project_name' => (string) (($entry['project_name'] ?? '') ?: '--'),
+                    'amount_display' => $currencySymbol.number_format((float) ($entry['amount'] ?? 0), 2).$currencyCode,
+                ];
+            })
+            ->all();
 
         return Inertia::render('Admin/Income/Dashboard', [
             'pageTitle' => 'Income Dashboard',
@@ -141,6 +166,10 @@ class IncomeController extends Controller
                 'system_total' => (float) $systemTotal,
                 'credit_settlement_total' => (float) $creditSettlementTotal,
             ],
+            'income_status' => $incomeStatus,
+            'period_series' => $periodSeries,
+            'entries_count' => $entriesWithDate->count(),
+            'recent_entries' => $recentEntries,
             'category_totals' => $categoryTotals,
             'top_customers' => $topCustomers,
             'currency' => [
@@ -158,6 +187,7 @@ class IncomeController extends Controller
             'whmcs_errors' => array_values($whmcsErrors),
             'routes' => [
                 'dashboard' => route('admin.income.dashboard'),
+                'ai_refresh' => route('admin.income.dashboard', array_merge($request->query(), ['ai' => 'refresh'])),
             ],
         ]);
     }
@@ -354,9 +384,13 @@ class IncomeController extends Controller
 
                 return [
                     'key' => (string) data_get($entry, 'key', ''),
+                    'id_display' => $sourceId !== null && $sourceId !== ''
+                        ? (string) $sourceId
+                        : '--',
                     'income_date_display' => $this->formatEntryDate(data_get($entry, 'income_date'), $globalDateFormat),
                     'title' => (string) data_get($entry, 'title', '--'),
                     'notes' => (string) (data_get($entry, 'notes') ?: ''),
+                    'invoice_number' => (string) (data_get($entry, 'invoice_number') ?: ''),
                     'category_name' => (string) (data_get($entry, 'category_name') ?: '--'),
                     'source_label' => (string) (data_get($entry, 'source_label') ?: ucfirst($sourceType)),
                     'customer_name' => (string) (data_get($entry, 'customer_name') ?: '--'),
@@ -515,14 +549,195 @@ PROMPT;
         return [$labels, $totals];
     }
 
+    private function buildIncomeStatusCards(Collection $entries): array
+    {
+        $now = now();
+        $todayStart = $now->copy()->startOfDay();
+        $todayEnd = $now->copy()->endOfDay();
+        $yesterdayStart = $todayStart->copy()->subDay()->startOfDay();
+        $yesterdayEnd = $todayStart->copy()->subDay()->endOfDay();
+
+        $weekStart = $now->copy()->startOfWeek();
+        $weekEnd = $now->copy()->endOfWeek();
+        $prevWeekStart = $weekStart->copy()->subWeek()->startOfWeek();
+        $prevWeekEnd = $weekStart->copy()->subWeek()->endOfWeek();
+
+        $monthStart = $now->copy()->startOfMonth();
+        $monthEnd = $now->copy()->endOfMonth();
+        $prevMonthStart = $monthStart->copy()->subMonth()->startOfMonth();
+        $prevMonthEnd = $monthStart->copy()->subMonth()->endOfMonth();
+
+        $todayAmount = $this->sumForRange($entries, $todayStart, $todayEnd);
+        $yesterdayAmount = $this->sumForRange($entries, $yesterdayStart, $yesterdayEnd);
+        $weekAmount = $this->sumForRange($entries, $weekStart, $weekEnd);
+        $prevWeekAmount = $this->sumForRange($entries, $prevWeekStart, $prevWeekEnd);
+        $monthAmount = $this->sumForRange($entries, $monthStart, $monthEnd);
+        $prevMonthAmount = $this->sumForRange($entries, $prevMonthStart, $prevMonthEnd);
+
+        return [
+            'today' => [
+                'label' => 'Today',
+                'amount' => $todayAmount,
+                'change_percent' => $this->percentChange($todayAmount, $yesterdayAmount),
+                'comparison_label' => 'vs yesterday',
+            ],
+            'week' => [
+                'label' => 'This Week',
+                'amount' => $weekAmount,
+                'change_percent' => $this->percentChange($weekAmount, $prevWeekAmount),
+                'comparison_label' => 'vs last week',
+            ],
+            'month' => [
+                'label' => 'This Month',
+                'amount' => $monthAmount,
+                'change_percent' => $this->percentChange($monthAmount, $prevMonthAmount),
+                'comparison_label' => 'vs last month',
+            ],
+            'overall' => [
+                'label' => 'Filtered Total',
+                'amount' => (float) $entries->sum(fn ($entry) => (float) ($entry['amount'] ?? 0)),
+                'change_percent' => null,
+                'comparison_label' => 'selected filters',
+            ],
+        ];
+    }
+
+    private function buildPeriodSeries(Collection $entries): array
+    {
+        $now = now();
+
+        return [
+            'day' => $this->buildSeriesForPeriod(
+                $entries,
+                $now->copy()->startOfDay()->subDays(29),
+                30,
+                'day'
+            ),
+            'week' => $this->buildSeriesForPeriod(
+                $entries,
+                $now->copy()->startOfWeek()->subWeeks(11),
+                12,
+                'week'
+            ),
+            'month' => $this->buildSeriesForPeriod(
+                $entries,
+                $now->copy()->startOfMonth()->subMonths(11),
+                12,
+                'month'
+            ),
+        ];
+    }
+
+    private function buildSeriesForPeriod(
+        Collection $entries,
+        Carbon $start,
+        int $slots,
+        string $unit
+    ): array {
+        $labels = [];
+        $total = array_fill(0, $slots, 0);
+        $manual = array_fill(0, $slots, 0);
+        $system = array_fill(0, $slots, 0);
+
+        for ($index = 0; $index < $slots; $index++) {
+            $bucket = $start->copy();
+
+            if ($unit === 'month') {
+                $bucket->addMonths($index);
+                $labels[] = $bucket->format('M Y');
+            } elseif ($unit === 'week') {
+                $bucket->addWeeks($index);
+                $labels[] = $bucket->format('d M');
+            } else {
+                $bucket->addDays($index);
+                $labels[] = $bucket->format('d M');
+            }
+        }
+
+        foreach ($entries as $entry) {
+            $date = $entry['parsed_income_date'] ?? null;
+            if (! $date instanceof Carbon) {
+                continue;
+            }
+
+            $amount = (float) ($entry['amount'] ?? 0);
+            $bucketDate = match ($unit) {
+                'month' => $date->copy()->startOfMonth(),
+                'week' => $date->copy()->startOfWeek(),
+                default => $date->copy()->startOfDay(),
+            };
+
+            if ($bucketDate->lt($start)) {
+                continue;
+            }
+
+            $index = match ($unit) {
+                'month' => (($bucketDate->year - $start->year) * 12) + ($bucketDate->month - $start->month),
+                'week' => (int) floor($start->diffInDays($bucketDate) / 7),
+                default => $start->diffInDays($bucketDate),
+            };
+
+            if ($index < 0 || $index >= $slots) {
+                continue;
+            }
+
+            $total[$index] += $amount;
+            if (($entry['source_type'] ?? '') === 'manual') {
+                $manual[$index] += $amount;
+            } else {
+                $system[$index] += $amount;
+            }
+        }
+
+        return [
+            'labels' => $labels,
+            'total' => array_map(fn ($value) => round((float) $value, 2), $total),
+            'manual' => array_map(fn ($value) => round((float) $value, 2), $manual),
+            'system' => array_map(fn ($value) => round((float) $value, 2), $system),
+        ];
+    }
+
+    private function sumForRange(Collection $entries, Carbon $start, Carbon $end): float
+    {
+        return (float) $entries
+            ->filter(function ($entry) use ($start, $end) {
+                $date = $entry['parsed_income_date'] ?? null;
+
+                return $date instanceof Carbon && $date->between($start, $end);
+            })
+            ->sum(fn ($entry) => (float) ($entry['amount'] ?? 0));
+    }
+
+    private function percentChange(float $current, float $previous): ?float
+    {
+        if ($previous == 0.0) {
+            return $current == 0.0 ? 0.0 : null;
+        }
+
+        return (($current - $previous) / $previous) * 100;
+    }
+
+    private function parseEntryDate(mixed $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse((string) $value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     private function carrotHostEntries(
         WhmcsClient $client,
         ?string $startDate,
         ?string $endDate,
         array &$errors
     ): Collection {
-        $start = $startDate ? Carbon::parse($startDate)->toDateString() : self::WHMCS_DEFAULT_START;
-        $end = $endDate ? Carbon::parse($endDate)->toDateString() : now()->toDateString();
+        $start = $this->parseDateOrDefault($startDate, Carbon::parse(self::WHMCS_DEFAULT_START), false)->toDateString();
+        $end = $this->parseDateOrDefault($endDate, now(), true)->toDateString();
 
         $cacheKey = 'whmcs:carrothost:transactions:'.$start.':'.$end;
 
@@ -670,5 +885,20 @@ PROMPT;
 
             return $date >= $start && $date <= $end;
         }));
+    }
+
+    private function parseDateOrDefault(mixed $value, Carbon $default, bool $endOfDay): Carbon
+    {
+        if ($value === null || $value === '') {
+            return $default->copy();
+        }
+
+        try {
+            $date = Carbon::parse((string) $value);
+        } catch (\Throwable) {
+            return $default->copy();
+        }
+
+        return $endOfDay ? $date->endOfDay() : $date->startOfDay();
     }
 }

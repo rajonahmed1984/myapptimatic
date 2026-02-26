@@ -14,8 +14,8 @@ class IncomeEntryService
         $sources = $filters['sources'] ?? ['manual', 'system'];
         $categoryIdFilter = $filters['category_id'] ?? null;
 
-        $startDate = $filters['start_date'] ? Carbon::parse($filters['start_date'])->startOfDay() : null;
-        $endDate = $filters['end_date'] ? Carbon::parse($filters['end_date'])->endOfDay() : null;
+        $startDate = $this->parseFilterDate($filters['start_date'] ?? null, false);
+        $endDate = $this->parseFilterDate($filters['end_date'] ?? null, true);
 
         $entries = collect();
 
@@ -47,6 +47,7 @@ class IncomeEntryService
                     'category_name' => $income->category?->name ?? '--',
                     'notes' => $income->notes,
                     'attachment_path' => $income->attachment_path,
+                    'invoice_number' => null,
                     'customer_id' => null,
                     'customer_name' => null,
                     'project_id' => null,
@@ -72,6 +73,7 @@ class IncomeEntryService
             foreach ($systemEntries as $entry) {
                 $invoice = $entry->invoice;
                 $project = $invoice?->project;
+                $invoiceNumber = $invoice?->number ?: ($invoice?->id ?: $entry->invoice_id);
 
                 $entries->push([
                     'key' => 'payment:'.$entry->id,
@@ -85,6 +87,7 @@ class IncomeEntryService
                     'category_name' => 'System',
                     'notes' => $entry->reference,
                     'attachment_path' => null,
+                    'invoice_number' => $invoiceNumber,
                     'customer_id' => $entry->customer_id,
                     'customer_name' => $entry->customer?->name,
                     'project_id' => $project?->id,
@@ -135,6 +138,7 @@ class IncomeEntryService
                     'category_name' => 'Credit Settlement',
                     'notes' => $entry->reference,
                     'attachment_path' => null,
+                    'invoice_number' => $invoiceNumber,
                     'customer_id' => $entry->customer_id,
                     'customer_name' => $entry->customer?->name,
                     'project_id' => $project?->id,
@@ -144,5 +148,20 @@ class IncomeEntryService
         }
 
         return $entries;
+    }
+
+    private function parseFilterDate(mixed $value, bool $endOfDay): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            $date = Carbon::parse((string) $value);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $endOfDay ? $date->endOfDay() : $date->startOfDay();
     }
 }

@@ -447,7 +447,7 @@ class SalesRepresentativeController extends Controller
                     'id' => $earning->id,
                     'source_type' => $earning->source_type,
                     'source_id' => $earning->source_id,
-                    'amount' => (float) $earning->amount,
+                    'amount' => (float) ($earning->commission_amount ?? $earning->amount ?? 0),
                     'currency' => $earning->currency,
                     'status' => $earning->status,
                     'status_label' => ucfirst((string) $earning->status),

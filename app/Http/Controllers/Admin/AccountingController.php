@@ -193,16 +193,6 @@ class AccountingController extends Controller
             $query->whereIn('type', $types);
         }
 
-        if ($scope === 'transactions') {
-            $query->where(function ($inner) {
-                $inner->whereIn('type', ['payment', 'refund'])
-                    ->orWhere(function ($creditQuery) {
-                        $creditQuery->where('type', 'credit')
-                            ->whereNotNull('invoice_id');
-                    });
-            });
-        }
-
         if ($search !== '') {
             $query->where(function ($inner) use ($search) {
                 $inner->where('reference', 'like', '%'.$search.'%')
@@ -230,26 +220,7 @@ class AccountingController extends Controller
 
     private function entriesForScope(string $scope, string $search): Collection
     {
-        $entries = $this->queryEntries($this->scopeTypes($scope), $search, $scope)->get();
-
-        if ($scope === 'transactions') {
-            return $this->deduplicateCreditSettlements($entries);
-        }
-
-        return $entries;
-    }
-
-    private function deduplicateCreditSettlements(Collection $entries): Collection
-    {
-        return $entries->unique(function (AccountingEntry $entry) {
-            if ($entry->type !== 'credit' || ! $entry->invoice_id) {
-                return 'entry:'.$entry->id;
-            }
-
-            $amount = number_format((float) $entry->amount, 2, '.', '');
-
-            return 'credit-settlement:'.$entry->invoice_id.':'.strtoupper((string) $entry->currency).':'.$amount;
-        })->values();
+        return $this->queryEntries($this->scopeTypes($scope), $search, $scope)->get();
     }
 
     private function normalizeScope(string $scope): string
@@ -262,7 +233,7 @@ class AccountingController extends Controller
     private function scopeTypes(string $scope): ?array
     {
         return match ($scope) {
-            'transactions' => ['payment', 'refund', 'credit'],
+            'transactions' => ['payment', 'refund'],
             default => null,
         };
     }
@@ -369,6 +340,73 @@ class AccountingController extends Controller
         string $searchAction
     ): array {
         $dateFormat = config('app.date_format', 'd-m-Y');
+        $entries = $entries->values();
+
+        $runningBalances = [];
+        $balancesByCurrency = [];
+        $entries
+            ->sortBy([
+                ['entry_date', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->each(function (AccountingEntry $entry) use (&$runningBalances, &$balancesByCurrency) {
+                $currency = strtoupper((string) $entry->currency);
+                $amount = (float) $entry->amount;
+                $delta = $entry->isOutflow() ? -$amount : $amount;
+
+                $balancesByCurrency[$currency] = ($balancesByCurrency[$currency] ?? 0) + $delta;
+                $runningBalances[$entry->id] = $balancesByCurrency[$currency];
+            });
+
+        $currencySummary = $entries
+            ->groupBy(function (AccountingEntry $entry) {
+                return strtoupper((string) $entry->currency);
+            })
+            ->map(function (Collection $group, string $currency) {
+                $inflow = (float) $group
+                    ->reject(fn (AccountingEntry $entry) => $entry->isOutflow())
+                    ->sum('amount');
+                $outflow = (float) $group
+                    ->filter(fn (AccountingEntry $entry) => $entry->isOutflow())
+                    ->sum('amount');
+                $net = $inflow - $outflow;
+
+                return [
+                    'currency' => $currency,
+                    'entries_count' => $group->count(),
+                    'inflow_display' => sprintf('%s %s', $currency, number_format($inflow, 2)),
+                    'outflow_display' => sprintf('%s %s', $currency, number_format($outflow, 2)),
+                    'net_display' => sprintf('%s %s', $currency, number_format(abs($net), 2)),
+                    'net_is_negative' => $net < 0,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $summaryTypes = $scope === 'transactions'
+            ? ['payment', 'refund']
+            : self::TYPES;
+
+        $typeSummary = collect($summaryTypes)->map(function (string $type) use ($entries) {
+            $group = $entries->where('type', $type)->values();
+            $currencyTotals = $group
+                ->groupBy(function (AccountingEntry $entry) {
+                    return strtoupper((string) $entry->currency);
+                })
+                ->map(function (Collection $currencyGroup, string $currency) {
+                    return sprintf('%s %s', $currency, number_format((float) $currencyGroup->sum('amount'), 2));
+                })
+                ->values()
+                ->all();
+
+            return [
+                'type' => $type,
+                'label' => ucfirst(str_replace('_', ' ', $type)),
+                'count' => $group->count(),
+                'is_outflow' => in_array($type, ['refund', 'credit', 'expense'], true),
+                'totals' => $currencyTotals,
+            ];
+        })->values()->all();
 
         return [
             'pageTitle' => $pageTitle,
@@ -385,19 +423,39 @@ class AccountingController extends Controller
                     'expense' => route('admin.accounting.create', ['type' => 'expense', 'scope' => $scope, 'search' => $search]),
                 ],
             ],
-            'entries' => $entries->map(function (AccountingEntry $entry) use ($scope, $search, $dateFormat) {
+            'summary' => [
+                'total_entries' => $entries->count(),
+                'inflow_entries' => $entries->reject(fn (AccountingEntry $entry) => $entry->isOutflow())->count(),
+                'outflow_entries' => $entries->filter(fn (AccountingEntry $entry) => $entry->isOutflow())->count(),
+                'latest_entry_date_display' => optional($entries->first()?->entry_date)->format($dateFormat) ?? '--',
+                'currencies' => $currencySummary,
+                'types' => $typeSummary,
+            ],
+            'entries' => $entries->map(function (AccountingEntry $entry) use ($scope, $search, $dateFormat, $runningBalances) {
                 $amount = number_format((float) $entry->amount, 2);
                 $isOutflow = $entry->isOutflow();
+                $currency = strtoupper((string) $entry->currency);
 
                 return [
                     'id' => $entry->id,
+                    'type' => (string) $entry->type,
                     'entry_date_display' => $entry->entry_date?->format($dateFormat) ?? '--',
+                    'entry_date_iso' => $entry->entry_date?->toDateString(),
                     'type_label' => ucfirst((string) $entry->type),
                     'customer_name' => $entry->customer?->name ?? '-',
                     'invoice_label' => $entry->invoice?->number ?? (string) ($entry->invoice?->id ?? '-'),
                     'gateway_name' => $entry->paymentGateway?->name ?? '-',
+                    'description' => (string) ($entry->description ?: '-'),
                     'amount_display' => sprintf('%s%s %s', $isOutflow ? '-' : '+', strtoupper((string) $entry->currency), $amount),
                     'is_outflow' => $isOutflow,
+                    'currency' => $currency,
+                    'amount_value' => (float) $entry->amount,
+                    'running_balance_display' => sprintf(
+                        '%s %s',
+                        $currency,
+                        number_format(abs((float) ($runningBalances[$entry->id] ?? 0)), 2)
+                    ),
+                    'running_balance_is_negative' => ((float) ($runningBalances[$entry->id] ?? 0)) < 0,
                     'reference' => $entry->reference ?: '-',
                     'routes' => [
                         'customer_show' => $entry->customer ? route('admin.customers.show', $entry->customer) : null,

@@ -56,6 +56,7 @@ export default function Index({
                             <table className="min-w-full text-left text-sm text-slate-700">
                                 <thead>
                                     <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                        <th className="px-3 py-2 whitespace-nowrap">ID</th>
                                         <th className="px-3 py-2 whitespace-nowrap">Date</th>
                                         <th className="px-3 py-2">Title & Ref</th>
                                         <th className="px-3 py-2">Category</th>
@@ -70,9 +71,17 @@ export default function Index({
                                     {incomes.length > 0 ? (
                                         incomes.map((income) => (
                                             <tr key={income.key || `${income.title}-${income.income_date_display}-${income.amount_display}`} className="border-t border-slate-100">
+                                                <td className="px-3 py-2 whitespace-nowrap font-semibold text-slate-700">
+                                                    {income.id_display}
+                                                </td>
                                                 <td className="px-3 py-2 whitespace-nowrap">{income.income_date_display}</td>
                                                 <td className="px-3 py-2">
                                                     <div className="font-semibold text-slate-900">{income.title}</div>
+                                                    {income.invoice_number && income.source_label === 'System' ? (
+                                                        <div className="text-xs font-semibold text-teal-600">
+                                                            Invoice #{income.invoice_number}
+                                                        </div>
+                                                    ) : null}
                                                     {income.notes ? (
                                                         <div className="text-xs text-slate-500">{income.notes}</div>
                                                     ) : null}
@@ -99,7 +108,7 @@ export default function Index({
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={8} className="px-3 py-4 text-center text-slate-500">
+                                            <td colSpan={9} className="px-3 py-4 text-center text-slate-500">
                                                 No income found.
                                             </td>
                                         </tr>
