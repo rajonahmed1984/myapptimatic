@@ -19,6 +19,12 @@ class DashboardController extends Controller
 {
     public function __invoke(EmployeeWorkSummaryService $workSummaryService): InertiaResponse
     {
+        $today = today();
+        $todayDate = $today->toDateString();
+        $monthStart = now()->startOfMonth()->toDateString();
+        $monthEnd = now()->endOfMonth()->toDateString();
+        $trendStart = $today->copy()->subDays(13)->toDateString();
+
         $activeEmployees = Employee::query()->where('status', 'active')->count();
         $activeFullTimeEmployees = Employee::query()
             ->where('status', 'active')
@@ -27,21 +33,17 @@ class DashboardController extends Controller
 
         $onLeaveToday = LeaveRequest::query()
             ->where('status', 'approved')
-            ->whereDate('start_date', '<=', today())
-            ->whereDate('end_date', '>=', today())
+            ->whereDate('start_date', '<=', $todayDate)
+            ->whereDate('end_date', '>=', $todayDate)
             ->distinct('employee_id')
             ->count('employee_id');
 
         $pendingLeaveRequests = LeaveRequest::query()->where('status', 'pending')->count();
 
-        $today = today()->toDateString();
         $attendanceMarkedToday = EmployeeAttendance::query()
-            ->whereDate('date', $today)
+            ->whereDate('date', $todayDate)
             ->count();
         $attendanceMissingToday = max(0, $activeFullTimeEmployees - $attendanceMarkedToday);
-
-        $monthStart = now()->startOfMonth()->toDateString();
-        $monthEnd = now()->endOfMonth()->toDateString();
 
         $workLogsThisMonth = EmployeeWorkSession::query()
             ->whereBetween('work_date', [$monthStart, $monthEnd])
@@ -66,11 +68,115 @@ class DashboardController extends Controller
         })->count();
 
         $draftPeriods = PayrollPeriod::query()->where('status', 'draft')->count();
-        $payrollToPay = PayrollItem::query()->where('status', 'approved')->count();
+        $finalizedPeriods = PayrollPeriod::query()->where('status', 'finalized')->count();
+        $paidPeriods = PayrollPeriod::query()->where('status', 'paid')->count();
+
+        $payrollToPay = PayrollItem::query()->whereIn('status', ['approved', 'partial'])->count();
+        $paidPayrollItems = PayrollItem::query()->where('status', 'paid')->count();
         $paidHolidaysThisMonth = PaidHoliday::query()
             ->where('is_paid', true)
             ->whereBetween('holiday_date', [$monthStart, $monthEnd])
             ->count();
+
+        $leaveStatusSummaryRaw = LeaveRequest::query()
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->get();
+        $leaveSummary = [
+            'pending' => (int) ($leaveStatusSummaryRaw->firstWhere('status', 'pending')->total ?? 0),
+            'approved' => (int) ($leaveStatusSummaryRaw->firstWhere('status', 'approved')->total ?? 0),
+            'rejected' => (int) ($leaveStatusSummaryRaw->firstWhere('status', 'rejected')->total ?? 0),
+        ];
+
+        $employmentMix = Employee::query()
+            ->where('status', 'active')
+            ->selectRaw('COALESCE(employment_type, "unknown") as type_key, COUNT(*) as total')
+            ->groupBy('employment_type')
+            ->get()
+            ->map(fn ($row) => [
+                'key' => (string) ($row->type_key ?? 'unknown'),
+                'label' => ucfirst(str_replace('_', ' ', (string) ($row->type_key ?? 'unknown'))),
+                'total' => (int) ($row->total ?? 0),
+            ])
+            ->values();
+
+        $workModeMix = Employee::query()
+            ->where('status', 'active')
+            ->selectRaw('COALESCE(work_mode, "unknown") as mode_key, COUNT(*) as total')
+            ->groupBy('work_mode')
+            ->get()
+            ->map(fn ($row) => [
+                'key' => (string) ($row->mode_key ?? 'unknown'),
+                'label' => ucfirst(str_replace('_', ' ', (string) ($row->mode_key ?? 'unknown'))),
+                'total' => (int) ($row->total ?? 0),
+            ])
+            ->values();
+
+        $attendanceTrendRaw = EmployeeAttendance::query()
+            ->whereBetween('date', [$trendStart, $todayDate])
+            ->selectRaw('date, COUNT(DISTINCT employee_id) as marked')
+            ->groupBy('date')
+            ->get()
+            ->mapWithKeys(fn ($row) => [Carbon::parse((string) $row->date)->toDateString() => (int) ($row->marked ?? 0)]);
+
+        $workTrendRaw = EmployeeWorkSession::query()
+            ->whereBetween('work_date', [$trendStart, $todayDate])
+            ->selectRaw('work_date, COUNT(DISTINCT employee_id) as logged_employees, SUM(active_seconds) as active_seconds')
+            ->groupBy('work_date')
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                Carbon::parse((string) $row->work_date)->toDateString() => [
+                    'logged_employees' => (int) ($row->logged_employees ?? 0),
+                    'active_seconds' => (int) ($row->active_seconds ?? 0),
+                ],
+            ]);
+
+        $attendanceTrend = collect(range(13, 0))
+            ->map(function (int $daysBack) use ($today, $attendanceTrendRaw, $activeFullTimeEmployees) {
+                $date = $today->copy()->subDays($daysBack);
+                $dateKey = $date->toDateString();
+                $marked = (int) ($attendanceTrendRaw[$dateKey] ?? 0);
+                $missing = max(0, $activeFullTimeEmployees - $marked);
+                $coveragePercent = $activeFullTimeEmployees > 0
+                    ? round(($marked / $activeFullTimeEmployees) * 100, 1)
+                    : 0.0;
+
+                return [
+                    'date' => $dateKey,
+                    'label' => $date->format('d M'),
+                    'marked' => $marked,
+                    'missing' => $missing,
+                    'coverage_percent' => $coveragePercent,
+                ];
+            })
+            ->values();
+
+        $workTrend = collect(range(13, 0))
+            ->map(function (int $daysBack) use ($today, $workTrendRaw) {
+                $date = $today->copy()->subDays($daysBack);
+                $dateKey = $date->toDateString();
+                $row = $workTrendRaw[$dateKey] ?? ['logged_employees' => 0, 'active_seconds' => 0];
+                $activeHours = round(((int) ($row['active_seconds'] ?? 0)) / 3600, 2);
+
+                return [
+                    'date' => $dateKey,
+                    'label' => $date->format('d M'),
+                    'logged_employees' => (int) ($row['logged_employees'] ?? 0),
+                    'active_hours' => $activeHours,
+                ];
+            })
+            ->values();
+
+        $attendanceCoverageToday = $activeFullTimeEmployees > 0
+            ? round(($attendanceMarkedToday / $activeFullTimeEmployees) * 100, 1)
+            : 0.0;
+        $onTargetRateThisMonth = $workLogDaysThisMonth > 0
+            ? round(($onTargetDaysThisMonth / $workLogDaysThisMonth) * 100, 1)
+            : 0.0;
+        $leavePressure = $activeEmployees > 0
+            ? round(($onLeaveToday / $activeEmployees) * 100, 1)
+            : 0.0;
+        $payrollPressure = max(0, $payrollToPay - $paidPayrollItems);
 
         $recentWorkLogs = EmployeeWorkSession::query()
             ->with('employee')
@@ -102,9 +208,21 @@ class DashboardController extends Controller
             'attendanceMissingToday' => $attendanceMissingToday,
             'workLogDaysThisMonth' => $workLogDaysThisMonth,
             'onTargetDaysThisMonth' => $onTargetDaysThisMonth,
+            'onTargetRateThisMonth' => $onTargetRateThisMonth,
             'paidHolidaysThisMonth' => $paidHolidaysThisMonth,
             'draftPeriods' => $draftPeriods,
+            'finalizedPeriods' => $finalizedPeriods,
+            'paidPeriods' => $paidPeriods,
             'payrollToPay' => $payrollToPay,
+            'paidPayrollItems' => $paidPayrollItems,
+            'attendanceCoverageToday' => $attendanceCoverageToday,
+            'leavePressure' => $leavePressure,
+            'payrollPressure' => $payrollPressure,
+            'leaveSummary' => $leaveSummary,
+            'employmentMix' => $employmentMix,
+            'workModeMix' => $workModeMix,
+            'attendanceTrend' => $attendanceTrend,
+            'workTrend' => $workTrend,
             'recentWorkLogs' => $recentWorkLogs->map(fn (EmployeeWorkSession $log) => [
                 'employee_name' => $log->employee?->name ?? '--',
                 'work_date' => $log->work_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',

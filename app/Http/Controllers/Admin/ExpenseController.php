@@ -425,7 +425,11 @@ class ExpenseController extends Controller
 
                 return [
                     'key' => (string) data_get($entry, 'key', ''),
+                    'id_display' => $sourceId !== null && $sourceId !== ''
+                        ? (string) $sourceId
+                        : '--',
                     'invoice_no' => (string) (data_get($entry, 'invoice_no') ?: '--'),
+                    'invoice_number' => (string) (data_get($entry, 'invoice_no') ?: ''),
                     'expense_date_display' => $this->formatEntryDate(data_get($entry, 'expense_date'), $globalDateFormat),
                     'title' => (string) data_get($entry, 'title', '--'),
                     'notes' => (string) (data_get($entry, 'notes') ?: ''),

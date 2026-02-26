@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
-import { formatTimeInTimeZone } from '@/react/utils/datetime';
-
-const metricBadgeClass = (okClass, warningClass, value) => (value ? okClass : warningClass);
 
 const enabledActions = (actions) => (Array.isArray(actions) ? actions.filter((action) => action?.enabled) : []);
+
+const metricTone = (okValue, ok = 'bg-emerald-100 text-emerald-700', warn = 'bg-amber-100 text-amber-700') => (
+    okValue ? ok : warn
+);
 
 export default function Index({
     pageTitle = 'Automation Status',
@@ -19,38 +20,38 @@ export default function Index({
     lastCompletionAt = 'Not yet completed',
     nextDailyRunText = 'Not scheduled',
     nextDailyRunAt = 'No historical run',
-    cronStatusLabel = 'Never',
-    cronStatusClasses = 'bg-slate-100 text-slate-600',
     portalTimeZone = 'UTC',
-    portalTimeLabel = '',
+    portalTimeLabel = '--',
     cronSetup = false,
     cronInvoked = false,
     dailyCronRun = false,
     dailyCronCompleting = false,
     cronInvocationWindowHours = 24,
     dailyCronWindowHours = 24,
-    cronUrl = '',
     aiHealth = {},
     dailyActions = [],
 }) {
-    const [portalTime, setPortalTime] = useState(portalTimeLabel);
     const visibleActions = useMemo(() => enabledActions(dailyActions), [dailyActions]);
 
-    useEffect(() => {
-        const updateTime = () => {
-            const now = new Date();
-            const base = formatTimeInTimeZone(now, portalTimeZone || 'UTC', '--');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            setPortalTime(base === '--' ? '--' : `${base}:${seconds}`);
-        };
+    const actionRows = useMemo(() => {
+        return visibleActions
+            .map((action) => {
+                const stats = Array.isArray(action?.stats) ? action.stats : [];
+                const total = stats.reduce((carry, stat) => carry + Number(stat?.value || 0), 0);
+                const detail = stats
+                    .filter((stat) => Number(stat?.value || 0) > 0)
+                    .map((stat) => `${stat.label}: ${stat.value}`)
+                    .join(', ');
 
-        updateTime();
-        const intervalId = window.setInterval(updateTime, 1000);
-
-        return () => {
-            window.clearInterval(intervalId);
-        };
-    }, [portalTimeZone]);
+                return {
+                    label: action?.label || 'Action',
+                    total,
+                    detail,
+                };
+            })
+            .filter((row) => row.total > 0)
+            .sort((a, b) => b.total - a.total);
+    }, [visibleActions]);
 
     return (
         <>
@@ -60,9 +61,7 @@ export default function Index({
                 <div>
                     <div className="section-label">Automation</div>
                     <h1 className="mt-2 text-2xl font-semibold text-slate-900">Automation Status</h1>
-                    <p className="mt-2 text-sm text-slate-600">
-                        Live status for billing cron, queue health, and daily automation actions.
-                    </p>
+                    <p className="mt-2 text-sm text-slate-600">Clean live summary for daily automation and cron execution health.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses}`}>{statusLabel}</span>
@@ -71,36 +70,15 @@ export default function Index({
                         data-native="true"
                         className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
                     >
-                        Cron settings
+                        Automation settings
                     </a>
                 </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-4">
-                <div className="card p-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Last Invocation</div>
-                    <div className="mt-2 text-xl font-semibold text-slate-900">{lastInvocationText}</div>
-                    <div className="text-xs text-slate-500">{lastInvocationAt}</div>
-                </div>
-                <div className="card p-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Last Completion</div>
-                    <div className="mt-2 text-xl font-semibold text-slate-900">{lastCompletionText}</div>
-                    <div className="text-xs text-slate-500">{lastCompletionAt}</div>
-                </div>
-                <div className="card p-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Next Daily Run</div>
-                    <div className="mt-2 text-xl font-semibold text-slate-900">{nextDailyRunText}</div>
-                    <div className="text-xs text-slate-500">{nextDailyRunAt}</div>
-                </div>
-                <div className="card p-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Last Status</div>
-                    <div className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${cronStatusClasses}`}>
-                        {cronStatusLabel}
-                    </div>
-                    <div className="mt-2 text-xs text-slate-500">
-                        Portal time: <span>{portalTime}</span>
-                    </div>
-                </div>
+            <div className="grid gap-4 md:grid-cols-3">
+                <SummaryCard title="Last Completion" primary={lastCompletionText} secondary={lastCompletionAt} />
+                <SummaryCard title="Last Invocation" primary={lastInvocationText} secondary={lastInvocationAt} />
+                <SummaryCard title="Next Daily Run" primary={nextDailyRunText} secondary={nextDailyRunAt} />
             </div>
 
             {lastStatus === 'failed' && lastError ? (
@@ -110,135 +88,133 @@ export default function Index({
                 </div>
             ) : null}
 
-            <div className="mt-6 grid gap-6 lg:grid-cols-2">
-                <div className="card p-6">
+            <div className="mt-6 grid gap-6 xl:grid-cols-3">
+                <div className="card p-6 xl:col-span-2">
                     <div className="section-label">Cron Health</div>
-                    <div className="mt-4 grid gap-3">
-                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <div>
-                                <div className="text-sm font-semibold text-slate-900">Cron Setup</div>
-                                <div className="text-xs text-slate-500">Token configured</div>
-                            </div>
-                            <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${metricBadgeClass(
-                                    'bg-emerald-100 text-emerald-700',
-                                    'bg-rose-100 text-rose-700',
-                                    cronSetup,
-                                )}`}
-                            >
-                                {cronSetup ? 'Ok' : 'Error'}
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <div>
-                                <div className="text-sm font-semibold text-slate-900">Invocation Window</div>
-                                <div className="text-xs text-slate-500">Within {cronInvocationWindowHours} hours</div>
-                            </div>
-                            <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${metricBadgeClass(
-                                    'bg-emerald-100 text-emerald-700',
-                                    'bg-amber-100 text-amber-700',
-                                    cronInvoked,
-                                )}`}
-                            >
-                                {cronInvoked ? 'Ok' : 'Warning'}
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <div>
-                                <div className="text-sm font-semibold text-slate-900">Daily Run</div>
-                                <div className="text-xs text-slate-500">Within {dailyCronWindowHours} hours</div>
-                            </div>
-                            <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${metricBadgeClass(
-                                    'bg-emerald-100 text-emerald-700',
-                                    'bg-amber-100 text-amber-700',
-                                    dailyCronRun,
-                                )}`}
-                            >
-                                {dailyCronRun ? 'Ok' : 'Warning'}
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <div>
-                                <div className="text-sm font-semibold text-slate-900">Completion State</div>
-                                <div className="text-xs text-slate-500">Last cron run completion</div>
-                            </div>
-                            <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                    dailyCronCompleting
-                                        ? 'bg-emerald-100 text-emerald-700'
-                                        : lastStatus === 'failed'
-                                          ? 'bg-rose-100 text-rose-700'
-                                          : 'bg-slate-100 text-slate-600'
-                                }`}
-                            >
-                                {dailyCronCompleting ? 'Ok' : lastStatus === 'failed' ? 'Error' : 'Pending'}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="mt-5">
-                        <label className="text-sm text-slate-600">Secure cron URL</label>
-                        <input
-                            value={cronUrl || ''}
-                            readOnly
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        <HealthRow
+                            title="Cron token setup"
+                            note="Automation token configured"
+                            ok={cronSetup}
+                            okText="Ready"
+                            warnText="Missing"
+                            warnClasses="bg-rose-100 text-rose-700"
+                        />
+                        <HealthRow
+                            title="Invocation window"
+                            note={`Triggered within ${cronInvocationWindowHours} hours`}
+                            ok={cronInvoked}
+                            okText="On track"
+                            warnText="Delayed"
+                        />
+                        <HealthRow
+                            title="Daily run window"
+                            note={`Executed within ${dailyCronWindowHours} hours`}
+                            ok={dailyCronRun}
+                            okText="On track"
+                            warnText="Delayed"
+                        />
+                        <HealthRow
+                            title="Completion state"
+                            note="Last run completion result"
+                            ok={dailyCronCompleting}
+                            okText="Completed"
+                            warnText={lastStatus === 'failed' ? 'Failed' : 'Pending'}
+                            warnClasses={lastStatus === 'failed' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}
                         />
                     </div>
                 </div>
 
                 <div className="card p-6">
-                    <div className="section-label">AI Queue</div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">AI Enabled</div>
-                            <div className="mt-1 font-semibold text-slate-900">{aiHealth?.enabled ? 'Yes' : 'No'}</div>
+                    <div className="section-label">AI Monitor</div>
+                    <div className="mt-4 space-y-3">
+                        <InfoRow label="AI status" value={aiHealth?.status_label || 'Unknown'} classes={aiHealth?.status_classes || 'bg-slate-100 text-slate-600'} />
+                        <InfoRow label="AI enabled" value={aiHealth?.enabled ? 'Yes' : 'No'} />
+                        <InfoRow label="Risk module" value={aiHealth?.risk_enabled ? 'On' : 'Off'} />
+                        <InfoRow label="Queue pending" value={aiHealth?.queue_pending ?? 0} />
+                        <InfoRow label="Queue failed" value={aiHealth?.queue_failed ?? 0} valueClasses={(aiHealth?.queue_failed ?? 0) > 0 ? 'text-rose-600' : 'text-slate-900'} />
+                        <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                            Portal time ({portalTimeZone}): <span className="whitespace-nowrap font-semibold text-slate-700">{portalTimeLabel}</span>
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Risk Module</div>
-                            <div className="mt-1 font-semibold text-slate-900">{aiHealth?.risk_enabled ? 'On' : 'Off'}</div>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Pending Jobs</div>
-                            <div className="mt-1 font-semibold text-slate-900">{aiHealth?.queue_pending ?? 0}</div>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Failed Jobs</div>
-                            <div className={`mt-1 font-semibold ${(aiHealth?.queue_failed ?? 0) > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-                                {aiHealth?.queue_failed ?? 0}
-                            </div>
-                        </div>
-                    </div>
-                    <div className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${aiHealth?.status_classes || ''}`}>
-                        {aiHealth?.status_label || 'Unknown'}
                     </div>
                 </div>
             </div>
 
             <div className="mt-6 card p-6">
-                <div className="section-label">Daily Actions (Last Run)</div>
-                <div className="mt-1 text-sm text-slate-500">Only enabled modules are shown.</div>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {visibleActions.length > 0 ? (
-                        visibleActions.map((action) => (
-                            <div key={action.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-                                <div className="text-sm font-semibold text-slate-900">{action.label}</div>
-                                <div className="mt-3 space-y-2">
-                                    {(action.stats || []).map((stat) => (
-                                        <div key={`${action.label}-${stat.label}`} className="flex items-center justify-between text-sm">
-                                            <span className="text-slate-500">{stat.label}</span>
-                                            <span className="font-semibold text-slate-900">{stat.value}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="text-sm text-slate-500">No enabled automation actions found.</div>
-                    )}
-                </div>
+                <div className="section-label">Action Results (Last Run)</div>
+                <div className="mt-1 text-sm text-slate-500">Only actions with real output are shown.</div>
+
+                {actionRows.length > 0 ? (
+                    <div className="mt-4 overflow-x-auto">
+                        <table className="min-w-full text-sm text-slate-700">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    <th className="px-3 py-2">Action</th>
+                                    <th className="px-3 py-2">Details</th>
+                                    <th className="px-3 py-2 text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {actionRows.map((row) => (
+                                    <tr key={row.label} className="border-b border-slate-100">
+                                        <td className="px-3 py-2 font-semibold text-slate-900">{row.label}</td>
+                                        <td className="px-3 py-2 text-slate-600">{row.detail || '--'}</td>
+                                        <td className="px-3 py-2 text-right font-semibold tabular-nums text-slate-900">{row.total}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                        No action output found in the last run.
+                    </div>
+                )}
             </div>
         </>
     );
 }
+
+function SummaryCard({ title, primary, secondary }) {
+    return (
+        <div className="card p-4">
+            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</div>
+            <div className="mt-2 whitespace-nowrap text-xl font-semibold text-slate-900">{primary}</div>
+            <div className="whitespace-nowrap text-xs text-slate-500">{secondary}</div>
+        </div>
+    );
+}
+
+function HealthRow({ title, note, ok, okText, warnText, warnClasses = 'bg-amber-100 text-amber-700' }) {
+    const classes = ok ? metricTone(true) : warnClasses;
+    return (
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div>
+                <div className="text-sm font-semibold text-slate-900">{title}</div>
+                <div className="text-xs text-slate-500">{note}</div>
+            </div>
+            <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${ok ? metricTone(true) : classes}`}>
+                {ok ? okText : warnText}
+            </span>
+        </div>
+    );
+}
+
+function InfoRow({ label, value, classes = '', valueClasses = 'text-slate-900' }) {
+    if (classes) {
+        return (
+            <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2">
+                <span className="text-sm text-slate-600">{label}</span>
+                <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${classes}`}>{value}</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2">
+            <span className="text-sm text-slate-600">{label}</span>
+            <span className={`whitespace-nowrap text-sm font-semibold tabular-nums ${valueClasses}`}>{value}</span>
+        </div>
+    );
+}
+

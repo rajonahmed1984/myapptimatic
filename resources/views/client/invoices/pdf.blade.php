@@ -25,11 +25,11 @@
         .invoice-container .invoice-grid > .invoice-col { display: table-cell; width: 50%; vertical-align: top; }
         .invoice-container .invoice-col { width: 50%; padding: 0 15px; }
         .invoice-container .invoice-col.full { width: 100%; }
-        .invoice-container .logo-wrap { display: flex; align-items: center; }
+        .invoice-container .logo-wrap { display: flex; align-items: flex-start; }
         .invoice-container .invoice-logo { width: 300px; max-width: 100%; height: auto; }
         .invoice-container .invoice-logo-fallback { font-size: 54px; font-weight: 800; color: #211f75; letter-spacing: -1px; line-height: 1; }
         .invoice-container .invoice-col.right { text-align: right; }
-        .invoice-container .invoice-status { margin: 20px 0 0; font-size: 24px; font-weight: bold; }
+        .invoice-container .invoice-status { margin: 0; font-size: 24px; font-weight: bold; }
         .invoice-container .invoice-status h3 { margin: 0; font-size: 18px; font-weight: 600; }
         .invoice-container .invoice-status .small-text { font-size: 0.92em; }
         .invoice-container hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }

@@ -24,8 +24,11 @@ class ExpenseEntryService
         $personType = $filters['person_type'] ?? null;
         $personId = $filters['person_id'] ?? null;
 
-        $startDate = $filters['start_date'] ? Carbon::parse($filters['start_date'])->startOfDay() : null;
-        $endDate = $filters['end_date'] ? Carbon::parse($filters['end_date'])->endOfDay() : null;
+        $startDateInput = $filters['start_date'] ?? null;
+        $endDateInput = $filters['end_date'] ?? null;
+
+        $startDate = $startDateInput ? Carbon::parse($startDateInput)->startOfDay() : null;
+        $endDate = $endDateInput ? Carbon::parse($endDateInput)->endOfDay() : null;
 
         $entries = collect();
 

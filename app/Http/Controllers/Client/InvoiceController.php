@@ -117,6 +117,7 @@ class InvoiceController extends Controller
             ],
             'company' => [
                 'name' => $portalBranding['company_name'] ?? config('app.name', 'Apptimatic'),
+                'logo_url' => $portalBranding['logo_url'] ?? null,
                 'email' => Setting::getValue('company_email') ?: 'support@example.com',
                 'pay_to' => Setting::getValue('pay_to_text') ?: 'Billing Department',
             ],

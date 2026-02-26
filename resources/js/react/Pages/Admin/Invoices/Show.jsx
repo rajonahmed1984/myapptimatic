@@ -22,6 +22,13 @@ export default function Show({
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
     const [manageOpen, setManageOpen] = React.useState(false);
+    const [newItemRows, setNewItemRows] = React.useState([0]);
+    const [newItemSeed, setNewItemSeed] = React.useState(1);
+
+    const addNewItemRow = () => {
+        setNewItemRows((rows) => [...rows, newItemSeed]);
+        setNewItemSeed((seed) => seed + 1);
+    };
 
     return (
         <>
@@ -68,29 +75,40 @@ export default function Show({
                 <div className="card p-6 space-y-6">
                     <div className="invoice-container">
                         <div className="flex flex-wrap items-start justify-between gap-6">
-                            <div>
+                            <div className="flex min-h-[84px] items-center">
+                                {invoice.company?.logo_url ? (
+                                    <img
+                                        src={invoice.company.logo_url}
+                                        alt={`${invoice.company?.name || 'Company'} logo`}
+                                        className="h-auto max-h-16 w-auto max-w-[260px] object-contain"
+                                    />
+                                ) : (
+                                    <div className="text-2xl font-extrabold tracking-tight text-slate-900">{invoice.company?.name || 'Company'}</div>
+                                )}
+                            </div>
+                            <div className="text-left sm:text-right">
                                 <div className="text-xl font-semibold text-slate-900">#{invoice.number_display}</div>
                                 <div className={`mt-2 text-lg font-semibold ${statusTextClass(invoice.status)}`}>{invoice.status_label}</div>
                                 <div className="mt-2 text-sm text-slate-500">Invoice Date: {invoice.issue_date_display}</div>
                                 <div className="text-sm text-slate-500">Invoice Due Date: {invoice.due_date_display}</div>
                                 {invoice.paid_at_display ? <div className="text-sm text-slate-500">Paid Date: {invoice.paid_at_display}</div> : null}
                             </div>
-                            <div className="text-right">
-                                <div className="text-sm font-semibold text-slate-900">Pay To</div>
-                                <div className="text-sm text-slate-600">{invoice.company?.name}</div>
-                                <div className="text-sm text-slate-600">{invoice.company?.pay_to_text}</div>
-                                <div className="text-sm text-slate-600">{invoice.company?.email}</div>
-                            </div>
                         </div>
 
                         <hr className="my-5 border-slate-200" />
 
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-6 md:grid-cols-2">
                             <div>
                                 <div className="text-sm font-semibold text-slate-900">Invoiced To</div>
                                 <div className="mt-2 text-sm text-slate-600">{invoice.customer?.name}</div>
                                 <div className="text-sm text-slate-600">{invoice.customer?.email}</div>
                                 <div className="text-sm text-slate-600">{invoice.customer?.address}</div>
+                            </div>
+                            <div className="md:text-right">
+                                <div className="text-sm font-semibold text-slate-900">Pay To</div>
+                                <div className="mt-2 text-sm text-slate-600">{invoice.company?.name}</div>
+                                <div className="text-sm text-slate-600">{invoice.company?.pay_to_text}</div>
+                                <div className="text-sm text-slate-600">{invoice.company?.email}</div>
                             </div>
                         </div>
 
@@ -185,6 +203,61 @@ export default function Show({
                                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
                                     />
                                     <p className="mt-2 text-xs text-slate-500">Use Recalculate to update totals after changing dates.</p>
+                                </div>
+                                <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                                    <div className="mb-3 text-sm font-semibold text-slate-800">Line items</div>
+                                    <div className="space-y-3">
+                                        {(invoice.items || []).map((item) => (
+                                            <div key={item.id} className="grid gap-2 md:grid-cols-[1fr_180px]">
+                                                <input
+                                                    name={`items[${item.id}][description]`}
+                                                    defaultValue={item.description}
+                                                    placeholder="Description"
+                                                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                                />
+                                                <input
+                                                    name={`items[${item.id}][amount]`}
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    defaultValue={item.line_total_value}
+                                                    placeholder="Amount"
+                                                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4">
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <div className="text-sm font-semibold text-slate-800">Add custom line item</div>
+                                        <button
+                                            type="button"
+                                            onClick={addNewItemRow}
+                                            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                        >
+                                            Add line
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {newItemRows.map((rowKey) => (
+                                            <div key={rowKey} className="grid gap-2 md:grid-cols-[1fr_180px]">
+                                                <input
+                                                    name={`new_items[${rowKey}][description]`}
+                                                    placeholder="Custom description"
+                                                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                                />
+                                                <input
+                                                    name={`new_items[${rowKey}][amount]`}
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    placeholder="Amount"
+                                                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                                 <div className="md:col-span-2 flex justify-end">
                                     <button type="submit" className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white">

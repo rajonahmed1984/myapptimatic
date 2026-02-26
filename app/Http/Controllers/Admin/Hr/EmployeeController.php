@@ -27,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -37,7 +38,7 @@ class EmployeeController extends Controller
     public function index(): InertiaResponse
     {
         $employees = Employee::query()
-            ->with('manager')
+            ->with(['manager', 'user:id,avatar_path'])
             ->orderByDesc('id')
             ->paginate(20);
 
@@ -52,9 +53,11 @@ class EmployeeController extends Controller
                 $loginLabel = 'Login';
                 $loginClasses = 'border-emerald-200 text-emerald-700 bg-emerald-50';
                 $lastLoginAt = $lastLoginByEmployee[$employee->id] ?? null;
+                $photoPath = $employee->photo_path ?: $employee->user?->avatar_path;
 
                 return [
                     'id' => $employee->id,
+                    'photo_url' => $this->publicFileUrl($photoPath),
                     'name' => $employee->name,
                     'email' => $employee->email,
                     'designation' => $employee->designation ?? '--',
@@ -83,6 +86,25 @@ class EmployeeController extends Controller
                 'create' => route('admin.hr.employees.create'),
             ],
         ]);
+    }
+
+    private function publicFileUrl(?string $path): ?string
+    {
+        if (! is_string($path) || trim($path) === '') {
+            return null;
+        }
+
+        $trimmedPath = trim($path);
+        if (Str::startsWith($trimmedPath, ['http://', 'https://'])) {
+            return $trimmedPath;
+        }
+
+        $normalizedPath = ltrim($trimmedPath, '/');
+        if (Str::startsWith($normalizedPath, 'storage/')) {
+            return asset($normalizedPath);
+        }
+
+        return Storage::disk('public')->url($normalizedPath);
     }
 
     public function create(): InertiaResponse

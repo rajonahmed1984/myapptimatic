@@ -79,6 +79,9 @@ export default function Show({
         [paymentMethods],
     );
     const advanceBalance = Number(stats?.advance_balance ?? 0);
+    const invoiceRows = invoices?.data ?? [];
+    const advanceRows = advances?.data ?? [];
+    const hasNoRecurringActivity = invoiceRows.length === 0 && advanceRows.length === 0;
 
     useEffect(() => {
         if (!paymentModal.open) {
@@ -187,6 +190,15 @@ export default function Show({
                 </div>
             </div>
 
+            {hasNoRecurringActivity ? (
+                <div className="card mt-4 border border-amber-200 bg-amber-50/70 p-4">
+                    <div className="text-sm font-semibold text-amber-800">No generated records yet</div>
+                    <div className="mt-1 text-sm text-amber-700">
+                        This recurring expense does not have any generated invoice or advance payment yet.
+                    </div>
+                </div>
+            ) : null}
+
             <div className="mt-6 overflow-hidden">
                 <div className="mb-2 section-label">Advance Details</div>
                 <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white/80 px-3 py-3">
@@ -202,8 +214,8 @@ export default function Show({
                             </tr>
                         </thead>
                         <tbody>
-                            {(advances.data ?? []).length > 0 ? (
-                                advances.data.map((advance) => (
+                            {advanceRows.length > 0 ? (
+                                advanceRows.map((advance) => (
                                     <tr key={advance.id} className="border-b border-slate-100">
                                         <td className="px-3 py-2">{advance.paid_at_display}</td>
                                         <td className="px-3 py-2">{advance.payment_method}</td>
@@ -243,8 +255,8 @@ export default function Show({
                             </tr>
                         </thead>
                         <tbody>
-                            {(invoices.data ?? []).length > 0 ? (
-                                invoices.data.map((invoice) => (
+                            {invoiceRows.length > 0 ? (
+                                invoiceRows.map((invoice) => (
                                     <tr key={invoice.id} className="border-b border-slate-100">
                                         <td className="px-3 py-2 font-semibold text-slate-700">#{invoice.id}</td>
                                         <td className="px-3 py-2 font-semibold text-slate-900">{invoice.invoice_no}</td>

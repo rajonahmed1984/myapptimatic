@@ -10,7 +10,8 @@ use App\Models\User;
 use App\Models\UserActivityDaily;
 use App\Models\UserSession;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -40,20 +41,8 @@ class UserActivitySummaryController extends Controller
         $fromDate = $from ? \Carbon\Carbon::parse($from)->startOfDay() : null;
         $toDate = $to ? \Carbon\Carbon::parse($to)->endOfDay() : null;
 
-        // Generate cache key based on filters
-        $cacheKey = md5(json_encode([
-            'type' => $type,
-            'from' => $from,
-            'to' => $to,
-            'user_id' => $userId,
-        ]));
-
-        // Try to get from cache first (60 seconds)
-        $payload = Cache::get("user_activity_summary:{$cacheKey}");
-        if (! is_array($payload)) {
-            $payload = $this->buildSummaryData($type, $fromDate, $toDate, $userId);
-            Cache::put("user_activity_summary:{$cacheKey}", $payload, now()->addSeconds(60));
-        }
+        // Always fetch live data so summary never appears static/stale.
+        $payload = $this->buildSummaryData($type, $fromDate, $toDate, $userId);
 
         return Inertia::render(
             'Admin/Users/ActivitySummary/Index',
@@ -116,7 +105,10 @@ class UserActivitySummaryController extends Controller
 
         // Get customers (if no specific user filter or if the userId matches a customer)
         if (! $userId) {
-            $customers = User::where('role', Role::CLIENT)->with('customer:id,avatar_path')->get();
+            $customers = User::where('role', Role::CLIENT)
+                ->whereNotNull('customer_id')
+                ->with('customer:id,avatar_path')
+                ->get();
             $customerPrepared = $this->buildPreparedMetrics($customers, 'web', $today, $weekStart, $monthStart, $fromDate, $toDate);
             foreach ($customers as $user) {
                 $users[] = $this->getUserMetrics(
@@ -185,7 +177,10 @@ class UserActivitySummaryController extends Controller
         // Get all user options for dropdown
         $userOptions = [];
         $userOptions += Employee::where('status', 'active')->pluck('name', 'id')->toArray();
-        $userOptions += User::where('role', Role::CLIENT)->pluck('name', 'id')->toArray();
+        $userOptions += User::where('role', Role::CLIENT)
+            ->whereNotNull('customer_id')
+            ->pluck('name', 'id')
+            ->toArray();
         $userOptions += User::whereIn('role', Role::adminRoles())->pluck('name', 'id')->toArray();
 
         return [
@@ -249,7 +244,9 @@ class UserActivitySummaryController extends Controller
     private function getCustomerSummary($today, $weekStart, $monthStart, $fromDate, $toDate, $userId): array
     {
         // Customers are tracked via User model with role 'client'
-        $users = User::where('role', Role::CLIENT)->with('customer:id,avatar_path');
+        $users = User::where('role', Role::CLIENT)
+            ->whereNotNull('customer_id')
+            ->with('customer:id,avatar_path');
         if ($userId) {
             $users = $users->where('id', $userId);
         }
@@ -280,7 +277,9 @@ class UserActivitySummaryController extends Controller
                 'from' => $fromDate?->toDateString(),
                 'to' => $toDate?->toDateString(),
             ],
-            'userOptions' => User::where('role', Role::CLIENT)->pluck('name', 'id'),
+            'userOptions' => User::where('role', Role::CLIENT)
+                ->whereNotNull('customer_id')
+                ->pluck('name', 'id'),
             'showRange' => $fromDate && $toDate,
         ];
     }
@@ -498,7 +497,9 @@ class UserActivitySummaryController extends Controller
                 'name' => is_object($user) ? (string) ($user->name ?? '') : '',
                 'email' => is_object($user) ? (string) ($user->email ?? '--') : '--',
                 'avatar_path' => $this->resolveAvatarPath($user),
+                'avatar_url' => $this->resolveAvatarUrl($this->resolveAvatarPath($user)),
             ],
+            'type' => (string) data_get($row, 'type', 'unknown'),
             'is_online' => (bool) data_get($row, 'is_online', false),
             'today' => [
                 'sessions_count' => (int) data_get($row, 'today.sessions_count', 0),
@@ -540,6 +541,25 @@ class UserActivitySummaryController extends Controller
         }
 
         return $user->avatar_path ?? null;
+    }
+
+    private function resolveAvatarUrl(?string $path): ?string
+    {
+        if (! is_string($path) || trim($path) === '') {
+            return null;
+        }
+
+        $trimmedPath = trim($path);
+        if (Str::startsWith($trimmedPath, ['http://', 'https://'])) {
+            return $trimmedPath;
+        }
+
+        $normalizedPath = ltrim($trimmedPath, '/');
+        if (Str::startsWith($normalizedPath, 'storage/')) {
+            return asset($normalizedPath);
+        }
+
+        return Storage::disk('public')->url($normalizedPath);
     }
 
     private function formatDuration(int $seconds): string

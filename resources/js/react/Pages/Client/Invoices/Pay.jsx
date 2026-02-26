@@ -47,9 +47,17 @@ export default function Pay({
                 .invoice-container .invoice-col { width: 50%; padding: 0 15px; }
                 .invoice-container .invoice-col.full { width: 100%; }
                 .invoice-container .invoice-col.right { text-align: right; }
-                .invoice-container .logo-wrap { display: flex; align-items: center; }
+                .invoice-container .logo-wrap { display: flex; align-items: flex-start; }
+                .invoice-container .invoice-logo-image {
+                    display: block;
+                    max-width: 340px;
+                    max-height: 92px;
+                    width: auto;
+                    height: auto;
+                    object-fit: contain;
+                }
                 .invoice-container .invoice-logo-fallback { font-size: 54px; font-weight: 800; color: #211f75; letter-spacing: -1px; line-height: 1; }
-                .invoice-container .invoice-status { margin: 20px 0 0; font-size: 24px; font-weight: bold; }
+                .invoice-container .invoice-status { margin: 0; font-size: 24px; font-weight: bold; }
                 .invoice-container .invoice-status h3 { margin: 0; font-size: 18px; font-weight: 600; }
                 .invoice-container .small-text { font-size: 0.92em; }
                 .invoice-container hr { margin: 20px 0; border: 0; border-top: 1px solid #eee; }
@@ -76,6 +84,7 @@ export default function Pay({
                 .alert.rose { border-color: #fecdd3; background: #fff1f2; color: #9f1239; }
                 @media (max-width: 767px) {
                     .invoice-container .invoice-col { padding: 0 10px; }
+                    .invoice-container .invoice-logo-image { max-width: 240px; max-height: 72px; }
                 }
                 @media print {
                     .invoice-container .invoice-grid { display: table !important; width: 100% !important; table-layout: fixed !important; }
@@ -87,7 +96,11 @@ export default function Pay({
             <div className="invoice-container">
                 <div className="invoice-grid invoice-header">
                     <div className="invoice-col logo-wrap">
-                        <div className="invoice-logo-fallback">{String(company.name || '').toLowerCase()}</div>
+                        {company.logo_url ? (
+                            <img src={company.logo_url} alt={`${company.name || 'Company'} logo`} className="invoice-logo-image" />
+                        ) : (
+                            <div className="invoice-logo-fallback">{String(company.name || '').toLowerCase()}</div>
+                        )}
                     </div>
                     <div className="invoice-col text-right">
                         <div className="invoice-status">

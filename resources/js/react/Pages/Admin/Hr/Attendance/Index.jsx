@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
 
 export default function Index({
@@ -8,6 +8,45 @@ export default function Index({
     employees = [],
     routes = {},
 }) {
+    const formatDateForInput = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const shiftDate = (baseDate, days) => {
+        const next = new Date(baseDate);
+        next.setDate(next.getDate() + days);
+        return next;
+    };
+
+    const datePickerValue = useMemo(() => {
+        if (typeof selectedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
+            return selectedDate;
+        }
+
+        return formatDateForInput(new Date());
+    }, [selectedDate]);
+
+    const selectedDateObject = useMemo(() => {
+        const parsed = new Date(`${datePickerValue}T00:00:00`);
+        return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+    }, [datePickerValue]);
+
+    const quickDates = useMemo(() => {
+        const today = new Date();
+        return [
+            { label: 'Yesterday', value: formatDateForInput(shiftDate(today, -1)) },
+            { label: 'Today', value: formatDateForInput(today) },
+            { label: 'Tomorrow', value: formatDateForInput(shiftDate(today, 1)) },
+            { label: 'Month Start', value: formatDateForInput(new Date(today.getFullYear(), today.getMonth(), 1)) },
+        ];
+    }, []);
+
+    const previousDay = formatDateForInput(shiftDate(selectedDateObject, -1));
+    const nextDay = formatDateForInput(shiftDate(selectedDateObject, 1));
+
     return (
         <>
             <Head title={pageTitle} />
@@ -26,13 +65,47 @@ export default function Index({
             </div>
 
             <div className="card p-6">
-                <form method="GET" action={routes?.index} data-native="true" className="mb-5 flex flex-wrap items-end gap-2">
-                    <div>
-                        <label htmlFor="attendanceDate" className="text-xs uppercase tracking-[0.2em] text-slate-500">Date</label>
-                        <input id="attendanceDate" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="date" defaultValue={selectedDate} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                <form method="GET" action={routes?.index} data-native="true" className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+                    <label htmlFor="attendanceDate" className="text-xs uppercase tracking-[0.2em] text-slate-500">Attendance Date</label>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <a
+                            href={`${routes?.index}?date=${encodeURIComponent(previousDay)}`}
+                            data-native="true"
+                            className="rounded-full border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                        >
+                            Previous day
+                        </a>
+                        <input id="attendanceDate" type="date" name="date" defaultValue={datePickerValue} className="w-52 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <a
+                            href={`${routes?.index}?date=${encodeURIComponent(nextDay)}`}
+                            data-native="true"
+                            className="rounded-full border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                        >
+                            Next day
+                        </a>
+                        <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Load</button>
+                        <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Today</a>
                     </div>
-                    <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Load</button>
-                    <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Today</a>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {quickDates.map((preset) => {
+                            const active = preset.value === datePickerValue;
+                            return (
+                                <a
+                                    key={preset.label}
+                                    href={`${routes?.index}?date=${encodeURIComponent(preset.value)}`}
+                                    data-native="true"
+                                    className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                        active
+                                            ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                                            : 'border border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:text-teal-600'
+                                    }`}
+                                >
+                                    {preset.label}
+                                </a>
+                            );
+                        })}
+                    </div>
                 </form>
 
                 <form method="POST" action={routes?.store} data-native="true">

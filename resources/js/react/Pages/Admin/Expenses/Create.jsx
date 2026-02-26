@@ -140,7 +140,7 @@ export default function Create({
                                 <th className="pb-2 pr-3 font-medium">Title</th>
                                 <th className="pb-2 pr-3 font-medium">Category</th>
                                 <th className="pb-2 pr-3 text-right font-medium">Amount</th>
-                                <th className="pb-2 pr-3 text-right font-medium">Paid</th>
+                                <th className="pb-2 pr-3 text-right font-medium">Paid amount</th>
                                 <th className="pb-2 pr-3 text-center font-medium">Status</th>
                                 <th className="pb-2 pr-3 font-medium">Invoice</th>
                                 <th className="pb-2 text-right font-medium">Actions</th>
@@ -175,13 +175,13 @@ export default function Create({
                                             {item.invoice ? (
                                                 <>
                                                     <div className="font-semibold text-slate-900">{item.invoice.invoice_no}</div>
-                                                    {item.invoice.is_paid ? (
-                                                        <div className="mt-1 text-[11px] font-semibold text-emerald-700">Paid</div>
-                                                    ) : item.invoice.is_partial ? (
+                                                    {item.invoice.is_partial ? (
                                                         <div className="mt-1 text-[11px] text-slate-500">
                                                             Paid: {formatCurrency(currencyCode, item.invoice.paid)} | Left:{' '}
                                                             {formatCurrency(currencyCode, item.invoice.remaining)}
                                                         </div>
+                                                    ) : item.invoice.is_paid ? (
+                                                        <div className="mt-1 text-[11px] text-slate-400">Settled in full</div>
                                                     ) : (
                                                         <div className="mt-1 text-[11px] text-slate-500">Unpaid</div>
                                                     )}
@@ -193,9 +193,7 @@ export default function Create({
                                         <td className="py-2 text-right">
                                             <div className="flex flex-wrap justify-end gap-2 text-xs font-semibold">
                                                 {item.invoice ? (
-                                                    item.invoice.is_paid ? (
-                                                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">Paid</span>
-                                                    ) : (
+                                                    item.invoice.is_paid ? null : (
                                                         <button
                                                             type="button"
                                                             onClick={() => openPayment(item)}

@@ -27,6 +27,7 @@ export default function Index({
                         <thead>
                             <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <th className="py-2 px-3">ID</th>
+                                <th className="py-2 px-3">Photo</th>
                                 <th className="py-2 px-3">Name</th>
                                 <th className="py-2 px-3">Designation</th>
                                 <th className="py-2 px-3">Employment</th>
@@ -39,10 +40,24 @@ export default function Index({
                         </thead>
                         <tbody>
                             {employees.length === 0 ? (
-                                <tr><td colSpan={9} className="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
+                                <tr><td colSpan={10} className="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
                             ) : employees.map((employee) => (
                                 <tr key={employee.id} className="border-b border-slate-100">
                                     <td className="py-2 px-3 font-semibold text-slate-900">{employee.id}</td>
+                                    <td className="py-2 px-3">
+                                        {employee.photo_url ? (
+                                            <img
+                                                src={employee.photo_url}
+                                                alt={`${employee.name} photo`}
+                                                className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                                                loading="lazy"
+                                            />
+                                        ) : (
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-500">
+                                                {(employee.name || '?').slice(0, 1).toUpperCase()}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="py-2 px-3">
                                         <div className="font-semibold text-slate-900">
                                             <a href={employee.routes.show} data-native="true" className="hover:text-teal-600">{employee.name}</a>

@@ -257,6 +257,15 @@ class AccountingController extends Controller
             $dueAmount = max(0, $selectedInvoice->total - $paidAmount);
         }
 
+        $invoicePaidMap = AccountingEntry::query()
+            ->whereNotNull('invoice_id')
+            ->where('type', 'payment')
+            ->selectRaw('invoice_id, SUM(amount) as paid_amount')
+            ->groupBy('invoice_id')
+            ->pluck('paid_amount', 'invoice_id')
+            ->map(fn ($value) => (float) $value)
+            ->all();
+
         $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
         if (! Currency::isAllowed($currency)) {
             $currency = Currency::DEFAULT;
@@ -267,6 +276,7 @@ class AccountingController extends Controller
             'type' => $type,
             'selectedInvoice' => $selectedInvoice,
             'dueAmount' => $dueAmount,
+            'invoicePaidMap' => $invoicePaidMap,
             'customers' => Customer::query()->orderBy('name')->get(),
             'invoices' => Invoice::query()->with('customer')->orderByDesc('issue_date')->get(),
             'gateways' => PaymentGateway::query()->orderBy('sort_order')->get(),
@@ -477,6 +487,24 @@ class AccountingController extends Controller
     ): array {
         $isEdit = $entry !== null;
         $selectedInvoice = $formData['selectedInvoice'] ?? null;
+        $invoicePaidMap = $formData['invoicePaidMap'] ?? [];
+        $selectedInvoiceLabel = $selectedInvoice ? (string) ($selectedInvoice->number ?? $selectedInvoice->id) : '';
+        $defaultAmount = (string) old(
+            'amount',
+            (string) ($entry?->amount ?? (
+                $type === 'payment' && $selectedInvoice
+                    ? number_format((float) ($formData['dueAmount'] ?? 0), 2, '.', '')
+                    : ''
+            ))
+        );
+        $defaultReference = (string) old(
+            'reference',
+            (string) ($entry?->reference ?? ($type === 'payment' && $selectedInvoice ? $selectedInvoiceLabel : ''))
+        );
+        $defaultDescription = (string) old(
+            'description',
+            (string) ($entry?->description ?? ($type === 'payment' && $selectedInvoice ? "Payment for Invoice #{$selectedInvoiceLabel}" : ''))
+        );
 
         return [
             'pageTitle' => $isEdit ? 'Edit Accounting Entry' : 'Add Accounting Entry',
@@ -490,11 +518,20 @@ class AccountingController extends Controller
                     'name' => (string) $customer->name,
                 ];
             })->values()->all(),
-            'invoices' => collect($formData['invoices'] ?? [])->map(function (Invoice $invoice) {
+            'invoices' => collect($formData['invoices'] ?? [])->map(function (Invoice $invoice) use ($invoicePaidMap) {
+                $paidAmount = (float) ($invoicePaidMap[$invoice->id] ?? 0);
+                $dueAmount = max(0, (float) $invoice->total - $paidAmount);
+
                 return [
                     'id' => $invoice->id,
                     'label' => (string) ($invoice->number ?? $invoice->id),
                     'customer_name' => (string) ($invoice->customer?->name ?? '--'),
+                    'customer_id' => (string) ($invoice->customer_id ?? ''),
+                    'status' => (string) ($invoice->status ?? ''),
+                    'issue_date' => $invoice->issue_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                    'due_date' => $invoice->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                    'total_amount' => (float) ($invoice->total ?? 0),
+                    'due_amount' => $dueAmount,
                 ];
             })->values()->all(),
             'gateways' => collect($formData['gateways'] ?? [])->map(function (PaymentGateway $gateway) {
@@ -511,15 +548,26 @@ class AccountingController extends Controller
                 'fields' => [
                     'type' => (string) old('type', $type),
                     'entry_date' => (string) old('entry_date', (string) ($entry?->entry_date?->toDateString() ?? now()->toDateString())),
-                    'amount' => (string) old('amount', (string) ($entry?->amount ?? '')),
+                    'amount' => $defaultAmount,
                     'currency' => (string) old('currency', (string) ($entry?->currency ?? ($formData['currency'] ?? ''))),
-                    'description' => (string) old('description', (string) ($entry?->description ?? '')),
-                    'reference' => (string) old('reference', (string) ($entry?->reference ?? '')),
-                    'customer_id' => (string) old('customer_id', (string) ($entry?->customer_id ?? '')),
+                    'description' => $defaultDescription,
+                    'reference' => $defaultReference,
+                    'customer_id' => (string) old('customer_id', (string) ($entry?->customer_id ?? ($selectedInvoice?->customer_id ?? ''))),
                     'invoice_id' => (string) old('invoice_id', (string) ($entry?->invoice_id ?? ($selectedInvoice?->id ?? ''))),
                     'payment_gateway_id' => (string) old('payment_gateway_id', (string) ($entry?->payment_gateway_id ?? '')),
                 ],
                 'due_amount' => $formData['dueAmount'] ?? null,
+                'selected_invoice' => $selectedInvoice ? [
+                    'id' => $selectedInvoice->id,
+                    'label' => (string) ($selectedInvoice->number ?? $selectedInvoice->id),
+                    'customer_name' => (string) ($selectedInvoice->customer?->name ?? '--'),
+                    'customer_email' => (string) ($selectedInvoice->customer?->email ?? '--'),
+                    'status' => (string) ($selectedInvoice->status ?? '--'),
+                    'issue_date' => $selectedInvoice->issue_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                    'due_date' => $selectedInvoice->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                    'total_amount' => (float) ($selectedInvoice->total ?? 0),
+                    'due_amount' => (float) ($formData['dueAmount'] ?? 0),
+                ] : null,
             ],
             'routes' => [
                 'index' => route($this->scopeRoute($scope)),

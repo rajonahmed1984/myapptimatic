@@ -63,9 +63,9 @@ export default function Index({
                             <table className="min-w-full whitespace-nowrap text-left text-sm text-slate-700">
                                 <thead>
                                     <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                        <th className="px-3 py-2">Invoice</th>
-                                        <th className="px-3 py-2">Date</th>
-                                        <th className="px-3 py-2">Title</th>
+                                        <th className="px-3 py-2 whitespace-nowrap">ID</th>
+                                        <th className="px-3 py-2 whitespace-nowrap">Date</th>
+                                        <th className="px-3 py-2">Title & Ref</th>
                                         <th className="px-3 py-2">Category</th>
                                         <th className="px-3 py-2">Person</th>
                                         <th className="px-3 py-2">Amount</th>
@@ -76,10 +76,17 @@ export default function Index({
                                     {expenses.length > 0 ? (
                                         expenses.map((expense) => (
                                             <tr key={expense.key || `${expense.invoice_no}-${expense.expense_date_display}-${expense.title}`} className="border-t border-slate-100">
-                                                <td className="px-3 py-2 font-semibold text-slate-900">{expense.invoice_no}</td>
-                                                <td className="px-3 py-2">{expense.expense_date_display}</td>
+                                                <td className="px-3 py-2 whitespace-nowrap font-semibold text-slate-700">
+                                                    {expense.id_display}
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap">{expense.expense_date_display}</td>
                                                 <td className="px-3 py-2">
                                                     <div className="font-semibold text-slate-900">{expense.title}</div>
+                                                    {expense.invoice_number ? (
+                                                        <div className="text-xs font-semibold text-teal-600">
+                                                            Invoice #{expense.invoice_number}
+                                                        </div>
+                                                    ) : null}
                                                     {expense.notes ? (
                                                         <div className="text-xs text-slate-500">{expense.notes}</div>
                                                     ) : null}

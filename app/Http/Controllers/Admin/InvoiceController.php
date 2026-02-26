@@ -15,6 +15,7 @@ use App\Services\BillingService;
 use App\Services\CommissionService;
 use App\Services\InvoiceTaxService;
 use App\Support\AjaxResponse;
+use App\Support\Branding;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -22,7 +23,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -335,8 +338,10 @@ class InvoiceController extends Controller
         Request $request,
         Invoice $invoice,
         AdminNotificationService $adminNotifications,
-        CommissionService $commissionService
+        CommissionService $commissionService,
+        InvoiceTaxService $taxService
     ): RedirectResponse|JsonResponse {
+        $invoice->loadMissing('items');
         $wasPaid = $invoice->status === 'paid';
         $previousStatus = $invoice->status;
         $data = $request->validate([
@@ -344,6 +349,12 @@ class InvoiceController extends Controller
             'issue_date' => ['required', 'date'],
             'due_date' => ['required', 'date', 'after_or_equal:issue_date'],
             'notes' => ['nullable', 'string'],
+            'items' => ['nullable', 'array'],
+            'items.*.description' => ['nullable', 'string', 'max:255'],
+            'items.*.amount' => ['nullable', 'numeric', 'min:0'],
+            'new_items' => ['nullable', 'array'],
+            'new_items.*.description' => ['nullable', 'string', 'max:255'],
+            'new_items.*.amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $updates = [
@@ -365,7 +376,125 @@ class InvoiceController extends Controller
             $updates['overdue_at'] = null;
         }
 
-        $invoice->update($updates);
+        $itemInputs = is_array($request->input('items')) ? $request->input('items') : [];
+        $newItemInputs = is_array($request->input('new_items')) ? $request->input('new_items') : [];
+        $shouldSyncItems = $request->has('items') || $request->has('new_items');
+
+        $itemUpdates = [];
+        $itemCreates = [];
+        $validationErrors = [];
+
+        if ($shouldSyncItems) {
+            $subtotal = 0.0;
+
+            foreach ($invoice->items as $item) {
+                $row = $itemInputs[$item->id] ?? $itemInputs[(string) $item->id] ?? [];
+                if (! is_array($row)) {
+                    $row = [];
+                }
+
+                $description = trim((string) ($row['description'] ?? $item->description ?? ''));
+                $amountRaw = $row['amount'] ?? $item->line_total;
+
+                if ($description === '') {
+                    $validationErrors["items.{$item->id}.description"] = 'Description is required.';
+                }
+                if ($amountRaw === null || trim((string) $amountRaw) === '') {
+                    $validationErrors["items.{$item->id}.amount"] = 'Amount is required.';
+                    $amountRaw = 0;
+                }
+
+                $amount = round((float) $amountRaw, 2);
+                if ($amount < 0) {
+                    $validationErrors["items.{$item->id}.amount"] = 'Amount must be 0 or greater.';
+                }
+
+                $itemUpdates[] = [
+                    'model' => $item,
+                    'description' => $description,
+                    'amount' => $amount,
+                ];
+                $subtotal += $amount;
+            }
+
+            foreach ($newItemInputs as $index => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+
+                $description = trim((string) ($row['description'] ?? ''));
+                $amountRaw = $row['amount'] ?? null;
+                $amountProvided = $amountRaw !== null && trim((string) $amountRaw) !== '';
+                $hasAnyValue = $description !== '' || $amountProvided;
+
+                if (! $hasAnyValue) {
+                    continue;
+                }
+
+                if ($description === '') {
+                    $validationErrors["new_items.{$index}.description"] = 'Description is required for new line item.';
+                }
+                if (! $amountProvided) {
+                    $validationErrors["new_items.{$index}.amount"] = 'Amount is required for new line item.';
+                    $amountRaw = 0;
+                }
+
+                $amount = round((float) $amountRaw, 2);
+                if ($amount < 0) {
+                    $validationErrors["new_items.{$index}.amount"] = 'Amount must be 0 or greater.';
+                }
+
+                $itemCreates[] = [
+                    'description' => $description,
+                    'amount' => $amount,
+                ];
+                $subtotal += $amount;
+            }
+
+            if ($subtotal <= 0) {
+                $validationErrors['items'] = 'Invoice total must be greater than zero.';
+            }
+
+            if ($validationErrors !== []) {
+                throw ValidationException::withMessages($validationErrors);
+            }
+
+            $taxData = $taxService->calculateTotals($subtotal, 0.0, Carbon::parse($data['issue_date']));
+            $updates['subtotal'] = $subtotal;
+            $updates['tax_rate_percent'] = $taxData['tax_rate_percent'];
+            $updates['tax_mode'] = $taxData['tax_mode'];
+            $updates['tax_amount'] = $taxData['tax_amount'];
+            $updates['total'] = $taxData['total'];
+        }
+
+        DB::transaction(function () use ($invoice, $updates, $itemUpdates, $itemCreates, $shouldSyncItems) {
+            if ($shouldSyncItems) {
+                foreach ($itemUpdates as $itemUpdate) {
+                    /** @var InvoiceItem $itemModel */
+                    $itemModel = $itemUpdate['model'];
+                    $amount = (float) $itemUpdate['amount'];
+                    $itemModel->update([
+                        'description' => $itemUpdate['description'],
+                        'quantity' => 1,
+                        'unit_price' => $amount,
+                        'line_total' => $amount,
+                    ]);
+                }
+
+                foreach ($itemCreates as $itemCreate) {
+                    $amount = (float) $itemCreate['amount'];
+                    InvoiceItem::create([
+                        'invoice_id' => $invoice->id,
+                        'description' => $itemCreate['description'],
+                        'quantity' => 1,
+                        'unit_price' => $amount,
+                        'line_total' => $amount,
+                    ]);
+                }
+            }
+
+            $invoice->update($updates);
+        });
 
         if (! $wasPaid && $data['status'] === 'paid') {
             $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
@@ -612,6 +741,7 @@ class InvoiceController extends Controller
         $companyName = (string) Setting::getValue('company_name', config('app.name', 'MyApptimatic'));
         $companyEmail = (string) Setting::getValue('company_email');
         $payToText = (string) Setting::getValue('pay_to_text');
+        $companyLogoUrl = Branding::url(Setting::getValue('company_logo_path'));
 
         return [
             'id' => $invoice->id,
@@ -634,12 +764,14 @@ class InvoiceController extends Controller
             ],
             'company' => [
                 'name' => $companyName,
+                'logo_url' => $companyLogoUrl,
                 'email' => $companyEmail !== '' ? $companyEmail : '--',
                 'pay_to_text' => $payToText !== '' ? $payToText : 'Billing Department',
             ],
             'items' => $invoice->items->map(fn (InvoiceItem $item) => [
                 'id' => $item->id,
                 'description' => $item->description,
+                'line_total_value' => number_format((float) $item->line_total, 2, '.', ''),
                 'line_total_display' => sprintf(
                     '%s %s',
                     (string) $invoice->currency,
@@ -719,6 +851,8 @@ class InvoiceController extends Controller
         $displayNumber = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
         $dateFormat = config('app.date_format', 'd-m-Y');
         $portalBranding = (array) $request->attributes->get('portalBranding', []);
+        $companyName = (string) ($portalBranding['company_name'] ?? Setting::getValue('company_name', config('app.name', 'Apptimatic')));
+        $companyLogoUrl = $portalBranding['logo_url'] ?? Branding::url(Setting::getValue('company_logo_path'));
         $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
         $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
 
@@ -768,7 +902,8 @@ class InvoiceController extends Controller
                 'note' => $taxSetting->renderNote($invoice->tax_rate_percent),
             ],
             'company' => [
-                'name' => $portalBranding['company_name'] ?? config('app.name', 'Apptimatic'),
+                'name' => $companyName,
+                'logo_url' => $companyLogoUrl,
                 'email' => Setting::getValue('company_email') ?: 'support@example.com',
                 'pay_to' => Setting::getValue('pay_to_text') ?: 'Billing Department',
             ],

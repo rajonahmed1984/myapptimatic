@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Invoice;
+use App\Models\Setting;
 use App\Models\TaxRate;
 use App\Models\TaxSetting;
+use App\Support\Currency;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -19,10 +23,16 @@ class FinanceTaxController extends Controller
     ): InertiaResponse {
         $settings = TaxSetting::current();
         $rates = TaxRate::query()->orderByDesc('effective_from')->orderBy('name')->get();
+        $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($currencyCode)) {
+            $currencyCode = Currency::DEFAULT;
+        }
+        $effectiveYear = (int) $request->query('effective_year', (int) now()->year);
+        $taxAnalytics = $this->buildTaxAnalytics($currencyCode, $effectiveYear);
 
         return Inertia::render(
             'Admin/Finance/Tax/Index',
-            $this->indexInertiaProps($settings, $rates)
+            $this->indexInertiaProps($settings, $rates, $taxAnalytics, $currencyCode)
         );
     }
 
@@ -32,7 +42,6 @@ class FinanceTaxController extends Controller
             'enabled' => ['nullable', 'boolean'],
             'tax_mode_default' => ['required', Rule::in(['inclusive', 'exclusive'])],
             'default_tax_rate_id' => ['nullable', 'exists:tax_rates,id'],
-            'invoice_tax_label' => ['required', 'string', 'max:100'],
             'invoice_tax_note_template' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -41,7 +50,7 @@ class FinanceTaxController extends Controller
             'enabled' => (bool) ($data['enabled'] ?? false),
             'tax_mode_default' => $data['tax_mode_default'],
             'default_tax_rate_id' => $data['default_tax_rate_id'] ?? null,
-            'invoice_tax_label' => $data['invoice_tax_label'],
+            'invoice_tax_label' => 'Tax',
             'invoice_tax_note_template' => $data['invoice_tax_note_template'] ?? null,
         ]);
 
@@ -106,7 +115,12 @@ class FinanceTaxController extends Controller
         return back()->with('status', 'Tax rate deleted.');
     }
 
-    private function indexInertiaProps(TaxSetting $settings, Collection $rates): array
+    private function indexInertiaProps(
+        TaxSetting $settings,
+        Collection $rates,
+        array $taxAnalytics,
+        string $currencyCode
+    ): array
     {
         $globalDateFormat = (string) config('app.date_format', 'd-m-Y');
         $defaultRateId = old('default_tax_rate_id', $settings->default_tax_rate_id);
@@ -117,6 +131,7 @@ class FinanceTaxController extends Controller
             'heading' => 'Tax settings',
             'subheading' => 'Configure tax mode, default rates, and invoice notes.',
             'routes' => [
+                'index' => route('admin.finance.tax.index'),
                 'reports' => route('admin.finance.reports.index'),
                 'settings_update' => route('admin.finance.tax.update'),
                 'rate_store' => route('admin.finance.tax.rates.store'),
@@ -129,7 +144,7 @@ class FinanceTaxController extends Controller
                 'default_tax_rate_id' => $defaultRateId !== null
                     ? (string) $defaultRateId
                     : '',
-                'invoice_tax_label' => (string) old('invoice_tax_label', (string) $settings->invoice_tax_label),
+                'invoice_tax_label' => 'Tax',
                 'invoice_tax_note_template' => (string) old('invoice_tax_note_template', (string) ($settings->invoice_tax_note_template ?? '')),
             ],
             'rate_form' => [
@@ -142,8 +157,10 @@ class FinanceTaxController extends Controller
             'quick_reference' => [
                 'mode' => ucfirst((string) $settings->tax_mode_default),
                 'default_rate_name' => (string) ($settings->defaultRate?->name ?? 'None'),
-                'invoice_label' => (string) $settings->invoice_tax_label,
+                'invoice_label' => 'Tax',
             ],
+            'currency_code' => $currencyCode,
+            'tax_analytics' => $taxAnalytics,
             'rate_options' => $rates->values()->map(function (TaxRate $rate) use ($defaultRateId) {
                 $formatted = rtrim(rtrim(number_format((float) $rate->rate_percent, 2, '.', ''), '0'), '.');
                 $selectedId = $defaultRateId !== null ? (string) $defaultRateId : '';
@@ -172,6 +189,152 @@ class FinanceTaxController extends Controller
                     ],
                 ];
             })->all(),
+        ];
+    }
+
+    private function buildTaxAnalytics(string $currencyCode, int $effectiveYear): array
+    {
+        $globalDateFormat = (string) config('app.date_format', 'd-m-Y');
+
+        $fiscalYearlySource = Invoice::query()
+            ->where('currency', $currencyCode)
+            ->whereNotNull('issue_date')
+            ->whereNotNull('tax_amount')
+            ->selectRaw('CASE WHEN MONTH(issue_date) >= 7 THEN YEAR(issue_date) + 1 ELSE YEAR(issue_date) END as fiscal_year')
+            ->selectRaw('SUM(COALESCE(tax_amount, 0)) as tax_total')
+            ->selectRaw('COUNT(*) as invoice_count')
+            ->groupByRaw('CASE WHEN MONTH(issue_date) >= 7 THEN YEAR(issue_date) + 1 ELSE YEAR(issue_date) END')
+            ->orderByRaw('CASE WHEN MONTH(issue_date) >= 7 THEN YEAR(issue_date) + 1 ELSE YEAR(issue_date) END ASC')
+            ->get();
+
+        $availableYears = $fiscalYearlySource
+            ->pluck('fiscal_year')
+            ->filter(fn ($year) => $year !== null)
+            ->map(fn ($year) => (int) $year)
+            ->values();
+
+        $fallbackYear = $availableYears->max() ?: (int) now()->year;
+        if (! $availableYears->contains($effectiveYear)) {
+            $effectiveYear = $fallbackYear;
+        }
+
+        $periodStart = Carbon::create($effectiveYear - 1, 7, 1)->startOfDay();
+        $periodEnd = Carbon::create($effectiveYear, 6, 30)->endOfDay();
+
+        $monthlySource = Invoice::query()
+            ->where('currency', $currencyCode)
+            ->whereNotNull('issue_date')
+            ->whereNotNull('tax_amount')
+            ->whereBetween('issue_date', [$periodStart, $periodEnd])
+            ->selectRaw('YEAR(issue_date) as year_num')
+            ->selectRaw('MONTH(issue_date) as month_num')
+            ->selectRaw('SUM(COALESCE(tax_amount, 0)) as tax_total')
+            ->selectRaw('COUNT(*) as invoice_count')
+            ->groupByRaw('YEAR(issue_date), MONTH(issue_date)')
+            ->orderByRaw('YEAR(issue_date) ASC, MONTH(issue_date) ASC')
+            ->get()
+            ->keyBy(fn ($row) => sprintf('%04d-%02d', (int) $row->year_num, (int) $row->month_num));
+
+        $monthlyRows = collect(range(0, 11))
+            ->map(function (int $offset) use ($monthlySource, $periodStart, $globalDateFormat) {
+                $periodDate = (clone $periodStart)->addMonths($offset);
+                $key = $periodDate->format('Y-m');
+                $row = $monthlySource->get($key);
+
+                return [
+                    'month_key' => $key,
+                    'month_label' => $periodDate->format('M Y'),
+                    'month_short' => $periodDate->format('M'),
+                    'period_start' => $periodDate->format($globalDateFormat),
+                    'tax_total' => (float) ($row?->tax_total ?? 0),
+                    'invoice_count' => (int) ($row?->invoice_count ?? 0),
+                ];
+            })
+            ->values();
+
+        $monthlyWithChange = $monthlyRows->map(function (array $row, int $index) use ($monthlyRows) {
+            $previous = $index > 0 ? (float) ($monthlyRows[$index - 1]['tax_total'] ?? 0) : null;
+            $current = (float) $row['tax_total'];
+            $changePercent = null;
+
+            if ($previous !== null && $previous > 0) {
+                $changePercent = (($current - $previous) / $previous) * 100;
+            } elseif ($previous !== null && $previous == 0.0 && $current > 0) {
+                $changePercent = 100.0;
+            }
+
+            $row['change_percent'] = $changePercent;
+            $row['change_direction'] = $changePercent === null ? 'na' : ($changePercent >= 0 ? 'up' : 'down');
+
+            return $row;
+        })->values();
+
+        $yearlyRows = $fiscalYearlySource->map(function ($row) {
+            return [
+                'year' => (int) ($row->fiscal_year ?? 0),
+                'tax_total' => (float) ($row->tax_total ?? 0),
+                'invoice_count' => (int) ($row->invoice_count ?? 0),
+            ];
+        })->values();
+
+        $yearlyWithChange = $yearlyRows->map(function (array $row, int $index) use ($yearlyRows) {
+            $previous = $index > 0 ? (float) ($yearlyRows[$index - 1]['tax_total'] ?? 0) : null;
+            $current = (float) $row['tax_total'];
+            $changePercent = null;
+
+            if ($previous !== null && $previous > 0) {
+                $changePercent = (($current - $previous) / $previous) * 100;
+            } elseif ($previous !== null && $previous == 0.0 && $current > 0) {
+                $changePercent = 100.0;
+            }
+
+            $row['change_percent'] = $changePercent;
+            $row['change_direction'] = $changePercent === null ? 'na' : ($changePercent >= 0 ? 'up' : 'down');
+
+            return $row;
+        })->values();
+
+        $currentMonthKey = now()->format('Y-m');
+        $thisMonthTotal = (float) ($monthlyWithChange->firstWhere('month_key', $currentMonthKey)['tax_total'] ?? 0);
+        $thisYearTotal = (float) ($yearlyWithChange->firstWhere('year', $effectiveYear)['tax_total'] ?? 0);
+        $allTimeTotal = (float) $yearlyWithChange->sum('tax_total');
+
+        $yearOptionsSource = $availableYears->isNotEmpty()
+            ? $availableYears
+            : collect([$effectiveYear]);
+
+        return [
+            'effective_year' => $effectiveYear,
+            'effective_year_options' => $yearOptionsSource
+                ->sortDesc()
+                ->values()
+                ->map(function (int $year) use ($effectiveYear) {
+                    return [
+                        'value' => (string) $year,
+                        'label' => (string) $year,
+                        'selected' => $year === $effectiveYear,
+                    ];
+                })
+                ->all(),
+            'period_start_display' => $periodStart->format($globalDateFormat),
+            'period_end_display' => $periodEnd->format($globalDateFormat),
+            'period_label' => sprintf(
+                '%d - %s to %s',
+                $effectiveYear,
+                $periodStart->format($globalDateFormat),
+                $periodEnd->format($globalDateFormat)
+            ),
+            'summary' => [
+                'this_month_total' => $thisMonthTotal,
+                'this_year_total' => $thisYearTotal,
+                'all_time_total' => $allTimeTotal,
+            ],
+            'trend' => [
+                'labels' => $monthlyWithChange->pluck('month_short')->values()->all(),
+                'series' => $monthlyWithChange->pluck('tax_total')->values()->all(),
+            ],
+            'monthly_rows' => $monthlyWithChange->sortByDesc('month_key')->values()->all(),
+            'yearly_rows' => $yearlyWithChange->sortByDesc('year')->values()->all(),
         ];
     }
 
