@@ -98,8 +98,13 @@ export default function Index({ status_filter = '', search = '', status_counts =
                         <tbody className="divide-y divide-slate-100">
                             {tasks.length === 0 ? (
                                 <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No tasks found.</td></tr>
-                            ) : tasks.map((task) => (
-                                <tr key={task.id}>
+                            ) : tasks.map((task) => {
+                                const currentStatus = String(task?.status || '').toLowerCase();
+                                const isInProgress = currentStatus === 'in_progress';
+                                const isCompleted = ['completed', 'done'].includes(currentStatus);
+
+                                return (
+                                    <tr key={task.id}>
                                     <td className="px-4 py-3 font-semibold text-slate-600">{task.id ?? '--'}</td>
                                     <td className="px-4 py-3 text-slate-500">
                                         <div>{task.created_at_date || '--'}</div>
@@ -120,7 +125,7 @@ export default function Index({ status_filter = '', search = '', status_counts =
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex flex-col items-end gap-2 text-xs font-semibold">
                                             <a href={task?.routes?.task_show} data-native="true" className="rounded-full border border-emerald-200 px-3 py-1 text-emerald-700">Open Task</a>
-                                            {task.can_start ? (
+                                            {task.can_start && !isInProgress ? (
                                                 <form method="POST" action={task?.routes?.task_update} data-native="true">
                                                     <input type="hidden" name="_token" value={csrfToken} />
                                                     <input type="hidden" name="_method" value="PATCH" />
@@ -128,7 +133,7 @@ export default function Index({ status_filter = '', search = '', status_counts =
                                                     <button type="submit" className="rounded-full border border-amber-200 px-3 py-1 text-amber-700">In Progress</button>
                                                 </form>
                                             ) : null}
-                                            {task.can_complete ? (
+                                            {task.can_complete && !isCompleted ? (
                                                 <form method="POST" action={task?.routes?.task_update} data-native="true">
                                                     <input type="hidden" name="_token" value={csrfToken} />
                                                     <input type="hidden" name="_method" value="PATCH" />
@@ -138,8 +143,9 @@ export default function Index({ status_filter = '', search = '', status_counts =
                                             ) : null}
                                         </div>
                                     </td>
-                                </tr>
-                            ))}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

@@ -42,6 +42,7 @@ class FinanceTaxController extends Controller
             'enabled' => ['nullable', 'boolean'],
             'tax_mode_default' => ['required', Rule::in(['inclusive', 'exclusive'])],
             'default_tax_rate_id' => ['nullable', 'exists:tax_rates,id'],
+            'invoice_tax_label' => ['required', 'string', 'max:255'],
             'invoice_tax_note_template' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -50,7 +51,7 @@ class FinanceTaxController extends Controller
             'enabled' => (bool) ($data['enabled'] ?? false),
             'tax_mode_default' => $data['tax_mode_default'],
             'default_tax_rate_id' => $data['default_tax_rate_id'] ?? null,
-            'invoice_tax_label' => 'Tax',
+            'invoice_tax_label' => (string) $data['invoice_tax_label'],
             'invoice_tax_note_template' => $data['invoice_tax_note_template'] ?? null,
         ]);
 
@@ -144,7 +145,7 @@ class FinanceTaxController extends Controller
                 'default_tax_rate_id' => $defaultRateId !== null
                     ? (string) $defaultRateId
                     : '',
-                'invoice_tax_label' => 'Tax',
+                'invoice_tax_label' => (string) old('invoice_tax_label', (string) ($settings->invoice_tax_label ?? 'Tax')),
                 'invoice_tax_note_template' => (string) old('invoice_tax_note_template', (string) ($settings->invoice_tax_note_template ?? '')),
             ],
             'rate_form' => [
@@ -157,7 +158,7 @@ class FinanceTaxController extends Controller
             'quick_reference' => [
                 'mode' => ucfirst((string) $settings->tax_mode_default),
                 'default_rate_name' => (string) ($settings->defaultRate?->name ?? 'None'),
-                'invoice_label' => 'Tax',
+                'invoice_label' => (string) ($settings->invoice_tax_label ?? 'Tax'),
             ],
             'currency_code' => $currencyCode,
             'tax_analytics' => $taxAnalytics,
@@ -196,21 +197,32 @@ class FinanceTaxController extends Controller
     {
         $globalDateFormat = (string) config('app.date_format', 'd-m-Y');
 
-        $fiscalYearlySource = Invoice::query()
+        // Keep aggregation database-agnostic (sqlite/mysql) by grouping in PHP.
+        $invoiceRows = Invoice::query()
             ->where('currency', $currencyCode)
             ->whereNotNull('issue_date')
             ->whereNotNull('tax_amount')
-            ->selectRaw('CASE WHEN MONTH(issue_date) >= 7 THEN YEAR(issue_date) + 1 ELSE YEAR(issue_date) END as fiscal_year')
-            ->selectRaw('SUM(COALESCE(tax_amount, 0)) as tax_total')
-            ->selectRaw('COUNT(*) as invoice_count')
-            ->groupByRaw('CASE WHEN MONTH(issue_date) >= 7 THEN YEAR(issue_date) + 1 ELSE YEAR(issue_date) END')
-            ->orderByRaw('CASE WHEN MONTH(issue_date) >= 7 THEN YEAR(issue_date) + 1 ELSE YEAR(issue_date) END ASC')
-            ->get();
+            ->get(['issue_date', 'tax_amount']);
 
-        $availableYears = $fiscalYearlySource
-            ->pluck('fiscal_year')
-            ->filter(fn ($year) => $year !== null)
+        $fiscalYearBuckets = [];
+        foreach ($invoiceRows as $invoice) {
+            $issueDate = Carbon::parse($invoice->issue_date);
+            $fiscalYear = $issueDate->month >= 7 ? $issueDate->year + 1 : $issueDate->year;
+            if (! isset($fiscalYearBuckets[$fiscalYear])) {
+                $fiscalYearBuckets[$fiscalYear] = [
+                    'fiscal_year' => $fiscalYear,
+                    'tax_total' => 0.0,
+                    'invoice_count' => 0,
+                ];
+            }
+
+            $fiscalYearBuckets[$fiscalYear]['tax_total'] += (float) $invoice->tax_amount;
+            $fiscalYearBuckets[$fiscalYear]['invoice_count']++;
+        }
+
+        $availableYears = collect(array_keys($fiscalYearBuckets))
             ->map(fn ($year) => (int) $year)
+            ->sort()
             ->values();
 
         $fallbackYear = $availableYears->max() ?: (int) now()->year;
@@ -221,33 +233,37 @@ class FinanceTaxController extends Controller
         $periodStart = Carbon::create($effectiveYear - 1, 7, 1)->startOfDay();
         $periodEnd = Carbon::create($effectiveYear, 6, 30)->endOfDay();
 
-        $monthlySource = Invoice::query()
-            ->where('currency', $currencyCode)
-            ->whereNotNull('issue_date')
-            ->whereNotNull('tax_amount')
-            ->whereBetween('issue_date', [$periodStart, $periodEnd])
-            ->selectRaw('YEAR(issue_date) as year_num')
-            ->selectRaw('MONTH(issue_date) as month_num')
-            ->selectRaw('SUM(COALESCE(tax_amount, 0)) as tax_total')
-            ->selectRaw('COUNT(*) as invoice_count')
-            ->groupByRaw('YEAR(issue_date), MONTH(issue_date)')
-            ->orderByRaw('YEAR(issue_date) ASC, MONTH(issue_date) ASC')
-            ->get()
-            ->keyBy(fn ($row) => sprintf('%04d-%02d', (int) $row->year_num, (int) $row->month_num));
+        $monthlySource = [];
+        foreach ($invoiceRows as $invoice) {
+            $issueDate = Carbon::parse($invoice->issue_date);
+            if (! $issueDate->between($periodStart, $periodEnd)) {
+                continue;
+            }
+
+            $key = $issueDate->format('Y-m');
+            if (! isset($monthlySource[$key])) {
+                $monthlySource[$key] = [
+                    'tax_total' => 0.0,
+                    'invoice_count' => 0,
+                ];
+            }
+            $monthlySource[$key]['tax_total'] += (float) $invoice->tax_amount;
+            $monthlySource[$key]['invoice_count']++;
+        }
 
         $monthlyRows = collect(range(0, 11))
             ->map(function (int $offset) use ($monthlySource, $periodStart, $globalDateFormat) {
                 $periodDate = (clone $periodStart)->addMonths($offset);
                 $key = $periodDate->format('Y-m');
-                $row = $monthlySource->get($key);
+                $row = $monthlySource[$key] ?? null;
 
                 return [
                     'month_key' => $key,
                     'month_label' => $periodDate->format('M Y'),
                     'month_short' => $periodDate->format('M'),
                     'period_start' => $periodDate->format($globalDateFormat),
-                    'tax_total' => (float) ($row?->tax_total ?? 0),
-                    'invoice_count' => (int) ($row?->invoice_count ?? 0),
+                    'tax_total' => (float) ($row['tax_total'] ?? 0),
+                    'invoice_count' => (int) ($row['invoice_count'] ?? 0),
                 ];
             })
             ->values();
@@ -269,13 +285,17 @@ class FinanceTaxController extends Controller
             return $row;
         })->values();
 
-        $yearlyRows = $fiscalYearlySource->map(function ($row) {
-            return [
-                'year' => (int) ($row->fiscal_year ?? 0),
-                'tax_total' => (float) ($row->tax_total ?? 0),
-                'invoice_count' => (int) ($row->invoice_count ?? 0),
-            ];
-        })->values();
+        $yearlyRows = collect($fiscalYearBuckets)
+            ->sortKeys()
+            ->values()
+            ->map(function (array $row) {
+                return [
+                    'year' => (int) ($row['fiscal_year'] ?? 0),
+                    'tax_total' => (float) ($row['tax_total'] ?? 0),
+                    'invoice_count' => (int) ($row['invoice_count'] ?? 0),
+                ];
+            })
+            ->values();
 
         $yearlyWithChange = $yearlyRows->map(function (array $row, int $index) use ($yearlyRows) {
             $previous = $index > 0 ? (float) ($yearlyRows[$index - 1]['tax_total'] ?? 0) : null;

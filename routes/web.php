@@ -217,8 +217,12 @@ Route::middleware(['guest:web', 'nocache'])->group(function () {
         ->defaults('portal', 'web')
         ->middleware(['throttle:login', 'login.trace'])
         ->name('login.attempt');
-    Route::get('/project-login', fn () => redirect()->route('login'))->name('project-client.login');
-    Route::post('/project-login', fn () => redirect()->route('login'))->name('project-client.login.attempt');
+    Route::get('/project-login', [ProjectClientAuthController::class, 'showLogin'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('project-client.login');
+    Route::post('/project-login', [ProjectClientAuthController::class, 'login'])
+        ->middleware(['throttle:login', 'login.trace'])
+        ->name('project-client.login.attempt');
     Route::get('/register', [AuthController::class, 'showRegister'])
         ->middleware(HandleInertiaRequests::class)
         ->name('register');
@@ -1461,13 +1465,13 @@ Route::middleware('signed:relative')->group(function () {
 });
 
 Route::get('/products', [PublicProductController::class, 'index'])
-    ->middleware(['auth:web', HandleInertiaRequests::class])
+    ->middleware([HandleInertiaRequests::class])
     ->name('products.public.index');
 
 Route::get('/{product:slug}/plans/{plan:slug}', [PublicProductController::class, 'showPlan'])
-    ->middleware(['auth:web', HandleInertiaRequests::class])
+    ->middleware([HandleInertiaRequests::class])
     ->name('products.public.plan');
 
 Route::get('/{product:slug}', [PublicProductController::class, 'show'])
-    ->middleware(['auth:web', HandleInertiaRequests::class])
+    ->middleware([HandleInertiaRequests::class])
     ->name('products.public.show');

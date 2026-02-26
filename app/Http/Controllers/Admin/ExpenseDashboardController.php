@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountingEntry;
 use App\Models\ExpenseCategory;
 use App\Services\ExpenseEntryService;
 use App\Services\GeminiService;
@@ -42,6 +43,18 @@ class ExpenseDashboardController extends Controller
 
         $entries = $entryService->entries($filters);
         $expenseTotal = (float) $entries->sum('amount');
+        $payoutExpenseTotal = (float) $entries
+            ->whereIn('expense_type', ['salary', 'contract_payout', 'sales_payout'])
+            ->sum('amount');
+
+        $incomeReceived = (float) AccountingEntry::query()
+            ->whereIn('type', ['payment', 'income'])
+            ->when($startDateInput, fn ($query) => $query->whereDate('entry_date', '>=', Carbon::parse($startDateInput)->toDateString()))
+            ->when($endDateInput, fn ($query) => $query->whereDate('entry_date', '<=', Carbon::parse($endDateInput)->toDateString()))
+            ->sum('amount');
+
+        $netIncome = $incomeReceived - $expenseTotal;
+        $netCashflow = $incomeReceived - $payoutExpenseTotal;
 
         $expenseBySource = [
             'manual' => (float) $entries->where('source_type', 'expense')->sum('amount'),
@@ -151,6 +164,10 @@ class ExpenseDashboardController extends Controller
                 'sources' => array_values($filters['sources'] ?? []),
             ],
             'expenseTotal' => $expenseTotal,
+            'incomeReceived' => $incomeReceived,
+            'payoutExpenseTotal' => $payoutExpenseTotal,
+            'netIncome' => $netIncome,
+            'netCashflow' => $netCashflow,
             'expenseBySource' => $expenseBySource,
             'expenseStatus' => $expenseStatus,
             'categoryTotals' => $categoryTotals->values(),

@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\SalesRepresentative;
+use App\Notifications\Concerns\SkipsInvalidMailRoutes;
 use App\Models\Setting;
 use App\Support\Branding;
 use App\Support\UrlResolver;
@@ -23,6 +24,7 @@ abstract class TaskStatusNotification extends Notification implements ShouldQueu
     use Queueable;
     use SerializesModels;
     use UsesMailCategory;
+    use SkipsInvalidMailRoutes;
 
     protected ProjectTask $task;
     protected ?ProjectTaskSubtask $subtask;
@@ -52,6 +54,15 @@ abstract class TaskStatusNotification extends Notification implements ShouldQueu
     public function via(object $notifiable): array
     {
         return ['mail'];
+    }
+
+    public function shouldSend(object $notifiable, string $channel): bool
+    {
+        if ($channel !== 'mail') {
+            return true;
+        }
+
+        return $this->shouldDeliverMailTo($notifiable, 'task-status');
     }
 
     public function mailCategory(): string

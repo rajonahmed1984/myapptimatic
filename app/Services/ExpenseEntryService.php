@@ -12,6 +12,7 @@ use App\Models\PayrollItem;
 use App\Models\SalesRepresentative;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Arr;
 
 class ExpenseEntryService
 {
@@ -19,16 +20,13 @@ class ExpenseEntryService
 
     public function entries(array $filters = []): Collection
     {
-        $sources = $filters['sources'] ?? ['manual', 'salary', 'contract_payout', 'sales_payout'];
-        $categoryIdFilter = $filters['category_id'] ?? null;
-        $personType = $filters['person_type'] ?? null;
-        $personId = $filters['person_id'] ?? null;
+        $sources = $this->normalizeSources($filters);
+        $categoryIdFilter = Arr::get($filters, 'category_id');
+        $personType = Arr::get($filters, 'person_type');
+        $personId = $this->toNullableInt(Arr::get($filters, 'person_id'));
 
-        $startDateInput = $filters['start_date'] ?? null;
-        $endDateInput = $filters['end_date'] ?? null;
-
-        $startDate = $startDateInput ? Carbon::parse($startDateInput)->startOfDay() : null;
-        $endDate = $endDateInput ? Carbon::parse($endDateInput)->endOfDay() : null;
+        $startDate = $this->parseFilterDate(Arr::get($filters, 'start_date'));
+        $endDate = $this->parseFilterDate(Arr::get($filters, 'end_date'), true);
 
         $entries = collect();
 
@@ -44,11 +42,11 @@ class ExpenseEntryService
             if ($categoryIdFilter) {
                 $query->where('category_id', $categoryIdFilter);
             }
-            if (! empty($filters['type'])) {
-                $query->where('type', $filters['type']);
+            if (! empty(Arr::get($filters, 'type'))) {
+                $query->where('type', Arr::get($filters, 'type'));
             }
-            if (! empty($filters['recurring_expense_id'])) {
-                $query->where('recurring_expense_id', $filters['recurring_expense_id']);
+            if (! empty(Arr::get($filters, 'recurring_expense_id'))) {
+                $query->where('recurring_expense_id', Arr::get($filters, 'recurring_expense_id'));
             }
 
             $manualExpenses = $query->get();
@@ -106,6 +104,48 @@ class ExpenseEntryService
         }
 
         return $entries;
+    }
+
+    private function parseFilterDate(mixed $value, bool $endOfDay = false): ?Carbon
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            $parsed = Carbon::parse($value);
+
+            return $endOfDay ? $parsed->endOfDay() : $parsed->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function normalizeSources(array $filters): array
+    {
+        $defaults = ['manual', 'salary', 'contract_payout', 'sales_payout'];
+        $sources = Arr::get($filters, 'sources');
+
+        if (! is_array($sources) || $sources === []) {
+            return $defaults;
+        }
+
+        $allowed = array_fill_keys($defaults, true);
+        $normalized = collect($sources)
+            ->filter(fn ($source) => is_string($source) && isset($allowed[$source]))
+            ->values()
+            ->all();
+
+        return $normalized === [] ? $defaults : $normalized;
+    }
+
+    private function toNullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '' || ! is_numeric($value)) {
+            return null;
+        }
+
+        return (int) $value;
     }
 
     private function resolveSystemCategories(): array

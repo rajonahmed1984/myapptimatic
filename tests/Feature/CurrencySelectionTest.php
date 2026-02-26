@@ -27,6 +27,7 @@ class CurrencySelectionTest extends TestCase
             'company_name' => 'Test Company',
             'phone' => '1234567890',
             'currency' => 'BDT',
+            'accepttos' => '1',
         ]);
 
         $this->assertAuthenticated();
@@ -46,6 +47,7 @@ class CurrencySelectionTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'currency' => 'USD',
+            'accepttos' => '1',
         ]);
 
         $this->assertAuthenticated();
@@ -63,6 +65,7 @@ class CurrencySelectionTest extends TestCase
             'email' => 'test.default@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'accepttos' => '1',
         ]);
 
         $this->assertAuthenticated();
@@ -82,6 +85,7 @@ class CurrencySelectionTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'currency' => 'EUR',
+            'accepttos' => '1',
         ]);
 
         $response->assertSessionHasErrors('currency');

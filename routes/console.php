@@ -26,8 +26,18 @@ $billing = Schedule::command('billing:run')->daily();
 CronActivityLogger::track($billing, 'billing:run');
 
 // Frequent tasks (every 5 minutes via cron-frequent.php)
-$queue = Schedule::command('queue:work --stop-when-empty')->everyFiveMinutes()->withoutOverlapping();
-CronActivityLogger::track($queue, 'queue:work --stop-when-empty');
+$defaultQueue = Schedule::command('queue:work --queue=default --stop-when-empty --tries=1 --max-time=50')
+    ->everyMinute()
+    ->withoutOverlapping();
+CronActivityLogger::track($defaultQueue, 'queue:work --queue=default --stop-when-empty --tries=1 --max-time=50');
+
+$aiQueue = Schedule::command('queue:work --queue=ai --stop-when-empty --tries=1 --max-jobs=40 --max-time=50')
+    ->everyMinute()
+    ->withoutOverlapping();
+CronActivityLogger::track($aiQueue, 'queue:work --queue=ai --stop-when-empty --tries=1 --max-jobs=40 --max-time=50');
+
+$pruneFailedJobs = Schedule::command('queue:prune-failed --hours=168')->dailyAt('01:30');
+CronActivityLogger::track($pruneFailedJobs, 'queue:prune-failed --hours=168');
 // Schedule::command('horizon:snapshot')->everyFiveMinutes(); // Horizon not required for database queue driver
 $payroll = Schedule::command('payroll:run')->monthlyOn(1, '03:00'); // Monthly payroll draft
 CronActivityLogger::track($payroll, 'payroll:run');

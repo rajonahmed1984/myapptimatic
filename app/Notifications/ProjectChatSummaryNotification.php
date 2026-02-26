@@ -6,6 +6,7 @@ use App\Enums\MailCategory;
 use App\Mail\Concerns\UsesMailCategory;
 use App\Models\Project;
 use App\Models\Setting;
+use App\Notifications\Concerns\SkipsInvalidMailRoutes;
 use App\Support\Branding;
 use App\Support\UrlResolver;
 use Illuminate\Bus\Queueable;
@@ -18,6 +19,7 @@ class ProjectChatSummaryNotification extends Notification implements ShouldQueue
 {
     use Queueable;
     use UsesMailCategory;
+    use SkipsInvalidMailRoutes;
 
     public function __construct(
         private readonly Project $project,
@@ -32,6 +34,15 @@ class ProjectChatSummaryNotification extends Notification implements ShouldQueue
     public function via(object $notifiable): array
     {
         return ['mail'];
+    }
+
+    public function shouldSend(object $notifiable, string $channel): bool
+    {
+        if ($channel !== 'mail') {
+            return true;
+        }
+
+        return $this->shouldDeliverMailTo($notifiable, 'project-chat-summary');
     }
 
     public function mailCategory(): string

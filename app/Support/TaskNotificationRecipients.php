@@ -11,6 +11,7 @@ use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Support\UrlResolver;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 class TaskNotificationRecipients
@@ -173,6 +174,23 @@ class TaskNotificationRecipients
     ): void {
         $email = strtolower(trim((string) $email));
         if ($email === '') {
+            return;
+        }
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Log::warning('Skipping task notification recipient with invalid email.', [
+                'email' => $email,
+                'task_id' => $task->id,
+                'subtask_id' => $subtask?->id,
+            ]);
+
+            return;
+        }
+
+        $suppressed = collect((array) config('system_mail.suppressed_recipients', []))
+            ->map(fn ($item) => strtolower(trim((string) $item)))
+            ->filter()
+            ->all();
+        if (in_array($email, $suppressed, true)) {
             return;
         }
 
