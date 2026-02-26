@@ -726,6 +726,10 @@ class ProjectController extends Controller
             : null;
         $tasksQuery = $project->tasks()
             ->with(['assignments.employee', 'assignments.salesRep', 'creator'])
+            ->withCount([
+                'subtasks',
+                'subtasks as completed_subtasks_count' => fn ($query) => $query->where('is_completed', true),
+            ])
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 
@@ -816,6 +820,8 @@ class ProjectController extends Controller
                     'task_type_label' => (string) ($taskTypeOptions[$task->task_type] ?? ucfirst((string) ($task->task_type ?? 'Task'))),
                     'assignee_names' => $assigneeNames ?: '--',
                     'progress' => max(0, min(100, (int) ($task->progress ?? 0))),
+                    'subtasks_count' => (int) ($task->subtasks_count ?? 0),
+                    'completed_subtasks_count' => (int) ($task->completed_subtasks_count ?? 0),
                     'created_at_date' => $task->created_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'created_at_time' => $task->created_at?->format(config('app.time_format', 'h:i A')) ?? '--',
                     'creator_name' => $task->creator?->name ?? 'System',

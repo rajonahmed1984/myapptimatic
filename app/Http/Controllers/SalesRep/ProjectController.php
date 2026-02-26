@@ -75,6 +75,10 @@ class ProjectController extends Controller
         $repAmount = $project->salesRepresentatives->first()?->pivot?->amount;
 
         $tasks = $project->tasks()
+            ->withCount([
+                'subtasks',
+                'subtasks as completed_subtasks_count' => fn ($query) => $query->where('is_completed', true),
+            ])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get();
@@ -149,8 +153,11 @@ class ProjectController extends Controller
                     'title' => $task->title,
                     'description' => $task->description,
                     'task_type' => $task->task_type,
+                    'status' => (string) ($task->status ?? 'pending'),
                     'customer_visible' => (bool) $task->customer_visible,
                     'progress' => (int) ($task->progress ?? 0),
+                    'subtasks_count' => (int) ($task->subtasks_count ?? 0),
+                    'completed_subtasks_count' => (int) ($task->completed_subtasks_count ?? 0),
                     'start_date_display' => $task->start_date?->format($dateFormat) ?? '--',
                     'due_date_display' => $task->due_date?->format($dateFormat) ?? '--',
                     'completed_at_display' => $task->completed_at?->format($dateFormat),

@@ -638,6 +638,8 @@ class CustomerController extends Controller
                         'name' => (string) $customer->name,
                         'company_name' => (string) ($customer->company_name ?: '--'),
                         'email' => (string) ($customer->email ?: '--'),
+                        'phone' => (string) ($customer->phone ?: '--'),
+                        'mobile' => (string) ($customer->phone ?: '--'),
                         'avatar_url' => $customer->avatar_path ? asset('storage/'.$customer->avatar_path) : null,
                         'active_subscriptions_count' => (int) ($customer->active_subscriptions_count ?? 0),
                         'subscriptions_count' => (int) ($customer->subscriptions_count ?? 0),

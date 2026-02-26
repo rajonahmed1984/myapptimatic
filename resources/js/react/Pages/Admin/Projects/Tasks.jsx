@@ -19,6 +19,24 @@ const STATUS_CLASSES = {
     done: 'bg-emerald-100 text-emerald-700',
 };
 
+const BOARD_COLUMNS = [
+    { key: 'pending', label: 'To Do' },
+    { key: 'in_progress', label: 'In Progress' },
+    { key: 'blocked', label: 'Blocked' },
+    { key: 'completed', label: 'Completed' },
+];
+
+const normalizeStatus = (status) => {
+    if (status === 'todo') {
+        return 'pending';
+    }
+    if (status === 'done') {
+        return 'completed';
+    }
+
+    return status || 'pending';
+};
+
 export default function Tasks({
     pageTitle,
     project,
@@ -33,6 +51,7 @@ export default function Tasks({
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
+    const [taskViewMode, setTaskViewMode] = React.useState('list');
 
     const totalTasks = Math.max(0, Number(summary.total || 0));
     const completedTasks = Math.max(0, Number(summary.completed || 0));
@@ -45,6 +64,108 @@ export default function Tasks({
                 : statusFilter
                     ? statusFilter.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                     : 'All';
+
+    const groupedTasks = React.useMemo(() => {
+        const groups = {
+            pending: [],
+            in_progress: [],
+            blocked: [],
+            completed: [],
+        };
+
+        tasks.forEach((task) => {
+            const normalized = normalizeStatus(String(task.status || 'pending'));
+            if (!groups[normalized]) {
+                groups.pending.push(task);
+                return;
+            }
+            groups[normalized].push(task);
+        });
+
+        return groups;
+    }, [tasks]);
+
+    const renderTaskActions = (task, align = 'end') => {
+        const currentStatus = String(task.status || 'pending');
+        const isInProgress = currentStatus === 'in_progress';
+        const isCompleted = ['completed', 'done'].includes(currentStatus);
+
+        return (
+            <div className={`flex flex-col gap-2 text-xs font-semibold ${align === 'start' ? 'items-start' : 'items-end'}`}>
+                <a
+                    href={task.routes?.show}
+                    data-native="true"
+                    className="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300"
+                >
+                    Open Task
+                </a>
+
+                {task.can_update ? (
+                    <>
+                        <a
+                            href={task.routes?.edit}
+                            data-native="true"
+                            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300"
+                        >
+                            Edit
+                        </a>
+
+                        {statusFilter !== 'in_progress' && !isInProgress && !isCompleted ? (
+                            <form method="POST" action={task.routes?.change_status} data-native="true">
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="hidden" name="_method" value="PATCH" />
+                                <input type="hidden" name="task_status_filter" value={statusFilter || ''} />
+                                <input type="hidden" name="status" value="in_progress" />
+                                <input type="hidden" name="progress" value="50" />
+                                <button
+                                    type="submit"
+                                    className="rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300"
+                                >
+                                    Inprogress
+                                </button>
+                            </form>
+                        ) : null}
+
+                        {statusFilter !== 'completed' && !isCompleted ? (
+                            <form method="POST" action={task.routes?.change_status} data-native="true">
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="hidden" name="_method" value="PATCH" />
+                                <input type="hidden" name="task_status_filter" value={statusFilter || ''} />
+                                <input type="hidden" name="status" value="completed" />
+                                <input type="hidden" name="progress" value="100" />
+                                <button
+                                    type="submit"
+                                    className="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300"
+                                >
+                                    Complete
+                                </button>
+                            </form>
+                        ) : null}
+                    </>
+                ) : null}
+
+                {task.can_delete ? (
+                    <form
+                        method="POST"
+                        action={task.routes?.destroy}
+                        data-native="true"
+                        onSubmit={(event) => {
+                            if (!window.confirm('Delete this task?')) {
+                                event.preventDefault();
+                            }
+                        }}
+                    >
+                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="_method" value="DELETE" />
+                        <input type="hidden" name="task_status_filter" value={statusFilter || ''} />
+                        <button type="submit" className="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 hover:border-rose-300">
+                            Delete
+                        </button>
+                    </form>
+                ) : null}
+            </div>
+        );
+    };
 
     return (
         <>
@@ -156,36 +277,53 @@ export default function Tasks({
                             <div className="section-label">Tasks</div>
                             <div className="text-sm text-slate-500">Tasks for this project. Filter: {statusFilterLabel}</div>
                         </div>
+                        <div className="inline-flex items-center rounded-full border border-slate-200 bg-white p-1">
+                            <button
+                                type="button"
+                                onClick={() => setTaskViewMode('list')}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                    taskViewMode === 'list' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                List
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTaskViewMode('board')}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                    taskViewMode === 'board' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                Board
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="mt-6 overflow-x-auto">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
-                                <tr>
-                                    <th className="px-4 py-3">Task ID</th>
-                                    <th className="px-4 py-3">Created</th>
-                                    <th className="px-4 py-3">Project Task</th>
-                                    <th className="px-4 py-3">Created By</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {tasks.length === 0 ? (
+                    {tasks.length === 0 ? (
+                        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                            {statusFilter ? 'No tasks found for this status.' : 'No tasks found.'}
+                        </div>
+                    ) : taskViewMode === 'list' ? (
+                        <div className="mt-6 overflow-x-auto">
+                            <table className="min-w-full text-left text-sm">
+                                <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                                     <tr>
-                                        <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
-                                            {statusFilter ? 'No tasks found for this status.' : 'No tasks found.'}
-                                        </td>
+                                        <th className="px-4 py-3">Task ID</th>
+                                        <th className="px-4 py-3">Created</th>
+                                        <th className="px-4 py-3">Project Task</th>
+                                        <th className="px-4 py-3">Created By</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
                                     </tr>
-                                ) : (
-                                    tasks.map((task) => {
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {tasks.map((task) => {
                                         const currentStatus = String(task.status || 'pending');
-                                        const statusLabel =
+                                        const label =
                                             STATUS_LABELS[currentStatus] ||
                                             currentStatus.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-                                        const statusClass = STATUS_CLASSES[currentStatus] || 'bg-slate-100 text-slate-600';
-                                        const isInProgress = currentStatus === 'in_progress';
-                                        const isCompleted = ['completed', 'done'].includes(currentStatus);
+                                        const badgeClass = STATUS_CLASSES[currentStatus] || 'bg-slate-100 text-slate-600';
+                                        const hasSubtasks = Number(task.subtasks_count || 0) > 0;
 
                                         return (
                                             <tr key={task.id} className="align-top">
@@ -204,98 +342,84 @@ export default function Tasks({
                                                     <div className="mt-1 text-xs text-slate-500">
                                                         {task.task_type_label} | Assignee: {task.assignee_names} | Progress: {Number(task.progress || 0)}%
                                                     </div>
+                                                    {hasSubtasks ? (
+                                                        <div className="mt-1 text-xs text-slate-500">
+                                                            Subtasks: {Number(task.completed_subtasks_count || 0)}/{Number(task.subtasks_count || 0)}
+                                                        </div>
+                                                    ) : null}
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-600">{task.creator_name}</td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${statusClass}`}>
-                                                        {statusLabel}
+                                                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${badgeClass}`}>
+                                                        {label}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex flex-col items-end gap-2 text-xs font-semibold">
-                                                        <a
-                                                            href={task.routes?.show}
-                                                            data-native="true"
-                                                            className="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300"
-                                                        >
-                                                            Open Task
-                                                        </a>
-
-                                                        {task.can_update ? (
-                                                            <>
-                                                                <a
-                                                                    href={task.routes?.edit}
-                                                                    data-native="true"
-                                                                    className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300"
-                                                                >
-                                                                    Edit
-                                                                </a>
-
-                                                                {statusFilter !== 'in_progress' && !isInProgress && !isCompleted ? (
-                                                                    <form method="POST" action={task.routes?.change_status} data-native="true">
-                                                                        <input type="hidden" name="_token" value={csrf} />
-                                                                        <input type="hidden" name="_method" value="PATCH" />
-                                                                        <input type="hidden" name="task_status_filter" value={statusFilter || ''} />
-                                                                        <input type="hidden" name="status" value="in_progress" />
-                                                                        <input type="hidden" name="progress" value="50" />
-                                                                        <button
-                                                                            type="submit"
-                                                                            className="rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300"
-                                                                        >
-                                                                            Inprogress
-                                                                        </button>
-                                                                    </form>
-                                                                ) : null}
-
-                                                                {statusFilter !== 'completed' && !isCompleted ? (
-                                                                    <form method="POST" action={task.routes?.change_status} data-native="true">
-                                                                        <input type="hidden" name="_token" value={csrf} />
-                                                                        <input type="hidden" name="_method" value="PATCH" />
-                                                                        <input type="hidden" name="task_status_filter" value={statusFilter || ''} />
-                                                                        <input type="hidden" name="status" value="completed" />
-                                                                        <input type="hidden" name="progress" value="100" />
-                                                                        <button
-                                                                            type="submit"
-                                                                            className="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300"
-                                                                        >
-                                                                            Complete
-                                                                        </button>
-                                                                    </form>
-                                                                ) : null}
-                                                            </>
-                                                        ) : null}
-
-                                                        {task.can_delete ? (
-                                                            <form
-                                                                method="POST"
-                                                                action={task.routes?.destroy}
-                                                                data-native="true"
-                                                                onSubmit={(event) => {
-                                                                    if (!window.confirm('Delete this task?')) {
-                                                                        event.preventDefault();
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <input type="hidden" name="_token" value={csrf} />
-                                                                <input type="hidden" name="_method" value="DELETE" />
-                                                                <input type="hidden" name="task_status_filter" value={statusFilter || ''} />
-                                                                <button
-                                                                    type="submit"
-                                                                    className="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 hover:border-rose-300"
-                                                                >
-                                                                    Delete
-                                                                </button>
-                                                            </form>
-                                                        ) : null}
-                                                    </div>
-                                                </td>
+                                                <td className="px-4 py-3 text-right">{renderTaskActions(task, 'end')}</td>
                                             </tr>
                                         );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="mt-6 overflow-x-auto pb-2">
+                            <div className="grid min-w-[1000px] grid-cols-4 gap-4">
+                                {BOARD_COLUMNS.map((column) => (
+                                    <div key={column.key} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                                        <div className="mb-3 flex items-center justify-between">
+                                            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{column.label}</span>
+                                            <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                                                {(groupedTasks[column.key] || []).length}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {(groupedTasks[column.key] || []).length === 0 ? (
+                                                <div className="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-4 text-center text-xs text-slate-400">
+                                                    No tasks
+                                                </div>
+                                            ) : (
+                                                (groupedTasks[column.key] || []).map((task) => {
+                                                    const currentStatus = String(task.status || 'pending');
+                                                    const label =
+                                                        STATUS_LABELS[currentStatus] ||
+                                                        currentStatus.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+                                                    const badgeClass = STATUS_CLASSES[currentStatus] || 'bg-slate-100 text-slate-600';
+                                                    const hasSubtasks = Number(task.subtasks_count || 0) > 0;
+
+                                                    return (
+                                                        <div key={task.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                                                            <a
+                                                                href={task.routes?.show}
+                                                                data-native="true"
+                                                                className="line-clamp-2 text-sm font-semibold text-slate-900 hover:text-teal-700"
+                                                            >
+                                                                {task.title}
+                                                            </a>
+                                                            <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-slate-400">{task.task_type_label}</div>
+                                                            <div className="mt-2">
+                                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass}`}>
+                                                                    {label}
+                                                                </span>
+                                                            </div>
+                                                            <div className="mt-2 text-xs text-slate-500">Progress: {Number(task.progress || 0)}%</div>
+                                                            <div className="mt-1 text-xs text-slate-500">Assignee: {task.assignee_names}</div>
+                                                            <div className="mt-1 text-xs text-slate-500">By: {task.creator_name}</div>
+                                                            {hasSubtasks ? (
+                                                                <div className="mt-1 text-xs text-slate-500">
+                                                                    Subtasks: {Number(task.completed_subtasks_count || 0)}/{Number(task.subtasks_count || 0)}
+                                                                </div>
+                                                            ) : null}
+                                                            <div className="mt-3">{renderTaskActions(task, 'start')}</div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {pagination?.has_pages ? (
                         <div className="mt-4 flex items-center justify-between gap-2 text-sm">

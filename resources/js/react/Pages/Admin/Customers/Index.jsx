@@ -51,8 +51,9 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                         <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                             <tr>
                                 <th className="px-4 py-3">ID</th>
+                                <th className="px-4 py-3">Photo</th>
                                 <th className="px-4 py-3">Name & Company</th>
-                                <th className="px-4 py-3">Email</th>
+                                <th className="px-4 py-3">Email & mobile</th>
                                 <th className="px-4 py-3">Services</th>
                                 <th className="px-4 py-3">Projects & Maintenance</th>
                                 <th className="px-4 py-3">Created</th>
@@ -63,7 +64,7 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                         <tbody>
                             {customers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
+                                    <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
                                         No customers yet.
                                     </td>
                                 </tr>
@@ -76,31 +77,34 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                                             </a>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                {customer.avatar_url ? (
-                                                    <img
-                                                        src={customer.avatar_url}
-                                                        alt={customer.name}
-                                                        className="h-10 w-10 rounded object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded bg-slate-200 text-xs font-semibold text-slate-700">
-                                                        {initials(customer.name)}
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <a
-                                                        href={customer.routes?.show}
-                                                        data-native="true"
-                                                        className="font-medium text-slate-900 hover:text-teal-600"
-                                                    >
-                                                        {customer.name}
-                                                    </a>
-                                                    <div className="text-xs text-slate-500">{customer.company_name || '--'}</div>
+                                            {customer.avatar_url ? (
+                                                <img
+                                                    src={customer.avatar_url}
+                                                    alt={customer.name}
+                                                    className="h-10 w-10 rounded object-cover"
+                                                />
+                                            ) : (
+                                                <div className="flex h-10 w-10 items-center justify-center rounded bg-slate-200 text-xs font-semibold text-slate-700">
+                                                    {initials(customer.name)}
                                                 </div>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div>
+                                                <a
+                                                    href={customer.routes?.show}
+                                                    data-native="true"
+                                                    className="font-medium text-slate-900 hover:text-teal-600"
+                                                >
+                                                    {customer.name}
+                                                </a>
+                                                <div className="text-xs text-slate-500">{customer.company_name || '--'}</div>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500">{customer.email || '--'}</td>
+                                        <td className="px-4 py-3 text-slate-500">
+                                            <div>{customer.email || '--'}</div>
+                                            <div className="text-xs text-slate-400">{customer.mobile || customer.phone || '--'}</div>
+                                        </td>
                                         <td className="px-4 py-3 text-slate-500">
                                             {Number(customer.active_subscriptions_count || 0)} ({Number(customer.subscriptions_count || 0)})
                                         </td>
@@ -110,10 +114,7 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                                         </td>
                                         <td className="px-4 py-3 text-slate-500">{customer.created_at || '--'}</td>
                                         <td className="px-4 py-3">
-                                            <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${customer.login?.classes || 'border-slate-200 text-slate-600 bg-slate-50'}`}>
-                                                {customer.login?.label || 'Logout'}
-                                            </span>
-                                            <div className="mt-1 text-[11px] text-slate-400">
+                                            <div className="text-[11px] text-slate-400">
                                                 Last login: {customer.login?.last_login_at || '--'}
                                             </div>
                                         </td>

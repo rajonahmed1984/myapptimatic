@@ -75,6 +75,10 @@ class ProjectController extends Controller
 
         $tasks = $project->tasks()
             ->where('customer_visible', true)
+            ->withCount([
+                'subtasks',
+                'subtasks as completed_subtasks_count' => fn ($query) => $query->where('is_completed', true),
+            ])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get();
@@ -122,6 +126,12 @@ class ProjectController extends Controller
             ->latest('issue_date')
             ->first();
 
+        $statusCounts = $project->tasks()
+            ->where('customer_visible', true)
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
         $budgetBase = $project->total_budget ?? $project->budget_amount;
         $overheadTotal = (float) ($project->overhead_total ?? 0);
         $initialPaymentInvoiced = (float) $project->invoices()
@@ -160,6 +170,10 @@ class ProjectController extends Controller
                     'title' => $task->title,
                     'description' => $task->description,
                     'task_type' => $task->task_type,
+                    'status' => (string) ($task->status ?? 'pending'),
+                    'progress' => (int) ($task->progress ?? 0),
+                    'subtasks_count' => (int) ($task->subtasks_count ?? 0),
+                    'completed_subtasks_count' => (int) ($task->completed_subtasks_count ?? 0),
                     'start_date_display' => $task->start_date?->format($dateFormat) ?? '--',
                     'due_date_display' => $task->due_date?->format($dateFormat) ?? '--',
                     'can_edit' => (bool) $canEditTask,
@@ -200,6 +214,12 @@ class ProjectController extends Controller
             ],
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),
             'priorityOptions' => TaskSettings::priorityOptions(),
+            'task_stats' => [
+                'total' => (int) $statusCounts->values()->sum(),
+                'in_progress' => (int) ($statusCounts['in_progress'] ?? 0),
+                'completed' => (int) (($statusCounts['completed'] ?? 0) + ($statusCounts['done'] ?? 0)),
+                'unread' => (int) $unreadCount,
+            ],
             'chat_messages' => $chatMessages->map(function ($message) use ($dateFormat) {
                 return [
                     'id' => $message->id,
