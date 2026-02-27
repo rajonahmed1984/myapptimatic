@@ -117,9 +117,9 @@ class EmployeePayoutController extends Controller
         }
 
         $currency = $employee->activeCompensation?->currency ?? ($projects->first()?->currency ?? 'BDT');
-        $amount = (float) $projects->sum('contract_employee_payable');
+        $selectedAmount = (float) $projects->sum('contract_employee_payable');
 
-        if ($amount <= 0) {
+        if ($selectedAmount <= 0) {
             return back()->withErrors(['project_ids' => 'Selected projects have no payable amount.'])->withInput();
         }
 
@@ -131,10 +131,11 @@ class EmployeePayoutController extends Controller
         $paidTotal = (float) EmployeePayout::query()
             ->where('employee_id', $employee->id)
             ->sum('amount');
-        $outstanding = max(0, $payableRaw - $paidTotal);
+        $outstanding = round(max(0, $payableRaw - $paidTotal), 2, PHP_ROUND_HALF_UP);
+        $amount = round(min($selectedAmount, $outstanding), 2, PHP_ROUND_HALF_UP);
 
-        if ($amount > $outstanding) {
-            return back()->withErrors(['project_ids' => 'Selected projects exceed the current payable balance.'])->withInput();
+        if ($amount <= 0) {
+            return back()->withErrors(['project_ids' => 'No payable balance is available for payout.'])->withInput();
         }
 
         $payout = EmployeePayout::create([
@@ -144,7 +145,12 @@ class EmployeePayoutController extends Controller
             'payout_method' => $data['payout_method'] ?? null,
             'reference' => $data['reference'] ?? null,
             'note' => $data['note'] ?? null,
-            'metadata' => ['project_ids' => $projects->pluck('id')->all()],
+            'metadata' => [
+                'project_ids' => $projects->pluck('id')->all(),
+                'selected_amount' => $selectedAmount,
+                'applied_amount' => $amount,
+                'outstanding_before' => $outstanding,
+            ],
             'paid_at' => now(),
         ]);
 

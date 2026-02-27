@@ -11,6 +11,9 @@ export default function Create({
     routes = {},
 }) {
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const selectedTotal = earnings.reduce((sum, earning) => sum + Number(earning?.contract_employee_payable || 0), 0);
+    const outstanding = Number(summary?.payable || 0);
+    const cappedByOutstanding = selectedTotal > outstanding && outstanding > 0;
 
     return (
         <>
@@ -43,6 +46,12 @@ export default function Create({
                     <Metric title="Payable" value={Number(summary?.payable || 0).toFixed(2)} extraClass="text-amber-700" />
                     <Metric title="Paid" value={Number(summary?.paid || 0).toFixed(2)} extraClass="text-emerald-700" />
                 </div>
+
+                {cappedByOutstanding ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        Selected project totals are higher than current outstanding payable. Payout will be capped to {outstanding.toFixed(2)}.
+                    </div>
+                ) : null}
 
                 <form method="POST" action={routes?.store} data-native="true" className="space-y-4">
                     <input type="hidden" name="_token" value={token} />

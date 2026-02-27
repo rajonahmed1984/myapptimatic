@@ -6,6 +6,10 @@
     <style>
         body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 24px; }
         .header { border-bottom: 2px solid #0f766e; padding-bottom: 12px; margin-bottom: 16px; }
+        .header-table { width: 100%; border-collapse: collapse; }
+        .header-table td { vertical-align: top; }
+        .logo { max-width: 170px; max-height: 70px; }
+        .company-meta { text-align: right; font-size: 11px; line-height: 1.5; color: #334155; }
         .title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
         .sub { font-size: 11px; color: #475569; margin: 0; }
         .grid { width: 100%; border-collapse: collapse; margin-top: 12px; }
@@ -16,6 +20,20 @@
 </head>
 <body>
     <div class="header">
+        <table class="header-table">
+            <tr>
+                <td>
+                    @if(!empty($company_logo))
+                        <img src="{{ $company_logo }}" alt="{{ $company_name ?? config('app.name') }}" class="logo">
+                    @endif
+                </td>
+                <td class="company-meta">
+                    <strong>{{ $company_name ?? config('app.name') }}</strong><br>
+                    {{ $company_address ?? '--' }}<br>
+                    {{ $company_email ?? '--' }}
+                </td>
+            </tr>
+        </table>
         <p class="title">{{ $slip_title ?? 'Payment Slip' }}</p>
         <p class="sub">{{ $company_name ?? config('app.name') }} | Generated at {{ $generated_at ?? now()->format('d-m-Y h:i A') }}</p>
     </div>

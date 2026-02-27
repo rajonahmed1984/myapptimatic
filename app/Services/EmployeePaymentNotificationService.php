@@ -12,6 +12,7 @@ use App\Support\Branding;
 use App\Support\UrlResolver;
 use App\Services\Mail\MailSender;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class EmployeePaymentNotificationService
@@ -95,6 +96,9 @@ class EmployeePaymentNotificationService
                 'reference' => $reference !== '' ? $reference : '--',
                 'note' => (string) ($payout->note ?: '--'),
                 'company_name' => (string) $companyName,
+                'company_logo' => $this->companyLogoSource(),
+                'company_address' => (string) (Setting::getValue('pay_to_text') ?: '--'),
+                'company_email' => (string) (Setting::getValue('company_email') ?: '--'),
                 'generated_at' => now()->format(config('app.datetime_format', 'd-m-Y h:i A')),
             ]);
 
@@ -182,6 +186,9 @@ class EmployeePaymentNotificationService
                 'reference' => $reference !== '' ? $reference : '--',
                 'note' => 'Payroll Period: '.$periodLabel,
                 'company_name' => (string) $companyName,
+                'company_logo' => $this->companyLogoSource(),
+                'company_address' => (string) (Setting::getValue('pay_to_text') ?: '--'),
+                'company_email' => (string) (Setting::getValue('company_email') ?: '--'),
                 'generated_at' => now()->format(config('app.datetime_format', 'd-m-Y h:i A')),
             ]);
 
@@ -254,6 +261,30 @@ class EmployeePaymentNotificationService
     {
         $html = view('hr.payslips.payment-slip', $payload)->render();
         return app('dompdf.wrapper')->loadHTML($html)->output();
+    }
+
+    private function companyLogoSource(): ?string
+    {
+        $logoPath = trim((string) Setting::getValue('company_logo_path'));
+        if ($logoPath === '') {
+            return null;
+        }
+
+        try {
+            if (Storage::disk('public')->exists($logoPath)) {
+                $absolute = Storage::disk('public')->path($logoPath);
+                $bytes = @file_get_contents($absolute);
+                if ($bytes !== false) {
+                    $mime = @mime_content_type($absolute) ?: 'image/png';
+                    return 'data:'.$mime.';base64,'.base64_encode($bytes);
+                }
+            }
+        } catch (\Throwable) {
+            // Fallback to URL below.
+        }
+
+        $url = Branding::url($logoPath);
+        return $url !== '' ? $url : null;
     }
 
     private function applyReplacements(string $text, array $replacements): string
