@@ -30,6 +30,8 @@ export default function Show({
     projectTaskStatusCounts = {},
     recentEarnings = [],
     recentPayouts = [],
+    advanceProjects = [],
+    recentAdvanceTransactions = [],
     recentWorkSessions = [],
     recentWorkSummaries = [],
     recentPayrollItems = [],
@@ -298,22 +300,115 @@ export default function Show({
             )}
 
             {tab === 'payouts' && (
-                <div className="card p-6 overflow-hidden">
-                    <div className="text-sm font-semibold text-slate-900">Recent Payouts</div>
-                    <div className="mt-3 overflow-x-auto">
-                        <table className="min-w-full text-sm text-slate-700">
-                            <thead><tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500"><th className="py-2 px-3">Date</th><th className="py-2 px-3">Amount</th><th className="py-2 px-3">Method</th><th className="py-2 px-3">Reference</th></tr></thead>
-                            <tbody>
-                                {asArray(recentPayouts).length === 0 ? <tr><td colSpan={4} className="py-3 px-3 text-center text-slate-500">No payouts found.</td></tr> : asArray(recentPayouts).map((item) => (
-                                    <tr key={item.id} className="border-b border-slate-100">
-                                        <td className="py-2 px-3">{item.paid_at || '--'}</td>
-                                        <td className="py-2 px-3">{currency(item.amount, item.currency || summary?.currency || 'BDT')}</td>
-                                        <td className="py-2 px-3">{item.payout_method || '--'}</td>
-                                        <td className="py-2 px-3">{item.reference || '--'}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                <div className="space-y-4">
+                    <div className="card p-6 overflow-hidden">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                            <div className="text-sm font-semibold text-slate-900">Recent Payouts</div>
+                            <a
+                                href={routes?.payoutCreate || '#'}
+                                data-native="true"
+                                className="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300 hover:text-emerald-800"
+                            >
+                                Pay payable ({Number(projectBaseEarnings?.payable || 0).toFixed(2)})
+                            </a>
+                        </div>
+                        <div className="mt-3 overflow-x-auto">
+                            <table className="min-w-full text-sm text-slate-700">
+                                <thead><tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500"><th className="py-2 px-3">Date</th><th className="py-2 px-3">Amount</th><th className="py-2 px-3">Method</th><th className="py-2 px-3">Reference</th></tr></thead>
+                                <tbody>
+                                    {asArray(recentPayouts).length === 0 ? <tr><td colSpan={4} className="py-3 px-3 text-center text-slate-500">No payouts found.</td></tr> : asArray(recentPayouts).map((item) => (
+                                        <tr key={item.id} className="border-b border-slate-100">
+                                            <td className="py-2 px-3">{item.paid_at || '--'}</td>
+                                            <td className="py-2 px-3">{currency(item.amount, item.currency || summary?.currency || 'BDT')}</td>
+                                            <td className="py-2 px-3">{item.payout_method || '--'}</td>
+                                            <td className="py-2 px-3">{item.reference || '--'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <form method="POST" action={routes?.advancePayout} encType="multipart/form-data" data-native="true" className="card p-6">
+                        <input type="hidden" name="_token" value={token} />
+                        <div className="text-xl font-semibold text-slate-900">Record advance payout</div>
+                        <div className="mt-1 text-sm text-slate-500">Advance payments are deducted from future project payouts.</div>
+
+                        <div className="mt-5 grid gap-4 md:grid-cols-5">
+                            <div>
+                                <div className="mb-1 text-sm text-slate-600">Project</div>
+                                <select name="project_id" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                    <option value="">Select project</option>
+                                    {asArray(advanceProjects).map((project) => (
+                                        <option key={project.id} value={project.id}>
+                                            {project.name}{project?.customer?.name ? ` (${project.customer.name})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <div className="mb-1 text-sm text-slate-600">Amount</div>
+                                <input type="number" name="amount" step="0.01" min="0.01" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="0.00" required />
+                            </div>
+                            <div>
+                                <div className="mb-1 text-sm text-slate-600">Currency</div>
+                                <input type="text" name="currency" defaultValue={summary?.currency || 'BDT'} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                            </div>
+                            <div>
+                                <div className="mb-1 text-sm text-slate-600">Method</div>
+                                <select name="payout_method" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                    <option value="">Select</option>
+                                    {asArray(paymentMethods).map((method) => (
+                                        <option key={method.code} value={method.code}>{method.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <div className="mb-1 text-sm text-slate-600">Payment Date</div>
+                                <input type="date" name="paid_at" defaultValue={new Date().toISOString().slice(0, 10)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                            </div>
+                            <div>
+                                <div className="mb-1 text-sm text-slate-600">Reference</div>
+                                <input type="text" name="reference" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Txn / Note" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <div className="mb-1 text-sm text-slate-600">Payment Proof</div>
+                                <input type="file" name="payment_proof" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <div className="mb-1 text-sm text-slate-600">Note</div>
+                                <input type="text" name="note" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Optional note" />
+                            </div>
+                        </div>
+
+                        <div className="mt-4">
+                            <button type="submit" className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Save advance payout</button>
+                        </div>
+                    </form>
+
+                    <div className="card p-6 overflow-hidden">
+                        <div className="text-sm font-semibold text-slate-900">Advance Transactions</div>
+                        <div className="mt-3 overflow-x-auto">
+                            <table className="min-w-full text-sm text-slate-700">
+                                <thead><tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500"><th className="py-2 px-3">Date</th><th className="py-2 px-3">Amount</th><th className="py-2 px-3">Method</th><th className="py-2 px-3">Reference</th><th className="py-2 px-3">Proof</th><th className="py-2 px-3">Note</th></tr></thead>
+                                <tbody>
+                                    {asArray(recentAdvanceTransactions).length === 0 ? <tr><td colSpan={6} className="py-3 px-3 text-center text-slate-500">No advance transactions found.</td></tr> : asArray(recentAdvanceTransactions).map((item) => (
+                                        <tr key={item.id} className="border-b border-slate-100">
+                                            <td className="py-2 px-3">{item.paid_at || '--'}</td>
+                                            <td className="py-2 px-3">{currency(item.amount, item.currency || summary?.currency || 'BDT')}</td>
+                                            <td className="py-2 px-3">{item.payout_method || '--'}</td>
+                                            <td className="py-2 px-3">{item.reference || '--'}</td>
+                                            <td className="py-2 px-3">
+                                                {item?.metadata?.payment_proof_path ? (
+                                                    <a href={payoutProofUrl(item.id)} data-native="true" className="text-teal-700 hover:text-teal-600">View/Download</a>
+                                                ) : '--'}
+                                            </td>
+                                            <td className="py-2 px-3">{item.note || '--'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}

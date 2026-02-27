@@ -26,15 +26,15 @@ $billing = Schedule::command('billing:run')->daily();
 CronActivityLogger::track($billing, 'billing:run');
 
 // Frequent tasks (every 5 minutes via cron-frequent.php)
-$defaultQueue = Schedule::command('queue:work --queue=default --stop-when-empty --tries=1 --max-time=50')
+$defaultQueue = Schedule::command('queue:work --queue=default --stop-when-empty --tries=3 --max-time=50')
     ->everyMinute()
     ->withoutOverlapping();
-CronActivityLogger::track($defaultQueue, 'queue:work --queue=default --stop-when-empty --tries=1 --max-time=50');
+CronActivityLogger::track($defaultQueue, 'queue:work --queue=default --stop-when-empty --tries=3 --max-time=50');
 
-$aiQueue = Schedule::command('queue:work --queue=ai --stop-when-empty --tries=1 --max-jobs=40 --max-time=50')
+$aiQueue = Schedule::command('queue:work --queue=ai --stop-when-empty --tries=3 --max-jobs=40 --max-time=50')
     ->everyMinute()
     ->withoutOverlapping();
-CronActivityLogger::track($aiQueue, 'queue:work --queue=ai --stop-when-empty --tries=1 --max-jobs=40 --max-time=50');
+CronActivityLogger::track($aiQueue, 'queue:work --queue=ai --stop-when-empty --tries=3 --max-jobs=40 --max-time=50');
 
 $pruneFailedJobs = Schedule::command('queue:prune-failed --hours=168')->dailyAt('01:30');
 CronActivityLogger::track($pruneFailedJobs, 'queue:prune-failed --hours=168');

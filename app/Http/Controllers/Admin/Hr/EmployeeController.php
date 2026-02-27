@@ -977,6 +977,7 @@ class EmployeeController extends Controller
                 'impersonate' => route('admin.hr.employees.impersonate', $employee, false),
                 'show' => route('admin.hr.employees.show', $employee, false),
                 'advancePayout' => route('admin.hr.employees.advance-payout', $employee, false),
+                'payoutCreate' => route('admin.hr.employee-payouts.create', ['employee_id' => $employee->id], false),
                 'payoutProof' => route('admin.hr.employee-payouts.proof', ['employeePayout' => '__ID__'], false),
             ],
         ]);

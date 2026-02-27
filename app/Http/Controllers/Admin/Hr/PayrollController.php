@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendEmployeePaymentReceiptJob;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeeWorkSession;
@@ -279,7 +280,7 @@ class PayrollController extends Controller
                 'payment_reference' => $composedReference,
             ]);
 
-            PayrollAuditLog::create([
+            $auditLog = PayrollAuditLog::create([
                 'payroll_item_id' => $item->id,
                 'event' => $isFullyPaid ? 'payment_completed' : 'payment_partial',
                 'old_status' => $oldStatus,
@@ -304,11 +305,16 @@ class PayrollController extends Controller
                 'ok' => true,
                 'remaining_after' => $remainingAfter,
                 'is_fully_paid' => $isFullyPaid,
+                'audit_log_id' => $auditLog->id,
             ];
         });
 
         if (! ($result['ok'] ?? false)) {
             return back()->withErrors(['payroll' => $result['message'] ?? 'Payment failed.']);
+        }
+
+        if (! empty($result['audit_log_id'])) {
+            SendEmployeePaymentReceiptJob::dispatch('payroll_audit', (int) $result['audit_log_id'])->afterCommit();
         }
 
         if (($result['is_fully_paid'] ?? false) === true) {

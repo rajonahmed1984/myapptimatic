@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendEmployeePaymentReceiptJob;
 use App\Models\Employee;
 use App\Models\EmployeePayout;
 use App\Models\PaymentMethod;
@@ -136,7 +137,7 @@ class EmployeePayoutController extends Controller
             return back()->withErrors(['project_ids' => 'Selected projects exceed the current payable balance.'])->withInput();
         }
 
-        EmployeePayout::create([
+        $payout = EmployeePayout::create([
             'employee_id' => $employee->id,
             'amount' => $amount,
             'currency' => $currency,
@@ -146,6 +147,8 @@ class EmployeePayoutController extends Controller
             'metadata' => ['project_ids' => $projects->pluck('id')->all()],
             'paid_at' => now(),
         ]);
+
+        SendEmployeePaymentReceiptJob::dispatch('employee_payout', $payout->id)->afterCommit();
 
         return redirect()
             ->route('admin.hr.employees.show', ['employee' => $employee->id, 'tab' => 'payouts'])
@@ -202,7 +205,7 @@ class EmployeePayoutController extends Controller
             $metadata['payment_proof_mime'] = $file->getClientMimeType();
         }
 
-        EmployeePayout::create([
+        $payout = EmployeePayout::create([
             'employee_id' => $employee->id,
             'amount' => (float) $data['amount'],
             'currency' => $currency,
@@ -212,6 +215,8 @@ class EmployeePayoutController extends Controller
             'metadata' => $metadata,
             'paid_at' => ! empty($data['paid_at']) ? Carbon::parse((string) $data['paid_at'])->startOfDay() : now(),
         ]);
+
+        SendEmployeePaymentReceiptJob::dispatch('employee_payout', $payout->id)->afterCommit();
 
         return back()->with('status', 'Advance payout recorded.');
     }
