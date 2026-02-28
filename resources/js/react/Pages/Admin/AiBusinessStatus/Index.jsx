@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DateRangePickerField from '../../../Components/DateRangePickerField';
 
 const formatNumber = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -68,14 +69,18 @@ export default function Index({ metrics = {}, filters = {}, aiReady = false, rou
                         <div className="mt-3 text-sm text-slate-500">Set the reporting window and generate an AI summary.</div>
 
                         <form className="mt-4 grid gap-4" onSubmit={generate}>
-                            <div>
-                                <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Start date</label>
-                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={filters?.start_date || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                            </div>
-                            <div>
-                                <label className="text-xs uppercase tracking-[0.2em] text-slate-400">End date</label>
-                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="end_date" defaultValue={filters?.end_date || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                            </div>
+                            <DateRangePickerField
+                                startName="start_date"
+                                endName="end_date"
+                                startValue={filters?.start_date || ''}
+                                endValue={filters?.end_date || ''}
+                                submitFormat="dmy"
+                                startLabel="Start date"
+                                endLabel="End date"
+                                className="md:col-span-2"
+                                gridClassName="grid gap-4 md:grid-cols-2"
+                                inputClassName="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
                             <div>
                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Projection days</label>
                                 <input

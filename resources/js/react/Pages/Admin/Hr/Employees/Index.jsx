@@ -31,6 +31,7 @@ export default function Index({
                                 <th className="py-2 px-3">Name</th>
                                 <th className="py-2 px-3">Designation</th>
                                 <th className="py-2 px-3">Employment</th>
+                                <th className="py-2 px-3">Salary Type</th>
                                 <th className="py-2 px-3">Join Date</th>
                                 <th className="py-2 px-3">Manager</th>
                                 <th className="py-2 px-3">Status</th>
@@ -40,7 +41,7 @@ export default function Index({
                         </thead>
                         <tbody>
                             {employees.length === 0 ? (
-                                <tr><td colSpan={10} className="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
+                                <tr><td colSpan={11} className="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
                             ) : employees.map((employee) => (
                                 <tr key={employee.id} className="border-b border-slate-100">
                                     <td className="py-2 px-3 font-semibold text-slate-900">{employee.id}</td>
@@ -66,6 +67,7 @@ export default function Index({
                                     </td>
                                     <td className="py-2 px-3">{employee.designation}</td>
                                     <td className="py-2 px-3">{employee.employment_type}</td>
+                                    <td className="py-2 px-3">{employee.salary_type_label || employee.salary_type || '--'}</td>
                                     <td className="py-2 px-3">{employee.join_date}</td>
                                     <td className="py-2 px-3">{employee.manager_name}</td>
                                     <td className="py-2 px-3">

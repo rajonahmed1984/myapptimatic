@@ -18,6 +18,7 @@ use App\Models\PayrollItem;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
+use App\Models\SystemLog;
 use App\Models\User;
 use App\Services\EmployeeWorkSummaryService;
 use App\Support\Currency;
@@ -38,7 +39,15 @@ class EmployeeController extends Controller
     public function index(): InertiaResponse
     {
         $employees = Employee::query()
-            ->with(['manager', 'user:id,avatar_path'])
+            ->with([
+                'manager',
+                'user:id,avatar_path',
+                'activeCompensation' => fn ($query) => $query->select([
+                    'employee_compensations.id',
+                    'employee_compensations.employee_id',
+                    'employee_compensations.salary_type',
+                ]),
+            ])
             ->orderByDesc('id')
             ->paginate(20);
 
@@ -54,6 +63,7 @@ class EmployeeController extends Controller
                 $loginClasses = 'border-emerald-200 text-emerald-700 bg-emerald-50';
                 $lastLoginAt = $lastLoginByEmployee[$employee->id] ?? null;
                 $photoPath = $employee->photo_path ?: $employee->user?->avatar_path;
+                $salaryType = $employee->activeCompensation?->salary_type;
 
                 return [
                     'id' => $employee->id,
@@ -62,6 +72,8 @@ class EmployeeController extends Controller
                     'email' => $employee->email,
                     'designation' => $employee->designation ?? '--',
                     'employment_type' => ucfirst((string) ($employee->employment_type ?? '--')),
+                    'salary_type' => $salaryType,
+                    'salary_type_label' => $salaryType ? ucwords(str_replace('_', ' ', $salaryType)) : null,
                     'join_date' => $employee->join_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'manager_name' => $employee->manager?->name ?? '--',
                     'status' => (string) $employee->status,
@@ -424,6 +436,8 @@ class EmployeeController extends Controller
             $allowedTabs[] = 'earnings';
             $allowedTabs[] = 'payouts';
         }
+        $allowedTabs[] = 'emails';
+        $allowedTabs[] = 'log';
         if (! in_array($tab, $allowedTabs, true)) {
             $tab = 'profile';
         }
@@ -444,6 +458,8 @@ class EmployeeController extends Controller
         $recentPayrollItems = collect();
         $recentSalaryAdvances = collect();
         $recentAdvanceTransactions = collect();
+        $emailLogs = collect();
+        $activityLogs = collect();
         $draftPayrollItem = null;
         $workSessionStats = [
             'eligible' => false,
@@ -910,6 +926,48 @@ class EmployeeController extends Controller
             }
         }
 
+        if ($tab === 'emails') {
+            $recipientEmails = collect([$employee->email, $employee->user?->email])
+                ->filter(fn ($value) => is_string($value) && trim($value) !== '')
+                ->map(fn (string $value) => strtolower(trim($value)))
+                ->unique()
+                ->values();
+
+            if ($recipientEmails->isNotEmpty()) {
+                $emailLogs = SystemLog::query()
+                    ->where('category', 'email')
+                    ->where(function ($query) use ($recipientEmails) {
+                        foreach ($recipientEmails as $email) {
+                            $query->orWhereJsonContains('context->to', $email);
+                        }
+                    })
+                    ->latest()
+                    ->take(200)
+                    ->get();
+            }
+        }
+
+        if ($tab === 'log') {
+            $employeeEmail = is_string($employee->email) ? strtolower(trim($employee->email)) : null;
+            $activityLogs = SystemLog::query()
+                ->where(function ($query) use ($employee, $employeeEmail) {
+                    $query->where('context->employee_id', $employee->id);
+
+                    if ($employee->user_id) {
+                        $query->orWhere('user_id', $employee->user_id);
+                    }
+
+                    if ($employeeEmail) {
+                        $query->orWhere('context->employee_email', $employeeEmail);
+                    }
+                })
+                ->latest()
+                ->take(200)
+                ->get();
+        }
+
+        $dateTimeFormat = config('app.datetime_format', 'd-m-Y h:i A');
+
         return Inertia::render('Admin/Hr/Employees/Show', [
             'pageTitle' => $employee->name,
             'employee' => [
@@ -958,6 +1016,24 @@ class EmployeeController extends Controller
             'recentPayrollItems' => $recentPayrollItems->values(),
             'recentSalaryAdvances' => $recentSalaryAdvances->values(),
             'recentAdvanceTransactions' => $recentAdvanceTransactions->values(),
+            'emailLogs' => $emailLogs->map(function (SystemLog $log) use ($dateTimeFormat) {
+                return [
+                    'id' => $log->id,
+                    'created_at_display' => $log->created_at?->format($dateTimeFormat) ?? '--',
+                    'subject' => (string) ($log->context['subject'] ?? $log->message ?? '--'),
+                    'resend_url' => route('admin.logs.email.resend', ['systemLog' => $log], false),
+                ];
+            })->values(),
+            'activityLogs' => $activityLogs->map(function (SystemLog $log) use ($dateTimeFormat) {
+                return [
+                    'id' => $log->id,
+                    'created_at_display' => $log->created_at?->format($dateTimeFormat) ?? '--',
+                    'category' => ucfirst((string) ($log->category ?? '')),
+                    'level' => strtoupper((string) ($log->level ?? '')),
+                    'message' => (string) ($log->message ?? '--'),
+                    'context' => $log->context,
+                ];
+            })->values(),
             'draftPayrollItem' => $draftPayrollItem,
             'workSessionStats' => $workSessionStats,
             'payrollSourceNote' => $payrollSourceNote,

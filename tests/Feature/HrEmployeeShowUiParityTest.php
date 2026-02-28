@@ -55,6 +55,36 @@ class HrEmployeeShowUiParityTest extends TestCase
     }
 
     #[Test]
+    public function employee_show_allows_emails_tab_contract(): void
+    {
+        $admin = $this->makeAdmin();
+        $employee = $this->makeEmployee('emails-tab@example.test', 'monthly');
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.hr.employees.show', ['employee' => $employee->id, 'tab' => 'emails']))
+            ->assertOk();
+
+        $props = $this->inertiaProps($response->getContent());
+        $this->assertSame('emails', data_get($props, 'props.tab'));
+        $this->assertIsArray(data_get($props, 'props.emailLogs'));
+    }
+
+    #[Test]
+    public function employee_show_allows_log_tab_contract(): void
+    {
+        $admin = $this->makeAdmin();
+        $employee = $this->makeEmployee('log-tab@example.test', 'monthly');
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.hr.employees.show', ['employee' => $employee->id, 'tab' => 'log']))
+            ->assertOk();
+
+        $props = $this->inertiaProps($response->getContent());
+        $this->assertSame('log', data_get($props, 'props.tab'));
+        $this->assertIsArray(data_get($props, 'props.activityLogs'));
+    }
+
+    #[Test]
     public function employee_advance_payout_contract_is_preserved(): void
     {
         $admin = $this->makeAdmin();

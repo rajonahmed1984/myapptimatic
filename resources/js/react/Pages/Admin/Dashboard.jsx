@@ -36,6 +36,14 @@ const CHART_SERIES = {
         fill: 'rgba(16, 185, 129, 0.16)',
         legend: 'bg-emerald-400',
     },
+    expense: {
+        label: 'Expense',
+        stroke: '#f97316',
+        pointFill: '#fed7aa',
+        pointStroke: '#ea580c',
+        fill: 'rgba(249, 115, 22, 0.14)',
+        legend: 'bg-orange-400',
+    },
 };
 
 const SPARK_COLORS = {
@@ -253,11 +261,12 @@ export default function Dashboard({
         new_orders: true,
         active_orders: true,
         income: true,
+        expense: true,
     });
     const [hoveredIndex, setHoveredIndex] = useState(null);
 
-    const activeMetrics = periodMetrics?.[period] || { new_orders: 0, active_orders: 0, income: 0, hosting_income: 0 };
-    const activeSeries = periodSeries?.[period] || { labels: [], new_orders: [], active_orders: [], income: [] };
+    const activeMetrics = periodMetrics?.[period] || { new_orders: 0, active_orders: 0, income: 0, expense: 0, hosting_income: 0 };
+    const activeSeries = periodSeries?.[period] || { labels: [], new_orders: [], active_orders: [], income: [], expense: [] };
     const recentClients = Array.isArray(clientActivity?.recentClients) ? clientActivity.recentClients : [];
     const summary = taskSummary || { total: 0, open: 0, in_progress: 0, completed: 0 };
 
@@ -267,9 +276,10 @@ export default function Dashboard({
         const newOrders = asNumberList(activeSeries?.new_orders, seriesLength);
         const activeOrders = asNumberList(activeSeries?.active_orders, seriesLength);
         const income = asNumberList(activeSeries?.income, seriesLength);
+        const expense = asNumberList(activeSeries?.expense, seriesLength);
 
         const leftMax = Math.max(1, ...newOrders, ...activeOrders);
-        const rightMax = Math.max(1, ...income);
+        const rightMax = Math.max(1, ...income, ...expense);
         const baseY = CHART_FRAME.height - CHART_FRAME.padBottom;
 
         const points = {
@@ -303,6 +313,16 @@ export default function Dashboard({
                 CHART_FRAME.padTop,
                 CHART_FRAME.padBottom
             ),
+            expense: buildChartPoints(
+                expense,
+                rightMax,
+                CHART_FRAME.width,
+                CHART_FRAME.height,
+                CHART_FRAME.padLeft,
+                CHART_FRAME.padRight,
+                CHART_FRAME.padTop,
+                CHART_FRAME.padBottom
+            ),
         };
 
         return {
@@ -311,6 +331,7 @@ export default function Dashboard({
             newOrders,
             activeOrders,
             income,
+            expense,
             leftMax,
             rightMax,
             leftTicks: yTicks(leftMax, CHART_FRAME.rows),
@@ -392,6 +413,7 @@ export default function Dashboard({
             newOrders: Number(chartModel.newOrders?.[hoveredIndex] || 0),
             activeOrders: Number(chartModel.activeOrders?.[hoveredIndex] || 0),
             income: Number(chartModel.income?.[hoveredIndex] || 0),
+            expense: Number(chartModel.expense?.[hoveredIndex] || 0),
             xPct: Math.max(12, Math.min(88, xPct)),
             yPct: Math.max(8, Math.min(62, yPct - 6)),
             pointX: incomePoint.x,
@@ -483,7 +505,7 @@ export default function Dashboard({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <div className="section-label">System Overview</div>
-                        <div className="mt-1 text-sm text-slate-500">Orders and income snapshot</div>
+                        <div className="mt-1 text-sm text-slate-500">Orders, income and expense snapshot</div>
                     </div>
 
                     <div className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-1 text-xs font-semibold">
@@ -500,10 +522,11 @@ export default function Dashboard({
                     </div>
                 </div>
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
                     <CompactOverviewStat label="New Orders" value={metricValue(activeMetrics?.new_orders)} />
                     <CompactOverviewStat label="Activated Orders" value={metricValue(activeMetrics?.active_orders)} tone="text-blue-600" />
                     <CompactOverviewStat label="Total Income" value={money(currency, activeMetrics?.income)} tone="text-emerald-600" />
+                    <CompactOverviewStat label="Total Expense" value={money(currency, activeMetrics?.expense)} tone="text-orange-600" />
                     <CompactOverviewStat label="Hosting Income" value={money(currency, activeMetrics?.hosting_income)} tone="text-emerald-600" />
                     <CompactOverviewStat
                         label="Avg Per Order"
@@ -605,7 +628,7 @@ export default function Dashboard({
                                     Orders
                                 </text>
                                 <text x={CHART_FRAME.width - CHART_FRAME.padRight + 8} y={CHART_FRAME.padTop - 4} textAnchor="start" fontSize="12" fill="#334155">
-                                    Income
+                                    Amount
                                 </text>
 
                                 {hoverDetails ? (
@@ -627,6 +650,17 @@ export default function Dashboard({
                                         {chartModel.points.income.map((point, idx) => (
                                             <circle key={`income-dot-${idx}`} cx={point.x} cy={point.y} r="3" fill={CHART_SERIES.income.pointFill} stroke={CHART_SERIES.income.pointStroke} strokeWidth="1.2">
                                                 <title>{`${chartModel.labels[idx]} | Income: ${money(currency, point.value)}`}</title>
+                                            </circle>
+                                        ))}
+                                    </>
+                                ) : null}
+
+                                {seriesVisible.expense ? (
+                                    <>
+                                        <path d={pointsPath(chartModel.points.expense)} fill="none" stroke={CHART_SERIES.expense.stroke} strokeWidth="2.2" />
+                                        {chartModel.points.expense.map((point, idx) => (
+                                            <circle key={`expense-dot-${idx}`} cx={point.x} cy={point.y} r="2.8" fill={CHART_SERIES.expense.pointFill} stroke={CHART_SERIES.expense.pointStroke} strokeWidth="1.1">
+                                                <title>{`${chartModel.labels[idx]} | Expense: ${money(currency, point.value)}`}</title>
                                             </circle>
                                         ))}
                                     </>
@@ -698,6 +732,10 @@ export default function Dashboard({
                                     <div className="mt-1 flex items-center gap-2">
                                         <span className="h-2 w-2 rounded-sm bg-emerald-400" />
                                         <span>Income: {money(currency, hoverDetails.income)}</span>
+                                    </div>
+                                    <div className="mt-1 flex items-center gap-2">
+                                        <span className="h-2 w-2 rounded-sm bg-orange-400" />
+                                        <span>Expense: {money(currency, hoverDetails.expense)}</span>
                                     </div>
                                     <div className="mt-1 text-[11px] text-slate-300">
                                         New: {metricValue(hoverDetails.newOrders)} | Active: {metricValue(hoverDetails.activeOrders)}
@@ -823,6 +861,8 @@ export default function Dashboard({
         </>
     );
 }
+
+Dashboard.title = 'Admin Dashboard';
 
 function MetricLink({ href, label, value, tone = 'text-slate-900' }) {
     return (

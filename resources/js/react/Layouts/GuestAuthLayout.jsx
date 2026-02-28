@@ -9,7 +9,7 @@ export default function GuestAuthLayout({ children, wide = false }) {
                 </div>
             </div>
 
-            <div className="mt-6 text-center text-xs text-slate-500">
+            <div className="mt-6 text-center text-xs text-slate-700">
                 Copyright &copy; {new Date().getFullYear()}{' '}
                 <a href="https://apptimatic.com" className="font-semibold text-teal-600 hover:text-teal-500">
                     Apptimatic

@@ -29,8 +29,11 @@ class BillingService
 
         $periodStart = Carbon::parse($subscription->current_period_start);
         $periodEnd = Carbon::parse($subscription->current_period_end);
+        $basePrice = $subscription->subscription_amount !== null
+            ? (float) $subscription->subscription_amount
+            : (float) $plan->price;
 
-        $subtotal = $this->calculateSubtotal($plan->interval, (float) $plan->price, $periodStart, $periodEnd);
+        $subtotal = $this->calculateSubtotal($plan->interval, $basePrice, $periodStart, $periodEnd);
         $dueDays = (int) Setting::getValue('invoice_due_days');
         $currency = (string) Setting::getValue('currency');
         $dueDate = $this->resolveDueDate($subscription, $issueDate, $plan->interval, $dueDays);
@@ -102,8 +105,11 @@ class BillingService
         }
 
         [$periodStart, $periodEnd] = $this->invoicePeriod($invoice, $subscription, $plan->interval);
+        $basePrice = $subscription->subscription_amount !== null
+            ? (float) $subscription->subscription_amount
+            : (float) $plan->price;
 
-        $subtotal = $this->calculateSubtotal($plan->interval, (float) $plan->price, $periodStart, $periodEnd);
+        $subtotal = $this->calculateSubtotal($plan->interval, $basePrice, $periodStart, $periodEnd);
         $currency = (string) Setting::getValue('currency');
 
         $taxData = $this->taxService->calculateTotals($subtotal, (float) $invoice->late_fee, Carbon::parse($invoice->issue_date), $invoice);

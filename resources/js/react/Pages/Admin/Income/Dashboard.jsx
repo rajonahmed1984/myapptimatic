@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import DateRangePickerField from '../../../Components/DateRangePickerField';
 
 const CHART_FRAME = {
     width: 1120,
@@ -266,14 +267,18 @@ export default function Dashboard({
                 </div>
 
                 <form method="GET" action={routes?.dashboard} data-native="true" className="mt-3 grid gap-2 text-sm md:grid-cols-4 lg:grid-cols-5">
-                    <div>
-                        <label className="text-xs text-slate-500">Start date</label>
-                        <input type="date" name="start_date" defaultValue={filters?.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm" />
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500">End date</label>
-                        <input type="date" name="end_date" defaultValue={filters?.end_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm" />
-                    </div>
+                    <DateRangePickerField
+                        startName="start_date"
+                        endName="end_date"
+                        startValue={filters?.start_date || ''}
+                        endValue={filters?.end_date || ''}
+                        submitFormat="iso"
+                        startLabel="Start date"
+                        endLabel="End date"
+                        className="md:col-span-2 lg:col-span-2"
+                        gridClassName="grid gap-2 md:grid-cols-2"
+                        inputClassName="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
+                    />
                     <div>
                         <label className="text-xs text-slate-500">Category</label>
                         <select name="category_id" defaultValue={filters?.category_id || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm">
@@ -498,6 +503,8 @@ export default function Dashboard({
         </>
     );
 }
+
+Dashboard.title = 'Income Dashboard';
 
 function StatusMetric({ data = {}, currency = {} }) {
     const change = data?.change_percent;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DatePickerField from '../../../../Components/DatePickerField';
 
 const currency = (value, code = 'BDT') => {
     const amount = Number(value || 0);
@@ -14,6 +15,14 @@ const formatSeconds = (value) => {
     const hours = Math.floor(total / 3600);
     const minutes = Math.floor((total % 3600) / 60);
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+const formatContext = (value) => {
+    if (!value) return '--';
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return '--';
+    }
 };
 
 export default function Show({
@@ -36,6 +45,8 @@ export default function Show({
     recentWorkSummaries = [],
     recentPayrollItems = [],
     recentSalaryAdvances = [],
+    emailLogs = [],
+    activityLogs = [],
     workSessionStats = {},
     payrollSourceNote = null,
     paymentMethods = [],
@@ -52,6 +63,8 @@ export default function Show({
         ...(isProjectBase ? [{ key: 'earnings', label: 'Recent Earnings' }, { key: 'payouts', label: 'Recent Payouts' }] : []),
         { key: 'projects', label: 'Projects' },
         ...(isMonthly ? [{ key: 'timesheets', label: 'Work Logs' }, { key: 'leave', label: 'Leave' }, { key: 'payroll', label: 'Payroll' }] : []),
+        { key: 'emails', label: 'Emails' },
+        { key: 'log', label: 'Log' },
     ];
 
     const tabHref = (nextTab) => {
@@ -364,8 +377,14 @@ export default function Show({
                                 </select>
                             </div>
                             <div>
-                                <div className="mb-1 text-sm text-slate-600">Payment Date</div>
-                                <input type="date" name="paid_at" defaultValue={new Date().toISOString().slice(0, 10)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <DatePickerField
+                                    name="paid_at"
+                                    defaultValue={new Date().toISOString().slice(0, 10)}
+                                    submitFormat="iso"
+                                    label="Payment Date"
+                                    labelClassName="mb-1 text-sm text-slate-600"
+                                    inputClassName="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                />
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Reference</div>
@@ -525,8 +544,14 @@ export default function Show({
                                 <input type="text" name="reference" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Txn / Note" />
                             </div>
                             <div>
-                                <div className="mb-1 text-sm text-slate-600">Payment Date</div>
-                                <input type="date" name="paid_at" defaultValue={new Date().toISOString().slice(0, 10)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <DatePickerField
+                                    name="paid_at"
+                                    defaultValue={new Date().toISOString().slice(0, 10)}
+                                    submitFormat="iso"
+                                    label="Payment Date"
+                                    labelClassName="mb-1 text-sm text-slate-600"
+                                    inputClassName="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                />
                             </div>
                             <div className="md:col-span-2">
                                 <div className="mb-1 text-sm text-slate-600">Payment Proof</div>
@@ -628,6 +653,76 @@ export default function Show({
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {tab === 'emails' && (
+                <div className="card p-6 overflow-hidden">
+                    <div className="mb-3 text-xl font-semibold text-slate-900">Email Logs</div>
+                    <div className="overflow-x-auto">
+                        {asArray(emailLogs).length === 0 ? (
+                            <div className="py-3 text-sm text-slate-500">No emails sent to this employee yet.</div>
+                        ) : (
+                            <table className="min-w-full text-sm text-slate-700">
+                                <thead>
+                                    <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
+                                        <th className="py-2 px-3">Date</th>
+                                        <th className="py-2 px-3">Subject</th>
+                                        <th className="py-2 px-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {asArray(emailLogs).map((log) => (
+                                        <tr key={log.id} className="border-b border-slate-100">
+                                            <td className="py-2 px-3">{log.created_at_display || '--'}</td>
+                                            <td className="py-2 px-3">{log.subject || '--'}</td>
+                                            <td className="py-2 px-3 text-right">
+                                                <form method="POST" action={log.resend_url} data-native="true" className="inline mr-2">
+                                                    <input type="hidden" name="_token" value={token} />
+                                                    <button type="submit" className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600">Resend</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {tab === 'log' && (
+                <div className="card p-6 overflow-hidden">
+                    <div className="mb-3 text-xl font-semibold text-slate-900">Activity Logs</div>
+                    <div className="overflow-x-auto">
+                        {asArray(activityLogs).length === 0 ? (
+                            <div className="py-3 text-sm text-slate-500">No activity recorded for this employee yet.</div>
+                        ) : (
+                            <table className="min-w-full text-sm text-slate-700">
+                                <thead>
+                                    <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
+                                        <th className="py-2 px-3">Date</th>
+                                        <th className="py-2 px-3">Category</th>
+                                        <th className="py-2 px-3">Level</th>
+                                        <th className="py-2 px-3">Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {asArray(activityLogs).map((log) => (
+                                        <tr key={log.id} className="border-b border-slate-100">
+                                            <td className="py-2 px-3">{log.created_at_display || '--'}</td>
+                                            <td className="py-2 px-3">{log.category || '--'}</td>
+                                            <td className="py-2 px-3">{log.level || '--'}</td>
+                                            <td className="py-2 px-3">
+                                                <div className="font-semibold text-slate-800">{log.message || '--'}</div>
+                                                <div className="mt-1 text-xs text-slate-500">{formatContext(log.context)}</div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             )}

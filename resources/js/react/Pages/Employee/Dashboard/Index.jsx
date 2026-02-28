@@ -305,3 +305,5 @@ export default function Index({
         </>
     );
 }
+
+Index.title = 'Employee Dashboard';

@@ -844,6 +844,7 @@ Route::middleware([
         ->name('customers.edit');
     Route::resource('customers', CustomerController::class)->except(['index', 'create', 'edit', 'show']);
     Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])->name('customers.impersonate');
+    Route::post('customers/{customer}/services', [CustomerController::class, 'storeService'])->name('customers.services.store');
     Route::post('customers/{customer}/project-users', [CustomerProjectUserController::class, 'store'])->name('customers.project-users.store');
     Route::get('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'show'])->name('customers.project-users.show');
     Route::put('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'update'])->name('customers.project-users.update');

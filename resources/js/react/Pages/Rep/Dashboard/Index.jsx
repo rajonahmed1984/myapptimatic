@@ -65,3 +65,5 @@ export default function Index({
         </>
     );
 }
+
+Index.title = 'Sales Dashboard';

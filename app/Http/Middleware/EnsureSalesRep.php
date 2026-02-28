@@ -4,9 +4,9 @@ namespace App\Http\Middleware;
 
 use App\Models\SalesRepresentative;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\View;
 use Closure;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureSalesRep
@@ -27,11 +27,16 @@ class EnsureSalesRep
 
         if (! $rep) {
             Auth::guard('sales')->logout();
-            if (View::exists('rep.access-revoked')) {
-                return response()->view('rep.access-revoked', [], 403);
-            }
+            $response = Inertia::render('Rep/AccessRevoked', [
+                'pageTitle' => 'Access revoked',
+                'message' => 'Your sales representative access is currently inactive. If you believe this is an error, please contact an administrator.',
+                'routes' => [
+                    'login' => route('login', [], false),
+                ],
+            ])->toResponse($request);
+            $response->setStatusCode(403);
 
-            abort(403, 'Sales representative access required.');
+            return $response;
         }
 
         $request->attributes->set('salesRep', $rep);

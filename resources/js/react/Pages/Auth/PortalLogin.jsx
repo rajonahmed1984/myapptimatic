@@ -15,7 +15,7 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
             <GuestAuthLayout>
                 <section className="auth-glass-card relative overflow-hidden rounded-2xl px-8 py-10 text-white sm:px-10">
                     <div className="auth-glass-overlay absolute inset-0"></div>
-                    <div className="relative z-10">
+                    <div className="auth-glass-readable relative z-10 text-center">
                         <div className="mb-6 flex justify-center">
                             <a href="/" className="flex items-center gap-3" data-native="true">
                                 {branding?.logo_url ? (
@@ -26,9 +26,10 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
                             </a>
                         </div>
                         <AlertStack status={flash?.status} errors={errors} singleError />
-                        <p className="text-xs font-semibold uppercase tracking-[0.36em] text-teal-200/90">Welcome Back</p>
+                        <p className="text-sm font-semibold uppercase tracking-[0.32em] text-white">Welcome Back</p>
+                        <p className="mt-2 text-sm text-slate-100/95">Sign in to continue</p>
 
-                        <form className="mt-8 space-y-5" method="POST" action={routes?.submit || '/login'} data-native="true">
+                        <form className="mt-8 space-y-5 text-left" method="POST" action={routes?.submit || '/login'} data-native="true">
                             <input type="hidden" name="_token" value={csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || ''} />
                             {form?.redirect ? <input type="hidden" name="redirect" value={form.redirect} /> : null}
 
@@ -50,7 +51,7 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
                                 error={errors?.password}
                             />
 
-                            <div className="flex items-center justify-between text-sm text-slate-200/85">
+                            <div className="flex items-center justify-between text-sm text-slate-100/95">
                                 <label className="flex items-center gap-2">
                                     <input
                                         type="checkbox"
@@ -74,11 +75,13 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
                                 action={recaptcha?.action || 'LOGIN'}
                             />
 
-                            <SubmitButton>Sign in</SubmitButton>
+                            <div className="flex justify-center">
+                                <SubmitButton className="max-w-xs">Sign in</SubmitButton>
+                            </div>
                         </form>
 
                         {hint?.href && hint?.text ? (
-                            <p className="mt-6 text-xs text-slate-200/85">
+                            <p className="mt-6 text-center text-xs text-slate-100/95">
                                 {hint?.label ? `${hint.label} ` : ''}
                                 <a href={hint.href} className="font-semibold text-teal-300 hover:text-teal-200" data-native="true">
                                     {hint.text}

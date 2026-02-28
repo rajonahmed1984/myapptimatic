@@ -58,6 +58,8 @@ class SubscriptionController extends Controller
             'cancel_at_period_end' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
             'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
+            'subscription_amount' => ['nullable', 'numeric', 'min:0'],
+            'sales_rep_commission_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $plan = Plan::findOrFail($data['plan_id']);
@@ -70,6 +72,10 @@ class SubscriptionController extends Controller
             'customer_id' => $data['customer_id'],
             'plan_id' => $data['plan_id'],
             'sales_rep_id' => $data['sales_rep_id'] ?? null,
+            'subscription_amount' => $data['subscription_amount'] ?? null,
+            'sales_rep_commission_amount' => ($data['sales_rep_id'] ?? null)
+                ? ($data['sales_rep_commission_amount'] ?? null)
+                : null,
             'status' => $data['status'],
             'start_date' => $startDate->toDateString(),
             'current_period_start' => $startDate->toDateString(),
@@ -120,22 +126,26 @@ class SubscriptionController extends Controller
             'access_override_until' => ['nullable', 'date'],
             'auto_renew' => ['nullable', 'boolean'],
             'cancel_at_period_end' => ['nullable', 'boolean'],
-            'cancelled_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
+            'subscription_amount' => ['nullable', 'numeric', 'min:0'],
+            'sales_rep_commission_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $subscription->update([
             'customer_id' => $data['customer_id'],
             'plan_id' => $data['plan_id'],
             'sales_rep_id' => $data['sales_rep_id'] ?? null,
+            'subscription_amount' => $data['subscription_amount'] ?? null,
+            'sales_rep_commission_amount' => ($data['sales_rep_id'] ?? null)
+                ? ($data['sales_rep_commission_amount'] ?? null)
+                : null,
             'status' => $data['status'],
             'current_period_start' => $data['current_period_start'],
             'current_period_end' => $data['current_period_end'],
             'next_invoice_at' => $data['next_invoice_at'],
             'auto_renew' => $request->boolean('auto_renew'),
             'cancel_at_period_end' => $request->boolean('cancel_at_period_end'),
-            'cancelled_at' => $data['cancelled_at'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
 
@@ -235,7 +245,7 @@ class SubscriptionController extends Controller
             'subscriptions' => collect($subscriptions->items())->values()->map(function (Subscription $subscription) use ($dateFormat) {
                 $customer = $subscription->customer;
                 $plan = $subscription->plan;
-                $planPrice = $plan?->price;
+                $planPrice = $subscription->subscription_amount ?? $plan?->price;
                 $planCurrency = $plan?->currency;
                 $planInterval = $plan?->interval;
 
@@ -302,13 +312,14 @@ class SubscriptionController extends Controller
                     'customer_id' => (string) old('customer_id', (string) ($subscription?->customer_id ?? '')),
                     'plan_id' => (string) old('plan_id', (string) ($subscription?->plan_id ?? '')),
                     'sales_rep_id' => (string) old('sales_rep_id', (string) ($subscription?->sales_rep_id ?? '')),
+                    'subscription_amount' => (string) old('subscription_amount', (string) ($subscription?->subscription_amount ?? '')),
+                    'sales_rep_commission_amount' => (string) old('sales_rep_commission_amount', (string) ($subscription?->sales_rep_commission_amount ?? '')),
                     'status' => (string) old('status', (string) ($subscription?->status ?? 'active')),
                     'start_date' => (string) old('start_date', (string) ($subscription?->start_date?->toDateString() ?? now()->toDateString())),
                     'current_period_start' => (string) old('current_period_start', (string) ($subscription?->current_period_start?->toDateString() ?? '')),
                     'current_period_end' => (string) old('current_period_end', (string) ($subscription?->current_period_end?->toDateString() ?? '')),
                     'next_invoice_at' => (string) old('next_invoice_at', (string) ($subscription?->next_invoice_at?->toDateString() ?? '')),
                     'access_override_until' => (string) old('access_override_until', (string) ($subscription?->customer?->access_override_until?->toDateString() ?? '')),
-                    'cancelled_at' => (string) old('cancelled_at', (string) ($subscription?->cancelled_at?->toDateString() ?? '')),
                     'auto_renew' => (bool) old('auto_renew', (bool) ($subscription?->auto_renew ?? false)),
                     'cancel_at_period_end' => (bool) old('cancel_at_period_end', (bool) ($subscription?->cancel_at_period_end ?? false)),
                     'notes' => (string) old('notes', (string) ($subscription?->notes ?? '')),

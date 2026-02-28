@@ -38,6 +38,10 @@
                     @endauth
                 </div>
             </div>
+            <div class="mb-6">
+                <div class="section-label">Public workspace</div>
+                <div class="text-lg font-semibold text-slate-900" data-current-page-title>Overview</div>
+            </div>
 
             @if ($errors->any())
                 <div data-flash-message data-flash-type="error" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">

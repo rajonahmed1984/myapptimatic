@@ -85,7 +85,6 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                                 <th className="px-4 py-3">Email & mobile</th>
                                 <th className="px-4 py-3">Services</th>
                                 <th className="px-4 py-3">Projects & Maintenance</th>
-                                <th className="px-4 py-3">Created</th>
                                 <th className="px-4 py-3">Login</th>
                                 <th className="px-4 py-3">Status</th>
                             </tr>
@@ -93,7 +92,7 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                         <tbody>
                             {customers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
+                                    <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
                                         No customers yet.
                                     </td>
                                 </tr>
@@ -141,7 +140,6 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                                             <div className="text-sm text-slate-700">Projects: {Number(customer.projects_count || 0)}</div>
                                             <div className="text-xs text-slate-500">Maintenance: {Number(customer.project_maintenances_count || 0)}</div>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500">{customer.created_at || '--'}</td>
                                         <td className="px-4 py-3">
                                             <div className="text-[11px] text-slate-400">
                                                 Last login: {customer.login?.last_login_at || '--'}

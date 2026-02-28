@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import DateRangePickerField from '../../../Components/DateRangePickerField';
 
 const CHART_FRAME = {
     width: 1120,
@@ -190,8 +191,18 @@ export default function Dashboard({ pageTitle = 'Expense Dashboard', filters = {
                     <div className="rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">Filtered total: {money(expenseStatus?.filtered?.amount, currencySymbol, currencyCode)}</div>
                 </div>
                 <form method="GET" action={routes?.index} data-native="true" className="mt-3 grid gap-2 text-sm md:grid-cols-4 lg:grid-cols-5">
-                    <div><label className="text-xs text-slate-500">Start date</label><input type="date" name="start_date" defaultValue={filters?.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm" /></div>
-                    <div><label className="text-xs text-slate-500">End date</label><input type="date" name="end_date" defaultValue={filters?.end_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm" /></div>
+                    <DateRangePickerField
+                        startName="start_date"
+                        endName="end_date"
+                        startValue={filters?.start_date || ''}
+                        endValue={filters?.end_date || ''}
+                        submitFormat="iso"
+                        startLabel="Start date"
+                        endLabel="End date"
+                        className="md:col-span-2 lg:col-span-2"
+                        gridClassName="grid gap-2 md:grid-cols-2"
+                        inputClassName="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
+                    />
                     <div><label className="text-xs text-slate-500">Category</label><select name="category_id" defaultValue={filters?.category_id || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"><option value="">All</option>{categories.map((category) => (<option key={category.id} value={category.id}>{category.name}</option>))}</select></div>
                     <div><label className="text-xs text-slate-500">Employee / person</label><select name="person" defaultValue={filters?.person || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"><option value="">All</option>{peopleOptions.map((option) => (<option key={option.key} value={option.key}>{option.label}</option>))}</select></div>
                     <div className="mt-6 flex items-center gap-2"><button type="submit" className="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-500">Apply</button><a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Reset</a></div>
@@ -253,3 +264,5 @@ export default function Dashboard({ pageTitle = 'Expense Dashboard', filters = {
         </>
     );
 }
+
+Dashboard.title = 'Expenses Dashboard';

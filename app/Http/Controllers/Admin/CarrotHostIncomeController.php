@@ -56,20 +56,25 @@ class CarrotHostIncomeController extends Controller
             'last_refreshed_display' => now()->format((string) config('app.datetime_format', 'd-m-Y h:i A')),
             'amount_in_subtotal_display' => (string) ($payload['amountInSubtotalDisplay'] ?? '0.00'),
             'fees_subtotal_display' => (string) ($payload['feesSubtotalDisplay'] ?? '0.00'),
+            'net_income_subtotal_display' => (string) ($payload['netIncomeSubtotalDisplay'] ?? '0.00'),
             'whmcs_errors' => collect((array) ($payload['whmcsErrors'] ?? []))
                 ->map(fn ($error) => (string) $error)
                 ->values()
                 ->all(),
             'transactions' => collect((array) ($payload['transactions'] ?? []))
                 ->map(function (array $row) {
+                    $amountIn = $this->normalizeMoney($row['amountin'] ?? null);
+                    $fees = $this->normalizeMoney($row['fees'] ?? null);
+
                     return [
                         'user_id' => (string) ($row['userid'] ?? ($row['clientid'] ?? '--')),
                         'client_name' => (string) ($row['clientname'] ?? '--'),
-                        'date' => (string) ($row['date'] ?? '--'),
+                        'date' => $this->formatTransactionDate($row['date'] ?? null),
                         'invoice_id' => (string) ($row['invoiceid'] ?? '--'),
                         'transaction_id' => (string) ($row['transid'] ?? '--'),
                         'amount_in' => (string) ($row['amountin'] ?? '--'),
                         'fees' => (string) ($row['fees'] ?? '--'),
+                        'income' => $this->formatMoney($amountIn - $fees),
                         'gateway' => (string) ($row['gateway'] ?? '--'),
                     ];
                 })
@@ -287,13 +292,16 @@ class CarrotHostIncomeController extends Controller
         $transactions = $this->sortTransactionsNewestFirst($transactions, 'date');
         $amountInSubtotal = $this->sumField($transactions, 'amountin');
         $feesSubtotal = $this->sumField($transactions, 'fees');
+        $netIncomeSubtotal = $amountInSubtotal - $feesSubtotal;
 
         return [
             'transactions' => $transactions,
             'amountInSubtotal' => $amountInSubtotal,
             'feesSubtotal' => $feesSubtotal,
+            'netIncomeSubtotal' => $netIncomeSubtotal,
             'amountInSubtotalDisplay' => $this->formatMoney($amountInSubtotal),
             'feesSubtotalDisplay' => $this->formatMoney($feesSubtotal),
+            'netIncomeSubtotalDisplay' => $this->formatMoney($netIncomeSubtotal),
             'whmcsErrors' => $whmcsErrors,
             'startDate' => $startDate,
             'endDate' => $endDate,
@@ -328,6 +336,19 @@ class CarrotHostIncomeController extends Controller
     private function formatMoney(float $value): string
     {
         return number_format($value, 2);
+    }
+
+    private function formatTransactionDate($value): string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return '--';
+        }
+
+        try {
+            return Carbon::parse($value)->format((string) config('app.date_format', 'd-m-Y'));
+        } catch (\Throwable $e) {
+            return trim(explode(' ', $value)[0] ?? '--') ?: '--';
+        }
     }
 
     private function enrichClientName(WhmcsClient $client, array $row): array

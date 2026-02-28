@@ -60,14 +60,13 @@ export default function Index({
 
             <div id="subscriptionsTable">
                 <div className="card overflow-x-auto">
-                    <table className="w-full min-w-[1100px] text-left text-sm">
+                    <table className="w-full min-w-[1000px] text-left text-sm">
                         <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                             <tr>
                                 <th className="px-4 py-3">ID</th>
                                 <th className="px-4 py-3">Customer</th>
                                 <th className="px-4 py-3">Product & Plan</th>
-                                <th className="px-4 py-3">Amount</th>
-                                <th className="px-4 py-3">Interval</th>
+                                <th className="px-4 py-3">Interval & Amount</th>
                                 <th className="px-4 py-3">Status</th>
                                 <th className="px-4 py-3">Next invoice</th>
                                 <th className="px-4 py-3">Actions</th>
@@ -88,8 +87,9 @@ export default function Index({
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-slate-600">{subscription.product_plan}</td>
-                                        <td className="px-4 py-3 text-slate-600">{subscription.amount_display}</td>
-                                        <td className="px-4 py-3 text-slate-500">{subscription.interval_label}</td>
+                                        <td className="px-4 py-3 text-slate-600">
+                                            {subscription.interval_label} - {subscription.amount_display}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(subscription.status)}`}>
                                                 {subscription.status_label}
@@ -127,7 +127,7 @@ export default function Index({
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={10} className="px-4 py-6 text-center text-slate-500">
+                                    <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
                                         No subscriptions yet.
                                     </td>
                                 </tr>

@@ -19,3 +19,5 @@ export default function Index({ routes = {} }) {
         </>
     );
 }
+
+Index.title = 'Support Dashboard';

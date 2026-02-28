@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
+import DatePickerField from '../../../../Components/DatePickerField';
 
 export default function Index({
     pageTitle = 'Attendance',
@@ -75,7 +76,15 @@ export default function Index({
                         >
                             Previous day
                         </a>
-                        <input id="attendanceDate" type="date" name="date" defaultValue={datePickerValue} className="w-52 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <DatePickerField
+                            id="attendanceDate"
+                            name="date"
+                            defaultValue={datePickerValue}
+                            submitFormat="iso"
+                            hideLabel
+                            containerClassName="w-52"
+                            inputClassName="w-52 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
                         <a
                             href={`${routes?.index}?date=${encodeURIComponent(nextDay)}`}
                             data-native="true"

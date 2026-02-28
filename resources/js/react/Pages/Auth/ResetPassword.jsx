@@ -14,7 +14,7 @@ export default function ResetPassword({ pageTitle = 'Reset Password', form = {},
             <GuestAuthLayout>
                 <section className="auth-glass-card relative overflow-hidden rounded-2xl px-8 py-10 text-white sm:px-10">
                     <div className="auth-glass-overlay absolute inset-0"></div>
-                    <div className="relative z-10">
+                    <div className="auth-glass-readable relative z-10 text-center">
                         <div className="mb-6 flex justify-center">
                             <a href="/" className="flex items-center gap-3" data-native="true">
                                 {branding?.logo_url ? (
@@ -24,9 +24,11 @@ export default function ResetPassword({ pageTitle = 'Reset Password', form = {},
                                 )}
                             </a>
                         </div>
+                        <p className="text-sm font-semibold uppercase tracking-[0.32em] text-white">Reset Password</p>
+                        <p className="mt-2 text-sm text-slate-100/95">Create a new password for your account.</p>
                         <AlertStack status={flash?.status || messages?.status} errors={errors} singleError />
 
-                        <form className="mt-8 space-y-5" method="POST" action={routes.submit} data-native="true">
+                        <form className="mt-8 space-y-5 text-left" method="POST" action={routes.submit} data-native="true">
                             <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content || ''} />
                             <input type="hidden" name="token" value={form?.token || ''} />
                             <InputField
@@ -45,10 +47,12 @@ export default function ResetPassword({ pageTitle = 'Reset Password', form = {},
                                 required
                                 error={errors?.password_confirmation}
                             />
-                            <SubmitButton>Reset password</SubmitButton>
+                            <div className="flex justify-center">
+                                <SubmitButton className="max-w-xs">Reset password</SubmitButton>
+                            </div>
                         </form>
 
-                        <p className="mt-6 text-xs text-slate-200/85">
+                        <p className="mt-6 text-center text-xs text-slate-100/95">
                             Back to{' '}
                             <a href={routes.login || '/login'} className="font-semibold text-teal-300 hover:text-teal-200" data-native="true">
                                 sign in

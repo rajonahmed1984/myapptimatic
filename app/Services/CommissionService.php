@@ -79,7 +79,10 @@ class CommissionService
         $sourceType = $invoice->subscription_id ? 'maintenance' : 'plan';
         $rule = $this->resolveCommissionRule($sourceType, $invoice);
         $paidAmount = (float) $invoice->total;
-        $commissionAmount = $rule ? $this->calculateCommission($paidAmount, $rule) : 0.0;
+        $subscriptionCommissionAmount = $invoice->subscription?->sales_rep_commission_amount;
+        $commissionAmount = $subscriptionCommissionAmount !== null
+            ? round((float) $subscriptionCommissionAmount, 2)
+            : ($rule ? $this->calculateCommission($paidAmount, $rule) : 0.0);
         $idempotencyKey = sprintf('invoice:%s:rep:%s:source:%s', $invoice->id, $salesRepId, $sourceType);
 
         return DB::transaction(function () use ($invoice, $salesRepId, $commissionAmount, $paidAmount, $sourceType, $idempotencyKey) {

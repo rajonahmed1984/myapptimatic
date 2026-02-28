@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
 export default function Form({
@@ -14,6 +14,46 @@ export default function Form({
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
+    const [selectedPlanId, setSelectedPlanId] = useState(String(fields?.plan_id || ''));
+    const [selectedSalesRepId, setSelectedSalesRepId] = useState(String(fields?.sales_rep_id || ''));
+    const hasSelectedSalesRep = selectedSalesRepId !== '';
+    const planById = useMemo(() => {
+        const map = {};
+        plans.forEach((plan) => {
+            map[String(plan.id)] = plan;
+        });
+
+        return map;
+    }, [plans]);
+
+    const formatAmount = (value) => {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) {
+            return '';
+        }
+
+        return numericValue.toFixed(2);
+    };
+
+    const [subscriptionAmount, setSubscriptionAmount] = useState(() => {
+        const fieldValue = fields?.subscription_amount;
+        if (fieldValue !== null && fieldValue !== undefined && String(fieldValue).trim() !== '') {
+            return String(fieldValue);
+        }
+
+        const initialPlan = planById[String(fields?.plan_id || '')];
+        return initialPlan ? formatAmount(initialPlan.price) : '';
+    });
+
+    const selectedPlan = planById[selectedPlanId] || null;
+
+    const handlePlanChange = (event) => {
+        const planId = String(event.target.value || '');
+        setSelectedPlanId(planId);
+
+        const plan = planById[planId];
+        setSubscriptionAmount(plan ? formatAmount(plan.price) : '');
+    };
 
     return (
         <>
@@ -47,7 +87,12 @@ export default function Form({
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Plan</label>
-                            <select name="plan_id" defaultValue={fields?.plan_id || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                            <select
+                                name="plan_id"
+                                value={selectedPlanId}
+                                onChange={handlePlanChange}
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                            >
                                 <option value="">Select plan</option>
                                 {plans.map((plan) => (
                                     <option key={plan.id} value={plan.id}>
@@ -61,16 +106,22 @@ export default function Form({
 
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep</label>
-                            <select name="sales_rep_id" defaultValue={fields?.sales_rep_id || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="">None</option>
-                                {sales_reps.map((rep) => (
-                                    <option key={rep.id} value={rep.id}>
-                                        {rep.name} ({rep.status})
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.sales_rep_id ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_id}</p> : null}
+                            <label className="mb-1 block text-sm font-medium text-slate-700">Subscription Amount</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                name="subscription_amount"
+                                value={subscriptionAmount}
+                                onChange={(event) => setSubscriptionAmount(event.target.value)}
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                placeholder="0.00"
+                            />
+                            <p className="mt-1 text-xs text-slate-500">
+                                Auto from selected plan, but you can edit manually.
+                                {selectedPlan ? ` (${selectedPlan.currency ? `${selectedPlan.currency} ` : ''}${formatAmount(selectedPlan.price)})` : ''}
+                            </p>
+                            {errors?.subscription_amount ? <p className="mt-1 text-xs text-rose-600">{errors.subscription_amount}</p> : null}
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
@@ -135,12 +186,45 @@ export default function Form({
                             />
                             {errors?.access_override_until ? <p className="mt-1 text-xs text-rose-600">{errors.access_override_until}</p> : null}
                         </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-700">Cancelled At</label>
-                            <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="cancelled_at" defaultValue={fields?.cancelled_at || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-                            {errors?.cancelled_at ? <p className="mt-1 text-xs text-rose-600">{errors.cancelled_at}</p> : null}
+                            <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep</label>
+                            <select
+                                name="sales_rep_id"
+                                value={selectedSalesRepId}
+                                onChange={(event) => setSelectedSalesRepId(event.target.value)}
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                            >
+                                <option value="">None</option>
+                                {sales_reps.map((rep) => (
+                                    <option key={rep.id} value={rep.id}>
+                                        {rep.name} ({rep.status})
+                                    </option>
+                                ))}
+                            </select>
+                            {errors?.sales_rep_id ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_id}</p> : null}
                         </div>
                     </div>
+
+                    {hasSelectedSalesRep ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep Commission</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    name="sales_rep_commission_amount"
+                                    defaultValue={fields?.sales_rep_commission_amount || ''}
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                    placeholder="0.00"
+                                />
+                                {errors?.sales_rep_commission_amount ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_commission_amount}</p> : null}
+                            </div>
+                        </div>
+                    ) : null}
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>

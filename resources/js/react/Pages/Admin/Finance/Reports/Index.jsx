@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
+import DateRangePickerField from '../../../../Components/DateRangePickerField';
 
 const includesValue = (list, value) => Array.isArray(list) && list.includes(value);
 const num = (value) => {
@@ -76,14 +77,18 @@ export default function Index({
             <div className="card bg-gradient-to-br from-[#eef8fb] via-white to-[#f4f8ff] p-5">
                 <div className="section-label">Report Controls</div>
                 <form method="GET" action={routes?.index} className="mt-3 grid gap-3 text-sm md:grid-cols-6" data-native="true">
-                    <div>
-                        <label className="text-xs text-slate-500">Start date</label>
-                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={filters?.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm" />
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500">End date</label>
-                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="end_date" defaultValue={filters?.end_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm" />
-                    </div>
+                    <DateRangePickerField
+                        startName="start_date"
+                        endName="end_date"
+                        startValue={filters?.start_date || ''}
+                        endValue={filters?.end_date || ''}
+                        submitFormat="dmy"
+                        startLabel="Start date"
+                        endLabel="End date"
+                        className="md:col-span-2"
+                        gridClassName="grid gap-3 md:grid-cols-2"
+                        inputClassName="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
+                    />
                     <div>
                         <label className="text-xs text-slate-500">Income basis</label>
                         <select name="income_basis" defaultValue={filters?.income_basis || 'received'} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm">
@@ -317,4 +322,3 @@ function BreakdownCard({ title, rows, labelKey, valueKey, base, currency, emptyT
         </div>
     );
 }
-

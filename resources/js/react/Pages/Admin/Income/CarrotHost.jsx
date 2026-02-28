@@ -16,6 +16,7 @@ export default function CarrotHost({
     last_refreshed_display = '',
     amount_in_subtotal_display = '0.00',
     fees_subtotal_display = '0.00',
+    net_income_subtotal_display = '0.00',
     whmcs_errors = [],
     transactions = [],
     routes = {},
@@ -144,7 +145,7 @@ export default function CarrotHost({
             <div className="space-y-6">
                 <div className="card p-6">
                     <div className="text-sm font-semibold text-slate-700">Transactions</div>
-                    <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                    <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
                         <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-emerald-700">
                             <div className="text-xs uppercase tracking-[0.2em] text-emerald-600">Amount In subtotal</div>
                             <div className="mt-1 text-lg font-semibold text-emerald-800">{amount_in_subtotal_display}</div>
@@ -152,6 +153,10 @@ export default function CarrotHost({
                         <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-rose-700">
                             <div className="text-xs uppercase tracking-[0.2em] text-rose-600">Fees subtotal</div>
                             <div className="mt-1 text-lg font-semibold text-rose-800">{fees_subtotal_display}</div>
+                        </div>
+                        <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-teal-700">
+                            <div className="text-xs uppercase tracking-[0.2em] text-teal-600">Net Income subtotal</div>
+                            <div className="mt-1 text-lg font-semibold text-teal-800">{net_income_subtotal_display}</div>
                         </div>
                     </div>
                     <div className="mt-4 overflow-x-auto">
@@ -165,6 +170,7 @@ export default function CarrotHost({
                                     <th className="px-3 py-2">Transaction ID</th>
                                     <th className="px-3 py-2">Amount In</th>
                                     <th className="px-3 py-2">Fees</th>
+                                    <th className="px-3 py-2">Net Income</th>
                                     <th className="px-3 py-2">Gateway</th>
                                 </tr>
                             </thead>
@@ -179,12 +185,13 @@ export default function CarrotHost({
                                             <td className="px-3 py-2">{row.transaction_id}</td>
                                             <td className="px-3 py-2">{row.amount_in}</td>
                                             <td className="px-3 py-2">{row.fees}</td>
+                                            <td className="px-3 py-2">{row.income}</td>
                                             <td className="px-3 py-2">{row.gateway}</td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={8} className="px-3 py-4 text-center text-slate-500">
+                                        <td colSpan={9} className="px-3 py-4 text-center text-slate-500">
                                             No transactions found.
                                         </td>
                                     </tr>

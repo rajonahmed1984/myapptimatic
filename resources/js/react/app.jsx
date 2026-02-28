@@ -3,6 +3,9 @@ import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
 import { formatDate, parseDate } from './utils/datetime';
+import 'flatpickr/dist/flatpickr.min.css';
+import { enhanceEasyDateInputsInDocument } from './utils/easyDateEnhancer';
+import { getBreadcrumb, getPageTitle } from './utils/pageTitle';
 
 const DISPLAY_DATE_PLACEHOLDER = 'DD-MM-YYYY';
 const DEFAULT_APP_NAME = 'MyApptimatic';
@@ -10,6 +13,7 @@ const INITIAL_APP_NAME = (typeof document !== 'undefined' && document.title ? do
 const DATETIME_TOKEN_REGEX = /\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2}-\d{2})(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?\b|\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)\b/g;
 const DATETIME_TOKEN_TEST_REGEX = /\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2}-\d{2})(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?\b|\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)\b/;
 const DATETIME_SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'OPTION', 'SELECT']);
+const COMPONENT_TITLE_MAP = {};
 
 const normalizeDisplayDateValue = (value) => {
     if (typeof value !== 'string') {
@@ -39,8 +43,6 @@ const normalizeDateInputsInDocument = () => {
     });
 };
 
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 const normalizeBrowserTitle = (title, appName) => {
     const safeAppName = String(appName || DEFAULT_APP_NAME).trim();
     let safeTitle = String(title || '').trim();
@@ -67,84 +69,88 @@ const normalizeBrowserTitle = (title, appName) => {
     return `${safeTitle} | ${safeAppName}`;
 };
 
-const titleCaseWords = (value) => value.replace(/\w\S*/g, (word) => {
-    const lower = word.toLowerCase();
-    return lower.charAt(0).toUpperCase() + lower.slice(1);
-});
-
-const headingFromPathname = (pathname) => {
-    const normalized = String(pathname || '')
-        .split('?')[0]
-        .split('#')[0]
-        .replace(/\/+/g, '/')
-        .replace(/\/$/, '')
-        .trim();
-
-    if (normalized === '' || normalized === '/') {
-        return 'Overview';
+const parsePathname = (pageUrl) => {
+    const raw = String(pageUrl || '').trim();
+    if (raw === '') {
+        return window.location.pathname;
     }
 
-    const parts = normalized.split('/').filter(Boolean);
-    const ignored = new Set(['admin', 'client', 'employee', 'rep', 'support', 'portal']);
-    const meaningful = parts.filter((part) => !ignored.has(part.toLowerCase()));
-    const source = meaningful.length > 0 ? meaningful[meaningful.length - 1] : parts[parts.length - 1];
-
-    if (!source) {
-        return 'Overview';
+    try {
+        return new URL(raw, window.location.origin).pathname;
+    } catch (error) {
+        return raw.split('?')[0].split('#')[0] || window.location.pathname;
     }
-
-    if (/^\d+$/.test(source) && meaningful.length > 1) {
-        return titleCaseWords(meaningful[meaningful.length - 2].replace(/[_-]+/g, ' '));
-    }
-
-    return titleCaseWords(source.replace(/[_-]+/g, ' '));
 };
 
-const extractHeadingFromTitle = (documentTitle, fallbackTitle, appName) => {
-    const safeFallback = String(fallbackTitle || '').trim();
-    const safeTitle = String(documentTitle || '').trim();
-    const safeAppName = String(appName || '').trim();
-
-    if (/^\(\d+\)\s+Unread Chat$/i.test(safeTitle)) {
-        return safeFallback || 'Overview';
+const ensureBreadcrumbElement = (titleElement) => {
+    const wrapper = titleElement?.parentElement;
+    if (!wrapper) {
+        return null;
     }
 
-    let heading = safeTitle;
-    if (safeAppName !== '') {
-        const prefixPattern = new RegExp(`^${escapeRegex(safeAppName)}\\s*[-|:\\u2014]?\\s*`, 'i');
-        const suffixPattern = new RegExp(`\\s*(?:\\||-|\\u2014)\\s*${escapeRegex(safeAppName)}$`, 'i');
-        heading = heading.replace(prefixPattern, '').trim();
-        heading = heading.replace(suffixPattern, '').trim();
+    let breadcrumbElement = wrapper.querySelector('[data-current-page-breadcrumb]');
+    if (breadcrumbElement) {
+        return breadcrumbElement;
     }
 
-    if (heading === '') {
-        return safeFallback || 'Overview';
-    }
-
-    heading = heading
-        .replace(/[_-]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    if (heading === '') {
-        return safeFallback || 'Overview';
-    }
-
-    if (/^[a-z0-9\s]+$/.test(heading)) {
-        heading = titleCaseWords(heading);
-    }
-
-    return heading;
+    breadcrumbElement = document.createElement('div');
+    breadcrumbElement.setAttribute('data-current-page-breadcrumb', 'true');
+    breadcrumbElement.className = 'mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500';
+    titleElement.insertAdjacentElement('afterend', breadcrumbElement);
+    return breadcrumbElement;
 };
 
-const syncLayoutPageHeading = (heading) => {
+const renderBreadcrumb = (breadcrumbElement, items) => {
+    if (!breadcrumbElement) {
+        return;
+    }
+
+    const list = Array.isArray(items) ? items : [];
+    breadcrumbElement.replaceChildren();
+    if (list.length === 0) {
+        return;
+    }
+
+    list.forEach((item, index) => {
+        if (index > 0) {
+            const divider = document.createElement('span');
+            divider.className = 'text-slate-300';
+            divider.textContent = '/';
+            breadcrumbElement.appendChild(divider);
+        }
+
+        const safeLabel = String(item?.label || '').trim();
+        if (!safeLabel) {
+            return;
+        }
+
+        if (item?.href && index < list.length - 1) {
+            const anchor = document.createElement('a');
+            anchor.href = item.href;
+            anchor.className = 'hover:text-teal-600';
+            anchor.textContent = safeLabel;
+            anchor.setAttribute('data-native', 'true');
+            breadcrumbElement.appendChild(anchor);
+            return;
+        }
+
+        const label = document.createElement('span');
+        label.className = 'font-medium text-slate-600';
+        label.textContent = safeLabel;
+        breadcrumbElement.appendChild(label);
+    });
+};
+
+const syncLayoutPageHeader = (title, breadcrumb) => {
     if (typeof document === 'undefined') {
         return;
     }
 
-    const safeHeading = String(heading || '').trim() || 'Overview';
+    const safeHeading = String(title || '').trim() || 'Overview';
     document.querySelectorAll('[data-current-page-title]').forEach((element) => {
         element.textContent = safeHeading;
+        const breadcrumbElement = ensureBreadcrumbElement(element);
+        renderBreadcrumb(breadcrumbElement, breadcrumb);
     });
 };
 
@@ -237,7 +243,58 @@ function DateInputRuntimeAdapter({ App, props }) {
     const appNameFromPage = props?.initialPage?.props?.app?.name || INITIAL_APP_NAME;
 
     useEffect(() => {
+        const syncFromPagePayload = (pagePayload) => {
+            if (!pagePayload || typeof pagePayload !== 'object') {
+                return;
+            }
+
+            const pageProps = pagePayload?.props || {};
+            const pathname = parsePathname(pagePayload?.url || pageProps?.page?.url || window.location.pathname);
+            const routeName = pageProps?.page?.route_name || '';
+            const portal = pageProps?.auth?.portal || '';
+            const explicitTitle = COMPONENT_TITLE_MAP[pagePayload?.component] || '';
+            const title = getPageTitle({
+                component: pagePayload?.component,
+                props: pageProps,
+                routeName,
+                pathname,
+                explicitTitle,
+            });
+            const breadcrumb = getBreadcrumb({
+                routeName,
+                pathname,
+                title,
+                portal,
+            });
+
+            syncLayoutPageHeader(title, breadcrumb);
+            document.title = normalizeBrowserTitle(title, appNameFromPage);
+        };
+
+        syncFromPagePayload(props?.initialPage);
+
+        const handleNavigate = (event) => {
+            const pagePayload = event?.detail?.page || event?.detail?.visit?.page || null;
+            syncFromPagePayload(pagePayload);
+        };
+
+        const handleSuccess = (event) => {
+            const pagePayload = event?.detail?.page || event?.detail?.visit?.page || null;
+            syncFromPagePayload(pagePayload);
+        };
+
+        document.addEventListener('inertia:navigate', handleNavigate);
+        document.addEventListener('inertia:success', handleSuccess);
+
+        return () => {
+            document.removeEventListener('inertia:navigate', handleNavigate);
+            document.removeEventListener('inertia:success', handleSuccess);
+        };
+    }, [appNameFromPage, props?.initialPage]);
+
+    useEffect(() => {
         normalizeDateInputsInDocument();
+        enhanceEasyDateInputsInDocument();
 
         const handleFocusOut = (event) => {
             const target = event.target;
@@ -254,6 +311,8 @@ function DateInputRuntimeAdapter({ App, props }) {
                 target.dispatchEvent(new Event('input', { bubbles: true }));
                 target.dispatchEvent(new Event('change', { bubbles: true }));
             }
+
+            enhanceEasyDateInputsInDocument();
         };
 
         document.addEventListener('focusout', handleFocusOut, true);
@@ -275,6 +334,7 @@ function DateInputRuntimeAdapter({ App, props }) {
             frame = window.requestAnimationFrame(() => {
                 frame = null;
                 applyDateTimeNoWrapInDocument();
+                enhanceEasyDateInputsInDocument();
             });
         };
 
@@ -306,53 +366,11 @@ function DateInputRuntimeAdapter({ App, props }) {
         };
     }, []);
 
-    useEffect(() => {
-        let lastHeading =
-            String(document.querySelector('[data-current-page-title]')?.textContent || '').trim() ||
-            'Overview';
-
-        const syncFromDocumentTitle = () => {
-            const currentTitle = document.title;
-            if (/^\(\d+\)\s+Unread Chat$/i.test(String(currentTitle || '').trim())) {
-                syncLayoutPageHeading(lastHeading);
-                return;
-            }
-
-            const resolved = extractHeadingFromTitle(currentTitle, '', appNameFromPage);
-            const fallbackHeading = headingFromPathname(window.location.pathname);
-            const nextHeading = String(resolved || '').trim();
-            lastHeading = nextHeading && nextHeading.toLowerCase() !== 'overview'
-                ? nextHeading
-                : (fallbackHeading || lastHeading || 'Overview');
-            syncLayoutPageHeading(lastHeading);
-        };
-
-        const raf = window.requestAnimationFrame(() => {
-            syncFromDocumentTitle();
-        });
-
-        const titleEl = document.querySelector('title');
-        const observer = titleEl
-            ? new MutationObserver(() => {
-                syncFromDocumentTitle();
-            })
-            : null;
-
-        if (titleEl && observer) {
-            observer.observe(titleEl, {
-                childList: true,
-                subtree: true,
-                characterData: true,
-            });
-        }
-
-        return () => {
-            window.cancelAnimationFrame(raf);
-            observer?.disconnect();
-        };
-    }, [appNameFromPage]);
-
-    return <App {...props} />;
+    return (
+        <>
+            <App {...props} />
+        </>
+    );
 }
 
 createInertiaApp({
@@ -365,7 +383,13 @@ createInertiaApp({
             throw new Error(`Inertia page not found: ${name}`);
         }
 
-        return page.default;
+        const moduleDefault = page.default;
+        const explicitTitle = moduleDefault?.title || page.pageTitle || moduleDefault?.pageTitle || '';
+        if (typeof explicitTitle === 'string' && explicitTitle.trim() !== '') {
+            COMPONENT_TITLE_MAP[name] = explicitTitle.trim();
+        }
+
+        return moduleDefault;
     },
     setup({ el, App, props }) {
         createRoot(el).render(<DateInputRuntimeAdapter App={App} props={props} />);

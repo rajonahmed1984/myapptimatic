@@ -33,9 +33,11 @@ class DashboardMetricsService
     private const WHMCS_PAGE_SIZE = 100;
     private const WHMCS_MAX_PAGES = 50;
     private array $carrotHostDailyIncomeCache = [];
+    private array $expenseEntriesCache = [];
 
     public function __construct(
-        private readonly WhmcsClient $whmcsClient
+        private readonly WhmcsClient $whmcsClient,
+        private readonly ExpenseEntryService $expenseEntryService
     ) {
     }
 
@@ -93,9 +95,7 @@ class DashboardMetricsService
         $prevMonthIncome = $this->incomeTotalBetween($previousStart, $previousEnd);
         $todayIncome = $this->incomeTotalBetween($todayStart, $todayEnd);
 
-        $monthExpense = (float) AccountingEntry::where('type', 'expense')
-            ->whereBetween('entry_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
-            ->sum('amount');
+        $monthExpense = $this->expenseTotalBetween($monthStart, $monthEnd);
 
         $overdueCount = Invoice::where('status', 'overdue')->count();
         $unpaidCount = Invoice::where('status', 'unpaid')->count();
@@ -224,10 +224,12 @@ class DashboardMetricsService
         foreach ($periods as $key => [$start, $end]) {
             $carrotHostIncome = $this->carrotHostIncomeBetween($start, $end);
             $totalIncome = $this->incomeTotalBetween($start, $end) + $carrotHostIncome;
+            $totalExpense = $this->expenseTotalBetween($start, $end);
             $metrics[$key] = [
                 'new_orders' => Order::whereBetween('created_at', [$start, $end])->count(),
                 'active_orders' => Order::where('status', 'accepted')->whereBetween('created_at', [$start, $end])->count(),
                 'income' => $totalIncome,
+                'expense' => $totalExpense,
                 'hosting_income' => $carrotHostIncome,
             ];
         }
@@ -256,6 +258,7 @@ class DashboardMetricsService
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
+        $hourlyExpense = $this->groupExpenseEntriesByHour($todayStart, $todayEnd);
         $manualTodayIncome = (float) Income::whereDate('income_date', $todayStart->toDateString())->sum('amount');
         if ($manualTodayIncome !== 0.0) {
             $hourlyIncome[0] = (float) ($hourlyIncome[0] ?? 0) + $manualTodayIncome;
@@ -269,11 +272,13 @@ class DashboardMetricsService
         $todayNew = [];
         $todayActive = [];
         $todayIncome = [];
+        $todayExpense = [];
         for ($hour = 0; $hour < 24; $hour++) {
             $todayLabels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT);
             $todayNew[] = (int) ($hourlyOrders[$hour] ?? 0);
             $todayActive[] = (int) ($hourlyActiveOrders[$hour] ?? 0);
             $todayIncome[] = (float) ($hourlyIncome[$hour] ?? 0);
+            $todayExpense[] = (float) ($hourlyExpense[$hour] ?? 0);
         }
 
         $monthStart = now()->subDays(29)->startOfDay();
@@ -301,11 +306,13 @@ class DashboardMetricsService
             ->pluck('total', 'bucket')
             ->all();
         $dailyIncomeHosting = $this->carrotHostDailyIncomeMap($monthStart, $monthEnd);
+        $dailyExpense = $this->groupExpenseEntriesByDate($monthStart, $monthEnd);
 
         $monthLabels = [];
         $monthNew = [];
         $monthActive = [];
         $monthIncome = [];
+        $monthExpense = [];
         for ($day = 0; $day < 30; $day++) {
             $date = $monthStart->copy()->addDays($day);
             $key = $date->toDateString();
@@ -315,6 +322,7 @@ class DashboardMetricsService
             $monthIncome[] = (float) ($dailyIncomeSystem[$key] ?? 0)
                 + (float) ($dailyIncomeManual[$key] ?? 0)
                 + (float) ($dailyIncomeHosting[$key] ?? 0);
+            $monthExpense[] = (float) ($dailyExpense[$key] ?? 0);
         }
 
         $yearStart = now()->startOfMonth()->subMonths(11);
@@ -341,6 +349,7 @@ class DashboardMetricsService
             ->groupBy('bucket')
             ->pluck('total', 'bucket')
             ->all();
+        $monthlyExpense = $this->groupExpenseEntriesByMonth($yearStart, $yearEnd);
         $yearlyHostingDaily = $this->carrotHostDailyIncomeMap($yearStart, $yearEnd);
         $monthlyIncomeHosting = [];
         foreach ($yearlyHostingDaily as $date => $amount) {
@@ -352,6 +361,7 @@ class DashboardMetricsService
         $yearNew = [];
         $yearActive = [];
         $yearIncome = [];
+        $yearExpense = [];
         for ($month = 0; $month < 12; $month++) {
             $date = $yearStart->copy()->addMonths($month);
             $key = $date->format('Y-m');
@@ -361,6 +371,7 @@ class DashboardMetricsService
             $yearIncome[] = (float) ($monthlyIncomeSystem[$key] ?? 0)
                 + (float) ($monthlyIncomeManual[$key] ?? 0)
                 + (float) ($monthlyIncomeHosting[$key] ?? 0);
+            $yearExpense[] = (float) ($monthlyExpense[$key] ?? 0);
         }
 
         return [
@@ -369,18 +380,21 @@ class DashboardMetricsService
                 'new_orders' => $todayNew,
                 'active_orders' => $todayActive,
                 'income' => $todayIncome,
+                'expense' => $todayExpense,
             ],
             'month' => [
                 'labels' => $monthLabels,
                 'new_orders' => $monthNew,
                 'active_orders' => $monthActive,
                 'income' => $monthIncome,
+                'expense' => $monthExpense,
             ],
             'year' => [
                 'labels' => $yearLabels,
                 'new_orders' => $yearNew,
                 'active_orders' => $yearActive,
                 'income' => $yearIncome,
+                'expense' => $yearExpense,
             ],
         ];
     }
@@ -436,6 +450,108 @@ class DashboardMetricsService
             ->sum('amount');
 
         return $manual + $system;
+    }
+
+    private function expenseTotalBetween(Carbon $start, Carbon $end): float
+    {
+        $total = 0.0;
+
+        foreach ($this->expenseEntriesBetween($start, $end) as $entry) {
+            $total += (float) ($entry['amount'] ?? 0);
+        }
+
+        return $total;
+    }
+
+    private function expenseEntriesBetween(Carbon $start, Carbon $end): array
+    {
+        $cacheKey = $start->toDateString().':'.$end->toDateString();
+        if (array_key_exists($cacheKey, $this->expenseEntriesCache)) {
+            return $this->expenseEntriesCache[$cacheKey];
+        }
+
+        $entries = $this->expenseEntryService->entries([
+            'start_date' => $start->toDateString(),
+            'end_date' => $end->toDateString(),
+            'sources' => ['manual', 'salary', 'contract_payout', 'sales_payout'],
+        ]);
+
+        $normalized = collect($entries)->values()->all();
+        $this->expenseEntriesCache[$cacheKey] = $normalized;
+
+        return $normalized;
+    }
+
+    private function groupExpenseEntriesByHour(Carbon $start, Carbon $end): array
+    {
+        $totals = [];
+
+        foreach ($this->expenseEntriesBetween($start, $end) as $entry) {
+            $date = $this->parseExpenseEntryDate($entry['expense_date'] ?? null);
+            if (! $date) {
+                continue;
+            }
+
+            $bucket = (int) $date->format('G');
+            $totals[$bucket] = (float) ($totals[$bucket] ?? 0) + (float) ($entry['amount'] ?? 0);
+        }
+
+        return $totals;
+    }
+
+    private function groupExpenseEntriesByDate(Carbon $start, Carbon $end): array
+    {
+        $totals = [];
+
+        foreach ($this->expenseEntriesBetween($start, $end) as $entry) {
+            $date = $this->parseExpenseEntryDate($entry['expense_date'] ?? null);
+            if (! $date) {
+                continue;
+            }
+
+            $bucket = $date->toDateString();
+            $totals[$bucket] = (float) ($totals[$bucket] ?? 0) + (float) ($entry['amount'] ?? 0);
+        }
+
+        return $totals;
+    }
+
+    private function groupExpenseEntriesByMonth(Carbon $start, Carbon $end): array
+    {
+        $totals = [];
+
+        foreach ($this->expenseEntriesBetween($start, $end) as $entry) {
+            $date = $this->parseExpenseEntryDate($entry['expense_date'] ?? null);
+            if (! $date) {
+                continue;
+            }
+
+            $bucket = $date->format('Y-m');
+            $totals[$bucket] = (float) ($totals[$bucket] ?? 0) + (float) ($entry['amount'] ?? 0);
+        }
+
+        return $totals;
+    }
+
+    private function parseExpenseEntryDate(mixed $value): ?Carbon
+    {
+        if ($value instanceof Carbon) {
+            return $value->copy();
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance($value);
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function carrotHostIncomeBetween(Carbon $start, Carbon $end): float

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DatePickerField from '../../../Components/DatePickerField';
 
 export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, form = {}, types = [], customers = [], invoices = [], gateways = [], routes = {} }) {
     const { props } = usePage();
@@ -77,12 +78,13 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                             </select>
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-700">Entry Date</label>
-                            <input
-                                type="date"
+                            <DatePickerField
                                 name="entry_date"
                                 defaultValue={fields?.entry_date || ''}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                submitFormat="iso"
+                                label="Entry Date"
+                                labelClassName="mb-1 block text-sm font-medium text-slate-700"
+                                inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2"
                             />
                             {errors?.entry_date ? <p className="mt-1 text-xs text-rose-600">{errors.entry_date}</p> : null}
                         </div>

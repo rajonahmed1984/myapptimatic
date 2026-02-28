@@ -7,9 +7,17 @@ use App\Enums\MailCategory;
 use App\Models\AccountingEntry;
 use App\Models\Customer;
 use App\Models\EmailTemplate;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\License;
+use App\Models\Order;
+use App\Models\Plan;
 use App\Models\SystemLog;
 use App\Models\ProjectMaintenance;
+use App\Models\ProjectTask;
+use App\Models\ProjectTaskSubtask;
 use App\Models\SalesRepresentative;
+use App\Models\Subscription;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\UserSession;
@@ -21,6 +29,8 @@ use App\Support\Currency;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use App\Services\Mail\MailSender;
+use App\Services\BillingService;
+use App\Services\InvoiceTaxService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -236,6 +246,23 @@ class CustomerController extends Controller
         $projectClients = collect();
         $projects = collect();
         $projectMaintenances = collect();
+        $projectTaskSummary = [
+            'total' => 0,
+            'projects' => (int) $customer->projects->count(),
+            'pending' => 0,
+            'in_progress' => 0,
+            'blocked' => 0,
+            'completed' => 0,
+            'other' => 0,
+        ];
+        $projectSubtaskSummary = [
+            'total' => 0,
+            'completed' => 0,
+            'pending' => 0,
+        ];
+        $projectTaskProgress = [
+            'percent' => 0,
+        ];
         if ($tab === 'log') {
             $userIds = $customer->users()->pluck('id');
             $activityLogs = SystemLog::query()
@@ -267,6 +294,59 @@ class CustomerController extends Controller
                 ->withCount('invoices')
                 ->latest('id')
                 ->get();
+
+            $projectIds = $customer->projects->pluck('id')->filter()->values();
+            if ($projectIds->isNotEmpty()) {
+                $taskBaseQuery = ProjectTask::query()->whereIn('project_id', $projectIds);
+                $taskStatusCounts = (clone $taskBaseQuery)
+                    ->select('status', DB::raw('COUNT(*) as total'))
+                    ->groupBy('status')
+                    ->pluck('total', 'status');
+
+                $taskTotal = (int) $taskStatusCounts->sum();
+                $completedTasks = (int) (($taskStatusCounts['completed'] ?? 0) + ($taskStatusCounts['done'] ?? 0) + ($taskStatusCounts['complete'] ?? 0));
+                $projectTaskSummary = [
+                    'total' => $taskTotal,
+                    'projects' => (int) $projectIds->count(),
+                    'pending' => (int) ($taskStatusCounts['pending'] ?? 0),
+                    'in_progress' => (int) ($taskStatusCounts['in_progress'] ?? 0),
+                    'blocked' => (int) ($taskStatusCounts['blocked'] ?? 0),
+                    'completed' => $completedTasks,
+                    'other' => (int) $taskStatusCounts->except(['pending', 'in_progress', 'blocked', 'completed', 'complete', 'done'])->sum(),
+                ];
+                $projectTaskProgress = [
+                    'percent' => $taskTotal > 0 ? (int) round(($completedTasks / $taskTotal) * 100) : 0,
+                ];
+
+                $subtaskCounts = ProjectTaskSubtask::query()
+                    ->select('is_completed', DB::raw('COUNT(*) as total'))
+                    ->whereIn('project_task_id', (clone $taskBaseQuery)->select('id'))
+                    ->groupBy('is_completed')
+                    ->pluck('total', 'is_completed');
+
+                $subtaskTotal = (int) $subtaskCounts->sum();
+                $subtaskCompleted = (int) ($subtaskCounts[1] ?? 0);
+                $projectSubtaskSummary = [
+                    'total' => $subtaskTotal,
+                    'completed' => $subtaskCompleted,
+                    'pending' => max(0, $subtaskTotal - $subtaskCompleted),
+                ];
+            }
+        }
+
+        $servicePlans = collect();
+        $serviceSalesReps = collect();
+        if ($tab === 'services') {
+            $servicePlans = Plan::query()
+                ->with('product')
+                ->where('is_active', true)
+                ->whereHas('product', fn ($query) => $query->where('status', 'active'))
+                ->orderBy('name')
+                ->get();
+
+            $serviceSalesReps = SalesRepresentative::query()
+                ->orderBy('name')
+                ->get(['id', 'name', 'status']);
         }
 
         $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
@@ -367,24 +447,322 @@ class CustomerController extends Controller
             ? 'active'
             : $customer->status;
 
-        return Inertia::render('Admin/Customers/Show', $this->showInertiaProps([
-            'customer' => $customer,
+        $dateFormat = config('app.date_format', 'd-m-Y');
+        $dateTimeFormat = config('app.datetime_format', 'd-m-Y h:i A');
+
+        return Inertia::render('Admin/Customers/Show', [
+            'pageTitle' => 'Customer Details',
             'tab' => $tab,
-            'activityLogs' => $activityLogs,
-            'emailLogs' => $emailLogs,
-            'invoiceStatusSummary' => $invoiceStatusSummary,
-            'grossRevenue' => $grossRevenue,
-            'clientExpenses' => $clientExpenses,
-            'netIncome' => $netIncome,
-            'creditBalance' => $creditBalance,
-            'currencyCode' => $currencyCode,
-            'currencySymbol' => $currencySymbol,
-            'projectClients' => $projectClients,
-            'projects' => $projects,
-            'projectMaintenances' => $projectMaintenances,
-            'salesRepSummaries' => $salesRepSummaries,
-            'effectiveStatus' => $effectiveStatus,
-        ]));
+            'tabs' => collect($allowedTabs)->map(function (string $key) use ($customer) {
+                $label = match ($key) {
+                    'summary' => 'Summary',
+                    'project-specific' => 'Project Logins',
+                    'services' => 'Products/Services',
+                    'projects' => 'Projects',
+                    'invoices' => 'Invoices',
+                    'tickets' => 'Tickets',
+                    'emails' => 'Emails',
+                    'log' => 'Log',
+                    default => ucfirst(str_replace('-', ' ', $key)),
+                };
+
+                return [
+                    'key' => $key,
+                    'label' => $label,
+                    'href' => route('admin.customers.show', ['customer' => $customer, 'tab' => $key], false),
+                ];
+            })->values()->all(),
+            'customer' => [
+                'id' => $customer->id,
+                'name' => (string) $customer->name,
+                'email' => (string) ($customer->email ?? ''),
+                'phone' => (string) ($customer->phone ?? ''),
+                'address' => (string) ($customer->address ?? ''),
+                'company_name' => (string) ($customer->company_name ?? ''),
+                'status' => (string) ($customer->status ?? 'active'),
+                'effective_status' => (string) $effectiveStatus,
+                'created_at_display' => $customer->created_at?->format($dateFormat) ?? '--',
+                'subscriptions_count' => (int) $customer->subscriptions->count(),
+                'active_subscriptions_count' => (int) $customer->subscriptions->where('status', 'active')->count(),
+                'projects_count' => (int) $customer->projects->count(),
+                'invoices_count' => (int) $customer->invoices->count(),
+                'tickets_count' => (int) $customer->supportTickets->count(),
+            ],
+            'currency' => [
+                'code' => $currencyCode,
+                'symbol' => $currencySymbol,
+            ],
+            'metrics' => [
+                'invoice_status_summary' => $invoiceStatusSummary,
+                'gross_revenue' => (float) $grossRevenue,
+                'client_expenses' => (float) $clientExpenses,
+                'net_income' => (float) $netIncome,
+                'credit_balance' => (float) $creditBalance,
+            ],
+            'sales_rep_summaries' => $salesRepSummaries->values()->all(),
+            'subscriptions' => $customer->subscriptions->map(function (Subscription $subscription) use ($dateFormat) {
+                return [
+                    'id' => $subscription->id,
+                    'product_name' => (string) ($subscription->plan?->product?->name ?? '--'),
+                    'plan_name' => (string) ($subscription->plan?->name ?? '--'),
+                    'status' => (string) ($subscription->status ?? ''),
+                    'status_label' => ucfirst((string) ($subscription->status ?? '--')),
+                    'order_number' => (string) ($subscription->latestOrder?->order_number ?? '--'),
+                    'next_invoice_display' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
+                    'period_end_display' => $subscription->current_period_end?->format($dateFormat) ?? '--',
+                    'manage_url' => route('admin.subscriptions.edit', $subscription, false),
+                ];
+            })->values()->all(),
+            'project_clients' => $projectClients->map(function (User $projectUser) use ($dateFormat, $customer) {
+                return [
+                    'id' => $projectUser->id,
+                    'name' => (string) ($projectUser->name ?? '--'),
+                    'email' => (string) ($projectUser->email ?? '--'),
+                    'status' => (string) ($projectUser->status ?? 'active'),
+                    'project_id' => $projectUser->project_id,
+                    'project_name' => (string) ($projectUser->project?->name ?? '--'),
+                    'created_at_display' => $projectUser->created_at?->format($dateFormat) ?? '--',
+                    'routes' => [
+                        'update' => route('admin.customers.project-users.update', ['customer' => $customer, 'user' => $projectUser], false),
+                        'destroy' => route('admin.customers.project-users.destroy', ['customer' => $customer, 'user' => $projectUser], false),
+                    ],
+                ];
+            })->values()->all(),
+            'project_options' => $projects->map(fn ($project) => [
+                'id' => $project->id,
+                'name' => (string) ($project->name ?? '--'),
+            ])->values()->all(),
+            'projects' => $customer->projects->map(function ($project) use ($dateFormat) {
+                return [
+                    'id' => $project->id,
+                    'name' => (string) ($project->name ?? '--'),
+                    'type' => (string) ($project->type ?? '--'),
+                    'status' => (string) ($project->status ?? '--'),
+                    'start_date_display' => $project->start_date?->format($dateFormat) ?? '--',
+                    'due_date_display' => $project->due_date?->format($dateFormat) ?? '--',
+                    'currency' => (string) ($project->currency ?? ''),
+                    'total_budget' => (float) ($project->total_budget ?? 0),
+                    'show_url' => route('admin.projects.show', $project, false),
+                    'edit_url' => route('admin.projects.edit', $project, false),
+                ];
+            })->values()->all(),
+            'project_maintenances' => $projectMaintenances->map(function (ProjectMaintenance $maintenance) use ($dateFormat) {
+                return [
+                    'id' => $maintenance->id,
+                    'title' => (string) ($maintenance->title ?? '--'),
+                    'project_name' => (string) ($maintenance->project?->name ?? '--'),
+                    'status' => (string) ($maintenance->status ?? '--'),
+                    'amount' => (float) ($maintenance->amount ?? 0),
+                    'currency' => (string) ($maintenance->currency ?? ''),
+                    'billing_cycle' => (string) ($maintenance->billing_cycle ?? '--'),
+                    'next_billing_date_display' => $maintenance->next_billing_date?->format($dateFormat) ?? '--',
+                    'invoices_count' => (int) ($maintenance->invoices_count ?? 0),
+                    'show_url' => route('admin.project-maintenances.show', $maintenance, false),
+                    'edit_url' => route('admin.project-maintenances.edit', $maintenance, false),
+                ];
+            })->values()->all(),
+            'project_task_summary' => $projectTaskSummary,
+            'project_subtask_summary' => $projectSubtaskSummary,
+            'project_task_progress' => $projectTaskProgress,
+            'invoices' => $customer->invoices->map(function ($invoice) use ($dateFormat) {
+                return [
+                    'id' => $invoice->id,
+                    'number' => (string) ($invoice->number ?: $invoice->id),
+                    'status' => (string) ($invoice->status ?? ''),
+                    'status_label' => ucfirst((string) ($invoice->status ?? '--')),
+                    'issue_date_display' => $invoice->issue_date?->format($dateFormat) ?? '--',
+                    'due_date_display' => $invoice->due_date?->format($dateFormat) ?? '--',
+                    'total' => (float) ($invoice->total ?? 0),
+                    'currency' => (string) ($invoice->currency ?? ''),
+                    'show_url' => route('admin.invoices.show', $invoice, false),
+                ];
+            })->values()->all(),
+            'tickets' => $customer->supportTickets->map(function ($ticket) use ($dateTimeFormat) {
+                return [
+                    'id' => $ticket->id,
+                    'subject' => (string) ($ticket->subject ?? '--'),
+                    'status' => (string) ($ticket->status ?? '--'),
+                    'status_label' => ucfirst(str_replace('_', ' ', (string) ($ticket->status ?? '--'))),
+                    'last_reply_display' => $ticket->last_reply_at?->format($dateTimeFormat) ?? '--',
+                    'show_url' => route('admin.support-tickets.show', $ticket, false),
+                ];
+            })->values()->all(),
+            'email_logs' => $emailLogs->map(function (SystemLog $log) use ($dateTimeFormat, $customer) {
+                return [
+                    'id' => $log->id,
+                    'created_at_display' => $log->created_at?->format($dateTimeFormat) ?? '--',
+                    'subject' => (string) ($log->context['subject'] ?? $log->message ?? '--'),
+                    'resend_url' => route('admin.logs.email.resend', ['systemLog' => $log, 'customer' => $customer], false),
+                ];
+            })->values()->all(),
+            'activity_logs' => $activityLogs->map(function (SystemLog $log) use ($dateTimeFormat) {
+                return [
+                    'id' => $log->id,
+                    'created_at_display' => $log->created_at?->format($dateTimeFormat) ?? '--',
+                    'category' => ucfirst((string) ($log->category ?? '')),
+                    'level' => strtoupper((string) ($log->level ?? '')),
+                    'message' => (string) ($log->message ?? '--'),
+                    'context' => $log->context,
+                ];
+            })->values()->all(),
+            'service_plans' => $servicePlans->map(fn (Plan $plan) => [
+                'id' => (string) $plan->id,
+                'product_name' => (string) ($plan->product?->name ?? '--'),
+                'name' => (string) $plan->name,
+                'interval' => (string) ($plan->interval ?? ''),
+                'price' => (float) ($plan->price ?? 0),
+                'currency' => (string) ($plan->currency ?: $currencyCode),
+            ])->values()->all(),
+            'service_sales_reps' => $serviceSalesReps->map(fn (SalesRepresentative $rep) => [
+                'id' => (string) $rep->id,
+                'name' => (string) $rep->name,
+                'status' => (string) $rep->status,
+            ])->values()->all(),
+            'forms' => [
+                'project_user' => [
+                    'project_id' => (string) old('project_id', ''),
+                    'name' => (string) old('name', ''),
+                    'email' => (string) old('email', ''),
+                ],
+                'service' => [
+                    'plan_id' => (string) old('plan_id', ''),
+                    'start_date' => (string) old('start_date', now()->toDateString()),
+                    'sales_rep_id' => (string) old('sales_rep_id', (string) ($customer->default_sales_rep_id ?? '')),
+                    'sales_rep_commission_amount' => (string) old('sales_rep_commission_amount', ''),
+                ],
+            ],
+            'routes' => [
+                'index' => route('admin.customers.index', [], false),
+                'show' => route('admin.customers.show', $customer, false),
+                'edit' => route('admin.customers.edit', $customer, false),
+                'impersonate' => route('admin.customers.impersonate', $customer, false),
+                'create_invoice' => route('admin.invoices.create', ['customer_id' => $customer->id], false),
+                'create_ticket' => route('admin.support-tickets.create', ['customer_id' => $customer->id], false),
+                'project_user_store' => route('admin.customers.project-users.store', $customer, false),
+                'service_store' => route('admin.customers.services.store', $customer, false),
+                'create_project' => route('admin.projects.create', [], false),
+                'create_maintenance' => route('admin.project-maintenances.create', [], false),
+            ],
+        ]);
+    }
+
+    public function storeService(
+        Request $request,
+        Customer $customer,
+        BillingService $billingService,
+        InvoiceTaxService $taxService
+    ) {
+        $data = $request->validate([
+            'plan_id' => ['required', 'exists:plans,id'],
+            'start_date' => ['required', 'date'],
+            'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
+            'sales_rep_commission_amount' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $plan = Plan::query()->with('product')->findOrFail($data['plan_id']);
+        if (! $plan->is_active || ! $plan->product || $plan->product->status !== 'active') {
+            return redirect()
+                ->route('admin.customers.show', ['customer' => $customer, 'tab' => 'services'])
+                ->withErrors(['plan_id' => 'This plan is not available for ordering.'])
+                ->withInput();
+        }
+
+        $startDate = Carbon::parse((string) $data['start_date'])->startOfDay();
+        $periodEnd = $plan->interval === 'monthly'
+            ? $startDate->copy()->endOfMonth()
+            : $startDate->copy()->addYear();
+
+        $result = DB::transaction(function () use ($request, $customer, $plan, $startDate, $periodEnd, $data, $billingService, $taxService) {
+            $subtotal = $this->calculateServiceSubtotal($plan->interval, (float) $plan->price, $startDate, $periodEnd);
+            $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+            $taxData = $taxService->calculateTotals($subtotal, 0.0, $startDate);
+            $salesRepId = $data['sales_rep_id'] ?? null;
+
+            $subscription = Subscription::create([
+                'customer_id' => $customer->id,
+                'plan_id' => $plan->id,
+                'sales_rep_id' => $salesRepId,
+                'sales_rep_commission_amount' => $salesRepId
+                    ? ($data['sales_rep_commission_amount'] ?? null)
+                    : null,
+                'status' => 'pending',
+                'start_date' => $startDate->toDateString(),
+                'current_period_start' => $startDate->toDateString(),
+                'current_period_end' => $periodEnd->toDateString(),
+                'next_invoice_at' => $this->nextServiceInvoiceAt((string) $plan->interval, $periodEnd, $startDate)->toDateString(),
+                'auto_renew' => true,
+                'cancel_at_period_end' => false,
+            ]);
+
+            $invoice = Invoice::create([
+                'customer_id' => $customer->id,
+                'subscription_id' => $subscription->id,
+                'number' => $billingService->nextInvoiceNumber(),
+                'status' => 'unpaid',
+                'issue_date' => $startDate->toDateString(),
+                'due_date' => $startDate->toDateString(),
+                'subtotal' => $subtotal,
+                'tax_rate_percent' => $taxData['tax_rate_percent'],
+                'tax_mode' => $taxData['tax_mode'],
+                'tax_amount' => $taxData['tax_amount'],
+                'late_fee' => 0,
+                'total' => $taxData['total'],
+                'currency' => $currency,
+            ]);
+
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'description' => sprintf(
+                    '%s (%s) %s to %s',
+                    $plan->name,
+                    $plan->interval,
+                    $startDate->format(config('app.date_format', 'd-m-Y')),
+                    $periodEnd->format(config('app.date_format', 'd-m-Y'))
+                ),
+                'quantity' => 1,
+                'unit_price' => $subtotal,
+                'line_total' => $subtotal,
+            ]);
+
+            License::create([
+                'subscription_id' => $subscription->id,
+                'product_id' => $plan->product_id,
+                'license_key' => $this->uniqueServiceLicenseKey(),
+                'status' => 'pending',
+                'starts_at' => $startDate->toDateString(),
+                'max_domains' => 1,
+            ]);
+
+            $order = Order::create([
+                'order_number' => Order::nextNumber(),
+                'customer_id' => $customer->id,
+                'user_id' => $request->user()?->id,
+                'product_id' => $plan->product_id,
+                'plan_id' => $plan->id,
+                'subscription_id' => $subscription->id,
+                'invoice_id' => $invoice->id,
+                'sales_rep_id' => $salesRepId,
+                'status' => 'pending',
+            ]);
+
+            return [
+                'subscription' => $subscription,
+                'invoice' => $invoice,
+                'order' => $order,
+            ];
+        });
+
+        SystemLogger::write('activity', 'Customer service order created.', [
+            'customer_id' => $customer->id,
+            'subscription_id' => $result['subscription']->id ?? null,
+            'invoice_id' => $result['invoice']->id ?? null,
+            'order_id' => $result['order']->id ?? null,
+            'plan_id' => $plan->id,
+        ], $request->user()?->id, $request->ip());
+
+        return redirect()
+            ->route('admin.customers.show', ['customer' => $customer, 'tab' => 'services'])
+            ->with('status', 'Product/service added for customer. Review and approve it from Orders if needed.');
     }
 
     public function impersonate(Request $request, Customer $customer)
@@ -690,66 +1068,49 @@ class CustomerController extends Controller
         ];
     }
 
-    private function showInertiaProps(array $viewData): array
+    private function calculateServiceSubtotal(string $interval, float $price, Carbon $periodStart, Carbon $periodEnd): float
     {
-        $legacyHtml = view('admin.customers.show', $viewData)->render();
-        $payload = $this->extractLegacyPayload($legacyHtml);
+        if ($interval !== 'monthly') {
+            return round($price, 2);
+        }
 
-        return [
-            'pageTitle' => (string) ($payload['page_title'] ?? 'Customer Details'),
-            'pageHeading' => (string) ($payload['page_heading'] ?? 'Customer Details'),
-            'pageKey' => 'admin.customers.show',
-            'content_html' => (string) ($payload['content_html'] ?? ''),
-            'script_html' => (string) ($payload['script_html'] ?? ''),
-            'style_html' => (string) ($payload['style_html'] ?? ''),
-        ];
+        if ($periodStart->isSameMonth($periodEnd) && $periodEnd->isLastOfMonth() && $periodStart->day !== 1) {
+            $daysInPeriod = $periodStart->copy()->startOfDay()
+                ->diffInDays($periodEnd->copy()->startOfDay()) + 1;
+            $daysInMonth = $periodStart->daysInMonth;
+            $ratio = $daysInMonth > 0 ? ($daysInPeriod / $daysInMonth) : 1;
+
+            return round($price * min(1, $ratio), 2);
+        }
+
+        return round($price, 2);
     }
 
-    /**
-     * @return array{page_title: string, page_heading: string, content_html: string, script_html: string, style_html: string}|null
-     */
-    private function extractLegacyPayload(string $html): ?array
+    private function nextServiceInvoiceAt(string $interval, Carbon $periodEnd, Carbon $startDate): Carbon
     {
-        $dom = new \DOMDocument('1.0', 'UTF-8');
-        $internalErrors = libxml_use_internal_errors(true);
-        $loaded = $dom->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET | LIBXML_COMPACT);
-        libxml_clear_errors();
-        libxml_use_internal_errors($internalErrors);
-
-        if (! $loaded) {
-            return null;
+        if ($interval === 'monthly') {
+            return $periodEnd->copy()->addDay();
         }
 
-        $contentNode = $dom->getElementById('appContent');
-        if (! $contentNode) {
-            return null;
+        $invoiceGenerationDays = (int) Setting::getValue('invoice_generation_days');
+        $nextInvoiceAt = $invoiceGenerationDays > 0
+            ? $periodEnd->copy()->subDays($invoiceGenerationDays)
+            : $periodEnd->copy();
+
+        if ($nextInvoiceAt->lessThan($startDate)) {
+            $nextInvoiceAt = $periodEnd->copy();
         }
 
-        $scriptsNode = $dom->getElementById('pageScriptStack');
-        $styleHtml = '';
-
-        foreach ($dom->getElementsByTagName('style') as $styleNode) {
-            $styleHtml .= $dom->saveHTML($styleNode);
-        }
-
-        return [
-            'page_title' => (string) $contentNode->getAttribute('data-page-title'),
-            'page_heading' => (string) $contentNode->getAttribute('data-page-heading'),
-            'content_html' => $this->innerHtml($contentNode),
-            'script_html' => $scriptsNode ? $this->innerHtml($scriptsNode) : '',
-            'style_html' => $styleHtml,
-        ];
+        return $nextInvoiceAt;
     }
 
-    private function innerHtml(\DOMNode $node): string
+    private function uniqueServiceLicenseKey(): string
     {
-        $html = '';
+        do {
+            $key = License::generateKey();
+        } while (License::query()->where('license_key', $key)->exists());
 
-        foreach ($node->childNodes as $child) {
-            $html .= $node->ownerDocument?->saveHTML($child) ?? '';
-        }
-
-        return $html;
+        return $key;
     }
 
     private function formInertiaProps(?Customer $customer, $salesReps, ?string $effectiveStatus = null): array

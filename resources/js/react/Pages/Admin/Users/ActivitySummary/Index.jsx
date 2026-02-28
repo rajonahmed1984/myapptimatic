@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
+import DateRangePickerField from '../../../../Components/DateRangePickerField';
 
 const initials = (name) => {
     const value = String(name || '').trim();
@@ -109,31 +110,18 @@ export default function Index({
                         </select>
                     </div>
 
-                    <div>
-                        <label htmlFor="from" className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                            From Date (Optional)
-                        </label>
-                        <input
-                            type="date"
-                            name="from"
-                            id="from"
-                            defaultValue={filters?.from || ''}
-                            className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="to" className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                            To Date (Optional)
-                        </label>
-                        <input
-                            type="date"
-                            name="to"
-                            id="to"
-                            defaultValue={filters?.to || ''}
-                            className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
-                        />
-                    </div>
+                    <DateRangePickerField
+                        startName="from"
+                        endName="to"
+                        startValue={filters?.from || ''}
+                        endValue={filters?.to || ''}
+                        submitFormat="iso"
+                        startLabel="From Date (Optional)"
+                        endLabel="To Date (Optional)"
+                        className="md:col-span-2"
+                        gridClassName="grid gap-4 md:grid-cols-2"
+                        inputClassName="mt-2 w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+                    />
 
                     <div className="md:col-span-2 flex items-end gap-2">
                         <button

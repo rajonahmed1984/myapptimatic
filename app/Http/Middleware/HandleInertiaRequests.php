@@ -106,6 +106,11 @@ class HandleInertiaRequests extends Middleware
                     'enabled' => (bool) $request->attributes->get('react_ui_enabled', false),
                 ],
             ],
+            'page' => [
+                'route_name' => optional($request->route())->getName(),
+                'url' => $request->getRequestUri(),
+                'path' => $request->path(),
+            ],
             'csrf_token' => csrf_token(),
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
