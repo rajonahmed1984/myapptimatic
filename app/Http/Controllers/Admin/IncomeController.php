@@ -900,6 +900,20 @@ PROMPT;
         }));
     }
 
+    private function normalizeMoney(mixed $value): float
+    {
+        if ($value === null) {
+            return 0.0;
+        }
+
+        $clean = preg_replace('/[^\d\.\-]/', '', (string) $value);
+        if ($clean === '' || $clean === '-' || $clean === '.') {
+            return 0.0;
+        }
+
+        return (float) $clean;
+    }
+
     private function parseDateOrDefault(mixed $value, Carbon $default, bool $endOfDay): Carbon
     {
         if ($value === null || $value === '') {
