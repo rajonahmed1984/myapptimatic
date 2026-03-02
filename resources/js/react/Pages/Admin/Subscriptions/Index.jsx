@@ -95,7 +95,17 @@ export default function Index({
                                                 {subscription.status_label}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500">{subscription.next_invoice_display}</td>
+                                        <td className="px-4 py-3 text-slate-500">
+                                            <div>{subscription.next_invoice_display}</div>
+                                            {Number(subscription.open_invoices_count || 0) > 0 ? (
+                                                <div className="mt-1 text-xs text-amber-700">
+                                                    Stacked: {subscription.open_invoices_count}
+                                                    {Number(subscription.overdue_invoices_count || 0) > 0
+                                                        ? ` (Overdue ${subscription.overdue_invoices_count})`
+                                                        : ''}
+                                                </div>
+                                            ) : null}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 <a

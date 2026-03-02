@@ -74,6 +74,14 @@ export default function Show({
                 <div className="card p-4">
                     <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Next Invoice</div>
                     <div className="mt-2 text-xl font-semibold text-slate-900">{subscription?.next_invoice_at || '--'}</div>
+                    {Number(subscription?.open_invoices_count || 0) > 0 ? (
+                        <div className="mt-2 text-xs text-amber-700">
+                            Stacked open invoices: {subscription.open_invoices_count}
+                            {Number(subscription?.overdue_invoices_count || 0) > 0
+                                ? ` (Overdue ${subscription.overdue_invoices_count})`
+                                : ''}
+                        </div>
+                    ) : null}
                 </div>
                 <div className="card p-4">
                     <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Invoices</div>
@@ -92,6 +100,8 @@ export default function Show({
                     <Info label="Current Period Start" value={subscription?.current_period_start} />
                     <Info label="Current Period End" value={subscription?.current_period_end} />
                     <Info label="Next Invoice Date" value={subscription?.next_invoice_at} />
+                    <Info label="Stacked Open Invoices" value={subscription?.open_invoices_count} />
+                    <Info label="Overdue Invoices" value={subscription?.overdue_invoices_count} />
                     <Info label="Sales Rep" value={subscription?.sales_rep_name} />
                     <Info label="Sales Rep Status" value={subscription?.sales_rep_status} />
                     <Info label="Commission (%)" value={subscription?.sales_rep_commission_percent} />

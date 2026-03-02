@@ -138,7 +138,7 @@ class RunBillingCycle extends Command
         $fixedTermTerminations = 0;
         Subscription::query()
             ->with(['plan', 'customer'])
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'suspended'])
             ->whereDate('next_invoice_at', '<=', $today->toDateString())
             ->orderBy('id')
             ->chunkById(200, function ($subscriptions) use (&$count, &$fixedTermTerminations, $today) {

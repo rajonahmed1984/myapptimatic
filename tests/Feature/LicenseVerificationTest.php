@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\License;
 use App\Models\LicenseDomain;
 use App\Models\Plan;
@@ -138,6 +139,39 @@ class LicenseVerificationTest extends TestCase
             'license_id' => $license->id,
             'domain' => 'example.com',
             'status' => 'active',
+        ]);
+    }
+
+    #[Test]
+    public function overdue_invoice_blocks_license_verification(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup();
+
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'number' => 'INV-OVERDUE-1',
+            'status' => 'overdue',
+            'issue_date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDays(3)->toDateString(),
+            'subtotal' => 120,
+            'late_fee' => 0,
+            'total' => 120,
+            'currency' => 'USD',
+            'type' => 'project_initial_payment',
+        ]);
+
+        $response = $this->postJson(route('api.licenses.verify'), [
+            'license_key' => $license->license_key,
+            'domain' => 'example.com',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'blocked',
+            'blocked' => true,
+            'reason' => 'invoice_overdue',
         ]);
     }
 

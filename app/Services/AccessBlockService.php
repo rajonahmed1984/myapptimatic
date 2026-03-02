@@ -32,18 +32,31 @@ class AccessBlockService
         }
 
         $graceDays = (int) Setting::getValue('grace_period_days');
-        $invoice = Invoice::query()
+        $invoiceQuery = Invoice::query()
             ->with('customer')
-            ->where('customer_id', $customer->id)
-            ->whereIn('status', ['unpaid', 'overdue'])
-            ->orderBy('due_date')
-            ->first();
+            ->where('customer_id', $customer->id);
+
+        $invoice = null;
+
+        if ($strictLicenseOverdue) {
+            $invoice = (clone $invoiceQuery)
+                ->where('status', 'overdue')
+                ->orderBy('due_date')
+                ->first();
+        }
+
+        if (! $invoice) {
+            $invoice = (clone $invoiceQuery)
+                ->whereIn('status', ['unpaid', 'overdue'])
+                ->orderBy('due_date')
+                ->first();
+        }
 
         if (! $invoice) {
             return $this->emptyStatus();
         }
 
-        return $this->buildStatus($invoice, $graceDays);
+        return $this->buildStatus($invoice, $graceDays, $strictLicenseOverdue);
     }
 
     /**
@@ -54,15 +67,18 @@ class AccessBlockService
         return $this->invoiceBlockStatus($customer, $strictLicenseOverdue)['blocked'];
     }
 
-    private function buildStatus(Invoice $invoice, int $graceDays): array
+    private function buildStatus(Invoice $invoice, int $graceDays, bool $strictLicenseOverdue): array
     {
         $graceEnds = Carbon::parse($invoice->due_date)->addDays($graceDays)->endOfDay();
         $isOverdue = Carbon::now()->greaterThan($graceEnds);
+        $reason = $isOverdue ? 'invoice_overdue' : 'invoice_due';
+        $isMarkedOverdue = (string) $invoice->status === 'overdue';
+        $shouldBlock = $strictLicenseOverdue && ($isMarkedOverdue || $isOverdue);
 
         return [
-            // Never block active clients by invoice status; only expose billing notice metadata.
-            'blocked' => false,
-            'reason' => $isOverdue ? 'invoice_overdue' : 'invoice_due',
+            // Default behavior keeps portal access open; strict mode is used by license checks.
+            'blocked' => $shouldBlock,
+            'reason' => $reason,
             'grace_ends_at' => $graceEnds->toDateTimeString(),
             'payment_url' => route('client.invoices.pay', $invoice),
             'invoice_id' => $invoice->id,

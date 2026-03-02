@@ -131,6 +131,13 @@ class SubscriptionController extends Controller
             'invoices' => function ($query) {
                 $query->latest('issue_date');
             },
+        ])->loadCount([
+            'invoices as open_invoices_count' => function ($query) {
+                $query->whereIn('status', ['unpaid', 'overdue']);
+            },
+            'invoices as overdue_invoices_count' => function ($query) {
+                $query->where('status', 'overdue');
+            },
         ]);
 
         $dateFormat = (string) config('app.date_format', 'd-m-Y');
@@ -171,6 +178,8 @@ class SubscriptionController extends Controller
                 'current_period_start' => $subscription->current_period_start?->format($dateFormat) ?? '--',
                 'current_period_end' => $subscription->current_period_end?->format($dateFormat) ?? '--',
                 'next_invoice_at' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
+                'open_invoices_count' => (int) ($subscription->open_invoices_count ?? 0),
+                'overdue_invoices_count' => (int) ($subscription->overdue_invoices_count ?? 0),
                 'auto_renew' => (bool) $subscription->auto_renew,
                 'cancel_at_period_end' => (bool) $subscription->cancel_at_period_end,
                 'notes' => (string) ($subscription->notes ?? ''),
@@ -286,6 +295,14 @@ class SubscriptionController extends Controller
 
         $subscriptions = Subscription::query()
             ->with(['customer', 'plan.product', 'latestOrder'])
+            ->withCount([
+                'invoices as open_invoices_count' => function ($query) {
+                    $query->whereIn('status', ['unpaid', 'overdue']);
+                },
+                'invoices as overdue_invoices_count' => function ($query) {
+                    $query->where('status', 'overdue');
+                },
+            ])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('status', 'like', '%'.$search.'%')
@@ -360,6 +377,8 @@ class SubscriptionController extends Controller
                     'status' => (string) $subscription->status,
                     'status_label' => ucfirst((string) $subscription->status),
                     'next_invoice_display' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
+                    'open_invoices_count' => (int) ($subscription->open_invoices_count ?? 0),
+                    'overdue_invoices_count' => (int) ($subscription->overdue_invoices_count ?? 0),
                     'routes' => [
                         'show' => route('admin.subscriptions.show', $subscription),
                         'edit' => route('admin.subscriptions.edit', $subscription),

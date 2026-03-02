@@ -18,7 +18,7 @@ class BillingService
 
     public function generateInvoiceForSubscription(Subscription $subscription, ?Carbon $issueDate = null): ?Invoice
     {
-        if ($subscription->status !== 'active') {
+        if (! in_array((string) $subscription->status, ['active', 'suspended'], true)) {
             return null;
         }
 
