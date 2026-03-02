@@ -356,7 +356,10 @@ class PayrollController extends Controller
 
         $currentBonus = $this->sumAdjustment($payrollItem->bonuses);
         $currentPenalty = $this->sumAdjustment($payrollItem->penalties);
-        $currentAdvance = $this->sumAdjustment($payrollItem->advances);
+        $currentAdvance = $this->effectiveAdvanceAmount(
+            $payrollItem,
+            (float) ($this->coordinatedAdvanceMapForPeriod($payrollPeriod)[$payrollItem->employee_id] ?? 0)
+        );
         $allowOvertime = (bool) ($payrollItem->overtime_enabled ?? false);
         $currentOvertimePay = $allowOvertime
             ? ((float) ($payrollItem->overtime_hours ?? 0) * (float) ($payrollItem->overtime_rate ?? 0))
@@ -424,6 +427,7 @@ class PayrollController extends Controller
             ->filter()
             ->unique()
             ->values();
+        $coordinatedAdvanceByEmployee = $this->coordinatedAdvanceMapForPeriod($payrollPeriod);
 
         $workLogHoursByEmployee = [];
         $absentDaysByEmployee = [];
@@ -534,7 +538,10 @@ class PayrollController extends Controller
 
             $bonus = $this->sumAdjustment($item->bonuses);
             $penalty = $this->sumAdjustment($item->penalties);
-            $advance = $this->sumAdjustment($item->advances);
+            $advance = $this->effectiveAdvanceAmount(
+                $item,
+                (float) ($coordinatedAdvanceByEmployee[$item->employee_id] ?? 0)
+            );
             $deduction = $this->sumAdjustment($item->deductions);
             $overtimePay = (float) ($item->overtime_hours ?? 0) * (float) ($item->overtime_rate ?? 0);
             $computedGross = round($estSubtotal + $overtimePay + $bonus, 2, PHP_ROUND_HALF_UP);
@@ -589,10 +596,13 @@ class PayrollController extends Controller
                 'gross_total' => number_format((float) $total->gross_total, 2),
                 'net_total' => number_format((float) $total->net_total, 2),
             ])->values(),
-            'items' => $items->through(function (PayrollItem $item) use ($payrollPeriod, $workLogHoursByEmployee, $attendanceSummaryByEmployee, $workingDaysInPeriod) {
+            'items' => $items->through(function (PayrollItem $item) use ($payrollPeriod, $workLogHoursByEmployee, $attendanceSummaryByEmployee, $workingDaysInPeriod, $coordinatedAdvanceByEmployee) {
                 $bonus = $this->sumAdjustment($item->bonuses);
                 $penalty = $this->sumAdjustment($item->penalties);
-                $advance = $this->sumAdjustment($item->advances);
+                $advance = $this->effectiveAdvanceAmount(
+                    $item,
+                    (float) ($coordinatedAdvanceByEmployee[$item->employee_id] ?? 0)
+                );
                 $deduction = $this->sumAdjustment($item->deductions);
                 $deductionFirst = is_array($item->deductions) ? (array) ($item->deductions[0] ?? []) : [];
                 $deductionReference = (string) ($deductionFirst['reference'] ?? '');
@@ -827,13 +837,42 @@ class PayrollController extends Controller
 
         $bonus = $this->sumAdjustment($item->bonuses);
         $penalty = $this->sumAdjustment($item->penalties);
-        $advance = $this->sumAdjustment($item->advances);
+        $advance = $this->effectiveAdvanceAmount(
+            $item,
+            (float) ($this->coordinatedAdvanceMapForPeriod($period)[$item->employee_id] ?? 0)
+        );
         $deduction = $this->sumAdjustment($item->deductions);
         $overtimePay = (float) ($item->overtime_hours ?? 0) * (float) ($item->overtime_rate ?? 0);
         $computedGross = round($estSubtotal + $overtimePay + $bonus, 2, PHP_ROUND_HALF_UP);
         $computedNet = round($computedGross - $penalty - $advance - $deduction, 2, PHP_ROUND_HALF_UP);
 
         return round(max(0, $computedNet), 2, PHP_ROUND_HALF_UP);
+    }
+
+    private function coordinatedAdvanceMapForPeriod(PayrollPeriod $period): array
+    {
+        if (! $period->start_date || ! $period->end_date) {
+            return [];
+        }
+
+        /** @var PayrollService $service */
+        $service = app(PayrollService::class);
+
+        return $service->coordinatedPayrollAdvancesByEmployee(
+            (string) $period->period_key,
+            $period->start_date->copy()->startOfDay(),
+            $period->end_date->copy()->endOfDay()
+        );
+    }
+
+    private function effectiveAdvanceAmount(PayrollItem $item, float $coordinatedAdvance = 0.0): float
+    {
+        $storedAdvance = $this->sumAdjustment($item->advances);
+        if ($storedAdvance > 0 || $coordinatedAdvance <= 0) {
+            return round($storedAdvance, 2, PHP_ROUND_HALF_UP);
+        }
+
+        return round($coordinatedAdvance, 2, PHP_ROUND_HALF_UP);
     }
 
     private function usesJsonDeductionsColumn(): bool

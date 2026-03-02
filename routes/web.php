@@ -642,6 +642,10 @@ Route::middleware([
         Route::resource('employees', \App\Http\Controllers\Admin\Hr\EmployeeController::class)->except(['show']);
         Route::post('employees/{employee}/advance-payout', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'storeAdvance'])
             ->name('employees.advance-payout');
+        Route::put('employees/{employee}/advance-payout/{employeePayout}', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'updateAdvance'])
+            ->name('employees.advance-payout.update');
+        Route::delete('employees/{employee}/advance-payout/{employeePayout}', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'destroyAdvance'])
+            ->name('employees.advance-payout.destroy');
         Route::get('employee-payouts/create', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'create'])->name('employee-payouts.create');
         Route::post('employee-payouts', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'store'])->name('employee-payouts.store');
         Route::get('employee-payouts/{employeePayout}/proof', [\App\Http\Controllers\Admin\Hr\EmployeePayoutController::class, 'proof'])->name('employee-payouts.proof');

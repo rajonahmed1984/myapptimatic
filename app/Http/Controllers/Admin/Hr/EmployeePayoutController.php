@@ -7,7 +7,10 @@ use App\Jobs\SendEmployeePaymentReceiptJob;
 use App\Models\Employee;
 use App\Models\EmployeePayout;
 use App\Models\PaymentMethod;
+use App\Models\PayrollItem;
+use App\Models\PayrollPeriod;
 use App\Models\Project;
+use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -237,9 +240,115 @@ class EmployeePayoutController extends Controller
             'paid_at' => ! empty($data['paid_at']) ? Carbon::parse((string) $data['paid_at'])->startOfDay() : now(),
         ]);
 
+        if (($metadata['advance_scope'] ?? null) === 'payroll') {
+            $this->syncEmployeePayrollAdvanceForPeriod(
+                $employee,
+                (string) ($metadata['coordination_month'] ?? '')
+            );
+        }
+
         SendEmployeePaymentReceiptJob::dispatch('employee_payout', $payout->id)->afterCommit();
 
         return back()->with('status', 'Advance payout recorded.');
+    }
+
+    public function updateAdvance(Request $request, Employee $employee, EmployeePayout $employeePayout): RedirectResponse
+    {
+        if ((int) $employeePayout->employee_id !== (int) $employee->id) {
+            abort(404);
+        }
+
+        $metadata = is_array($employeePayout->metadata) ? $employeePayout->metadata : [];
+        $previousCoordinationMonth = (string) ($metadata['coordination_month'] ?? '');
+        $isPayrollAdvance = ($metadata['type'] ?? null) === 'advance'
+            && ($metadata['advance_scope'] ?? null) === 'payroll';
+
+        if (! $isPayrollAdvance) {
+            return back()->withErrors(['amount' => 'Only payroll salary advances can be edited here.']);
+        }
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'currency' => ['nullable', 'string', 'max:10'],
+            'coordination_month' => ['required', 'regex:/^\d{4}-\d{2}$/'],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string'],
+            'paid_at' => ['nullable', 'date_format:Y-m-d'],
+            'payment_proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+        ]);
+
+        $currency = $data['currency'] ?? ($employeePayout->currency ?: ($employee->activeCompensation?->currency ?? 'BDT'));
+        $metadata['type'] = 'advance';
+        $metadata['advance_scope'] = 'payroll';
+        $metadata['salary_type'] = $metadata['salary_type'] ?? ($employee->activeCompensation?->salary_type ?? 'monthly');
+        $metadata['project_id'] = null;
+        $metadata['project_name'] = null;
+
+        $coordinationMonth = (string) $data['coordination_month'];
+        try {
+            $coordinationDate = Carbon::createFromFormat('Y-m', $coordinationMonth)->startOfMonth();
+            $metadata['coordination_month'] = $coordinationMonth;
+            $metadata['coordination_month_label'] = $coordinationDate->format('F Y');
+        } catch (\Throwable) {
+            return back()->withErrors(['coordination_month' => 'Invalid coordination month.'])->withInput();
+        }
+
+        if ($request->hasFile('payment_proof')) {
+            $oldPath = (string) ($metadata['payment_proof_path'] ?? '');
+            if ($oldPath !== '' && ! str_contains($oldPath, '..') && str_starts_with($oldPath, 'employee-payout-proofs/')) {
+                Storage::disk('public')->delete($oldPath);
+            }
+
+            $file = $request->file('payment_proof');
+            $metadata['payment_proof_path'] = $file->store('employee-payout-proofs', 'public');
+            $metadata['payment_proof_name'] = $file->getClientOriginalName();
+            $metadata['payment_proof_mime'] = $file->getClientMimeType();
+        }
+
+        $employeePayout->update([
+            'amount' => (float) $data['amount'],
+            'currency' => $currency,
+            'payout_method' => $data['payout_method'] ?? null,
+            'reference' => $data['reference'] ?? null,
+            'note' => $data['note'] ?? null,
+            'metadata' => $metadata,
+            'paid_at' => ! empty($data['paid_at']) ? Carbon::parse((string) $data['paid_at'])->startOfDay() : now(),
+        ]);
+
+        $this->syncEmployeePayrollAdvanceForPeriod($employee, $coordinationMonth);
+        if ($previousCoordinationMonth !== '' && $previousCoordinationMonth !== $coordinationMonth) {
+            $this->syncEmployeePayrollAdvanceForPeriod($employee, $previousCoordinationMonth);
+        }
+
+        return back()->with('status', 'Salary advance updated.');
+    }
+
+    public function destroyAdvance(Employee $employee, EmployeePayout $employeePayout): RedirectResponse
+    {
+        if ((int) $employeePayout->employee_id !== (int) $employee->id) {
+            abort(404);
+        }
+
+        $metadata = is_array($employeePayout->metadata) ? $employeePayout->metadata : [];
+        $coordinationMonth = (string) ($metadata['coordination_month'] ?? '');
+        $isPayrollAdvance = ($metadata['type'] ?? null) === 'advance'
+            && ($metadata['advance_scope'] ?? null) === 'payroll';
+
+        if (! $isPayrollAdvance) {
+            return back()->withErrors(['amount' => 'Only payroll salary advances can be deleted here.']);
+        }
+
+        $path = (string) ($metadata['payment_proof_path'] ?? '');
+        if ($path !== '' && ! str_contains($path, '..') && str_starts_with($path, 'employee-payout-proofs/')) {
+            Storage::disk('public')->delete($path);
+        }
+
+        $employeePayout->delete();
+
+        $this->syncEmployeePayrollAdvanceForPeriod($employee, $coordinationMonth);
+
+        return back()->with('status', 'Salary advance deleted.');
     }
 
     public function proof(EmployeePayout $employeePayout)
@@ -257,5 +366,58 @@ class EmployeePayoutController extends Controller
         $filename = (string) ($employeePayout->metadata['payment_proof_name'] ?? basename($path));
 
         return Storage::disk('public')->response($path, $filename);
+    }
+
+    private function syncEmployeePayrollAdvanceForPeriod(Employee $employee, string $periodKey): void
+    {
+        if (! preg_match('/^\d{4}-\d{2}$/', $periodKey)) {
+            return;
+        }
+
+        $period = PayrollPeriod::query()
+            ->where('period_key', $periodKey)
+            ->first(['id', 'period_key', 'status', 'start_date', 'end_date']);
+
+        if (! $period || ! $period->start_date || ! $period->end_date || $period->status !== 'draft') {
+            return;
+        }
+
+        $payrollService = app(PayrollService::class);
+        $expectedByEmployee = $payrollService->coordinatedPayrollAdvancesByEmployee(
+            (string) $period->period_key,
+            $period->start_date->copy()->startOfDay(),
+            $period->end_date->copy()->endOfDay()
+        );
+        $expectedAdvance = round((float) ($expectedByEmployee[$employee->id] ?? 0), 2, PHP_ROUND_HALF_UP);
+
+        $items = PayrollItem::query()
+            ->where('payroll_period_id', $period->id)
+            ->where('employee_id', $employee->id)
+            ->where('status', '!=', 'paid')
+            ->get(['id', 'advances', 'net_pay']);
+
+        foreach ($items as $item) {
+            $currentAdvance = round($this->sumPayrollAdjustment($item->advances), 2, PHP_ROUND_HALF_UP);
+            if (abs($currentAdvance - $expectedAdvance) < 0.005) {
+                continue;
+            }
+
+            $newNet = round((float) ($item->net_pay ?? 0) + $currentAdvance - $expectedAdvance, 2, PHP_ROUND_HALF_UP);
+            $item->update([
+                'advances' => $expectedAdvance,
+                'net_pay' => $newNet,
+            ]);
+        }
+    }
+
+    private function sumPayrollAdjustment($value): float
+    {
+        if (is_array($value)) {
+            return (float) array_reduce($value, function ($carry, $row) {
+                return $carry + (float) ($row['amount'] ?? $row ?? 0);
+            }, 0.0);
+        }
+
+        return (float) ($value ?? 0);
     }
 }

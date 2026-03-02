@@ -25,6 +25,18 @@ const formatContext = (value) => {
         return '--';
     }
 };
+const extractIsoDate = (value) => {
+    if (!value) return '';
+    const text = String(value).trim();
+    const matched = text.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (matched) return matched[1];
+    const parsed = new Date(text.replace(' ', 'T'));
+    if (Number.isNaN(parsed.getTime())) return '';
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 export default function Show({
     pageTitle = 'Employee',
@@ -89,6 +101,60 @@ export default function Show({
     const payoutProofUrl = (id) => {
         const template = routes?.payoutProof || '';
         return template ? template.replace('__ID__', String(id)) : '#';
+    };
+    const payrollAdvanceUpdateUrl = (id) => {
+        const template = routes?.advancePayoutUpdate || '';
+        return template ? template.replace('__ID__', String(id)) : '#';
+    };
+    const payrollAdvanceDestroyUrl = (id) => {
+        const template = routes?.advancePayoutDestroy || '';
+        return template ? template.replace('__ID__', String(id)) : '#';
+    };
+    const todayIso = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const currentMonthIso = React.useMemo(() => new Date().toISOString().slice(0, 7), []);
+    const defaultSalaryAdvanceForm = React.useMemo(() => ({
+        amount: '',
+        currency: summary?.currency || 'BDT',
+        coordination_month: currentMonthIso,
+        payout_method: '',
+        reference: '',
+        paid_at: todayIso,
+        note: '',
+    }), [currentMonthIso, summary?.currency, todayIso]);
+    const [editingSalaryAdvanceId, setEditingSalaryAdvanceId] = React.useState(null);
+    const [salaryAdvanceForm, setSalaryAdvanceForm] = React.useState(defaultSalaryAdvanceForm);
+    const salaryAdvanceFormRef = React.useRef(null);
+    const isEditingSalaryAdvance = editingSalaryAdvanceId !== null;
+    const salaryAdvanceSubmitAction = isEditingSalaryAdvance
+        ? payrollAdvanceUpdateUrl(editingSalaryAdvanceId)
+        : (routes?.advancePayout || '#');
+
+    React.useEffect(() => {
+        setSalaryAdvanceForm(defaultSalaryAdvanceForm);
+    }, [defaultSalaryAdvanceForm]);
+
+    const updateSalaryAdvanceField = (field, value) => {
+        setSalaryAdvanceForm((previous) => ({ ...previous, [field]: value }));
+    };
+    const resetSalaryAdvanceForm = () => {
+        setEditingSalaryAdvanceId(null);
+        setSalaryAdvanceForm(defaultSalaryAdvanceForm);
+    };
+    const startEditingSalaryAdvance = (item) => {
+        setEditingSalaryAdvanceId(item?.id ?? null);
+        setSalaryAdvanceForm({
+            amount: item?.amount != null ? String(item.amount) : '',
+            currency: item?.currency || summary?.currency || 'BDT',
+            coordination_month: item?.metadata?.coordination_month || currentMonthIso,
+            payout_method: item?.payout_method || '',
+            reference: item?.reference || '',
+            paid_at: extractIsoDate(item?.paid_at) || todayIso,
+            note: item?.note || '',
+        });
+
+        if (salaryAdvanceFormRef.current) {
+            salaryAdvanceFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     };
 
     return (
@@ -526,25 +592,54 @@ export default function Show({
                         </div>
                     </div>
 
-                    <form method="POST" action={routes?.advancePayout} encType="multipart/form-data" data-native="true" className="card p-6">
+                    <form
+                        method="POST"
+                        action={salaryAdvanceSubmitAction}
+                        encType="multipart/form-data"
+                        data-native="true"
+                        className="card p-6"
+                        ref={salaryAdvanceFormRef}
+                    >
                         <input type="hidden" name="_token" value={token} />
-                        <div className="text-xl font-semibold text-slate-900">Record salary advance</div>
-                        <div className="mt-1 text-sm text-slate-500">This creates an advance payout entry for payroll tracking.</div>
+                        {isEditingSalaryAdvance ? <input type="hidden" name="_method" value="PUT" /> : null}
+                        <div className="text-xl font-semibold text-slate-900">
+                            {isEditingSalaryAdvance ? 'Edit salary advance' : 'Record salary advance'}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-500">
+                            {isEditingSalaryAdvance ? `Updating transaction #${editingSalaryAdvanceId}.` : 'This creates an advance payout entry for payroll tracking.'}
+                        </div>
 
                         <div className="mt-5 grid gap-4 md:grid-cols-6">
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Amount</div>
-                                <input type="number" name="amount" step="0.01" min="0.01" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="0.00" required />
+                                <input
+                                    type="number"
+                                    name="amount"
+                                    step="0.01"
+                                    min="0.01"
+                                    value={salaryAdvanceForm.amount}
+                                    onChange={(event) => updateSalaryAdvanceField('amount', event.target.value)}
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    placeholder="0.00"
+                                    required
+                                />
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Currency</div>
-                                <input type="text" name="currency" defaultValue={summary?.currency || 'BDT'} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <input
+                                    type="text"
+                                    name="currency"
+                                    value={salaryAdvanceForm.currency}
+                                    onChange={(event) => updateSalaryAdvanceField('currency', event.target.value)}
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                />
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Coordination Month</div>
                                 <select
                                     name="coordination_month"
-                                    defaultValue={new Date().toISOString().slice(0, 7)}
+                                    value={salaryAdvanceForm.coordination_month}
+                                    onChange={(event) => updateSalaryAdvanceField('coordination_month', event.target.value)}
                                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                                     required
                                 >
@@ -556,7 +651,12 @@ export default function Show({
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Method</div>
-                                <select name="payout_method" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                                <select
+                                    name="payout_method"
+                                    value={salaryAdvanceForm.payout_method}
+                                    onChange={(event) => updateSalaryAdvanceField('payout_method', event.target.value)}
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                >
                                     <option value="">Select</option>
                                     {asArray(paymentMethods).map((method) => (
                                         <option key={method.code} value={method.code}>{method.name}</option>
@@ -565,12 +665,20 @@ export default function Show({
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Reference</div>
-                                <input type="text" name="reference" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Txn / Note" />
+                                <input
+                                    type="text"
+                                    name="reference"
+                                    value={salaryAdvanceForm.reference}
+                                    onChange={(event) => updateSalaryAdvanceField('reference', event.target.value)}
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    placeholder="Txn / Note"
+                                />
                             </div>
                             <div>
                                 <DatePickerField
                                     name="paid_at"
-                                    defaultValue={new Date().toISOString().slice(0, 10)}
+                                    value={salaryAdvanceForm.paid_at}
+                                    onChange={(nextValue) => updateSalaryAdvanceField('paid_at', nextValue)}
                                     submitFormat="iso"
                                     label="Payment Date"
                                     labelClassName="mb-1 text-sm text-slate-600"
@@ -583,12 +691,30 @@ export default function Show({
                             </div>
                             <div className="md:col-span-2">
                                 <div className="mb-1 text-sm text-slate-600">Note</div>
-                                <input type="text" name="note" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Optional note" />
+                                <input
+                                    type="text"
+                                    name="note"
+                                    value={salaryAdvanceForm.note}
+                                    onChange={(event) => updateSalaryAdvanceField('note', event.target.value)}
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    placeholder="Optional note"
+                                />
                             </div>
                         </div>
 
-                        <div className="mt-4">
-                            <button type="submit" className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Save salary advance</button>
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                            <button type="submit" className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-500">
+                                {isEditingSalaryAdvance ? 'Update salary advance' : 'Save salary advance'}
+                            </button>
+                            {isEditingSalaryAdvance ? (
+                                <button
+                                    type="button"
+                                    onClick={resetSalaryAdvanceForm}
+                                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                >
+                                    Cancel edit
+                                </button>
+                            ) : null}
                         </div>
                     </form>
 
@@ -596,10 +722,11 @@ export default function Show({
                         <div className="text-xl font-semibold text-slate-900">Salary Advance Transactions</div>
                         <div className="mt-3 overflow-x-auto">
                             <table className="min-w-full text-sm text-slate-700">
-                                <thead><tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500"><th className="py-2 px-3">Date</th><th className="py-2 px-3">Month</th><th className="py-2 px-3">Amount</th><th className="py-2 px-3">Method</th><th className="py-2 px-3">Reference</th><th className="py-2 px-3">Proof</th><th className="py-2 px-3">Note</th></tr></thead>
+                                <thead><tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500"><th className="py-2 px-3">ID</th><th className="py-2 px-3">Date</th><th className="py-2 px-3">Month</th><th className="py-2 px-3">Amount</th><th className="py-2 px-3">Method</th><th className="py-2 px-3">Reference</th><th className="py-2 px-3">Proof</th><th className="py-2 px-3">Note</th><th className="py-2 px-3">Action</th></tr></thead>
                                 <tbody>
-                                    {asArray(recentSalaryAdvances).length === 0 ? <tr><td colSpan={7} className="py-3 px-3 text-center text-slate-500">No advance transactions found.</td></tr> : asArray(recentSalaryAdvances).map((item) => (
+                                    {asArray(recentSalaryAdvances).length === 0 ? <tr><td colSpan={9} className="py-3 px-3 text-center text-slate-500">No advance transactions found.</td></tr> : asArray(recentSalaryAdvances).map((item) => (
                                         <tr key={item.id} className="border-b border-slate-100">
+                                            <td className="py-2 px-3">{item.id}</td>
                                             <td className="py-2 px-3">{formatDate(item.paid_at, '--')}</td>
                                             <td className="py-2 px-3">{item?.metadata?.coordination_month_label || item?.metadata?.coordination_month || '--'}</td>
                                             <td className="py-2 px-3">{currency(item.amount, item.currency || summary?.currency || 'BDT')}</td>
@@ -611,6 +738,30 @@ export default function Show({
                                                 ) : '--'}
                                             </td>
                                             <td className="py-2 px-3">{item.note || '--'}</td>
+                                            <td className="py-2 px-3 whitespace-nowrap">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => startEditingSalaryAdvance(item)}
+                                                    className="mr-2 text-xs font-medium text-teal-700 hover:underline"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <form method="POST" action={payrollAdvanceDestroyUrl(item.id)} data-native="true" className="inline">
+                                                    <input type="hidden" name="_token" value={token} />
+                                                    <input type="hidden" name="_method" value="DELETE" />
+                                                    <button
+                                                        type="submit"
+                                                        className="text-xs font-medium text-rose-700 hover:underline"
+                                                        onClick={(event) => {
+                                                            if (!window.confirm('Delete this salary advance transaction?')) {
+                                                                event.preventDefault();
+                                                            }
+                                                        }}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

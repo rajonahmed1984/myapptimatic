@@ -797,6 +797,78 @@ class EmployeeController extends Controller
                 ]);
 
             if ($tab === 'payroll') {
+                $periodWindows = [];
+                foreach ($recentPayrollItems as $payrollItem) {
+                    $period = $payrollItem->period;
+                    if (! $period || ! $period->start_date || ! $period->end_date || ! $period->period_key) {
+                        continue;
+                    }
+
+                    $periodWindows[(string) $period->period_key] = [
+                        'start' => $period->start_date->toDateString(),
+                        'end' => $period->end_date->toDateString(),
+                    ];
+                }
+
+                $coordinatedAdvanceByPeriod = [];
+                if (! empty($periodWindows)) {
+                    $periodKeys = array_keys($periodWindows);
+                    $windowStart = collect($periodWindows)->pluck('start')->min();
+                    $windowEnd = collect($periodWindows)->pluck('end')->max();
+
+                    $advances = EmployeePayout::query()
+                        ->where('employee_id', $employee->id)
+                        ->where('metadata->type', 'advance')
+                        ->where('metadata->advance_scope', 'payroll')
+                        ->whereNotNull('paid_at')
+                        ->where(function ($query) use ($periodKeys, $windowStart, $windowEnd) {
+                            $query->whereIn('metadata->coordination_month', $periodKeys)
+                                ->orWhere(function ($legacyQuery) use ($windowStart, $windowEnd) {
+                                    $legacyQuery->where(function ($nullOrEmptyQuery) {
+                                        $nullOrEmptyQuery->whereNull('metadata->coordination_month')
+                                            ->orWhere('metadata->coordination_month', '');
+                                    })->whereDate('paid_at', '>=', $windowStart)
+                                        ->whereDate('paid_at', '<=', $windowEnd);
+                                });
+                        })
+                        ->get(['amount', 'paid_at', 'metadata']);
+
+                    foreach ($periodKeys as $periodKey) {
+                        $coordinatedAdvanceByPeriod[$periodKey] = 0.0;
+                    }
+
+                    foreach ($advances as $advancePayout) {
+                        $metadata = is_array($advancePayout->metadata) ? $advancePayout->metadata : [];
+                        $coordinationMonth = (string) ($metadata['coordination_month'] ?? '');
+                        $amount = round((float) ($advancePayout->amount ?? 0), 2, PHP_ROUND_HALF_UP);
+
+                        if ($coordinationMonth !== '' && array_key_exists($coordinationMonth, $coordinatedAdvanceByPeriod)) {
+                            $coordinatedAdvanceByPeriod[$coordinationMonth] = round(
+                                (float) $coordinatedAdvanceByPeriod[$coordinationMonth] + $amount,
+                                2,
+                                PHP_ROUND_HALF_UP
+                            );
+                            continue;
+                        }
+
+                        $paidAt = $advancePayout->paid_at?->toDateString();
+                        if (! $paidAt) {
+                            continue;
+                        }
+
+                        foreach ($periodWindows as $periodKey => $window) {
+                            if ($paidAt >= $window['start'] && $paidAt <= $window['end']) {
+                                $coordinatedAdvanceByPeriod[$periodKey] = round(
+                                    (float) $coordinatedAdvanceByPeriod[$periodKey] + $amount,
+                                    2,
+                                    PHP_ROUND_HALF_UP
+                                );
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 $periodPayrollStats = [];
                 foreach ($recentPayrollItems as $payrollItem) {
                     $period = $payrollItem->period;
@@ -804,7 +876,15 @@ class EmployeeController extends Controller
                         $basePay = round((float) ($payrollItem->base_pay ?? 0), 2, PHP_ROUND_HALF_UP);
                         $bonus = $this->sumPayrollAdjustment($payrollItem->bonuses);
                         $penalty = $this->sumPayrollAdjustment($payrollItem->penalties);
-                        $advance = $this->sumPayrollAdjustment($payrollItem->advances);
+                        $advanceStored = $this->sumPayrollAdjustment($payrollItem->advances);
+                        $advance = round($advanceStored, 2, PHP_ROUND_HALF_UP);
+                        if ($advance <= 0 && $period && $period->period_key) {
+                            $advance = round(
+                                (float) ($coordinatedAdvanceByPeriod[(string) $period->period_key] ?? 0),
+                                2,
+                                PHP_ROUND_HALF_UP
+                            );
+                        }
                         $deduction = $this->sumPayrollAdjustment($payrollItem->deductions);
                         $overtimeHours = (float) ($payrollItem->overtime_hours ?? 0);
                         $overtimeRate = (float) ($payrollItem->overtime_rate ?? 0);
@@ -901,7 +981,15 @@ class EmployeeController extends Controller
 
                     $bonus = $this->sumPayrollAdjustment($payrollItem->bonuses);
                     $penalty = $this->sumPayrollAdjustment($payrollItem->penalties);
-                    $advance = $this->sumPayrollAdjustment($payrollItem->advances);
+                    $advanceStored = $this->sumPayrollAdjustment($payrollItem->advances);
+                    $advance = round($advanceStored, 2, PHP_ROUND_HALF_UP);
+                    if ($advance <= 0 && $period && $period->period_key) {
+                        $advance = round(
+                            (float) ($coordinatedAdvanceByPeriod[(string) $period->period_key] ?? 0),
+                            2,
+                            PHP_ROUND_HALF_UP
+                        );
+                    }
                     $deduction = $this->sumPayrollAdjustment($payrollItem->deductions);
                     $overtimeHours = (float) ($payrollItem->overtime_hours ?? 0);
                     $overtimeRate = (float) ($payrollItem->overtime_rate ?? 0);
@@ -1085,6 +1173,8 @@ class EmployeeController extends Controller
                 'impersonate' => route('admin.hr.employees.impersonate', $employee, false),
                 'show' => route('admin.hr.employees.show', $employee, false),
                 'advancePayout' => route('admin.hr.employees.advance-payout', $employee, false),
+                'advancePayoutUpdate' => route('admin.hr.employees.advance-payout.update', ['employee' => $employee, 'employeePayout' => '__ID__'], false),
+                'advancePayoutDestroy' => route('admin.hr.employees.advance-payout.destroy', ['employee' => $employee, 'employeePayout' => '__ID__'], false),
                 'payoutCreate' => route('admin.hr.employee-payouts.create', ['employee_id' => $employee->id], false),
                 'payoutProof' => route('admin.hr.employee-payouts.proof', ['employeePayout' => '__ID__'], false),
             ],
