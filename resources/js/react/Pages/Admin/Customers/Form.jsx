@@ -59,27 +59,46 @@ export default function Form({
 
                     {is_edit ? (
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <div className="flex flex-wrap items-center gap-4">
-                                <div className="h-20 w-20 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                                    {avatarUrl ? (
-                                        <img src={avatarUrl} alt={fields?.name || 'Customer logo'} className="h-full w-full object-cover" />
-                                    ) : (
-                                        <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-500">No logo</div>
-                                    )}
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <div className="flex items-center gap-4 md:col-span-1">
+                                    <div className="h-20 w-20 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                        {avatarUrl ? (
+                                            <img src={avatarUrl} alt={fields?.name || 'Customer logo'} className="h-full w-full object-cover" />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-500">No logo</div>
+                                        )}
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                        Upload logo and files during customer creation or update.
+                                    </div>
                                 </div>
-                                <div className="min-w-[220px] flex-1">
-                                    <label className="text-sm text-slate-600">Customer logo</label>
-                                    <input name="avatar" type="file" accept="image/*" className="mt-2 block w-full text-sm text-slate-600" />
-                                    <p className="mt-1 text-xs text-slate-500">PNG/JPG/WEBP, max 2MB.</p>
-                                    {errors?.avatar ? <p className="mt-1 text-xs text-rose-500">{errors.avatar}</p> : null}
+                                <div className="grid gap-4 md:col-span-2 md:grid-cols-2">
+                                    <div>
+                                        <label className="text-sm text-slate-600">Customer logo</label>
+                                        <input name="avatar" type="file" accept="image/*" className="mt-2 block w-full text-sm text-slate-600" />
+                                        <p className="mt-1 text-xs text-slate-500">PNG/JPG/WEBP, max 2MB.</p>
+                                        {errors?.avatar ? <p className="mt-1 text-xs text-rose-500">{errors.avatar}</p> : null}
+                                    </div>
+                                    <div>
+                                        <label className="text-sm text-slate-600">NID file</label>
+                                        <input name="nid_file" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" className="mt-2 block w-full text-sm text-slate-600" />
+                                        <p className="mt-1 text-xs text-slate-500">JPG/PNG/WEBP/PDF, max 10MB.</p>
+                                        {errors?.nid_file ? <p className="mt-1 text-xs text-rose-500">{errors.nid_file}</p> : null}
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-sm text-slate-600">CV file</label>
+                                        <input name="cv_file" type="file" accept=".pdf,.doc,.docx" className="mt-2 block w-full text-sm text-slate-600" />
+                                        <p className="mt-1 text-xs text-slate-500">PDF/DOC/DOCX, max 10MB.</p>
+                                        {errors?.cv_file ? <p className="mt-1 text-xs text-rose-500">{errors.cv_file}</p> : null}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     ) : null}
 
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-3">
                         <div>
-                            <label className="text-sm text-slate-600">Name</label>
+                            <label className="text-sm text-slate-600">Full Name</label>
                             <input name="name" defaultValue={fields?.name || ''} required className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                             {errors?.name ? <p className="mt-1 text-xs text-rose-500">{errors.name}</p> : null}
                         </div>
@@ -93,7 +112,7 @@ export default function Form({
                             {errors?.company_name ? <p className="mt-1 text-xs text-rose-500">{errors.company_name}</p> : null}
                         </div>
                         <div>
-                            <label className="text-sm text-slate-600">Email</label>
+                            <label className="text-sm text-slate-600">Email Address</label>
                             <input
                                 name="email"
                                 type="email"
@@ -103,7 +122,7 @@ export default function Form({
                             {errors?.email ? <p className="mt-1 text-xs text-rose-500">{errors.email}</p> : null}
                         </div>
                         <div>
-                            <label className="text-sm text-slate-600">Phone</label>
+                            <label className="text-sm text-slate-600">Phone Number</label>
                             <input name="phone" defaultValue={fields?.phone || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                             {errors?.phone ? <p className="mt-1 text-xs text-rose-500">{errors.phone}</p> : null}
                         </div>
@@ -111,24 +130,7 @@ export default function Form({
                         {!is_edit ? (
                             <>
                                 <div>
-                                    <label className="text-sm text-slate-600">Password</label>
-                                    <input
-                                        name="user_password"
-                                        type="password"
-                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                                    />
-                                    {errors?.user_password ? <p className="mt-1 text-xs text-rose-500">{errors.user_password}</p> : null}
-                                </div>
-                                <div>
-                                    <label className="text-sm text-slate-600">Status</label>
-                                    <select name="status" defaultValue={fields?.status || 'active'} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
-                                    {errors?.status ? <p className="mt-1 text-xs text-rose-500">{errors.status}</p> : null}
-                                </div>
-                                <div>
-                                    <label className="text-sm text-slate-600">Default sales rep</label>
+                                    <label className="text-sm text-slate-600">Default Sales Rep</label>
                                     <select
                                         name="default_sales_rep_id"
                                         defaultValue={fields?.default_sales_rep_id || ''}
@@ -142,7 +144,51 @@ export default function Form({
                                         ))}
                                     </select>
                                 </div>
-                                <div className="md:col-span-2 flex items-center gap-2 text-sm text-slate-600">
+                                <div>
+                                    <label className="text-sm text-slate-600">Profile Image</label>
+                                    <input name="avatar" type="file" accept="image/*" className="mt-2 block w-full text-sm text-slate-600" />
+                                    <p className="mt-1 text-xs text-slate-500">PNG/JPG/WEBP, max 2MB.</p>
+                                    {errors?.avatar ? <p className="mt-1 text-xs text-rose-500">{errors.avatar}</p> : null}
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-sm text-slate-600">Address</label>
+                                    <textarea
+                                        name="address"
+                                        rows={2}
+                                        defaultValue={fields?.address || ''}
+                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-slate-600">Notes</label>
+                                    <textarea name="notes" rows={2} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-slate-600">New Password</label>
+                                    <input
+                                        name="user_password"
+                                        type="password"
+                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                    />
+                                    {errors?.user_password ? <p className="mt-1 text-xs text-rose-500">{errors.user_password}</p> : null}
+                                </div>
+                                <div>
+                                    <label className="text-sm text-slate-600">Confirm Password</label>
+                                    <input
+                                        name="user_password_confirmation"
+                                        type="password"
+                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-slate-600">Status</label>
+                                    <select name="status" defaultValue={fields?.status || 'active'} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                    {errors?.status ? <p className="mt-1 text-xs text-rose-500">{errors.status}</p> : null}
+                                </div>
+                                <div className="md:col-span-3 flex items-center gap-2 text-sm text-slate-600">
                                     <input type="hidden" name="send_account_message" value="0" />
                                     <input
                                         type="checkbox"
@@ -203,24 +249,6 @@ export default function Form({
                                 </div>
                             </>
                         )}
-
-                        {!is_edit ? (
-                            <>
-                                <div className="md:col-span-2">
-                                    <label className="text-sm text-slate-600">Address</label>
-                                    <textarea
-                                        name="address"
-                                        rows={2}
-                                        defaultValue={fields?.address || ''}
-                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="text-sm text-slate-600">Notes</label>
-                                    <textarea name="notes" rows={2} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
-                                </div>
-                            </>
-                        ) : null}
                     </div>
 
                     {is_edit ? (

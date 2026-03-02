@@ -25,12 +25,10 @@ class StoreClientUserRequest extends FormRequest
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'access_override_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
-            'user_password' => ['nullable', 'string', 'min:8'],
+            'user_password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'send_account_message' => ['nullable', 'boolean'],
             'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
-            'avatar' => ['prohibited'],
-            'nid_file' => ['prohibited'],
-            'cv_file' => ['prohibited'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];
 
         if ($this->filled('user_password')) {

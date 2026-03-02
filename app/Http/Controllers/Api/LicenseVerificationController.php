@@ -184,7 +184,7 @@ class LicenseVerificationController extends Controller
             }
         }
 
-        $invoiceBlock = $this->accessBlockService->invoiceBlockStatus($customer);
+        $invoiceBlock = $this->accessBlockService->invoiceBlockStatus($customer, true);
 
         $license->update([
             'last_check_at' => Carbon::now(),

@@ -68,7 +68,7 @@ class LicenseController extends Controller
                 continue;
             }
 
-            $accessBlockedCustomers[$customerId] = $accessBlockService->isCustomerBlocked($customer);
+            $accessBlockedCustomers[$customerId] = $accessBlockService->isCustomerBlocked($customer, true);
         }
 
         return Inertia::render(

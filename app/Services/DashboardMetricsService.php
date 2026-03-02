@@ -166,9 +166,12 @@ class DashboardMetricsService
 
     private function automationMetrics(): array
     {
+        $overdueSuspensions = (int) Subscription::where('status', 'suspended')->count()
+            + (int) License::where('status', 'suspended')->count();
+
         return [
             'invoices_created' => Invoice::whereDate('created_at', now()->toDateString())->count(),
-            'overdue_suspensions' => Subscription::where('status', 'suspended')->count(),
+            'overdue_suspensions' => $overdueSuspensions,
             'tickets_closed' => SupportTicket::where('status', 'closed')->count(),
             'overdue_reminders' => Invoice::where('status', 'overdue')->count(),
         ];

@@ -25,6 +25,7 @@ class StatusUpdateService
         $count = 0;
 
         $invoices = Invoice::query()
+            ->with(['subscription.licenses'])
             ->where('status', 'unpaid')
             ->whereDate('due_date', '<', $today)
             ->get();
@@ -44,11 +45,14 @@ class StatusUpdateService
                 'auto_overdue'
             );
 
+            $suspendedLicenseCount = $this->suspendLicensesForOverdueInvoice($invoice);
+
             InvoiceOverdue::dispatch($invoice);
 
             SystemLogger::write('activity', 'Invoice marked as overdue automatically.', [
                 'invoice_id' => $invoice->id,
                 'due_date' => $invoice->due_date,
+                'suspended_licenses' => $suspendedLicenseCount,
             ]);
 
             $count++;
@@ -426,5 +430,44 @@ class StatusUpdateService
             'revoked_licenses' => License::where('status', 'revoked')->count(),
             'open_support_tickets' => SupportTicket::where('status', 'open')->count(),
         ];
+    }
+
+    private function suspendLicensesForOverdueInvoice(Invoice $invoice): int
+    {
+        $subscription = $invoice->subscription;
+
+        if (! $subscription) {
+            return 0;
+        }
+
+        $activeLicenses = $subscription->licenses()
+            ->where('status', 'active')
+            ->get(['id', 'status']);
+
+        if ($activeLicenses->isEmpty()) {
+            return 0;
+        }
+
+        $subscription->licenses()
+            ->whereIn('id', $activeLicenses->pluck('id'))
+            ->update(['status' => 'suspended']);
+
+        foreach ($activeLicenses as $license) {
+            StatusAuditLog::logChange(
+                License::class,
+                $license->id,
+                $license->status,
+                'suspended',
+                'auto_overdue_suspend'
+            );
+        }
+
+        SystemLogger::write('activity', 'Licenses suspended automatically due to overdue invoice.', [
+            'invoice_id' => $invoice->id,
+            'subscription_id' => $subscription->id,
+            'license_ids' => $activeLicenses->pluck('id')->values()->all(),
+        ]);
+
+        return $activeLicenses->count();
     }
 }

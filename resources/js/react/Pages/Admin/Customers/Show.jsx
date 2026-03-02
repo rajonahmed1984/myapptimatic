@@ -48,6 +48,16 @@ const proration = (plan, startDateValue) => {
     };
 };
 
+const initialsFromName = (name) => {
+    const parts = String(name || '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2);
+    if (parts.length === 0) return 'CU';
+    return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+};
+
 export default function Show({
     pageTitle = 'Customer Details',
     tab = 'summary',
@@ -70,6 +80,7 @@ export default function Show({
     activity_logs = [],
     service_plans = [],
     service_sales_reps = [],
+    profile_sales_reps = [],
     forms = {},
     routes = {},
 }) {
@@ -78,6 +89,7 @@ export default function Show({
     const errors = props?.errors || {};
 
     const serviceDefaults = forms?.service || {};
+    const profileDefaults = forms?.profile || {};
     const projectUserDefaults = forms?.project_user || {};
 
     const [showServiceForm, setShowServiceForm] = useState(Boolean(serviceDefaults?.plan_id || errors?.plan_id));
@@ -91,65 +103,233 @@ export default function Show({
     );
     const summary = useMemo(() => proration(plan, startDate), [plan, startDate]);
     const projectProgressPercent = Math.max(0, Math.min(100, Number(project_task_progress?.percent || 0)));
+    const customerInitials = useMemo(() => initialsFromName(customer?.name), [customer?.name]);
+    const customerStatusClass = statusClass(customer?.effective_status || customer?.status);
+    const invoiceStatusSummary = Array.isArray(metrics?.invoice_status_summary) ? metrics.invoice_status_summary : [];
+    const summaryCards = useMemo(
+        () => ([
+            { key: 'services', label: 'Products / Services', value: customer?.subscriptions_count || 0, href: `${routes?.show}?tab=services`, tone: 'border-sky-200 bg-sky-50 text-sky-700' },
+            { key: 'active-services', label: 'Active Services', value: customer?.active_subscriptions_count || 0, href: `${routes?.show}?tab=services`, tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+            { key: 'projects', label: 'Projects', value: customer?.projects_count || 0, href: `${routes?.show}?tab=projects`, tone: 'border-violet-200 bg-violet-50 text-violet-700' },
+            { key: 'invoices', label: 'Invoices', value: customer?.invoices_count || 0, href: `${routes?.show}?tab=invoices`, tone: 'border-amber-200 bg-amber-50 text-amber-700' },
+            { key: 'tickets', label: 'Tickets', value: customer?.tickets_count || 0, href: `${routes?.show}?tab=tickets`, tone: 'border-rose-200 bg-rose-50 text-rose-700' },
+        ]),
+        [customer?.invoices_count, customer?.projects_count, customer?.subscriptions_count, customer?.active_subscriptions_count, customer?.tickets_count, routes?.show]
+    );
+    const financialCards = useMemo(
+        () => ([
+            { key: 'gross', label: 'Gross Revenue', value: asMoney(metrics?.gross_revenue, currency?.code), hint: 'Total received payments' },
+            { key: 'expense', label: 'Client Expenses', value: asMoney(metrics?.client_expenses, currency?.code), hint: 'Expenses tracked against client' },
+            { key: 'net', label: 'Net Income', value: asMoney(metrics?.net_income, currency?.code), hint: 'Gross revenue minus expenses' },
+            { key: 'credit', label: 'Credit Balance', value: asMoney(metrics?.credit_balance, currency?.code), hint: 'Available credits on account' },
+        ]),
+        [metrics?.gross_revenue, metrics?.client_expenses, metrics?.net_income, metrics?.credit_balance, currency?.code]
+    );
 
     return (
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="text-2xl font-semibold text-slate-900">{customer?.name || 'Customer'}</div>
-                    <div className="mt-1 text-sm text-slate-500">
-                        Client ID: {customer?.id || '--'} | Created: {customer?.created_at_display || '--'} | Status: {customer?.effective_status || customer?.status || '--'}
+            <div className="relative mb-6 overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-teal-800 p-6 text-white shadow-sm">
+                <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-white/10" />
+                <div className="pointer-events-none absolute -bottom-24 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-teal-300/20 blur-2xl" />
+                <div className="relative flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex min-w-[260px] items-start gap-4">
+                        <div>                            
+                            <div className="mt-1 text-2xl font-semibold text-white">{customer?.name || 'Customer'}</div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1">ID #{customer?.id || '--'}</span>
+                                <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1">Created {customer?.created_at_display || '--'}</span>
+                                <span className={`rounded-full border px-2.5 py-1 font-semibold ${customerStatusClass}`}>
+                                    {String(customer?.effective_status || customer?.status || '--').toUpperCase()}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                    <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600">Back to Customers</a>
-                    <a href={routes?.create_invoice} data-native="true" className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white">Create Invoice</a>
-                    <a href={routes?.create_ticket} data-native="true" className="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600">Open Ticket</a>
-                    <form method="POST" action={routes?.impersonate} data-native="true">
-                        <input type="hidden" name="_token" value={csrf} />
-                        <button type="submit" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">Login as client</button>
-                    </form>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        <a href={routes?.index} data-native="true" className="inline-flex h-10 items-center rounded-full border border-white/30 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/20">Back to Customers</a>
+                        <a href={routes?.create_invoice} data-native="true" className="inline-flex h-10 items-center rounded-full border border-white/30 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/20">Create Invoice</a>
+                        <a href={routes?.create_ticket} data-native="true" className="inline-flex h-10 items-center rounded-full border border-white/30 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/20">Open Ticket</a>
+                        <form method="POST" action={routes?.impersonate} data-native="true" className="inline-flex">
+                            <input type="hidden" name="_token" value={csrf} />
+                            <button type="submit" className="inline-flex h-10 items-center rounded-full border border-white/30 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/20">Login as client</button>
+                        </form>
+                    </div>
                 </div>
             </div>
 
-            <div className="card p-6">
-                <div className="mb-6 flex flex-wrap gap-3 text-sm font-semibold text-slate-700">
+            <div className="card overflow-hidden p-6">
+                <div className="-mx-2 mb-6 overflow-x-auto px-2">
+                    <div className="flex min-w-max gap-3 text-sm font-semibold text-slate-700">
                     {tabs.map((item) => (
-                        <a key={item.key} href={item.href} data-native="true" className={`rounded-full border px-3 py-1 ${tab === item.key ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-300 text-slate-700'}`}>
+                        <a
+                            key={item.key}
+                            href={item.href}
+                            data-native="true"
+                            className={`rounded-full border px-4 py-2 transition ${tab === item.key ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm shadow-teal-100' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'}`}
+                        >
                             {item.label}
                         </a>
                     ))}
+                    </div>
                 </div>
 
                 {tab === 'summary' ? (
-                    <div className="grid gap-4 md:grid-cols-3 text-sm text-slate-600">
-                        <div className="rounded-2xl border border-slate-300 bg-white/70 p-4">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Profile</div>
-                            <div className="mt-2">Company: {customer?.company_name || '--'}</div>
-                            <div className="mt-1">Email: {customer?.email || '--'}</div>
-                            <div className="mt-1">Mobile: {customer?.phone || '--'}</div>
-                            <div className="mt-1">Address: {customer?.address || '--'}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-300 bg-white/70 p-4">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Summary</div>
-                            <div className="mt-2">Services: {customer?.subscriptions_count || 0}</div>
-                            <div className="mt-1">Active services: {customer?.active_subscriptions_count || 0}</div>
-                            <div className="mt-1">Projects: {customer?.projects_count || 0}</div>
-                            <div className="mt-1">Invoices: {customer?.invoices_count || 0}</div>
-                            <div className="mt-1">Tickets: {customer?.tickets_count || 0}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-300 bg-white/70 p-4">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Invoice status</div>
-                            {(metrics?.invoice_status_summary || []).map((item) => (
-                                <div key={item.key} className="mt-2 flex items-center justify-between text-xs">
-                                    <span>{item.label} ({item.count})</span>
-                                    <span className="font-semibold">{asMoney(item.amount, currency?.code)}</span>
-                                </div>
+                    <div className="space-y-5">
+                        <div className="grid gap-3 md:grid-cols-5">
+                            {summaryCards.map((item) => (
+                                <a key={item.key} href={item.href} data-native="true" className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-sm ${item.tone}`}>
+                                    <div className="text-[11px] uppercase tracking-[0.2em]">{item.label}</div>
+                                    <div className="mt-2 text-3xl font-semibold leading-none">{item.value}</div>
+                                </a>
                             ))}
                         </div>
+
+                        <div className="grid gap-4 lg:grid-cols-3">
+                            <div className="rounded-2xl border border-slate-300 bg-white p-5 text-sm text-slate-600">
+                                <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Customer Snapshot</div>
+                                <div className="mt-3 space-y-2">
+                                    <div className="flex items-start gap-3"><span className="text-slate-500">Company</span><span className="font-medium text-slate-900">{customer?.company_name || '--'}</span></div>
+                                    <div className="flex items-start gap-3"><span className="text-slate-500">Email</span><span className="font-medium text-slate-900">{customer?.email || '--'}</span></div>
+                                    <div className="flex items-start gap-3"><span className="text-slate-500">Phone</span><span className="font-medium text-slate-900">{customer?.phone || '--'}</span></div>
+                                    <div className="flex items-start gap-3"><span className="text-slate-500">Address</span><span className="max-w-[220px] text-right font-medium text-slate-900">{customer?.address || '--'}</span></div>
+                                </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-300 bg-white p-5 lg:col-span-2">
+                                <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Financial Snapshot</div>
+                                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                    {financialCards.map((item) => (
+                                        <div key={item.key} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                            <div className="text-xs uppercase tracking-[0.2em] text-slate-500">{item.label}</div>
+                                            <div className="mt-1 text-lg font-semibold text-slate-900">{item.value}</div>
+                                            <div className="mt-1 text-xs text-slate-500">{item.hint}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-300 bg-white p-5">
+                            <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Invoice Status Breakdown</div>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                                {invoiceStatusSummary.map((item) => (
+                                    <div key={item.key} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                                        <div className="text-xs uppercase tracking-[0.2em] text-slate-500">{item.label}</div>
+                                        <div className="mt-1 text-lg font-semibold text-slate-900">{item.count}</div>
+                                        <div className="text-xs text-slate-600">{asMoney(item.amount, currency?.code)}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
+                ) : null}
+
+                {tab === 'profile' ? (
+                    <form method="POST" action={routes?.update} encType="multipart/form-data" data-native="true" className="grid gap-4 rounded-2xl border border-slate-300 bg-white p-5 md:grid-cols-3">
+                            <input type="hidden" name="_token" value={csrf} />
+                            <input type="hidden" name="_method" value="PUT" />
+                            <input type="hidden" name="redirect_tab" value="profile" />
+
+                            <div className="md:col-span-3 text-xs uppercase tracking-[0.25em] text-slate-500">Identity</div>
+                            <div>
+                                <label className="text-sm text-slate-600">Full Name</label>
+                                <input name="name" defaultValue={profileDefaults?.name || ''} required className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                {errors?.name ? <p className="mt-1 text-xs text-rose-500">{errors.name}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-600">Company Name</label>
+                                <input name="company_name" defaultValue={profileDefaults?.company_name || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                {errors?.company_name ? <p className="mt-1 text-xs text-rose-500">{errors.company_name}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-600">Email Address</label>
+                                <input name="email" type="email" defaultValue={profileDefaults?.email || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                {errors?.email ? <p className="mt-1 text-xs text-rose-500">{errors.email}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-600">Phone Number</label>
+                                <input name="phone" defaultValue={profileDefaults?.phone || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                {errors?.phone ? <p className="mt-1 text-xs text-rose-500">{errors.phone}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-600">Default Sales Rep</label>
+                                <select name="default_sales_rep_id" defaultValue={profileDefaults?.default_sales_rep_id || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
+                                    <option value="">None</option>
+                                    {profile_sales_reps.map((rep) => (
+                                        <option key={rep.id} value={rep.id}>
+                                            {rep.name} {rep.status !== 'active' ? `(${String(rep.status).charAt(0).toUpperCase() + String(rep.status).slice(1)})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors?.default_sales_rep_id ? <p className="mt-1 text-xs text-rose-500">{errors.default_sales_rep_id}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-600">Profile Image</label>
+                                <input name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp,image/*" className="mt-2 block w-full text-sm text-slate-600" />
+                                <p className="mt-1 text-xs text-slate-500">PNG/JPG/WEBP, max 2MB.</p>
+                                <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                                    <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Current logo</div>
+                                    <div className="mt-2">
+                                        {customer?.avatar_url ? (
+                                            <img src={customer.avatar_url} alt={customer?.name || 'Customer avatar'} className="h-16 w-16 rounded-xl object-cover" />
+                                        ) : (
+                                            <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-[11px] text-slate-500">
+                                                No image
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                {errors?.avatar ? <p className="mt-1 text-xs text-rose-500">{errors.avatar}</p> : null}
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-sm text-slate-600">Address</label>
+                                <textarea name="address" rows={2} defaultValue={profileDefaults?.address || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                {errors?.address ? <p className="mt-1 text-xs text-rose-500">{errors.address}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-600">Notes</label>
+                                <textarea name="notes" rows={2} defaultValue={profileDefaults?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                {errors?.notes ? <p className="mt-1 text-xs text-rose-500">{errors.notes}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-600">New Password</label>
+                                <input
+                                    name="client_password"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                />
+                                <p className="mt-1 text-xs text-slate-500">Leave blank if you do not want to change password.</p>
+                                {errors?.client_password ? <p className="mt-1 text-xs text-rose-500">{errors.client_password}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-600">Confirm Password</label>
+                                <input
+                                    name="client_password_confirmation"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-600">Status</label>
+                                <select name="status" defaultValue={profileDefaults?.status || 'active'} required className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                                {errors?.status ? <p className="mt-1 text-xs text-rose-500">{errors.status}</p> : null}
+                            </div>
+
+                            <div className="md:col-span-3 flex items-center justify-end gap-3">
+                                <a href={routes?.edit} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">
+                                    Open full edit page
+                                </a>
+                                <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">
+                                    Update customer
+                                </button>
+                            </div>
+                    </form>
                 ) : null}
 
                 {tab === 'project-specific' ? (

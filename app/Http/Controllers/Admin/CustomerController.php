@@ -110,6 +110,11 @@ class CustomerController extends Controller
             'default_sales_rep_id' => $data['default_sales_rep_id'] ?? null,
         ]);
 
+        if ($request->hasFile('avatar')) {
+            $path = $this->storeCustomerAvatar($request->file('avatar'), $customer);
+            $customer->forceFill(['avatar_path' => $path])->save();
+        }
+
         if (! empty($data['user_password'])) {
             if (empty($customer->email)) {
                 return redirect()->route('admin.customers.create')
@@ -223,7 +228,7 @@ class CustomerController extends Controller
     public function show(Request $request, Customer $customer): InertiaResponse
     {
         $tab = $request->query('tab', 'summary');
-        $allowedTabs = ['summary', 'project-specific', 'services', 'projects', 'invoices', 'tickets', 'emails', 'log'];
+        $allowedTabs = ['summary', 'profile', 'project-specific', 'services', 'projects', 'invoices', 'tickets', 'emails', 'log'];
 
         if (! in_array($tab, $allowedTabs, true)) {
             $tab = 'summary';
@@ -337,6 +342,12 @@ class CustomerController extends Controller
 
         $servicePlans = collect();
         $serviceSalesReps = collect();
+        $profileSalesReps = collect();
+        if ($tab === 'profile') {
+            $profileSalesReps = SalesRepresentative::query()
+                ->orderBy('name')
+                ->get(['id', 'name', 'status']);
+        }
         if ($tab === 'services') {
             $servicePlans = Plan::query()
                 ->with('product')
@@ -457,6 +468,7 @@ class CustomerController extends Controller
             'tabs' => collect($allowedTabs)->map(function (string $key) use ($customer) {
                 $label = match ($key) {
                     'summary' => 'Summary',
+                    'profile' => 'Profile',
                     'project-specific' => 'Project Logins',
                     'services' => 'Products/Services',
                     'projects' => 'Projects',
@@ -481,6 +493,19 @@ class CustomerController extends Controller
                 'address' => (string) ($customer->address ?? ''),
                 'company_name' => (string) ($customer->company_name ?? ''),
                 'status' => (string) ($customer->status ?? 'active'),
+                'avatar_url' => $customer->avatar_path ? asset('storage/'.$customer->avatar_path) : null,
+                'nid_url' => $customer->nid_path
+                    ? route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'nid'], false)
+                    : null,
+                'nid_is_image' => $customer->nid_path
+                    ? Str::endsWith(strtolower($customer->nid_path), ['.jpg', '.jpeg', '.png', '.webp'])
+                    : false,
+                'cv_url' => $customer->cv_path
+                    ? route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'cv'], false)
+                    : null,
+                'default_sales_rep_id' => (string) ($customer->default_sales_rep_id ?? ''),
+                'access_override_until' => $customer->access_override_until?->format($dateFormat) ?? '',
+                'notes' => (string) ($customer->notes ?? ''),
                 'effective_status' => (string) $effectiveStatus,
                 'created_at_display' => $customer->created_at?->format($dateFormat) ?? '--',
                 'subscriptions_count' => (int) $customer->subscriptions->count(),
@@ -635,7 +660,26 @@ class CustomerController extends Controller
                 'name' => (string) $rep->name,
                 'status' => (string) $rep->status,
             ])->values()->all(),
+            'profile_sales_reps' => $profileSalesReps->map(fn (SalesRepresentative $rep) => [
+                'id' => (string) $rep->id,
+                'name' => (string) $rep->name,
+                'status' => (string) $rep->status,
+            ])->values()->all(),
             'forms' => [
+                'profile' => [
+                    'name' => (string) old('name', (string) ($customer->name ?? '')),
+                    'company_name' => (string) old('company_name', (string) ($customer->company_name ?? '')),
+                    'email' => (string) old('email', (string) ($customer->email ?? '')),
+                    'phone' => (string) old('phone', (string) ($customer->phone ?? '')),
+                    'address' => (string) old('address', (string) ($customer->address ?? '')),
+                    'status' => (string) old('status', (string) ($customer->status ?? 'active')),
+                    'default_sales_rep_id' => (string) old('default_sales_rep_id', (string) ($customer->default_sales_rep_id ?? '')),
+                    'access_override_until' => (string) old(
+                        'access_override_until',
+                        $customer->access_override_until?->format($dateFormat) ?? ''
+                    ),
+                    'notes' => (string) old('notes', (string) ($customer->notes ?? '')),
+                ],
                 'project_user' => [
                     'project_id' => (string) old('project_id', ''),
                     'name' => (string) old('name', ''),
@@ -651,6 +695,7 @@ class CustomerController extends Controller
             'routes' => [
                 'index' => route('admin.customers.index', [], false),
                 'show' => route('admin.customers.show', $customer, false),
+                'update' => route('admin.customers.update', $customer, false),
                 'edit' => route('admin.customers.edit', $customer, false),
                 'impersonate' => route('admin.customers.impersonate', $customer, false),
                 'create_invoice' => route('admin.invoices.create', ['customer_id' => $customer->id], false),
@@ -872,15 +917,89 @@ class CustomerController extends Controller
             'notes' => ['nullable', 'string'],
             'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'nid_file' => ['prohibited'],
-            'cv_file' => ['prohibited'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
+            'client_password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $customer->update(collect($data)->except(['avatar', 'nid_file', 'cv_file'])->all());
+        $clientPassword = $data['client_password'] ?? null;
+        $nextCustomerEmail = trim((string) ($data['email'] ?? $customer->email));
+        $clientUser = null;
+        if (! empty($clientPassword)) {
+            $clientUser = $customer->users()
+                ->whereIn('role', [Role::CLIENT, 'customer'])
+                ->orderBy('id')
+                ->first();
+
+            if (! $clientUser && $nextCustomerEmail === '') {
+                return back()
+                    ->withErrors(['client_password' => 'Customer email is required before setting a login password.'])
+                    ->withInput();
+            }
+
+            if ($clientUser && $nextCustomerEmail !== '' && $clientUser->email !== $nextCustomerEmail) {
+                $emailTaken = User::query()
+                    ->where('email', $nextCustomerEmail)
+                    ->where('id', '!=', $clientUser->id)
+                    ->exists();
+                if ($emailTaken) {
+                    return back()
+                        ->withErrors(['email' => 'This email is already used by another account.'])
+                        ->withInput();
+                }
+            }
+        }
+
+        $customer->update(collect($data)->except(['avatar', 'nid_file', 'cv_file', 'client_password'])->all());
+
+        if (! empty($clientPassword)) {
+            if (! $clientUser) {
+                $existing = User::query()
+                    ->where('email', $nextCustomerEmail)
+                    ->first();
+
+                if ($existing && ! in_array($existing->role, [Role::CLIENT, 'customer'], true)) {
+                    return back()
+                        ->withErrors(['client_password' => 'This email is already used by a non-client account.'])
+                        ->withInput();
+                }
+
+                $clientUser = $existing ?: User::create([
+                    'name' => $customer->name ?: 'Client '.$customer->id,
+                    'email' => $nextCustomerEmail,
+                    'password' => Hash::make($clientPassword),
+                    'role' => Role::CLIENT,
+                    'customer_id' => $customer->id,
+                ]);
+            }
+
+            if ($clientUser->role !== Role::CLIENT) {
+                $clientUser->role = Role::CLIENT;
+            }
+            if (! $clientUser->customer_id) {
+                $clientUser->customer_id = $customer->id;
+            }
+            if ($nextCustomerEmail !== '' && $clientUser->email !== $nextCustomerEmail) {
+                $clientUser->email = $nextCustomerEmail;
+            }
+            if ($customer->name && $clientUser->name !== $customer->name) {
+                $clientUser->name = $customer->name;
+            }
+            $clientUser->password = Hash::make($clientPassword);
+            $clientUser->save();
+        }
 
         if ($request->hasFile('avatar')) {
             $path = $this->storeCustomerAvatar($request->file('avatar'), $customer);
             $customer->forceFill(['avatar_path' => $path])->save();
+        }
+        if ($request->hasFile('nid_file')) {
+            $path = $this->storeCustomerDocument($request->file('nid_file'), $customer, 'nid', $customer->nid_path);
+            $customer->forceFill(['nid_path' => $path])->save();
+        }
+        if ($request->hasFile('cv_file')) {
+            $path = $this->storeCustomerDocument($request->file('cv_file'), $customer, 'cv', $customer->cv_path);
+            $customer->forceFill(['cv_path' => $path])->save();
         }
 
         SystemLogger::write('activity', 'Customer updated.', [
@@ -888,6 +1007,12 @@ class CustomerController extends Controller
             'name' => $customer->name,
             'email' => $customer->email,
         ], $request->user()?->id, $request->ip());
+
+        if ((string) $request->input('redirect_tab') === 'profile') {
+            return redirect()
+                ->route('admin.customers.show', ['customer' => $customer, 'tab' => 'profile'])
+                ->with('status', 'Customer updated.');
+        }
 
         return redirect()->route('admin.customers.edit', $customer)
             ->with('status', 'Customer updated.');
@@ -1203,5 +1328,25 @@ class CustomerController extends Controller
         $filename = $name.'-'.Str::random(8).'.'.$extension;
 
         return $file->storeAs('avatars/customers/'.$customer->id, $filename, 'public');
+    }
+
+    private function storeCustomerDocument(
+        UploadedFile $file,
+        Customer $customer,
+        string $folder,
+        ?string $existingPath
+    ): string {
+        $disk = Storage::disk('public');
+
+        if ($existingPath && $disk->exists($existingPath)) {
+            $disk->delete($existingPath);
+        }
+
+        $name = pathinfo((string) $file->getClientOriginalName(), PATHINFO_FILENAME);
+        $name = $name !== '' ? Str::slug($name) : $folder;
+        $extension = strtolower((string) ($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'dat'));
+        $filename = $name.'-'.Str::random(8).'.'.$extension;
+
+        return $file->storeAs($folder.'/customers/'.$customer->id, $filename, 'public');
     }
 }

@@ -361,35 +361,55 @@ class CommissionService
     */
     public function computeRepBalance(int $salesRepId): array
     {
-        $baseQuery = CommissionEarning::query()->where('sales_representative_id', $salesRepId);
+        $baseQuery = $this->dedupedEarningsQuery($salesRepId);
 
-        $totalEarned = (float) $baseQuery
-            ->whereIn('status', ['pending', 'earned', 'payable', 'paid'])
-            ->sum('commission_amount');
+        $totalEarned = (float) (clone $baseQuery)
+            ->whereIn('ce.status', ['pending', 'earned', 'payable', 'paid'])
+            ->sum('ce.commission_amount');
 
-        $paidEarnings = (float) CommissionEarning::query()
+        $payable = (float) (clone $baseQuery)
+            ->where('ce.status', 'payable')
+            ->sum('ce.commission_amount');
+
+        $paidPayoutsQuery = CommissionPayout::query()
             ->where('sales_representative_id', $salesRepId)
-            ->where('status', 'paid')
-            ->sum('commission_amount');
-
-        $payable = (float) CommissionEarning::query()
-            ->where('sales_representative_id', $salesRepId)
-            ->where('status', 'payable')
-            ->sum('commission_amount');
+            ->where('status', 'paid');
+        $hasPaidPayouts = (clone $paidPayoutsQuery)->exists();
 
         $advancePaid = 0.0;
+        $regularPaidPayouts = 0.0;
         if ($this->commissionPayoutHasColumn('type')) {
-            $advancePaid = (float) CommissionPayout::query()
-                ->where('sales_representative_id', $salesRepId)
+            $advancePaid = (float) (clone $paidPayoutsQuery)
                 ->where('type', 'advance')
-                ->where('status', 'paid')
                 ->sum('total_amount');
+
+            $regularPaidPayouts = (float) (clone $paidPayoutsQuery)
+                ->where(function ($query) {
+                    $query->whereNull('type')
+                        ->orWhere('type', '!=', 'advance');
+                })
+                ->sum('total_amount');
+        } else {
+            // Legacy schema without "type": treat all paid payouts as regular payout totals.
+            $regularPaidPayouts = (float) $paidPayoutsQuery->sum('total_amount');
         }
 
-        $totalPaid = $paidEarnings + $advancePaid;
-        $overpaid = max(0, $totalPaid - $totalEarned);
-        $netPayable = max(0, $payable - $overpaid);
-        $outstanding = $totalEarned - $totalPaid;
+        // Backward compatibility for legacy reps: if there is no paid payout record yet,
+        // fallback to paid earnings that were never linked to payouts.
+        $legacyPaidWithoutPayout = 0.0;
+        if (! $hasPaidPayouts) {
+            $legacyPaidWithoutPayout = (float) (clone $baseQuery)
+                ->where('ce.status', 'paid')
+                ->whereNull('ce.commission_payout_id')
+                ->sum('ce.commission_amount');
+        }
+
+        $totalEarned = round($totalEarned, 2);
+        $payable = round($payable, 2);
+        $totalPaid = round($regularPaidPayouts + $advancePaid + $legacyPaidWithoutPayout, 2);
+        $overpaid = round(max(0, $totalPaid - $totalEarned), 2);
+        $outstanding = round(max(0, $totalEarned - $totalPaid), 2);
+        $netPayable = round(max(0, min($payable, $outstanding)), 2);
 
         return [
             'total_earned' => $totalEarned,
@@ -400,6 +420,24 @@ class CommissionService
             'overpaid' => $overpaid,
             'outstanding' => $outstanding,
         ];
+    }
+
+    private function dedupedEarningsQuery(int $salesRepId)
+    {
+        $latestByKeyQuery = CommissionEarning::query()
+            ->selectRaw('MAX(id) as id')
+            ->where('sales_representative_id', $salesRepId)
+            ->groupByRaw("
+                CASE WHEN idempotency_key IS NULL OR idempotency_key = '' THEN id ELSE NULL END,
+                CASE WHEN idempotency_key IS NULL OR idempotency_key = '' THEN NULL ELSE idempotency_key END
+            ");
+
+        return CommissionEarning::query()
+            ->from('commission_earnings as ce')
+            ->joinSub($latestByKeyQuery, 'latest_by_key', function ($join) {
+                $join->on('latest_by_key.id', '=', 'ce.id');
+            })
+            ->where('ce.sales_representative_id', $salesRepId);
     }
 
     /**

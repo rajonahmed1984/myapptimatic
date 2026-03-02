@@ -24,8 +24,9 @@ class PreventBlockedClientAccess
         View::share('clientAccessBlock', $blockStatus);
 
         if ($blockStatus['blocked'] && ! $this->allowsRoute($request)) {
-            $invoiceLabel = $blockStatus['invoice_number'] ? "Invoice #{$blockStatus['invoice_number']}" : 'an outstanding invoice';
-            $message = "Access is limited because {$invoiceLabel} is overdue. Please pay to restore full access.";
+            $message = $blockStatus['reason'] === 'customer_inactive'
+                ? 'Your account is inactive. Please contact admin for access.'
+                : 'Access is limited. Please contact admin for support.';
 
             return redirect()->route('client.dashboard')
                 ->with('status', $message);
