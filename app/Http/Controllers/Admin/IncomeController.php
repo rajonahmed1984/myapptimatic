@@ -478,6 +478,7 @@ class IncomeController extends Controller
                 $manualTotal,
                 $systemTotal,
                 $creditSettlementTotal,
+                $carrotHostTotal,
                 $categoryTotals,
                 $topCustomers
             ) {
