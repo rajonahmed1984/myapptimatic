@@ -203,6 +203,21 @@ class OrderController extends Controller
                 'line_total' => $subtotal,
             ]);
 
+            // Initial invoice is created for the current period at order time,
+            // so move the subscription window to the next period to prevent
+            // the scheduler from re-billing the same period.
+            $nextPeriodStart = $plan->interval === 'monthly'
+                ? $periodEnd->copy()->addDay()
+                : $periodEnd->copy();
+            $nextPeriodEnd = $plan->interval === 'monthly'
+                ? $nextPeriodStart->copy()->endOfMonth()
+                : $nextPeriodStart->copy()->addYear();
+
+            $subscription->update([
+                'current_period_start' => $nextPeriodStart->toDateString(),
+                'current_period_end' => $nextPeriodEnd->toDateString(),
+            ]);
+
             License::create([
                 'subscription_id' => $subscription->id,
                 'product_id' => $plan->product_id,

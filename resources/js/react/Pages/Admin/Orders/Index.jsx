@@ -41,7 +41,7 @@ export default function Index({
                             <th className="px-4 py-3">Service</th>
                             <th className="px-4 py-3">Status</th>
                             <th className="px-4 py-3">Invoice</th>
-                            <th className="px-4 py-3">Amount</th>
+                            <th className="px-4 py-3">Invoice Amount</th>
                             <th className="px-4 py-3">Created</th>
                             <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
@@ -73,7 +73,7 @@ export default function Index({
                                     </td>
                                     <td className="px-4 py-3 text-slate-500">{order.invoice_amount}</td>
                                     <td className="px-4 py-3 text-slate-500">
-                                        <DateTimeText value={order.created_at_display} mode="datetime" />
+                                        <DateTimeText value={order.created_at_display} mode="date" />
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-3">

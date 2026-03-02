@@ -16,6 +16,7 @@ export default function Form({
     const fields = form?.fields || {};
     const [selectedPlanId, setSelectedPlanId] = useState(String(fields?.plan_id || ''));
     const [selectedSalesRepId, setSelectedSalesRepId] = useState(String(fields?.sales_rep_id || ''));
+    const [commissionPercent, setCommissionPercent] = useState(String(fields?.sales_rep_commission_percent || ''));
     const hasSelectedSalesRep = selectedSalesRepId !== '';
     const planById = useMemo(() => {
         const map = {};
@@ -46,6 +47,20 @@ export default function Form({
     });
 
     const selectedPlan = planById[selectedPlanId] || null;
+    const commissionAmountPreview = useMemo(() => {
+        if (String(commissionPercent).trim() === '') {
+            return '';
+        }
+
+        const percentValue = Number(commissionPercent);
+        const amountValue = Number(subscriptionAmount);
+
+        if (!Number.isFinite(percentValue) || !Number.isFinite(amountValue) || percentValue < 0 || amountValue < 0) {
+            return '';
+        }
+
+        return ((amountValue * percentValue) / 100).toFixed(2);
+    }, [commissionPercent, subscriptionAmount]);
 
     const handlePlanChange = (event) => {
         const planId = String(event.target.value || '');
@@ -72,7 +87,7 @@ export default function Form({
                         <input type="hidden" name="_method" value={form?.method} />
                     ) : null}
 
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
                             <select name="customer_id" defaultValue={fields?.customer_id || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2">
@@ -102,9 +117,6 @@ export default function Form({
                             </select>
                             {errors?.plan_id ? <p className="mt-1 text-xs text-rose-600">{errors.plan_id}</p> : null}
                         </div>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Subscription Amount</label>
                             <input
@@ -123,18 +135,9 @@ export default function Form({
                             </p>
                             {errors?.subscription_amount ? <p className="mt-1 text-xs text-rose-600">{errors.subscription_amount}</p> : null}
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
-                            <select name="status" defaultValue={fields?.status || 'active'} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="active">Active</option>
-                                <option value="cancelled">Cancelled</option>
-                                <option value="suspended">Suspended</option>
-                            </select>
-                            {errors?.status ? <p className="mt-1 text-xs text-rose-600">{errors.status}</p> : null}
-                        </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-4">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Start Date</label>
                             <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={fields?.start_date || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
@@ -150,9 +153,6 @@ export default function Form({
                             />
                             {errors?.current_period_start ? <p className="mt-1 text-xs text-rose-600">{errors.current_period_start}</p> : null}
                         </div>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Current Period End</label>
                             <input
@@ -175,7 +175,7 @@ export default function Form({
                         </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-4">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Access Override Until</label>
                             <input
@@ -186,9 +186,6 @@ export default function Form({
                             />
                             {errors?.access_override_until ? <p className="mt-1 text-xs text-rose-600">{errors.access_override_until}</p> : null}
                         </div>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep</label>
                             <select
@@ -206,25 +203,39 @@ export default function Form({
                             </select>
                             {errors?.sales_rep_id ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_id}</p> : null}
                         </div>
-                    </div>
-
-                    {hasSelectedSalesRep ? (
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep Commission</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    name="sales_rep_commission_amount"
-                                    defaultValue={fields?.sales_rep_commission_amount || ''}
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                                    placeholder="0.00"
-                                />
-                                {errors?.sales_rep_commission_amount ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_commission_amount}</p> : null}
-                            </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep Commission (%)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                name="sales_rep_commission_percent"
+                                value={commissionPercent}
+                                onChange={(event) => setCommissionPercent(event.target.value)}
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-400"
+                                placeholder="0.00"
+                                disabled={!hasSelectedSalesRep}
+                            />
+                            <p className="mt-1 text-xs text-slate-500">
+                                {!hasSelectedSalesRep
+                                    ? 'Select sales rep first.'
+                                    : commissionAmountPreview !== ''
+                                        ? `Commission amount: ${selectedPlan?.currency ? `${selectedPlan.currency} ` : ''}${commissionAmountPreview}`
+                                        : 'Enter percentage (0-100).'}
+                            </p>
+                            {errors?.sales_rep_commission_percent ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_commission_percent}</p> : null}
                         </div>
-                    ) : null}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
+                            <select name="status" defaultValue={fields?.status || 'active'} className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                                <option value="active">Active</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="suspended">Suspended</option>
+                            </select>
+                            {errors?.status ? <p className="mt-1 text-xs text-rose-600">{errors.status}</p> : null}
+                        </div>
+                    </div>
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>

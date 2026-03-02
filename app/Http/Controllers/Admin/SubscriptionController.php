@@ -59,7 +59,7 @@ class SubscriptionController extends Controller
             'notes' => ['nullable', 'string'],
             'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
             'subscription_amount' => ['nullable', 'numeric', 'min:0'],
-            'sales_rep_commission_amount' => ['nullable', 'numeric', 'min:0'],
+            'sales_rep_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $plan = Plan::findOrFail($data['plan_id']);
@@ -67,15 +67,23 @@ class SubscriptionController extends Controller
         $periodEnd = $plan->interval === 'monthly'
             ? $startDate->copy()->endOfMonth()
             : $startDate->copy()->addYear();
+        $baseAmount = array_key_exists('subscription_amount', $data) && $data['subscription_amount'] !== null
+            ? (float) $data['subscription_amount']
+            : (float) $plan->price;
+        $salesRepId = $data['sales_rep_id'] ?? null;
+        $commissionAmount = $salesRepId
+            ? $this->resolveCommissionAmount(
+                $data['sales_rep_commission_percent'] ?? null,
+                $baseAmount
+            )
+            : null;
 
         $subscription = Subscription::create([
             'customer_id' => $data['customer_id'],
             'plan_id' => $data['plan_id'],
-            'sales_rep_id' => $data['sales_rep_id'] ?? null,
+            'sales_rep_id' => $salesRepId,
             'subscription_amount' => $data['subscription_amount'] ?? null,
-            'sales_rep_commission_amount' => ($data['sales_rep_id'] ?? null)
-                ? ($data['sales_rep_commission_amount'] ?? null)
-                : null,
+            'sales_rep_commission_amount' => $commissionAmount,
             'status' => $data['status'],
             'start_date' => $startDate->toDateString(),
             'current_period_start' => $startDate->toDateString(),
@@ -114,6 +122,79 @@ class SubscriptionController extends Controller
         );
     }
 
+    public function show(Request $request, Subscription $subscription): InertiaResponse
+    {
+        $subscription->load([
+            'customer',
+            'plan.product',
+            'salesRep',
+            'invoices' => function ($query) {
+                $query->latest('issue_date');
+            },
+        ]);
+
+        $dateFormat = (string) config('app.date_format', 'd-m-Y');
+        $baseAmount = $subscription->subscription_amount !== null
+            ? (float) $subscription->subscription_amount
+            : (float) ($subscription->plan?->price ?? 0);
+        $amountCurrency = (string) ($subscription->plan?->currency ?? '');
+        $commissionPercent = null;
+
+        if ($subscription->sales_rep_commission_amount !== null && $baseAmount > 0) {
+            $commissionPercent = round((((float) $subscription->sales_rep_commission_amount) / $baseAmount) * 100, 2);
+        }
+
+        return Inertia::render('Admin/Subscriptions/Show', [
+            'pageTitle' => 'Subscription #'.$subscription->id,
+            'subscription' => [
+                'id' => $subscription->id,
+                'status' => (string) ($subscription->status ?? ''),
+                'status_label' => ucfirst((string) ($subscription->status ?? '--')),
+                'customer_name' => (string) ($subscription->customer?->name ?? '--'),
+                'customer_url' => $subscription->customer
+                    ? route('admin.customers.show', $subscription->customer)
+                    : null,
+                'product_name' => (string) ($subscription->plan?->product?->name ?? '--'),
+                'plan_name' => (string) ($subscription->plan?->name ?? '--'),
+                'plan_interval' => ucfirst((string) ($subscription->plan?->interval ?? '--')),
+                'amount_display' => trim((string) (($amountCurrency ? $amountCurrency.' ' : '').number_format($baseAmount, 2))),
+                'sales_rep_name' => (string) ($subscription->salesRep?->name ?? '--'),
+                'sales_rep_status' => (string) ($subscription->salesRep?->status ?? '--'),
+                'sales_rep_commission_percent' => $commissionPercent !== null ? number_format($commissionPercent, 2).'%' : '--',
+                'sales_rep_commission_amount_display' => $subscription->sales_rep_commission_amount !== null
+                    ? trim((string) (($amountCurrency ? $amountCurrency.' ' : '').number_format((float) $subscription->sales_rep_commission_amount, 2)))
+                    : '--',
+                'start_date' => $subscription->start_date?->format($dateFormat) ?? '--',
+                'current_period_start' => $subscription->current_period_start?->format($dateFormat) ?? '--',
+                'current_period_end' => $subscription->current_period_end?->format($dateFormat) ?? '--',
+                'next_invoice_at' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
+                'auto_renew' => (bool) $subscription->auto_renew,
+                'cancel_at_period_end' => (bool) $subscription->cancel_at_period_end,
+                'notes' => (string) ($subscription->notes ?? ''),
+                'created_at' => $subscription->created_at?->format($dateFormat) ?? '--',
+            ],
+            'invoices' => $subscription->invoices->map(function ($invoice) use ($dateFormat) {
+                return [
+                    'id' => $invoice->id,
+                    'number' => (string) ($invoice->number ?: $invoice->id),
+                    'status' => (string) ($invoice->status ?? ''),
+                    'status_label' => ucfirst((string) ($invoice->status ?? '--')),
+                    'issue_date' => $invoice->issue_date?->format($dateFormat) ?? '--',
+                    'due_date' => $invoice->due_date?->format($dateFormat) ?? '--',
+                    'paid_date' => $invoice->paid_at?->format($dateFormat) ?? '--',
+                    'total_display' => trim((string) (((string) ($invoice->currency ?? '') ? ((string) ($invoice->currency ?? '')).' ' : '').number_format((float) ($invoice->total ?? 0), 2))),
+                    'show_url' => route('admin.invoices.show', $invoice),
+                    'edit_url' => route('admin.invoices.show', $invoice),
+                    'destroy_url' => route('admin.invoices.destroy', $invoice),
+                ];
+            })->values()->all(),
+            'routes' => [
+                'index' => route('admin.subscriptions.index'),
+                'edit' => route('admin.subscriptions.edit', $subscription),
+            ],
+        ]);
+    }
+
     public function update(Request $request, Subscription $subscription): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
@@ -129,17 +210,26 @@ class SubscriptionController extends Controller
             'notes' => ['nullable', 'string'],
             'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
             'subscription_amount' => ['nullable', 'numeric', 'min:0'],
-            'sales_rep_commission_amount' => ['nullable', 'numeric', 'min:0'],
+            'sales_rep_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
+        $plan = Plan::findOrFail($data['plan_id']);
+        $baseAmount = array_key_exists('subscription_amount', $data) && $data['subscription_amount'] !== null
+            ? (float) $data['subscription_amount']
+            : (float) $plan->price;
+        $salesRepId = $data['sales_rep_id'] ?? null;
+        $commissionAmount = $salesRepId
+            ? $this->resolveCommissionAmount(
+                $data['sales_rep_commission_percent'] ?? null,
+                $baseAmount
+            )
+            : null;
 
         $subscription->update([
             'customer_id' => $data['customer_id'],
             'plan_id' => $data['plan_id'],
-            'sales_rep_id' => $data['sales_rep_id'] ?? null,
+            'sales_rep_id' => $salesRepId,
             'subscription_amount' => $data['subscription_amount'] ?? null,
-            'sales_rep_commission_amount' => ($data['sales_rep_id'] ?? null)
-                ? ($data['sales_rep_commission_amount'] ?? null)
-                : null,
+            'sales_rep_commission_amount' => $commissionAmount,
             'status' => $data['status'],
             'current_period_start' => $data['current_period_start'],
             'current_period_end' => $data['current_period_end'],
@@ -262,6 +352,7 @@ class SubscriptionController extends Controller
                     'status_label' => ucfirst((string) $subscription->status),
                     'next_invoice_display' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
                     'routes' => [
+                        'show' => route('admin.subscriptions.show', $subscription),
                         'edit' => route('admin.subscriptions.edit', $subscription),
                         'destroy' => route('admin.subscriptions.destroy', $subscription),
                     ],
@@ -282,6 +373,17 @@ class SubscriptionController extends Controller
         Collection $salesReps
     ): array {
         $isEdit = $subscription !== null;
+        $effectiveSubscriptionAmount = $subscription
+            ? (float) ($subscription->subscription_amount ?? $subscription->plan?->price ?? 0)
+            : 0.0;
+        $commissionPercent = null;
+        if (
+            $subscription
+            && $subscription->sales_rep_commission_amount !== null
+            && $effectiveSubscriptionAmount > 0
+        ) {
+            $commissionPercent = round((((float) $subscription->sales_rep_commission_amount) / $effectiveSubscriptionAmount) * 100, 2);
+        }
 
         return [
             'pageTitle' => $isEdit ? 'Edit Subscription' : 'Add Subscription',
@@ -313,7 +415,7 @@ class SubscriptionController extends Controller
                     'plan_id' => (string) old('plan_id', (string) ($subscription?->plan_id ?? '')),
                     'sales_rep_id' => (string) old('sales_rep_id', (string) ($subscription?->sales_rep_id ?? '')),
                     'subscription_amount' => (string) old('subscription_amount', (string) ($subscription?->subscription_amount ?? '')),
-                    'sales_rep_commission_amount' => (string) old('sales_rep_commission_amount', (string) ($subscription?->sales_rep_commission_amount ?? '')),
+                    'sales_rep_commission_percent' => (string) old('sales_rep_commission_percent', (string) ($commissionPercent ?? '')),
                     'status' => (string) old('status', (string) ($subscription?->status ?? 'active')),
                     'start_date' => (string) old('start_date', (string) ($subscription?->start_date?->toDateString() ?? now()->toDateString())),
                     'current_period_start' => (string) old('current_period_start', (string) ($subscription?->current_period_start?->toDateString() ?? '')),
@@ -329,5 +431,19 @@ class SubscriptionController extends Controller
                 'index' => route('admin.subscriptions.index'),
             ],
         ];
+    }
+
+    private function resolveCommissionAmount(mixed $commissionPercent, float $baseAmount): ?float
+    {
+        if ($commissionPercent === null || $commissionPercent === '') {
+            return null;
+        }
+
+        $percent = (float) $commissionPercent;
+        if ($percent <= 0 || $baseAmount <= 0) {
+            return null;
+        }
+
+        return round(($baseAmount * $percent) / 100, 2);
     }
 }

@@ -234,7 +234,8 @@ class CustomerController extends Controller
             'subscriptions.latestOrder',
             'projects',
             'invoices' => function ($query) {
-                $query->latest('issue_date');
+                $query->with(['project', 'maintenance.project', 'subscription.plan.product'])
+                    ->latest('issue_date');
             },
             'supportTickets' => function ($query) {
                 $query->latest('updated_at');
@@ -508,6 +509,7 @@ class CustomerController extends Controller
                     'status' => (string) ($subscription->status ?? ''),
                     'status_label' => ucfirst((string) ($subscription->status ?? '--')),
                     'order_number' => (string) ($subscription->latestOrder?->order_number ?? '--'),
+                    'order_date_display' => $subscription->latestOrder?->created_at?->format($dateFormat) ?? '--',
                     'next_invoice_display' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
                     'period_end_display' => $subscription->current_period_end?->format($dateFormat) ?? '--',
                     'manage_url' => route('admin.subscriptions.edit', $subscription, false),
@@ -565,16 +567,31 @@ class CustomerController extends Controller
             'project_subtask_summary' => $projectSubtaskSummary,
             'project_task_progress' => $projectTaskProgress,
             'invoices' => $customer->invoices->map(function ($invoice) use ($dateFormat) {
+                $details = '--';
+                if ($invoice->project?->name) {
+                    $details = (string) $invoice->project->name;
+                } elseif ($invoice->maintenance?->project?->name) {
+                    $details = (string) $invoice->maintenance->project->name;
+                } elseif ($invoice->subscription?->plan) {
+                    $productName = (string) ($invoice->subscription->plan->product?->name ?? '--');
+                    $planName = (string) ($invoice->subscription->plan->name ?? '--');
+                    $details = trim($productName.' > '.$planName);
+                }
+
                 return [
                     'id' => $invoice->id,
+                    'details_display' => $details,
                     'number' => (string) ($invoice->number ?: $invoice->id),
                     'status' => (string) ($invoice->status ?? ''),
                     'status_label' => ucfirst((string) ($invoice->status ?? '--')),
                     'issue_date_display' => $invoice->issue_date?->format($dateFormat) ?? '--',
+                    'paid_date_display' => $invoice->paid_at?->format($dateFormat) ?? '--',
                     'due_date_display' => $invoice->due_date?->format($dateFormat) ?? '--',
                     'total' => (float) ($invoice->total ?? 0),
                     'currency' => (string) ($invoice->currency ?? ''),
                     'show_url' => route('admin.invoices.show', $invoice, false),
+                    'edit_url' => route('admin.invoices.show', $invoice, false),
+                    'destroy_url' => route('admin.invoices.destroy', $invoice, false),
                 ];
             })->values()->all(),
             'tickets' => $customer->supportTickets->map(function ($ticket) use ($dateTimeFormat) {
@@ -722,6 +739,20 @@ class CustomerController extends Controller
                 'quantity' => 1,
                 'unit_price' => $subtotal,
                 'line_total' => $subtotal,
+            ]);
+
+            // Initial invoice is created immediately, so advance the subscription
+            // period window to avoid duplicate billing of the same period.
+            $nextPeriodStart = $plan->interval === 'monthly'
+                ? $periodEnd->copy()->addDay()
+                : $periodEnd->copy();
+            $nextPeriodEnd = $plan->interval === 'monthly'
+                ? $nextPeriodStart->copy()->endOfMonth()
+                : $nextPeriodStart->copy()->addYear();
+
+            $subscription->update([
+                'current_period_start' => $nextPeriodStart->toDateString(),
+                'current_period_end' => $nextPeriodEnd->toDateString(),
             ]);
 
             License::create([

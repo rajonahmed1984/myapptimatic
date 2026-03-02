@@ -875,6 +875,9 @@ Route::middleware([
     Route::get('subscriptions/create', [SubscriptionController::class, 'create'])
         ->middleware(HandleInertiaRequests::class)
         ->name('subscriptions.create');
+    Route::get('subscriptions/{subscription}', [SubscriptionController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('subscriptions.show');
     Route::get('subscriptions/{subscription}/edit', [SubscriptionController::class, 'edit'])
         ->middleware(HandleInertiaRequests::class)
         ->name('subscriptions.edit');

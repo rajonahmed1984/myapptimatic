@@ -99,6 +99,13 @@ export default function Index({
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 <a
+                                                    href={subscription?.routes?.show}
+                                                    data-native="true"
+                                                    className="text-slate-700 hover:text-teal-600"
+                                                >
+                                                    View
+                                                </a>
+                                                <a
                                                     href={subscription?.routes?.edit}
                                                     data-native="true"
                                                     className="text-teal-600 hover:text-teal-500"

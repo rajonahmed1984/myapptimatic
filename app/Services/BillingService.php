@@ -33,6 +33,29 @@ class BillingService
             ? (float) $subscription->subscription_amount
             : (float) $plan->price;
 
+        // Guard against accidental duplicate billing for the same period.
+        // If a non-cancelled invoice already exists in this period, advance the
+        // subscription window and skip creating a duplicate invoice.
+        $periodAlreadyBilled = Invoice::query()
+            ->where('subscription_id', $subscription->id)
+            ->whereNotIn('status', ['cancelled', 'refunded'])
+            ->whereDate('issue_date', '>=', $periodStart->toDateString())
+            ->whereDate('issue_date', '<=', $periodEnd->toDateString())
+            ->exists();
+
+        if ($periodAlreadyBilled) {
+            [$nextStart, $nextEnd] = $this->nextPeriod($plan->interval, $periodEnd);
+            $nextInvoiceAt = $this->nextInvoiceAt($nextStart, $nextEnd, $issueDate, $plan->interval);
+
+            $subscription->update([
+                'current_period_start' => $nextStart->toDateString(),
+                'current_period_end' => $nextEnd->toDateString(),
+                'next_invoice_at' => $nextInvoiceAt->toDateString(),
+            ]);
+
+            return null;
+        }
+
         $subtotal = $this->calculateSubtotal($plan->interval, $basePrice, $periodStart, $periodEnd);
         $dueDays = (int) Setting::getValue('invoice_due_days');
         $currency = (string) Setting::getValue('currency');

@@ -375,14 +375,15 @@ function DateInputRuntimeAdapter({ App, props }) {
 
 createInertiaApp({
     title: (title) => normalizeBrowserTitle(title, INITIAL_APP_NAME),
-    resolve: (name) => {
-        const pages = import.meta.glob('./Pages/**/*.jsx', { eager: true });
-        const page = pages[`./Pages/${name}.jsx`];
+    resolve: async (name) => {
+        const pages = import.meta.glob('./Pages/**/*.jsx');
+        const pageImport = pages[`./Pages/${name}.jsx`];
 
-        if (!page) {
+        if (!pageImport) {
             throw new Error(`Inertia page not found: ${name}`);
         }
 
+        const page = await pageImport();
         const moduleDefault = page.default;
         const explicitTitle = moduleDefault?.title || page.pageTitle || moduleDefault?.pageTitle || '';
         if (typeof explicitTitle === 'string' && explicitTitle.trim() !== '') {

@@ -259,16 +259,15 @@ export default function Show({
                         <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-300">
                             <table className="w-full min-w-[800px] text-left text-sm">
                                 <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
-                                    <tr><th className="px-4 py-3">SL</th><th className="px-4 py-3">Product</th><th className="px-4 py-3">Plan</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Order number</th><th className="px-4 py-3">Next invoice</th><th className="px-4 py-3">Period end</th><th className="px-4 py-3 text-right">Actions</th></tr>
+                                    <tr><th className="px-4 py-3">SL</th><th className="px-4 py-3">Product &amp; Plan</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Order number &amp; Date</th><th className="px-4 py-3">Next invoice</th><th className="px-4 py-3">Period end</th><th className="px-4 py-3 text-right">Actions</th></tr>
                                 </thead>
                                 <tbody>
-                                    {subscriptions.length === 0 ? <tr><td colSpan={8} className="px-4 py-6 text-center text-slate-500">No services yet.</td></tr> : subscriptions.map((item, idx) => (
+                                    {subscriptions.length === 0 ? <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">No services yet.</td></tr> : subscriptions.map((item, idx) => (
                                         <tr key={item.id} className="border-b border-slate-100">
                                             <td className="px-4 py-3 text-slate-500">{idx + 1}</td>
-                                            <td className="px-4 py-3 text-slate-900">{item.product_name}</td>
-                                            <td className="px-4 py-3 text-slate-600">{item.plan_name}</td>
-                                            <td className="px-4 py-3 text-slate-600">{item.status_label}</td>
-                                            <td className="px-4 py-3 text-slate-500">{item.order_number}</td>
+                                            <td className="px-4 py-3 text-slate-900">{item.product_name} &gt; {item.plan_name}</td>
+                                            <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.status)}`}>{item.status_label || '--'}</span></td>
+                                            <td className="px-4 py-3 text-slate-500">{item.order_number} - {item.order_date_display}</td>
                                             <td className="px-4 py-3 text-slate-500">{item.next_invoice_display}</td>
                                             <td className="px-4 py-3 text-slate-500">{item.period_end_display}</td>
                                             <td className="px-4 py-3 text-right"><a href={item.manage_url} data-native="true" className="text-teal-600 hover:text-teal-500">Manage</a></td>
@@ -360,7 +359,67 @@ export default function Show({
                     </div>
                 ) : null}
 
-                {tab === 'invoices' ? <ListTable rows={invoices} columns={['number', 'status_label', 'issue_date_display', 'due_date_display']} actionKey="show_url" actionText="View" /> : null}
+                {tab === 'invoices' ? (
+                    <div className="overflow-x-auto rounded-2xl border border-slate-300">
+                        <table className="w-full min-w-[800px] text-left text-sm">
+                            <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
+                                <tr>
+                                    <th className="px-4 py-3">ID</th>
+                                    <th className="px-4 py-3">Details</th>
+                                    <th className="px-4 py-3">Total</th>
+                                    <th className="px-4 py-3">Paid date</th>
+                                    <th className="px-4 py-3">Due date</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {invoices.length === 0 ? (
+                                    <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">No records found.</td></tr>
+                                ) : invoices.map((row) => (
+                                    <tr key={row.id} className="border-b border-slate-100">
+                                        <td className="px-4 py-3 text-slate-700">
+                                            {row.show_url ? (
+                                                <a href={row.show_url} data-native="true" className="text-teal-600 hover:text-teal-500">
+                                                    {row.id || '--'}
+                                                </a>
+                                            ) : (
+                                                row.id || '--'
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-700">{row.details_display || '--'}</td>
+                                        <td className="px-4 py-3 text-slate-700">{asMoney(row.total, row.currency || currency?.code)}</td>
+                                        <td className="px-4 py-3 text-slate-700">{row.paid_date_display || '--'}</td>
+                                        <td className="px-4 py-3 text-slate-700">{row.due_date_display || '--'}</td>
+                                        <td className="px-4 py-3">
+                                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(row.status)}`}>{row.status_label || '--'}</span>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="inline-flex items-center gap-2">
+                                                <a href={row.edit_url || row.show_url} data-native="true" className="text-teal-600 hover:text-teal-500">Edit</a>
+                                                <span className="text-slate-300">|</span>
+                                                <form
+                                                    method="POST"
+                                                    action={row.destroy_url}
+                                                    data-native="true"
+                                                    onSubmit={(event) => {
+                                                        if (!window.confirm(`Delete invoice #${row.number || row.id}?`)) {
+                                                            event.preventDefault();
+                                                        }
+                                                    }}
+                                                >
+                                                    <input type="hidden" name="_token" value={csrf} />
+                                                    <input type="hidden" name="_method" value="DELETE" />
+                                                    <button type="submit" className="text-rose-600 hover:text-rose-500">Delete</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : null}
                 {tab === 'tickets' ? <ListTable rows={tickets} columns={['subject', 'status_label', 'last_reply_display']} actionKey="show_url" actionText="View" /> : null}
 
                 {tab === 'emails' ? (
