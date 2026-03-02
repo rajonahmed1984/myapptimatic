@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\Employee;
+use App\Models\PayrollItem;
+use App\Models\PayrollPeriod;
 use App\Models\Project;
 use App\Models\SalesRepresentative;
 use App\Models\SupportTicket;
@@ -185,5 +187,91 @@ class EmployeeRepSupportUiParityTest extends TestCase
             ->get(route('support.support-tickets.show', $ticket))
             ->assertOk()
             ->assertSee('Support\\/SupportTickets\\/Show', false);
+    }
+
+    #[Test]
+    public function employee_payroll_is_sorted_by_latest_period_first(): void
+    {
+        $user = User::factory()->create(['role' => 'employee']);
+        $employee = Employee::create([
+            'user_id' => $user->id,
+            'name' => 'Employee Payroll Sort',
+            'status' => 'active',
+            'employment_type' => 'full_time',
+            'work_mode' => 'remote',
+            'join_date' => now()->toDateString(),
+        ]);
+
+        $periodJan = PayrollPeriod::create([
+            'period_key' => '2026-01',
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-01-31',
+            'status' => 'finalized',
+        ]);
+        $periodMar = PayrollPeriod::create([
+            'period_key' => '2026-03',
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-03-31',
+            'status' => 'finalized',
+        ]);
+        $periodFeb = PayrollPeriod::create([
+            'period_key' => '2026-02',
+            'start_date' => '2026-02-01',
+            'end_date' => '2026-02-28',
+            'status' => 'finalized',
+        ]);
+
+        PayrollItem::create([
+            'payroll_period_id' => $periodJan->id,
+            'employee_id' => $employee->id,
+            'status' => 'approved',
+            'pay_type' => 'monthly',
+            'currency' => 'BDT',
+            'net_pay' => 10000,
+        ]);
+        PayrollItem::create([
+            'payroll_period_id' => $periodMar->id,
+            'employee_id' => $employee->id,
+            'status' => 'approved',
+            'pay_type' => 'monthly',
+            'currency' => 'BDT',
+            'net_pay' => 12000,
+        ]);
+        PayrollItem::create([
+            'payroll_period_id' => $periodFeb->id,
+            'employee_id' => $employee->id,
+            'status' => 'approved',
+            'pay_type' => 'monthly',
+            'currency' => 'BDT',
+            'net_pay' => 11000,
+        ]);
+
+        $response = $this->actingAs($user, 'employee')
+            ->get(route('employee.payroll.index'))
+            ->assertOk();
+
+        $props = $this->inertiaPayload($response->getContent());
+        $periodKeys = collect((array) data_get($props, 'props.items'))
+            ->pluck('period_key')
+            ->take(3)
+            ->values()
+            ->all();
+
+        $this->assertSame(['2026-03', '2026-02', '2026-01'], $periodKeys);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function inertiaPayload(string $html): array
+    {
+        preg_match('/data-page="([^"]+)"/', $html, $matches);
+        $this->assertArrayHasKey(1, $matches, 'Inertia payload is missing in response.');
+
+        $decoded = html_entity_decode($matches[1], ENT_QUOTES, 'UTF-8');
+        $payload = json_decode($decoded, true);
+        $this->assertIsArray($payload);
+
+        return $payload;
     }
 }

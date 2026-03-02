@@ -174,6 +174,11 @@ class EmployeePayoutController extends Controller
             'project_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'currency' => ['nullable', 'string', 'max:10'],
+            'coordination_month' => [
+                Rule::requiredIf(fn () => $salaryType !== 'project_base'),
+                'nullable',
+                'regex:/^\d{4}-\d{2}$/',
+            ],
             'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCodes())],
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
@@ -203,6 +208,16 @@ class EmployeePayoutController extends Controller
             'project_id' => $project?->id,
             'project_name' => $project?->name,
         ];
+
+        $coordinationMonth = (string) ($data['coordination_month'] ?? '');
+        if ($coordinationMonth !== '' && preg_match('/^\d{4}-\d{2}$/', $coordinationMonth)) {
+            try {
+                $coordinationDate = Carbon::createFromFormat('Y-m', $coordinationMonth)->startOfMonth();
+                $metadata['coordination_month'] = $coordinationMonth;
+                $metadata['coordination_month_label'] = $coordinationDate->format('F Y');
+            } catch (\Throwable) {
+            }
+        }
 
         if ($request->hasFile('payment_proof')) {
             $file = $request->file('payment_proof');

@@ -317,6 +317,7 @@ class SalesRepresentativeController extends Controller
         $projectCommissionTotals = collect();
         $projectPaidCommissionTotals = collect();
         $projectAdvancePaidTotals = collect();
+        $advanceSourceLabelByPayoutId = [];
 
         if ($tab === 'earnings') {
             $recentEarnings = $salesRep->earnings()
@@ -334,9 +335,30 @@ class SalesRepresentativeController extends Controller
 
         if ($tab === 'payouts') {
             $recentPayouts = $salesRep->payouts()
+                ->with([
+                    'project:id,name',
+                    'earnings:id,commission_payout_id,source_type',
+                ])
                 ->latest()
                 ->take(10)
                 ->get();
+
+            $payoutIds = $recentPayouts->pluck('id')->all();
+            if (! empty($payoutIds)) {
+                $advanceSourceLabelByPayoutId = CommissionAuditLog::query()
+                    ->whereIn('commission_payout_id', $payoutIds)
+                    ->where('action', 'advance_payment')
+                    ->orderByDesc('id')
+                    ->get(['commission_payout_id', 'metadata'])
+                    ->unique('commission_payout_id')
+                    ->mapWithKeys(function (CommissionAuditLog $log): array {
+                        $metadata = (array) ($log->metadata ?? []);
+                        $sourceLabel = trim((string) ($metadata['source_label'] ?? ''));
+
+                        return [(int) $log->commission_payout_id => $sourceLabel];
+                    })
+                    ->all();
+            }
         }
 
         if ($tab === 'services') {
@@ -680,11 +702,13 @@ class SalesRepresentativeController extends Controller
                     'earned_at' => $earning->earned_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values(),
-            'recentPayouts' => $recentPayouts->map(function (CommissionPayout $payout) {
+            'recentPayouts' => $recentPayouts->map(function (CommissionPayout $payout) use ($advanceSourceLabelByPayoutId) {
                 return [
                     'id' => $payout->id,
                     'type' => $payout->type,
                     'status' => $payout->status,
+                    'status_label' => ucfirst((string) ($payout->status ?? '--')),
+                    'source_label' => $this->resolvePayoutSourceLabel($payout, $advanceSourceLabelByPayoutId),
                     'payout_method' => $payout->payout_method,
                     'total_amount' => (float) $payout->total_amount,
                     'currency' => $payout->currency,
@@ -1115,6 +1139,45 @@ class SalesRepresentativeController extends Controller
         }
 
         return $paths;
+    }
+
+    private function resolvePayoutSourceLabel(CommissionPayout $payout, array $advanceSourceLabelByPayoutId): string
+    {
+        if ($payout->project?->name) {
+            return 'Project: '.$payout->project->name;
+        }
+
+        if ((string) ($payout->type ?? '') === 'advance') {
+            $sourceLabel = trim((string) ($advanceSourceLabelByPayoutId[(int) $payout->id] ?? ''));
+
+            return $sourceLabel !== '' ? $sourceLabel : 'Advance payment';
+        }
+
+        $sourceLabels = $payout->earnings
+            ->pluck('source_type')
+            ->filter(fn ($sourceType) => is_string($sourceType) && trim($sourceType) !== '')
+            ->map(fn ($sourceType) => $this->humanizePayoutSourceType((string) $sourceType))
+            ->unique()
+            ->values();
+
+        if ($sourceLabels->isEmpty()) {
+            return 'Commission earnings';
+        }
+
+        if ($sourceLabels->count() === 1) {
+            return (string) $sourceLabels->first();
+        }
+
+        return 'Mixed: '.$sourceLabels->implode(', ');
+    }
+
+    private function humanizePayoutSourceType(string $sourceType): string
+    {
+        return match ($sourceType) {
+            'project' => 'Project',
+            'plan', 'maintenance' => 'Products / Services',
+            default => ucfirst($sourceType),
+        };
     }
 
     /**

@@ -11,18 +11,6 @@ function employeeIdsFromAssignees(rows) {
         .map((row) => String(row.id));
 }
 
-function normalizeActivity(item) {
-    if (!item || typeof item !== 'object') {
-        return null;
-    }
-
-    if (item.activity && typeof item.activity === 'object') {
-        return item.activity;
-    }
-
-    return item;
-}
-
 function isImageAttachment(subtask) {
     const url = String(subtask?.attachment_url || '');
     const name = String(subtask?.attachment_name || '');
@@ -44,8 +32,6 @@ export default function TaskDetailClickup({
     assignees = [],
     employees = [],
     subtasks = [],
-    activities = [],
-    uploads = [],
     taskTypeOptions = {},
     priorityOptions = {},
     statusOptions = {},
@@ -58,15 +44,6 @@ export default function TaskDetailClickup({
     const [assigneeRows, setAssigneeRows] = useState(Array.isArray(assignees) ? assignees : []);
     const [employeeIds, setEmployeeIds] = useState(employeeIdsFromAssignees(assignees));
     const [assigneeNotice, setAssigneeNotice] = useState('');
-
-    const [activityRows, setActivityRows] = useState(
-        (Array.isArray(activities) ? activities : [])
-            .map((row) => normalizeActivity(row))
-            .filter(Boolean)
-    );
-    const [activityMessage, setActivityMessage] = useState('');
-    const [activityNotice, setActivityNotice] = useState('');
-    const [activityBusy, setActivityBusy] = useState(false);
     const [inlineSubtasksOpen, setInlineSubtasksOpen] = useState(false);
     const [subtaskFormOpen, setSubtaskFormOpen] = useState(true);
     const [taskEditOpen, setTaskEditOpen] = useState(false);
@@ -124,96 +101,6 @@ export default function TaskDetailClickup({
         setAssigneeRows(nextRows);
         setEmployeeIds(employeeIdsFromAssignees(nextRows));
         setAssigneeNotice('Assignees updated.');
-    };
-
-    const refreshActivity = async () => {
-        if (!routes?.activityItems || activityBusy) {
-            return;
-        }
-
-        setActivityBusy(true);
-        try {
-            const url = `${routes.activityItems}${routes.activityItems.includes('?') ? '&' : '?'}limit=100`;
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            });
-            const payload = await response.json().catch(() => null);
-            if (!response.ok || !payload?.ok) {
-                setActivityNotice('Unable to refresh activity.');
-                return;
-            }
-
-            const rows = (Array.isArray(payload?.data?.items) ? payload.data.items : [])
-                .map((item) => normalizeActivity(item))
-                .filter(Boolean);
-            setActivityRows(rows);
-            setActivityNotice('Activity refreshed.');
-        } catch (_error) {
-            setActivityNotice('Unable to refresh activity.');
-        } finally {
-            setActivityBusy(false);
-        }
-    };
-
-    const submitActivity = async (event) => {
-        event.preventDefault();
-        if (activityBusy) {
-            return;
-        }
-
-        const message = String(activityMessage || '').trim();
-        if (message === '') {
-            setActivityNotice('Message cannot be empty.');
-            return;
-        }
-
-        if (!routes?.activityItemsStore || !csrfToken) {
-            setActivityNotice('Unable to post message.');
-            return;
-        }
-
-        setActivityBusy(true);
-        try {
-            const formData = new FormData();
-            formData.append('message', message);
-
-            const response = await fetch(routes.activityItemsStore, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-                body: formData,
-            });
-            const payload = await response.json().catch(() => null);
-
-            if (!response.ok || !payload?.ok) {
-                setActivityNotice(payload?.message || 'Unable to post message.');
-                return;
-            }
-
-            const nextRows = (Array.isArray(payload?.data?.items) ? payload.data.items : [])
-                .map((item) => normalizeActivity(item))
-                .filter(Boolean);
-            setActivityRows((previous) => {
-                const map = new Map(previous.map((row) => [row.id, row]));
-                nextRows.forEach((row) => map.set(row.id, row));
-                return Array.from(map.values()).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
-            });
-            setActivityMessage('');
-            setActivityNotice(payload?.message || 'Comment added.');
-        } catch (_error) {
-            setActivityNotice('Unable to post message.');
-        } finally {
-            setActivityBusy(false);
-        }
     };
 
     const toggleTaskEdit = () => {
@@ -376,7 +263,7 @@ export default function TaskDetailClickup({
                     </div>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-[7fr_3fr]">
+                <div className="grid gap-6">
                     <div id="task-subtask-management" className="card p-6">
                         <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
                             <div>
@@ -407,6 +294,7 @@ export default function TaskDetailClickup({
                                         const subtaskStatus = String(subtask?.status || '').toLowerCase();
                                         const subtaskIsInProgress = subtaskStatus === 'in_progress';
                                         const subtaskIsCompleted = ['completed', 'done'].includes(subtaskStatus);
+                                        const commentRows = Array.isArray(subtask?.comments) ? subtask.comments : [];
 
                                         return (
                                             <div key={subtask.id} className="rounded-xl border border-slate-200 bg-white p-4">
@@ -489,6 +377,84 @@ export default function TaskDetailClickup({
                                                     </>
                                                 ) : null}
                                             </div>
+
+                                            <div className="mt-4 border-t border-slate-200 pt-3">
+                                                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                                    Subtask Comments
+                                                </div>
+
+                                                {commentRows.length > 0 ? (
+                                                    <div className="mt-2 space-y-2">
+                                                        {commentRows.map((comment) => {
+                                                            const replyRows = Array.isArray(comment?.replies) ? comment.replies : [];
+
+                                                            return (
+                                                                <div key={`comment-${comment.id}`} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                    <div className="text-[11px] text-slate-500">
+                                                                        {comment.actor_name} ({comment.actor_type_label}) | {comment.created_at_display}
+                                                                    </div>
+                                                                    <div className="mt-1 whitespace-pre-line text-sm text-slate-800">{comment.message}</div>
+
+                                                                    {replyRows.length > 0 ? (
+                                                                        <div className="mt-2 space-y-2 border-l-2 border-slate-200 pl-3">
+                                                                            {replyRows.map((reply) => (
+                                                                                <div key={`reply-${reply.id}`} className="rounded-md border border-slate-200 bg-white p-2">
+                                                                                    <div className="text-[11px] text-slate-500">
+                                                                                        {reply.actor_name} ({reply.actor_type_label}) | {reply.created_at_display}
+                                                                                    </div>
+                                                                                    <div className="mt-1 whitespace-pre-line text-xs text-slate-700">{reply.message}</div>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : null}
+
+                                                                    {permissions?.canPost && subtask?.routes?.comments_store ? (
+                                                                        <details className="mt-2">
+                                                                            <summary className="cursor-pointer text-xs font-semibold text-teal-700">Reply</summary>
+                                                                            <form method="POST" action={subtask.routes.comments_store} data-native="true" className="mt-2 space-y-2">
+                                                                                <input type="hidden" name="_token" value={csrfToken} />
+                                                                                <input type="hidden" name="parent_id" value={comment.id} />
+                                                                                <textarea
+                                                                                    name="message"
+                                                                                    rows={2}
+                                                                                    placeholder="Write a reply"
+                                                                                    className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                                                                                    required
+                                                                                />
+                                                                                <div className="flex justify-end">
+                                                                                    <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700">
+                                                                                        Reply
+                                                                                    </button>
+                                                                                </div>
+                                                                            </form>
+                                                                        </details>
+                                                                    ) : null}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-2 text-xs text-slate-500">No comments yet.</div>
+                                                )}
+
+                                                {permissions?.canPost && subtask?.routes?.comments_store ? (
+                                                    <form method="POST" action={subtask.routes.comments_store} data-native="true" className="mt-3 space-y-2">
+                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                        <textarea
+                                                            name="message"
+                                                            rows={2}
+                                                            placeholder="Write a comment on this subtask"
+                                                            className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                                                            required
+                                                        />
+                                                        <div className="flex justify-end">
+                                                            <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700">
+                                                                Comment
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                ) : null}
+                                            </div>
                                             </div>
                                         );
                                     })}
@@ -526,48 +492,6 @@ export default function TaskDetailClickup({
                         ) : null}
                     </div>
 
-                    <div className="card p-6">
-                        <div className="mb-3 flex items-center justify-between">
-                            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Activity</div>
-                            <button type="button" onClick={refreshActivity} disabled={activityBusy} className="rounded-full border border-slate-300 px-3 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">
-                                Refresh
-                            </button>
-                        </div>
-
-                        {canPost && routes?.activityItemsStore ? (
-                            <form onSubmit={submitActivity} className="mb-3 space-y-2">
-                                <textarea
-                                    name="message"
-                                    rows={3}
-                                    value={activityMessage}
-                                    onChange={(event) => setActivityMessage(event.target.value)}
-                                    placeholder="Write a message"
-                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                                />
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-slate-500">{activityNotice}</span>
-                                    <button type="submit" disabled={activityBusy} className="rounded-full border border-teal-200 px-4 py-1.5 text-xs font-semibold text-teal-700 disabled:opacity-50">
-                                        Post
-                                    </button>
-                                </div>
-                            </form>
-                        ) : null}
-
-                        {activityRows.length > 0 ? (
-                            <div className="max-h-[26rem] space-y-2 overflow-y-auto pr-1">
-                                {activityRows.map((activity) => (
-                                    <div key={activity.id} className="rounded-xl border border-slate-200 bg-white p-3">
-                                        <div className="text-xs text-slate-500">{activity.actor_name} ({activity.actor_type_label}) | {activity.created_at_display}</div>
-                                        {activity.message ? <div className="mt-1 whitespace-pre-line text-sm text-slate-800">{activity.message}</div> : null}
-                                        {activity.link_url ? <a href={activity.link_url} target="_blank" rel="noopener" className="text-xs font-semibold text-teal-600">{activity.link_url}</a> : null}
-                                        {activity.attachment_url ? <a href={activity.attachment_url} target="_blank" rel="noopener" className="ml-2 text-xs font-semibold text-teal-600">{activity.attachment_name || 'Attachment'}</a> : null}
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-sm text-slate-500">No activity yet.</div>
-                        )}
-                    </div>
                 </div>
 
                 {routePrefix === 'admin' && canEdit && routes?.update && taskEditOpen ? (

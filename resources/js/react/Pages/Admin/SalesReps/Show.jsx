@@ -10,6 +10,13 @@ const invoiceBadgeClass = (status) => {
     if (key === 'partially_paid' || key === 'partial') return 'border-blue-200 bg-blue-50 text-blue-700';
     return 'border-amber-200 bg-amber-50 text-amber-700';
 };
+const payoutStatusBadgeClass = (status) => {
+    const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
+    if (key === 'paid') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    if (key === 'draft' || key === 'pending') return 'border-amber-200 bg-amber-50 text-amber-700';
+    if (key === 'reversed' || key === 'cancelled' || key === 'canceled') return 'border-rose-200 bg-rose-50 text-rose-700';
+    return 'border-slate-300 bg-slate-50 text-slate-700';
+};
 
 export default function Show({
     pageTitle = 'Sales Representative',
@@ -325,7 +332,51 @@ function EarningsTable({ rows, summary, route }) {
 }
 
 function PayoutsTable({ rows }) {
-    return <SimpleTable title="Recent Payouts" headers={['ID', 'Type', 'Status', 'Method', 'Amount', 'Paid At', 'Reference']} rows={rows.map((r) => [String(r.id), String(r.type || '--'), String(r.status || '--'), String(r.payout_method || '--'), `${r.currency || ''} ${money(r.total_amount)}`, r.paid_at, String(r.reference || '--')])} empty="No payouts yet." />;
+    const list = Array.isArray(rows) ? rows : [];
+
+    return (
+        <div className="card p-6">
+            <div className="mb-3 text-sm font-semibold text-slate-800">Recent Payouts</div>
+            {list.length === 0 ? (
+                <div className="text-sm text-slate-600">No payouts yet.</div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-left text-sm">
+                        <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <tr>
+                                <th className="px-3 py-2">ID</th>
+                                <th className="px-3 py-2">Source</th>
+                                <th className="px-3 py-2">Type</th>
+                                <th className="px-3 py-2">Status</th>
+                                <th className="px-3 py-2">Method</th>
+                                <th className="px-3 py-2">Amount</th>
+                                <th className="px-3 py-2">Paid At</th>
+                                <th className="px-3 py-2">Reference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {list.map((row) => (
+                                <tr key={row.id} className="border-t border-slate-100">
+                                    <td className="px-3 py-2">{String(row.id)}</td>
+                                    <td className="px-3 py-2">{row.source_label || '--'}</td>
+                                    <td className="px-3 py-2">{row.type || '--'}</td>
+                                    <td className="px-3 py-2">
+                                        <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${payoutStatusBadgeClass(row.status)}`}>
+                                            {row.status_label || row.status || '--'}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 py-2">{row.payout_method || '--'}</td>
+                                    <td className="px-3 py-2">{`${row.currency || ''} ${money(row.total_amount)}`.trim()}</td>
+                                    <td className="px-3 py-2">{row.paid_at || '--'}</td>
+                                    <td className="px-3 py-2">{row.reference || '--'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
 }
 
 function EmailsTable({ rows }) {

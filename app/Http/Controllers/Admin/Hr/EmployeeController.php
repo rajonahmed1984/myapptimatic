@@ -15,6 +15,7 @@ use App\Models\EmployeeWorkSummary;
 use App\Models\PaidHoliday;
 use App\Models\PaymentMethod;
 use App\Models\PayrollItem;
+use App\Models\PayrollPeriod;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
@@ -458,6 +459,7 @@ class EmployeeController extends Controller
         $recentPayrollItems = collect();
         $recentSalaryAdvances = collect();
         $recentAdvanceTransactions = collect();
+        $payrollMonthOptions = collect();
         $emailLogs = collect();
         $activityLogs = collect();
         $draftPayrollItem = null;
@@ -469,6 +471,10 @@ class EmployeeController extends Controller
             'coverage_percent' => 0,
             'today_salary_projection' => 0.0,
             'month_salary_projection' => 0.0,
+            'payable_amount' => 0.0,
+            'paid_incl_advance' => 0.0,
+            'payroll_paid_amount' => 0.0,
+            'advance_paid_amount' => 0.0,
             'currency' => $summary['currency'] ?? 'BDT',
         ];
         $payrollSourceNote = null;
@@ -703,6 +709,23 @@ class EmployeeController extends Controller
                 ? (int) round(min(100, ($monthActiveSeconds / $monthRequiredSeconds) * 100))
                 : 0;
 
+            $payrollStatusesForTotals = ['approved', 'partial', 'paid'];
+            $totalPayrollNet = round((float) PayrollItem::query()
+                ->where('employee_id', $employee->id)
+                ->whereIn('status', $payrollStatusesForTotals)
+                ->sum('net_pay'), 2, PHP_ROUND_HALF_UP);
+            $totalPayrollPaid = round((float) PayrollItem::query()
+                ->where('employee_id', $employee->id)
+                ->whereIn('status', $payrollStatusesForTotals)
+                ->sum('paid_amount'), 2, PHP_ROUND_HALF_UP);
+            $totalAdvancePaid = round((float) EmployeePayout::query()
+                ->where('employee_id', $employee->id)
+                ->where('metadata->type', 'advance')
+                ->where('metadata->advance_scope', 'payroll')
+                ->sum('amount'), 2, PHP_ROUND_HALF_UP);
+            $payableAmount = round(max(0, $totalPayrollNet - $totalPayrollPaid), 2, PHP_ROUND_HALF_UP);
+            $paidIncludingAdvance = round($totalPayrollPaid + $totalAdvancePaid, 2, PHP_ROUND_HALF_UP);
+
             $workSessionStats = [
                 'eligible' => $eligible,
                 'today_active_seconds' => $todayActiveSeconds,
@@ -711,6 +734,10 @@ class EmployeeController extends Controller
                 'coverage_percent' => $coveragePercent,
                 'today_salary_projection' => round($todaySalaryProjection, 2),
                 'month_salary_projection' => round($monthSalaryProjection, 2),
+                'payable_amount' => $payableAmount,
+                'paid_incl_advance' => $paidIncludingAdvance,
+                'payroll_paid_amount' => $totalPayrollPaid,
+                'advance_paid_amount' => $totalAdvancePaid,
                 'currency' => $summary['currency'] ?? 'BDT',
             ];
 
@@ -744,27 +771,29 @@ class EmployeeController extends Controller
 
             $recentPayrollItems = PayrollItem::query()
                 ->with('period:id,period_key,start_date,end_date')
-                ->where('employee_id', $employee->id)
-                ->orderByDesc('id')
+                ->join('payroll_periods as payroll_period_sort', 'payroll_period_sort.id', '=', 'payroll_items.payroll_period_id')
+                ->where('payroll_items.employee_id', $employee->id)
+                ->orderByDesc('payroll_period_sort.start_date')
+                ->orderByDesc('payroll_items.id')
                 ->limit(10)
                 ->get([
-                    'id',
-                    'payroll_period_id',
-                    'status',
-                    'pay_type',
-                    'currency',
-                    'base_pay',
-                    'timesheet_hours',
-                    'overtime_enabled',
-                    'overtime_hours',
-                    'overtime_rate',
-                    'bonuses',
-                    'penalties',
-                    'advances',
-                    'deductions',
-                    'gross_pay',
-                    'net_pay',
-                    'paid_at',
+                    'payroll_items.id',
+                    'payroll_items.payroll_period_id',
+                    'payroll_items.status',
+                    'payroll_items.pay_type',
+                    'payroll_items.currency',
+                    'payroll_items.base_pay',
+                    'payroll_items.timesheet_hours',
+                    'payroll_items.overtime_enabled',
+                    'payroll_items.overtime_hours',
+                    'payroll_items.overtime_rate',
+                    'payroll_items.bonuses',
+                    'payroll_items.penalties',
+                    'payroll_items.advances',
+                    'payroll_items.deductions',
+                    'payroll_items.gross_pay',
+                    'payroll_items.net_pay',
+                    'payroll_items.paid_at',
                 ]);
 
             if ($tab === 'payroll') {
@@ -906,6 +935,8 @@ class EmployeeController extends Controller
             $draftPayrollItem = $recentPayrollItems->firstWhere('status', 'draft');
 
             if ($tab === 'payroll' && in_array($summary['salary_type'] ?? null, ['monthly', 'hourly'], true)) {
+                $payrollMonthOptions = $this->buildPayrollMonthOptions();
+
                 $recentSalaryAdvances = EmployeePayout::query()
                     ->where('employee_id', $employee->id)
                     ->where('metadata->type', 'advance')
@@ -1016,6 +1047,7 @@ class EmployeeController extends Controller
             'recentPayrollItems' => $recentPayrollItems->values(),
             'recentSalaryAdvances' => $recentSalaryAdvances->values(),
             'recentAdvanceTransactions' => $recentAdvanceTransactions->values(),
+            'payrollMonthOptions' => $payrollMonthOptions->values(),
             'emailLogs' => $emailLogs->map(function (SystemLog $log) use ($dateTimeFormat) {
                 return [
                     'id' => $log->id,
@@ -1164,6 +1196,53 @@ class EmployeeController extends Controller
             ->groupBy('employee_id')
             ->pluck('last_login_at', 'employee_id')
             ->all();
+    }
+
+    private function buildPayrollMonthOptions(): \Illuminate\Support\Collection
+    {
+        $options = PayrollPeriod::query()
+            ->orderByDesc('start_date')
+            ->limit(24)
+            ->get(['period_key', 'start_date'])
+            ->map(function (PayrollPeriod $period) {
+                $key = (string) ($period->period_key ?? '');
+                if (! preg_match('/^\d{4}-\d{2}$/', $key)) {
+                    return null;
+                }
+
+                $label = $period->start_date instanceof Carbon
+                    ? $period->start_date->format('F Y')
+                    : $key;
+
+                return [
+                    'value' => $key,
+                    'label' => $label.' ('.$key.')',
+                ];
+            })
+            ->filter()
+            ->values();
+
+        if ($options->isEmpty()) {
+            $cursor = now()->startOfMonth();
+            for ($i = 0; $i < 12; $i++) {
+                $key = $cursor->format('Y-m');
+                $options->push([
+                    'value' => $key,
+                    'label' => $cursor->format('F Y').' ('.$key.')',
+                ]);
+                $cursor->subMonth();
+            }
+        }
+
+        $currentKey = now()->format('Y-m');
+        if (! $options->contains(fn ($row) => ($row['value'] ?? null) === $currentKey)) {
+            $options->prepend([
+                'value' => $currentKey,
+                'label' => now()->format('F Y').' ('.$currentKey.')',
+            ]);
+        }
+
+        return $options->unique('value')->values();
     }
 
     private function sumPayrollAdjustment($value): float

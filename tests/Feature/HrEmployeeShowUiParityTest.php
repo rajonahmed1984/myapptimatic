@@ -5,6 +5,9 @@ namespace Tests\Feature;
 use App\Enums\Role;
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
+use App\Models\EmployeePayout;
+use App\Models\PayrollItem;
+use App\Models\PayrollPeriod;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -95,10 +98,16 @@ class HrEmployeeShowUiParityTest extends TestCase
             ->post(route('admin.hr.employees.advance-payout', $employee), [
                 'amount' => 1000,
                 'currency' => 'BDT',
+                'coordination_month' => now()->format('Y-m'),
                 'paid_at' => now()->toDateString(),
             ])
             ->assertRedirect($showUrl)
             ->assertSessionHas('status', 'Advance payout recorded.');
+
+        $this->assertDatabaseHas('employee_payouts', [
+            'employee_id' => $employee->id,
+            'metadata->coordination_month' => now()->format('Y-m'),
+        ]);
     }
 
     #[Test]
@@ -115,6 +124,143 @@ class HrEmployeeShowUiParityTest extends TestCase
             ])
             ->assertRedirect($showUrl)
             ->assertSessionHasErrors(['amount']);
+    }
+
+    #[Test]
+    public function employee_payroll_tab_exposes_payable_and_paid_including_advance_stats(): void
+    {
+        $admin = $this->makeAdmin();
+        $employee = $this->makeEmployee('payroll-stats@example.test', 'monthly');
+
+        $period = PayrollPeriod::create([
+            'period_key' => '2026-03',
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-03-31',
+            'status' => 'finalized',
+        ]);
+
+        PayrollItem::create([
+            'payroll_period_id' => $period->id,
+            'employee_id' => $employee->id,
+            'status' => 'partial',
+            'pay_type' => 'monthly',
+            'currency' => 'BDT',
+            'net_pay' => 20000,
+            'paid_amount' => 5000,
+        ]);
+
+        PayrollItem::create([
+            'payroll_period_id' => $period->id,
+            'employee_id' => $employee->id,
+            'status' => 'paid',
+            'pay_type' => 'monthly',
+            'currency' => 'BDT',
+            'net_pay' => 10000,
+            'paid_amount' => 10000,
+        ]);
+
+        EmployeePayout::create([
+            'employee_id' => $employee->id,
+            'amount' => 3000,
+            'currency' => 'BDT',
+            'metadata' => [
+                'type' => 'advance',
+                'advance_scope' => 'payroll',
+            ],
+            'paid_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.hr.employees.show', ['employee' => $employee->id, 'tab' => 'payroll']))
+            ->assertOk();
+
+        $props = $this->inertiaProps($response->getContent());
+        $this->assertEquals(15000.0, (float) data_get($props, 'props.workSessionStats.payable_amount'));
+        $this->assertEquals(18000.0, (float) data_get($props, 'props.workSessionStats.paid_incl_advance'));
+        $this->assertEquals(15000.0, (float) data_get($props, 'props.workSessionStats.payroll_paid_amount'));
+        $this->assertEquals(3000.0, (float) data_get($props, 'props.workSessionStats.advance_paid_amount'));
+    }
+
+    #[Test]
+    public function employee_payroll_tab_exposes_payroll_month_options_for_advance_coordination(): void
+    {
+        $admin = $this->makeAdmin();
+        $employee = $this->makeEmployee('payroll-month-options@example.test', 'monthly');
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.hr.employees.show', ['employee' => $employee->id, 'tab' => 'payroll']))
+            ->assertOk();
+
+        $props = $this->inertiaProps($response->getContent());
+        $options = (array) data_get($props, 'props.payrollMonthOptions');
+
+        $this->assertNotEmpty($options);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}$/', (string) data_get($options, '0.value'));
+    }
+
+    #[Test]
+    public function employee_payroll_items_are_sorted_by_latest_period_month_first(): void
+    {
+        $admin = $this->makeAdmin();
+        $employee = $this->makeEmployee('payroll-order@example.test', 'monthly');
+
+        $periodJan = PayrollPeriod::create([
+            'period_key' => '2026-01',
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-01-31',
+            'status' => 'finalized',
+        ]);
+        $periodMar = PayrollPeriod::create([
+            'period_key' => '2026-03',
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-03-31',
+            'status' => 'finalized',
+        ]);
+        $periodFeb = PayrollPeriod::create([
+            'period_key' => '2026-02',
+            'start_date' => '2026-02-01',
+            'end_date' => '2026-02-28',
+            'status' => 'finalized',
+        ]);
+
+        // Intentionally created in non-chronological order to verify sort behavior.
+        PayrollItem::create([
+            'payroll_period_id' => $periodJan->id,
+            'employee_id' => $employee->id,
+            'status' => 'approved',
+            'pay_type' => 'monthly',
+            'currency' => 'BDT',
+            'net_pay' => 10000,
+        ]);
+        PayrollItem::create([
+            'payroll_period_id' => $periodMar->id,
+            'employee_id' => $employee->id,
+            'status' => 'approved',
+            'pay_type' => 'monthly',
+            'currency' => 'BDT',
+            'net_pay' => 12000,
+        ]);
+        PayrollItem::create([
+            'payroll_period_id' => $periodFeb->id,
+            'employee_id' => $employee->id,
+            'status' => 'approved',
+            'pay_type' => 'monthly',
+            'currency' => 'BDT',
+            'net_pay' => 11000,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.hr.employees.show', ['employee' => $employee->id, 'tab' => 'payroll']))
+            ->assertOk();
+
+        $props = $this->inertiaProps($response->getContent());
+        $periodKeys = collect((array) data_get($props, 'props.recentPayrollItems'))
+            ->map(fn (array $item) => (string) data_get($item, 'period.period_key'))
+            ->filter()
+            ->values()
+            ->all();
+
+        $this->assertSame(['2026-03', '2026-02', '2026-01'], array_slice($periodKeys, 0, 3));
     }
 
     #[Test]

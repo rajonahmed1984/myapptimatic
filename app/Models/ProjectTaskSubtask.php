@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProjectTaskSubtask extends Model
 {
@@ -41,6 +42,13 @@ class ProjectTaskSubtask extends Model
     public function completedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'completed_by');
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ProjectTaskSubtaskComment::class, 'project_task_subtask_id')
+            ->with(['userActor', 'employeeActor', 'salesRepActor', 'replies.userActor', 'replies.employeeActor', 'replies.salesRepActor'])
+            ->orderBy('created_at');
     }
 
     public function creatorEditWindowExpired(?int $userId): bool

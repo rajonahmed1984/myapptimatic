@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import DatePickerField from '../../../../Components/DatePickerField';
+import { formatDate } from '../../../../utils/datetime';
 
 const currency = (value, code = 'BDT') => {
     const amount = Number(value || 0);
@@ -45,6 +46,7 @@ export default function Show({
     recentWorkSummaries = [],
     recentPayrollItems = [],
     recentSalaryAdvances = [],
+    payrollMonthOptions = [],
     emailLogs = [],
     activityLogs = [],
     workSessionStats = {},
@@ -303,7 +305,7 @@ export default function Show({
                                         <td className="py-2 px-3 font-semibold text-slate-900">{item.name}</td>
                                         <td className="py-2 px-3">{currency(item.contract_employee_total_earned, item.currency || summary?.currency || 'BDT')}</td>
                                         <td className="py-2 px-3">{currency(item.contract_employee_payable, item.currency || summary?.currency || 'BDT')}</td>
-                                        <td className="py-2 px-3">{item.updated_at || '--'}</td>
+                                        <td className="py-2 px-3">{formatDate(item.updated_at, '--')}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -331,7 +333,7 @@ export default function Show({
                                 <tbody>
                                     {asArray(recentPayouts).length === 0 ? <tr><td colSpan={4} className="py-3 px-3 text-center text-slate-500">No payouts found.</td></tr> : asArray(recentPayouts).map((item) => (
                                         <tr key={item.id} className="border-b border-slate-100">
-                                            <td className="py-2 px-3">{item.paid_at || '--'}</td>
+                                            <td className="py-2 px-3">{formatDate(item.paid_at, '--')}</td>
                                             <td className="py-2 px-3">{currency(item.amount, item.currency || summary?.currency || 'BDT')}</td>
                                             <td className="py-2 px-3">{item.payout_method || '--'}</td>
                                             <td className="py-2 px-3">{item.reference || '--'}</td>
@@ -413,7 +415,7 @@ export default function Show({
                                 <tbody>
                                     {asArray(recentAdvanceTransactions).length === 0 ? <tr><td colSpan={6} className="py-3 px-3 text-center text-slate-500">No advance transactions found.</td></tr> : asArray(recentAdvanceTransactions).map((item) => (
                                         <tr key={item.id} className="border-b border-slate-100">
-                                            <td className="py-2 px-3">{item.paid_at || '--'}</td>
+                                            <td className="py-2 px-3">{formatDate(item.paid_at, '--')}</td>
                                             <td className="py-2 px-3">{currency(item.amount, item.currency || summary?.currency || 'BDT')}</td>
                                             <td className="py-2 px-3">{item.payout_method || '--'}</td>
                                             <td className="py-2 px-3">{item.reference || '--'}</td>
@@ -451,12 +453,16 @@ export default function Show({
                             </div>
                         </div>
                         <div className="card p-4">
-                            <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Today Salary Projection</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{currency(workSessionStats?.today_salary_projection || 0, workSessionStats?.currency || summary?.currency || 'BDT')}</div>
+                            <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Payable Amount</div>
+                            <div className="mt-2 text-2xl font-semibold text-slate-900">{currency(workSessionStats?.payable_amount || 0, workSessionStats?.currency || summary?.currency || 'BDT')}</div>
+                            <div className="mt-1 text-xs text-slate-500">Open payroll due (net - payroll paid)</div>
                         </div>
                         <div className="card p-4">
-                            <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Month Salary Projection</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{currency(workSessionStats?.month_salary_projection || 0, workSessionStats?.currency || summary?.currency || 'BDT')}</div>
+                            <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Paid (Incl. Advance)</div>
+                            <div className="mt-2 text-2xl font-semibold text-slate-900">{currency(workSessionStats?.paid_incl_advance || 0, workSessionStats?.currency || summary?.currency || 'BDT')}</div>
+                            <div className="mt-1 text-xs text-slate-500">
+                                Payroll paid: {currency(workSessionStats?.payroll_paid_amount || 0, workSessionStats?.currency || summary?.currency || 'BDT')} | Advance: {currency(workSessionStats?.advance_paid_amount || 0, workSessionStats?.currency || summary?.currency || 'BDT')}
+                            </div>
                         </div>
                         <div className="card p-4">
                             <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Payroll Source</div>
@@ -472,7 +478,7 @@ export default function Show({
                                 <tbody>
                                     {asArray(recentWorkSessions).length === 0 ? <tr><td colSpan={5} className="py-3 px-3 text-center text-slate-500">No work sessions found.</td></tr> : asArray(recentWorkSessions).map((item, idx) => (
                                         <tr key={`${item.work_date || 'd'}-${idx}`} className="border-b border-slate-100">
-                                            <td className="py-2 px-3">{item.work_date || '--'}</td>
+                                            <td className="py-2 px-3">{formatDate(item.work_date, '--')}</td>
                                             <td className="py-2 px-3">{item.started_at || '--'}</td>
                                             <td className="py-2 px-3">{item.ended_at || '--'}</td>
                                             <td className="py-2 px-3">{item.last_activity_at || '--'}</td>
@@ -503,12 +509,16 @@ export default function Show({
                             <div className="mt-1 text-xs text-slate-500">Required: {formatSeconds(workSessionStats?.month_required_seconds || 0)}</div>
                         </div>
                         <div className="card p-4">
-                            <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Today Salary Projection</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{currency(workSessionStats?.today_salary_projection || 0, workSessionStats?.currency || summary?.currency || 'BDT')}</div>
+                            <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Payable Amount</div>
+                            <div className="mt-2 text-2xl font-semibold text-slate-900">{currency(workSessionStats?.payable_amount || 0, workSessionStats?.currency || summary?.currency || 'BDT')}</div>
+                            <div className="mt-1 text-xs text-slate-500">Open payroll due (net - payroll paid)</div>
                         </div>
                         <div className="card p-4">
-                            <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Month Salary Projection</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{currency(workSessionStats?.month_salary_projection || 0, workSessionStats?.currency || summary?.currency || 'BDT')}</div>
+                            <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Paid (Incl. Advance)</div>
+                            <div className="mt-2 text-2xl font-semibold text-slate-900">{currency(workSessionStats?.paid_incl_advance || 0, workSessionStats?.currency || summary?.currency || 'BDT')}</div>
+                            <div className="mt-1 text-xs text-slate-500">
+                                Payroll paid: {currency(workSessionStats?.payroll_paid_amount || 0, workSessionStats?.currency || summary?.currency || 'BDT')} | Advance: {currency(workSessionStats?.advance_paid_amount || 0, workSessionStats?.currency || summary?.currency || 'BDT')}
+                            </div>
                         </div>
                         <div className="card p-4">
                             <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Payroll Source</div>
@@ -521,7 +531,7 @@ export default function Show({
                         <div className="text-xl font-semibold text-slate-900">Record salary advance</div>
                         <div className="mt-1 text-sm text-slate-500">This creates an advance payout entry for payroll tracking.</div>
 
-                        <div className="mt-5 grid gap-4 md:grid-cols-5">
+                        <div className="mt-5 grid gap-4 md:grid-cols-6">
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Amount</div>
                                 <input type="number" name="amount" step="0.01" min="0.01" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="0.00" required />
@@ -529,6 +539,20 @@ export default function Show({
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Currency</div>
                                 <input type="text" name="currency" defaultValue={summary?.currency || 'BDT'} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                            </div>
+                            <div>
+                                <div className="mb-1 text-sm text-slate-600">Coordination Month</div>
+                                <select
+                                    name="coordination_month"
+                                    defaultValue={new Date().toISOString().slice(0, 7)}
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    required
+                                >
+                                    <option value="">Select month</option>
+                                    {asArray(payrollMonthOptions).map((month) => (
+                                        <option key={month.value} value={month.value}>{month.label || month.value}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Method</div>
@@ -572,11 +596,12 @@ export default function Show({
                         <div className="text-xl font-semibold text-slate-900">Salary Advance Transactions</div>
                         <div className="mt-3 overflow-x-auto">
                             <table className="min-w-full text-sm text-slate-700">
-                                <thead><tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500"><th className="py-2 px-3">Date</th><th className="py-2 px-3">Amount</th><th className="py-2 px-3">Method</th><th className="py-2 px-3">Reference</th><th className="py-2 px-3">Proof</th><th className="py-2 px-3">Note</th></tr></thead>
+                                <thead><tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500"><th className="py-2 px-3">Date</th><th className="py-2 px-3">Month</th><th className="py-2 px-3">Amount</th><th className="py-2 px-3">Method</th><th className="py-2 px-3">Reference</th><th className="py-2 px-3">Proof</th><th className="py-2 px-3">Note</th></tr></thead>
                                 <tbody>
-                                    {asArray(recentSalaryAdvances).length === 0 ? <tr><td colSpan={6} className="py-3 px-3 text-center text-slate-500">No advance transactions found.</td></tr> : asArray(recentSalaryAdvances).map((item) => (
+                                    {asArray(recentSalaryAdvances).length === 0 ? <tr><td colSpan={7} className="py-3 px-3 text-center text-slate-500">No advance transactions found.</td></tr> : asArray(recentSalaryAdvances).map((item) => (
                                         <tr key={item.id} className="border-b border-slate-100">
-                                            <td className="py-2 px-3">{item.paid_at || '--'}</td>
+                                            <td className="py-2 px-3">{formatDate(item.paid_at, '--')}</td>
+                                            <td className="py-2 px-3">{item?.metadata?.coordination_month_label || item?.metadata?.coordination_month || '--'}</td>
                                             <td className="py-2 px-3">{currency(item.amount, item.currency || summary?.currency || 'BDT')}</td>
                                             <td className="py-2 px-3">{item.payout_method || '--'}</td>
                                             <td className="py-2 px-3">{item.reference || '--'}</td>
@@ -617,7 +642,7 @@ export default function Show({
                                             <td className="py-2 px-3">{currency(item.computed_deduction || 0, item.currency || summary?.currency || 'BDT')}</td>
                                             <td className="py-2 px-3">{currency(item.computed_net_pay ?? item.net_pay, item.currency || summary?.currency || 'BDT')}</td>
                                             <td className="py-2 px-3">{item.status || '--'}</td>
-                                            <td className="py-2 px-3">{item.paid_at || '--'}</td>
+                                            <td className="py-2 px-3">{formatDate(item.paid_at, '--')}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -643,7 +668,7 @@ export default function Show({
                                         <tr><td colSpan={5} className="py-3 px-3 text-center text-slate-500">No work summaries found.</td></tr>
                                     ) : asArray(recentWorkSummaries).map((item, idx) => (
                                         <tr key={`${item.work_date || 'summary'}-${idx}`} className="border-b border-slate-100">
-                                            <td className="py-2 px-3">{item.work_date || '--'}</td>
+                                            <td className="py-2 px-3">{formatDate(item.work_date, '--')}</td>
                                             <td className="py-2 px-3">{formatSeconds(item.active_seconds || 0)}</td>
                                             <td className="py-2 px-3">{formatSeconds(item.required_seconds || 0)}</td>
                                             <td className="py-2 px-3">{currency(item.generated_salary_amount, summary?.currency || 'BDT')}</td>

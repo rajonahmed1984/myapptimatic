@@ -1,7 +1,7 @@
 import '../bootstrap';
 import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router as inertiaRouter } from '@inertiajs/react';
 import { formatDate, parseDate } from './utils/datetime';
 import 'flatpickr/dist/flatpickr.min.css';
 import { enhanceEasyDateInputsInDocument } from './utils/easyDateEnhancer';
@@ -14,6 +14,10 @@ const DATETIME_TOKEN_REGEX = /\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2}-\d{
 const DATETIME_TOKEN_TEST_REGEX = /\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2}-\d{2})(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?\b|\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)\b/;
 const DATETIME_SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'OPTION', 'SELECT']);
 const COMPONENT_TITLE_MAP = {};
+
+if (typeof window !== 'undefined') {
+    window.__inertiaRouter = inertiaRouter;
+}
 
 const normalizeDisplayDateValue = (value) => {
     if (typeof value !== 'string') {

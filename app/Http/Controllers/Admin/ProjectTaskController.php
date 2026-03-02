@@ -21,6 +21,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -165,7 +166,7 @@ class ProjectTaskController extends Controller
         }
 
         $taskType = $data['task_type'] ?? $task->task_type ?? 'feature';
-        if ($taskType === 'upload' && ! $task->activities()->where('type', 'upload')->exists()) {
+        if ($taskType === 'upload' && ! $this->taskHasUploadFiles($task)) {
             return $this->validationError($request, ['task_type' => 'Upload tasks require at least one file.']);
         }
 
@@ -588,5 +589,16 @@ class ProjectTaskController extends Controller
         $fileName = $name.'-'.Str::random(8).'.'.$extension;
 
         return $file->storeAs('project-task-activities/'.$task->id, $fileName, 'public');
+    }
+
+    private function taskHasUploadFiles(ProjectTask $task): bool
+    {
+        try {
+            $files = Storage::disk('public')->files('project-task-activities/'.$task->id);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return ! empty($files);
     }
 }

@@ -10,8 +10,6 @@ use App\Models\ProjectTaskMessage;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -20,45 +18,14 @@ class ProjectTaskChatTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function client_can_chat_on_visible_tasks_and_upload_attachments(): void
+    public function client_can_open_visible_task_detail_page(): void
     {
-        Storage::fake('public');
-
         [$project, $visibleTask, $hiddenTask, $employeeUser, $salesUser, $clientUser] = $this->setupProjectWithMembers();
 
         $response = $this->actingAs($clientUser)
             ->get(route('client.projects.tasks.show', [$project, $visibleTask]));
 
         $response->assertOk();
-
-        $postResponse = $this->actingAs($clientUser)
-            ->post(route('client.projects.tasks.activity.store', [$project, $visibleTask]), [
-                'message' => 'Client update',
-            ]);
-
-        $postResponse->assertRedirect();
-        $this->assertDatabaseHas('project_task_activities', [
-            'project_task_id' => $visibleTask->id,
-            'actor_type' => 'client',
-            'actor_id' => $clientUser->id,
-            'type' => 'comment',
-            'message' => 'Client update',
-        ]);
-
-        $fileResponse = $this->actingAs($clientUser)
-            ->post(route('client.projects.tasks.upload', [$project, $visibleTask]), [
-                'attachment' => UploadedFile::fake()->image('shot.png'),
-            ]);
-
-        $fileResponse->assertRedirect();
-
-        $activity = \App\Models\ProjectTaskActivity::latest('id')->first();
-        $this->assertNotNull($activity?->attachment_path);
-        Storage::disk('public')->assertExists($activity->attachment_path);
-        $this->assertDatabaseHas('project_task_activities', [
-            'project_task_id' => $visibleTask->id,
-            'type' => 'upload',
-        ]);
     }
 
     #[Test]

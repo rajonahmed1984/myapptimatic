@@ -27,6 +27,7 @@ use App\Models\Invoice;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class ScanDataIntegrity extends Command
@@ -87,9 +88,13 @@ class ScanDataIntegrity extends Command
             ->where('source_type', 'commission_payout')
             ->whereNotIn('source_id', CommissionPayout::query()->select('id')), $limit);
 
-        $rows[] = $this->summarizeMissingFiles('Task activities with missing attachments', ProjectTaskActivity::query()
-            ->whereNotNull('attachment_path')
-            ->where('attachment_path', '!=', ''), 'attachment_path', $limit);
+        if (Schema::hasTable('project_task_activities')) {
+            $rows[] = $this->summarizeMissingFiles('Task activities with missing attachments', ProjectTaskActivity::query()
+                ->whereNotNull('attachment_path')
+                ->where('attachment_path', '!=', ''), 'attachment_path', $limit);
+        } else {
+            $rows[] = ['Task activities with missing attachments', 0, '--'];
+        }
         $rows[] = $this->summarizeMissingFiles('Project chat messages with missing attachments', ProjectMessage::query()
             ->whereNotNull('attachment_path')
             ->where('attachment_path', '!=', ''), 'attachment_path', $limit);

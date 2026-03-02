@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
+use App\Models\EmployeePayout;
 use App\Models\EmployeeWorkSession;
 use App\Models\LeaveRequest;
 use App\Models\PaidHoliday;
@@ -43,6 +44,7 @@ class PayrollService
                 ->where('status', 'active')
                 ->with('activeCompensation')
                 ->get();
+            $payrollAdvanceByEmployee = $this->coordinatedPayrollAdvancesByEmployee($periodKey, $start, $end);
 
             foreach ($employees as $employee) {
                 $comp = $employee->activeCompensation;
@@ -60,6 +62,8 @@ class PayrollService
                 $gross = $payType === 'hourly'
                     ? $this->computeHourlyGross($timesheetHours, (float) ($comp->overtime_rate ?? $basePay))
                     : $this->computeMonthlyGross($employee, $comp, $period->start_date, $period->end_date);
+                $payrollAdvance = (float) ($payrollAdvanceByEmployee[$employee->id] ?? 0.0);
+                $net = $this->roundMoney($gross - $payrollAdvance);
 
                 PayrollItem::create([
                     'payroll_period_id' => $period->id,
@@ -70,8 +74,9 @@ class PayrollService
                     'base_pay' => $basePay,
                     'timesheet_hours' => $timesheetHours,
                     'overtime_enabled' => (bool) ($comp->overtime_enabled ?? false),
+                    'advances' => $payrollAdvance,
                     'gross_pay' => $gross,
-                    'net_pay' => $gross,
+                    'net_pay' => $net,
                 ]);
             }
 
@@ -335,6 +340,34 @@ class PayrollService
     private function computeHourlyGross(float $hours, float $rate): float
     {
         return $this->roundMoney($hours * $rate);
+    }
+
+    /**
+     * Resolve payroll advance totals grouped by employee for a specific payroll period.
+     */
+    public function coordinatedPayrollAdvancesByEmployee(string $periodKey, Carbon $start, Carbon $end): array
+    {
+        $startDate = $start->toDateString();
+        $endDate = $end->toDateString();
+
+        return EmployeePayout::query()
+            ->where('metadata->type', 'advance')
+            ->where('metadata->advance_scope', 'payroll')
+            ->where(function ($query) use ($periodKey, $startDate, $endDate) {
+                $query->where('metadata->coordination_month', $periodKey)
+                    ->orWhere(function ($legacyQuery) use ($startDate, $endDate) {
+                        $legacyQuery->where(function ($nullOrEmptyQuery) {
+                            $nullOrEmptyQuery->whereNull('metadata->coordination_month')
+                                ->orWhere('metadata->coordination_month', '');
+                        })->whereDate('paid_at', '>=', $startDate)
+                            ->whereDate('paid_at', '<=', $endDate);
+                    });
+            })
+            ->selectRaw('employee_id, SUM(amount) as total_amount')
+            ->groupBy('employee_id')
+            ->pluck('total_amount', 'employee_id')
+            ->map(fn ($total) => $this->roundMoney((float) $total))
+            ->all();
     }
 
     private function roundMoney(float $amount): float

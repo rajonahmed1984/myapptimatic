@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
+use App\Models\ProjectTaskSubtaskComment;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Support\DateTimeFormat;
@@ -29,26 +30,17 @@ class ProjectTaskViewController extends Controller
             'assignments.salesRep',
             'subtasks.createdBy',
             'subtasks.completedBy',
+            'subtasks.comments.userActor',
+            'subtasks.comments.employeeActor',
+            'subtasks.comments.salesRepActor',
+            'subtasks.comments.replies.userActor',
+            'subtasks.comments.replies.employeeActor',
+            'subtasks.comments.replies.salesRepActor',
             'creator',
         ]);
 
-        $activityPaginator = $task->activities()
-            ->with(['userActor', 'employeeActor', 'salesRepActor'])
-            ->latest('created_at')
-            ->paginate(30)
-            ->withQueryString();
-
-        $activities = $activityPaginator->getCollection()->reverse()->values();
-
-        $uploadActivities = $task->activities()
-            ->where('type', 'upload')
-            ->with(['userActor', 'employeeActor', 'salesRepActor'])
-            ->orderBy('created_at')
-            ->get();
-
         $identity = $this->resolveActorIdentity($request);
         $routePrefix = $this->resolveRoutePrefix($request);
-        $attachmentRouteName = $routePrefix . '.projects.tasks.activity.attachment';
 
         $employees = $this->assigneeEmployees($actor, $project);
         $salesReps = $this->assigneeSalesReps($actor, $project);
@@ -100,6 +92,29 @@ class ProjectTaskViewController extends Controller
         $subtasks = $task->subtasks->map(function (ProjectTaskSubtask $subtask) use ($project, $task, $routePrefix, $editableSubtaskIds, $statusSubtaskIds): array {
             $status = (string) ($subtask->status ?: ($subtask->is_completed ? 'completed' : 'open'));
             $parsedDueTime = DateTimeFormat::parseTime($subtask->due_time);
+            $rootComments = $subtask->comments
+                ->whereNull('parent_id')
+                ->values()
+                ->map(fn (ProjectTaskSubtaskComment $comment) => [
+                    'id' => $comment->id,
+                    'parent_id' => $comment->parent_id,
+                    'message' => (string) ($comment->message ?? ''),
+                    'actor_name' => $comment->actorName(),
+                    'actor_type_label' => $comment->actorTypeLabel(),
+                    'created_at_display' => DateTimeFormat::formatDateTime($comment->created_at),
+                    'replies' => $comment->replies
+                        ->values()
+                        ->map(fn (ProjectTaskSubtaskComment $reply) => [
+                            'id' => $reply->id,
+                            'parent_id' => $reply->parent_id,
+                            'message' => (string) ($reply->message ?? ''),
+                            'actor_name' => $reply->actorName(),
+                            'actor_type_label' => $reply->actorTypeLabel(),
+                            'created_at_display' => DateTimeFormat::formatDateTime($reply->created_at),
+                        ])
+                        ->all(),
+                ])
+                ->all();
 
             return [
                 'id' => $subtask->id,
@@ -122,39 +137,12 @@ class ProjectTaskViewController extends Controller
                 'attachment_is_image' => $subtask->isImageAttachment(),
                 'can_edit' => in_array($subtask->id, $editableSubtaskIds, true),
                 'can_change_status' => in_array($subtask->id, $statusSubtaskIds, true),
+                'comments' => $rootComments,
                 'routes' => [
                     'update' => route($routePrefix.'.projects.tasks.subtasks.update', [$project, $task, $subtask]),
                     'destroy' => route($routePrefix.'.projects.tasks.subtasks.destroy', [$project, $task, $subtask]),
+                    'comments_store' => route($routePrefix.'.projects.tasks.subtasks.comments.store', [$project, $task, $subtask]),
                 ],
-            ];
-        })->values();
-
-        $activityItems = $activities->map(function ($activity) use ($project, $task, $attachmentRouteName): array {
-            return [
-                'id' => $activity->id,
-                'type' => (string) $activity->type,
-                'message' => (string) ($activity->message ?? ''),
-                'actor_name' => $activity->actorName(),
-                'actor_type_label' => $activity->actorTypeLabel(),
-                'created_at_display' => DateTimeFormat::formatDateTime($activity->created_at),
-                'link_url' => $activity->linkUrl(),
-                'attachment_url' => $activity->attachment_path
-                    ? route($attachmentRouteName, [$project, $task, $activity])
-                    : null,
-                'attachment_name' => $activity->attachmentName(),
-                'attachment_is_image' => $activity->isImageAttachment(),
-            ];
-        })->values();
-
-        $uploadItems = $uploadActivities->map(function ($activity) use ($project, $task, $attachmentRouteName): array {
-            return [
-                'id' => $activity->id,
-                'created_at_display' => DateTimeFormat::formatDateTime($activity->created_at),
-                'actor_name' => $activity->actorName(),
-                'message' => (string) ($activity->message ?? ''),
-                'attachment_url' => route($attachmentRouteName, [$project, $task, $activity]),
-                'attachment_name' => $activity->attachmentName(),
-                'attachment_is_image' => $activity->isImageAttachment(),
             ];
         })->values();
 
@@ -216,8 +204,6 @@ class ProjectTaskViewController extends Controller
                 'name' => (string) $rep->name,
             ])->values()->all(),
             'subtasks' => $subtasks->all(),
-            'activities' => $activityItems->all(),
-            'uploads' => $uploadItems->all(),
             'taskTypeOptions' => $taskTypeOptions,
             'priorityOptions' => TaskSettings::priorityOptions(),
             'statusOptions' => [
@@ -247,10 +233,6 @@ class ProjectTaskViewController extends Controller
                     ? route($routePrefix.'.projects.tasks.assignees', [$project, $task])
                     : null,
                 'subtasksStore' => route($routePrefix.'.projects.tasks.subtasks.store', [$project, $task]),
-                'activityStore' => route($routePrefix.'.projects.tasks.activity.store', [$project, $task]),
-                'upload' => route($routePrefix.'.projects.tasks.upload', [$project, $task]),
-                'activityItems' => route($routePrefix.'.projects.tasks.activity.items', [$project, $task]),
-                'activityItemsStore' => route($routePrefix.'.projects.tasks.activity.items.store', [$project, $task]),
             ],
             'uploadMaxMb' => TaskSettings::uploadMaxMb(),
             // Transitional probe markers retained only for existing legacy-oriented feature tests.

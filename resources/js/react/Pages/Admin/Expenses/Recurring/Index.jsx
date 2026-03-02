@@ -226,7 +226,7 @@ export default function Index({
                                 <div className="section-label">Advance Payment</div>
                                 <div className="text-lg font-semibold text-slate-900">{advanceModal.title}</div>
                                 <div className="text-sm text-slate-500">
-                                    Current advance: {advanceModal.currentAdvance} {currency?.code}
+                                    Advance balance: {advanceModal.currentAdvance} {currency?.code}
                                 </div>
                             </div>
                             <button

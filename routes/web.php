@@ -92,7 +92,6 @@ use App\Http\Controllers\PublicProductController;
 use App\Http\Controllers\PublicMediaController;
 use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\ProjectTaskChatController;
-use App\Http\Controllers\ProjectTaskActivityController;
 use App\Http\Controllers\ProjectTaskViewController;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Support\UiFeature;
@@ -465,21 +464,14 @@ Route::middleware([
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
         Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
         Route::delete('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
+        Route::post('/projects/{project}/tasks/{task}/subtasks/{subtask}/comments', [\App\Http\Controllers\ProjectTaskSubtaskCommentController::class, 'store'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.subtasks.comments.store');
         Route::get('/projects/{project}/tasks/{task}/subtasks/{subtask}/attachment', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'attachment'])->name('projects.tasks.subtasks.attachment');
-        Route::get('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'index'])->name('projects.tasks.activity');
-        Route::get('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'items'])->name('projects.tasks.activity.items');
-        Route::post('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'storeItem'])
-            ->middleware('throttle:10,1')
-            ->name('projects.tasks.activity.items.store');
-        Route::post('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'store'])
-            ->middleware('throttle:10,1')
-            ->name('projects.tasks.activity.store');
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])
             ->name('projects.tasks.subtasks.store');
         Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])
             ->name('projects.tasks.subtasks.update');
-        Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
-        Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
         Route::get('/projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
             ->name('projects.chat.participants');
@@ -736,6 +728,8 @@ Route::middleware([
               Route::delete('/{expense}', [AdminExpenseController::class, 'destroy'])->name('destroy');
             Route::get('/{expense}/attachment', [AdminExpenseController::class, 'attachment'])->name('attachments.show');
             Route::post('/invoices', [AdminExpenseInvoiceController::class, 'store'])->name('invoices.store');
+            Route::put('/invoices/{expenseInvoice}', [AdminExpenseInvoiceController::class, 'update'])->name('invoices.update');
+            Route::delete('/invoices/{expenseInvoice}', [AdminExpenseInvoiceController::class, 'destroy'])->name('invoices.destroy');
             Route::post('/invoices/{expenseInvoice}/pay', [AdminExpenseInvoiceController::class, 'markPaid'])->name('invoices.pay');
 
             Route::get('/categories', [AdminExpenseCategoryController::class, 'index'])
@@ -939,17 +933,10 @@ Route::middleware([
     Route::post('projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
     Route::patch('projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
     Route::delete('projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
+    Route::post('projects/{project}/tasks/{task}/subtasks/{subtask}/comments', [\App\Http\Controllers\ProjectTaskSubtaskCommentController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('projects.tasks.subtasks.comments.store');
     Route::get('projects/{project}/tasks/{task}/subtasks/{subtask}/attachment', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'attachment'])->name('projects.tasks.subtasks.attachment');
-    Route::get('projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'index'])->name('projects.tasks.activity');
-    Route::get('projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'items'])->name('projects.tasks.activity.items');
-    Route::post('projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'storeItem'])
-        ->middleware('throttle:10,1')
-        ->name('projects.tasks.activity.items.store');
-    Route::post('projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'store'])
-        ->middleware('throttle:10,1')
-        ->name('projects.tasks.activity.store');
-    Route::post('projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
-    Route::get('projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
     Route::get('projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
     Route::get('projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
         ->name('projects.chat.participants');
@@ -1218,21 +1205,14 @@ Route::middleware([
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
         Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
         Route::delete('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
+        Route::post('/projects/{project}/tasks/{task}/subtasks/{subtask}/comments', [\App\Http\Controllers\ProjectTaskSubtaskCommentController::class, 'store'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.subtasks.comments.store');
         Route::get('/projects/{project}/tasks/{task}/subtasks/{subtask}/attachment', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'attachment'])->name('projects.tasks.subtasks.attachment');
-        Route::get('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'index'])->name('projects.tasks.activity');
-        Route::get('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'items'])->name('projects.tasks.activity.items');
-        Route::post('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'storeItem'])
-            ->middleware('throttle:10,1')
-            ->name('projects.tasks.activity.items.store');
-        Route::post('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'store'])
-            ->middleware('throttle:10,1')
-            ->name('projects.tasks.activity.store');
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])
             ->name('projects.tasks.subtasks.store');
         Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])
             ->name('projects.tasks.subtasks.update');
-        Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
-        Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
         Route::get('/projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
             ->name('projects.chat.participants');
@@ -1366,24 +1346,17 @@ Route::middleware([
         Route::post('/projects/{project}/tasks', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'store'])->name('projects.tasks.store');
         Route::patch('/projects/{project}/tasks/{task}', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'update'])->name('projects.tasks.update');
         Route::delete('/projects/{project}/tasks/{task}', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
-        Route::get('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'index'])->name('projects.tasks.activity');
-        Route::get('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'items'])->name('projects.tasks.activity.items');
-        Route::post('/projects/{project}/tasks/{task}/activity/items', [ProjectTaskActivityController::class, 'storeItem'])
-            ->middleware('throttle:10,1')
-            ->name('projects.tasks.activity.items.store');
-        Route::post('/projects/{project}/tasks/{task}/activity', [ProjectTaskActivityController::class, 'store'])
-            ->middleware('throttle:10,1')
-            ->name('projects.tasks.activity.store');
         Route::post('/projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])
             ->name('projects.tasks.subtasks.store');
         Route::patch('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])
             ->name('projects.tasks.subtasks.update');
         Route::delete('/projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])
             ->name('projects.tasks.subtasks.destroy');
+        Route::post('/projects/{project}/tasks/{task}/subtasks/{subtask}/comments', [\App\Http\Controllers\ProjectTaskSubtaskCommentController::class, 'store'])
+            ->middleware('throttle:20,1')
+            ->name('projects.tasks.subtasks.comments.store');
         Route::get('/projects/{project}/tasks/{task}/subtasks/{subtask}/attachment', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'attachment'])
             ->name('projects.tasks.subtasks.attachment');
-        Route::post('/projects/{project}/tasks/{task}/upload', [ProjectTaskActivityController::class, 'upload'])->name('projects.tasks.upload');
-        Route::get('/projects/{project}/tasks/{task}/activity/{activity}/attachment', [ProjectTaskActivityController::class, 'attachment'])->name('projects.tasks.activity.attachment');
         Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
         Route::get('/projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
             ->name('projects.chat.participants');

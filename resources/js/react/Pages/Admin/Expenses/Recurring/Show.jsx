@@ -73,6 +73,15 @@ export default function Show({
         paymentMethod: '',
         amount: '',
     });
+    const [editModal, setEditModal] = useState({
+        open: false,
+        action: '',
+        invoiceNo: '',
+        amount: '',
+        invoiceDate: '',
+        dueDate: '',
+        notes: '',
+    });
 
     const hasAdvanceMethod = useMemo(
         () => paymentMethods.some((method) => String(method.code) === 'advance'),
@@ -84,13 +93,14 @@ export default function Show({
     const hasNoRecurringActivity = invoiceRows.length === 0 && advanceRows.length === 0;
 
     useEffect(() => {
-        if (!paymentModal.open) {
+        if (!paymentModal.open && !editModal.open) {
             return undefined;
         }
 
         const onEscape = (event) => {
             if (event.key === 'Escape') {
                 setPaymentModal((prev) => ({ ...prev, open: false }));
+                setEditModal((prev) => ({ ...prev, open: false }));
             }
         };
 
@@ -99,7 +109,7 @@ export default function Show({
         return () => {
             window.removeEventListener('keydown', onEscape);
         };
-    }, [paymentModal.open]);
+    }, [editModal.open, paymentModal.open]);
 
     const onOpenPayment = (invoice) => {
         const remaining = Number(invoice.remaining_amount ?? 0);
@@ -123,6 +133,18 @@ export default function Show({
             paymentType: nextType,
             amount: nextType === 'full' ? prev.remaining.toFixed(2) : prev.amount || prev.remaining.toFixed(2),
         }));
+    };
+
+    const onOpenEdit = (invoice) => {
+        setEditModal({
+            open: true,
+            action: invoice.routes?.update || '',
+            invoiceNo: invoice.invoice_no || '',
+            amount: String(invoice.amount ?? ''),
+            invoiceDate: invoice.invoice_date || '',
+            dueDate: invoice.due_date || '',
+            notes: invoice.notes || '',
+        });
     };
 
     return (
@@ -250,6 +272,7 @@ export default function Show({
                                 <th className="px-3 py-2">Due date</th>
                                 <th className="px-3 py-2">Paid date</th>
                                 <th className="px-3 py-2">Amount</th>
+                                <th className="px-3 py-2">Payment method</th>
                                 <th className="px-3 py-2">Status</th>
                                 <th className="px-3 py-2 text-right">Action</th>
                             </tr>
@@ -271,29 +294,69 @@ export default function Show({
                                                 </div>
                                             ) : null}
                                         </td>
+                                        <td className="px-3 py-2">{invoice.payment_method || '--'}</td>
                                         <td className="px-3 py-2">
                                             <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusClass(invoice.status)}`}>
                                                 {invoice.status_label}
                                             </span>
                                         </td>
                                         <td className="px-3 py-2 text-right">
-                                            {!invoice.is_paid ? (
+                                            <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     type="button"
-                                                    className="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300"
-                                                    onClick={() => onOpenPayment(invoice)}
+                                                    className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                                    onClick={() => onOpenEdit(invoice)}
                                                 >
-                                                    Payment
+                                                    Edit
                                                 </button>
-                                            ) : (
-                                                <span className="text-xs text-slate-400">Paid</span>
-                                            )}
+                                                {invoice.routes?.destroy ? (
+                                                    invoice.can_delete ? (
+                                                        <form
+                                                            method="POST"
+                                                            action={invoice.routes.destroy}
+                                                            data-native="true"
+                                                            onSubmit={(event) => {
+                                                                if (!window.confirm(`Delete invoice ${invoice.invoice_no || `#${invoice.id}`}?`)) {
+                                                                    event.preventDefault();
+                                                                }
+                                                            }}
+                                                        >
+                                                            <input type="hidden" name="_token" value={csrfToken} />
+                                                            <input type="hidden" name="_method" value="DELETE" />
+                                                            <button
+                                                                type="submit"
+                                                                className="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 hover:border-rose-300"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </form>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            disabled
+                                                            title="Paid or partially paid invoices cannot be deleted."
+                                                            className="cursor-not-allowed rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-400"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    )
+                                                ) : null}
+                                                {!invoice.is_paid ? (
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300"
+                                                        onClick={() => onOpenPayment(invoice)}
+                                                    >
+                                                        Payment
+                                                    </button>
+                                                ) : null}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={7} className="px-3 py-4 text-center text-slate-500">
+                                    <td colSpan={8} className="px-3 py-4 text-center text-slate-500">
                                         No expense invoices found.
                                     </td>
                                 </tr>
@@ -441,6 +504,124 @@ export default function Show({
                                     className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
                                 >
                                     Confirm Payment
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            ) : null}
+
+            {editModal.open ? (
+                <div className="fixed inset-0 z-50">
+                    <div
+                        className="absolute inset-0 bg-slate-900/50"
+                        onClick={() => setEditModal((prev) => ({ ...prev, open: false }))}
+                    />
+                    <div className="relative mx-auto mt-16 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <div className="section-label">Edit Invoice</div>
+                                <div className="text-lg font-semibold text-slate-900">{editModal.invoiceNo || 'Invoice'}</div>
+                            </div>
+                            <button
+                                type="button"
+                                className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                                onClick={() => setEditModal((prev) => ({ ...prev, open: false }))}
+                            >
+                                Close
+                            </button>
+                        </div>
+
+                        <form method="POST" action={editModal.action} className="mt-5 grid gap-4 md:grid-cols-2" data-native="true">
+                            <input type="hidden" name="_token" value={csrfToken} />
+                            <input type="hidden" name="_method" value="PUT" />
+
+                            <div>
+                                <label htmlFor="editInvoiceNo" className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    Invoice No
+                                </label>
+                                <input
+                                    id="editInvoiceNo"
+                                    name="invoice_no"
+                                    type="text"
+                                    maxLength={100}
+                                    value={editModal.invoiceNo}
+                                    onChange={(event) => setEditModal((prev) => ({ ...prev, invoiceNo: event.target.value }))}
+                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="editInvoiceAmount" className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    Amount
+                                </label>
+                                <input
+                                    id="editInvoiceAmount"
+                                    name="amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    value={editModal.amount}
+                                    onChange={(event) => setEditModal((prev) => ({ ...prev, amount: event.target.value }))}
+                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="editInvoiceDate" className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    Invoice Date
+                                </label>
+                                <input
+                                    id="editInvoiceDate"
+                                    name="invoice_date"
+                                    type="date"
+                                    value={editModal.invoiceDate}
+                                    onChange={(event) => setEditModal((prev) => ({ ...prev, invoiceDate: event.target.value }))}
+                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="editDueDate" className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    Due Date
+                                </label>
+                                <input
+                                    id="editDueDate"
+                                    name="due_date"
+                                    type="date"
+                                    value={editModal.dueDate}
+                                    onChange={(event) => setEditModal((prev) => ({ ...prev, dueDate: event.target.value }))}
+                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="editInvoiceNotes" className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    Notes
+                                </label>
+                                <textarea
+                                    id="editInvoiceNotes"
+                                    name="notes"
+                                    rows={3}
+                                    maxLength={1000}
+                                    value={editModal.notes}
+                                    onChange={(event) => setEditModal((prev) => ({ ...prev, notes: event.target.value }))}
+                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    placeholder="Optional notes"
+                                />
+                            </div>
+                            <div className="flex items-center justify-end gap-3 pt-2 md:col-span-2">
+                                <button
+                                    type="button"
+                                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                    onClick={() => setEditModal((prev) => ({ ...prev, open: false }))}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500"
+                                >
+                                    Save
                                 </button>
                             </div>
                         </form>

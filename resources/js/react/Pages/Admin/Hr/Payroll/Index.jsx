@@ -70,6 +70,7 @@ export default function Index({
                     <table className="min-w-full text-sm text-slate-700">
                         <thead>
                             <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
+                                <th className="py-2 px-3">ID</th>
                                 <th className="py-2 px-3">Period</th>
                                 <th className="py-2 px-3">Dates</th>
                                 <th className="py-2 px-3">Status</th>
@@ -79,9 +80,10 @@ export default function Index({
                         </thead>
                         <tbody>
                             {periods.length === 0 ? (
-                                <tr><td colSpan={5} className="py-3 px-3 text-center text-slate-500">No payroll periods.</td></tr>
+                                <tr><td colSpan={6} className="py-3 px-3 text-center text-slate-500">No payroll periods.</td></tr>
                             ) : periods.map((period) => (
                                 <tr key={period.id} className="border-b border-slate-100">
+                                    <td className="py-2 px-3">{period.id}</td>
                                     <td className="py-2 px-3">{period.period_key}</td>
                                     <td className="py-2 px-3">{period.start_date} - {period.end_date}</td>
                                     <td className="py-2 px-3">

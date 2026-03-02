@@ -21,6 +21,7 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class ReconcileMissingFileReferences extends Command
@@ -43,14 +44,18 @@ class ReconcileMissingFileReferences extends Command
         $disk = Storage::disk('public');
         $rows = [];
 
-        $rows[] = $this->reconcileColumn(
-            'Task activities attachments',
-            ProjectTaskActivity::query()->whereNotNull('attachment_path')->where('attachment_path', '!=', ''),
-            'attachment_path',
-            $limit,
-            $nullify,
-            $disk
-        );
+        if (Schema::hasTable('project_task_activities')) {
+            $rows[] = $this->reconcileColumn(
+                'Task activities attachments',
+                ProjectTaskActivity::query()->whereNotNull('attachment_path')->where('attachment_path', '!=', ''),
+                'attachment_path',
+                $limit,
+                $nullify,
+                $disk
+            );
+        } else {
+            $rows[] = ['Task activities attachments', 0, 0];
+        }
         $rows[] = $this->reconcileColumn(
             'Project chat attachments',
             ProjectMessage::query()->whereNotNull('attachment_path')->where('attachment_path', '!=', ''),

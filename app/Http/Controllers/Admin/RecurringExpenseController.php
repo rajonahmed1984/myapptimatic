@@ -49,6 +49,22 @@ class RecurringExpenseController extends Controller
             ->orderByDesc('id')
             ->paginate(20);
 
+        $advanceUsedByRecurring = collect();
+        $recurringIds = $recurringExpenses->getCollection()
+            ->pluck('id')
+            ->filter()
+            ->values();
+        if ($recurringIds->isNotEmpty()) {
+            $advanceUsedByRecurring = ExpenseInvoicePayment::query()
+                ->join('expense_invoices', 'expense_invoices.id', '=', 'expense_invoice_payments.expense_invoice_id')
+                ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
+                ->where('expense_invoice_payments.payment_method', 'advance')
+                ->whereIn('expenses.recurring_expense_id', $recurringIds)
+                ->selectRaw('expenses.recurring_expense_id, SUM(expense_invoice_payments.amount) as used_amount')
+                ->groupBy('expenses.recurring_expense_id')
+                ->pluck('used_amount', 'expenses.recurring_expense_id');
+        }
+
         $paymentMethods = PaymentMethod::dropdownOptions();
 
         $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
@@ -59,7 +75,7 @@ class RecurringExpenseController extends Controller
 
         return Inertia::render(
             'Admin/Expenses/Recurring/Index',
-            $this->indexInertiaProps($recurringExpenses, $paymentMethods, $currencyCode, $currencySymbol)
+            $this->indexInertiaProps($recurringExpenses, $paymentMethods, $currencyCode, $currencySymbol, $advanceUsedByRecurring)
         );
     }
 
@@ -124,6 +140,13 @@ class RecurringExpenseController extends Controller
             ->with('expense')
             ->withSum('payments', 'amount')
             ->withMax('payments', 'paid_at')
+            ->addSelect([
+                'last_payment_method' => ExpenseInvoicePayment::query()
+                    ->select('payment_method')
+                    ->whereColumn('expense_invoice_payments.expense_invoice_id', 'expense_invoices.id')
+                    ->orderByDesc('id')
+                    ->limit(1),
+            ])
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
             ->paginate(20);
@@ -358,7 +381,8 @@ class RecurringExpenseController extends Controller
         LengthAwarePaginator $recurringExpenses,
         $paymentMethods,
         string $currencyCode,
-        string $currencySymbol
+        string $currencySymbol,
+        $advanceUsedByRecurring
     ): array {
         $dateFormat = (string) config('app.date_format', 'd-m-Y');
 
@@ -379,13 +403,19 @@ class RecurringExpenseController extends Controller
                 ];
             })->values()->all(),
             'recurringExpenses' => [
-                'data' => $recurringExpenses->getCollection()->map(function (RecurringExpense $recurringExpense) use ($dateFormat) {
+                'data' => $recurringExpenses->getCollection()->map(function (RecurringExpense $recurringExpense) use ($dateFormat, $advanceUsedByRecurring) {
+                    $advanceTotal = (float) ($recurringExpense->advances_sum_amount ?? 0);
+                    $advanceUsed = (float) ($advanceUsedByRecurring->get($recurringExpense->id) ?? 0);
+                    $advanceBalance = max(0, round($advanceTotal - $advanceUsed, 2));
+
                     return [
                         'id' => $recurringExpense->id,
                         'title' => $recurringExpense->title,
                         'category_name' => $recurringExpense->category?->name,
                         'amount' => (float) $recurringExpense->amount,
-                        'advance_amount' => (float) ($recurringExpense->advances_sum_amount ?? 0),
+                        'advance_amount' => $advanceBalance,
+                        'advance_total' => $advanceTotal,
+                        'advance_used' => $advanceUsed,
                         'recurrence_type' => $recurringExpense->recurrence_type,
                         'recurrence_interval' => (int) $recurringExpense->recurrence_interval,
                         'next_due_display' => $this->resolveNextDueDisplay($recurringExpense, $dateFormat),
@@ -482,6 +512,7 @@ class RecurringExpenseController extends Controller
                     $remainingAmount = round(max(0, $invoiceAmount - $paidAmount), 2, PHP_ROUND_HALF_UP);
                     $isPaid = $remainingAmount <= 0.009;
                     $isPartiallyPaid = $paidAmount > 0 && ! $isPaid;
+                    $canDelete = ! $isPaid && ! $isPartiallyPaid;
 
                     $displayStatus = $isPaid ? 'paid' : ($invoice->status ?? 'unpaid');
                     if (! $isPaid && $invoice->due_date && $invoice->due_date->isPast()) {
@@ -507,16 +538,25 @@ class RecurringExpenseController extends Controller
                     return [
                         'id' => $invoice->id,
                         'invoice_no' => $invoice->invoice_no,
+                        'invoice_date' => $invoice->invoice_date?->toDateString() ?? '',
                         'due_date_display' => $invoice->due_date?->format($dateFormat) ?? '--',
+                        'due_date' => $invoice->due_date?->toDateString() ?? '',
                         'paid_date_display' => $paidDate?->format($dateFormat) ?? '--',
+                        'payment_method' => $invoice->last_payment_method
+                            ? strtoupper((string) $invoice->last_payment_method)
+                            : '--',
                         'amount' => $invoiceAmount,
                         'paid_amount' => $paidAmount,
                         'remaining_amount' => $remainingAmount,
                         'is_paid' => $isPaid,
                         'is_partially_paid' => $isPartiallyPaid,
+                        'can_delete' => $canDelete,
                         'status' => $statusKey,
                         'status_label' => $statusLabel,
+                        'notes' => (string) ($invoice->notes ?? ''),
                         'routes' => [
+                            'update' => route('admin.expenses.invoices.update', $invoice),
+                            'destroy' => route('admin.expenses.invoices.destroy', $invoice),
                             'pay' => route('admin.expenses.invoices.pay', $invoice),
                         ],
                     ];

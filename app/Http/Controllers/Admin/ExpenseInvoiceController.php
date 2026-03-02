@@ -101,6 +101,48 @@ class ExpenseInvoiceController extends Controller
         return back()->with('status', 'Expense invoice generated.');
     }
 
+    public function update(Request $request, ExpenseInvoice $expenseInvoice): RedirectResponse
+    {
+        $data = $request->validate([
+            'invoice_no' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('expense_invoices', 'invoice_no')->ignore($expenseInvoice->id),
+            ],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'invoice_date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $expenseInvoice->update([
+            'invoice_no' => trim((string) $data['invoice_no']),
+            'amount' => round((float) $data['amount'], 2),
+            'invoice_date' => $data['invoice_date'],
+            'due_date' => $data['due_date'] ?: null,
+            'notes' => isset($data['notes']) ? trim((string) $data['notes']) : null,
+        ]);
+
+        return back()->with('status', 'Expense invoice updated.');
+    }
+
+    public function destroy(ExpenseInvoice $expenseInvoice): RedirectResponse
+    {
+        $paidAmount = round((float) $expenseInvoice->payments()->sum('amount'), 2, PHP_ROUND_HALF_UP);
+        $isPaidStatus = (string) ($expenseInvoice->status ?? '') === 'paid';
+
+        if ($paidAmount > 0 || $isPaidStatus) {
+            return back()->withErrors([
+                'expense_invoice' => 'Paid or partially paid invoices cannot be deleted.',
+            ]);
+        }
+
+        $expenseInvoice->delete();
+
+        return back()->with('status', 'Expense invoice deleted.');
+    }
+
     public function markPaid(Request $request, ExpenseInvoice $expenseInvoice): RedirectResponse
     {
         $allowedPaymentMethods = PaymentMethod::allowedCodes();

@@ -15,9 +15,13 @@ class PayrollController extends Controller
         $employee = $request->attributes->get('employee');
 
         $items = PayrollItem::query()
-            ->where('employee_id', $employee->id)
+            ->where('payroll_items.employee_id', $employee->id)
+            ->leftJoin('payroll_periods', 'payroll_periods.id', '=', 'payroll_items.payroll_period_id')
             ->with('period')
-            ->orderByDesc('id')
+            ->orderByDesc('payroll_periods.start_date')
+            ->orderByDesc('payroll_periods.period_key')
+            ->orderByDesc('payroll_items.id')
+            ->select('payroll_items.*')
             ->paginate(15);
 
         $paidAmountByItem = [];

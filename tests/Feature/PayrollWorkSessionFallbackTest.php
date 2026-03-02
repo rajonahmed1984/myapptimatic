@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
+use App\Models\EmployeePayout;
 use App\Models\EmployeeWorkSession;
 use App\Models\PaidHoliday;
 use App\Models\PayrollItem;
@@ -99,6 +100,46 @@ class PayrollWorkSessionFallbackTest extends TestCase
 
         // part_time hourly => 4 hours * rate 100.
         $this->assertSame(400.0, $amount);
+    }
+
+    public function test_payroll_generation_applies_coordinated_salary_advance_to_matching_month(): void
+    {
+        $employee = Employee::create([
+            'name' => 'Payroll Monthly',
+            'email' => 'payroll-monthly-' . uniqid() . '@example.test',
+            'status' => 'active',
+            'employment_type' => 'full_time',
+            'work_mode' => 'on_site',
+            'join_date' => '2026-01-01',
+        ]);
+
+        EmployeeCompensation::create([
+            'employee_id' => $employee->id,
+            'salary_type' => 'monthly',
+            'currency' => 'BDT',
+            'basic_pay' => 30000,
+            'effective_from' => '2026-01-01',
+            'is_active' => true,
+        ]);
+
+        EmployeePayout::create([
+            'employee_id' => $employee->id,
+            'amount' => 2500,
+            'currency' => 'BDT',
+            'metadata' => [
+                'type' => 'advance',
+                'advance_scope' => 'payroll',
+                'coordination_month' => '2026-05',
+            ],
+            'paid_at' => '2026-04-15 10:00:00',
+        ]);
+
+        app(PayrollService::class)->generatePeriod('2026-05');
+
+        $item = PayrollItem::query()->where('employee_id', $employee->id)->firstOrFail();
+
+        $this->assertSame(2500.0, (float) $item->advances);
+        $this->assertSame((float) $item->gross_pay - 2500.0, (float) $item->net_pay);
     }
 
     private function createHourlyRemoteEmployee(float $rate): Employee

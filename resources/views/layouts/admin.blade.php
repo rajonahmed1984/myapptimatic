@@ -909,6 +909,8 @@
               const overlay = document.getElementById('sidebarOverlay');
               const openBtn = document.getElementById('sidebarToggle');
               const closeBtn = document.getElementById('sidebarClose');
+              const sidebarNav = sidebar?.querySelector('nav');
+              const inertiaRouter = window.__inertiaRouter || null;
               const globalWorkTimerCard = document.getElementById('global-work-timer');
 
             const openSidebar = () => {
@@ -924,6 +926,93 @@
             openBtn?.addEventListener('click', openSidebar);
             closeBtn?.addEventListener('click', closeSidebar);
             overlay?.addEventListener('click', closeSidebar);
+
+            const isModifiedClick = (event) => (
+                event.defaultPrevented
+                || event.button !== 0
+                || event.metaKey
+                || event.ctrlKey
+                || event.shiftKey
+                || event.altKey
+            );
+
+            const shouldSkipSidebarVisit = (anchor) => {
+                if (!anchor || anchor.dataset.native === 'true') {
+                    return true;
+                }
+
+                const href = anchor.getAttribute('href') || '';
+                if (href === '' || href.startsWith('#') || href.startsWith('javascript:')) {
+                    return true;
+                }
+
+                if (href.startsWith('mailto:') || href.startsWith('tel:')) {
+                    return true;
+                }
+
+                if (anchor.hasAttribute('download')) {
+                    return true;
+                }
+
+                const target = (anchor.getAttribute('target') || '').toLowerCase();
+                if (target && target !== '_self') {
+                    return true;
+                }
+
+                return false;
+            };
+
+            const setSidebarActiveMenu = (anchor) => {
+                const navLinks = sidebar?.querySelectorAll('a.nav-link, a.nav-link-active') || [];
+                navLinks.forEach((item) => item.classList.remove('nav-link-active'));
+
+                let activeAnchor = anchor;
+                if (!activeAnchor.classList.contains('nav-link') && !activeAnchor.classList.contains('nav-link-active')) {
+                    const subMenu = activeAnchor.closest('.ml-8');
+                    const parentAnchor = subMenu?.previousElementSibling;
+                    if (parentAnchor instanceof HTMLAnchorElement) {
+                        activeAnchor = parentAnchor;
+                    }
+                }
+
+                if (activeAnchor.classList.contains('nav-link') || activeAnchor.classList.contains('nav-link-active')) {
+                    activeAnchor.classList.add('nav-link-active');
+                }
+            };
+
+            if (sidebarNav && inertiaRouter && typeof inertiaRouter.visit === 'function') {
+                sidebarNav.addEventListener('click', (event) => {
+                    const anchor = event.target.closest('a[href]');
+                    if (!anchor || !sidebarNav.contains(anchor)) {
+                        return;
+                    }
+
+                    if (isModifiedClick(event) || shouldSkipSidebarVisit(anchor)) {
+                        return;
+                    }
+
+                    let url;
+                    try {
+                        url = new URL(anchor.href, window.location.origin);
+                    } catch (error) {
+                        return;
+                    }
+
+                    if (url.origin !== window.location.origin) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    setSidebarActiveMenu(anchor);
+                    closeSidebar();
+
+                    inertiaRouter.visit(url.toString(), {
+                        preserveScroll: false,
+                        preserveState: false,
+                    });
+                });
+            }
+
               document.addEventListener('keydown', (event) => {
                   if (event.key === 'Escape') {
                       closeSidebar();

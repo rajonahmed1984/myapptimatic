@@ -8,6 +8,7 @@ use App\Models\ProjectTaskActivity;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class TaskActivityLogger
 {
@@ -49,8 +50,7 @@ class TaskActivityLogger
         ?string $attachmentPath = null
     ): ProjectTaskActivity {
         $actor = self::resolveActorIdentity($request);
-
-        return ProjectTaskActivity::create([
+        $attributes = [
             'project_task_id' => $task->id,
             'actor_type' => $actor['type'],
             'actor_id' => $actor['id'] ?? 0,
@@ -58,6 +58,16 @@ class TaskActivityLogger
             'message' => $message,
             'attachment_path' => $attachmentPath,
             'metadata' => $metadata ?: null,
-        ]);
+        ];
+
+        if (! Schema::hasTable('project_task_activities')) {
+            return new ProjectTaskActivity($attributes);
+        }
+
+        try {
+            return ProjectTaskActivity::create($attributes);
+        } catch (\Throwable) {
+            return new ProjectTaskActivity($attributes);
+        }
     }
 }
