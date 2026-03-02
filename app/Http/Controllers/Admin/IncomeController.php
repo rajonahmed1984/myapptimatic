@@ -43,7 +43,13 @@ class IncomeController extends Controller
             'sources' => $sourceFilters,
         ];
 
-        $entries = $entryService->entries($filters)
+        $entryServiceFilters = $filters;
+        $entryServiceFilters['sources'] = array_values(array_filter(
+            $sourceFilters,
+            fn ($source) => $source !== 'carrothost'
+        ));
+
+        $entries = $entryService->entries($entryServiceFilters)
             ->sortByDesc(fn ($entry) => $entry['income_date'] ?? now());
 
         $whmcsErrors = [];
@@ -71,6 +77,7 @@ class IncomeController extends Controller
         $manualTotal = (float) $entriesWithDate->where('source_type', 'manual')->sum('amount');
         $systemTotal = (float) $entriesWithDate->where('source_type', 'system')->sum('amount');
         $creditSettlementTotal = (float) $entriesWithDate->where('source_type', 'credit_settlement')->sum('amount');
+        $carrotHostTotal = (float) $entriesWithDate->where('source_type', 'carrothost')->sum('amount');
 
         $categoryTotals = $entriesWithDate
             ->groupBy(fn ($entry) => $entry['category_id'] ?? 'system')
@@ -119,6 +126,7 @@ class IncomeController extends Controller
             $manualTotal,
             $systemTotal,
             $creditSettlementTotal,
+            $carrotHostTotal,
             $categoryTotals,
             $topCustomers,
             $forceAiRefresh
@@ -165,6 +173,7 @@ class IncomeController extends Controller
                 'manual_total' => (float) $manualTotal,
                 'system_total' => (float) $systemTotal,
                 'credit_settlement_total' => (float) $creditSettlementTotal,
+                'carrothost_total' => (float) $carrotHostTotal,
             ],
             'income_status' => $incomeStatus,
             'period_series' => $periodSeries,
@@ -448,6 +457,7 @@ class IncomeController extends Controller
         float $manualTotal,
         float $systemTotal,
         float $creditSettlementTotal,
+        float $carrotHostTotal,
         $categoryTotals,
         $topCustomers,
         bool $forceRefresh = false
@@ -492,10 +502,11 @@ You are a finance analyst. Summarize the income dashboard in Bengali.
 Period: {$startDate} to {$endDate}
 Totals:
 - Total income: {$currencyCode} {$totalAmount}
-- Manual income: {$currencyCode} {$manualTotal}
-- System income: {$currencyCode} {$systemTotal}
-- Credit settlement: {$currencyCode} {$creditSettlementTotal}
-- Entries: {$count}
+                - Manual income: {$currencyCode} {$manualTotal}
+                - System income: {$currencyCode} {$systemTotal}
+                - Credit settlement: {$currencyCode} {$creditSettlementTotal}
+                - CarrotHost income (net): {$currencyCode} {$carrotHostTotal}
+                - Entries: {$count}
 
 Top categories: {$topCategories}
 Top customers: {$topCustomerText}
@@ -773,7 +784,9 @@ PROMPT;
         }
 
         return collect($transactions)->map(function ($row) {
-            $amount = (float) ($row['amountin'] ?? 0);
+            $amountIn = $this->normalizeMoney($row['amountin'] ?? 0);
+            $fees = $this->normalizeMoney($row['fees'] ?? 0);
+            $amount = round($amountIn - $fees, 2);
             $invoiceId = $row['invoiceid'] ?? null;
             $transId = $row['transid'] ?? ($row['id'] ?? null);
             $clientName = $row['clientname'] ?? ($row['userid'] ?? null);

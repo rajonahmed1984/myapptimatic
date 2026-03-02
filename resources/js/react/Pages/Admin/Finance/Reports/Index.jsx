@@ -131,6 +131,7 @@ export default function Index({
                         <div className="mt-1.5 flex flex-wrap gap-4 text-xs text-slate-600">
                             <label className="flex items-center gap-2"><input type="checkbox" name="income_sources[]" value="manual" defaultChecked={includesValue(filters?.income_sources, 'manual')} className="h-4 w-4 rounded border-slate-300 text-emerald-600" /> Manual</label>
                             <label className="flex items-center gap-2"><input type="checkbox" name="income_sources[]" value="system" defaultChecked={includesValue(filters?.income_sources, 'system')} className="h-4 w-4 rounded border-slate-300 text-emerald-600" /> System</label>
+                            <label className="flex items-center gap-2"><input type="checkbox" name="income_sources[]" value="carrothost" defaultChecked={includesValue(filters?.income_sources, 'carrothost')} className="h-4 w-4 rounded border-slate-300 text-emerald-600" /> CarrotHost</label>
                         </div>
                     </div>
                     <div className="md:col-span-3">

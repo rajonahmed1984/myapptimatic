@@ -8,6 +8,7 @@ use App\Models\CommissionAuditLog;
 use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
 use App\Models\Employee;
+use App\Models\Invoice;
 use App\Models\PaymentMethod;
 use App\Models\Project;
 use App\Models\ProjectTask;
@@ -17,7 +18,7 @@ use App\Models\SystemLog;
 use App\Models\User;
 use App\Models\UserSession;
 use App\Services\CommissionService;
-use App\Services\SalesRepBalanceService;
+use App\Services\SalesRepNotificationService;
 use App\Support\AjaxResponse;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ use Inertia\Response as InertiaResponse;
 
 class SalesRepresentativeController extends Controller
 {
-    public function index(CommissionService $commissionService, SalesRepBalanceService $salesRepBalanceService)
+    public function index(CommissionService $commissionService)
     {
         $search = trim((string) request()->query('search', ''));
 
@@ -54,18 +55,30 @@ class SalesRepresentativeController extends Controller
                 });
             })
             ->with(['user:id,name,email', 'employee:id,name'])
-            ->withCount(['projects', 'maintenances'])
+            ->withCount([
+                'subscriptions',
+                'subscriptions as active_subscriptions_count' => function ($query) {
+                    $query->where('status', 'active');
+                },
+                'projects',
+                'maintenances',
+            ])
             ->orderBy('name')
             ->get();
 
         $commissionService->ensureProjectEarningsForRepIds($reps->pluck('id')->all());
 
-        $totals = collect($salesRepBalanceService->breakdownMany($reps->pluck('id')->all()))
-            ->map(fn (array $row) => (object) [
-                'total_earned' => (float) ($row['total_earned'] ?? 0),
-                'total_payable' => (float) ($row['payable_net'] ?? 0),
-                'total_paid' => (float) ($row['total_paid_incl_advance'] ?? 0),
-            ]);
+        $totals = $reps->mapWithKeys(function (SalesRepresentative $rep) use ($commissionService): array {
+            $row = $commissionService->computeRepBalance($rep->id);
+
+            return [
+                $rep->id => (object) [
+                    'total_earned' => (float) ($row['total_earned'] ?? 0),
+                    'total_payable' => (float) ($row['payable_balance'] ?? 0),
+                    'total_paid' => (float) ($row['total_paid'] ?? 0),
+                ],
+            ];
+        });
 
         $loginStatuses = $this->resolveRepLoginStatuses($reps);
 
@@ -250,8 +263,7 @@ class SalesRepresentativeController extends Controller
     public function show(
         Request $request,
         SalesRepresentative $salesRep,
-        CommissionService $commissionService,
-        SalesRepBalanceService $salesRepBalanceService
+        CommissionService $commissionService
     ): InertiaResponse {
         $salesRep->load(['user:id,name,email', 'employee:id,name']);
         $tab = $request->query('tab', 'profile');
@@ -261,47 +273,62 @@ class SalesRepresentativeController extends Controller
         }
 
         $commissionService->ensureProjectEarningsForRepIds([$salesRep->id]);
-        $balance = $salesRepBalanceService->breakdown($salesRep->id);
-        $payableNet = (float) ($balance['payable_net'] ?? 0);
+        $balance = $commissionService->computeRepBalance($salesRep->id);
+        $payableNet = (float) ($balance['payable_balance'] ?? 0);
+        $overpaid = (float) ($balance['overpaid'] ?? 0);
+        $sourceBaseQuery = CommissionEarning::query()
+            ->where('sales_representative_id', $salesRep->id)
+            ->whereIn('status', ['pending', 'earned', 'payable', 'paid']);
+        $projectEarned = (float) (clone $sourceBaseQuery)
+            ->where('source_type', 'project')
+            ->sum('commission_amount');
+        $serviceEarned = (float) (clone $sourceBaseQuery)
+            ->whereIn('source_type', ['maintenance', 'plan'])
+            ->sum('commission_amount');
         $payableLabel = $payableNet > 0
             ? 'Company owes rep'
-            : ($payableNet < 0 ? 'Rep overpaid / advance taken' : 'Settled');
-
-        $earningsQuery = $salesRep->earnings();
-        $payoutsQuery = $salesRep->payouts();
+            : ($overpaid > 0 ? 'Rep overpaid / advance taken' : 'Settled');
 
         $summary = [
             'total_earned' => $balance['total_earned'] ?? 0,
             'payable' => $payableNet,
-            'payable_gross' => $payableNet,
-            'paid' => $balance['total_paid_incl_advance'] ?? 0,
-            'advance_paid' => CommissionPayout::query()
-                ->where('sales_representative_id', $salesRep->id)
-                ->where('type', 'advance')
-                ->where('status', 'paid')
-                ->sum('total_amount'),
-            'overpaid' => max(0, -$payableNet),
-            'outstanding' => max(0, $payableNet),
+            'payable_gross' => (float) ($balance['payable_gross'] ?? $payableNet),
+            'paid' => (float) ($balance['total_paid'] ?? 0),
+            'advance_paid' => (float) ($balance['advance_paid'] ?? 0),
+            'overpaid' => $overpaid,
+            'outstanding' => max(0, (float) ($balance['outstanding'] ?? 0)),
             'payable_label' => $payableLabel,
-            'project_earned' => $balance['project_earned'] ?? 0,
-            'maintenance_earned' => $balance['maintenance_earned'] ?? 0,
+            'project_earned' => $projectEarned,
+            'maintenance_earned' => $serviceEarned,
         ];
 
         $recentEarnings = collect();
         $recentPayouts = collect();
         $subscriptions = collect();
         $invoiceEarnings = collect();
+        $invoiceCommissionByInvoice = collect();
+        $projectCommissionByProject = collect();
         $projects = collect();
+        $advanceSources = collect();
         $emailLogs = collect();
         $activityLogs = collect();
         $projectStatusCounts = collect();
         $projectTaskStatusCounts = collect();
+        $projectCommissionTotals = collect();
+        $projectPaidCommissionTotals = collect();
+        $projectAdvancePaidTotals = collect();
 
         if ($tab === 'earnings') {
             $recentEarnings = $salesRep->earnings()
-                ->with('project:id,name')
-                ->latest()
-                ->take(10)
+                ->with([
+                    'project:id,name',
+                    'subscription.plan.product',
+                    'invoice.project:id,name',
+                    'invoice.maintenance.project:id,name',
+                ])
+                ->whereIn('status', ['pending', 'earned', 'payable', 'paid'])
+                ->orderByDesc('earned_at')
+                ->orderByDesc('id')
                 ->get();
         }
 
@@ -322,13 +349,66 @@ class SalesRepresentativeController extends Controller
         }
 
         if ($tab === 'invoices') {
-            $invoiceEarnings = CommissionEarning::query()
-                ->with(['invoice.customer', 'project'])
-                ->where('sales_representative_id', $salesRep->id)
-                ->whereNotNull('invoice_id')
-                ->latest('earned_at')
-                ->take(20)
+            $invoiceEarnings = Invoice::query()
+                ->with(['customer', 'project', 'maintenance.project', 'subscription.plan.product', 'orders.product', 'orders.plan'])
+                ->where(function ($query) use ($salesRep) {
+                    $query->whereHas('subscription', function ($inner) use ($salesRep) {
+                        $inner->where('sales_rep_id', $salesRep->id);
+                    })->orWhereHas('orders', function ($inner) use ($salesRep) {
+                        $inner->where('sales_rep_id', $salesRep->id);
+                    })->orWhereHas('customer', function ($inner) use ($salesRep) {
+                        $inner->where('default_sales_rep_id', $salesRep->id);
+                    })->orWhereHas('project.salesRepresentatives', function ($inner) use ($salesRep) {
+                        $inner->whereKey($salesRep->id);
+                    })->orWhereHas('maintenance.project.salesRepresentatives', function ($inner) use ($salesRep) {
+                        $inner->whereKey($salesRep->id);
+                    });
+                })
+                ->latest('issue_date')
+                ->latest('id')
                 ->get();
+
+            $invoiceIds = $invoiceEarnings->pluck('id')->filter()->values();
+            if ($invoiceIds->isNotEmpty()) {
+                $invoiceCommissionByInvoice = CommissionEarning::query()
+                    ->select('invoice_id', DB::raw('SUM(commission_amount) as total_commission'))
+                    ->where('sales_representative_id', $salesRep->id)
+                    ->whereIn('status', ['pending', 'earned', 'payable', 'paid'])
+                    ->whereNotNull('invoice_id')
+                    ->whereIn('invoice_id', $invoiceIds)
+                    ->groupBy('invoice_id')
+                    ->pluck('total_commission', 'invoice_id');
+            }
+
+            $projectIds = $invoiceEarnings
+                ->map(function (Invoice $invoice) {
+                    if ($invoice->project_id) {
+                        return (int) $invoice->project_id;
+                    }
+
+                    return $invoice->maintenance?->project_id ? (int) $invoice->maintenance->project_id : null;
+                })
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($projectIds->isNotEmpty()) {
+                $projectCommissionByProject = CommissionEarning::query()
+                    ->selectRaw('COALESCE(project_id, source_id) as project_ref_id, SUM(commission_amount) as total_commission')
+                    ->where('sales_representative_id', $salesRep->id)
+                    ->where('source_type', 'project')
+                    ->whereIn('status', ['pending', 'earned', 'payable', 'paid'])
+                    ->where(function ($query) use ($projectIds) {
+                        $query->whereIn('project_id', $projectIds)
+                            ->orWhere(function ($inner) use ($projectIds) {
+                                $inner->whereNull('project_id')
+                                    ->whereIn('source_id', $projectIds);
+                            });
+                    })
+                    ->groupBy(DB::raw('COALESCE(project_id, source_id)'))
+                    ->pluck('total_commission', 'project_ref_id');
+            }
+
         }
 
         if ($tab === 'emails') {
@@ -372,6 +452,51 @@ class SalesRepresentativeController extends Controller
             $projectIds = $projects->pluck('id');
 
             if ($projectIds->isNotEmpty()) {
+                $activeStatuses = ['pending', 'earned', 'payable', 'paid'];
+                $projectCommissionTotals = CommissionEarning::query()
+                    ->selectRaw('COALESCE(project_id, source_id) as project_ref_id, SUM(commission_amount) as total_commission')
+                    ->where('sales_representative_id', $salesRep->id)
+                    ->where('source_type', 'project')
+                    ->whereIn('status', $activeStatuses)
+                    ->where(function ($query) use ($projectIds) {
+                        $query->whereIn('project_id', $projectIds)
+                            ->orWhere(function ($inner) use ($projectIds) {
+                                $inner->whereNull('project_id')
+                                    ->whereIn('source_id', $projectIds);
+                            });
+                    })
+                    ->groupBy(DB::raw('COALESCE(project_id, source_id)'))
+                    ->pluck('total_commission', 'project_ref_id');
+
+                $projectPaidCommissionTotals = CommissionEarning::query()
+                    ->selectRaw('COALESCE(project_id, source_id) as project_ref_id, SUM(commission_amount) as total_commission')
+                    ->where('sales_representative_id', $salesRep->id)
+                    ->where('source_type', 'project')
+                    ->where('status', 'paid')
+                    ->where(function ($query) use ($projectIds) {
+                        $query->whereIn('project_id', $projectIds)
+                            ->orWhere(function ($inner) use ($projectIds) {
+                                $inner->whereNull('project_id')
+                                    ->whereIn('source_id', $projectIds);
+                            });
+                    })
+                    ->groupBy(DB::raw('COALESCE(project_id, source_id)'))
+                    ->pluck('total_commission', 'project_ref_id');
+
+                $projectAdvanceQuery = CommissionPayout::query()
+                    ->select('project_id', DB::raw('SUM(total_amount) as total_paid'))
+                    ->where('sales_representative_id', $salesRep->id)
+                    ->whereIn('project_id', $projectIds)
+                    ->where('status', 'paid');
+
+                if (Schema::hasColumn('commission_payouts', 'type')) {
+                    $projectAdvanceQuery->where('type', 'advance');
+                }
+
+                $projectAdvancePaidTotals = $projectAdvanceQuery
+                    ->groupBy('project_id')
+                    ->pluck('total_paid', 'project_id');
+
                 $projectTaskStatusCounts = ProjectTask::query()
                     ->select('project_id', 'status', DB::raw('COUNT(*) as total'))
                     ->whereIn('project_id', $projectIds)
@@ -395,7 +520,85 @@ class SalesRepresentativeController extends Controller
             ->with('customer:id,name')
             ->whereHas('salesRepresentatives', fn ($query) => $query->whereKey($salesRep->id))
             ->orderBy('name')
-            ->get(['id', 'name', 'customer_id', 'status']);
+            ->get(['id', 'name', 'customer_id', 'status', 'currency']);
+
+        $advanceSubscriptions = Subscription::query()
+            ->with(['customer:id,name', 'plan.product'])
+            ->where('sales_rep_id', $salesRep->id)
+            ->orderByDesc('id')
+            ->get(['id', 'customer_id', 'plan_id', 'sales_rep_commission_amount', 'status']);
+
+        $activeStatuses = ['pending', 'earned', 'payable', 'paid'];
+        $projectCommissionTotals = CommissionEarning::query()
+            ->selectRaw('COALESCE(project_id, source_id) as project_ref_id, SUM(commission_amount) as total_commission')
+            ->where('sales_representative_id', $salesRep->id)
+            ->where('source_type', 'project')
+            ->whereIn('status', $activeStatuses)
+            ->groupBy(DB::raw('COALESCE(project_id, source_id)'))
+            ->pluck('total_commission', 'project_ref_id');
+
+        $subscriptionCommissionTotals = CommissionEarning::query()
+            ->select('subscription_id', DB::raw('SUM(commission_amount) as total_commission'))
+            ->where('sales_representative_id', $salesRep->id)
+            ->whereIn('source_type', ['plan', 'maintenance'])
+            ->whereNotNull('subscription_id')
+            ->whereIn('status', $activeStatuses)
+            ->groupBy('subscription_id')
+            ->pluck('total_commission', 'subscription_id');
+
+        $projectAssignedAmounts = DB::table('project_sales_representative')
+            ->where('sales_representative_id', $salesRep->id)
+            ->pluck('amount', 'project_id');
+
+        $advancePaidBySource = $this->resolveAdvancePaidBySource($salesRep->id);
+
+        $projectSources = $advanceProjects->map(function (Project $project) use ($projectCommissionTotals, $projectAssignedAmounts, $advancePaidBySource) {
+            $sourceKey = 'project:'.$project->id;
+            $commissionAmount = (float) ($projectCommissionTotals->get($project->id)
+                ?? $projectAssignedAmounts->get($project->id)
+                ?? 0);
+            $advancedAmount = (float) ($advancePaidBySource[$sourceKey] ?? 0);
+
+            return [
+                'key' => $sourceKey,
+                'type' => 'project',
+                'id' => $project->id,
+                'label' => (string) $project->name,
+                'subtitle' => (string) ($project->customer?->name ?? '--'),
+                'currency' => (string) ($project->currency ?? 'BDT'),
+                'commission_amount' => $commissionAmount,
+                'advanced_amount' => $advancedAmount,
+                'remaining_amount' => max(0, round($commissionAmount - $advancedAmount, 2)),
+                'overpaid_amount' => max(0, round($advancedAmount - $commissionAmount, 2)),
+            ];
+        });
+
+        $subscriptionSources = $advanceSubscriptions->map(function (Subscription $subscription) use ($subscriptionCommissionTotals, $advancePaidBySource) {
+            $sourceKey = 'subscription:'.$subscription->id;
+            $productName = (string) ($subscription->plan?->product?->name ?? '--');
+            $planName = (string) ($subscription->plan?->name ?? '--');
+            $commissionAmount = (float) ($subscriptionCommissionTotals->get($subscription->id)
+                ?? $subscription->sales_rep_commission_amount
+                ?? 0);
+            $advancedAmount = (float) ($advancePaidBySource[$sourceKey] ?? 0);
+
+            return [
+                'key' => $sourceKey,
+                'type' => 'subscription',
+                'id' => $subscription->id,
+                'label' => trim($productName.' > '.$planName),
+                'subtitle' => (string) ($subscription->customer?->name ?? '--'),
+                'currency' => (string) ($subscription->plan?->currency ?? 'BDT'),
+                'commission_amount' => $commissionAmount,
+                'advanced_amount' => $advancedAmount,
+                'remaining_amount' => max(0, round($commissionAmount - $advancedAmount, 2)),
+                'overpaid_amount' => max(0, round($advancedAmount - $commissionAmount, 2)),
+            ];
+        });
+
+        $advanceSources = $projectSources
+            ->concat($subscriptionSources)
+            ->values();
 
         return Inertia::render('Admin/SalesReps/Show', [
             'pageTitle' => $salesRep->name,
@@ -443,16 +646,36 @@ class SalesRepresentativeController extends Controller
                 'maintenance_earned' => (float) ($summary['maintenance_earned'] ?? 0),
             ],
             'recentEarnings' => $recentEarnings->map(function (CommissionEarning $earning) {
+                $sourceType = (string) ($earning->source_type ?? '');
+                $sourceLabel = match ($sourceType) {
+                    'project' => 'Project',
+                    'plan', 'maintenance' => 'Products / Services',
+                    default => ucfirst($sourceType),
+                };
+
+                $details = '--';
+                if ($earning->project?->name) {
+                    $details = (string) $earning->project->name;
+                } elseif ($earning->subscription?->plan) {
+                    $productName = (string) ($earning->subscription->plan->product?->name ?? '--');
+                    $planName = (string) ($earning->subscription->plan->name ?? '--');
+                    $details = trim($productName.' > '.$planName);
+                } elseif ($earning->invoice?->project?->name) {
+                    $details = (string) $earning->invoice->project->name;
+                } elseif ($earning->invoice?->maintenance?->project?->name) {
+                    $details = (string) $earning->invoice->maintenance->project->name;
+                }
+
                 return [
                     'id' => $earning->id,
-                    'source_type' => $earning->source_type,
+                    'source_type' => $sourceType,
                     'source_id' => $earning->source_id,
                     'amount' => (float) ($earning->commission_amount ?? $earning->amount ?? 0),
                     'currency' => $earning->currency,
                     'status' => $earning->status,
                     'status_label' => ucfirst((string) $earning->status),
-                    'source_label' => ucfirst((string) $earning->source_type),
-                    'details' => $earning->project?->name ?: '--',
+                    'source_label' => $sourceLabel,
+                    'details' => $details,
                     'earned_date' => $earning->earned_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'earned_at' => $earning->earned_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
@@ -470,37 +693,109 @@ class SalesRepresentativeController extends Controller
                 ];
             })->values(),
             'subscriptions' => $subscriptions->map(function (Subscription $subscription) {
+                $plan = $subscription->plan;
+                $productName = (string) ($plan?->product?->name ?? '--');
+                $planName = (string) ($plan?->name ?? '--');
+                $intervalLabel = ucfirst((string) ($plan?->interval ?? '--'));
+                $currency = (string) ($plan?->currency ?? '');
+                $amount = $subscription->subscription_amount !== null
+                    ? (float) $subscription->subscription_amount
+                    : (float) ($plan?->price ?? 0);
+                $commissionAmount = $subscription->sales_rep_commission_amount !== null
+                    ? (float) $subscription->sales_rep_commission_amount
+                    : null;
+
+                $amountDisplay = trim((string) (($currency ? $currency.' ' : '').number_format($amount, 2)));
+                $commissionDisplay = $commissionAmount !== null
+                    ? trim((string) (($currency ? $currency.' ' : '').number_format($commissionAmount, 2)))
+                    : '--';
+
                 return [
                     'id' => $subscription->id,
                     'customer_name' => $subscription->customer?->name ?? '--',
-                    'plan_name' => $subscription->plan?->name ?? '--',
+                    'product_plan' => $productName.' > '.$planName,
+                    'interval_amount_commission' => $intervalLabel.' - '.$amountDisplay.' > '.$commissionDisplay,
                     'status' => ucfirst((string) ($subscription->status ?? '--')),
                     'next_invoice_at' => $subscription->next_invoice_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 ];
             })->values(),
-            'invoiceEarnings' => $invoiceEarnings->map(function (CommissionEarning $earning) {
-                $invoice = $earning->invoice;
+            'invoiceEarnings' => $invoiceEarnings->map(function (Invoice $invoice) use ($invoiceCommissionByInvoice, $projectCommissionByProject, $salesRep) {
+                $details = '--';
+                if ($invoice->project?->name) {
+                    $details = (string) $invoice->project->name;
+                } elseif ($invoice->maintenance?->project?->name) {
+                    $details = (string) $invoice->maintenance->project->name;
+                } elseif ($invoice->subscription?->plan) {
+                    $productName = (string) ($invoice->subscription->plan->product?->name ?? '--');
+                    $planName = (string) ($invoice->subscription->plan->name ?? '--');
+                    $details = trim($productName.' > '.$planName);
+                } elseif ($invoice->orders->isNotEmpty()) {
+                    $order = $invoice->orders->first();
+                    $productName = (string) ($order?->product?->name ?? '--');
+                    $planName = (string) ($order?->plan?->name ?? '--');
+                    $details = trim($productName.' > '.$planName);
+                }
+                $statusValue = (string) ($invoice->status ?? '');
+                $commissionAmount = $invoiceCommissionByInvoice->get($invoice->id);
+                if ($commissionAmount === null) {
+                    $subscriptionCommissionAmount = $invoice->subscription?->sales_rep_commission_amount;
+                    $subscriptionSalesRepId = $invoice->subscription?->sales_rep_id;
+                    if (
+                        $subscriptionCommissionAmount !== null
+                        && $subscriptionSalesRepId !== null
+                        && (int) $subscriptionSalesRepId === (int) $salesRep->id
+                    ) {
+                        $commissionAmount = (float) $subscriptionCommissionAmount;
+                    }
+                }
+                if ($commissionAmount === null) {
+                    $projectRefId = $invoice->project_id ?: $invoice->maintenance?->project_id;
+                    if ($projectRefId !== null) {
+                        $projectCommissionAmount = $projectCommissionByProject->get((int) $projectRefId);
+                        if ($projectCommissionAmount !== null) {
+                            $commissionAmount = (float) $projectCommissionAmount;
+                        }
+                    }
+                }
+                $commissionDisplay = $commissionAmount !== null
+                    ? trim((string) (((string) ($invoice->currency ?? '') ? ((string) ($invoice->currency ?? '')).' ' : '').number_format((float) $commissionAmount, 2)))
+                    : '--';
 
                 return [
-                    'id' => $earning->id,
+                    'id' => $invoice->id,
                     'invoice_number' => $invoice ? '#'.($invoice->number ?? $invoice->id) : '--',
                     'invoice_show_route' => $invoice ? route('admin.invoices.show', $invoice) : null,
                     'customer_name' => $invoice?->customer?->name ?? '--',
-                    'project_name' => $earning->project?->name ?? '--',
-                    'status' => ucfirst((string) ($invoice->status ?? '--')),
+                    'project_name' => $details,
+                    'status' => ucfirst($statusValue ?: '--'),
+                    'status_key' => $statusValue,
                     'total_display' => $invoice ? ($invoice->currency.' '.number_format((float) $invoice->total, 2)) : '--',
+                    'commission_display' => $commissionDisplay,
                     'issue_date' => $invoice?->issue_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'due_date' => $invoice?->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 ];
             })->values(),
-            'projects' => $projects->map(function (Project $project) use ($projectTaskStatusCounts) {
+            'projects' => $projects->map(function (Project $project) use ($projectTaskStatusCounts, $projectCommissionTotals, $projectPaidCommissionTotals, $projectAdvancePaidTotals) {
                 $taskCounts = collect($projectTaskStatusCounts->get($project->id, []));
+                $commissionAmount = (float) ($projectCommissionTotals->get($project->id) ?? 0);
+                $paidCommissionAmount = (float) ($projectPaidCommissionTotals->get($project->id) ?? 0);
+                $advancePaidAmount = (float) ($projectAdvancePaidTotals->get($project->id) ?? 0);
+                $takenAmount = round($paidCommissionAmount + $advancePaidAmount, 2);
+                $remainingAmount = max(0, round($commissionAmount - $takenAmount, 2));
+                $overpaidAmount = max(0, round($takenAmount - $commissionAmount, 2));
 
                 return [
                     'id' => $project->id,
                     'name' => $project->name,
                     'customer_name' => $project->customer?->name ?? '--',
                     'status' => ucfirst((string) $project->status),
+                    'currency' => (string) ($project->currency ?? 'BDT'),
+                    'commission_amount' => $commissionAmount,
+                    'taken_amount' => $takenAmount,
+                    'taken_commission_amount' => $paidCommissionAmount,
+                    'taken_advance_amount' => $advancePaidAmount,
+                    'remaining_amount' => $remainingAmount,
+                    'overpaid_amount' => $overpaidAmount,
                     'route' => route('admin.projects.show', $project),
                     'tasks' => [
                         'pending' => (int) ($taskCounts->get('pending', 0) + $taskCounts->get('todo', 0)),
@@ -555,6 +850,7 @@ class SalesRepresentativeController extends Controller
                     'customer_name' => $project->customer?->name,
                 ];
             })->values(),
+            'advanceSources' => $advanceSources->values(),
             'paymentMethods' => PaymentMethod::commissionPayoutDropdownOptions()
                 ->map(fn ($method) => ['code' => $method->code, 'name' => $method->name])
                 ->values(),
@@ -584,6 +880,8 @@ class SalesRepresentativeController extends Controller
         }
 
         $data = $request->validate([
+            'source_type' => ['nullable', Rule::in(['project', 'subscription'])],
+            'source_id' => ['nullable', 'integer'],
             'project_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'currency' => ['nullable', 'string', 'max:10'],
@@ -592,13 +890,34 @@ class SalesRepresentativeController extends Controller
             'note' => ['nullable', 'string'],
         ]);
 
-        $currency = $data['currency'] ?? 'BDT';
-        $project = null;
+        $activeStatuses = ['pending', 'earned', 'payable', 'paid'];
+        $sourceType = (string) ($data['source_type'] ?? '');
+        $sourceId = (int) ($data['source_id'] ?? 0);
+        if (($sourceType === '' || $sourceId <= 0) && ! empty($data['project_id'])) {
+            $sourceType = 'project';
+            $sourceId = (int) $data['project_id'];
+        }
+        if ($sourceType === '' || $sourceId <= 0) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError(
+                    'Select a valid project or products/services source.',
+                    422,
+                    ['source_id' => ['Select a valid project or products/services source.']],
+                );
+            }
 
-        if (! empty($data['project_id'])) {
+            return back()->withErrors(['source_id' => 'Select a valid project or products/services source.'])->withInput();
+        }
+        $currency = (string) ($data['currency'] ?? 'BDT');
+        $project = null;
+        $subscription = null;
+        $sourceLabel = '--';
+        $sourceCommissionAmount = 0.0;
+
+        if ($sourceType === 'project') {
             $project = Project::query()
                 ->with('customer:id,name')
-                ->whereKey((int) $data['project_id'])
+                ->whereKey($sourceId)
                 ->whereHas('salesRepresentatives', fn ($query) => $query->whereKey($salesRep->id))
                 ->first();
 
@@ -607,19 +926,93 @@ class SalesRepresentativeController extends Controller
                     return AjaxResponse::ajaxError(
                         'Select a valid project linked to this sales rep.',
                         422,
-                        ['project_id' => ['Select a valid project linked to this sales rep.']],
+                        ['source_id' => ['Select a valid project linked to this sales rep.']],
                     );
                 }
 
-                return back()->withErrors(['project_id' => 'Select a valid project linked to this sales rep.'])->withInput();
+                return back()->withErrors(['source_id' => 'Select a valid project linked to this sales rep.'])->withInput();
+            }
+
+            $currency = (string) ($data['currency'] ?? ($project->currency ?: 'BDT'));
+            $sourceLabel = 'Project: '.$project->name;
+            $sourceCommissionAmount = (float) CommissionEarning::query()
+                ->where('sales_representative_id', $salesRep->id)
+                ->where('source_type', 'project')
+                ->where('source_id', $sourceId)
+                ->whereIn('status', $activeStatuses)
+                ->sum('commission_amount');
+
+            if ($sourceCommissionAmount <= 0) {
+                $sourceCommissionAmount = (float) (DB::table('project_sales_representative')
+                    ->where('project_id', $sourceId)
+                    ->where('sales_representative_id', $salesRep->id)
+                    ->value('amount') ?? 0);
+            }
+        } else {
+            $subscription = Subscription::query()
+                ->with(['customer:id,name', 'plan.product'])
+                ->whereKey($sourceId)
+                ->where('sales_rep_id', $salesRep->id)
+                ->first();
+
+            if (! $subscription) {
+                if (AjaxResponse::ajaxFromRequest($request)) {
+                    return AjaxResponse::ajaxError(
+                        'Select a valid products/services subscription linked to this sales rep.',
+                        422,
+                        ['source_id' => ['Select a valid products/services subscription linked to this sales rep.']],
+                    );
+                }
+
+                return back()->withErrors(['source_id' => 'Select a valid products/services subscription linked to this sales rep.'])->withInput();
+            }
+
+            $currency = (string) ($data['currency'] ?? ($subscription->plan?->currency ?: 'BDT'));
+            $productName = (string) ($subscription->plan?->product?->name ?? '--');
+            $planName = (string) ($subscription->plan?->name ?? '--');
+            $sourceLabel = 'Products / Services: '.trim($productName.' > '.$planName);
+            $sourceCommissionAmount = (float) CommissionEarning::query()
+                ->where('sales_representative_id', $salesRep->id)
+                ->whereIn('source_type', ['plan', 'maintenance'])
+                ->where('subscription_id', $sourceId)
+                ->whereIn('status', $activeStatuses)
+                ->sum('commission_amount');
+
+            if ($sourceCommissionAmount <= 0) {
+                $sourceCommissionAmount = (float) ($subscription->sales_rep_commission_amount ?? 0);
             }
         }
 
-        DB::transaction(function () use ($data, $salesRep, $currency, $request, $project) {
+        $sourceAdvanceMap = $this->resolveAdvancePaidBySource($salesRep->id);
+        $sourceKey = $sourceType.':'.$sourceId;
+        $sourceAdvancedBefore = (float) ($sourceAdvanceMap[$sourceKey] ?? 0);
+        $amount = (float) $data['amount'];
+        $sourceAdvancedAfter = round($sourceAdvancedBefore + $amount, 2);
+        $sourceRemainingBefore = max(0, round($sourceCommissionAmount - $sourceAdvancedBefore, 2));
+        $sourceRemainingAfter = max(0, round($sourceCommissionAmount - $sourceAdvancedAfter, 2));
+        $sourceOverpaidAfter = max(0, round($sourceAdvancedAfter - $sourceCommissionAmount, 2));
+
+        $payout = DB::transaction(function () use (
+            $data,
+            $salesRep,
+            $currency,
+            $request,
+            $project,
+            $subscription,
+            $sourceType,
+            $sourceId,
+            $sourceLabel,
+            $sourceCommissionAmount,
+            $sourceAdvancedBefore,
+            $sourceRemainingBefore,
+            $sourceRemainingAfter,
+            $sourceOverpaidAfter,
+            $amount
+        ) {
             $payload = [
                 'sales_representative_id' => $salesRep->id,
                 'type' => 'advance',
-                'total_amount' => (float) $data['amount'],
+                'total_amount' => $amount,
                 'currency' => $currency,
                 'payout_method' => $data['payout_method'] ?? null,
                 'reference' => $data['reference'] ?? null,
@@ -629,7 +1022,7 @@ class SalesRepresentativeController extends Controller
             ];
 
             if (Schema::hasColumn('commission_payouts', 'project_id')) {
-                $payload['project_id'] = $project?->id;
+                $payload['project_id'] = $sourceType === 'project' ? $project?->id : null;
             }
 
             $payout = CommissionPayout::create($payload);
@@ -642,14 +1035,32 @@ class SalesRepresentativeController extends Controller
                 'status_to' => 'paid',
                 'description' => 'Advance payment recorded.',
                 'metadata' => [
-                    'amount' => (float) $data['amount'],
+                    'amount' => $amount,
                     'currency' => $currency,
+                    'source_type' => $sourceType,
+                    'source_id' => $sourceId,
+                    'source_label' => $sourceLabel,
+                    'source_commission_amount' => $sourceCommissionAmount,
+                    'source_advanced_before' => $sourceAdvancedBefore,
+                    'source_remaining_before' => $sourceRemainingBefore,
+                    'source_remaining_after' => $sourceRemainingAfter,
+                    'source_overpaid_after' => $sourceOverpaidAfter,
                     'project_id' => $project?->id,
                     'project_name' => $project?->name,
+                    'subscription_id' => $subscription?->id,
                 ],
                 'created_by' => $request->user()?->id,
             ]);
+
+            return $payout;
         });
+
+        try {
+            app(SalesRepNotificationService::class)
+                ->sendCommissionPayoutNotification($payout->fresh(), 'paid');
+        } catch (\Throwable) {
+            // Notification failures should not block advance payout recording.
+        }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
             return AjaxResponse::ajaxRedirect(
@@ -704,6 +1115,45 @@ class SalesRepresentativeController extends Controller
         }
 
         return $paths;
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    private function resolveAdvancePaidBySource(int $salesRepId): array
+    {
+        $totals = [];
+
+        CommissionAuditLog::query()
+            ->where('sales_representative_id', $salesRepId)
+            ->where('action', 'advance_payment')
+            ->orderBy('id')
+            ->get(['metadata'])
+            ->each(function (CommissionAuditLog $log) use (&$totals): void {
+                $metadata = (array) ($log->metadata ?? []);
+                $amount = round((float) ($metadata['amount'] ?? 0), 2);
+                if ($amount <= 0) {
+                    return;
+                }
+
+                $sourceType = (string) ($metadata['source_type'] ?? '');
+                $sourceId = isset($metadata['source_id']) ? (int) $metadata['source_id'] : 0;
+
+                // Backward compatibility: older advance logs only stored project_id.
+                if (($sourceType === '' || $sourceId <= 0) && ! empty($metadata['project_id'])) {
+                    $sourceType = 'project';
+                    $sourceId = (int) $metadata['project_id'];
+                }
+
+                if ($sourceType === '' || $sourceId <= 0) {
+                    return;
+                }
+
+                $key = $sourceType.':'.$sourceId;
+                $totals[$key] = round(((float) ($totals[$key] ?? 0)) + $amount, 2);
+            });
+
+        return $totals;
     }
 
     private function resolveRepLoginStatuses($reps): array

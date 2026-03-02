@@ -14,6 +14,7 @@ use App\Services\AdminNotificationService;
 use App\Services\BillingService;
 use App\Services\CommissionService;
 use App\Services\InvoiceTaxService;
+use App\Services\SalesRepNotificationService;
 use App\Support\AjaxResponse;
 use App\Support\Branding;
 use App\Support\SystemLogger;
@@ -243,7 +244,8 @@ class InvoiceController extends Controller
         Request $request,
         Invoice $invoice,
         AdminNotificationService $adminNotifications,
-        CommissionService $commissionService
+        CommissionService $commissionService,
+        SalesRepNotificationService $salesRepNotifications
     ): RedirectResponse|JsonResponse {
         $wasPaid = $invoice->status === 'paid';
         $previousStatus = $invoice->status;
@@ -263,6 +265,14 @@ class InvoiceController extends Controller
 
         if (! $wasPaid) {
             $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
+            try {
+                $salesRepNotifications->sendInvoicePaymentConfirmationToRelatedSalesReps($invoice->fresh(), null);
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Sales rep invoice paid notification failed on manual mark paid.', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $e->getMessage(),
+                ], level: 'error');
+            }
 
             // Check if customer has any remaining unpaid/overdue invoices
             // If not, clear the billing block
@@ -339,7 +349,8 @@ class InvoiceController extends Controller
         Invoice $invoice,
         AdminNotificationService $adminNotifications,
         CommissionService $commissionService,
-        InvoiceTaxService $taxService
+        InvoiceTaxService $taxService,
+        SalesRepNotificationService $salesRepNotifications
     ): RedirectResponse|JsonResponse {
         $invoice->loadMissing('items');
         $wasPaid = $invoice->status === 'paid';
@@ -498,6 +509,14 @@ class InvoiceController extends Controller
 
         if (! $wasPaid && $data['status'] === 'paid') {
             $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
+            try {
+                $salesRepNotifications->sendInvoicePaymentConfirmationToRelatedSalesReps($invoice->fresh(), null);
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Sales rep invoice paid notification failed on admin invoice update.', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $e->getMessage(),
+                ], level: 'error');
+            }
 
             // Check if customer has any remaining unpaid/overdue invoices
             // If not, clear the billing block

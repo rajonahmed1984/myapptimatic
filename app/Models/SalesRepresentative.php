@@ -10,6 +10,7 @@ use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
 use App\Models\Concerns\HasActivityTracking;
 use App\Models\ProjectMaintenance;
+use App\Models\Subscription;
 
 class SalesRepresentative extends Model
 {
@@ -53,6 +54,11 @@ class SalesRepresentative extends Model
     public function payouts(): HasMany
     {
         return $this->hasMany(CommissionPayout::class, 'sales_representative_id');
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class, 'sales_rep_id');
     }
 
     public function projects(): BelongsToMany

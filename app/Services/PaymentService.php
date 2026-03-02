@@ -12,6 +12,7 @@ use App\Support\Currency;
 use App\Models\StatusAuditLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use App\Services\SalesRepNotificationService;
 
 class PaymentService
 {
@@ -137,6 +138,13 @@ class PaymentService
                 app(\App\Services\ClientNotificationService::class)->sendInvoicePaymentConfirmation($invoice, $reference);
             } catch (\Throwable) {
                 // Client notification failures should not interfere with payment.
+            }
+
+            try {
+                app(SalesRepNotificationService::class)
+                    ->sendInvoicePaymentConfirmationToRelatedSalesReps($invoice, $reference);
+            } catch (\Throwable) {
+                // Sales rep notification failures should not interfere with payment.
             }
 
             // Commission: create or update earning for this invoice payment (idempotent).

@@ -138,10 +138,13 @@ class SubscriptionController extends Controller
             ? (float) $subscription->subscription_amount
             : (float) ($subscription->plan?->price ?? 0);
         $amountCurrency = (string) ($subscription->plan?->currency ?? '');
+        $subscriptionCommissionAmount = $subscription->sales_rep_commission_amount !== null
+            ? round((float) $subscription->sales_rep_commission_amount, 2)
+            : null;
         $commissionPercent = null;
 
-        if ($subscription->sales_rep_commission_amount !== null && $baseAmount > 0) {
-            $commissionPercent = round((((float) $subscription->sales_rep_commission_amount) / $baseAmount) * 100, 2);
+        if ($subscriptionCommissionAmount !== null && $baseAmount > 0) {
+            $commissionPercent = round(($subscriptionCommissionAmount / $baseAmount) * 100, 2);
         }
 
         return Inertia::render('Admin/Subscriptions/Show', [
@@ -173,7 +176,12 @@ class SubscriptionController extends Controller
                 'notes' => (string) ($subscription->notes ?? ''),
                 'created_at' => $subscription->created_at?->format($dateFormat) ?? '--',
             ],
-            'invoices' => $subscription->invoices->map(function ($invoice) use ($dateFormat) {
+            'invoices' => $subscription->invoices->map(function ($invoice) use ($dateFormat, $subscriptionCommissionAmount) {
+                $invoiceCurrency = (string) ($invoice->currency ?? '');
+                $commissionDisplay = $subscriptionCommissionAmount !== null
+                    ? trim((string) (($invoiceCurrency ? $invoiceCurrency.' ' : '').number_format($subscriptionCommissionAmount, 2)))
+                    : '--';
+
                 return [
                     'id' => $invoice->id,
                     'number' => (string) ($invoice->number ?: $invoice->id),
@@ -183,6 +191,7 @@ class SubscriptionController extends Controller
                     'due_date' => $invoice->due_date?->format($dateFormat) ?? '--',
                     'paid_date' => $invoice->paid_at?->format($dateFormat) ?? '--',
                     'total_display' => trim((string) (((string) ($invoice->currency ?? '') ? ((string) ($invoice->currency ?? '')).' ' : '').number_format((float) ($invoice->total ?? 0), 2))),
+                    'commission_display' => $commissionDisplay,
                     'show_url' => route('admin.invoices.show', $invoice),
                     'edit_url' => route('admin.invoices.show', $invoice),
                     'destroy_url' => route('admin.invoices.destroy', $invoice),

@@ -2,6 +2,14 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
 const money = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const invoiceBadgeClass = (status) => {
+    const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
+    if (key === 'paid') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    if (key === 'overdue') return 'border-rose-200 bg-rose-50 text-rose-700';
+    if (key === 'cancelled' || key === 'canceled' || key === 'refunded') return 'border-slate-300 bg-slate-50 text-slate-700';
+    if (key === 'partially_paid' || key === 'partial') return 'border-blue-200 bg-blue-50 text-blue-700';
+    return 'border-amber-200 bg-amber-50 text-amber-700';
+};
 
 export default function Show({
     pageTitle = 'Sales Representative',
@@ -17,13 +25,64 @@ export default function Show({
     emailLogs = [],
     activityLogs = [],
     advanceProjects = [],
+    advanceSources = [],
     paymentMethods = [],
     routes = {},
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
+    const [sourceType, setSourceType] = React.useState('project');
+    const [sourceId, setSourceId] = React.useState('');
+    const [amountInput, setAmountInput] = React.useState('');
 
     const tabHref = (key) => `${routes?.show_tab}?tab=${encodeURIComponent(key)}`;
+    const normalizedAdvanceSources = React.useMemo(() => (Array.isArray(advanceSources) ? advanceSources : []), [advanceSources]);
+    const sourceTypeOptions = React.useMemo(() => {
+        const hasProject = normalizedAdvanceSources.some((item) => item.type === 'project');
+        const hasSubscription = normalizedAdvanceSources.some((item) => item.type === 'subscription');
+        const options = [];
+        if (hasProject) options.push({ value: 'project', label: 'Project' });
+        if (hasSubscription) options.push({ value: 'subscription', label: 'Products / Services' });
+        return options;
+    }, [normalizedAdvanceSources]);
+    const sourcesByType = React.useMemo(
+        () => ({
+            project: normalizedAdvanceSources.filter((item) => item.type === 'project'),
+            subscription: normalizedAdvanceSources.filter((item) => item.type === 'subscription'),
+        }),
+        [normalizedAdvanceSources]
+    );
+
+    React.useEffect(() => {
+        if (sourceTypeOptions.length === 0) return;
+        if (!sourceTypeOptions.find((option) => option.value === sourceType)) {
+            setSourceType(sourceTypeOptions[0].value);
+        }
+    }, [sourceType, sourceTypeOptions]);
+
+    React.useEffect(() => {
+        const options = sourcesByType[sourceType] || [];
+        if (options.length === 0) {
+            setSourceId('');
+            return;
+        }
+        if (!options.find((item) => String(item.id) === String(sourceId))) {
+            setSourceId(String(options[0].id));
+        }
+    }, [sourceId, sourceType, sourcesByType]);
+
+    const selectedSource = React.useMemo(() => {
+        const options = sourcesByType[sourceType] || [];
+        return options.find((item) => String(item.id) === String(sourceId)) || null;
+    }, [sourceId, sourceType, sourcesByType]);
+    const enteredAmount = Number(amountInput || 0);
+    const sourceCurrency = selectedSource?.currency || 'BDT';
+    const sourceCommissionAmount = Number(selectedSource?.commission_amount || 0);
+    const sourceAdvancedAmount = Number(selectedSource?.advanced_amount || 0);
+    const sourceRemainingBefore = Number(selectedSource?.remaining_amount || 0);
+    const sourceAdvancedAfter = sourceAdvancedAmount + (enteredAmount > 0 ? enteredAmount : 0);
+    const sourceRemainingAfter = Math.max(0, sourceCommissionAmount - sourceAdvancedAfter);
+    const sourceOverpaidAfter = Math.max(0, sourceAdvancedAfter - sourceCommissionAmount);
 
     return (
         <>
@@ -116,15 +175,28 @@ export default function Show({
                         <form method="POST" action={routes?.advance_payment} data-native="true" className="mt-3 grid gap-3 md:grid-cols-8">
                             <input type="hidden" name="_token" value={csrf} />
                             <div className="md:col-span-2">
-                                <label className="text-xs text-slate-500">Project</label>
-                                <select name="project_id" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                    <option value="">Select project</option>
-                                    {advanceProjects.map((project) => (
-                                        <option key={project.id} value={project.id}>{project.name}{project.customer_name ? ` (${project.customer_name})` : ''}</option>
+                                <label className="text-xs text-slate-500">Source Type</label>
+                                <select value={sourceType} onChange={(event) => setSourceType(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                                    {sourceTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="md:col-span-3">
+                                <label className="text-xs text-slate-500">Project / Products &amp; Services</label>
+                                <select value={sourceId} onChange={(event) => setSourceId(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                                    {(sourcesByType[sourceType] || []).map((item) => (
+                                        <option key={item.key || `${item.type}:${item.id}`} value={item.id}>
+                                            {item.label}{item.subtitle ? ` (${item.subtitle})` : ''}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
-                            <div><label className="text-xs text-slate-500">Amount</label><input name="amount" type="number" step="0.01" min="0" required className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
+                            <input type="hidden" name="source_type" value={sourceType} />
+                            <input type="hidden" name="source_id" value={sourceId} />
+                            <input type="hidden" name="project_id" value={sourceType === 'project' ? sourceId : ''} />
+                            <div>
+                                <label className="text-xs text-slate-500">Amount</label>
+                                <input name="amount" type="number" step="0.01" min="0" required value={amountInput} onChange={(event) => setAmountInput(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                            </div>
                             <div><label className="text-xs text-slate-500">Currency</label><input name="currency" defaultValue="BDT" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
                             <div>
                                 <label className="text-xs text-slate-500">Method</label>
@@ -133,15 +205,40 @@ export default function Show({
                                     {paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}
                                 </select>
                             </div>
+                            {selectedSource ? (
+                                <div className="md:col-span-8 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 md:grid-cols-4">
+                                    <div>Commission: <span className="font-semibold">{sourceCurrency} {money(sourceCommissionAmount)}</span></div>
+                                    <div>Already Advanced: <span className="font-semibold">{sourceCurrency} {money(sourceAdvancedAmount)}</span></div>
+                                    <div>Remaining Before: <span className="font-semibold">{sourceCurrency} {money(sourceRemainingBefore)}</span></div>
+                                    <div>After This Payment: <span className="font-semibold">{sourceCurrency} {money(sourceRemainingAfter)}</span></div>
+                                    {sourceOverpaidAfter > 0 ? <div className="md:col-span-4 text-rose-600">Overpayment after save: {sourceCurrency} {money(sourceOverpaidAfter)}</div> : null}
+                                </div>
+                            ) : (
+                                <div className="md:col-span-8 text-xs text-amber-700">No source found. Add project or products/services assignment first.</div>
+                            )}
                             <div><label className="text-xs text-slate-500">Reference</label><input name="reference" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
                             <div className="md:col-span-8"><label className="text-xs text-slate-500">Note</label><input name="note" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                            <div className="md:col-span-8"><button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Save advance payment</button></div>
+                            <div className="md:col-span-8"><button type="submit" disabled={!selectedSource} className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400">Save advance payment</button></div>
                         </form>
                     </div>
                 </>
             ) : null}
 
-            {tab === 'services' ? <SimpleTable title="Products / Services" rows={subscriptions.map((s) => [String(s.id), s.customer_name, s.plan_name, s.status, s.next_invoice_at])} headers={['Subscription', 'Customer', 'Plan', 'Status', 'Next Invoice']} empty="No linked products or services for this rep." /> : null}
+            {tab === 'services'
+                ? <SimpleTable
+                    title="Products / Services"
+                    rows={subscriptions.map((s) => [
+                        String(s.id),
+                        s.customer_name,
+                        s.product_plan || s.plan_name || '--',
+                        s.interval_amount_commission || '--',
+                        s.status,
+                        s.next_invoice_at,
+                    ])}
+                    headers={['Subscription', 'Customer', 'Product & Plan', 'Interval & Amount > Commission', 'Status', 'Next Invoice']}
+                    empty="No linked products or services for this rep."
+                />
+                : null}
 
             {tab === 'invoices' ? <InvoiceTable rows={invoiceEarnings} /> : null}
 
@@ -174,7 +271,7 @@ function InvoiceTable({ rows }) {
     return (
         <div className="card p-6">
             <div className="mb-3 text-sm font-semibold text-slate-800">Invoices</div>
-            {rows.length === 0 ? <div className="text-sm text-slate-600">No invoices linked to this rep.</div> : <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="text-xs uppercase tracking-[0.2em] text-slate-500"><tr><th className="px-3 py-2">Invoice</th><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Project</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Total</th><th className="px-3 py-2">Issued</th><th className="px-3 py-2">Due</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-slate-100"><td className="px-3 py-2">{row.invoice_show_route ? <a href={row.invoice_show_route} data-native="true" className="text-teal-700 hover:text-teal-600">{row.invoice_number}</a> : row.invoice_number}</td><td className="px-3 py-2">{row.customer_name}</td><td className="px-3 py-2">{row.project_name}</td><td className="px-3 py-2">{row.status}</td><td className="px-3 py-2">{row.total_display}</td><td className="px-3 py-2">{row.issue_date}</td><td className="px-3 py-2">{row.due_date}</td></tr>)}</tbody></table></div>}
+            {rows.length === 0 ? <div className="text-sm text-slate-600">No invoices linked to this rep.</div> : <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="text-xs uppercase tracking-[0.2em] text-slate-500"><tr><th className="px-3 py-2">Invoice</th><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Products / Services &amp; Project</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Total</th><th className="px-3 py-2">Commission</th><th className="px-3 py-2">Issued</th><th className="px-3 py-2">Due</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-slate-100"><td className="px-3 py-2">{row.invoice_show_route ? <a href={row.invoice_show_route} data-native="true" className="text-teal-700 hover:text-teal-600">{row.invoice_number}</a> : row.invoice_number}</td><td className="px-3 py-2">{row.customer_name}</td><td className="px-3 py-2">{row.project_name}</td><td className="px-3 py-2"><span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${invoiceBadgeClass(row.status_key || row.status)}`}>{row.status}</span></td><td className="px-3 py-2">{row.total_display}</td><td className="px-3 py-2">{row.commission_display || '--'}</td><td className="px-3 py-2">{row.issue_date}</td><td className="px-3 py-2">{row.due_date}</td></tr>)}</tbody></table></div>}
         </div>
     );
 }
@@ -372,6 +469,7 @@ function ProjectsTable({ rows }) {
                                     <th className="px-3 py-2">Project</th>
                                     <th className="px-3 py-2">Status</th>
                                     <th className="px-3 py-2">Customer</th>
+                                    <th className="px-3 py-2">Commission & Taken</th>
                                     <th className="px-3 py-2">Assigned Tasks</th>
                                 </tr>
                             </thead>
@@ -394,6 +492,26 @@ function ProjectsTable({ rows }) {
                                                 <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusBadgeClass(row.status)}`}>{row.status}</span>
                                             </td>
                                             <td className="px-3 py-3">{row.customer_name}</td>
+                                            <td className="px-3 py-3">
+                                                <div className="text-xs text-slate-500">
+                                                    Commission: <span className="font-semibold text-slate-800">{row.currency || 'BDT'} {money(row.commission_amount)}</span>
+                                                </div>
+                                                <div className="mt-1 text-xs text-slate-500">
+                                                    Taken: <span className="font-semibold text-slate-800">{row.currency || 'BDT'} {money(row.taken_amount)}</span>
+                                                </div>
+                                                <div className="text-[11px] text-slate-400">
+                                                    Paid: {row.currency || 'BDT'} {money(row.taken_commission_amount)} | Advance: {row.currency || 'BDT'} {money(row.taken_advance_amount)}
+                                                </div>
+                                                {Number(row.overpaid_amount || 0) > 0 ? (
+                                                    <div className="mt-1 text-xs font-semibold text-rose-600">
+                                                        Overpaid: {row.currency || 'BDT'} {money(row.overpaid_amount)}
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-1 text-xs font-semibold text-emerald-600">
+                                                        Remaining: {row.currency || 'BDT'} {money(row.remaining_amount)}
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-3 py-3">
                                                 <div className="font-medium text-slate-800">Assigned tasks: {assignedTotal}</div>
                                                 <div className="mt-2 flex flex-wrap gap-2 text-xs">

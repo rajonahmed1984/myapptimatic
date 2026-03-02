@@ -407,7 +407,7 @@ class CommissionService
     */
     public function createPayout(int $salesRepId, array $earningIds, ?string $currency = 'BDT', ?string $payoutMethod = null, ?string $note = null): CommissionPayout
     {
-        return DB::transaction(function () use ($salesRepId, $earningIds, $currency, $payoutMethod, $note) {
+        $payout = DB::transaction(function () use ($salesRepId, $earningIds, $currency, $payoutMethod, $note) {
             $earnings = CommissionEarning::query()
                 ->whereIn('id', $earningIds)
                 ->where('sales_representative_id', $salesRepId)
@@ -449,6 +449,15 @@ class CommissionService
 
             return $payout;
         });
+
+        try {
+            app(SalesRepNotificationService::class)
+                ->sendCommissionPayoutNotification($payout->fresh(), 'created');
+        } catch (\Throwable) {
+            // Notification failures should not block payout creation.
+        }
+
+        return $payout;
     }
 
     private function commissionPayoutHasColumn(string $column): bool
@@ -467,10 +476,10 @@ class CommissionService
     */
     public function markPayoutPaid(CommissionPayout $payout, ?string $reference = null, ?string $note = null, ?string $payoutMethod = null): CommissionPayout
     {
-        return DB::transaction(function () use ($payout, $reference, $note, $payoutMethod) {
+        [$updatedPayout, $statusChanged] = DB::transaction(function () use ($payout, $reference, $note, $payoutMethod) {
             $payout->refresh();
             if ($payout->status === 'paid') {
-                return $payout;
+                return [$payout, false];
             }
 
             if ($payout->status === 'reversed') {
@@ -504,8 +513,19 @@ class CommissionService
                 ]);
             }
 
-            return $payout;
+            return [$payout, true];
         });
+
+        if ($statusChanged) {
+            try {
+                app(SalesRepNotificationService::class)
+                    ->sendCommissionPayoutNotification($updatedPayout->fresh(), 'paid');
+            } catch (\Throwable) {
+                // Notification failures should not block payout status updates.
+            }
+        }
+
+        return $updatedPayout;
     }
 
     /**
@@ -513,10 +533,10 @@ class CommissionService
     */
     public function reversePayout(CommissionPayout $payout, ?string $note = null): CommissionPayout
     {
-        return DB::transaction(function () use ($payout, $note) {
+        [$updatedPayout, $statusChanged] = DB::transaction(function () use ($payout, $note) {
             $payout->refresh();
             if ($payout->status === 'reversed') {
-                return $payout;
+                return [$payout, false];
             }
 
             $now = Carbon::now();
@@ -544,8 +564,19 @@ class CommissionService
                 'note' => $note ?? $payout->note,
             ]);
 
-            return $payout;
+            return [$payout, true];
         });
+
+        if ($statusChanged) {
+            try {
+                app(SalesRepNotificationService::class)
+                    ->sendCommissionPayoutNotification($updatedPayout->fresh(), 'reversed');
+            } catch (\Throwable) {
+                // Notification failures should not block payout reversal.
+            }
+        }
+
+        return $updatedPayout;
     }
 
     private function resolveSalesRepIdFromSource(object $sourceModel): ?int

@@ -118,13 +118,14 @@ export default function Show({
                             <th className="px-4 py-3">Paid Date</th>
                             <th className="px-4 py-3">Status</th>
                             <th className="px-4 py-3">Total</th>
+                            <th className="px-4 py-3">Commission</th>
                             <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {invoices.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">No invoice records found.</td>
+                                <td colSpan={8} className="px-4 py-6 text-center text-slate-500">No invoice records found.</td>
                             </tr>
                         ) : (
                             invoices.map((invoice) => (
@@ -143,6 +144,7 @@ export default function Show({
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 font-semibold text-slate-800">{invoice.total_display}</td>
+                                    <td className="px-4 py-3 font-semibold text-slate-700">{invoice.commission_display || '--'}</td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="inline-flex items-center gap-2">
                                             <a href={invoice.edit_url || invoice.show_url} data-native="true" className="text-teal-600 hover:text-teal-500">

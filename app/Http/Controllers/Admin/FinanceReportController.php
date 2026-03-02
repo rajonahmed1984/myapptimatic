@@ -32,7 +32,7 @@ class FinanceReportController extends Controller
 
         $incomeSources = $request->input('income_sources', []);
         if (! is_array($incomeSources) || empty($incomeSources)) {
-            $incomeSources = ['manual', 'system'];
+            $incomeSources = ['manual', 'system', 'carrothost'];
         }
 
         $expenseSources = $request->input('expense_sources', []);
@@ -92,7 +92,18 @@ class FinanceReportController extends Controller
             }
         }
 
-        $incomeEntries = $manualIncomeEntries->merge($systemIncomeEntries);
+        $carrotHostIncomeEntries = collect();
+        if (in_array('carrothost', $incomeSources, true)) {
+            $carrotHostIncomeEntries = $incomeService->entries([
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'sources' => ['carrothost'],
+            ]);
+        }
+
+        $incomeEntries = $manualIncomeEntries
+            ->merge($systemIncomeEntries)
+            ->merge($carrotHostIncomeEntries);
         $totalIncome = (float) $incomeEntries->sum('amount');
 
         $expenseEntries = $expenseService->entries([
@@ -110,6 +121,7 @@ class FinanceReportController extends Controller
             ->whereDate('entry_date', '>=', $startDate->toDateString())
             ->whereDate('entry_date', '<=', $endDate->toDateString())
             ->sum('amount');
+        $receivedIncome += (float) $carrotHostIncomeEntries->sum('amount');
 
         $payoutExpense = (float) $expenseEntries
             ->whereIn('expense_type', ['salary', 'contract_payout', 'sales_payout'])

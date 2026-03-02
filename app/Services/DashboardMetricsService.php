@@ -624,7 +624,7 @@ class DashboardMetricsService
                     continue;
                 }
 
-                $totals[$bucket] = (float) ($totals[$bucket] ?? 0) + $this->normalizeMoney($transaction['amountin'] ?? 0);
+                $totals[$bucket] = (float) ($totals[$bucket] ?? 0) + $this->whmcsNetIncomeFromTransaction($transaction);
             }
 
             return $totals;
@@ -733,6 +733,14 @@ class DashboardMetricsService
         }
 
         return (float) $clean;
+    }
+
+    private function whmcsNetIncomeFromTransaction(array $transaction): float
+    {
+        $amountIn = $this->normalizeMoney($transaction['amountin'] ?? 0);
+        $fees = $this->normalizeMoney($transaction['fees'] ?? 0);
+
+        return round($amountIn - $fees, 2);
     }
 
     private function billingAmounts(): array

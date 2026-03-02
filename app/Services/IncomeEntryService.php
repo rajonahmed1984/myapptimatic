@@ -6,9 +6,19 @@ use App\Models\AccountingEntry;
 use App\Models\Income;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class IncomeEntryService
 {
+    private const WHMCS_DEFAULT_START = '2026-01-01';
+    private const WHMCS_PAGE_SIZE = 100;
+    private const WHMCS_MAX_PAGES = 50;
+
+    public function __construct(
+        private readonly WhmcsClient $whmcsClient
+    ) {
+    }
+
     public function entries(array $filters = []): Collection
     {
         $sources = $filters['sources'] ?? ['manual', 'system'];
@@ -147,7 +157,70 @@ class IncomeEntryService
             }
         }
 
+        if (in_array('carrothost', $sources, true)) {
+            $entries = $entries->merge($this->carrotHostEntries($startDate, $endDate));
+        }
+
         return $entries;
+    }
+
+    private function carrotHostEntries(?Carbon $startDate, ?Carbon $endDate): Collection
+    {
+        if (! $this->whmcsClient->isConfigured()) {
+            return collect();
+        }
+
+        $start = ($startDate?->copy() ?? Carbon::parse(self::WHMCS_DEFAULT_START)->startOfDay())->toDateString();
+        $end = ($endDate?->copy() ?? now()->endOfDay())->toDateString();
+
+        $cacheKey = 'income-service:carrothost:transactions:'.$start.':'.$end;
+        $transactions = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($start, $end) {
+            $errors = [];
+            $rows = $this->fetchAllWhmcs(
+                'GetTransactions',
+                [
+                    'startdate' => $start,
+                    'enddate' => $end,
+                    'orderby' => 'date',
+                    'order' => 'desc',
+                ],
+                'transactions',
+                'transaction',
+                $errors
+            );
+
+            return $this->filterWhmcsByDate($rows, 'date', $start, $end);
+        });
+
+        return collect($transactions)->map(function ($row) {
+            $amountIn = $this->normalizeMoney($row['amountin'] ?? 0);
+            $fees = $this->normalizeMoney($row['fees'] ?? 0);
+            $netIncome = round($amountIn - $fees, 2);
+            $invoiceId = $row['invoiceid'] ?? null;
+            $transId = $row['transid'] ?? ($row['id'] ?? null);
+            $clientName = $row['clientname'] ?? ($row['userid'] ?? null);
+            $gateway = $row['gateway'] ?? null;
+            $title = $invoiceId ? "WHMCS payment (Invoice #{$invoiceId})" : 'WHMCS payment';
+
+            return [
+                'key' => 'carrothost:transaction:'.($transId ?: uniqid()),
+                'source_type' => 'carrothost',
+                'source_label' => 'CarrotHost',
+                'source_id' => $transId,
+                'title' => $title,
+                'amount' => $netIncome,
+                'income_date' => $row['date'] ?? null,
+                'category_id' => 'carrothost',
+                'category_name' => 'CarrotHost',
+                'notes' => $gateway ? "Gateway: {$gateway}" : null,
+                'attachment_path' => null,
+                'invoice_number' => $invoiceId ?: null,
+                'customer_id' => null,
+                'customer_name' => $clientName,
+                'project_id' => null,
+                'project_name' => null,
+            ];
+        });
     }
 
     private function parseFilterDate(mixed $value, bool $endOfDay): ?Carbon
@@ -163,5 +236,105 @@ class IncomeEntryService
         }
 
         return $endOfDay ? $date->endOfDay() : $date->startOfDay();
+    }
+
+    private function fetchAllWhmcs(
+        string $action,
+        array $params,
+        string $rootKey,
+        ?string $itemKey,
+        array &$errors
+    ): array {
+        $items = [];
+        $offset = 0;
+
+        for ($page = 0; $page < self::WHMCS_MAX_PAGES; $page++) {
+            $result = $this->whmcsClient->call($action, array_merge($params, [
+                'limitstart' => $offset,
+                'limitnum' => self::WHMCS_PAGE_SIZE,
+            ]));
+
+            if (! $result['ok']) {
+                $errors[] = $action.': '.$result['error'];
+                break;
+            }
+
+            $data = $result['data'] ?? [];
+            $container = $data[$rootKey] ?? [];
+            $batch = $this->normalizeWhmcsList($container, $itemKey);
+
+            if (empty($batch)) {
+                break;
+            }
+
+            $items = array_merge($items, $batch);
+
+            $total = (int) ($data['totalresults'] ?? 0);
+            $offset += self::WHMCS_PAGE_SIZE;
+
+            if ($total > 0 && count($items) >= $total) {
+                break;
+            }
+
+            if (count($batch) < self::WHMCS_PAGE_SIZE) {
+                break;
+            }
+        }
+
+        return $items;
+    }
+
+    private function normalizeWhmcsList($container, ?string $itemKey): array
+    {
+        if (! is_array($container)) {
+            return [];
+        }
+
+        $items = $container;
+        if ($itemKey && array_key_exists($itemKey, $container)) {
+            $items = $container[$itemKey];
+        }
+
+        if ($items === null || $items === '') {
+            return [];
+        }
+
+        if (is_array($items) && array_is_list($items)) {
+            return $items;
+        }
+
+        return is_array($items) ? [$items] : [];
+    }
+
+    private function filterWhmcsByDate(array $items, string $dateKey, string $start, string $end): array
+    {
+        return array_values(array_filter($items, function ($item) use ($dateKey, $start, $end) {
+            $value = $item[$dateKey] ?? null;
+            if (! $value) {
+                return true;
+            }
+
+            try {
+                $date = Carbon::parse($value)->toDateString();
+            } catch (\Throwable) {
+                return true;
+            }
+
+            return $date >= $start && $date <= $end;
+        }));
+    }
+
+    private function normalizeMoney(mixed $value): float
+    {
+        if ($value === null) {
+            return 0.0;
+        }
+
+        $clean = preg_replace('/[^\d\.\-]/', '', (string) $value);
+        if ($clean === '' || $clean === '-' || $clean === '.') {
+            return 0.0;
+        }
+
+        return (float) $clean;
     }
 }

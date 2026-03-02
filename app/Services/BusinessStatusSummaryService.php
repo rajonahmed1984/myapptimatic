@@ -36,7 +36,7 @@ class BusinessStatusSummaryService
         $incomeEntries = $incomeService->entries([
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
-            'sources' => ['manual', 'system'],
+            'sources' => ['manual', 'system', 'carrothost'],
         ]);
         $expenseEntries = $expenseService->entries([
             'start_date' => $startDate->toDateString(),
@@ -53,6 +53,10 @@ class BusinessStatusSummaryService
             ->whereDate('entry_date', '>=', $startDate->toDateString())
             ->whereDate('entry_date', '<=', $endDate->toDateString())
             ->sum('amount');
+        $carrotHostIncome = (float) $incomeEntries
+            ->where('source_type', 'carrothost')
+            ->sum('amount');
+        $receivedIncome += $carrotHostIncome;
 
         $payoutExpense = (float) $expenseEntries
             ->whereIn('expense_type', ['salary', 'contract_payout', 'sales_payout'])
