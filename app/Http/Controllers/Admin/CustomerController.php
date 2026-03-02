@@ -2,36 +2,38 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
 use App\Enums\MailCategory;
+use App\Enums\Role;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreClientUserRequest;
 use App\Models\AccountingEntry;
 use App\Models\Customer;
 use App\Models\EmailTemplate;
+use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\License;
 use App\Models\Order;
 use App\Models\Plan;
-use App\Models\SystemLog;
 use App\Models\ProjectMaintenance;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\SalesRepresentative;
+use App\Models\Setting;
 use App\Models\Subscription;
-use App\Models\Employee;
+use App\Models\SystemLog;
 use App\Models\User;
 use App\Models\UserSession;
-use App\Models\Setting;
-use App\Http\Requests\StoreClientUserRequest;
-use App\Enums\Role;
+use App\Services\BillingService;
+use App\Services\InvoiceTaxService;
+use App\Services\Mail\MailSender;
 use App\Support\Branding;
 use App\Support\Currency;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
-use App\Services\Mail\MailSender;
-use App\Services\BillingService;
-use App\Services\InvoiceTaxService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -39,8 +41,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
-use Illuminate\Support\Carbon;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -54,9 +54,9 @@ class CustomerController extends Controller
         $customers = Customer::query()
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('company_name', 'like', '%' . $search . '%')
-                        ->orWhere('email', 'like', '%' . $search . '%');
+                    $q->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('company_name', 'like', '%'.$search.'%')
+                        ->orWhere('email', 'like', '%'.$search.'%');
                 });
             })
             ->with(['users:id,customer_id,role'])
@@ -113,6 +113,16 @@ class CustomerController extends Controller
         if ($request->hasFile('avatar')) {
             $path = $this->storeCustomerAvatar($request->file('avatar'), $customer);
             $customer->forceFill(['avatar_path' => $path])->save();
+        }
+
+        if ($request->hasFile('nid_file')) {
+            $path = $this->storeCustomerDocument($request->file('nid_file'), $customer, 'nid', null);
+            $customer->forceFill(['nid_path' => $path])->save();
+        }
+
+        if ($request->hasFile('cv_file')) {
+            $path = $this->storeCustomerDocument($request->file('cv_file'), $customer, 'cv', null);
+            $customer->forceFill(['cv_path' => $path])->save();
         }
 
         if (! empty($data['user_password'])) {
@@ -404,29 +414,30 @@ class CustomerController extends Controller
         $salesRepSummaries = collect();
         $projectIds = $customer->projects->pluck('id')->filter()->values();
         if ($projectIds->isNotEmpty()) {
-                $salesReps = SalesRepresentative::query()
-                    ->whereHas('projects', fn ($query) => $query->whereIn('projects.id', $projectIds))
-                    ->with(['projects' => function ($query) use ($projectIds) {
-                        $query->whereIn('projects.id', $projectIds)
-                            ->with(['maintenances' => fn ($maintenanceQuery) => $maintenanceQuery
-                                ->where('sales_rep_visible', true)
-                                ->with('salesRepresentatives')]);
-                    }])
-                    ->get();
+            $salesReps = SalesRepresentative::query()
+                ->whereHas('projects', fn ($query) => $query->whereIn('projects.id', $projectIds))
+                ->with(['projects' => function ($query) use ($projectIds) {
+                    $query->whereIn('projects.id', $projectIds)
+                        ->with(['maintenances' => fn ($maintenanceQuery) => $maintenanceQuery
+                            ->where('sales_rep_visible', true)
+                            ->with('salesRepresentatives')]);
+                }])
+                ->get();
 
             $salesRepSummaries = $salesReps->map(function (SalesRepresentative $rep) {
-                    $projects = $rep->projects->map(function ($project) use ($rep) {
-                        $projectAmount = (float) ($project->pivot?->amount ?? 0);
-                        $maintenanceAmount = (float) $project->maintenances
-                            ->where('sales_rep_visible', true)
-                            ->sum(function ($maintenance) use ($rep) {
-                                if ($maintenance->salesRepresentatives?->isNotEmpty()) {
-                                    $linked = $maintenance->salesRepresentatives->firstWhere('id', $rep->id);
-                                    return (float) ($linked?->pivot?->amount ?? 0);
-                                }
+                $projects = $rep->projects->map(function ($project) use ($rep) {
+                    $projectAmount = (float) ($project->pivot?->amount ?? 0);
+                    $maintenanceAmount = (float) $project->maintenances
+                        ->where('sales_rep_visible', true)
+                        ->sum(function ($maintenance) use ($rep) {
+                            if ($maintenance->salesRepresentatives?->isNotEmpty()) {
+                                $linked = $maintenance->salesRepresentatives->firstWhere('id', $rep->id);
 
-                                return (float) ($maintenance->amount ?? 0);
-                            });
+                                return (float) ($linked?->pivot?->amount ?? 0);
+                            }
+
+                            return (float) ($maintenance->amount ?? 0);
+                        });
 
                     return [
                         'id' => $project->id,
@@ -786,20 +797,6 @@ class CustomerController extends Controller
                 'line_total' => $subtotal,
             ]);
 
-            // Initial invoice is created immediately, so advance the subscription
-            // period window to avoid duplicate billing of the same period.
-            $nextPeriodStart = $plan->interval === 'monthly'
-                ? $periodEnd->copy()->addDay()
-                : $periodEnd->copy();
-            $nextPeriodEnd = $plan->interval === 'monthly'
-                ? $nextPeriodStart->copy()->endOfMonth()
-                : $nextPeriodStart->copy()->addYear();
-
-            $subscription->update([
-                'current_period_start' => $nextPeriodStart->toDateString(),
-                'current_period_end' => $nextPeriodEnd->toDateString(),
-            ]);
-
             License::create([
                 'subscription_id' => $subscription->id,
                 'product_id' => $plan->product_id,
@@ -1103,6 +1100,7 @@ class CustomerController extends Controller
                             $lastLoginAt = $candidate;
                         }
                     }
+
                     continue;
                 }
 

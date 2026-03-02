@@ -102,9 +102,7 @@ use Illuminate\Support\Facades\Gate;
 use App\Models\Project;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return redirect()->route('login');
-})->name('products.public.home');
+Route::redirect('/', '/login')->name('products.public.home');
 
 Route::get('/__ui/react-sandbox', function () {
     abort_unless(UiFeature::enabled(UiFeature::REACT_SANDBOX), 404);

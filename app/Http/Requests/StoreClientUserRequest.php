@@ -2,15 +2,16 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Role;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Enums\Role;
 
 class StoreClientUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
         $user = $this->user();
+
         return $user && in_array($user->role, Role::adminPanelRoles(), true);
     }
 
@@ -25,10 +26,12 @@ class StoreClientUserRequest extends FormRequest
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'access_override_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
-            'user_password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'user_password' => ['nullable', 'string', 'min:8'],
             'send_account_message' => ['nullable', 'boolean'],
             'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
         ];
 
         if ($this->filled('user_password')) {
