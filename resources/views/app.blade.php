@@ -19,23 +19,30 @@
         'project-client.login',
     ];
 
-    $rootView = 'react-sandbox';
+    $rootView = 'inertia.sandbox';
+    $layout = null;
 
     if (in_array($routeName, $guestRoutes, true)) {
-        $rootView = 'react-guest';
+        $rootView = 'inertia.guest';
     } elseif (str_starts_with($routeName, 'products.public.')) {
-        $rootView = 'react-public';
+        $rootView = 'inertia.layout';
+        $layout = 'layouts.public';
     } elseif (str_starts_with($routeName, 'admin.')) {
-        $rootView = 'react-admin';
+        $rootView = 'inertia.layout';
+        $layout = 'layouts.admin';
     } elseif (str_starts_with($routeName, 'employee.')) {
-        $rootView = 'react-employee';
+        $rootView = 'inertia.layout';
+        $layout = 'layouts.admin';
     } elseif (str_starts_with($routeName, 'client.')) {
-        $rootView = 'react-client';
+        $rootView = 'inertia.layout';
+        $layout = 'layouts.client';
     } elseif (str_starts_with($routeName, 'rep.')) {
-        $rootView = 'react-rep';
+        $rootView = 'inertia.layout';
+        $layout = 'layouts.rep';
     } elseif (str_starts_with($routeName, 'support.')) {
-        $rootView = 'react-support';
+        $rootView = 'inertia.layout';
+        $layout = 'layouts.support';
     }
 @endphp
 
-@include($rootView)
+@include($rootView, ['layout' => $layout])
