@@ -561,18 +561,21 @@ def main() -> None:
         inertia_components.update(re.findall(r"Inertia::render\s*\(\s*['\"]([^'\"]+)['\"]", text))
         inertia_components.update(re.findall(r"\binertia\s*\(\s*['\"]([^'\"]+)['\"]", text))
 
+    page_root = ROOT / "resources/js/Pages"
+    page_extensions = (".jsx", ".js", ".tsx", ".ts")
     missing_components = []
     for comp in sorted(inertia_components):
-        if not (ROOT / "resources/js/react/Pages" / f"{comp}.jsx").exists():
+        page_base = page_root / comp
+        if not any(page_base.with_suffix(ext).exists() for ext in page_extensions):
             missing_components.append(comp)
 
     resolver = {
-        "app_file": "resources/js/react/app.jsx",
+        "app_file": "resources/js/app.jsx",
         "uses_pages_glob": False,
         "glob_pattern": None,
         "resolver_expression": None,
     }
-    app_file = ROOT / "resources/js/react/app.jsx"
+    app_file = ROOT / "resources/js/app.jsx"
     if app_file.exists():
         app_text = read_text_auto(app_file)
         gm = re.search(r"import\.meta\.glob\(\s*['\"]([^'\"]+)['\"]", app_text)
@@ -724,7 +727,7 @@ def main() -> None:
     lines += ["", "## Missing Inertia Pages"]
     if missing_components:
         for comp in missing_components:
-            lines.append(f"- `{comp}` -> `resources/js/react/Pages/{comp}.jsx` missing")
+            lines.append(f"- `{comp}` -> `resources/js/Pages/{comp}.jsx|js|tsx|ts` missing")
     else:
         lines.append("- None")
 
