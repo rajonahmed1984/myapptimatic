@@ -182,7 +182,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 $request->session()->regenerateToken();
             }
 
-            auth()->logout();
+            foreach (Portal::guards() as $guard) {
+                Auth::guard($guard)->logout();
+            }
 
             $portal = Portal::fromRequest($request);
 
@@ -207,7 +209,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 $request->session()->regenerateToken();
             }
 
-            auth()->logout();
+            foreach (Portal::guards() as $guard) {
+                Auth::guard($guard)->logout();
+            }
 
             $portal = Portal::fromRequest($request);
 
