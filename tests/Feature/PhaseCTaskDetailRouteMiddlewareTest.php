@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Http\Middleware\ConvertAdminViewToInertia;
 use App\Http\Middleware\HandleInertiaRequests;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -26,7 +25,11 @@ class PhaseCTaskDetailRouteMiddlewareTest extends TestCase
             $middleware = $route->gatherMiddleware();
 
             $this->assertContains(HandleInertiaRequests::class, $middleware, "Route [{$routeName}] should use Inertia middleware.");
-            $this->assertNotContains(ConvertAdminViewToInertia::class, $middleware, "Route [{$routeName}] must not use ConvertAdminViewToInertia.");
+            $this->assertNotContains(
+                'App\\Http\\Middleware\\ConvertAdminViewToInertia',
+                $middleware,
+                "Route [{$routeName}] must not use ConvertAdminViewToInertia."
+            );
         }
     }
 }
