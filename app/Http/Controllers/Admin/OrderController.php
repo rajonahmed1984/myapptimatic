@@ -485,6 +485,7 @@ class OrderController extends Controller
             'pageTitle' => 'Order Details',
             'order' => [
                 'id' => $order->id,
+                'plan_id' => $order->plan_id ? (int) $order->plan_id : null,
                 'order_number' => (string) ($order->order_number ?? $order->id),
                 'status' => (string) $order->status,
                 'status_label' => ucfirst((string) $order->status),
@@ -495,6 +496,7 @@ class OrderController extends Controller
                 'plan_interval' => $planInterval,
                 'plan_interval_label' => $planInterval !== '' ? ucfirst($planInterval) : '',
                 'billing_cycle_days' => $billingCycleDays,
+                'created_at_iso' => $order->created_at?->toDateString(),
                 'created_at_display' => $order->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 'approved_at_display' => $order->approved_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 'cancelled_at_display' => $order->cancelled_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
-export default function Show({ pageTitle = 'Order', order = {}, plan_options = [], interval_options = [], routes = {} }) {
+export default function Show({ pageTitle = 'Order', order = {}, plan_options = [], routes = {} }) {
     const { props } = usePage();
     const errors = props?.errors || {};
     const flashStatus = props?.flash?.status || '';
@@ -17,15 +17,69 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
               ? 'border-rose-200 bg-rose-50 text-rose-700'
               : 'border-amber-200 bg-amber-50 text-amber-700';
 
-    const currentPlanOptionLabel = order?.plan_name && order.plan_name !== '--' ? order.plan_name : 'Keep current';
-    const currentIntervalOptionLabel =
-        order?.plan_interval_label && order.plan_interval_label !== '--'
-            ? order.plan_interval_label
-            : 'Keep current';
-    const recurringAmountLabel = `${order?.plan_interval_label || 'Monthly'} Recurring Amount`;
-    const billingCycleDaysLabel = typeof order?.billing_cycle_days === 'number' ? `${order.billing_cycle_days} days` : '';
-    const invoiceTotalBaseLabel = order?.invoice_currency ? `Invoice Total (${order.invoice_currency})` : 'Invoice Total';
-    const invoiceTotalLabel = billingCycleDaysLabel ? `${invoiceTotalBaseLabel}: ${billingCycleDaysLabel}` : invoiceTotalBaseLabel;
+    const initialPlanId = order?.plan_id != null ? String(order.plan_id) : '';
+    const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
+    const [invoiceTotal, setInvoiceTotal] = useState(String(order?.invoice_total_value || ''));
+    const [recurringAmount, setRecurringAmount] = useState(String(order?.recurring_amount_value || ''));
+    const [hasPlanChanged, setHasPlanChanged] = useState(false);
+
+    const formatIntervalLabel = (interval) => {
+        const normalized = String(interval || '').trim().toLowerCase();
+        return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : '';
+    };
+    const formatPlanPriceLabel = (price, currency) => {
+        const numericPrice = Number(price);
+        const formattedPrice = Number.isFinite(numericPrice)
+            ? numericPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : '--';
+        const currencyCode = String(currency || '').trim();
+        return currencyCode ? `${currencyCode} ${formattedPrice}` : formattedPrice;
+    };
+    const toFixedMoney = (value) => {
+        const numeric = Number(value);
+        return Number.isFinite(numeric) ? numeric.toFixed(2) : '';
+    };
+    const calculateInvoiceTotalByInterval = (price, interval) => {
+        const numericPrice = Number(price);
+        if (!Number.isFinite(numericPrice)) return '';
+
+        const normalized = String(interval || '').trim().toLowerCase();
+        if (normalized === 'yearly') {
+            return ((numericPrice / 365) * 360).toFixed(2);
+        }
+
+        return numericPrice.toFixed(2);
+    };
+
+    const selectedPlan = useMemo(
+        () => plan_options.find((plan) => String(plan.id) === String(selectedPlanId)) || null,
+        [plan_options, selectedPlanId]
+    );
+
+    const activeInterval = String(selectedPlan?.interval || order?.plan_interval || '').toLowerCase();
+    const activeCurrency = String(selectedPlan?.currency || order?.invoice_currency || '').trim();
+    const recurringAmountLabel = selectedPlan?.interval
+        ? `Recurring Amount (${formatIntervalLabel(selectedPlan.interval)})`
+        : 'Recurring Amount';
+
+    const billingCycleDays = activeInterval === 'yearly' ? 360 : 30;
+
+    const invoiceTotalBaseLabel = activeCurrency ? `Invoice Total (${activeCurrency})` : 'Invoice Total';
+    const invoiceTotalLabel = `${invoiceTotalBaseLabel}: ${billingCycleDays} days`;
+
+    useEffect(() => {
+        if (!hasPlanChanged || !selectedPlan) return;
+        const recurring = toFixedMoney(selectedPlan.price);
+        const calculatedInvoiceTotal = calculateInvoiceTotalByInterval(selectedPlan.price, selectedPlan.interval);
+        setInvoiceTotal(calculatedInvoiceTotal);
+        setRecurringAmount(recurring);
+    }, [hasPlanChanged, selectedPlan]);
+
+    const topInvoiceAmountDisplay = useMemo(() => {
+        if (invoiceTotal === '' || Number.isNaN(Number(invoiceTotal))) return '--';
+        const formatted = Number(invoiceTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return activeCurrency ? `${activeCurrency} ${formatted}` : formatted;
+    }, [invoiceTotal, activeCurrency]);
 
     return (
         <>
@@ -34,9 +88,9 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="bg-gradient-to-r from-teal-50 via-sky-50 to-white p-6 md:p-8">
                         <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div>
+                            <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Order Detail</p>
-                                <h1 className="mt-2 text-2xl font-semibold text-slate-900 md:text-3xl">#{order?.order_number || '--'}</h1>
+                                <h3 className="mt-2 text-2xl font-semibold text-slate-900 md:text-3xl">#{order?.order_number || '--'}</h3>
                                 <div className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusClass}`}>
                                     {order?.status_label || '--'}
                                 </div>
@@ -78,7 +132,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                             <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Invoice</p>
                             <p className="mt-2 font-semibold text-slate-900">{order?.invoice_number || '--'}</p>
-                            <p className="mt-1 text-slate-600">{order?.invoice_total_display || '--'}</p>
+                            <p className="mt-1 text-slate-600">{topInvoiceAmountDisplay}</p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                             <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Created</p>
@@ -94,43 +148,34 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                         <div className="grid items-start gap-6 md:grid-cols-2 xl:col-span-3">
                             <div className="rounded-3xl border border-slate-200 bg-white p-6">
                                 <div className="mb-4">
-                                    <h2 className="text-lg font-semibold text-slate-900">Update Plan / Interval</h2>
-                                    <p className="mt-1 text-sm text-slate-500">Update Plan / Interval from this section.</p>
+                                    <h2 className="text-lg font-semibold text-slate-900">Update Plan & Interval</h2>
+                                    <p className="mt-1 text-sm text-slate-500">Select one plan to update both plan and interval.</p>
                                 </div>
-                                <form action={routes?.update_plan} method="POST" data-native="true" className="grid gap-4 md:grid-cols-2">
+                                <form action={routes?.update_plan} method="POST" data-native="true" className="space-y-4">
                                     <input type="hidden" name="_token" value={csrf} />
                                     <input type="hidden" name="_method" value="PATCH" />
                                     <div>
                                         <label className="mb-1 block text-sm font-medium text-slate-700">Plan & Interval</label>
                                         <select
                                             name="plan_id"
+                                            value={selectedPlanId}
+                                            onChange={(event) => {
+                                                setSelectedPlanId(event.target.value);
+                                                setHasPlanChanged(true);
+                                            }}
                                             className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-slate-900 focus:border-teal-400 focus:outline-none"
                                         >
-                                            <option value="">{currentPlanOptionLabel}</option>
+                                            <option value="" disabled>Select plan</option>
                                             {plan_options.map((plan) => (
                                                 <option key={plan.id} value={plan.id}>
-                                                    {plan.name} ({plan.interval})
+                                                    {plan.name} ({formatIntervalLabel(plan.interval)}) - {formatPlanPriceLabel(plan.price, plan.currency)}
                                                 </option>
                                             ))}
                                         </select>
                                         {errors?.plan_id ? <p className="mt-1 text-xs text-rose-600">{errors.plan_id}</p> : null}
-                                    </div>
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium text-slate-700">Interval</label>
-                                        <select
-                                            name="interval"
-                                            className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-slate-900 focus:border-teal-400 focus:outline-none"
-                                        >
-                                            <option value="">{currentIntervalOptionLabel}</option>
-                                            {interval_options.map((interval) => (
-                                                <option key={interval} value={interval}>
-                                                    {interval}
-                                                </option>
-                                            ))}
-                                        </select>
                                         {errors?.interval ? <p className="mt-1 text-xs text-rose-600">{errors.interval}</p> : null}
                                     </div>
-                                    <div className="md:col-span-2">
+                                    <div>
                                         <button
                                             type="submit"
                                             className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -156,7 +201,8 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
-                                                defaultValue={order?.invoice_total_value || ''}
+                                                value={invoiceTotal}
+                                                onChange={(event) => setInvoiceTotal(event.target.value)}
                                                 className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-slate-900 focus:border-teal-400 focus:outline-none"
                                             />
                                             {errors?.invoice_total ? <p className="mt-1 text-xs text-rose-600">{errors.invoice_total}</p> : null}
@@ -168,7 +214,8 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
-                                                defaultValue={order?.recurring_amount_value || ''}
+                                                value={recurringAmount}
+                                                onChange={(event) => setRecurringAmount(event.target.value)}
                                                 className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-slate-900 focus:border-teal-400 focus:outline-none"
                                             />
                                             {errors?.recurring_amount ? <p className="mt-1 text-xs text-rose-600">{errors.recurring_amount}</p> : null}
