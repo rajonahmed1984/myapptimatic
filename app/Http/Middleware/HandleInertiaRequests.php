@@ -16,52 +16,7 @@ class HandleInertiaRequests extends Middleware
 
     public function rootView(Request $request): string
     {
-        if ($request->routeIs(
-            'login',
-            'admin.login',
-            'employee.login',
-            'sales.login',
-            'support.login',
-            'register',
-            'password.request',
-            'password.reset',
-            'admin.password.request',
-            'employee.password.request',
-            'employee.password.reset',
-            'sales.password.request',
-            'sales.password.reset',
-            'support.password.request',
-            'support.password.reset',
-            'project-client.login'
-        )) {
-            return 'react-guest';
-        }
-
-        if ($request->routeIs('products.public.*')) {
-            return 'react-public';
-        }
-
-        if ($request->routeIs('admin.*')) {
-            return 'react-admin';
-        }
-
-        if ($request->routeIs('employee.*')) {
-            return 'react-employee';
-        }
-
-        if ($request->routeIs('client.*')) {
-            return 'react-client';
-        }
-
-        if ($request->routeIs('rep.*')) {
-            return 'react-rep';
-        }
-
-        if ($request->routeIs('support.*')) {
-            return 'react-support';
-        }
-
-        return 'react-sandbox';
+        return 'app';
     }
 
     public function share(Request $request): array
