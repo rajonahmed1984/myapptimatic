@@ -25,7 +25,7 @@ class ImapAuthService
 
         if (! function_exists('imap_open')) {
             $this->lastFailureType = self::FAILURE_SERVER_UNAVAILABLE;
-            $this->lastFailureDetail = 'imap extension is not installed';
+            $this->lastFailureDetail = $this->imapUnavailableDetail();
             return false;
         }
 
@@ -143,5 +143,21 @@ class ImapAuthService
 
         $this->lastFailureType = self::FAILURE_SERVER_UNAVAILABLE;
         $this->lastFailureDetail = $errorText;
+    }
+
+    private function imapUnavailableDetail(): string
+    {
+        $sapi = PHP_SAPI;
+        $extensionLoaded = extension_loaded('imap') ? 'yes' : 'no';
+
+        $disabledFunctions = strtolower((string) ini_get('disable_functions'));
+        $imapDisabled = str_contains($disabledFunctions, 'imap_open') ? 'yes' : 'no';
+
+        return sprintf(
+            'imap_open unavailable (sapi=%s, extension_loaded=%s, imap_open_disabled=%s)',
+            $sapi,
+            $extensionLoaded,
+            $imapDisabled
+        );
     }
 }
