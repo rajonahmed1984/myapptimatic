@@ -48,8 +48,8 @@
         
         .icon {
             width: 80px;
-            height: 80px;14b8a6 0%, #0d9488
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 80px;
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
             border-radius: 50%;
             display: inline-flex;
             align-items: center;
@@ -120,7 +120,7 @@
             border-top: 1px solid #e2e8f0;
         }
         
-        .footer-text94a3b8
+        .footer-text {
             color: #a0aec0;
             font-size: 13px;
         }
