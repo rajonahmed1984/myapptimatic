@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Enums\MailCategory;
 use App\Models\EmailTemplate;
 use App\Models\EmployeePayout;
+use App\Models\PaymentMethod;
 use App\Models\PayrollAuditLog;
 use App\Models\Project;
 use App\Models\Setting;
 use App\Support\Branding;
 use App\Support\UrlResolver;
 use App\Services\Mail\MailSender;
+use Carbon\Carbon;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -143,10 +145,12 @@ class EmployeePaymentNotificationService
         $paymentDate = ! empty($meta['paid_at']) ? (string) $meta['paid_at'] : now()->format('Y-m-d');
         $paidAtDisplay = date($this->phpDateFormat($dateFormat), strtotime($paymentDate));
         $periodLabel = (string) ($payrollItem->period?->period_key ?? '--');
+        $periodLabel = $this->formatPayrollPeriodLabel($periodLabel);
         $paymentAmount = (float) ($meta['amount'] ?? 0);
         $remainingAfter = (float) ($meta['remaining_after'] ?? 0);
         $isFinal = $log->event === 'payment_completed' || $remainingAfter <= 0.009;
         $reference = trim((string) ($meta['reference'] ?? $payrollItem->payment_reference ?? ''));
+        $paymentMethod = $this->resolvePaymentMethodLabel($meta, $reference);
 
         $templateKey = $isFinal ? 'payroll_final_payslip' : 'payroll_payment_receipt';
         $template = EmailTemplate::query()->where('key', $templateKey)->first();
@@ -164,7 +168,7 @@ class EmployeePaymentNotificationService
             '{{payroll_period}}' => $periodLabel,
             '{{payment_amount}}' => (string) ($payrollItem->currency.' '.number_format($paymentAmount, 2)),
             '{{payment_date}}' => (string) $paidAtDisplay,
-            '{{payment_method}}' => (string) $this->methodFromReference($reference),
+            '{{payment_method}}' => $paymentMethod,
             '{{payment_reference}}' => $reference !== '' ? $reference : '--',
             '{{payment_description}}' => str_replace('{{payroll_period}}', $periodLabel, $descriptionFallback),
         ];
@@ -182,7 +186,7 @@ class EmployeePaymentNotificationService
                 'payment_type' => 'Payroll',
                 'payment_date' => $paidAtDisplay,
                 'payment_amount' => (string) ($payrollItem->currency.' '.number_format($paymentAmount, 2)),
-                'payment_method' => (string) $this->methodFromReference($reference),
+                'payment_method' => $paymentMethod,
                 'reference' => $reference !== '' ? $reference : '--',
                 'note' => 'Payroll Period: '.$periodLabel,
                 'company_name' => (string) $companyName,
@@ -250,11 +254,80 @@ class EmployeePaymentNotificationService
     private function methodFromReference(string $reference): string
     {
         if ($reference === '') {
-            return 'N/A';
+            return '';
         }
 
         $parts = explode('-', $reference, 2);
-        return strtoupper(trim($parts[0] ?? $reference));
+        $candidate = trim((string) ($parts[0] ?? ''));
+        if ($candidate === '') {
+            return '';
+        }
+
+        if (is_numeric($candidate)) {
+            return '';
+        }
+
+        $mapped = $this->paymentMethodNameFromCode($candidate);
+        if ($mapped !== '') {
+            return $mapped;
+        }
+
+        return ucfirst(strtolower($candidate));
+    }
+
+    private function resolvePaymentMethodLabel(array $meta, string $reference): string
+    {
+        $label = trim((string) ($meta['payment_method_label'] ?? ''));
+        if ($label !== '') {
+            return $label;
+        }
+
+        $code = trim((string) ($meta['payment_method_code'] ?? ''));
+        if ($code !== '') {
+            $fromCode = $this->paymentMethodNameFromCode($code);
+            if ($fromCode !== '') {
+                return $fromCode;
+            }
+        }
+
+        $fromReference = $this->methodFromReference($reference);
+
+        return $fromReference !== '' ? $fromReference : 'N/A';
+    }
+
+    private function paymentMethodNameFromCode(string $code): string
+    {
+        $normalized = strtolower(trim($code));
+        if ($normalized === '') {
+            return '';
+        }
+
+        $option = PaymentMethod::dropdownOptions()
+            ->first(fn (object $method) => strtolower((string) $method->code) === $normalized);
+
+        if ($option && ! empty($option->name)) {
+            return (string) $option->name;
+        }
+
+        return ucfirst($normalized);
+    }
+
+    private function formatPayrollPeriodLabel(string $periodKey): string
+    {
+        $value = trim($periodKey);
+        if ($value === '') {
+            return '--';
+        }
+
+        if (preg_match('/^\d{4}-\d{2}$/', $value) !== 1) {
+            return $value;
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m', $value)->startOfMonth()->format('F Y');
+        } catch (\Throwable) {
+            return $value;
+        }
     }
 
     private function buildPaymentSlipPdf(array $payload): string

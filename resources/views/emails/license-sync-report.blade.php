@@ -24,7 +24,7 @@
     <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:16px;font-family:Arial, sans-serif;color:#475569;font-size:13px;">
         <tbody>
         <tr>
-            <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">Total licenses checked</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">Total verification requests (logs)</td>
             <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;color:#0f172a;">
                 {{ $counts['total_checked'] ?? 0 }}
             </td>

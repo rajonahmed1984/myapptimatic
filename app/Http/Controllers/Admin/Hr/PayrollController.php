@@ -229,7 +229,17 @@ class PayrollController extends Controller
         $paymentAmount = round((float) $data['amount'], 2, PHP_ROUND_HALF_UP);
         $paidAt = Carbon::parse((string) $data['paid_at'])->startOfDay();
 
-        $result = DB::transaction(function () use ($request, $payrollPeriod, $payrollItem, $paymentAmount, $paidAt, $composedReference) {
+        $result = DB::transaction(function () use (
+            $request,
+            $payrollPeriod,
+            $payrollItem,
+            $paymentAmount,
+            $paidAt,
+            $composedReference,
+            $methodLabel,
+            $rawReference,
+            $data
+        ) {
             /** @var PayrollItem $item */
             $item = PayrollItem::query()->lockForUpdate()->findOrFail($payrollItem->id);
 
@@ -295,6 +305,9 @@ class PayrollController extends Controller
                     'remaining_after' => $remainingAfter,
                     'paid_at' => $paidAt->toDateString(),
                     'reference' => $composedReference,
+                    'payment_method_code' => (string) $data['payment_method'],
+                    'payment_method_label' => $methodLabel,
+                    'payment_reference_raw' => $rawReference !== '' ? $rawReference : null,
                     'proof_path' => $proofPath,
                     'proof_name' => $proofName,
                     'proof_mime' => $proofMime,
