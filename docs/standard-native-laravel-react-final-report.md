@@ -38,6 +38,13 @@ Completed items:
   - Middleware assertions were kept via string-based checks in:
     - `tests/Feature/PhaseBAdminRouteMiddlewareTest.php`
     - `tests/Feature/PhaseCTaskDetailRouteMiddlewareTest.php`
+- Unused legacy bridge React pages/components were removed:
+  - `resources/js/Pages/Admin/Legacy/HtmlPage.jsx`
+  - `resources/js/Pages/Client/Legacy/HtmlPage.jsx`
+  - `resources/js/Pages/Employee/Legacy/HtmlPage.jsx`
+  - `resources/js/Pages/Rep/Legacy/HtmlPage.jsx`
+  - `resources/js/Pages/Support/Legacy/HtmlPage.jsx`
+  - `resources/js/Pages/Shared/LegacyHtmlPage.jsx`
 - Legacy per-portal React wrapper Blade roots were removed:
   - `resources/views/react-admin.blade.php`
   - `resources/views/react-client.blade.php`
