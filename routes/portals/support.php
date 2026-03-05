@@ -10,7 +10,7 @@ use App\Http\Controllers\Mail\MailLoginController;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['guest:support', 'nocache'])
+Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':support', 'nocache'])
     ->prefix('support')
     ->name('support.')
     ->group(function () {

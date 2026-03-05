@@ -19,7 +19,7 @@ use App\Http\Controllers\Mail\MailLoginController;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['guest:employee', 'nocache'])
+Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':employee', 'nocache'])
     ->prefix('employee')
     ->name('employee.')
     ->group(function () {

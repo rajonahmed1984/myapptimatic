@@ -134,4 +134,50 @@ class LoginRedirectBehaviorTest extends TestCase
 
         $response->assertRedirect(route('sales.login'));
     }
+
+    public function test_authenticated_client_can_open_admin_login_without_forced_redirect(): void
+    {
+        $client = User::factory()->create([
+            'role' => Role::CLIENT,
+        ]);
+
+        $this->actingAs($client, 'web');
+
+        $response = $this->get(route('admin.login'));
+
+        $response->assertOk();
+        $response->assertDontSee('Redirecting to', false);
+    }
+
+    public function test_authenticated_client_still_redirects_from_client_login_to_dashboard(): void
+    {
+        $client = User::factory()->create([
+            'role' => Role::CLIENT,
+        ]);
+
+        $this->actingAs($client, 'web');
+        $sessionKey = app('auth')->guard('web')->getName();
+
+        $response = $this->withSession([
+            $sessionKey => $client->getAuthIdentifier(),
+        ])->get(route('login'));
+
+        $response->assertRedirect(route('client.dashboard'));
+    }
+
+    public function test_authenticated_admin_redirects_from_admin_login_to_admin_dashboard(): void
+    {
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+        ]);
+
+        $this->actingAs($admin, 'web');
+        $sessionKey = app('auth')->guard('web')->getName();
+
+        $response = $this->withSession([
+            $sessionKey => $admin->getAuthIdentifier(),
+        ])->get(route('admin.login'));
+
+        $response->assertRedirect(route('admin.dashboard'));
+    }
 }

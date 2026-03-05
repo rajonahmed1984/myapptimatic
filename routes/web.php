@@ -192,7 +192,7 @@ Route::match(['GET', 'POST'], '/payments/bkash/{attempt}/callback', [PaymentCall
     ->middleware('throttle:payment-callbacks')
     ->name('payments.bkash.callback');
 
-Route::middleware(['guest:web', 'nocache'])->group(function () {
+Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':web', 'nocache'])->group(function () {
     Route::get('/login', [PortalLoginController::class, 'show'])
         ->middleware(HandleInertiaRequests::class)
         ->defaults('portal', 'web')

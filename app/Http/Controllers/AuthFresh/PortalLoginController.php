@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AuthFresh;
 
 use App\Http\Controllers\Controller;
 use App\Services\AuthFresh\LoginService;
+use App\Support\AuthFresh\AdminAccess;
 use App\Support\AuthFresh\Portal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,8 +25,13 @@ class PortalLoginController extends Controller
         Portal::setPortal($request, $portal);
 
         $guard = Portal::guard($portal);
-        if (Auth::guard($guard)->check()) {
-            return redirect($this->loginService->defaultRedirectUrlFor($portal, Auth::guard($guard)->user()));
+        $authGuard = Auth::guard($guard);
+        if ($authGuard->check()) {
+            if (! $this->isSessionBackedAuthentication($request, $authGuard)) {
+                $authGuard->logout();
+            } elseif ($this->shouldRedirectForPortal($portal, $authGuard->user())) {
+                return redirect($this->loginService->defaultRedirectUrlFor($portal, $authGuard->user()));
+            }
         }
 
         return Inertia::render('Auth/PortalLogin', $this->showInertiaProps($request, $portal));
@@ -101,5 +107,34 @@ class PortalLoginController extends Controller
                 'action' => Portal::recaptchaAction($portal),
             ],
         ];
+    }
+
+    private function isSessionBackedAuthentication(Request $request, mixed $guard): bool
+    {
+        if (! $request->hasSession()) {
+            return false;
+        }
+
+        if (method_exists($guard, 'getName')) {
+            $sessionKey = (string) $guard->getName();
+            if ($sessionKey !== '' && ! $request->session()->has($sessionKey)) {
+                return false;
+            }
+        }
+
+        if (method_exists($guard, 'viaRemember') && $guard->viaRemember()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function shouldRedirectForPortal(string $portal, mixed $user): bool
+    {
+        if ($portal === 'admin' && ! AdminAccess::canAccess($user)) {
+            return false;
+        }
+
+        return true;
     }
 }
