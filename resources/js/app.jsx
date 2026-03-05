@@ -2,10 +2,10 @@ import './bootstrap';
 import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp, router as inertiaRouter } from '@inertiajs/react';
-import { formatDate, parseDate } from './react/utils/datetime';
+import { formatDate, parseDate } from './utils/datetime';
 import 'flatpickr/dist/flatpickr.min.css';
-import { enhanceEasyDateInputsInDocument } from './react/utils/easyDateEnhancer';
-import { getBreadcrumb, getPageTitle } from './react/utils/pageTitle';
+import { enhanceEasyDateInputsInDocument } from './utils/easyDateEnhancer';
+import { getBreadcrumb, getPageTitle } from './utils/pageTitle';
 
 const DISPLAY_DATE_PLACEHOLDER = 'DD-MM-YYYY';
 const DEFAULT_APP_NAME = 'MyApptimatic';

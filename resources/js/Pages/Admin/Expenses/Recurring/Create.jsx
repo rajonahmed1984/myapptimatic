@@ -1,3 +1,6 @@
-﻿export * from '../../../../react/Pages/Admin/Expenses/Recurring/Create.jsx';
-export { default } from '../../../../react/Pages/Admin/Expenses/Recurring/Create.jsx';
+import React from 'react';
+import Form from './Form';
 
+export default function Create(props) {
+    return <Form {...props} />;
+}

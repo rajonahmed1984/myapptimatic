@@ -1,11 +1,3 @@
-import React from 'react';
-import PortalPageHeader from '../Components/PortalPageHeader';
+﻿export * from '../../Layouts/ClientLayout.jsx';
+export { default } from '../../Layouts/ClientLayout.jsx';
 
-export default function ClientLayout({ children, showHeader = true }) {
-    return (
-        <div className="space-y-6">
-            {showHeader ? <PortalPageHeader /> : null}
-            {children}
-        </div>
-    );
-}

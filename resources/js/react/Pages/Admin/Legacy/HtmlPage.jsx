@@ -1,6 +1,3 @@
-import React from 'react';
-import LegacyHtmlPage from '../../Shared/LegacyHtmlPage';
+﻿export * from '../../../../Pages/Admin/Legacy/HtmlPage.jsx';
+export { default } from '../../../../Pages/Admin/Legacy/HtmlPage.jsx';
 
-export default function HtmlPage(props) {
-    return <LegacyHtmlPage fallbackTitle="Admin" {...props} />;
-}

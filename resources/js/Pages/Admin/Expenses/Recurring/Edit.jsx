@@ -1,3 +1,6 @@
-﻿export * from '../../../../react/Pages/Admin/Expenses/Recurring/Edit.jsx';
-export { default } from '../../../../react/Pages/Admin/Expenses/Recurring/Edit.jsx';
+import React from 'react';
+import Form from './Form';
 
+export default function Edit(props) {
+    return <Form {...props} />;
+}

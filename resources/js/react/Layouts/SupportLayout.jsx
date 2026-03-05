@@ -1,11 +1,3 @@
-import React from 'react';
-import PortalPageHeader from '../Components/PortalPageHeader';
+﻿export * from '../../Layouts/SupportLayout.jsx';
+export { default } from '../../Layouts/SupportLayout.jsx';
 
-export default function SupportLayout({ children, showHeader = true }) {
-    return (
-        <div className="space-y-6">
-            {showHeader ? <PortalPageHeader /> : null}
-            {children}
-        </div>
-    );
-}

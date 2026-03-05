@@ -1,11 +1,3 @@
-import React from 'react';
-import PortalPageHeader from '../Components/PortalPageHeader';
+﻿export * from '../../Layouts/RepLayout.jsx';
+export { default } from '../../Layouts/RepLayout.jsx';
 
-export default function RepLayout({ children, showHeader = true }) {
-    return (
-        <div className="space-y-6">
-            {showHeader ? <PortalPageHeader /> : null}
-            {children}
-        </div>
-    );
-}

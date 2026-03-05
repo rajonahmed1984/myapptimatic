@@ -1,11 +1,3 @@
-import React from 'react';
-import PortalPageHeader from '../Components/PortalPageHeader';
+﻿export * from '../../Layouts/EmployeeLayout.jsx';
+export { default } from '../../Layouts/EmployeeLayout.jsx';
 
-export default function EmployeeLayout({ children, showHeader = true }) {
-    return (
-        <div className="space-y-6">
-            {showHeader ? <PortalPageHeader /> : null}
-            {children}
-        </div>
-    );
-}

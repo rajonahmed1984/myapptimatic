@@ -1,11 +1,3 @@
-import React from 'react';
-import PortalPageHeader from '../Components/PortalPageHeader';
+﻿export * from '../../Layouts/AdminLayout.jsx';
+export { default } from '../../Layouts/AdminLayout.jsx';
 
-export default function AdminLayout({ children, showHeader = true }) {
-    return (
-        <div className="space-y-6">
-            {showHeader ? <PortalPageHeader /> : null}
-            {children}
-        </div>
-    );
-}

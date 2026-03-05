@@ -1,6 +1,3 @@
-import React from 'react';
-import Form from './Form';
+﻿export * from '../../../../../Pages/Admin/Expenses/Recurring/Edit.jsx';
+export { default } from '../../../../../Pages/Admin/Expenses/Recurring/Edit.jsx';
 
-export default function Edit(props) {
-    return <Form {...props} />;
-}
