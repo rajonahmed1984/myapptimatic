@@ -18,7 +18,6 @@ class Portal
                 'guard' => 'web',
                 'login_path' => '/login',
                 'login_route' => 'login',
-                'login_view' => 'auth.login',
                 'default_redirect' => 'client.dashboard',
                 'recaptcha_action' => 'LOGIN',
             ],
@@ -26,7 +25,6 @@ class Portal
                 'guard' => 'web',
                 'login_path' => '/admin/login',
                 'login_route' => 'admin.login',
-                'login_view' => 'auth.admin-login',
                 'default_redirect' => 'admin.dashboard',
                 'recaptcha_action' => 'ADMIN_LOGIN',
             ],
@@ -34,7 +32,6 @@ class Portal
                 'guard' => 'employee',
                 'login_path' => '/employee/login',
                 'login_route' => 'employee.login',
-                'login_view' => 'employee.auth.login',
                 'default_redirect' => 'employee.dashboard',
                 'recaptcha_action' => 'EMPLOYEE_LOGIN',
             ],
@@ -42,7 +39,6 @@ class Portal
                 'guard' => 'sales',
                 'login_path' => '/sales/login',
                 'login_route' => 'sales.login',
-                'login_view' => 'sales.auth.login',
                 'default_redirect' => 'rep.dashboard',
                 'recaptcha_action' => 'SALES_LOGIN',
             ],
@@ -50,7 +46,6 @@ class Portal
                 'guard' => 'support',
                 'login_path' => '/support/login',
                 'login_route' => 'support.login',
-                'login_view' => 'support.auth.login',
                 'default_redirect' => 'support.dashboard',
                 'recaptcha_action' => 'SUPPORT_LOGIN',
             ],
@@ -75,11 +70,6 @@ class Portal
     public static function loginRoute(string $portal): string
     {
         return self::map()[self::normalize($portal)]['login_route'];
-    }
-
-    public static function loginView(string $portal): string
-    {
-        return self::map()[self::normalize($portal)]['login_view'];
     }
 
     public static function defaultRedirectRoute(string $portal): string

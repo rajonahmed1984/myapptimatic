@@ -94,6 +94,10 @@
                     </div>
 
                     <div class="space-y-2">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Main Menu</div>
+                    </div>
+
+                    <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Sales & Customers</div>
                         <x-nav-link 
                             :href="route('admin.customers.index')"
@@ -122,6 +126,20 @@
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Affiliates
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.products.index')"
+                            routes="admin.products.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Products
+                        </x-nav-link>
+                        <x-nav-link 
+                            :href="route('admin.plans.index')"
+                            routes="admin.plans.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Plans
                         </x-nav-link>
                     </div>
 
@@ -261,24 +279,6 @@
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Commission Payouts
-                        </x-nav-link>
-                    </div>
-
-                    <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Products & Plans</div>
-                        <x-nav-link 
-                            :href="route('admin.products.index')"
-                            routes="admin.products.*"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Products
-                        </x-nav-link>
-                        <x-nav-link 
-                            :href="route('admin.plans.index')"
-                            routes="admin.plans.*"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Plans
                         </x-nav-link>
                     </div>
 

@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Support\AuthFresh\Portal;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -269,23 +268,13 @@ class AuditBladeUsage extends Command
      */
     private function collectImplicitViews(): Collection
     {
-        $implicit = [
+        return collect([
             'app',
             'inertia.layout',
             'inertia.guest',
             'inertia.sandbox',
             'errors.404',
-        ];
-
-        foreach (['web', 'admin', 'employee', 'sales', 'support'] as $portal) {
-            try {
-                $implicit[] = Portal::loginView($portal);
-            } catch (\Throwable) {
-                // Ignore unknown portal values.
-            }
-        }
-
-        return collect(array_values(array_unique($implicit)));
+        ]);
     }
 
     private function isReserved(string $viewName): bool
