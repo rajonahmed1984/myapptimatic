@@ -270,12 +270,10 @@ class AuditBladeUsage extends Command
     private function collectImplicitViews(): Collection
     {
         $implicit = [
-            'react-admin',
-            'react-client',
-            'react-employee',
-            'react-rep',
-            'react-support',
-            'react-sandbox',
+            'app',
+            'inertia.layout',
+            'inertia.guest',
+            'inertia.sandbox',
             'errors.404',
         ];
 
