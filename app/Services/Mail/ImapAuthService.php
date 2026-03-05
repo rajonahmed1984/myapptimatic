@@ -7,15 +7,16 @@ use Throwable;
 
 class ImapAuthService
 {
+    private const FAILURE_NONE = 'none';
     private const FAILURE_INVALID_CREDENTIALS = 'invalid_credentials';
     private const FAILURE_SERVER_UNAVAILABLE = 'server_unavailable';
 
-    private string $lastFailureType = self::FAILURE_INVALID_CREDENTIALS;
+    private string $lastFailureType = self::FAILURE_NONE;
     private ?string $lastFailureDetail = null;
 
     public function verifyCredentials(MailAccount $account, string $password): bool
     {
-        $this->lastFailureType = self::FAILURE_INVALID_CREDENTIALS;
+        $this->lastFailureType = self::FAILURE_NONE;
         $this->lastFailureDetail = null;
 
         if ($password === '') {
@@ -73,7 +74,7 @@ class ImapAuthService
 
     private function buildMailboxString(MailAccount $account): string
     {
-        $host = (string) ($account->imap_host ?: config('apptimatic_email.imap.host', ''));
+        $host = trim((string) ($account->imap_host ?: config('apptimatic_email.imap.host', '')));
         $port = (int) ($account->imap_port ?: config('apptimatic_email.imap.port', 993));
         $encryption = strtolower((string) ($account->imap_encryption ?: config('apptimatic_email.imap.encryption', 'ssl')));
         $validateCert = (bool) ($account->imap_validate_cert ?? config('apptimatic_email.imap.validate_cert', true));
@@ -115,9 +116,15 @@ class ImapAuthService
         $normalized = strtolower($errorText);
         $credentialHints = [
             'authentication failed',
+            'authenticationfailed',
             'invalid credentials',
             'login failed',
             'auth failed',
+            'authentification failed',
+            'username and password not accepted',
+            'invalid login',
+            'invalid user',
+            'invalid password',
         ];
 
         foreach ($credentialHints as $hint) {
@@ -126,6 +133,12 @@ class ImapAuthService
                 $this->lastFailureDetail = $errorText;
                 return;
             }
+        }
+
+        if (str_contains($normalized, 'auth') && str_contains($normalized, 'fail')) {
+            $this->lastFailureType = self::FAILURE_INVALID_CREDENTIALS;
+            $this->lastFailureDetail = $errorText;
+            return;
         }
 
         $this->lastFailureType = self::FAILURE_SERVER_UNAVAILABLE;

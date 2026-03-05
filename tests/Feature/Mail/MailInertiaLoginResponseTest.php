@@ -186,7 +186,7 @@ class MailInertiaLoginResponseTest extends TestCase
 
         $response->assertRedirect(route('admin.apptimatic-email.login'));
         $response->assertSessionHasErrors([
-            'email' => 'Email server unavailable. Please contact admin.',
+            'email' => 'Email server unavailable. Check IMAP host/port/encryption/certificate settings. Details: connection refused',
         ]);
     }
 

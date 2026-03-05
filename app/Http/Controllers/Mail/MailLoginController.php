@@ -104,7 +104,13 @@ class MailLoginController extends Controller
             ])->save();
 
             if ($failureType === 'server_unavailable') {
-                return back()->withErrors(['email' => 'Email server unavailable. Please contact admin.'])->withInput();
+                $message = 'Email server unavailable. Check IMAP host/port/encryption/certificate settings.';
+                $formattedDetail = $this->formatImapFailureDetail($failureDetail);
+                if ($formattedDetail !== null) {
+                    $message .= ' Details: ' . $formattedDetail;
+                }
+
+                return back()->withErrors(['email' => $message])->withInput();
             }
 
             return back()->withErrors(['email' => 'Invalid email or password'])->withInput();
@@ -229,5 +235,21 @@ class MailLoginController extends Controller
         }
 
         return array_values(array_unique(array_filter($types)));
+    }
+
+    private function formatImapFailureDetail(?string $detail): ?string
+    {
+        $value = trim((string) $detail);
+        if ($value === '') {
+            return null;
+        }
+
+        $value = preg_replace('/\s+/', ' ', $value) ?? $value;
+
+        if (mb_strlen($value) > 180) {
+            $value = mb_substr($value, 0, 177) . '...';
+        }
+
+        return $value;
     }
 }

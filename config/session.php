@@ -3,13 +3,39 @@
 use Illuminate\Support\Str;
 
 $sessionDomain = env('SESSION_DOMAIN');
-if (is_string($sessionDomain) && strtolower($sessionDomain) === 'null') {
-    $sessionDomain = null;
+if (is_string($sessionDomain)) {
+    $sessionDomain = trim($sessionDomain, " \t\n\r\0\x0B\"'");
+    if ($sessionDomain === '' || strtolower($sessionDomain) === 'null') {
+        $sessionDomain = null;
+    }
 }
 
 $sessionSecure = env('SESSION_SECURE_COOKIE');
-if (is_string($sessionSecure) && strtolower($sessionSecure) === 'null') {
-    $sessionSecure = null;
+if (is_string($sessionSecure)) {
+    $normalizedSecure = strtolower(trim($sessionSecure, " \t\n\r\0\x0B\"'"));
+    if ($normalizedSecure === '' || $normalizedSecure === 'null' || $normalizedSecure === 'auto') {
+        $sessionSecure = null;
+    } elseif (in_array($normalizedSecure, ['1', 'true', 'yes', 'on'], true)) {
+        $sessionSecure = true;
+    } elseif (in_array($normalizedSecure, ['0', 'false', 'no', 'off'], true)) {
+        $sessionSecure = false;
+    } else {
+        $sessionSecure = null;
+    }
+}
+
+$sessionSameSite = env('SESSION_SAME_SITE', 'lax');
+if (is_string($sessionSameSite)) {
+    $sessionSameSite = strtolower(trim($sessionSameSite, " \t\n\r\0\x0B\"'"));
+}
+
+if (! in_array($sessionSameSite, ['lax', 'strict', 'none', null], true)) {
+    $sessionSameSite = 'lax';
+}
+
+// Browsers reject SameSite=None cookies when Secure=false.
+if ($sessionSameSite === 'none' && $sessionSecure === false) {
+    $sessionSecure = true;
 }
 
 return [
@@ -210,7 +236,7 @@ return [
     |
     */
 
-    'same_site' => env('SESSION_SAME_SITE', 'lax'),
+    'same_site' => $sessionSameSite,
 
     /*
     |--------------------------------------------------------------------------

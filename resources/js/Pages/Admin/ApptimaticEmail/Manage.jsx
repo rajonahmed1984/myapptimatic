@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
 
 const DEFAULT_MAILBOX_FORM = {
-    email: '',
-    display_name: '',
-    imap_host: '',
+    email: 'youremail@apptimatic.com',
+    display_name: 'yourname',
+    imap_host: 'mail.apptimatic.com',
     imap_port: 993,
     imap_encryption: 'ssl',
     imap_validate_cert: true,
@@ -137,17 +137,24 @@ export default function Manage({
         setEditingMailboxId(null);
     };
 
+    const mapAccountToMailboxForm = (account) => ({
+        email: account?.email || '',
+        display_name: account?.display_name || '',
+        imap_host: account?.imap_host || '',
+        imap_port: account?.imap_port || 993,
+        imap_encryption: account?.imap_encryption || 'ssl',
+        imap_validate_cert: Boolean(account?.imap_validate_cert),
+        status: account?.status || 'active',
+    });
+
     const startEditMailbox = (account) => {
+        if (!account) {
+            return;
+        }
+
+        setSelectedAccountId(account.id);
         setEditingMailboxId(account.id);
-        setMailboxForm({
-            email: account.email || '',
-            display_name: account.display_name || '',
-            imap_host: account.imap_host || '',
-            imap_port: account.imap_port || 993,
-            imap_encryption: account.imap_encryption || 'ssl',
-            imap_validate_cert: Boolean(account.imap_validate_cert),
-            status: account.status || 'active',
-        });
+        setMailboxForm(mapAccountToMailboxForm(account));
     };
 
     const openMailboxConfiguration = (account) => {
@@ -155,7 +162,6 @@ export default function Manage({
             return;
         }
 
-        setSelectedAccountId(account.id);
         startEditMailbox(account);
     };
 
@@ -444,18 +450,14 @@ export default function Manage({
                                     >
                                         <button
                                             type="button"
-                                            onClick={() => setSelectedAccountId(account.id)}
+                                            onClick={() => openMailboxConfiguration(account)}
                                             className="w-full text-left"
+                                            title="Load mailbox configuration for update"
                                         >
                                             <div className="font-semibold">{account.display_name || account.email}</div>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => openMailboxConfiguration(account)}
-                                            className="mt-0.5 max-w-full truncate text-xs font-medium text-teal-700 transition hover:text-teal-800 hover:underline"
-                                            title="Click to load mailbox configuration in the form"
-                                        >
-                                            {account.email}
+                                            <div className="mt-0.5 max-w-full truncate text-xs font-medium text-teal-700">
+                                                {account.email}
+                                            </div>
                                         </button>
                                     </div>
                                 ))
