@@ -13,7 +13,7 @@ export default function Login({
     const { data, setData, post, processing, errors } = useForm({
         email: '',
         password: '',
-        remember: false,
+        remember: true,
     });
 
     const submit = (event) => {
@@ -38,6 +38,9 @@ export default function Login({
                         <h1 className="mt-2 text-2xl font-semibold text-slate-900">Email Login</h1>
                         <p className="mt-2 text-sm text-slate-600">
                             Login to your assigned mailbox to access Apptimatic Email.
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Mailbox login stays active until credentials change or you logout.
                         </p>
                     </div>
 

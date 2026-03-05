@@ -1,5 +1,5 @@
-import React from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useEffect } from 'react';
+import { Head, router } from '@inertiajs/react';
 
 const rowClassName = (message) => {
     const base = 'group flex items-start gap-3 border-b border-slate-100 px-4 py-3 transition';
@@ -20,7 +20,26 @@ export default function Inbox({
     selected_message = null,
     thread_messages = [],
     routes = {},
+    sync_meta = {},
 }) {
+    useEffect(() => {
+        const intervalSeconds = Math.max(Number(sync_meta?.interval_seconds ?? 60), 15);
+
+        const intervalId = window.setInterval(() => {
+            if (document.visibilityState !== 'visible') {
+                return;
+            }
+
+            router.reload({
+                only: ['messages', 'selected_message', 'thread_messages', 'unread_count', 'sync_meta'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, intervalSeconds * 1000);
+
+        return () => window.clearInterval(intervalId);
+    }, [sync_meta?.interval_seconds]);
+
     return (
         <>
             <Head title={pageTitle} />
@@ -32,6 +51,9 @@ export default function Inbox({
                             <h1 className="text-xl font-semibold text-slate-900">Apptimatic Email</h1>
                             <p className="mt-1 text-sm text-slate-500">
                                 {portal_label} | Unread: {unread_count}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                                Sync mode: {sync_meta?.mode === 'live' ? 'Live IMAP' : 'Stub fallback'} | Auto refresh: {Math.max(Number(sync_meta?.interval_seconds ?? 60), 15)}s
                             </p>
                         </div>
                         <div className="inline-flex items-center gap-2">

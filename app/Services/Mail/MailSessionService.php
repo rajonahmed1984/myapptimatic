@@ -5,6 +5,7 @@ namespace App\Services\Mail;
 use App\Models\MailAccount;
 use App\Models\MailAccountSession;
 use App\Models\SalesRepresentative;
+use Illuminate\Contracts\Cookie\QueueingFactory as CookieJar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -16,26 +17,36 @@ class MailSessionService
     public const SESSION_TOKEN_KEY = 'mail.session_token';
     public const SESSION_ACCOUNT_KEY = 'mail.active_account_id';
     public const SESSION_SECRET_KEY = 'mail.auth_secret';
+    public const COOKIE_TOKEN_KEY = 'mail_session_token';
+    public const COOKIE_ACCOUNT_KEY = 'mail_session_account';
+
+    public function __construct(private readonly CookieJar $cookieJar)
+    {
+    }
 
     public function createSession(Request $request, array $actor, MailAccount $account, string $password, bool $remember): MailAccountSession
     {
         $this->invalidateAllForActor($actor);
 
         $token = Str::random(64);
+        $encryptedSecret = Crypt::encryptString($password);
 
         $session = MailAccountSession::create([
             'assignee_type' => $actor['type'],
             'assignee_id' => $actor['id'],
             'mail_account_id' => $account->id,
             'session_token_hash' => hash('sha256', $token),
+            'auth_secret' => $encryptedSecret,
             'remember' => $remember,
             'last_validated_at' => now(),
-            'expires_at' => $remember ? now()->addDays((int) config('apptimatic_email.remember_days', 30)) : null,
+            // Keep mailbox login active until credentials fail or explicit logout.
+            'expires_at' => null,
         ]);
 
         $request->session()->put(self::SESSION_TOKEN_KEY, $token);
         $request->session()->put(self::SESSION_ACCOUNT_KEY, $account->id);
-        $request->session()->put(self::SESSION_SECRET_KEY, Crypt::encryptString($password));
+        $request->session()->put(self::SESSION_SECRET_KEY, $encryptedSecret);
+        $this->queueRememberCookies($token, $account->id);
 
         return $session;
     }
@@ -47,8 +58,7 @@ class MailSessionService
             return null;
         }
 
-        $token = (string) $request->session()->get(self::SESSION_TOKEN_KEY, '');
-        $accountId = (int) $request->session()->get(self::SESSION_ACCOUNT_KEY, 0);
+        [$token, $accountId] = $this->resolveTokenAndAccount($request);
 
         if ($token === '' || $accountId <= 0) {
             return null;
@@ -64,6 +74,7 @@ class MailSessionService
             ->first();
 
         if (! $session) {
+            $this->forgetLocalState($request);
             return null;
         }
 
@@ -72,6 +83,8 @@ class MailSessionService
 
             return null;
         }
+
+        $this->syncLocalState($request, $token, $accountId, (string) ($session->auth_secret ?? ''));
 
         return $session;
     }
@@ -144,6 +157,12 @@ class MailSessionService
     public function decryptPassword(Request $request): ?string
     {
         $encrypted = (string) $request->session()->get(self::SESSION_SECRET_KEY, '');
+
+        if ($encrypted === '') {
+            $session = $this->validateSession($request);
+            $encrypted = (string) ($session?->auth_secret ?? '');
+        }
+
         if ($encrypted === '') {
             return null;
         }
@@ -189,5 +208,62 @@ class MailSessionService
             self::SESSION_ACCOUNT_KEY,
             self::SESSION_SECRET_KEY,
         ]);
+
+        $this->forgetRememberCookies();
+    }
+
+    private function resolveTokenAndAccount(Request $request): array
+    {
+        $sessionToken = (string) $request->session()->get(self::SESSION_TOKEN_KEY, '');
+        $sessionAccountId = (int) $request->session()->get(self::SESSION_ACCOUNT_KEY, 0);
+
+        if ($sessionToken !== '' && $sessionAccountId > 0) {
+            return [$sessionToken, $sessionAccountId];
+        }
+
+        $cookieToken = (string) $request->cookie(self::COOKIE_TOKEN_KEY, '');
+        $cookieAccountId = (int) $request->cookie(self::COOKIE_ACCOUNT_KEY, 0);
+
+        if ($cookieToken === '' || $cookieAccountId <= 0) {
+            return ['', 0];
+        }
+
+        return [$cookieToken, $cookieAccountId];
+    }
+
+    private function syncLocalState(Request $request, string $token, int $accountId, string $encryptedSecret): void
+    {
+        $request->session()->put(self::SESSION_TOKEN_KEY, $token);
+        $request->session()->put(self::SESSION_ACCOUNT_KEY, $accountId);
+
+        if ($encryptedSecret !== '') {
+            $request->session()->put(self::SESSION_SECRET_KEY, $encryptedSecret);
+        }
+
+        $this->queueRememberCookies($token, $accountId);
+    }
+
+    private function queueRememberCookies(string $token, int $accountId): void
+    {
+        $days = (int) config('apptimatic_email.persistent_login_days', 3650);
+        $days = max($days, 1);
+        $minutes = $days * 24 * 60;
+
+        $path = (string) config('session.path', '/');
+        $domain = config('session.domain');
+        $secure = (bool) config('session.secure', false);
+        $sameSite = (string) config('session.same_site', 'lax');
+
+        $this->cookieJar->queue(cookie(self::COOKIE_TOKEN_KEY, $token, $minutes, $path, $domain, $secure, true, false, $sameSite));
+        $this->cookieJar->queue(cookie(self::COOKIE_ACCOUNT_KEY, (string) $accountId, $minutes, $path, $domain, $secure, true, false, $sameSite));
+    }
+
+    private function forgetRememberCookies(): void
+    {
+        $path = (string) config('session.path', '/');
+        $domain = config('session.domain');
+
+        $this->cookieJar->queue($this->cookieJar->forget(self::COOKIE_TOKEN_KEY, $path, $domain));
+        $this->cookieJar->queue($this->cookieJar->forget(self::COOKIE_ACCOUNT_KEY, $path, $domain));
     }
 }

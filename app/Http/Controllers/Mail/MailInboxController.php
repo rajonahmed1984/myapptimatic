@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Mail;
 
 use App\Http\Controllers\Controller;
 use App\Services\ApptimaticEmailStubRepository;
+use App\Services\Mail\ImapInboxService;
 use App\Services\Mail\MailSessionService;
 use App\Support\DateTimeFormat;
 use Illuminate\Http\Request;
@@ -12,27 +13,25 @@ use Inertia\Response as InertiaResponse;
 
 class MailInboxController extends Controller
 {
-    public function __construct(private readonly MailSessionService $mailSessionService)
+    public function __construct(
+        private readonly MailSessionService $mailSessionService,
+        private readonly ImapInboxService $imapInboxService
+    )
     {
     }
 
     public function index(Request $request, ApptimaticEmailStubRepository $mailbox): InertiaResponse
     {
-        $messages = $mailbox->inbox();
-        $selectedMessage = $messages[0] ?? null;
-        $threadMessages = $selectedMessage ? $mailbox->threadFor((string) $selectedMessage['id']) : [];
+        [$messages, $selectedMessage, $threadMessages, $syncMeta] = $this->resolveMailboxData($request, $mailbox);
 
-        return Inertia::render('Admin/ApptimaticEmail/Inbox', $this->inboxInertiaProps($request, $mailbox, $messages, $selectedMessage, $threadMessages));
+        return Inertia::render('Admin/ApptimaticEmail/Inbox', $this->inboxInertiaProps($request, $mailbox, $messages, $selectedMessage, $threadMessages, $syncMeta));
     }
 
     public function show(Request $request, string $message, ApptimaticEmailStubRepository $mailbox): InertiaResponse
     {
-        $messages = $mailbox->inbox();
-        $selectedMessage = $mailbox->find($message);
-        abort_if(! $selectedMessage, 404);
-        $threadMessages = $mailbox->threadFor($message);
+        [$messages, $selectedMessage, $threadMessages, $syncMeta] = $this->resolveMailboxData($request, $mailbox, $message);
 
-        return Inertia::render('Admin/ApptimaticEmail/Inbox', $this->inboxInertiaProps($request, $mailbox, $messages, $selectedMessage, $threadMessages));
+        return Inertia::render('Admin/ApptimaticEmail/Inbox', $this->inboxInertiaProps($request, $mailbox, $messages, $selectedMessage, $threadMessages, $syncMeta));
     }
 
     private function inboxInertiaProps(
@@ -40,7 +39,8 @@ class MailInboxController extends Controller
         ApptimaticEmailStubRepository $mailbox,
         array $messages,
         ?array $selectedMessage,
-        array $threadMessages
+        array $threadMessages,
+        array $syncMeta
     ): array {
         $routeName = (string) $request->route()?->getName();
         $inboxRoute = $this->resolveRoute($routeName, 'inbox');
@@ -98,6 +98,73 @@ class MailInboxController extends Controller
                     'received_at_display' => DateTimeFormat::formatDateTime($threadMessage['received_at'] ?? null, ''),
                 ];
             })->values()->all(),
+            'sync_meta' => $syncMeta,
+        ];
+    }
+
+    private function resolveMailboxData(
+        Request $request,
+        ApptimaticEmailStubRepository $stub,
+        ?string $selectedMessageId = null
+    ): array {
+        $session = $this->mailSessionService->validateSession($request);
+        $password = $this->mailSessionService->decryptPassword($request);
+        $mailAccount = $session?->mailAccount;
+
+        if (
+            $mailAccount
+            && is_string($password)
+            && $password !== ''
+            && $this->imapInboxService->isAvailable()
+        ) {
+            $messages = $this->imapInboxService->inbox($mailAccount, $password, 80);
+
+            if ($messages !== []) {
+                $selectedMessage = $selectedMessageId
+                    ? collect($messages)->first(fn (array $message) => (string) ($message['id'] ?? '') === (string) $selectedMessageId)
+                    : ($messages[0] ?? null);
+
+                abort_if($selectedMessageId !== null && ! $selectedMessage, 404);
+
+                $threadMessages = [];
+                if ($selectedMessage) {
+                    $threadId = (string) ($selectedMessage['thread_id'] ?? '');
+
+                    $threadMessages = array_values(array_filter($messages, function (array $message) use ($threadId): bool {
+                        return (string) ($message['thread_id'] ?? '') === $threadId;
+                    }));
+
+                    usort($threadMessages, function (array $a, array $b): int {
+                        return ($a['received_at']?->getTimestamp() ?? 0) <=> ($b['received_at']?->getTimestamp() ?? 0);
+                    });
+                }
+
+                return [$messages, $selectedMessage, $threadMessages, $this->syncMeta('live')];
+            }
+        }
+
+        $messages = $stub->inbox();
+        $selectedMessage = $selectedMessageId
+            ? $stub->find($selectedMessageId)
+            : ($messages[0] ?? null);
+        abort_if($selectedMessageId !== null && ! $selectedMessage, 404);
+
+        $threadMessages = $selectedMessage
+            ? $stub->threadFor((string) ($selectedMessage['id'] ?? ''))
+            : [];
+
+        return [$messages, $selectedMessage, $threadMessages, $this->syncMeta('stub')];
+    }
+
+    private function syncMeta(string $mode): array
+    {
+        $seconds = (int) config('apptimatic_email.inbox_refresh_seconds', 60);
+        $seconds = max($seconds, 15);
+
+        return [
+            'mode' => $mode,
+            'interval_seconds' => $seconds,
+            'last_synced_at' => now()->toIso8601String(),
         ];
     }
 

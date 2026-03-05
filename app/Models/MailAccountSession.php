@@ -12,6 +12,7 @@ class MailAccountSession extends Model
         'assignee_id',
         'mail_account_id',
         'session_token_hash',
+        'auth_secret',
         'remember',
         'last_validated_at',
         'expires_at',
