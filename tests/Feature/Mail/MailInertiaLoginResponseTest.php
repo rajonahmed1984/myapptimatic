@@ -88,7 +88,9 @@ class MailInertiaLoginResponseTest extends TestCase
             ]);
 
         $response->assertRedirect(route('admin.apptimatic-email.login'));
-        $response->assertSessionHasErrors(['email']);
+        $response->assertSessionHasErrors([
+            'email' => 'This mailbox is not assigned to your account.',
+        ]);
         $response->assertStatus(302);
     }
 

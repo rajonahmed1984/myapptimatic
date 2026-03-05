@@ -79,7 +79,7 @@ class MailLoginController extends Controller
                 ]);
             }
 
-            return back()->withErrors(['email' => 'Invalid email or password'])->withInput();
+            return back()->withErrors(['email' => 'This mailbox is not assigned to your account.'])->withInput();
         }
 
         if (! $this->imapAuthService->verifyCredentials($mailAccount, $password)) {

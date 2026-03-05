@@ -87,9 +87,42 @@ class HandlePartialResponse
             return false;
         }
 
+        $routeName = (string) ($request->route()?->getName() ?? '');
+        if ($this->isGuestRoute($routeName)) {
+            return false;
+        }
+
         $contentType = (string) $response->headers->get('Content-Type', '');
 
         return str_contains(strtolower($contentType), 'text/html');
+    }
+
+    private function isGuestRoute(string $routeName): bool
+    {
+        if ($routeName === '') {
+            return false;
+        }
+
+        $guestRoutes = [
+            'login',
+            'admin.login',
+            'employee.login',
+            'sales.login',
+            'support.login',
+            'register',
+            'password.request',
+            'password.reset',
+            'admin.password.request',
+            'employee.password.request',
+            'employee.password.reset',
+            'sales.password.request',
+            'sales.password.reset',
+            'support.password.request',
+            'support.password.reset',
+            'project-client.login',
+        ];
+
+        return in_array($routeName, $guestRoutes, true);
     }
 
     /**
