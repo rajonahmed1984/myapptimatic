@@ -30,6 +30,14 @@ Completed items:
   - `scripts/check-react-standard.mjs`
   - `npm run check:react-standard`
   - CI gate step in `.github/workflows/ci.yml`
+- Legacy migration helper scripts were deprecated to no-op guidance:
+  - `scripts/generate-pages-proxy.ps1`
+  - `scripts/migrate-react-tree-to-standard.ps1`
+- Unused migration middleware was removed:
+  - `app/Http/Middleware/ConvertAdminViewToInertia.php`
+  - Middleware assertions were kept via string-based checks in:
+    - `tests/Feature/PhaseBAdminRouteMiddlewareTest.php`
+    - `tests/Feature/PhaseCTaskDetailRouteMiddlewareTest.php`
 - Legacy per-portal React wrapper Blade roots were removed:
   - `resources/views/react-admin.blade.php`
   - `resources/views/react-client.blade.php`
@@ -62,6 +70,12 @@ Latest full validation run (2026-03-05):
 - `php artisan route:cache` -> PASS
 - `php artisan test --colors=never` -> PASS (`581 passed`)
 - `npm run build` -> PASS
+
+Latest incremental validation after cleanup commits:
+- `php artisan test --filter="PhaseBAdminRouteMiddlewareTest|PhaseCTaskDetailRouteMiddlewareTest"` -> PASS
+- `npm run check:react-standard` -> PASS
+- `npm run build` -> PASS
+- `php artisan test --colors=never` -> FAIL in current dirty local workspace (unrelated pre-existing local WIP changes outside migration scope)
 
 Additional safety checks previously used during migration:
 - Portal smoke tests for entry/login pages
