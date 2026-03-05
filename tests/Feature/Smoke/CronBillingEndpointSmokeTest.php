@@ -38,7 +38,8 @@ class CronBillingEndpointSmokeTest extends TestCase
 
         $this->get($signedUrl)
             ->assertForbidden()
-            ->assertSeeText('Unauthorized');
+            ->assertSeeText('Unauthorized')
+            ->assertDontSee('data-page=');
     }
 
     #[Test]
@@ -57,6 +58,7 @@ class CronBillingEndpointSmokeTest extends TestCase
         $this->get($signedUrl)
             ->assertOk()
             ->assertSeeText('Cron Job Executed')
-            ->assertSeeText('Cron job executed successfully.');
+            ->assertSeeText('Cron job executed successfully.')
+            ->assertDontSee('data-page=');
     }
 }
