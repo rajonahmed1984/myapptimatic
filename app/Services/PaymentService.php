@@ -13,6 +13,7 @@ use App\Models\StatusAuditLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use App\Services\SalesRepNotificationService;
+use App\Services\ClientNotificationService;
 
 class PaymentService
 {
@@ -135,14 +136,14 @@ class PaymentService
             }
 
             try {
-                app(\App\Services\ClientNotificationService::class)->sendInvoicePaymentConfirmation($invoice, $reference);
+                app(ClientNotificationService::class)->sendInvoicePaymentStatusNotification($invoice, 'paid', $reference);
             } catch (\Throwable) {
                 // Client notification failures should not interfere with payment.
             }
 
             try {
                 app(SalesRepNotificationService::class)
-                    ->sendInvoicePaymentConfirmationToRelatedSalesReps($invoice, $reference);
+                    ->sendInvoicePaymentStatusToRelatedSalesReps($invoice, 'paid', $reference);
             } catch (\Throwable) {
                 // Sales rep notification failures should not interfere with payment.
             }
@@ -198,6 +199,8 @@ class PaymentService
             'gateway' => $attempt->paymentGateway?->driver,
             'message' => $message,
         ], level: 'error');
+
+        $this->notifyInvoicePaymentUpdate($attempt, 'failed', (string) ($attempt->gateway_reference ?? ''));
     }
 
     public function markCancelled(PaymentAttempt $attempt, string $message, array $meta = []): void
@@ -217,6 +220,8 @@ class PaymentService
             'driver' => $attempt->paymentGateway?->driver,
             'message' => $message,
         ]);
+
+        $this->notifyInvoicePaymentUpdate($attempt, 'cancelled', (string) ($attempt->gateway_reference ?? ''));
     }
 
     public function capturePayPal(PaymentAttempt $attempt, string $orderId): bool
@@ -715,5 +720,37 @@ class PaymentService
         }
 
         return [$amount, $processingCurrency];
+    }
+
+    private function notifyInvoicePaymentUpdate(PaymentAttempt $attempt, string $paymentEvent, ?string $reference = null): void
+    {
+        $invoice = $attempt->invoice?->fresh();
+        if (! $invoice) {
+            return;
+        }
+
+        try {
+            app(ClientNotificationService::class)
+                ->sendInvoicePaymentStatusNotification($invoice, $paymentEvent, $reference);
+        } catch (\Throwable $e) {
+            SystemLogger::write('module', 'Client payment status notification failed.', [
+                'invoice_id' => $invoice->id,
+                'payment_attempt_id' => $attempt->id,
+                'payment_event' => $paymentEvent,
+                'error' => $e->getMessage(),
+            ], level: 'error');
+        }
+
+        try {
+            app(SalesRepNotificationService::class)
+                ->sendInvoicePaymentStatusToRelatedSalesReps($invoice, $paymentEvent, $reference);
+        } catch (\Throwable $e) {
+            SystemLogger::write('module', 'Sales rep payment status notification failed.', [
+                'invoice_id' => $invoice->id,
+                'payment_attempt_id' => $attempt->id,
+                'payment_event' => $paymentEvent,
+                'error' => $e->getMessage(),
+            ], level: 'error');
+        }
     }
 }

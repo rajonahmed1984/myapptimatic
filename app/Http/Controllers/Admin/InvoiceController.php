@@ -12,6 +12,7 @@ use App\Models\Setting;
 use App\Models\TaxSetting;
 use App\Services\AdminNotificationService;
 use App\Services\BillingService;
+use App\Services\ClientNotificationService;
 use App\Services\CommissionService;
 use App\Services\InvoiceTaxService;
 use App\Services\SalesRepNotificationService;
@@ -244,6 +245,7 @@ class InvoiceController extends Controller
         Request $request,
         Invoice $invoice,
         AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications,
         CommissionService $commissionService,
         SalesRepNotificationService $salesRepNotifications
     ): RedirectResponse|JsonResponse {
@@ -264,9 +266,19 @@ class InvoiceController extends Controller
         );
 
         if (! $wasPaid) {
-            $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
+            $freshInvoice = $invoice->fresh('customer');
+            $adminNotifications->sendInvoicePaid($freshInvoice);
             try {
-                $salesRepNotifications->sendInvoicePaymentConfirmationToRelatedSalesReps($invoice->fresh(), null);
+                $clientNotifications->sendInvoicePaymentStatusNotification($freshInvoice, 'paid', null);
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Client invoice paid notification failed on manual mark paid.', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $e->getMessage(),
+                ], level: 'error');
+            }
+
+            try {
+                $salesRepNotifications->sendInvoicePaymentStatusToRelatedSalesReps($freshInvoice, 'paid', null);
             } catch (\Throwable $e) {
                 SystemLogger::write('module', 'Sales rep invoice paid notification failed on manual mark paid.', [
                     'invoice_id' => $invoice->id,
@@ -348,6 +360,7 @@ class InvoiceController extends Controller
         Request $request,
         Invoice $invoice,
         AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications,
         CommissionService $commissionService,
         InvoiceTaxService $taxService,
         SalesRepNotificationService $salesRepNotifications
@@ -507,16 +520,9 @@ class InvoiceController extends Controller
             $invoice->update($updates);
         });
 
+        $statusChanged = $previousStatus !== $data['status'];
         if (! $wasPaid && $data['status'] === 'paid') {
             $adminNotifications->sendInvoicePaid($invoice->fresh('customer'));
-            try {
-                $salesRepNotifications->sendInvoicePaymentConfirmationToRelatedSalesReps($invoice->fresh(), null);
-            } catch (\Throwable $e) {
-                SystemLogger::write('module', 'Sales rep invoice paid notification failed on admin invoice update.', [
-                    'invoice_id' => $invoice->id,
-                    'error' => $e->getMessage(),
-                ], level: 'error');
-            }
 
             // Check if customer has any remaining unpaid/overdue invoices
             // If not, clear the billing block
@@ -530,6 +536,29 @@ class InvoiceController extends Controller
                 \App\Models\Customer::query()
                     ->where('id', $invoice->customer_id)
                     ->update(['access_override_until' => null]);
+            }
+        }
+
+        if ($statusChanged) {
+            $freshInvoice = $invoice->fresh('customer');
+            try {
+                $clientNotifications->sendInvoicePaymentStatusNotification($freshInvoice, 'admin_update', null);
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Client invoice payment status notification failed on admin invoice update.', [
+                    'invoice_id' => $invoice->id,
+                    'status' => $data['status'],
+                    'error' => $e->getMessage(),
+                ], level: 'error');
+            }
+
+            try {
+                $salesRepNotifications->sendInvoicePaymentStatusToRelatedSalesReps($freshInvoice, 'admin_update', null);
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Sales rep invoice payment status notification failed on admin invoice update.', [
+                    'invoice_id' => $invoice->id,
+                    'status' => $data['status'],
+                    'error' => $e->getMessage(),
+                ], level: 'error');
             }
         }
 

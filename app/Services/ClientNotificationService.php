@@ -247,6 +247,11 @@ class ClientNotificationService
 
     public function sendInvoicePaymentConfirmation(Invoice $invoice, ?string $reference = null): void
     {
+        $this->sendInvoicePaymentStatusNotification($invoice, 'paid', $reference);
+    }
+
+    public function sendInvoicePaymentStatusNotification(Invoice $invoice, string $paymentEvent, ?string $reference = null): void
+    {
         $invoice->loadMissing(['customer']);
         $customer = $invoice->customer;
 
@@ -254,31 +259,70 @@ class ClientNotificationService
             return;
         }
 
-        $template = EmailTemplate::query()
-            ->where('key', 'client_invoice_payment_confirmation')
-            ->first();
+        $invoiceStatus = strtolower((string) ($invoice->status ?? 'unpaid'));
+        $paymentEvent = strtolower(trim($paymentEvent));
+        if ($paymentEvent === '') {
+            $paymentEvent = 'updated';
+        }
 
+        $templateKey = match ($invoiceStatus) {
+            'paid' => 'client_invoice_payment_confirmation',
+            'unpaid' => 'invoice_created',
+            default => 'client_invoice_payment_status_notification',
+        };
+
+        $template = EmailTemplate::query()->where('key', $templateKey)->first();
         $companyName = Setting::getValue('company_name', config('app.name'));
+        $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
         $invoiceNumber = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
+        $invoiceStatusLabel = $this->humanizeLabel($invoiceStatus);
+        $paymentEventLabel = $this->humanizeLabel($paymentEvent);
         $paymentUrl = route('client.invoices.show', $invoice);
+        $invoicePayUrl = route('client.invoices.pay', $invoice);
         $fromEmail = $this->resolveFromEmail($template);
 
-        $subject = $template?->subject ?: "Payment received for invoice {$invoiceNumber}";
-        $body = $template?->body ?: "Hi {{client_name}},\n\nThank you for your payment. Invoice {{invoice_number}} is now marked as paid.\n\nReference: {{payment_reference}}\nView invoice: {{payment_url}}\n\nWarm regards,\n{{company_name}}";
+        $subject = (string) ($template?->subject ?: match ($invoiceStatus) {
+            'paid' => "Payment received for invoice {$invoiceNumber}",
+            'unpaid' => "Invoice {$invoiceNumber} is unpaid",
+            default => "Invoice {$invoiceNumber} payment update ({$invoiceStatusLabel})",
+        });
+        $body = (string) ($template?->body ?: "Hi {{client_name}},\n\n"
+            ."This is a payment update for invoice {{invoice_number}}.\n"
+            ."Invoice status: {{invoice_status}}\n"
+            ."Payment event: {{payment_event}}\n"
+            ."Total: {{invoice_total}}\n"
+            ."Due date: {{invoice_due_date}}\n"
+            ."Reference: {{payment_reference}}\n\n"
+            ."View invoice: {{payment_url}}\n"
+            ."Pay now: {{invoice_pay_url}}\n\n"
+            ."Regards,\n{{company_name}}");
 
         $replacements = [
             '{{client_name}}' => $customer->name,
+            '{{client_email}}' => $customer->email ?? '--',
             '{{invoice_number}}' => $invoiceNumber,
             '{{invoice_total}}' => $invoice->currency.' '.$invoice->total,
+            '{{invoice_due_date}}' => $invoice->due_date?->format($dateFormat) ?? '--',
+            '{{invoice_status}}' => $invoiceStatusLabel,
+            '{{payment_event}}' => $paymentEventLabel,
             '{{payment_reference}}' => $reference ?? '--',
             '{{payment_url}}' => $paymentUrl,
+            '{{invoice_pay_url}}' => $invoicePayUrl,
             '{{company_name}}' => $companyName,
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
         $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $attachments = [];
 
-        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
+        if ($this->shouldAttachInvoiceForStatus($invoiceStatus)) {
+            $attachment = $this->invoiceAttachment($invoice);
+            if ($attachment) {
+                $attachments[] = $attachment;
+            }
+        }
+
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, $attachments, MailCategory::BILLING);
     }
 
     public function sendTicketAutoClose(SupportTicket $ticket): void
@@ -478,5 +522,15 @@ class ClientNotificationService
             'filename' => 'invoice-'.$number.'.pdf',
             'mimetype' => 'application/pdf',
         ];
+    }
+
+    private function shouldAttachInvoiceForStatus(string $status): bool
+    {
+        return in_array($status, ['unpaid', 'paid'], true);
+    }
+
+    private function humanizeLabel(string $value): string
+    {
+        return (string) Str::of($value)->replace(['_', '-'], ' ')->title();
     }
 }

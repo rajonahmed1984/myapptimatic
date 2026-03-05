@@ -25,6 +25,11 @@ class SalesRepNotificationService
 
     public function sendInvoicePaymentConfirmationToRelatedSalesReps(Invoice $invoice, ?string $reference = null): void
     {
+        $this->sendInvoicePaymentStatusToRelatedSalesReps($invoice, 'paid', $reference);
+    }
+
+    public function sendInvoicePaymentStatusToRelatedSalesReps(Invoice $invoice, string $paymentEvent = 'paid', ?string $reference = null): void
+    {
         $invoice->loadMissing([
             'customer.defaultSalesRep:id,name,email',
             'subscription.salesRep:id,name,email',
@@ -39,18 +44,29 @@ class SalesRepNotificationService
             return;
         }
 
-        $template = EmailTemplate::query()
-            ->where('key', 'sales_rep_invoice_payment_confirmation')
-            ->first();
+        $invoiceStatus = strtolower((string) ($invoice->status ?? 'unpaid'));
+        $paymentEvent = strtolower(trim($paymentEvent));
+        if ($paymentEvent === '') {
+            $paymentEvent = 'updated';
+        }
+
+        $templateKey = $invoiceStatus === 'paid'
+            ? 'sales_rep_invoice_payment_confirmation'
+            : 'sales_rep_invoice_payment_status_notification';
+        $template = EmailTemplate::query()->where('key', $templateKey)->first();
 
         $companyName = (string) Setting::getValue('company_name', config('app.name'));
         $dateFormat = (string) Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
         $invoiceNumber = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
         $paidDate = $invoice->paid_at?->format($dateFormat) ?? now()->format($dateFormat);
         $invoiceUrl = route('admin.invoices.show', $invoice);
-        $attachment = $this->invoiceAttachment($invoice);
-        $subjectFallback = 'Payment received for invoice {{invoice_number}}';
-        $bodyFallback = "Hello {{sales_rep_name}},\n\nInvoice {{invoice_number}} has been paid.\nClient: {{client_name}}\nAmount: {{invoice_total}}\nPaid date: {{paid_date}}\nPayment reference: {{payment_reference}}\nInvoice link: {{invoice_url}}\n\nRegards,\n{{company_name}}";
+        $attachment = $this->shouldAttachInvoiceForStatus($invoiceStatus) ? $this->invoiceAttachment($invoice) : null;
+        $statusLabel = $this->humanizeLabel($invoiceStatus);
+        $eventLabel = $this->humanizeLabel($paymentEvent);
+        $subjectFallback = $invoiceStatus === 'paid'
+            ? 'Payment received for invoice {{invoice_number}}'
+            : 'Invoice {{invoice_number}} payment update ({{invoice_status}})';
+        $bodyFallback = "Hello {{sales_rep_name}},\n\nInvoice {{invoice_number}} has a payment update.\nClient: {{client_name}}\nAmount: {{invoice_total}}\nInvoice status: {{invoice_status}}\nPayment event: {{payment_event}}\nPaid date: {{paid_date}}\nPayment reference: {{payment_reference}}\nInvoice link: {{invoice_url}}\n\nRegards,\n{{company_name}}";
 
         foreach ($recipients as $rep) {
             $replacements = [
@@ -58,6 +74,8 @@ class SalesRepNotificationService
                 '{{invoice_number}}' => $invoiceNumber,
                 '{{client_name}}' => (string) ($invoice->customer?->name ?? '--'),
                 '{{invoice_total}}' => (string) ($invoice->currency.' '.number_format((float) $invoice->total, 2)),
+                '{{invoice_status}}' => $statusLabel,
+                '{{payment_event}}' => $eventLabel,
                 '{{paid_date}}' => $paidDate,
                 '{{payment_reference}}' => (string) ($reference ?: '--'),
                 '{{invoice_url}}' => $invoiceUrl,
@@ -285,5 +303,15 @@ class SalesRepNotificationService
             'filename' => 'invoice-'.$number.'.pdf',
             'mimetype' => 'application/pdf',
         ];
+    }
+
+    private function shouldAttachInvoiceForStatus(string $status): bool
+    {
+        return in_array($status, ['unpaid', 'paid'], true);
+    }
+
+    private function humanizeLabel(string $value): string
+    {
+        return (string) Str::of($value)->replace(['_', '-'], ' ')->title();
     }
 }
