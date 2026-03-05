@@ -24,6 +24,12 @@ Completed items:
   - `resources/js/app.jsx`
 - React page resolution is standardized to:
   - `resources/js/Pages/**/*`
+- Legacy proxy tree removed from tracked source:
+  - `resources/js/react/*` (tracked compatibility re-exports deleted)
+- Enforced guard added to prevent reintroduction of legacy tree/references:
+  - `scripts/check-react-standard.mjs`
+  - `npm run check:react-standard`
+  - CI gate step in `.github/workflows/ci.yml`
 - Legacy per-portal React wrapper Blade roots were removed:
   - `resources/views/react-admin.blade.php`
   - `resources/views/react-client.blade.php`
@@ -69,7 +75,7 @@ Required migration objectives are complete for standard architecture.
 
 Optional follow-up only:
 - Collapse portal-specific shell layouts (`layouts.admin`, `layouts.client`, `layouts.rep`, `layouts.support`) into one Blade shell if design/system constraints allow.
-- Keep monitoring for any new modules introducing `resources/js/react/*` paths (none in tracked migration scope).
+- Keep monitoring for any untracked/local experiments introducing `resources/js/react/*` paths.
 
 ## 5) Risks and mitigations
 

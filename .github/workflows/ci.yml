@@ -91,6 +91,9 @@ jobs:
           print({"missing_inertia_components": 0})
           PY
 
+      - name: Enforce standard React structure
+        run: npm run check:react-standard
+
       - name: Build frontend
         run: npm run build
 

@@ -5,10 +5,11 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "ci:local": "composer test && npm run build",
+        "check:react-standard": "node scripts/check-react-standard.mjs",
+        "ci:local": "composer test && npm run check:react-standard && npm run build",
         "lint:php": "php vendor/bin/pint --test --dirty",
         "test:php": "php artisan test",
-        "ci": "npm run build"
+        "ci": "npm run check:react-standard && npm run build"
     },
     "dependencies": {
         "@inertiajs/react": "^2.3.15",
