@@ -16,11 +16,15 @@ class TrustProxies
             return $trustedProxies;
         }
 
-        if ($trustedProxies === '*') {
+        // Normalize quoted values such as TRUSTED_PROXIES="*"
+        // so wildcard and CSV values are interpreted consistently.
+        $normalized = trim($trustedProxies, " \t\n\r\0\x0B\"'");
+
+        if ($normalized === '' || $normalized === '*') {
             return '*';
         }
 
-        return array_values(array_filter(array_map('trim', explode(',', $trustedProxies))));
+        return array_values(array_filter(array_map('trim', explode(',', $normalized))));
     }
 
     public static function headers(): int

@@ -37,24 +37,32 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Use active guard + role to prevent cross-panel guest redirects.
         $middleware->redirectUsersTo(function (Request $request) {
+            $sessionCookieName = (string) config('session.cookie');
+            $hasSessionCookie = $sessionCookieName !== '' && $request->cookies->has($sessionCookieName);
+
+            // Prevent guest redirect loops caused by stale remember-me auth without a live session cookie.
+            if (! $hasSessionCookie) {
+                return null;
+            }
+
             if (Auth::guard('employee')->check()) {
-                return route('employee.dashboard');
+                return route('employee.dashboard', [], false);
             }
 
             if (Auth::guard('sales')->check()) {
-                return route('rep.dashboard');
+                return route('rep.dashboard', [], false);
             }
 
             if (Auth::guard('support')->check()) {
-                return route('support.dashboard');
+                return route('support.dashboard', [], false);
             }
 
             $user = Auth::guard('web')->user();
             if (AdminAccess::canAccess($user)) {
-                return route('admin.dashboard');
+                return route('admin.dashboard', [], false);
             }
 
-            return route('client.dashboard');
+            return route('client.dashboard', [], false);
         });
 
         $middleware->redirectGuestsTo(function (Request $request) {
