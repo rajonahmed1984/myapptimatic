@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskViewController;
+use App\Http\Controllers\Mail\MailInboxController;
+use App\Http\Controllers\Mail\MailLoginController;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\Route;
 
@@ -64,6 +66,28 @@ Route::middleware([
         Route::get('/tasks', [SalesRepTasksController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('tasks.index');
         Route::get('/chats', [SalesRepChatController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('chats.index');
         Route::redirect('/chat', '/sales/chats');
+        Route::redirect('/mail', '/sales/apptimatic-email');
+        Route::prefix('apptimatic-email')
+            ->name('apptimatic-email.')
+            ->group(function () {
+                Route::get('/login', [MailLoginController::class, 'showLogin'])
+                    ->middleware(HandleInertiaRequests::class)
+                    ->name('login');
+                Route::post('/login', [MailLoginController::class, 'login'])
+                    ->middleware('throttle:mail-login')
+                    ->name('login.store');
+                Route::post('/logout', [MailLoginController::class, 'logout'])->name('logout');
+
+                Route::middleware(['email.auth', 'mail.session.fresh'])->group(function () {
+                    Route::get('/', [MailInboxController::class, 'index'])
+                        ->middleware(HandleInertiaRequests::class)
+                        ->name('inbox');
+                    Route::get('/messages/{message}', [MailInboxController::class, 'show'])
+                        ->middleware(HandleInertiaRequests::class)
+                        ->where('message', '[A-Za-z0-9\-]+')
+                        ->name('show');
+                });
+            });
         Route::get('/profile', [SalesRepProfileController::class, 'edit'])->middleware(HandleInertiaRequests::class)->name('profile.edit');
         Route::put('/profile', [SalesRepProfileController::class, 'update'])->name('profile.update');
         Route::post('/system/cache/clear', SystemCacheController::class)

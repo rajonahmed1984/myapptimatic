@@ -1,0 +1,183 @@
+<?php
+
+namespace App\Http\Controllers\Mail;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\MailLoginRequest;
+use App\Models\MailAccount;
+use App\Models\MailAccountAssignment;
+use App\Services\Mail\ImapAuthService;
+use App\Services\Mail\MailSessionService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+
+class MailLoginController extends Controller
+{
+    public function __construct(
+        private readonly MailSessionService $mailSessionService,
+        private readonly ImapAuthService $imapAuthService
+    ) {
+    }
+
+    public function showLogin(Request $request): InertiaResponse|RedirectResponse
+    {
+        $routeName = (string) $request->route()?->getName();
+        $inboxRoute = $this->resolveInboxRoute($routeName);
+
+        if ($this->mailSessionService->validateSession($request)) {
+            return redirect()->route($inboxRoute);
+        }
+
+        $actor = $this->mailSessionService->resolveActor($request);
+        abort_if(! $actor, 403);
+
+        $mailboxes = $this->availableMailboxes($actor, $actor['user']);
+
+        return Inertia::render('Mail/Login', [
+            'pageTitle' => 'Email Login',
+            'mailboxes' => $mailboxes,
+            'routes' => [
+                'login' => route($this->resolveLoginRoute($routeName)),
+                'inbox' => route($inboxRoute),
+            ],
+            'portal' => $this->portalLabelFromRoute($routeName),
+        ]);
+    }
+
+    public function login(MailLoginRequest $request): RedirectResponse
+    {
+        $routeName = (string) $request->route()?->getName();
+        $inboxRoute = $this->resolveInboxRoute($routeName);
+
+        $actor = $this->mailSessionService->resolveActor($request);
+        abort_if(! $actor, 403);
+
+        $email = strtolower((string) $request->string('email'));
+        $password = (string) $request->input('password', '');
+        $remember = (bool) $request->boolean('remember', false);
+
+        $mailAccount = MailAccount::query()
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
+
+        if (! $mailAccount) {
+            return back()->withErrors(['email' => 'Invalid email or password'])->withInput();
+        }
+
+        Gate::authorize('use', [$mailAccount, $actor['type'], (int) $actor['id']]);
+
+        if (! $this->imapAuthService->verifyCredentials($mailAccount, $password)) {
+            $mailAccount->forceFill([
+                'status' => 'auth_failed',
+                'last_auth_failed_at' => now(),
+            ])->save();
+
+            return back()->withErrors(['email' => 'Invalid email or password'])->withInput();
+        }
+
+        $mailAccount->forceFill([
+            'status' => 'active',
+            'last_auth_failed_at' => null,
+        ])->save();
+
+        $this->mailSessionService->createSession($request, $actor, $mailAccount, $password, $remember);
+
+        return redirect()->route($inboxRoute);
+    }
+
+    public function logout(Request $request): RedirectResponse
+    {
+        $routeName = (string) $request->route()?->getName();
+        $loginRoute = $this->resolveLoginRoute($routeName);
+
+        $this->mailSessionService->invalidateCurrent($request);
+
+        return redirect()->route($loginRoute)->with('status', 'Logged out from email.');
+    }
+
+    private function availableMailboxes(array $actor, mixed $user): array
+    {
+        if ($user && method_exists($user, 'isAdmin') && $user->isAdmin() && (bool) config('apptimatic_email.allow_admin_global_mailboxes', false)) {
+            return MailAccount::query()
+                ->orderBy('email')
+                ->get(['id', 'email', 'display_name'])
+                ->map(fn (MailAccount $mailAccount) => [
+                    'id' => $mailAccount->id,
+                    'email' => $mailAccount->email,
+                    'display_name' => $mailAccount->display_name,
+                ])
+                ->all();
+        }
+
+        $ids = MailAccountAssignment::query()
+            ->where('assignee_type', $actor['type'])
+            ->where('assignee_id', $actor['id'])
+            ->where('can_read', true)
+            ->pluck('mail_account_id');
+
+        return MailAccount::query()
+            ->whereIn('id', $ids)
+            ->orderBy('email')
+            ->get(['id', 'email', 'display_name'])
+            ->map(fn (MailAccount $mailAccount) => [
+                'id' => $mailAccount->id,
+                'email' => $mailAccount->email,
+                'display_name' => $mailAccount->display_name,
+            ])
+            ->all();
+    }
+
+    private function resolveLoginRoute(string $routeName): string
+    {
+        if (str_starts_with($routeName, 'employee.')) {
+            return 'employee.apptimatic-email.login';
+        }
+
+        if (str_starts_with($routeName, 'rep.')) {
+            return 'rep.apptimatic-email.login';
+        }
+
+        if (str_starts_with($routeName, 'support.')) {
+            return 'support.apptimatic-email.login';
+        }
+
+        return 'admin.apptimatic-email.login';
+    }
+
+    private function resolveInboxRoute(string $routeName): string
+    {
+        if (str_starts_with($routeName, 'employee.')) {
+            return 'employee.apptimatic-email.inbox';
+        }
+
+        if (str_starts_with($routeName, 'rep.')) {
+            return 'rep.apptimatic-email.inbox';
+        }
+
+        if (str_starts_with($routeName, 'support.')) {
+            return 'support.apptimatic-email.inbox';
+        }
+
+        return 'admin.apptimatic-email.inbox';
+    }
+
+    private function portalLabelFromRoute(string $routeName): string
+    {
+        if (str_starts_with($routeName, 'employee.')) {
+            return 'Employee Portal';
+        }
+
+        if (str_starts_with($routeName, 'rep.')) {
+            return 'Sales Portal';
+        }
+
+        if (str_starts_with($routeName, 'support.')) {
+            return 'Support Portal';
+        }
+
+        return 'Admin Portal';
+    }
+}

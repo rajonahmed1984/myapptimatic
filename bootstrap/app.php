@@ -100,6 +100,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'user.activity' => \App\Http\Middleware\TrackAuthenticatedUserActivity::class,
             'nocache' => \App\Http\Middleware\NoCacheHeaders::class,
             'login.trace' => \App\Http\Middleware\LoginTrace::class,
+            'email.auth' => \App\Http\Middleware\EnsureEmailAuthenticated::class,
+            'mail.session.fresh' => \App\Http\Middleware\ValidateMailSessionFreshness::class,
         ]);
 
         $middleware->web(append: [
@@ -150,6 +152,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (ValidationException $exception, Request $request) {
             if ($request->is('api/*')) {
+                return null;
+            }
+
+            if ($request->header('X-Inertia')) {
                 return null;
             }
 

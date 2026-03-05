@@ -46,6 +46,15 @@
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Support Tickets
                     </x-nav-link>
+                    @if(\Illuminate\Support\Facades\Route::has('support.apptimatic-email.inbox'))
+                        <x-nav-link
+                            :href="route('support.apptimatic-email.inbox')"
+                            routes="support.apptimatic-email.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Apptimatic Email
+                        </x-nav-link>
+                    @endif
                 </div>
             </nav>
 

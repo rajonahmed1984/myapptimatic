@@ -344,6 +344,14 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('payment-callbacks', function ($request) {
             return Limit::perMinute(10)->by($request->ip() ?? 'unknown');
         });
+
+        RateLimiter::for('mail-login', function ($request) {
+            $identity = (string) ($request->user()?->id ?? 'guest');
+            $email = strtolower((string) $request->input('email', 'none'));
+            $ip = (string) ($request->ip() ?? 'unknown');
+
+            return Limit::perMinutes(10, 5)->by($identity.'|'.$email.'|'.$ip);
+        });
     }
 
     private function registerEmailLogListener(): void

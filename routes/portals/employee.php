@@ -14,6 +14,8 @@ use App\Http\Controllers\Employee\WorkSessionController as EmployeeWorkSessionCo
 use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskViewController;
+use App\Http\Controllers\Mail\MailInboxController;
+use App\Http\Controllers\Mail\MailLoginController;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\Route;
 
@@ -70,6 +72,28 @@ Route::middleware([
         Route::get('/tasks', [EmployeeTasksController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('tasks.index');
         Route::get('/chats', [EmployeeChatController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('chats.index');
         Route::redirect('/chat', '/employee/chats');
+        Route::redirect('/mail', '/employee/apptimatic-email');
+        Route::prefix('apptimatic-email')
+            ->name('apptimatic-email.')
+            ->group(function () {
+                Route::get('/login', [MailLoginController::class, 'showLogin'])
+                    ->middleware(HandleInertiaRequests::class)
+                    ->name('login');
+                Route::post('/login', [MailLoginController::class, 'login'])
+                    ->middleware('throttle:mail-login')
+                    ->name('login.store');
+                Route::post('/logout', [MailLoginController::class, 'logout'])->name('logout');
+
+                Route::middleware(['email.auth', 'mail.session.fresh'])->group(function () {
+                    Route::get('/', [MailInboxController::class, 'index'])
+                        ->middleware(HandleInertiaRequests::class)
+                        ->name('inbox');
+                    Route::get('/messages/{message}', [MailInboxController::class, 'show'])
+                        ->middleware(HandleInertiaRequests::class)
+                        ->where('message', '[A-Za-z0-9\-]+')
+                        ->name('show');
+                });
+            });
         Route::post('/work-sessions/start', [EmployeeWorkSessionController::class, 'start'])->name('work-sessions.start');
         Route::post('/work-sessions/ping', [EmployeeWorkSessionController::class, 'ping'])->name('work-sessions.ping');
         Route::post('/work-sessions/stop', [EmployeeWorkSessionController::class, 'stop'])->name('work-sessions.stop');

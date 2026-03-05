@@ -1,4 +1,4 @@
-import './bootstrap';
+import './http-client';
 import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp, router as inertiaRouter } from '@inertiajs/react';

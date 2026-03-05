@@ -35,6 +35,15 @@ export default function Inbox({
                             </p>
                         </div>
                         <div className="inline-flex items-center gap-2">
+                            {routes?.manage ? (
+                                <a
+                                    href={routes.manage}
+                                    data-native="true"
+                                    className="rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
+                                >
+                                    Manage Mailboxes
+                                </a>
+                            ) : null}
                             {routes?.logout ? (
                                 <form method="POST" action={routes.logout}>
                                     <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />

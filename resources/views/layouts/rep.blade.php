@@ -66,6 +66,15 @@
                         <span>Chat</span>
                         <span class="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{{ $repHeaderStats['unread_chat'] ?? 0 }}</span>
                     </x-nav-link>
+                    @if(\Illuminate\Support\Facades\Route::has('rep.apptimatic-email.inbox'))
+                        <x-nav-link
+                            :href="route('rep.apptimatic-email.inbox')"
+                            routes="rep.apptimatic-email.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            <span>Apptimatic Email</span>
+                        </x-nav-link>
+                    @endif
                 </div>
                 <div class="space-y-2">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>

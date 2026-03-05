@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\License;
+use App\Models\MailAccount;
 use App\Policies\EmployeePolicy;
 use App\Policies\LeaveRequestPolicy;
 use App\Policies\PayrollItemPolicy;
@@ -18,6 +19,7 @@ use App\Policies\ProjectPolicy;
 use App\Policies\ProjectTaskPolicy;
 use App\Policies\ProjectTaskSubtaskPolicy;
 use App\Policies\LicensePolicy;
+use App\Policies\MailAccountPolicy;
 use App\Policies\DocumentPolicy;
 use App\Enums\Role;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -35,6 +37,7 @@ class AuthServiceProvider extends ServiceProvider
         ProjectTask::class => ProjectTaskPolicy::class,
         ProjectTaskSubtask::class => ProjectTaskSubtaskPolicy::class,
         License::class => LicensePolicy::class,
+        MailAccount::class => MailAccountPolicy::class,
     ];
 
     public function boot(): void

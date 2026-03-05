@@ -25,9 +25,13 @@ class NormalizeAjaxRedirectResponse
         $normalizedTargetPath = '/' . ltrim($targetPath, '/');
 
         $errors = $session?->get('errors');
-        if ($errors instanceof ViewErrorBag && $errors->getBag('default')->any()) {
+        $defaultErrorMessages = $errors instanceof ViewErrorBag
+            ? $errors->getBag('default')->getMessages()
+            : [];
+
+        if ($defaultErrorMessages !== []) {
             return AjaxResponse::ajaxValidation(
-                $errors->getBag('default')->getMessages(),
+                $defaultErrorMessages,
                 null,
                 (string) ($session?->get('error') ?? 'Validation failed')
             );
@@ -54,6 +58,11 @@ class NormalizeAjaxRedirectResponse
     private function shouldNormalize(Request $request, mixed $response): bool
     {
         if (! $response instanceof RedirectResponse) {
+            return false;
+        }
+
+        // Inertia expects redirect/validation semantics, not JSON ajax envelopes.
+        if ($request->header('X-Inertia')) {
             return false;
         }
 

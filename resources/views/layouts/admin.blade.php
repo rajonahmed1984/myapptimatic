@@ -393,6 +393,11 @@
                                         <span>Inbox</span>
                                         <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $adminHeaderStats['apptimatic_email_unread'] ?? 0 }}</span>
                                     </a>
+                                    @if(\Illuminate\Support\Facades\Route::has('admin.apptimatic-email.manage'))
+                                        <a href="{{ route('admin.apptimatic-email.manage') }}" class="flex items-center gap-2 {{ activeIf(request()->routeIs('admin.apptimatic-email.manage')) }}">
+                                            <span>Manage</span>
+                                        </a>
+                                    @endif
                                 @else
                                     <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Inbox</span>
                                 @endif
@@ -509,6 +514,15 @@
                             <span>Chat</span>
                             <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
                         </x-nav-link>
+                        @if(\Illuminate\Support\Facades\Route::has('employee.apptimatic-email.inbox'))
+                            <x-nav-link
+                                :href="route('employee.apptimatic-email.inbox')"
+                                routes="employee.apptimatic-email.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                <span>Apptimatic Email</span>
+                            </x-nav-link>
+                        @endif
                         @if($isEmployeeWorkSessionEligible)
                             <x-nav-link 
                                 :href="route('employee.timesheets.index')"
@@ -619,6 +633,15 @@
                                 <span>Chat</span>
                                 <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
                             </x-nav-link>
+                            @if(\Illuminate\Support\Facades\Route::has('employee.apptimatic-email.inbox'))
+                                <x-nav-link
+                                    :href="route('employee.apptimatic-email.inbox')"
+                                    routes="employee.apptimatic-email.*"
+                                >
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    <span>Apptimatic Email</span>
+                                </x-nav-link>
+                            @endif
                             @if($isEmployeeWorkSessionEligible)
                                 <x-nav-link 
                                     :href="route('employee.timesheets.index')"
