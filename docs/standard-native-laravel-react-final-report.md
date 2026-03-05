@@ -80,6 +80,7 @@ Latest full validation run (2026-03-05):
 
 Latest incremental validation after cleanup commits:
 - `php artisan test --filter="PhaseBAdminRouteMiddlewareTest|PhaseCTaskDetailRouteMiddlewareTest"` -> PASS
+- `php artisan test --filter=CronBillingEndpointSmokeTest` -> PASS
 - `npm run check:react-standard` -> PASS
 - `npm run build` -> PASS
 - `php artisan test --colors=never` -> FAIL in current dirty local workspace (unrelated pre-existing local WIP changes outside migration scope)
