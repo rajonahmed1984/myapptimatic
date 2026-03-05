@@ -1,8 +1,8 @@
 # Phase 7 Blade Audit Report
 
-- Generated at: 2026-02-26T05:22:56+06:00
-- Total Blade views: 44
-- Referenced views: 44
+- Generated at: 2026-03-05T23:04:35+06:00
+- Total Blade views: 43
+- Referenced views: 43
 - Unreferenced views: 0
 - Conservative cleanup candidates: 0
 
