@@ -3,7 +3,7 @@
 <head>
     @include('layouts.partials.head')
     @viteReactRefresh
-    @vite(['resources/js/react/app.jsx'])
+    @vite(['resources/js/app.jsx'])
     @inertiaHead
 </head>
 <body class="bg-guest">

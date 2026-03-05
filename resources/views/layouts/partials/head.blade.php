@@ -12,6 +12,6 @@
     $hasViteAssets = file_exists(public_path('hot')) || file_exists(public_path('build/manifest.json'));
 @endphp
 @if ($hasViteAssets)
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css'])
 @endif
 @stack('styles')

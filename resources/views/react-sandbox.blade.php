@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title inertia>{{ config('app.name', 'Laravel') }}</title>
     @viteReactRefresh
-    @vite(['resources/css/app.css', 'resources/js/react/app.jsx'])
+    @vite(['resources/css/app.css', 'resources/js/app.jsx'])
     @inertiaHead
 </head>
 <body class="antialiased bg-slate-50 text-slate-900">

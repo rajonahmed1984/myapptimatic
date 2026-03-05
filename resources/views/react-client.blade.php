@@ -5,7 +5,7 @@
 
 @push('styles')
     @viteReactRefresh
-    @vite(['resources/js/react/app.jsx'])
+    @vite(['resources/js/app.jsx'])
     @inertiaHead
 @endpush
 

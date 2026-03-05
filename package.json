@@ -5,6 +5,7 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
+        "ci:local": "composer test && npm run build",
         "lint:php": "php vendor/bin/pint --test --dirty",
         "test:php": "php artisan test",
         "ci": "npm run build"
