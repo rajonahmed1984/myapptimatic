@@ -82,6 +82,40 @@ class ImapInboxService
         return $thread;
     }
 
+    public function snapshotHash(MailAccount $account, string $password, int $limit = 40): string
+    {
+        $stream = $this->openStream($account, $password);
+        if (! $stream) {
+            return '';
+        }
+
+        try {
+            $uids = $this->latestUids($stream, $limit);
+            $rows = [];
+
+            foreach ($uids as $uid) {
+                $overview = $this->overviewByUid($stream, $uid);
+                if (! $overview) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'uid' => (int) $uid,
+                    'subject' => (string) ($overview->subject ?? ''),
+                    'date' => (string) ($overview->date ?? ''),
+                    'seen' => (bool) ($overview->seen ?? false),
+                    'deleted' => (bool) ($overview->deleted ?? false),
+                ];
+            }
+
+            return hash('sha256', json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
+        } catch (Throwable) {
+            return '';
+        } finally {
+            @imap_close($stream);
+        }
+    }
+
     private function openStream(MailAccount $account, string $password)
     {
         if (! $this->isAvailable() || $password === '') {
@@ -268,4 +302,3 @@ class ImapInboxService
         return '{' . $host . ':' . $port . '/' . implode('/', $flags) . '}INBOX';
     }
 }
-

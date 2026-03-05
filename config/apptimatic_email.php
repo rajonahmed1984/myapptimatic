@@ -6,6 +6,8 @@ return [
     'remember_days' => (int) env('APPTIMATIC_EMAIL_REMEMBER_DAYS', 30),
     'persistent_login_days' => (int) env('APPTIMATIC_EMAIL_PERSISTENT_LOGIN_DAYS', 3650),
     'inbox_refresh_seconds' => (int) env('APPTIMATIC_EMAIL_INBOX_REFRESH_SECONDS', 60),
+    'sse_poll_seconds' => (int) env('APPTIMATIC_EMAIL_SSE_POLL_SECONDS', 5),
+    'sse_max_runtime_seconds' => (int) env('APPTIMATIC_EMAIL_SSE_MAX_RUNTIME_SECONDS', 55),
 
     'imap' => [
         'host' => env('APPTIMATIC_EMAIL_IMAP_HOST', ''),

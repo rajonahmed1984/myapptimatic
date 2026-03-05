@@ -23,22 +23,54 @@ export default function Inbox({
     sync_meta = {},
 }) {
     useEffect(() => {
+        const reloadInbox = () => {
+            router.reload({
+                only: ['messages', 'selected_message', 'thread_messages', 'unread_count', 'sync_meta'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        };
+
         const intervalSeconds = Math.max(Number(sync_meta?.interval_seconds ?? 60), 15);
+
+        let stream = null;
+        if (routes?.stream && typeof window !== 'undefined' && typeof window.EventSource !== 'undefined') {
+            stream = new window.EventSource(routes.stream, { withCredentials: true });
+            stream.addEventListener('mail.updated', () => {
+                reloadInbox();
+            });
+            stream.addEventListener('mail.expired', (event) => {
+                try {
+                    const payload = JSON.parse(event?.data || '{}');
+                    if (payload?.login) {
+                        window.location.href = payload.login;
+                        return;
+                    }
+                } catch (_) {
+                    // noop
+                }
+
+                if (routes?.login) {
+                    window.location.href = routes.login;
+                }
+            });
+        }
 
         const intervalId = window.setInterval(() => {
             if (document.visibilityState !== 'visible') {
                 return;
             }
 
-            router.reload({
-                only: ['messages', 'selected_message', 'thread_messages', 'unread_count', 'sync_meta'],
-                preserveScroll: true,
-                preserveState: true,
-            });
+            reloadInbox();
         }, intervalSeconds * 1000);
 
-        return () => window.clearInterval(intervalId);
-    }, [sync_meta?.interval_seconds]);
+        return () => {
+            window.clearInterval(intervalId);
+            if (stream) {
+                stream.close();
+            }
+        };
+    }, [routes?.stream, routes?.login, sync_meta?.interval_seconds]);
 
     return (
         <>
@@ -53,7 +85,7 @@ export default function Inbox({
                                 {portal_label} | Unread: {unread_count}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
-                                Sync mode: {sync_meta?.mode === 'live' ? 'Live IMAP' : 'Stub fallback'} | Auto refresh: {Math.max(Number(sync_meta?.interval_seconds ?? 60), 15)}s
+                                Sync mode: {sync_meta?.mode === 'live' ? 'Live IMAP' : 'Stub fallback'} | Push: {routes?.stream ? 'SSE enabled' : 'off'} | Auto refresh: {Math.max(Number(sync_meta?.interval_seconds ?? 60), 15)}s
                             </p>
                         </div>
                         <div className="inline-flex items-center gap-2">

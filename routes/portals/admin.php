@@ -171,6 +171,8 @@ Route::middleware([
                 Route::get('/', [MailInboxController::class, 'index'])
                     ->middleware(HandleInertiaRequests::class)
                     ->name('inbox');
+                Route::get('/stream', [MailInboxController::class, 'stream'])
+                    ->name('stream');
                 Route::get('/messages/{message}', [MailInboxController::class, 'show'])
                     ->middleware(HandleInertiaRequests::class)
                     ->where('message', '[A-Za-z0-9\-]+')

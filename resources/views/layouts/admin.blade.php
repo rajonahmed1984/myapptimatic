@@ -94,10 +94,6 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Main Menu</div>
-                    </div>
-
-                    <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Sales & Customers</div>
                         <x-nav-link 
                             :href="route('admin.customers.index')"
