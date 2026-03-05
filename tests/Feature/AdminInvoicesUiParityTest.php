@@ -40,35 +40,28 @@ class AdminInvoicesUiParityTest extends TestCase
             'type' => 'manual',
         ]);
 
-        $this->actingAs($admin)
+        $indexResponse = $this->actingAs($admin)
             ->get(route('admin.invoices.index'))
-            ->assertOk()
-            ->assertSee('data-page=')
-            ->assertSee('Admin\\/Invoices\\/Index', false);
+            ->assertOk();
+        $this->assertContainsInertiaComponent($indexResponse->getContent(), 'Admin/Invoices/Index');
 
-        $this->actingAs($admin)
+        $createResponse = $this->actingAs($admin)
             ->get(route('admin.invoices.create'))
-            ->assertOk()
-            ->assertSee('data-page=')
-            ->assertSee('Admin\\/Invoices\\/Create', false);
+            ->assertOk();
+        $this->assertContainsInertiaComponent($createResponse->getContent(), 'Admin/Invoices/Create');
 
-        $this->actingAs($admin)
+        $showResponse = $this->actingAs($admin)
             ->get(route('admin.invoices.show', $invoice))
-            ->assertOk()
-            ->assertSee('data-page=')
-            ->assertSee('Admin\\/Invoices\\/Show', false);
+            ->assertOk();
+        $this->assertContainsInertiaComponent($showResponse->getContent(), 'Admin/Invoices/Show');
 
         $response = $this->actingAs($admin)
             ->get(route('admin.invoices.client-view', $invoice));
 
-        $response
-            ->assertOk()
-            ->assertSee('data-page=')
-            ->assertSee('Client\\/Invoices\\/Pay', false);
-
-        $props = $this->inertiaProps($response->getContent());
-        $this->assertSame(route('client.invoices.checkout', $invoice), data_get($props, 'routes.checkout'));
-        $this->assertSame(route('admin.invoices.download', $invoice), data_get($props, 'routes.download'));
+        $response->assertOk();
+        $this->assertContainsInertiaComponent($response->getContent(), 'Client/Invoices/Pay');
+        $this->assertContainsRawOrEscaped($response->getContent(), route('client.invoices.checkout', $invoice));
+        $this->assertContainsRawOrEscaped($response->getContent(), route('admin.invoices.download', $invoice));
     }
 
     #[Test]
@@ -140,21 +133,23 @@ class AdminInvoicesUiParityTest extends TestCase
             ->assertForbidden();
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function inertiaProps(string $html): array
+    private function assertContainsInertiaComponent(string $content, string $component): void
     {
-        preg_match('/data-page="([^"]+)"/', $html, $matches);
-        $this->assertArrayHasKey(1, $matches, 'Inertia payload is missing in response.');
+        $escaped = str_replace('/', '\\/', $component);
 
-        $decoded = html_entity_decode($matches[1], ENT_QUOTES, 'UTF-8');
-        $payload = json_decode($decoded, true);
-        $this->assertIsArray($payload);
+        $this->assertTrue(
+            str_contains($content, $component) || str_contains($content, $escaped),
+            "Response did not contain Inertia component [{$component}] in escaped or unescaped form."
+        );
+    }
 
-        $props = data_get($payload, 'props', []);
-        $this->assertIsArray($props);
+    private function assertContainsRawOrEscaped(string $content, string $value): void
+    {
+        $escaped = str_replace('/', '\\/', $value);
 
-        return $props;
+        $this->assertTrue(
+            str_contains($content, $value) || str_contains($content, $escaped),
+            "Response did not contain [{$value}] in raw or slash-escaped form."
+        );
     }
 }

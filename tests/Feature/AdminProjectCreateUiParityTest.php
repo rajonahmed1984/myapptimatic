@@ -20,11 +20,11 @@ class AdminProjectCreateUiParityTest extends TestCase
     {
         $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
 
-        $this->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->get(route('admin.projects.create'))
-            ->assertOk()
-            ->assertSee('data-page=')
-            ->assertSee('Admin\\/Projects\\/Create', false);
+            ->assertOk();
+
+        $this->assertContainsInertiaComponent($response->getContent(), 'Admin/Projects/Create');
     }
 
     #[Test]
@@ -103,5 +103,15 @@ class AdminProjectCreateUiParityTest extends TestCase
         $this->actingAs($client)
             ->get(route('admin.projects.create'))
             ->assertForbidden();
+    }
+
+    private function assertContainsInertiaComponent(string $content, string $component): void
+    {
+        $escaped = str_replace('/', '\\/', $component);
+
+        $this->assertTrue(
+            str_contains($content, $component) || str_contains($content, $escaped),
+            "Response did not contain Inertia component [{$component}] in escaped or unescaped form."
+        );
     }
 }

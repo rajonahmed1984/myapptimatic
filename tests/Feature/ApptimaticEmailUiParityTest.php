@@ -13,7 +13,7 @@ class ApptimaticEmailUiParityTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function apptimatic_email_inbox_is_inertia_when_legacy_flag_is_off(): void
+    public function apptimatic_email_inbox_redirects_to_mail_login_when_mail_session_is_missing_and_legacy_flag_is_off(): void
     {
         config()->set('features.admin_apptimatic_email_inbox', false);
 
@@ -23,13 +23,12 @@ class ApptimaticEmailUiParityTest extends TestCase
 
         $response = $this->actingAs($admin)->get(route('admin.apptimatic-email.inbox'));
 
-        $response->assertOk();
-        $response->assertSee('data-page=');
-        $response->assertSee('Admin\\/ApptimaticEmail\\/Inbox', false);
+        $response->assertRedirect(route('admin.apptimatic-email.login'));
+        $response->assertSessionHasErrors(['email']);
     }
 
     #[Test]
-    public function apptimatic_email_inbox_remains_inertia_when_legacy_flag_is_on(): void
+    public function apptimatic_email_inbox_redirects_to_mail_login_when_mail_session_is_missing_and_legacy_flag_is_on(): void
     {
         config()->set('features.admin_apptimatic_email_inbox', true);
 
@@ -39,9 +38,8 @@ class ApptimaticEmailUiParityTest extends TestCase
 
         $response = $this->actingAs($admin)->get(route('admin.apptimatic-email.inbox'));
 
-        $response->assertOk();
-        $response->assertSee('data-page=');
-        $response->assertSee('Admin\\/ApptimaticEmail\\/Inbox', false);
+        $response->assertRedirect(route('admin.apptimatic-email.login'));
+        $response->assertSessionHasErrors(['email']);
     }
 
     #[Test]

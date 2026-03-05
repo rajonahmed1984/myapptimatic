@@ -39,10 +39,20 @@ class AdminLegacyBridgeUiParityTest extends TestCase
             'due_date' => now()->addDay()->toDateString(),
         ]);
 
-        $this->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->get(route('admin.projects.tasks.show', [$project, $task]))
-            ->assertOk()
-            ->assertSee('data-page=')
-            ->assertSee('Projects\\/TaskDetailClickup', false);
+            ->assertOk();
+
+        $this->assertContainsInertiaComponent($response->getContent(), 'Projects/TaskDetailClickup');
+    }
+
+    private function assertContainsInertiaComponent(string $content, string $component): void
+    {
+        $escaped = str_replace('/', '\\/', $component);
+
+        $this->assertTrue(
+            str_contains($content, $component) || str_contains($content, $escaped),
+            "Response did not contain Inertia component [{$component}] in escaped or unescaped form."
+        );
     }
 }
