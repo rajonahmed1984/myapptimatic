@@ -900,6 +900,7 @@ Route::middleware([
     Route::post('orders/{order}/approve', [AdminOrderController::class, 'approve'])->name('orders.approve');
     Route::post('orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('orders.cancel');
     Route::patch('orders/{order}/plan', [AdminOrderController::class, 'updatePlan'])->name('orders.plan');
+    Route::patch('orders/{order}/amounts', [AdminOrderController::class, 'updateAmounts'])->name('orders.amounts');
     Route::post('orders/{order}/milestones', [MilestoneController::class, 'store'])->name('orders.milestones.store');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::resource('projects', ProjectController::class);

@@ -6,6 +6,30 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
+    const initialPricingRows = Array.isArray(fields?.pricing_rows) && fields.pricing_rows.length > 0
+        ? fields.pricing_rows
+        : [{ id: '', interval: fields?.interval || 'monthly', price: fields?.price || '' }];
+    const [pricingRows, setPricingRows] = React.useState(
+        initialPricingRows.map((row) => ({
+            id: row?.id || '',
+            interval: row?.interval || 'monthly',
+            price: row?.price ?? '',
+        }))
+    );
+
+    const addPricingRow = () => {
+        setPricingRows((prev) => [...prev, { id: '', interval: 'monthly', price: '' }]);
+    };
+
+    const removePricingRow = (index) => {
+        setPricingRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== index)));
+    };
+
+    const updatePricingRow = (index, key, value) => {
+        setPricingRows((prev) =>
+            prev.map((row, idx) => (idx === index ? { ...row, [key]: value } : row))
+        );
+    };
 
     return (
         <>
@@ -49,27 +73,70 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
                         {errors?.slug ? <p className="mt-1 text-xs text-rose-600">{errors.slug}</p> : null}
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-700">Interval</label>
-                            <select name="interval" defaultValue={fields?.interval || 'monthly'} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="monthly">Monthly</option>
-                                <option value="yearly">Yearly</option>
-                            </select>
-                            {errors?.interval ? <p className="mt-1 text-xs text-rose-600">{errors.interval}</p> : null}
+                    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <label className="block text-sm font-medium text-slate-700">Interval & Price</label>
+                            <button
+                                type="button"
+                                onClick={addPricingRow}
+                                className="rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-teal-50"
+                            >
+                                Add Interval & Price
+                            </button>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-700">Price ({default_currency})</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                name="price"
-                                defaultValue={fields?.price || ''}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                            />
-                            {errors?.price ? <p className="mt-1 text-xs text-rose-600">{errors.price}</p> : null}
-                        </div>
+
+                        {pricingRows.map((row, index) => (
+                            <div key={`${row.id || 'new'}-${index}`} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-[1fr_1fr_auto]">
+                                <input type="hidden" name={`pricing_rows[${index}][id]`} value={row.id} />
+
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Interval</label>
+                                    <select
+                                        name={`pricing_rows[${index}][interval]`}
+                                        value={row.interval}
+                                        onChange={(event) => updatePricingRow(index, 'interval', event.target.value)}
+                                        className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                    >
+                                        <option value="monthly">Monthly</option>
+                                        <option value="yearly">Yearly</option>
+                                    </select>
+                                    {errors?.[`pricing_rows.${index}.interval`] ? (
+                                        <p className="mt-1 text-xs text-rose-600">{errors[`pricing_rows.${index}.interval`]}</p>
+                                    ) : null}
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Price ({default_currency})</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        name={`pricing_rows[${index}][price]`}
+                                        value={row.price}
+                                        onChange={(event) => updatePricingRow(index, 'price', event.target.value)}
+                                        className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                    />
+                                    {errors?.[`pricing_rows.${index}.price`] ? (
+                                        <p className="mt-1 text-xs text-rose-600">{errors[`pricing_rows.${index}.price`]}</p>
+                                    ) : null}
+                                </div>
+
+                                <div className="flex items-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => removePricingRow(index)}
+                                        className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                        disabled={pricingRows.length <= 1}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+
+                        {errors?.pricing_rows ? <p className="text-xs text-rose-600">{errors.pricing_rows}</p> : null}
+                        {errors?.interval ? <p className="text-xs text-rose-600">{errors.interval}</p> : null}
+                        {errors?.price ? <p className="text-xs text-rose-600">{errors.price}</p> : null}
                     </div>
 
                     <div className="flex items-center gap-2">

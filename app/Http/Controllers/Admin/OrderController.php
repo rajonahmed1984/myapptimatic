@@ -275,6 +275,110 @@ class OrderController extends Controller
         return back()->with('status', 'Order interval updated.');
     }
 
+    public function updateAmounts(Request $request, Order $order, BillingService $billingService): RedirectResponse
+    {
+        if (! in_array($order->status, ['pending', 'accepted'], true)) {
+            return back()->with('status', 'Only pending or accepted orders can update billing amounts.');
+        }
+
+        $data = $request->validate([
+            'invoice_total' => ['nullable', 'numeric', 'min:0'],
+            'recurring_amount' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $invoiceTotalProvided = array_key_exists('invoice_total', $data) && $data['invoice_total'] !== null && $data['invoice_total'] !== '';
+        $recurringAmountProvided = array_key_exists('recurring_amount', $data) && $data['recurring_amount'] !== null && $data['recurring_amount'] !== '';
+
+        if (! $invoiceTotalProvided && ! $recurringAmountProvided) {
+            return back()->withErrors([
+                'invoice_total' => 'Enter invoice total or recurring amount.',
+            ]);
+        }
+
+        $invoice = $order->invoice?->fresh(['items']);
+        $subscription = $order->subscription;
+
+        $errors = [];
+        if ($invoiceTotalProvided && ! $invoice) {
+            $errors['invoice_total'] = 'No invoice found for this order.';
+        }
+        if ($recurringAmountProvided && ! $subscription) {
+            $errors['recurring_amount'] = 'No subscription found for this order.';
+        }
+        if ($errors !== []) {
+            return back()->withErrors($errors);
+        }
+
+        if ($recurringAmountProvided && $subscription) {
+            $subscription->update([
+                'subscription_amount' => round((float) $data['recurring_amount'], 2),
+            ]);
+
+            if ($invoice && in_array((string) $invoice->status, ['unpaid', 'overdue'], true)) {
+                $billingService->recalculateInvoice($invoice->fresh('subscription.plan', 'items'));
+                $invoice = $invoice->fresh(['items']);
+            }
+        }
+
+        if ($invoiceTotalProvided && $invoice) {
+            $desiredTotal = round((float) $data['invoice_total'], 2);
+            $lateFee = (float) ($invoice->late_fee ?? 0);
+            if ($desiredTotal < $lateFee) {
+                return back()->withErrors([
+                    'invoice_total' => 'Invoice total cannot be lower than late fee amount.',
+                ]);
+            }
+
+            $ratePercent = $invoice->tax_rate_percent !== null ? (float) $invoice->tax_rate_percent : null;
+            $mode = (string) ($invoice->tax_mode ?? '');
+            $base = max(0, $desiredTotal - $lateFee);
+
+            $subtotal = $base;
+            $taxAmount = null;
+
+            if ($ratePercent !== null && $ratePercent > 0) {
+                if ($mode === 'exclusive') {
+                    $subtotal = $base / (1 + ($ratePercent / 100));
+                    $taxAmount = $base - $subtotal;
+                } elseif ($mode === 'inclusive') {
+                    $subtotal = $base;
+                    $taxAmount = $subtotal * ($ratePercent / (100 + $ratePercent));
+                }
+            }
+
+            $subtotal = round($subtotal, 2);
+            $taxAmount = $taxAmount !== null ? round($taxAmount, 2) : null;
+
+            $invoice->update([
+                'subtotal' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'total' => $desiredTotal,
+            ]);
+
+            if ($invoice->items->count() === 1) {
+                $item = $invoice->items->first();
+                if ($item) {
+                    $item->update([
+                        'quantity' => 1,
+                        'unit_price' => $subtotal,
+                        'line_total' => $subtotal,
+                    ]);
+                }
+            }
+        }
+
+        SystemLogger::write('activity', 'Order billing amounts updated.', [
+            'order_id' => $order->id,
+            'customer_id' => $order->customer_id,
+            'invoice_id' => $order->invoice_id,
+            'subscription_id' => $order->subscription_id,
+            'invoice_total' => $invoiceTotalProvided ? round((float) $data['invoice_total'], 2) : null,
+            'recurring_amount' => $recurringAmountProvided ? round((float) $data['recurring_amount'], 2) : null,
+        ], $request->user()?->id, $request->ip());
+
+        return back()->with('status', 'Order billing amounts updated.');
+    }
+
     public function destroy(Order $order): RedirectResponse
     {
         SystemLogger::write('activity', 'Order deleted.', [
@@ -342,11 +446,12 @@ class OrderController extends Controller
                     'invoice_number' => $invoiceNumber,
                     'invoice_amount' => $invoiceAmount,
                     'created_at_display' => $order->created_at?->format($dateFormat) ?? '--',
-                    'can_process' => (string) $order->status === 'pending',
+                    // Keep legacy key false to prevent older cached bundles from showing Accept action.
+                    'can_process' => false,
+                    'can_cancel' => (string) $order->status === 'pending',
                     'routes' => [
                         'show' => route('admin.orders.show', $order),
                         'invoice_show' => $invoice ? route('admin.invoices.show', $invoice) : null,
-                        'approve' => route('admin.orders.approve', $order),
                         'cancel' => route('admin.orders.cancel', $order),
                         'destroy' => route('admin.orders.destroy', $order),
                     ],
@@ -364,6 +469,17 @@ class OrderController extends Controller
     {
         $dateFormat = config('app.date_format', 'd-m-Y');
         $invoice = $order->invoice;
+        $recurringAmount = $order->subscription?->subscription_amount;
+        $planInterval = strtolower((string) ($order->plan?->interval ?? ''));
+        $billingCycleDays = match ($planInterval) {
+            'monthly' => 30,
+            'yearly' => 365,
+            default => null,
+        };
+
+        if ($recurringAmount === null && $order->plan) {
+            $recurringAmount = (float) $order->plan->price;
+        }
 
         return [
             'pageTitle' => 'Order Details',
@@ -376,13 +492,19 @@ class OrderController extends Controller
                 'customer_email' => (string) ($order->customer?->email ?? '--'),
                 'plan_name' => (string) ($order->plan?->name ?? '--'),
                 'product_name' => (string) ($order->plan?->product?->name ?? '--'),
+                'plan_interval' => $planInterval,
+                'plan_interval_label' => $planInterval !== '' ? ucfirst($planInterval) : '',
+                'billing_cycle_days' => $billingCycleDays,
                 'created_at_display' => $order->created_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 'approved_at_display' => $order->approved_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 'cancelled_at_display' => $order->cancelled_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 'invoice_number' => $invoice ? (string) ($invoice->number ?? $invoice->id) : '--',
+                'invoice_currency' => (string) ($invoice?->currency ?? ''),
                 'invoice_total_display' => $invoice
                     ? trim((string) (($invoice->currency ?? '').' '.number_format((float) ($invoice->total ?? 0), 2)))
                     : '--',
+                'invoice_total_value' => $invoice ? number_format((float) ($invoice->total ?? 0), 2, '.', '') : '',
+                'recurring_amount_value' => $recurringAmount !== null ? number_format((float) $recurringAmount, 2, '.', '') : '',
                 'invoice_url' => $invoice ? route('admin.invoices.show', $invoice) : null,
                 'license_key' => (string) ($order->subscription?->licenses?->first()?->license_key ?? ''),
                 'license_url' => (string) ($order->subscription?->licenses?->first()?->domains?->firstWhere('status', 'active')?->domain ?? ''),
@@ -400,6 +522,7 @@ class OrderController extends Controller
                 'approve' => route('admin.orders.approve', $order),
                 'cancel' => route('admin.orders.cancel', $order),
                 'update_plan' => route('admin.orders.plan', $order),
+                'update_amounts' => route('admin.orders.amounts', $order),
                 'destroy' => route('admin.orders.destroy', $order),
             ],
         ];

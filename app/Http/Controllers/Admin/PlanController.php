@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -51,23 +52,42 @@ class PlanController extends Controller
             'product_id' => ['required', 'exists:products,id'],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('plans', 'slug')],
-            'interval' => ['required', Rule::in(['monthly', 'yearly'])],
-            'price' => ['required', 'numeric', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $data['slug'] = $this->resolveSlug($data['name'], $data['slug'] ?? null);
         $data['is_active'] = $request->boolean('is_active');
         $data['currency'] = strtoupper((string) Setting::getValue('currency'));
+        $pricingRows = $this->extractPricingRows($request);
 
-        $plan = Plan::create($data);
+        $createdPlans = [];
+        foreach ($pricingRows as $index => $row) {
+            $slugSeed = $this->resolveRowSlugSeed(
+                (string) $data['name'],
+                $data['slug'] ?? null,
+                (string) $row['interval'],
+                $index === 0
+            );
+
+            $createdPlans[] = Plan::create([
+                'product_id' => $data['product_id'],
+                'name' => $data['name'],
+                'slug' => $this->resolveSlug($data['name'], $slugSeed),
+                'interval' => $row['interval'],
+                'price' => $row['price'],
+                'is_active' => $data['is_active'],
+                'currency' => $data['currency'],
+            ]);
+        }
+
+        /** @var Plan $plan */
+        $plan = $createdPlans[0];
 
         SystemLogger::write('activity', 'Plan created.', [
             'plan_id' => $plan->id,
+            'plan_count' => count($createdPlans),
             'product_id' => $plan->product_id,
             'name' => $plan->name,
-            'interval' => $plan->interval,
-            'price' => $plan->price,
+            'intervals' => collect($createdPlans)->pluck('interval')->values()->all(),
             'is_active' => $plan->is_active,
         ], $request->user()?->id, $request->ip());
 
@@ -103,23 +123,77 @@ class PlanController extends Controller
             'product_id' => ['required', 'exists:products,id'],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('plans', 'slug')->ignore($plan->id)],
-            'interval' => ['required', Rule::in(['monthly', 'yearly'])],
-            'price' => ['required', 'numeric', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $data['slug'] = $this->resolveSlug($data['name'], $data['slug'] ?? null, $plan->id);
         $data['is_active'] = $request->boolean('is_active');
         $data['currency'] = strtoupper((string) Setting::getValue('currency'));
+        $pricingRows = $this->extractPricingRows($request);
 
-        $plan->update($data);
+        $editablePlans = Plan::query()
+            ->where('product_id', $plan->product_id)
+            ->where('name', $plan->name)
+            ->get();
+        $editablePlanIds = $editablePlans->pluck('id')->push($plan->id)->unique()->values();
+
+        $primaryRowIndex = 0;
+        foreach ($pricingRows as $index => $row) {
+            if (! empty($row['id']) && (int) $row['id'] === $plan->id) {
+                $primaryRowIndex = $index;
+                break;
+            }
+        }
+
+        $updatedIds = [];
+        foreach ($pricingRows as $index => $row) {
+            $rowId = isset($row['id']) ? (int) $row['id'] : null;
+
+            if ($rowId && ! $editablePlanIds->contains($rowId)) {
+                throw ValidationException::withMessages([
+                    'pricing_rows' => 'Invalid plan row selected.',
+                ]);
+            }
+
+            $targetPlan = null;
+            if ($rowId) {
+                $targetPlan = Plan::query()->find($rowId);
+            } elseif ($index === $primaryRowIndex) {
+                $targetPlan = $plan;
+            }
+
+            $isPrimaryTarget = $targetPlan && $targetPlan->id === $plan->id;
+            $slugSeed = $this->resolveRowSlugSeed(
+                (string) $data['name'],
+                $data['slug'] ?? null,
+                (string) $row['interval'],
+                $isPrimaryTarget
+            );
+
+            $payload = [
+                'product_id' => $data['product_id'],
+                'name' => $data['name'],
+                'slug' => $this->resolveSlug($data['name'], $slugSeed, $targetPlan?->id),
+                'interval' => $row['interval'],
+                'price' => $row['price'],
+                'is_active' => $data['is_active'],
+                'currency' => $data['currency'],
+            ];
+
+            if ($targetPlan) {
+                $targetPlan->update($payload);
+                $updatedIds[] = $targetPlan->id;
+                continue;
+            }
+
+            $newPlan = Plan::create($payload);
+            $updatedIds[] = $newPlan->id;
+        }
 
         SystemLogger::write('activity', 'Plan updated.', [
             'plan_id' => $plan->id,
             'product_id' => $plan->product_id,
             'name' => $plan->name,
-            'interval' => $plan->interval,
-            'price' => $plan->price,
+            'updated_plan_ids' => $updatedIds,
             'is_active' => $plan->is_active,
         ], $request->user()?->id, $request->ip());
 
@@ -216,6 +290,40 @@ class PlanController extends Controller
     private function formInertiaProps(?Plan $plan, EloquentCollection $products, string $defaultCurrency): array
     {
         $isEdit = $plan !== null;
+        $defaultPricingRows = collect();
+
+        if ($isEdit && $plan) {
+            $groupPlans = Plan::query()
+                ->where('product_id', $plan->product_id)
+                ->where('name', $plan->name)
+                ->orderByRaw("CASE `interval` WHEN 'monthly' THEN 1 WHEN 'yearly' THEN 2 ELSE 3 END")
+                ->orderBy('id')
+                ->get();
+
+            $defaultPricingRows = ($groupPlans->isNotEmpty() ? $groupPlans : collect([$plan]))
+                ->map(fn (Plan $rowPlan) => [
+                    'id' => (string) $rowPlan->id,
+                    'interval' => (string) $rowPlan->interval,
+                    'price' => (string) $rowPlan->price,
+                ]);
+        }
+
+        if ($defaultPricingRows->isEmpty()) {
+            $defaultPricingRows = collect([[
+                'id' => '',
+                'interval' => (string) ($plan?->interval ?? 'monthly'),
+                'price' => (string) ($plan?->price ?? ''),
+            ]]);
+        }
+
+        $oldPricingRows = old('pricing_rows');
+        $pricingRows = is_array($oldPricingRows)
+            ? collect($oldPricingRows)->map(fn ($row) => [
+                'id' => (string) ($row['id'] ?? ''),
+                'interval' => (string) ($row['interval'] ?? 'monthly'),
+                'price' => (string) ($row['price'] ?? ''),
+            ])->values()->all()
+            : $defaultPricingRows->values()->all();
 
         return [
             'pageTitle' => $isEdit ? 'Edit Plan' : 'Add Plan',
@@ -236,6 +344,7 @@ class PlanController extends Controller
                     'slug' => (string) old('slug', (string) ($plan?->slug ?? '')),
                     'interval' => (string) old('interval', (string) ($plan?->interval ?? 'monthly')),
                     'price' => (string) old('price', (string) ($plan?->price ?? '')),
+                    'pricing_rows' => $pricingRows,
                     'is_active' => (bool) old('is_active', (bool) ($plan?->is_active ?? true)),
                 ],
             ],
@@ -243,5 +352,89 @@ class PlanController extends Controller
                 'index' => route('admin.plans.index'),
             ],
         ];
+    }
+
+    private function extractPricingRows(Request $request): array
+    {
+        $rows = [];
+        $errors = [];
+        $rawRows = $request->input('pricing_rows', []);
+
+        if (is_array($rawRows)) {
+            foreach ($rawRows as $index => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+
+                $id = isset($row['id']) && (string) $row['id'] !== '' ? (int) $row['id'] : null;
+                $interval = strtolower(trim((string) ($row['interval'] ?? '')));
+                $priceRaw = $row['price'] ?? null;
+                $priceText = trim((string) $priceRaw);
+                $isEmptyRow = $interval === '' && $priceText === '';
+
+                if ($isEmptyRow) {
+                    continue;
+                }
+
+                if (! in_array($interval, ['monthly', 'yearly'], true)) {
+                    $errors["pricing_rows.{$index}.interval"] = 'Interval must be monthly or yearly.';
+                }
+
+                if ($priceText === '' || ! is_numeric($priceText) || (float) $priceText < 0) {
+                    $errors["pricing_rows.{$index}.price"] = 'Price must be a number equal to or greater than 0.';
+                }
+
+                $rows[] = [
+                    'id' => $id,
+                    'interval' => $interval === '' ? 'monthly' : $interval,
+                    'price' => round((float) ($priceText === '' ? 0 : $priceText), 2),
+                ];
+            }
+        }
+
+        if ($rows === []) {
+            $interval = strtolower(trim((string) $request->input('interval', '')));
+            $priceRaw = $request->input('price');
+
+            if ($interval !== '' || $priceRaw !== null) {
+                if (! in_array($interval, ['monthly', 'yearly'], true)) {
+                    $errors['interval'] = 'Interval must be monthly or yearly.';
+                }
+                if (! is_numeric($priceRaw) || (float) $priceRaw < 0) {
+                    $errors['price'] = 'Price must be a number equal to or greater than 0.';
+                }
+                $rows[] = [
+                    'id' => null,
+                    'interval' => $interval === '' ? 'monthly' : $interval,
+                    'price' => round((float) $priceRaw, 2),
+                ];
+            }
+        }
+
+        if ($rows === []) {
+            $errors['pricing_rows'] = 'Add at least one interval and price.';
+        }
+
+        $intervals = collect($rows)->pluck('interval')->all();
+        if (count($intervals) !== count(array_unique($intervals))) {
+            $errors['pricing_rows'] = 'Duplicate intervals are not allowed in the same submission.';
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return $rows;
+    }
+
+    private function resolveRowSlugSeed(string $name, ?string $baseSlugInput, string $interval, bool $isPrimaryRow): ?string
+    {
+        if ($isPrimaryRow) {
+            return $baseSlugInput;
+        }
+
+        $seed = $baseSlugInput ?: $name;
+
+        return (string) Str::slug($seed.'-'.$interval);
     }
 }
