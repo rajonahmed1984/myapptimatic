@@ -11,6 +11,7 @@ use App\Services\Mail\MailSessionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -67,13 +68,44 @@ class MailLoginController extends Controller
             return back()->withErrors(['email' => 'Invalid email or password'])->withInput();
         }
 
-        Gate::authorize('use', [$mailAccount, $actor['type'], (int) $actor['id']]);
+        if (! Gate::allows('use', [$mailAccount, $actor['type'], (int) $actor['id']])) {
+            if (config('app.login_trace')) {
+                Log::warning('[MAIL_LOGIN_DENIED]', [
+                    'route' => $routeName,
+                    'actor_type' => $actor['type'] ?? null,
+                    'actor_id' => $actor['id'] ?? null,
+                    'mail_account_id' => $mailAccount->id,
+                    'mail_account_email' => $mailAccount->email,
+                ]);
+            }
+
+            return back()->withErrors(['email' => 'Invalid email or password'])->withInput();
+        }
 
         if (! $this->imapAuthService->verifyCredentials($mailAccount, $password)) {
+            $failureType = $this->imapAuthService->lastFailureType();
+            $failureDetail = $this->imapAuthService->lastFailureDetail();
+
+            if (config('app.login_trace')) {
+                Log::warning('[MAIL_IMAP_AUTH_FAILED]', [
+                    'route' => $routeName,
+                    'actor_type' => $actor['type'] ?? null,
+                    'actor_id' => $actor['id'] ?? null,
+                    'mail_account_id' => $mailAccount->id,
+                    'mail_account_email' => $mailAccount->email,
+                    'failure_type' => $failureType,
+                    'failure_detail' => $failureDetail,
+                ]);
+            }
+
             $mailAccount->forceFill([
                 'status' => 'auth_failed',
                 'last_auth_failed_at' => now(),
             ])->save();
+
+            if ($failureType === 'server_unavailable') {
+                return back()->withErrors(['email' => 'Email server unavailable. Please contact admin.'])->withInput();
+            }
 
             return back()->withErrors(['email' => 'Invalid email or password'])->withInput();
         }
@@ -112,8 +144,10 @@ class MailLoginController extends Controller
                 ->all();
         }
 
+        $assigneeTypes = $this->candidateAssigneeTypes($actor, $user);
+
         $ids = MailAccountAssignment::query()
-            ->where('assignee_type', $actor['type'])
+            ->whereIn('assignee_type', $assigneeTypes)
             ->where('assignee_id', $actor['id'])
             ->where('can_read', true)
             ->pluck('mail_account_id');
@@ -179,5 +213,21 @@ class MailLoginController extends Controller
         }
 
         return 'Admin Portal';
+    }
+
+    /**
+     * Support users can authenticate via admin (web guard) and support portal (support guard).
+     * To prevent assignment mismatches, consider both assignment types.
+     */
+    private function candidateAssigneeTypes(array $actor, mixed $user): array
+    {
+        $types = [strtolower((string) ($actor['type'] ?? ''))];
+
+        if ($user && method_exists($user, 'isSupport') && $user->isSupport()) {
+            $types[] = 'support';
+            $types[] = 'user';
+        }
+
+        return array_values(array_unique(array_filter($types)));
     }
 }

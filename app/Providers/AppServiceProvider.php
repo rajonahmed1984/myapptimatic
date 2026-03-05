@@ -38,6 +38,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use PHPUnit\Framework\Assert;
@@ -349,8 +350,21 @@ class AppServiceProvider extends ServiceProvider
             $identity = (string) ($request->user()?->id ?? 'guest');
             $email = strtolower((string) $request->input('email', 'none'));
             $ip = (string) ($request->ip() ?? 'unknown');
+            $maxAttempts = max((int) config('apptimatic_email.login_rate_limit_attempts', 5), 1);
+            $decayMinutes = max((int) config('apptimatic_email.login_rate_limit_decay_minutes', 10), 1);
 
-            return Limit::perMinutes(10, 5)->by($identity.'|'.$email.'|'.$ip);
+            return Limit::perMinutes($decayMinutes, $maxAttempts)
+                ->by($identity.'|'.$email.'|'.$ip)
+                ->response(function (Request $request, array $headers) use ($decayMinutes) {
+                    $retryAfter = (int) ($headers['Retry-After'] ?? ($decayMinutes * 60));
+                    $retryAfter = max($retryAfter, 1);
+
+                    return back()
+                        ->withErrors([
+                            'email' => "Too many email login attempts. Please try again in {$retryAfter} seconds.",
+                        ])
+                        ->withInput($request->only('email'));
+                });
         });
     }
 

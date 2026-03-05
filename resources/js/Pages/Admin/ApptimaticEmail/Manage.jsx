@@ -150,6 +150,15 @@ export default function Manage({
         });
     };
 
+    const openMailboxConfiguration = (account) => {
+        if (!account) {
+            return;
+        }
+
+        setSelectedAccountId(account.id);
+        startEditMailbox(account);
+    };
+
     const saveMailbox = async (event) => {
         event.preventDefault();
         setError('');
@@ -429,15 +438,26 @@ export default function Manage({
                                 </div>
                             ) : (
                                 filteredAccounts.map((account) => (
-                                    <button
+                                    <div
                                         key={account.id}
-                                        type="button"
-                                        onClick={() => setSelectedAccountId(account.id)}
                                         className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${Number(selectedAccountId) === Number(account.id) ? 'border-teal-300 bg-teal-50 text-teal-900' : 'border-slate-200 bg-white text-slate-700'}`}
                                     >
-                                        <div className="font-semibold">{account.display_name || account.email}</div>
-                                        <div className="truncate text-xs text-slate-500">{account.email}</div>
-                                    </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedAccountId(account.id)}
+                                            className="w-full text-left"
+                                        >
+                                            <div className="font-semibold">{account.display_name || account.email}</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => openMailboxConfiguration(account)}
+                                            className="mt-0.5 max-w-full truncate text-xs font-medium text-teal-700 transition hover:text-teal-800 hover:underline"
+                                            title="Click to load mailbox configuration in the form"
+                                        >
+                                            {account.email}
+                                        </button>
+                                    </div>
                                 ))
                             )}
                         </div>

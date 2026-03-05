@@ -8,6 +8,8 @@ return [
     'inbox_refresh_seconds' => (int) env('APPTIMATIC_EMAIL_INBOX_REFRESH_SECONDS', 60),
     'sse_poll_seconds' => (int) env('APPTIMATIC_EMAIL_SSE_POLL_SECONDS', 5),
     'sse_max_runtime_seconds' => (int) env('APPTIMATIC_EMAIL_SSE_MAX_RUNTIME_SECONDS', 55),
+    'login_rate_limit_attempts' => (int) env('APPTIMATIC_EMAIL_LOGIN_RATE_LIMIT_ATTEMPTS', 5),
+    'login_rate_limit_decay_minutes' => (int) env('APPTIMATIC_EMAIL_LOGIN_RATE_LIMIT_DECAY_MINUTES', 10),
 
     'imap' => [
         'host' => env('APPTIMATIC_EMAIL_IMAP_HOST', ''),

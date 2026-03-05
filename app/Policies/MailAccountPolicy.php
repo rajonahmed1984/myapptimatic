@@ -14,11 +14,28 @@ class MailAccountPolicy
             return true;
         }
 
+        $candidateTypes = $this->candidateAssigneeTypes($user, $assigneeType);
+
         return MailAccountAssignment::query()
             ->where('mail_account_id', $mailAccount->id)
-            ->where('assignee_type', $assigneeType)
+            ->whereIn('assignee_type', $candidateTypes)
             ->where('assignee_id', $assigneeId)
             ->where('can_read', true)
             ->exists();
+    }
+
+    /**
+     * Support users may be assigned as either "user" (admin portal) or "support" (support portal).
+     */
+    private function candidateAssigneeTypes(User $user, string $assigneeType): array
+    {
+        $types = [strtolower(trim($assigneeType))];
+
+        if ($user->isSupport()) {
+            $types[] = 'support';
+            $types[] = 'user';
+        }
+
+        return array_values(array_unique(array_filter($types)));
     }
 }
