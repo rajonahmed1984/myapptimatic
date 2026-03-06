@@ -23,7 +23,9 @@ use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use App\Services\SettingsService;
 use App\Services\TaskQueryService;
+use App\Services\Mail\ImapInboxService;
 use App\Services\Mail\MailFromResolver;
+use App\Services\Mail\MailSessionService;
 use App\Services\Mail\MailSender;
 use DateTimeZone;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -172,6 +174,8 @@ class AppServiceProvider extends ServiceProvider
                         ->count();
                 }
 
+                $apptimaticEmailUnread = $this->resolveApptimaticEmailUnreadCount(request());
+
                 $view->with('adminHeaderStats', [
                     'pending_orders' => Order::where('status', 'pending')->count(),
                     'overdue_invoices' => Invoice::where('status', 'overdue')->count(),
@@ -181,7 +185,7 @@ class AppServiceProvider extends ServiceProvider
                     'pending_leave_requests' => LeaveRequest::where('status', 'pending')->count(),
                     'tasks_badge' => $adminTaskBadge,
                     'unread_chat' => $adminUnreadChat,
-                    'apptimatic_email_unread' => app(ApptimaticEmailStubRepository::class)->unreadCount(),
+                    'apptimatic_email_unread' => $apptimaticEmailUnread,
                 ]);
                 $view->with('employeeHeaderStats', $employeeHeaderStats);
             });
@@ -587,6 +591,44 @@ class AppServiceProvider extends ServiceProvider
                 }
             }
         });
+    }
+
+    private function resolveApptimaticEmailUnreadCount(Request $request): int
+    {
+        $fallback = app(ApptimaticEmailStubRepository::class)->unreadCount();
+
+        try {
+            if (! $request->hasSession()) {
+                return $fallback;
+            }
+
+            $mailSessionService = app(MailSessionService::class);
+            $imapInboxService = app(ImapInboxService::class);
+
+            if (! $imapInboxService->isAvailable()) {
+                return $fallback;
+            }
+
+            $session = $mailSessionService->validateSession($request);
+            $mailAccount = $session?->mailAccount;
+            if (! $session || ! $mailAccount) {
+                return $fallback;
+            }
+
+            $password = $mailSessionService->decryptPassword($request);
+            if (! is_string($password) || $password === '') {
+                return $fallback;
+            }
+
+            $token = (string) $request->session()->get(MailSessionService::SESSION_TOKEN_KEY, '');
+            $cacheKey = 'apptimatic_email_unread:' . $mailAccount->id . ':' . substr(hash('sha256', $token), 0, 16);
+
+            return (int) Cache::remember($cacheKey, now()->addSeconds(20), function () use ($imapInboxService, $mailAccount, $password): int {
+                return $imapInboxService->unreadCount($mailAccount, $password);
+            });
+        } catch (\Throwable) {
+            return $fallback;
+        }
     }
 
     private function loadRouteHelpers(): void

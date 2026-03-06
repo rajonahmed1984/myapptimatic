@@ -27,8 +27,11 @@ class MailLoginController extends Controller
     {
         $routeName = (string) $request->route()?->getName();
         $inboxRoute = $this->resolveInboxRoute($routeName);
+        $switchRequested = (bool) $request->boolean('switch', false);
 
-        if ($this->mailSessionService->validateSession($request)) {
+        if ($switchRequested) {
+            $this->mailSessionService->invalidateCurrent($request);
+        } elseif ($this->mailSessionService->validateSession($request)) {
             return redirect()->route($inboxRoute);
         }
 
@@ -36,10 +39,18 @@ class MailLoginController extends Controller
         abort_if(! $actor, 403);
 
         $mailboxes = $this->availableMailboxes($actor, $actor['user']);
+        $prefillEmail = strtolower(trim((string) $request->query('email', '')));
+        $prefillAllowed = collect($mailboxes)->contains(function (array $mailbox) use ($prefillEmail): bool {
+            return strtolower((string) ($mailbox['email'] ?? '')) === $prefillEmail;
+        });
+        if (! $prefillAllowed) {
+            $prefillEmail = '';
+        }
 
         return Inertia::render('Mail/Login', [
             'pageTitle' => 'Email Login',
             'mailboxes' => $mailboxes,
+            'prefill_email' => $prefillEmail,
             'routes' => [
                 'login' => route($this->resolveLoginRoute($routeName)),
                 'inbox' => route($inboxRoute),

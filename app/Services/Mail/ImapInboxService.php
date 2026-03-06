@@ -116,6 +116,36 @@ class ImapInboxService
         }
     }
 
+    public function unreadCount(MailAccount $account, string $password): int
+    {
+        $stream = $this->openStream($account, $password);
+        if (! $stream) {
+            return 0;
+        }
+
+        try {
+            $unseenUids = @imap_search($stream, 'UNSEEN', SE_UID);
+            if (is_array($unseenUids)) {
+                return count($unseenUids);
+            }
+
+            $uids = $this->latestUids($stream, 200);
+            $count = 0;
+            foreach ($uids as $uid) {
+                $overview = $this->overviewByUid($stream, $uid);
+                if ($overview && ! ((bool) ($overview->seen ?? false))) {
+                    $count++;
+                }
+            }
+
+            return $count;
+        } catch (Throwable) {
+            return 0;
+        } finally {
+            @imap_close($stream);
+        }
+    }
+
     private function openStream(MailAccount $account, string $password)
     {
         if (! $this->isAvailable() || $password === '') {

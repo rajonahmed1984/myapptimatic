@@ -18,6 +18,14 @@ return [
         'validate_cert' => (bool) env('APPTIMATIC_EMAIL_IMAP_VALIDATE_CERT', true),
     ],
 
+    'smtp' => [
+        // Optional override. If empty, SMTP host is derived from IMAP host (imap.* -> smtp.*).
+        'host' => env('APPTIMATIC_EMAIL_SMTP_HOST', ''),
+        'port' => (int) env('APPTIMATIC_EMAIL_SMTP_PORT', 587),
+        'encryption' => env('APPTIMATIC_EMAIL_SMTP_ENCRYPTION', 'tls'), // ssl|tls|none
+        'validate_cert' => (bool) env('APPTIMATIC_EMAIL_SMTP_VALIDATE_CERT', true),
+    ],
+
     // Optional bootstrap dataset for mailbox provisioning.
     // Use `php artisan mail:bootstrap --dry-run` to preview.
     'bootstrap' => [

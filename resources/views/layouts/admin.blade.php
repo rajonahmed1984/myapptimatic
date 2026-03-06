@@ -387,7 +387,7 @@
                                 @if($hasApptimaticEmailRoute)
                                     <a href="{{ route('admin.apptimatic-email.inbox') }}" class="flex items-center gap-2 {{ activeIf(request()->routeIs('admin.apptimatic-email.*')) }}">
                                         <span>Inbox</span>
-                                        <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $adminHeaderStats['apptimatic_email_unread'] ?? 0 }}</span>
+                                        <span id="apptimatic-email-sidebar-unread" class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $adminHeaderStats['apptimatic_email_unread'] ?? 0 }}</span>
                                     </a>
                                     @if(\Illuminate\Support\Facades\Route::has('admin.apptimatic-email.manage'))
                                         <a href="{{ route('admin.apptimatic-email.manage') }}" class="flex items-center gap-2 {{ activeIf(request()->routeIs('admin.apptimatic-email.manage')) }}">

@@ -3,12 +3,19 @@
 namespace App\Http\Controllers\Mail;
 
 use App\Http\Controllers\Controller;
+use App\Models\MailAccount;
+use App\Models\MailAccountAssignment;
 use App\Services\ApptimaticEmailStubRepository;
 use App\Services\Mail\ImapInboxService;
 use App\Services\Mail\MailSessionService;
 use App\Support\DateTimeFormat;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\Mailer\Mailer;
+use Symfony\Component\Mailer\Transport;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -23,16 +30,126 @@ class MailInboxController extends Controller
 
     public function index(Request $request, ApptimaticEmailStubRepository $mailbox): InertiaResponse
     {
-        [$messages, $selectedMessage, $threadMessages, $syncMeta] = $this->resolveMailboxData($request, $mailbox);
+        $historyEmail = $this->selectedHistoryEmail($request);
+        $selectedMessageId = $this->selectedViewMessageId($request);
+        [$messages, $selectedMessage, $threadMessages, $syncMeta, $historyEmailOptions, $mailboxUnreadCount] = $this->resolveMailboxData(
+            $request,
+            $mailbox,
+            $selectedMessageId,
+            $historyEmail,
+            false
+        );
 
-        return Inertia::render('Admin/ApptimaticEmail/Inbox', $this->inboxInertiaProps($request, $messages, $selectedMessage, $threadMessages, $syncMeta));
+        return Inertia::render('Admin/ApptimaticEmail/Inbox', $this->inboxInertiaProps(
+            $request,
+            $messages,
+            $selectedMessage,
+            $threadMessages,
+            $syncMeta,
+            $historyEmail,
+            $historyEmailOptions,
+            $mailboxUnreadCount
+        ));
     }
 
     public function show(Request $request, string $message, ApptimaticEmailStubRepository $mailbox): InertiaResponse
     {
-        [$messages, $selectedMessage, $threadMessages, $syncMeta] = $this->resolveMailboxData($request, $mailbox, $message);
+        $historyEmail = $this->selectedHistoryEmail($request);
+        [$messages, $selectedMessage, $threadMessages, $syncMeta, $historyEmailOptions, $mailboxUnreadCount] = $this->resolveMailboxData(
+            $request,
+            $mailbox,
+            $message,
+            $historyEmail,
+            true
+        );
 
-        return Inertia::render('Admin/ApptimaticEmail/Inbox', $this->inboxInertiaProps($request, $messages, $selectedMessage, $threadMessages, $syncMeta));
+        return Inertia::render('Admin/ApptimaticEmail/Inbox', $this->inboxInertiaProps(
+            $request,
+            $messages,
+            $selectedMessage,
+            $threadMessages,
+            $syncMeta,
+            $historyEmail,
+            $historyEmailOptions,
+            $mailboxUnreadCount
+        ));
+    }
+
+    public function reply(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'message_id' => ['required', 'string', 'max:255'],
+            'to' => ['required', 'string', 'max:1000'],
+            'cc' => ['nullable', 'string', 'max:1000'],
+            'subject' => ['required', 'string', 'max:255'],
+            'body' => ['required', 'string', 'max:20000'],
+        ]);
+
+        $session = $this->mailSessionService->validateSession($request);
+        $password = $this->mailSessionService->decryptPassword($request);
+        $mailAccount = $session?->mailAccount;
+
+        if (! $this->canUseLiveMailbox($mailAccount, $password)) {
+            return back()->withErrors(['reply' => 'Mailbox session expired. Please login again.']);
+        }
+
+        $to = $this->parseAddressList((string) $data['to']);
+        $cc = $this->parseAddressList((string) ($data['cc'] ?? ''));
+
+        if ($to === []) {
+            return back()->withErrors(['reply' => 'Please provide at least one valid recipient email.']);
+        }
+
+        $smtp = $this->smtpSettingsForReply($mailAccount);
+        if ($smtp['host'] === '' || $smtp['port'] <= 0) {
+            return back()->withErrors(['reply' => 'SMTP host/port is missing. Set APPTIMATIC_EMAIL_SMTP_* in .env.']);
+        }
+
+        try {
+            $scheme = $smtp['encryption'] === 'ssl' ? 'smtps' : 'smtp';
+            $query = [];
+            if ($smtp['encryption'] === 'tls') {
+                $query['encryption'] = 'tls';
+            }
+            if (! $smtp['validate_cert']) {
+                $query['verify_peer'] = 0;
+                $query['verify_peer_name'] = 0;
+                $query['allow_self_signed'] = 1;
+            }
+
+            $dsn = sprintf(
+                '%s://%s:%s@%s:%d%s',
+                $scheme,
+                rawurlencode((string) $mailAccount->email),
+                rawurlencode((string) $password),
+                $smtp['host'],
+                $smtp['port'],
+                $query === [] ? '' : ('?' . http_build_query($query))
+            );
+
+            $mailer = new Mailer(Transport::fromDsn($dsn));
+            $email = (new Email())
+                ->from(new Address((string) $mailAccount->email, (string) ($mailAccount->display_name ?: $mailAccount->email)))
+                ->replyTo((string) $mailAccount->email)
+                ->subject((string) $data['subject'])
+                ->text((string) $data['body']);
+
+            foreach ($to as $address) {
+                $email->addTo($address);
+            }
+
+            foreach ($cc as $address) {
+                $email->addCc($address);
+            }
+
+            $mailer->send($email);
+
+            return back()->with('status', 'Reply sent successfully.');
+        } catch (\Throwable $exception) {
+            return back()->withErrors([
+                'reply' => 'Reply send failed: ' . $this->shortError($exception->getMessage()),
+            ]);
+        }
     }
 
     public function stream(Request $request, ApptimaticEmailStubRepository $stub): StreamedResponse
@@ -103,7 +220,10 @@ class MailInboxController extends Controller
         array $messages,
         ?array $selectedMessage,
         array $threadMessages,
-        array $syncMeta
+        array $syncMeta,
+        string $historyEmail,
+        array $historyEmailOptions,
+        int $mailboxUnreadCount
     ): array {
         $routeName = (string) $request->route()?->getName();
         $inboxRoute = $this->resolveRoute($routeName, 'inbox');
@@ -111,12 +231,12 @@ class MailInboxController extends Controller
         $logoutRoute = $this->resolveRoute($routeName, 'logout');
         $loginRoute = $this->resolveRoute($routeName, 'login');
         $streamRoute = $this->resolveRoute($routeName, 'stream');
-
+        $replyRoute = $this->resolveRoute($routeName, 'reply');
         $selectedMessageId = (string) ($selectedMessage['id'] ?? '');
 
         return [
             'pageTitle' => 'Apptimatic Email',
-            'unread_count' => (int) collect($messages)->where('unread', true)->count(),
+            'unread_count' => $mailboxUnreadCount,
             'portal_label' => $this->portalLabelFromRoute($routeName),
             'profile_name' => (string) ($request->user()?->name ?? 'User'),
             'profile_avatar_path' => $request->user()?->avatar_path,
@@ -125,21 +245,34 @@ class MailInboxController extends Controller
                 'logout' => route($logoutRoute),
                 'login' => route($loginRoute),
                 'stream' => route($streamRoute),
+                'reply' => route($replyRoute),
                 'manage' => $this->resolveManageRoute($routeName),
             ],
-            'messages' => collect($messages)->map(function (array $message) use ($selectedMessageId, $showRoute) {
+            'history_email_filter' => [
+                'enabled' => $this->canFilterHistoryEmail($request),
+                'selected' => $historyEmail,
+                'options' => $historyEmailOptions,
+            ],
+            'mailbox_switch' => $this->mailboxSwitchData($request),
+            'messages' => collect($messages)->map(function (array $message) use ($selectedMessageId, $showRoute, $historyEmail) {
                 $id = (string) ($message['id'] ?? '');
+                $params = ['message' => $id];
+                if ($historyEmail !== '') {
+                    $params['history_email'] = $historyEmail;
+                }
 
                 return [
                     'id' => $id,
                     'sender_name' => (string) ($message['sender_name'] ?? 'Unknown sender'),
+                    'sender_email' => (string) ($message['sender_email'] ?? ''),
+                    'to' => (string) ($message['to'] ?? ''),
                     'subject' => (string) ($message['subject'] ?? '(No subject)'),
                     'snippet' => (string) ($message['snippet'] ?? ''),
                     'unread' => (bool) ($message['unread'] ?? false),
                     'is_selected' => $selectedMessageId !== '' && $selectedMessageId === $id,
                     'received_at_display' => DateTimeFormat::formatDateTime($message['received_at'] ?? null, ''),
                     'routes' => [
-                        'show' => route($showRoute, ['message' => $id]),
+                        'show' => route($showRoute, $params),
                     ],
                 ];
             })->values()->all(),
@@ -152,7 +285,7 @@ class MailInboxController extends Controller
                 'received_at_display' => DateTimeFormat::formatDateTime($selectedMessage['received_at'] ?? null, ''),
                 'thread_count' => count($threadMessages),
             ] : null,
-            'thread_messages' => collect($threadMessages)->map(function (array $threadMessage) {
+            'thread_messages' => collect($threadMessages)->map(function (array $threadMessage) use ($selectedMessageId) {
                 return [
                     'id' => (string) ($threadMessage['id'] ?? ''),
                     'sender_name' => (string) ($threadMessage['sender_name'] ?? 'Unknown sender'),
@@ -161,6 +294,7 @@ class MailInboxController extends Controller
                     'subject' => (string) ($threadMessage['subject'] ?? '(No subject)'),
                     'body' => (string) ($threadMessage['body'] ?? ''),
                     'received_at_display' => DateTimeFormat::formatDateTime($threadMessage['received_at'] ?? null, ''),
+                    'is_selected' => $selectedMessageId !== '' && $selectedMessageId === (string) ($threadMessage['id'] ?? ''),
                 ];
             })->values()->all(),
             'sync_meta' => $syncMeta,
@@ -170,55 +304,67 @@ class MailInboxController extends Controller
     private function resolveMailboxData(
         Request $request,
         ApptimaticEmailStubRepository $stub,
-        ?string $selectedMessageId = null
+        ?string $selectedMessageId = null,
+        string $historyEmail = '',
+        bool $strictSelection = false
     ): array {
         $session = $this->mailSessionService->validateSession($request);
         $password = $this->mailSessionService->decryptPassword($request);
         $mailAccount = $session?->mailAccount;
 
-        if (
-            $mailAccount
-            && is_string($password)
-            && $password !== ''
-            && $this->imapInboxService->isAvailable()
-        ) {
-            $messages = $this->imapInboxService->inbox($mailAccount, $password, 80);
+        if ($this->canUseLiveMailbox($mailAccount, $password)) {
+            $allMessages = $this->imapInboxService->inbox($mailAccount, $password, 80);
+            $historyEmailOptions = $this->historyEmailOptions($allMessages);
+            $messages = $this->filterMessagesByHistoryEmail($allMessages, $historyEmail);
+            $mailboxUnreadCount = (int) collect($allMessages)->where('unread', true)->count();
 
-            if ($messages !== []) {
-                $selectedMessage = $selectedMessageId
-                    ? collect($messages)->first(fn (array $message) => (string) ($message['id'] ?? '') === (string) $selectedMessageId)
-                    : ($messages[0] ?? null);
+            $selectedMessage = $selectedMessageId
+                ? collect($messages)->first(fn (array $message) => (string) ($message['id'] ?? '') === (string) $selectedMessageId)
+                : null;
 
-                abort_if($selectedMessageId !== null && ! $selectedMessage, 404);
-
-                $threadMessages = [];
-                if ($selectedMessage) {
-                    $threadId = (string) ($selectedMessage['thread_id'] ?? '');
-
-                    $threadMessages = array_values(array_filter($messages, function (array $message) use ($threadId): bool {
-                        return (string) ($message['thread_id'] ?? '') === $threadId;
-                    }));
-
-                    usort($threadMessages, function (array $a, array $b): int {
-                        return ($a['received_at']?->getTimestamp() ?? 0) <=> ($b['received_at']?->getTimestamp() ?? 0);
-                    });
-                }
-
-                return [$messages, $selectedMessage, $threadMessages, $this->syncMeta('live')];
+            if ($strictSelection && $selectedMessageId !== null && ! $selectedMessage) {
+                abort(404);
             }
+
+            $threadMessages = [];
+            if ($selectedMessage) {
+                $threadId = (string) ($selectedMessage['thread_id'] ?? '');
+
+                $threadMessages = array_values(array_filter($messages, function (array $message) use ($threadId): bool {
+                    return (string) ($message['thread_id'] ?? '') === $threadId;
+                }));
+
+                usort($threadMessages, function (array $a, array $b): int {
+                    return ($a['received_at']?->getTimestamp() ?? 0) <=> ($b['received_at']?->getTimestamp() ?? 0);
+                });
+            }
+
+            return [$messages, $selectedMessage, $threadMessages, $this->syncMeta('live'), $historyEmailOptions, $mailboxUnreadCount];
         }
 
-        $messages = $stub->inbox();
+        $allMessages = $stub->inbox();
+        $historyEmailOptions = $this->historyEmailOptions($allMessages);
+        $messages = $this->filterMessagesByHistoryEmail($allMessages, $historyEmail);
+        $mailboxUnreadCount = (int) collect($allMessages)->where('unread', true)->count();
         $selectedMessage = $selectedMessageId
-            ? $stub->find($selectedMessageId)
-            : ($messages[0] ?? null);
-        abort_if($selectedMessageId !== null && ! $selectedMessage, 404);
+            ? collect($messages)->first(fn (array $message) => (string) ($message['id'] ?? '') === (string) $selectedMessageId)
+            : null;
+
+        if ($strictSelection && $selectedMessageId !== null && ! $selectedMessage) {
+            abort(404);
+        }
 
         $threadMessages = $selectedMessage
-            ? $stub->threadFor((string) ($selectedMessage['id'] ?? ''))
+            ? array_values(array_filter($messages, function (array $message) use ($selectedMessage): bool {
+                return (string) ($message['thread_id'] ?? '') === (string) ($selectedMessage['thread_id'] ?? '');
+            }))
             : [];
 
-        return [$messages, $selectedMessage, $threadMessages, $this->syncMeta('stub')];
+        usort($threadMessages, function (array $a, array $b): int {
+            return ($a['received_at']?->getTimestamp() ?? 0) <=> ($b['received_at']?->getTimestamp() ?? 0);
+        });
+
+        return [$messages, $selectedMessage, $threadMessages, $this->syncMeta('stub'), $historyEmailOptions, $mailboxUnreadCount];
     }
 
     private function syncMeta(string $mode): array
@@ -243,16 +389,14 @@ class MailInboxController extends Controller
         $password = $this->mailSessionService->decryptPassword($request);
         $mailAccount = $session->mailAccount;
 
-        if (
-            $mailAccount
-            && is_string($password)
-            && $password !== ''
-            && $this->imapInboxService->isAvailable()
-        ) {
+        if ($this->canUseLiveMailbox($mailAccount, $password)) {
             $hash = $this->imapInboxService->snapshotHash($mailAccount, $password, 40);
-            if ($hash !== '') {
-                return ['ok' => true, 'mode' => 'live', 'hash' => $hash];
-            }
+
+            return [
+                'ok' => true,
+                'mode' => 'live',
+                'hash' => $hash !== '' ? $hash : 'live-unavailable',
+            ];
         }
 
         $stubMessages = $stub->inbox();
@@ -327,5 +471,235 @@ class MailInboxController extends Controller
         }
 
         return route('admin.apptimatic-email.manage');
+    }
+
+    private function canUseLiveMailbox(mixed $mailAccount, mixed $password): bool
+    {
+        return $mailAccount
+            && is_string($password)
+            && $password !== ''
+            && $this->imapInboxService->isAvailable();
+    }
+
+    private function mailboxSwitchData(Request $request): array
+    {
+        $user = $request->user();
+        $isMasterAdmin = (bool) ($user && method_exists($user, 'isMasterAdmin') && $user->isMasterAdmin());
+        if (! $isMasterAdmin) {
+            return [
+                'enabled' => false,
+                'current_email' => '',
+                'options' => [],
+            ];
+        }
+
+        $actor = $this->mailSessionService->resolveActor($request);
+        if (! is_array($actor)) {
+            return [
+                'enabled' => false,
+                'current_email' => '',
+                'options' => [],
+            ];
+        }
+
+        $options = $this->availableMailboxOptions($actor, $user);
+        $session = $this->mailSessionService->validateSession($request);
+        $currentEmail = strtolower(trim((string) ($session?->mailAccount?->email ?? '')));
+
+        return [
+            'enabled' => count($options) > 1,
+            'current_email' => $currentEmail,
+            'options' => $options,
+        ];
+    }
+
+    private function availableMailboxOptions(array $actor, mixed $user): array
+    {
+        if ($user && method_exists($user, 'isAdmin') && $user->isAdmin() && (bool) config('apptimatic_email.allow_admin_global_mailboxes', false)) {
+            $accounts = MailAccount::query()
+                ->orderBy('email')
+                ->get(['id', 'email', 'display_name']);
+        } else {
+            $assigneeTypes = $this->candidateAssigneeTypes($actor, $user);
+            $mailboxIds = MailAccountAssignment::query()
+                ->whereIn('assignee_type', $assigneeTypes)
+                ->where('assignee_id', (int) ($actor['id'] ?? 0))
+                ->where('can_read', true)
+                ->pluck('mail_account_id');
+
+            $accounts = MailAccount::query()
+                ->whereIn('id', $mailboxIds)
+                ->orderBy('email')
+                ->get(['id', 'email', 'display_name']);
+        }
+
+        return $accounts->map(function (MailAccount $mailAccount): array {
+            $email = strtolower((string) ($mailAccount->email ?? ''));
+            $displayName = trim((string) ($mailAccount->display_name ?? ''));
+
+            return [
+                'id' => (int) $mailAccount->id,
+                'email' => $email,
+                'label' => $displayName !== '' ? $displayName . ' (' . $email . ')' : $email,
+            ];
+        })->values()->all();
+    }
+
+    private function candidateAssigneeTypes(array $actor, mixed $user): array
+    {
+        $types = [strtolower((string) ($actor['type'] ?? ''))];
+
+        if ($user && method_exists($user, 'isSupport') && $user->isSupport()) {
+            $types[] = 'support';
+            $types[] = 'user';
+        }
+
+        return array_values(array_unique(array_filter($types)));
+    }
+
+    private function canFilterHistoryEmail(Request $request): bool
+    {
+        $user = $request->user();
+
+        return (bool) ($user && method_exists($user, 'isMasterAdmin') && $user->isMasterAdmin());
+    }
+
+    private function selectedHistoryEmail(Request $request): string
+    {
+        if (! $this->canFilterHistoryEmail($request)) {
+            return '';
+        }
+
+        $email = strtolower(trim((string) $request->query('history_email', '')));
+        if ($email === '' || mb_strlen($email) > 255 || ! str_contains($email, '@')) {
+            return '';
+        }
+
+        return $email;
+    }
+
+    private function historyEmailOptions(array $messages): array
+    {
+        $options = array_values(array_filter(array_map(function (array $message): string {
+            return strtolower(trim((string) ($message['sender_email'] ?? '')));
+        }, $messages)));
+
+        $options = array_values(array_unique($options));
+        sort($options, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return $options;
+    }
+
+    private function filterMessagesByHistoryEmail(array $messages, string $historyEmail): array
+    {
+        if ($historyEmail === '') {
+            return $messages;
+        }
+
+        return array_values(array_filter($messages, function (array $message) use ($historyEmail): bool {
+            $senderEmail = strtolower(trim((string) ($message['sender_email'] ?? '')));
+            $toEmail = strtolower(trim((string) ($message['to'] ?? '')));
+
+            return $senderEmail === $historyEmail || $toEmail === $historyEmail;
+        }));
+    }
+
+    private function selectedViewMessageId(Request $request): ?string
+    {
+        $value = trim((string) $request->query('view', ''));
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^[A-Za-z0-9\-]+$/', $value) !== 1) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseAddressList(string $value): array
+    {
+        $parts = preg_split('/[,;]+/', $value) ?: [];
+        $addresses = [];
+
+        foreach ($parts as $part) {
+            $candidate = strtolower(trim((string) $part));
+            if ($candidate === '') {
+                continue;
+            }
+
+            if (filter_var($candidate, FILTER_VALIDATE_EMAIL)) {
+                $addresses[] = $candidate;
+            }
+        }
+
+        return array_values(array_unique($addresses));
+    }
+
+    /**
+     * @return array{host: string, port: int, encryption: string, validate_cert: bool}
+     */
+    private function smtpSettingsForReply(mixed $mailAccount): array
+    {
+        $imapHost = trim((string) ($mailAccount?->imap_host ?: config('apptimatic_email.imap.host', '')));
+        $imapEncryption = strtolower((string) ($mailAccount?->imap_encryption ?: config('apptimatic_email.imap.encryption', 'ssl')));
+
+        $derivedHost = $this->derivedSmtpHost($imapHost);
+        $derivedEncryption = in_array($imapEncryption, ['ssl', 'tls', 'none'], true) ? $imapEncryption : 'tls';
+
+        $host = trim((string) config('apptimatic_email.smtp.host', $derivedHost));
+        $encryption = strtolower((string) config('apptimatic_email.smtp.encryption', $derivedEncryption));
+        if (! in_array($encryption, ['ssl', 'tls', 'none'], true)) {
+            $encryption = $derivedEncryption;
+        }
+
+        $defaultPort = match ($encryption) {
+            'ssl' => 465,
+            'tls' => 587,
+            default => 25,
+        };
+
+        $port = (int) config('apptimatic_email.smtp.port', $defaultPort);
+        if ($port <= 0) {
+            $port = $defaultPort;
+        }
+
+        return [
+            'host' => $host,
+            'port' => $port,
+            'encryption' => $encryption,
+            'validate_cert' => (bool) config('apptimatic_email.smtp.validate_cert', true),
+        ];
+    }
+
+    private function derivedSmtpHost(string $imapHost): string
+    {
+        if ($imapHost === '') {
+            return '';
+        }
+
+        if (str_starts_with(strtolower($imapHost), 'imap.')) {
+            return 'smtp.' . substr($imapHost, 5);
+        }
+
+        return $imapHost;
+    }
+
+    private function shortError(string $message): string
+    {
+        $value = trim(preg_replace('/\s+/', ' ', $message) ?: $message);
+        if ($value === '') {
+            return 'Unknown error';
+        }
+
+        if (mb_strlen($value) > 180) {
+            return mb_substr($value, 0, 177) . '...';
+        }
+
+        return $value;
     }
 }

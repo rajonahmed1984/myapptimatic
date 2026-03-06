@@ -58,12 +58,15 @@ Route::middleware([
                 Route::post('/logout', [MailLoginController::class, 'logout'])->name('logout');
 
                 Route::middleware(['email.auth', 'mail.session.fresh'])->group(function () {
-                    Route::get('/', [MailInboxController::class, 'index'])
+                    Route::get('/', fn () => redirect()->route('support.apptimatic-email.inbox'));
+                    Route::get('/inbox', [MailInboxController::class, 'index'])
                         ->middleware(HandleInertiaRequests::class)
                         ->name('inbox');
                     Route::get('/stream', [MailInboxController::class, 'stream'])
                         ->name('stream');
-                    Route::get('/messages/{message}', [MailInboxController::class, 'show'])
+                    Route::post('/inbox/reply', [MailInboxController::class, 'reply'])
+                        ->name('reply');
+                    Route::get('/inbox/view={message}', [MailInboxController::class, 'show'])
                         ->middleware(HandleInertiaRequests::class)
                         ->where('message', '[A-Za-z0-9\-]+')
                         ->name('show');

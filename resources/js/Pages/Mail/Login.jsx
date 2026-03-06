@@ -5,16 +5,24 @@ export default function Login({
     pageTitle = 'Email Login',
     portal = 'Portal',
     mailboxes = [],
+    prefill_email = '',
     routes = {},
 }) {
-    const [selectedEmail, setSelectedEmail] = useState('');
+    const initialEmail = String(prefill_email || '');
+    const [selectedEmail, setSelectedEmail] = useState(initialEmail);
     const options = useMemo(() => Array.isArray(mailboxes) ? mailboxes : [], [mailboxes]);
 
     const { data, setData, post, processing, errors } = useForm({
-        email: '',
+        email: initialEmail,
         password: '',
         remember: true,
     });
+
+    React.useEffect(() => {
+        const nextEmail = String(prefill_email || '');
+        setSelectedEmail(nextEmail);
+        setData('email', nextEmail);
+    }, [prefill_email, setData]);
 
     const submit = (event) => {
         event.preventDefault();
