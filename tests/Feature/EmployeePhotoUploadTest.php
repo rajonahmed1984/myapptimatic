@@ -49,10 +49,32 @@ class EmployeePhotoUploadTest extends TestCase
 
         $employee->refresh();
         $this->assertNotEmpty($employee->photo_path);
+        $this->assertStringStartsWith('avatars/employees/'.$employee->id.'/', $employee->photo_path);
         Storage::disk('public')->assertExists($employee->photo_path);
+    }
+
+    #[Test]
+    public function employee_index_hides_missing_photo_urls_instead_of_rendering_broken_images(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->create([
+            'role' => 'master_admin',
+        ]);
+
+        Employee::create([
+            'name' => 'Missing Photo Employee',
+            'email' => 'missing-photo@example.com',
+            'employment_type' => 'full_time',
+            'work_mode' => 'remote',
+            'join_date' => now()->toDateString(),
+            'status' => 'active',
+            'photo_path' => 'employees/photos/missing-photo.png',
+        ]);
 
         $this->actingAs($admin)
-            ->get('/storage/' . $employee->photo_path)
-            ->assertOk();
+            ->get(route('admin.hr.employees.index'))
+            ->assertOk()
+            ->assertDontSee('/storage/employees/photos/missing-photo.png', false);
     }
 }

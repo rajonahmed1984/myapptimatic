@@ -131,7 +131,7 @@ Route::get('storage/avatars/{category}/{entity}/{filename}', function (string $c
     }
 
     return Storage::disk('public')->response($path);
-})->where('category', 'customers|users|sales-reps')
+})->where('category', 'customers|employees|users|sales-reps')
     ->where('entity', '\d+')
     ->where('filename', '.*');
 

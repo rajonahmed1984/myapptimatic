@@ -27,9 +27,11 @@ use App\Support\PublicStorageUrl;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -63,7 +65,7 @@ class EmployeeController extends Controller
                 $loginLabel = 'Login';
                 $loginClasses = 'border-emerald-200 text-emerald-700 bg-emerald-50';
                 $lastLoginAt = $lastLoginByEmployee[$employee->id] ?? null;
-                $photoPath = $employee->photo_path ?: $employee->user?->avatar_path;
+                $photoPath = $this->preferredPhotoPath($employee);
                 $salaryType = $employee->activeCompensation?->salary_type;
 
                 return [
@@ -103,11 +105,37 @@ class EmployeeController extends Controller
 
     private function publicFileUrl(?string $path): ?string
     {
-        if (! is_string($path) || trim($path) === '') {
+        $path = $this->existingPublicPath($path);
+
+        if ($path === null) {
             return null;
         }
 
         return PublicStorageUrl::fromPath($path);
+    }
+
+    private function existingPublicPath(?string $path): ?string
+    {
+        if (! is_string($path) || trim($path) === '') {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://', 'data:', 'blob:'])) {
+            return $path;
+        }
+
+        $normalized = PublicStorageUrl::normalizePath($path);
+        if ($normalized === '') {
+            return null;
+        }
+
+        return Storage::disk('public')->exists($normalized) ? $normalized : null;
+    }
+
+    private function preferredPhotoPath(Employee $employee): ?string
+    {
+        return $this->existingPublicPath($employee->photo_path)
+            ?? $this->existingPublicPath($employee->user?->avatar_path);
     }
 
     public function create(): InertiaResponse
@@ -202,7 +230,7 @@ class EmployeeController extends Controller
             User::whereKey($userId)->update($updates);
         }
 
-        $uploadPaths = $this->handleUploads($request);
+        $uploadPaths = $this->handleUploads($request, $employee);
         if (! empty($uploadPaths)) {
             $employee->update($uploadPaths);
         } elseif (! $request->hasFile('photo') && $linkedUser?->avatar_path) {
@@ -250,7 +278,7 @@ class EmployeeController extends Controller
                 'currency' => $employee->activeCompensation?->currency,
                 'basic_pay' => $employee->activeCompensation?->basic_pay ?? 0,
                 'hourly_rate' => $employee->activeCompensation?->overtime_rate,
-                'photo_path' => $employee->photo_path,
+                'photo_path' => $this->preferredPhotoPath($employee),
                 'nid_path' => $employee->nid_path,
                 'cv_path' => $employee->cv_path,
             ],
@@ -365,7 +393,7 @@ class EmployeeController extends Controller
             $linkedUser = $user;
         }
 
-        $uploadPaths = $this->handleUploads($request);
+        $uploadPaths = $this->handleUploads($request, $employee);
         if (! empty($uploadPaths)) {
             $employee->update($uploadPaths);
         } elseif (! $request->hasFile('photo')
@@ -1092,7 +1120,7 @@ class EmployeeController extends Controller
                 'work_mode' => $employee->work_mode,
                 'address' => $employee->address,
                 'join_date' => $employee->join_date?->format(config('app.date_format', 'd-m-Y')),
-                'photo_path' => $employee->photo_path,
+                'photo_path' => $this->existingPublicPath($employee->photo_path),
                 'nid_path' => $employee->nid_path,
                 'cv_path' => $employee->cv_path,
                 'manager' => [
@@ -1103,7 +1131,7 @@ class EmployeeController extends Controller
                     'id' => $employee->user?->id,
                     'name' => $employee->user?->name,
                     'email' => $employee->user?->email,
-                    'avatar_path' => $employee->user?->avatar_path,
+                    'avatar_path' => $this->existingPublicPath($employee->user?->avatar_path),
                 ],
                 'active_compensation' => [
                     'effective_from' => $employee->activeCompensation?->effective_from?->format(config('app.date_format', 'd-m-Y')),
@@ -1211,7 +1239,7 @@ class EmployeeController extends Controller
         return redirect()->route('employee.dashboard');
     }
 
-    private function handleUploads(Request $request): array
+    private function handleUploads(Request $request, Employee $employee): array
     {
         $paths = [];
 
@@ -1220,7 +1248,11 @@ class EmployeeController extends Controller
         }
 
         if ($request->hasFile('photo')) {
-            $paths['photo_path'] = $request->file('photo')->store('employees/photos', 'public');
+            $photoPath = $this->storeEmployeePhoto($request->file('photo'), $employee);
+
+            if ($photoPath !== null) {
+                $paths['photo_path'] = $photoPath;
+            }
         }
 
         if ($request->hasFile('cv_file')) {
@@ -1228,6 +1260,25 @@ class EmployeeController extends Controller
         }
 
         return $paths;
+    }
+
+    private function storeEmployeePhoto(UploadedFile $file, Employee $employee): ?string
+    {
+        $disk = Storage::disk('public');
+        $currentPath = PublicStorageUrl::normalizePath($employee->photo_path);
+
+        if ($currentPath !== '' && Str::startsWith($currentPath, ['avatars/employees/', 'employees/photos/']) && $disk->exists($currentPath)) {
+            $disk->delete($currentPath);
+        }
+
+        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'jpg');
+        $path = $file->storeAs(
+            "avatars/employees/{$employee->id}",
+            Str::uuid().'.'.$extension,
+            'public'
+        );
+
+        return is_string($path) && $path !== '' ? $path : null;
     }
 
     private function resolveEmployeeLoginStatuses($employees): array
