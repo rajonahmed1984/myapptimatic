@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import mediaUrl from '../../../../utils/mediaUrl';
 
 export default function FormPage({
     mode = 'create',
@@ -19,7 +20,7 @@ export default function FormPage({
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const [employmentType, setEmploymentType] = useState(values.employment_type || 'full_time');
     const [salaryType, setSalaryType] = useState(values.salary_type || 'monthly');
-    const [photoPreview, setPhotoPreview] = useState(values.photo_path ? `/storage/${values.photo_path}` : null);
+    const [photoPreview, setPhotoPreview] = useState(mediaUrl(values.photo_path));
 
     const basicPayOptional = useMemo(
         () => employmentType === 'contract' && salaryType === 'project_base',

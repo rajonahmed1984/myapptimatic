@@ -51,6 +51,7 @@ class DailyAutomationReportsTest extends TestCase
 
         Mail::assertSent(CronActivityReportMail::class, function (CronActivityReportMail $mail) {
             $rendered = $mail->render();
+
             return str_contains($rendered, 'Failures') && str_contains($rendered, '1');
         });
     }
@@ -95,7 +96,8 @@ class DailyAutomationReportsTest extends TestCase
 
         Mail::assertSent(LicenseSyncReportMail::class, function (LicenseSyncReportMail $mail) {
             $rendered = $mail->render();
-            return str_contains($rendered, 'Total licenses checked')
+
+            return str_contains($rendered, 'Total verification requests (logs)')
                 && str_contains($rendered, '12')
                 && str_contains($rendered, 'Updated licenses')
                 && str_contains($rendered, '3');

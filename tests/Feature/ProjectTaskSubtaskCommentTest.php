@@ -97,6 +97,8 @@ class ProjectTaskSubtaskCommentTest extends TestCase
     public function subtask_comment_sends_summary_email_to_customer_client_and_master_admin(): void
     {
         Notification::fake();
+        $masterAdminNotificationEmail = 'arsp.bdinfo@gmail.com';
+        config()->set('system_mail.master_admin_notification_email', $masterAdminNotificationEmail);
 
         $customer = Customer::create([
             'name' => 'Notify Customer',
@@ -150,8 +152,8 @@ class ProjectTaskSubtaskCommentTest extends TestCase
         Notification::assertSentOnDemand(SubtaskCommentSummaryNotification::class, function ($notification, $channels, $notifiable) {
             return ($notifiable->routes['mail'] ?? null) === 'client@example.test';
         });
-        Notification::assertSentOnDemand(SubtaskCommentSummaryNotification::class, function ($notification, $channels, $notifiable) {
-            return ($notifiable->routes['mail'] ?? null) === 'master-admin@example.test';
+        Notification::assertSentOnDemand(SubtaskCommentSummaryNotification::class, function ($notification, $channels, $notifiable) use ($masterAdminNotificationEmail) {
+            return ($notifiable->routes['mail'] ?? null) === $masterAdminNotificationEmail;
         });
         Notification::assertSentOnDemandTimes(SubtaskCommentSummaryNotification::class, 3);
     }

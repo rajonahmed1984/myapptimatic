@@ -2,6 +2,7 @@ import React from 'react';
 import { Head } from '@inertiajs/react';
 import DatePickerField from '../../../../Components/DatePickerField';
 import { formatDate } from '../../../../utils/datetime';
+import mediaUrl from '../../../../utils/mediaUrl';
 
 const currency = (value, code = 'BDT') => {
     const amount = Number(value || 0);
@@ -92,11 +93,6 @@ export default function Show({
         if (key === 'cancelled' || key === 'canceled') return 'border-rose-200 bg-rose-50 text-rose-700';
         if (key === 'on_hold') return 'border-amber-200 bg-amber-50 text-amber-700';
         return 'border-slate-300 bg-slate-50 text-slate-700';
-    };
-    const mediaUrl = (path) => {
-        if (!path) return null;
-        if (String(path).startsWith('http://') || String(path).startsWith('https://')) return path;
-        return `/storage/${String(path).replace(/^\/+/, '')}`;
     };
     const payoutProofUrl = (id) => {
         const template = routes?.payoutProof || '';

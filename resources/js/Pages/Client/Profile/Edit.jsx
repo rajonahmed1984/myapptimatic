@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import mediaUrl from '../../../utils/mediaUrl';
 
 const initialsFor = (value) => {
     const parts = String(value || '')
@@ -37,7 +38,7 @@ export default function Edit({ user = {}, form = {}, routes = {} }) {
                         <div className="flex items-center gap-4">
                             <div className="h-16 w-16 overflow-hidden rounded-full border border-slate-200 bg-white">
                                 {user?.avatar_path ? (
-                                    <img src={`/storage/${user.avatar_path}`} alt={user?.name || 'User avatar'} className="h-16 w-16 object-cover" />
+                                    <img src={mediaUrl(user.avatar_path) || ''} alt={user?.name || 'User avatar'} className="h-16 w-16 object-cover" />
                                 ) : (
                                     <div className="grid h-16 w-16 place-items-center text-sm font-semibold text-slate-600">{initials}</div>
                                 )}

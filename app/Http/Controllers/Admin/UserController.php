@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupportUserRequest;
 use App\Models\User;
-use App\Enums\Role;
 use App\Support\AjaxResponse;
+use App\Support\PublicStorageUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -254,17 +254,17 @@ class UserController extends Controller
 
         if ($request->hasFile('avatar')) {
             $paths['avatar_path'] = $request->file('avatar')
-                ->store('avatars/users/' . $user->id, 'public');
+                ->store('avatars/users/'.$user->id, 'public');
         }
 
         if ($request->hasFile('nid_file')) {
             $paths['nid_path'] = $request->file('nid_file')
-                ->store('nid/users/' . $user->id, 'public');
+                ->store('nid/users/'.$user->id, 'public');
         }
 
         if ($request->hasFile('cv_file')) {
             $paths['cv_path'] = $request->file('cv_file')
-                ->store('cv/users/' . $user->id, 'public');
+                ->store('cv/users/'.$user->id, 'public');
         }
 
         return $paths;
@@ -347,6 +347,6 @@ class UserController extends Controller
             return null;
         }
 
-        return Storage::disk('public')->url($path);
+        return PublicStorageUrl::fromPath($path);
     }
 }

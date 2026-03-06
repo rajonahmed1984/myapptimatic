@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicStorageUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
@@ -56,14 +57,15 @@ class PaymentProof extends Model
 
     public function getAttachmentUrlAttribute(): ?string
     {
-        if (! $this->attachment_path) {
+        $normalizedPath = PublicStorageUrl::normalizePath($this->attachment_path);
+        if ($normalizedPath === '') {
             return null;
         }
 
         $disk = Storage::disk('public');
 
-        return $disk->exists($this->attachment_path)
-            ? $disk->url($this->attachment_path)
+        return $disk->exists($normalizedPath)
+            ? PublicStorageUrl::fromPath($normalizedPath)
             : null;
     }
 }

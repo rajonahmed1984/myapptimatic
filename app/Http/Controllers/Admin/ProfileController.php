@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\PublicStorageUrl;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -26,9 +27,7 @@ class ProfileController extends Controller
                     'name' => (string) old('name', (string) ($user?->name ?? '')),
                     'email' => (string) old('email', (string) ($user?->email ?? '')),
                 ],
-                'avatar_url' => (is_string($user?->avatar_path) && $user->avatar_path !== '')
-                    ? Storage::disk('public')->url($user->avatar_path)
-                    : null,
+                'avatar_url' => PublicStorageUrl::fromPath(is_string($user?->avatar_path) ? $user->avatar_path : null),
             ],
         ]);
     }
@@ -76,7 +75,7 @@ class ProfileController extends Controller
             $disk->delete($user->avatar_path);
         }
 
-        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $filename = Str::uuid().'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs("avatars/users/{$user->id}", $filename, 'public');
 
         $user->avatar_path = $path;

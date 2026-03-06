@@ -483,7 +483,6 @@ export default function Inbox({
                 <div className="border-b border-slate-200 bg-white px-4 py-4 md:px-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <h1 className="text-xl font-semibold text-slate-900">Apptimatic Email</h1>
                             <p className="mt-1 text-sm text-slate-500">
                                 {portal_label} | Unread: {unread_count}
                             </p>

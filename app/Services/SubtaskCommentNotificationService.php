@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\Role;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\ProjectTaskSubtaskComment;
@@ -27,7 +28,7 @@ class SubtaskCommentNotificationService
             ->sortByDesc('id')
             ->take(5)
             ->reverse()
-            ->map(fn (ProjectTaskSubtaskComment $comment) => $comment->actorName() . ': ' . Str::limit((string) $comment->message, 140))
+            ->map(fn (ProjectTaskSubtaskComment $comment) => $comment->actorName().': '.Str::limit((string) $comment->message, 140))
             ->values()
             ->all();
 
@@ -128,7 +129,7 @@ class SubtaskCommentNotificationService
 
     private function taskUrl(string $prefix, int $projectId, int $taskId): ?string
     {
-        $routeName = $prefix . '.projects.tasks.show';
+        $routeName = $prefix.'.projects.tasks.show';
         if (! Route::has($routeName)) {
             return null;
         }

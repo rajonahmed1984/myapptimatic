@@ -23,13 +23,13 @@ use App\Models\SystemLog;
 use App\Models\User;
 use App\Services\EmployeeWorkSummaryService;
 use App\Support\Currency;
+use App\Support\PublicStorageUrl;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -107,17 +107,7 @@ class EmployeeController extends Controller
             return null;
         }
 
-        $trimmedPath = trim($path);
-        if (Str::startsWith($trimmedPath, ['http://', 'https://'])) {
-            return $trimmedPath;
-        }
-
-        $normalizedPath = ltrim($trimmedPath, '/');
-        if (Str::startsWith($normalizedPath, 'storage/')) {
-            return asset($normalizedPath);
-        }
-
-        return Storage::disk('public')->url($normalizedPath);
+        return PublicStorageUrl::fromPath($path);
     }
 
     public function create(): InertiaResponse
@@ -848,6 +838,7 @@ class EmployeeController extends Controller
                                 2,
                                 PHP_ROUND_HALF_UP
                             );
+
                             continue;
                         }
 

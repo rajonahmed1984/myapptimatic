@@ -9,9 +9,8 @@ use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Models\UserActivityDaily;
 use App\Models\UserSession;
+use App\Support\PublicStorageUrl;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -549,17 +548,7 @@ class UserActivitySummaryController extends Controller
             return null;
         }
 
-        $trimmedPath = trim($path);
-        if (Str::startsWith($trimmedPath, ['http://', 'https://'])) {
-            return $trimmedPath;
-        }
-
-        $normalizedPath = ltrim($trimmedPath, '/');
-        if (Str::startsWith($normalizedPath, 'storage/')) {
-            return asset($normalizedPath);
-        }
-
-        return Storage::disk('public')->url($normalizedPath);
+        return PublicStorageUrl::fromPath($path);
     }
 
     private function formatDuration(int $seconds): string

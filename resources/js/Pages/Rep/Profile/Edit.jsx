@@ -1,17 +1,12 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
-
-const avatarUrl = (path) => {
-    if (!path) return null;
-    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) return path;
-    return `/storage/${path}`;
-};
+import mediaUrl from '../../../utils/mediaUrl';
 
 export default function Edit({ user = {}, sales_rep = {}, form = {} }) {
     const page = usePage();
     const csrfToken = page?.props?.csrf_token || '';
     const errors = page?.props?.errors || {};
-    const image = avatarUrl(sales_rep?.avatar_path || user?.avatar_path);
+    const image = mediaUrl(sales_rep?.avatar_path || user?.avatar_path);
 
     return (
         <>
