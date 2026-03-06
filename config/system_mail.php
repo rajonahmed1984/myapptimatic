@@ -28,4 +28,10 @@ return [
         static fn (string $email) => strtolower(trim($email)),
         explode(',', (string) env('SYSTEM_MAIL_SUPPRESSED_RECIPIENTS', ''))
     ))),
+
+    // Single destination for all master-admin/admin internal notifications.
+    'master_admin_notification_email' => strtolower(trim((string) env(
+        'SYSTEM_MAIL_MASTER_ADMIN_NOTIFICATION_EMAIL',
+        'arsp.bdinfo@gmail.com'
+    ))),
 ];

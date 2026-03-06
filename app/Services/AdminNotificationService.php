@@ -328,6 +328,11 @@ class AdminNotificationService
 
     private function adminRecipients(): array
     {
+        $configured = $this->configuredMasterAdminNotificationEmail();
+        if ($configured !== null) {
+            return [$configured];
+        }
+
         $emails = User::query()
             ->where('role', 'admin')
             ->whereNotNull('email')
@@ -349,6 +354,11 @@ class AdminNotificationService
 
     private function adminDigestRecipients(): array
     {
+        $configured = $this->configuredMasterAdminNotificationEmail();
+        if ($configured !== null) {
+            return [$configured];
+        }
+
         $emails = User::query()
             ->whereIn('role', Role::adminRoles())
             ->whereNotNull('email')
@@ -366,6 +376,17 @@ class AdminNotificationService
         }
 
         return $emails;
+    }
+
+    private function configuredMasterAdminNotificationEmail(): ?string
+    {
+        $email = strtolower(trim((string) config('system_mail.master_admin_notification_email', '')));
+
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        return $email;
     }
 
     private function resolveFromEmail(?EmailTemplate $template): ?string

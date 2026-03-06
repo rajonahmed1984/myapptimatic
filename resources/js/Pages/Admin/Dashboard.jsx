@@ -757,7 +757,7 @@ export default function Dashboard({
                     <a href={routes?.customers_index} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">View customers</a>
                 </div>
 
-                <div className="mt-4 max-h-[230px] overflow-auto rounded-xl border border-slate-200">
+                <div className="mt-4 px-2.5 py-2 max-h-[230px] overflow-auto rounded-xl border border-slate-200">
                     <table className="min-w-full text-left text-sm">
                         <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                             <tr>

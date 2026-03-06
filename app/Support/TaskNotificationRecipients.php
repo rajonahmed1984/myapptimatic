@@ -45,8 +45,14 @@ class TaskNotificationRecipients
 
         $recipients = [];
 
+        $masterAdminEmail = $this->configuredMasterAdminNotificationEmail();
+
         $masterAdmins = User::query()
             ->where('role', Role::MASTER_ADMIN)
+            ->when(
+                $masterAdminEmail !== null,
+                fn ($query) => $query->whereRaw('LOWER(email) = ?', [$masterAdminEmail])
+            )
             ->whereNotNull('email')
             ->get(['id', 'name', 'email', 'role']);
 
@@ -305,5 +311,16 @@ class TaskNotificationRecipients
             'portal_login_url' => $loginPath ? $portalUrl . $loginPath : null,
             'portal_login_label' => $loginLabel,
         ];
+    }
+
+    private function configuredMasterAdminNotificationEmail(): ?string
+    {
+        $email = strtolower(trim((string) config('system_mail.master_admin_notification_email', '')));
+
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        return $email;
     }
 }

@@ -2,11 +2,9 @@
 
 namespace App\Services;
 
-use App\Enums\Role;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\ProjectTaskSubtaskComment;
-use App\Models\User;
 use App\Notifications\SubtaskCommentSummaryNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification;
@@ -60,14 +58,10 @@ class SubtaskCommentNotificationService
 
         $items = collect();
 
-        $masterAdmins = User::query()
-            ->where('role', Role::MASTER_ADMIN)
-            ->whereNotNull('email')
-            ->get(['id', 'email']);
-
-        foreach ($masterAdmins as $admin) {
+        $masterAdminEmail = $this->configuredMasterAdminNotificationEmail();
+        if ($masterAdminEmail !== null) {
             $items->push([
-                'email' => (string) $admin->email,
+                'email' => $masterAdminEmail,
                 'view_url' => $this->taskUrl('admin', $project->id, $task->id),
                 'portal_login_url' => url('/admin/login'),
                 'portal_login_label' => 'log in to the admin area',
@@ -111,6 +105,17 @@ class SubtaskCommentNotificationService
         }
 
         return $this->dedupe($items);
+    }
+
+    private function configuredMasterAdminNotificationEmail(): ?string
+    {
+        $email = strtolower(trim((string) config('system_mail.master_admin_notification_email', '')));
+
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        return $email;
     }
 
     private function dedupe(Collection $items): Collection

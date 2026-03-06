@@ -28,15 +28,12 @@ class MailLoginController extends Controller
         $routeName = (string) $request->route()?->getName();
         $inboxRoute = $this->resolveInboxRoute($routeName);
         $switchRequested = (bool) $request->boolean('switch', false);
-
-        if ($switchRequested) {
-            $this->mailSessionService->invalidateCurrent($request);
-        } elseif ($this->mailSessionService->validateSession($request)) {
-            return redirect()->route($inboxRoute);
-        }
-
         $actor = $this->mailSessionService->resolveActor($request);
         abort_if(! $actor, 403);
+
+        if (! $switchRequested && $this->mailSessionService->validateSession($request)) {
+            return redirect()->route($inboxRoute);
+        }
 
         $mailboxes = $this->availableMailboxes($actor, $actor['user']);
         $prefillEmail = strtolower(trim((string) $request->query('email', '')));
@@ -45,6 +42,19 @@ class MailLoginController extends Controller
         });
         if (! $prefillAllowed) {
             $prefillEmail = '';
+        }
+
+        if ($switchRequested && $prefillEmail !== '') {
+            $selectedMailboxId = (int) (collect($mailboxes)->first(
+                fn (array $mailbox): bool => strtolower((string) ($mailbox['email'] ?? '')) === $prefillEmail
+            )['id'] ?? 0);
+
+            if ($selectedMailboxId > 0) {
+                $mailAccount = MailAccount::query()->whereKey($selectedMailboxId)->first();
+                if ($mailAccount && $this->mailSessionService->activateExistingSessionForAccount($request, $actor, $mailAccount)) {
+                    return redirect()->route($inboxRoute);
+                }
+            }
         }
 
         return Inertia::render('Mail/Login', [

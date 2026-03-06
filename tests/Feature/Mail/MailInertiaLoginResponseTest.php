@@ -4,8 +4,10 @@ namespace Tests\Feature\Mail;
 
 use App\Models\MailAccount;
 use App\Models\MailAccountAssignment;
+use App\Models\MailAccountSession;
 use App\Models\User;
 use App\Services\Mail\ImapAuthService;
+use App\Services\Mail\MailSessionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
@@ -188,6 +190,91 @@ class MailInertiaLoginResponseTest extends TestCase
         $response->assertSessionHasErrors([
             'email' => 'Email server unavailable. Check IMAP host/port/encryption/certificate settings. Details: connection refused',
         ]);
+    }
+
+    #[Test]
+    public function switching_to_previously_logged_mailbox_does_not_require_relogin(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'master_admin',
+        ]);
+        \assert($admin instanceof User);
+
+        $mailboxA = MailAccount::query()->create([
+            'email' => 'hello@example.com',
+            'display_name' => 'Hello Inbox',
+            'imap_host' => 'imap.example.com',
+            'imap_port' => 993,
+            'imap_encryption' => 'ssl',
+            'imap_validate_cert' => true,
+            'status' => 'active',
+        ]);
+
+        $mailboxB = MailAccount::query()->create([
+            'email' => 'billing@example.com',
+            'display_name' => 'Billing Inbox',
+            'imap_host' => 'imap.example.com',
+            'imap_port' => 993,
+            'imap_encryption' => 'ssl',
+            'imap_validate_cert' => true,
+            'status' => 'active',
+        ]);
+
+        MailAccountAssignment::query()->create([
+            'mail_account_id' => $mailboxA->id,
+            'assignee_type' => 'user',
+            'assignee_id' => $admin->id,
+            'can_read' => true,
+            'can_manage' => true,
+        ]);
+
+        MailAccountAssignment::query()->create([
+            'mail_account_id' => $mailboxB->id,
+            'assignee_type' => 'user',
+            'assignee_id' => $admin->id,
+            'can_read' => true,
+            'can_manage' => true,
+        ]);
+
+        $this->mock(ImapAuthService::class, function ($mock): void {
+            $mock->shouldReceive('verifyCredentials')
+                ->twice()
+                ->andReturn(true);
+        });
+
+        $this->actingAs($admin, 'web')
+            ->post(route('admin.apptimatic-email.login.store'), [
+                'email' => $mailboxA->email,
+                'password' => 'correct-password-a',
+                'remember' => true,
+            ])
+            ->assertRedirect(route('admin.apptimatic-email.inbox'));
+
+        $this->actingAs($admin, 'web')
+            ->post(route('admin.apptimatic-email.login.store'), [
+                'email' => $mailboxB->email,
+                'password' => 'correct-password-b',
+                'remember' => true,
+            ])
+            ->assertRedirect(route('admin.apptimatic-email.inbox'));
+
+        $this->assertSame(
+            2,
+            MailAccountSession::query()
+                ->where('assignee_type', 'user')
+                ->where('assignee_id', $admin->id)
+                ->whereNull('invalidated_at')
+                ->count()
+        );
+
+        $switchResponse = $this->actingAs($admin, 'web')
+            ->get(route('admin.apptimatic-email.login', [
+                'switch' => 1,
+                'email' => $mailboxA->email,
+            ]));
+
+        $switchResponse->assertRedirect(route('admin.apptimatic-email.inbox'));
+        $switchResponse->assertSessionHas(MailSessionService::SESSION_ACCOUNT_KEY, $mailboxA->id);
     }
 
     #[Test]

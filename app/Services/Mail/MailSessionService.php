@@ -26,22 +26,36 @@ class MailSessionService
 
     public function createSession(Request $request, array $actor, MailAccount $account, string $password, bool $remember): MailAccountSession
     {
-        $this->invalidateAllForActor($actor);
-
         $token = Str::random(64);
         $encryptedSecret = Crypt::encryptString($password);
 
-        $session = MailAccountSession::create([
-            'assignee_type' => $actor['type'],
-            'assignee_id' => $actor['id'],
-            'mail_account_id' => $account->id,
+        $session = MailAccountSession::query()
+            ->where('assignee_type', $actor['type'])
+            ->where('assignee_id', $actor['id'])
+            ->where('mail_account_id', $account->id)
+            ->whereNull('invalidated_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $session) {
+            $session = new MailAccountSession([
+                'assignee_type' => $actor['type'],
+                'assignee_id' => $actor['id'],
+                'mail_account_id' => $account->id,
+            ]);
+        }
+
+        $session->forceFill([
             'session_token_hash' => hash('sha256', $token),
             'auth_secret' => $encryptedSecret,
             'remember' => $remember,
             'last_validated_at' => now(),
             // Keep mailbox login active until credentials fail or explicit logout.
             'expires_at' => null,
-        ]);
+            'invalidated_at' => null,
+        ])->save();
+
+        $this->invalidateDuplicateSessionsForActorAccount($actor, $account->id, (int) $session->id);
 
         $request->session()->put(self::SESSION_TOKEN_KEY, $token);
         $request->session()->put(self::SESSION_ACCOUNT_KEY, $account->id);
@@ -49,6 +63,42 @@ class MailSessionService
         $this->queueRememberCookies($token, $account->id);
 
         return $session;
+    }
+
+    public function activateExistingSessionForAccount(Request $request, array $actor, MailAccount $account): bool
+    {
+        $session = MailAccountSession::query()
+            ->where('assignee_type', $actor['type'])
+            ->where('assignee_id', $actor['id'])
+            ->where('mail_account_id', $account->id)
+            ->whereNull('invalidated_at')
+            ->whereNotNull('auth_secret')
+            ->orderByDesc('last_validated_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $session) {
+            return false;
+        }
+
+        if ($session->expires_at && $session->expires_at->isPast()) {
+            $session->forceFill([
+                'invalidated_at' => now(),
+            ])->save();
+
+            return false;
+        }
+
+        $token = Str::random(64);
+        $session->forceFill([
+            'session_token_hash' => hash('sha256', $token),
+            'last_validated_at' => now(),
+        ])->save();
+
+        $this->invalidateDuplicateSessionsForActorAccount($actor, $account->id, (int) $session->id);
+        $this->syncLocalState($request, $token, (int) $account->id, (string) ($session->auth_secret ?? ''));
+
+        return true;
     }
 
     public function validateSession(Request $request): ?MailAccountSession
@@ -192,15 +242,6 @@ class MailSessionService
         $session->forceFill(['last_validated_at' => now()])->save();
     }
 
-    private function invalidateAllForActor(array $actor): void
-    {
-        MailAccountSession::query()
-            ->where('assignee_type', $actor['type'])
-            ->where('assignee_id', $actor['id'])
-            ->whereNull('invalidated_at')
-            ->update(['invalidated_at' => now()]);
-    }
-
     private function forgetLocalState(Request $request): void
     {
         $request->session()->forget([
@@ -241,6 +282,17 @@ class MailSessionService
         }
 
         $this->queueRememberCookies($token, $accountId);
+    }
+
+    private function invalidateDuplicateSessionsForActorAccount(array $actor, int $accountId, int $activeSessionId): void
+    {
+        MailAccountSession::query()
+            ->where('assignee_type', $actor['type'])
+            ->where('assignee_id', $actor['id'])
+            ->where('mail_account_id', $accountId)
+            ->whereNull('invalidated_at')
+            ->where('id', '!=', $activeSessionId)
+            ->update(['invalidated_at' => now()]);
     }
 
     private function queueRememberCookies(string $token, int $accountId): void

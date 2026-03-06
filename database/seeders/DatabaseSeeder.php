@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
 
         User::factory()->create([
             'name' => 'Admin User',
-            'email' => 'admin@apptimatic.local',
+            'email' => 'admin@example.com',
             'role' => 'admin',
         ]);
     }
