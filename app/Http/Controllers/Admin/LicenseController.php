@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\SyncLicenseJob;
 use App\Models\License;
 use App\Models\LicenseDomain;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\AccessBlockService;
+use App\Services\LicenseRealtimeCheckService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -20,6 +20,12 @@ use Inertia\Response as InertiaResponse;
 
 class LicenseController extends Controller
 {
+    public function __construct(
+        private AccessBlockService $accessBlockService,
+        private LicenseRealtimeCheckService $licenseRealtimeCheckService
+    ) {
+    }
+
     public function index(Request $request): InertiaResponse
     {
         $search = trim((string) $request->input('search', ''));
@@ -57,25 +63,25 @@ class LicenseController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        $accessBlockService = app(AccessBlockService::class);
         $accessBlockedCustomers = [];
+        $realtimeChecks = [];
 
         foreach ($licenses as $license) {
             $customer = $license->subscription?->customer;
             $customerId = $customer?->id;
 
-            if (! $customerId || array_key_exists($customerId, $accessBlockedCustomers)) {
-                continue;
+            if ($customerId && ! array_key_exists($customerId, $accessBlockedCustomers)) {
+                $accessBlockedCustomers[$customerId] = $this->accessBlockService->isCustomerBlocked($customer, true);
             }
 
-            $accessBlockedCustomers[$customerId] = $accessBlockService->isCustomerBlocked($customer, true);
+            $realtimeChecks[$license->id] = $this->licenseRealtimeCheckService->evaluate($license, $accessBlockedCustomers);
         }
 
         return Inertia::render(
             'Admin/Licenses/Index',
             $this->indexInertiaProps(
                 $licenses,
-                $accessBlockedCustomers,
+                $realtimeChecks,
                 $search,
                 $request
             )
@@ -102,6 +108,7 @@ class LicenseController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
             'starts_at' => ['required', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'auto_suspend_override_until' => ['nullable', 'date'],
             'allowed_domains' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
         ]);
@@ -128,6 +135,7 @@ class LicenseController extends Controller
             'status' => $data['status'],
             'starts_at' => $data['starts_at'],
             'expires_at' => $data['expires_at'] ?? null,
+            'auto_suspend_override_until' => $data['auto_suspend_override_until'] ?? null,
             'max_domains' => 1,
             'notes' => $data['notes'] ?? null,
         ]);
@@ -166,6 +174,7 @@ class LicenseController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
             'starts_at' => ['required', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'auto_suspend_override_until' => ['nullable', 'date'],
             'allowed_domains' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
         ]);
@@ -227,6 +236,23 @@ class LicenseController extends Controller
             ->with('status', 'Domain revoked.');
     }
 
+    public function suspend(License $license)
+    {
+        $this->authorize('update', $license);
+
+        if ((string) $license->status === 'revoked') {
+            return redirect()->route('admin.licenses.edit', $license)
+                ->withErrors(['status' => 'Revoked licenses cannot be suspended.']);
+        }
+
+        if ((string) $license->status !== 'suspended') {
+            $license->update(['status' => 'suspended']);
+        }
+
+        return redirect()->route('admin.licenses.edit', $license)
+            ->with('status', 'License suspended.');
+    }
+
     public function destroy(License $license)
     {
         $license->delete();
@@ -239,17 +265,25 @@ class LicenseController extends Controller
     {
         $this->authorize('update', $license);
 
-        SyncLicenseJob::dispatch($license->id, request()->ip());
+        $license->load(['subscription.customer', 'domains']);
+        $check = $this->licenseRealtimeCheckService->sync($license, request()->ip());
+        $message = $check['is_verified']
+            ? 'License sync completed: verified.'
+            : 'License sync completed: '.(string) ($check['reason'] ?? 'unverified').'.';
 
         if (request()->expectsJson()) {
             return response()->json([
                 'ok' => true,
-                'message' => 'License sync queued.',
+                'message' => $message,
+                'data' => [
+                    'reason' => $check['reason'] ?? null,
+                    'is_verified' => (bool) ($check['is_verified'] ?? false),
+                ],
             ]);
         }
 
         return redirect()->route('admin.licenses.index')
-            ->with('status', 'License sync queued.');
+            ->with('status', $message);
     }
 
     public function syncStatus(License $license)
@@ -310,7 +344,7 @@ class LicenseController extends Controller
 
     private function indexInertiaProps(
         LengthAwarePaginator $licenses,
-        array $accessBlockedCustomers,
+        array $realtimeChecks,
         string $search,
         Request $request
     ): array {
@@ -323,42 +357,16 @@ class LicenseController extends Controller
                 'index' => route('admin.licenses.index'),
                 'create' => route('admin.licenses.create'),
             ],
-            'licenses' => collect($licenses->items())->values()->map(function (License $license) use ($accessBlockedCustomers, $dateFormat, $request) {
+            'licenses' => collect($licenses->items())->values()->map(function (License $license) use ($realtimeChecks, $dateFormat, $request) {
                 $activeDomain = $license->domains->firstWhere('status', 'active');
                 $domain = $activeDomain?->domain ?? $license->domains->first()?->domain;
                 $subscription = $license->subscription;
                 $customer = $subscription?->customer;
-                $isBlocked = $customer && ($accessBlockedCustomers[$customer->id] ?? false);
-
-                $verificationLabel = 'Verified';
-                $verificationClass = 'bg-emerald-100 text-emerald-700';
-                $verificationHint = 'Active and domain matched';
-
-                if (! $customer || $customer->status !== 'active') {
-                    $verificationLabel = 'Blocked';
-                    $verificationClass = 'bg-rose-100 text-rose-700';
-                    $verificationHint = 'customer_inactive';
-                } elseif ($license->status !== 'active') {
-                    $verificationLabel = 'Blocked';
-                    $verificationClass = 'bg-rose-100 text-rose-700';
-                    $verificationHint = 'license_inactive';
-                } elseif ($license->expires_at && $license->expires_at->isPast()) {
-                    $verificationLabel = 'Blocked';
-                    $verificationClass = 'bg-rose-100 text-rose-700';
-                    $verificationHint = 'license_expired';
-                } elseif (! $subscription || $subscription->status !== 'active') {
-                    $verificationLabel = 'Blocked';
-                    $verificationClass = 'bg-rose-100 text-rose-700';
-                    $verificationHint = 'subscription_inactive';
-                } elseif (! $activeDomain) {
-                    $verificationLabel = 'Pending';
-                    $verificationClass = 'bg-amber-100 text-amber-700';
-                    $verificationHint = 'domain_not_bound';
-                } elseif ($isBlocked) {
-                    $verificationLabel = 'Blocked';
-                    $verificationClass = 'bg-rose-100 text-rose-700';
-                    $verificationHint = 'invoice_overdue';
-                }
+                $check = $realtimeChecks[$license->id] ?? [];
+                $isBlocked = (bool) ($check['is_access_blocked'] ?? false);
+                $verificationLabel = (string) ($check['verification_label'] ?? 'Verified');
+                $verificationClass = (string) ($check['verification_class'] ?? 'bg-emerald-100 text-emerald-700');
+                $verificationHint = (string) ($check['verification_hint'] ?? 'Active and domain matched');
 
                 $syncAt = $license->last_check_at;
                 $syncLabel = 'Never';
@@ -482,12 +490,17 @@ class LicenseController extends Controller
                     'status' => (string) old('status', (string) ($license?->status ?? 'active')),
                     'starts_at' => (string) old('starts_at', (string) ($license?->starts_at?->toDateString() ?? now()->toDateString())),
                     'expires_at' => (string) old('expires_at', (string) ($license?->expires_at?->toDateString() ?? '')),
+                    'auto_suspend_override_until' => (string) old(
+                        'auto_suspend_override_until',
+                        (string) ($license?->auto_suspend_override_until?->toDateString() ?? '')
+                    ),
                     'allowed_domains' => (string) old('allowed_domains', (string) ($activeDomain ?? '')),
                     'notes' => (string) old('notes', (string) ($license?->notes ?? '')),
                 ],
             ],
             'routes' => [
                 'index' => route('admin.licenses.index'),
+                'suspend' => $license ? route('admin.licenses.suspend', $license) : null,
             ],
         ];
     }

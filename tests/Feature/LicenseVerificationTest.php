@@ -143,6 +143,52 @@ class LicenseVerificationTest extends TestCase
     }
 
     #[Test]
+    public function due_notice_includes_due_date_and_amount_details(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup();
+
+        $dueDate = now()->addDays(7)->toDateString();
+        $dueDateDisplay = now()->addDays(7)->format('F j, Y');
+
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'number' => 'INV-DUE-DETAILS-1',
+            'status' => 'unpaid',
+            'issue_date' => now()->toDateString(),
+            'due_date' => $dueDate,
+            'subtotal' => 1000,
+            'late_fee' => 0,
+            'total' => 1000,
+            'currency' => 'BDT',
+            'type' => 'project_initial_payment',
+        ]);
+
+        $response = $this->postJson(route('api.licenses.verify'), [
+            'license_key' => $license->license_key,
+            'domain' => 'example.com',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'active',
+            'blocked' => false,
+            'notice' => 'invoice_due',
+            'notice_severity' => 'amber',
+            'invoice_due_date' => $dueDate,
+            'invoice_amount' => 1000.0,
+            'invoice_amount_display' => 'Tk 1000.00',
+            'invoice_overdue_days' => 0,
+        ]);
+
+        $this->assertSame(
+            "The invoice due date is {$dueDateDisplay} and the amount is Tk 1000.00.",
+            (string) $response->json('notice_message')
+        );
+    }
+
+    #[Test]
     public function overdue_invoice_blocks_license_verification(): void
     {
         Setting::setValue('auto_bind_domains', 1);
@@ -173,6 +219,155 @@ class LicenseVerificationTest extends TestCase
             'blocked' => true,
             'reason' => 'invoice_overdue',
         ]);
+    }
+
+    #[Test]
+    public function overdue_notice_message_escalates_and_highlight_strengthens(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup();
+
+        $invoice = Invoice::create([
+            'customer_id' => $customer->id,
+            'number' => 'INV-OVERDUE-ESCALATION-1',
+            'status' => 'overdue',
+            'issue_date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDay()->toDateString(),
+            'subtotal' => 1000,
+            'late_fee' => 0,
+            'total' => 1000,
+            'currency' => 'BDT',
+            'type' => 'project_initial_payment',
+        ]);
+
+        $cases = [
+            [
+                'days' => 1,
+                'severity' => 'rose',
+                'suffix' => '2 days to go to avoid suspension.',
+            ],
+            [
+                'days' => 2,
+                'severity' => 'rose',
+                'suffix' => '1 day to go to avoid suspension.',
+            ],
+            [
+                'days' => 3,
+                'severity' => 'critical',
+                'suffix' => 'Today is the last day to clear payment and avoid suspension.',
+            ],
+        ];
+
+        foreach ($cases as $case) {
+            $invoice->update([
+                'due_date' => now()->subDays($case['days'])->toDateString(),
+            ]);
+
+            $response = $this->postJson(route('api.licenses.verify'), [
+                'license_key' => $license->license_key,
+                'domain' => 'example.com',
+            ]);
+
+            $response->assertOk();
+            $response->assertJson([
+                'status' => 'blocked',
+                'blocked' => true,
+                'reason' => 'invoice_overdue',
+                'notice_severity' => $case['severity'],
+                'invoice_overdue_days' => $case['days'],
+            ]);
+
+            $dueDateDisplay = now()->subDays($case['days'])->format('F j, Y');
+            $expectedMessage = "The invoice due date is {$dueDateDisplay} and the amount is Tk 1000.00. {$case['suffix']}";
+            $this->assertSame($expectedMessage, (string) $response->json('notice_message'));
+        }
+    }
+
+    #[Test]
+    public function auto_suspend_override_keeps_license_verification_active_until_override_date(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup(
+            [],
+            ['status' => 'suspended'],
+            ['auto_suspend_override_until' => now()->addDays(3)->toDateString()]
+        );
+
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'number' => 'INV-OVERRIDE-KEEP-ACTIVE-1',
+            'status' => 'overdue',
+            'issue_date' => now()->subDays(8)->toDateString(),
+            'due_date' => now()->subDays(2)->toDateString(),
+            'subtotal' => 750,
+            'late_fee' => 0,
+            'total' => 750,
+            'currency' => 'BDT',
+            'type' => 'project_initial_payment',
+        ]);
+
+        $response = $this->postJson(route('api.licenses.verify'), [
+            'license_key' => $license->license_key,
+            'domain' => 'example.com',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'active',
+            'blocked' => false,
+            'notice' => 'invoice_overdue',
+            'notice_severity' => 'rose',
+            'auto_suspend_override_until' => now()->addDays(3)->toDateString(),
+            'auto_suspend_override_active' => true,
+            'invoice_overdue_days' => 2,
+        ]);
+    }
+
+    #[Test]
+    public function due_notice_hides_amount_when_invoice_total_is_empty(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup();
+
+        $dueDate = now()->addDays(4)->toDateString();
+        $dueDateDisplay = now()->addDays(4)->format('F j, Y');
+
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'number' => 'INV-DUE-NO-AMOUNT-1',
+            'status' => 'unpaid',
+            'issue_date' => now()->toDateString(),
+            'due_date' => $dueDate,
+            'subtotal' => 0,
+            'late_fee' => 0,
+            'total' => 0,
+            'currency' => 'BDT',
+            'type' => 'project_initial_payment',
+        ]);
+
+        $response = $this->postJson(route('api.licenses.verify'), [
+            'license_key' => $license->license_key,
+            'domain' => 'example.com',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'active',
+            'blocked' => false,
+            'notice' => 'invoice_due',
+            'notice_severity' => 'amber',
+            'invoice_due_date' => $dueDate,
+            'invoice_amount' => null,
+            'invoice_amount_display' => null,
+            'invoice_overdue_days' => 0,
+        ]);
+
+        $message = (string) $response->json('notice_message');
+        $this->assertSame("The invoice due date is {$dueDateDisplay}.", $message);
+        $this->assertStringNotContainsString('amount is', $message);
     }
 
     #[Test]

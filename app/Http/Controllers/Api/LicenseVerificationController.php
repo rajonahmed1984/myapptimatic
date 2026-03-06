@@ -55,6 +55,8 @@ class LicenseVerificationController extends Controller
         }
 
         $customer = $license->subscription->customer;
+        $autoSuspendOverrideActive = $this->isAutoSuspendOverrideActive($license);
+        $autoSuspendOverrideUntil = $license->auto_suspend_override_until?->toDateString();
 
         if (! $customer || $customer->status !== 'active') {
             $decision = 'block';
@@ -64,7 +66,10 @@ class LicenseVerificationController extends Controller
             return $this->blockedResponse($reason, [], $requestId);
         }
 
-        if ($license->status !== 'active') {
+        if (
+            $license->status !== 'active'
+            && ! ($autoSuspendOverrideActive && (string) $license->status === 'suspended')
+        ) {
             $decision = 'block';
             $reason = 'license_inactive';
             $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domainInput, $request);
@@ -80,7 +85,10 @@ class LicenseVerificationController extends Controller
             return $this->blockedResponse($reason, [], $requestId);
         }
 
-        if ($license->subscription->status !== 'active') {
+        if (
+            $license->subscription->status !== 'active'
+            && ! ($autoSuspendOverrideActive && (string) $license->subscription->status === 'suspended')
+        ) {
             $decision = 'block';
             $reason = 'subscription_inactive';
             $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domainInput, $request);
@@ -185,6 +193,12 @@ class LicenseVerificationController extends Controller
         }
 
         $invoiceBlock = $this->accessBlockService->invoiceBlockStatus($customer, true);
+        $invoiceBlock['auto_suspend_override_until'] = $autoSuspendOverrideUntil;
+        $invoiceBlock['auto_suspend_override_active'] = $autoSuspendOverrideActive;
+
+        if ($autoSuspendOverrideActive && ($invoiceBlock['reason'] ?? null) === 'invoice_overdue') {
+            $invoiceBlock['blocked'] = false;
+        }
 
         $license->update([
             'last_check_at' => Carbon::now(),
@@ -199,6 +213,16 @@ class LicenseVerificationController extends Controller
                 $blockPayload['payment_url'] = null;
                 $blockPayload['invoice_id'] = null;
                 $blockPayload['invoice_number'] = null;
+                $blockPayload['invoice_status'] = null;
+                $blockPayload['invoice_due_date'] = null;
+                $blockPayload['invoice_due_date_display'] = null;
+                $blockPayload['invoice_amount'] = null;
+                $blockPayload['invoice_amount_display'] = null;
+                $blockPayload['invoice_overdue_days'] = 0;
+                $blockPayload['notice_message'] = null;
+                $blockPayload['notice_severity'] = null;
+                $blockPayload['auto_suspend_override_until'] = null;
+                $blockPayload['auto_suspend_override_active'] = false;
             }
 
             $decision = 'block';
@@ -212,10 +236,10 @@ class LicenseVerificationController extends Controller
             return $this->blockedResponse($invoiceBlock['reason'], $blockPayload, $requestId);
         }
 
-        // If invoice due but not blocked, mark as warn
-        if ($invoiceBlock['reason'] === 'invoice_due') {
+        // If billing warning exists but account is not blocked, mark response as warning.
+        if (in_array($invoiceBlock['reason'], ['invoice_due', 'invoice_overdue'], true)) {
             $decision = 'warn';
-            $reason = 'invoice_due';
+            $reason = $invoiceBlock['reason'];
         }
 
         $usageLogId = $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request, [
@@ -234,7 +258,11 @@ class LicenseVerificationController extends Controller
         $response = response()->json([
             'status' => 'active',
             'blocked' => false,
-            'notice' => $invoiceBlock['reason'] === 'invoice_due' ? 'invoice_due' : null,
+            'notice' => in_array($invoiceBlock['reason'], ['invoice_due', 'invoice_overdue'], true)
+                ? $invoiceBlock['reason']
+                : null,
+            'notice_message' => $includeSensitive ? ($invoiceBlock['notice_message'] ?? null) : null,
+            'notice_severity' => $includeSensitive ? ($invoiceBlock['notice_severity'] ?? null) : null,
             'license_id' => $license->id,
             'product_id' => $license->product_id,
             'customer_id' => $customer->id,
@@ -244,6 +272,13 @@ class LicenseVerificationController extends Controller
             'invoice_id' => $includeSensitive ? $invoiceBlock['invoice_id'] : null,
             'invoice_number' => $includeSensitive ? $invoiceBlock['invoice_number'] : null,
             'invoice_status' => $includeSensitive ? $invoiceBlock['invoice_status'] : null,
+            'invoice_due_date' => $includeSensitive ? ($invoiceBlock['invoice_due_date'] ?? null) : null,
+            'invoice_due_date_display' => $includeSensitive ? ($invoiceBlock['invoice_due_date_display'] ?? null) : null,
+            'invoice_amount' => $includeSensitive ? ($invoiceBlock['invoice_amount'] ?? null) : null,
+            'invoice_amount_display' => $includeSensitive ? ($invoiceBlock['invoice_amount_display'] ?? null) : null,
+            'invoice_overdue_days' => $includeSensitive ? (int) ($invoiceBlock['invoice_overdue_days'] ?? 0) : 0,
+            'auto_suspend_override_until' => $includeSensitive ? ($invoiceBlock['auto_suspend_override_until'] ?? null) : null,
+            'auto_suspend_override_active' => $includeSensitive ? (bool) ($invoiceBlock['auto_suspend_override_active'] ?? false) : false,
             'request_id' => $requestId,
         ]);
 
@@ -269,6 +304,17 @@ class LicenseVerificationController extends Controller
         }
 
         return $value;
+    }
+
+    private function isAutoSuspendOverrideActive(License $license): bool
+    {
+        $until = $license->auto_suspend_override_until;
+
+        if (! $until) {
+            return false;
+        }
+
+        return Carbon::now()->lessThanOrEqualTo($until->copy()->endOfDay());
     }
 
     private function blockedResponse(string $reason, array $payload = [], ?string $requestId = null)

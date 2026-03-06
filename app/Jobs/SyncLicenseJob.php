@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\License;
+use App\Services\LicenseRealtimeCheckService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -19,18 +20,16 @@ class SyncLicenseJob implements ShouldQueue
     ) {
     }
 
-    public function handle(): void
+    public function handle(LicenseRealtimeCheckService $licenseRealtimeCheckService): void
     {
-        $license = License::find($this->licenseId);
+        $license = License::query()
+            ->with(['subscription.customer', 'domains'])
+            ->find($this->licenseId);
 
         if (! $license) {
             return;
         }
 
-        $license->update([
-            'last_check_at' => now(),
-            'last_verified_at' => now(),
-            'last_check_ip' => $this->ipAddress,
-        ]);
+        $licenseRealtimeCheckService->sync($license, $this->ipAddress);
     }
 }

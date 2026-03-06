@@ -6,6 +6,8 @@ export default function Form({ pageTitle = 'License', is_edit = false, products 
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
+    const currentStatus = String(fields?.status || '').toLowerCase();
+    const canSuspendNow = is_edit && Boolean(routes?.suspend) && !['suspended', 'revoked'].includes(currentStatus);
 
     return (
         <>
@@ -82,6 +84,20 @@ export default function Form({ pageTitle = 'License', is_edit = false, products 
                     </div>
 
                     <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">Override Auto-Suspend until</label>
+                        <input
+                            type="date"
+                            name="auto_suspend_override_until"
+                            defaultValue={fields?.auto_suspend_override_until || ''}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 md:w-72"
+                        />
+                        <p className="mt-1 text-xs text-slate-500">
+                            If set, this license will stay active until the selected date and automation will skip auto-suspend.
+                        </p>
+                        {errors?.auto_suspend_override_until ? <p className="mt-1 text-xs text-rose-600">{errors.auto_suspend_override_until}</p> : null}
+                    </div>
+
+                    <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Allowed Domain</label>
                         <input
                             name="allowed_domains"
@@ -106,6 +122,30 @@ export default function Form({ pageTitle = 'License', is_edit = false, products 
                         </a>
                     </div>
                 </form>
+
+                {canSuspendNow ? (
+                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                        <div className="mb-2 text-sm font-semibold text-rose-800">Immediate Suspend</div>
+                        <p className="mb-3 text-xs text-rose-700">
+                            Use this to suspend the license right now without waiting for automation.
+                        </p>
+                        <form
+                            action={routes?.suspend}
+                            method="POST"
+                            data-native="true"
+                            onSubmit={(event) => {
+                                if (!window.confirm('Suspend this license now?')) {
+                                    event.preventDefault();
+                                }
+                            }}
+                        >
+                            <input type="hidden" name="_token" value={csrf} />
+                            <button type="submit" className="rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100">
+                                Suspend License
+                            </button>
+                        </form>
+                    </div>
+                ) : null}
 
                 {is_edit && domains.length > 0 ? (
                     <div className="mt-8">

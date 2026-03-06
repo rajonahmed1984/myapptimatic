@@ -16,6 +16,7 @@ class License extends Model
         'status',
         'starts_at',
         'expires_at',
+        'auto_suspend_override_until',
         'max_domains',
         'last_check_at',
         'last_check_ip',
@@ -29,6 +30,7 @@ class License extends Model
     protected $casts = [
         'starts_at' => 'date',
         'expires_at' => 'date',
+        'auto_suspend_override_until' => 'date',
         'max_domains' => 'integer',
         'last_check_at' => 'datetime',
         'last_verified_at' => 'datetime',

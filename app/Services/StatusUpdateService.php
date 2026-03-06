@@ -122,12 +122,14 @@ class StatusUpdateService
             }
 
             // Also suspend associated licenses
-            $affected = $subscription->licenses()
-                ->where('status', 'active')
-                ->get(['id', 'status']);
+            $affected = $this->activeLicensesEligibleForAutoSuspend($subscription, $today);
+
+            if ($affected->isEmpty()) {
+                continue;
+            }
 
             $subscription->licenses()
-                ->where('status', 'active')
+                ->whereIn('id', $affected->pluck('id'))
                 ->update(['status' => 'suspended']);
 
             foreach ($affected as $license) {
@@ -440,9 +442,7 @@ class StatusUpdateService
             return 0;
         }
 
-        $activeLicenses = $subscription->licenses()
-            ->where('status', 'active')
-            ->get(['id', 'status']);
+        $activeLicenses = $this->activeLicensesEligibleForAutoSuspend($subscription, Carbon::today());
 
         if ($activeLicenses->isEmpty()) {
             return 0;
@@ -469,5 +469,16 @@ class StatusUpdateService
         ]);
 
         return $activeLicenses->count();
+    }
+
+    private function activeLicensesEligibleForAutoSuspend(Subscription $subscription, Carbon $today)
+    {
+        return $subscription->licenses()
+            ->where('status', 'active')
+            ->where(function ($query) use ($today) {
+                $query->whereNull('auto_suspend_override_until')
+                    ->orWhereDate('auto_suspend_override_until', '<', $today->toDateString());
+            })
+            ->get(['id', 'status']);
     }
 }

@@ -526,6 +526,7 @@ Route::middleware([
         ->middleware(HandleInertiaRequests::class)
         ->name('licenses.edit');
     Route::resource('licenses', LicenseController::class)->except(['show', 'index', 'create', 'edit']);
+    Route::post('licenses/{license}/suspend', [LicenseController::class, 'suspend'])->name('licenses.suspend');
     Route::post('licenses/{license}/domains/{domain}/revoke', [LicenseController::class, 'revokeDomain'])->name('licenses.domains.revoke');
     Route::post('licenses/{license}/sync', [LicenseController::class, 'sync'])->name('licenses.sync');
     Route::get('licenses/{license}/sync-status', [LicenseController::class, 'syncStatus'])->name('licenses.sync-status');
