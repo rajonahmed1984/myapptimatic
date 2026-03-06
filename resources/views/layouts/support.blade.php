@@ -46,15 +46,60 @@
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Support Tickets
                     </x-nav-link>
-                    @if(\Illuminate\Support\Facades\Route::has('support.apptimatic-email.inbox'))
-                        <x-nav-link
-                            :href="route('support.apptimatic-email.inbox')"
-                            routes="support.apptimatic-email.*"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Apptimatic Email
-                        </x-nav-link>
-                    @endif
+                    @php
+                        $hasSupportMailRoute = \Illuminate\Support\Facades\Route::has('support.apptimatic-email.inbox');
+                        $supportMailFolder = strtolower((string) request()->query('folder', 'inbox'));
+                        $supportComposeRequested = (string) request()->query('compose', '') !== '';
+                        $isSupportMailActive = $hasSupportMailRoute && isActive('support.apptimatic-email.*');
+                        $isSupportComposeActive = request()->routeIs('support.apptimatic-email.inbox') && $supportComposeRequested;
+                        $isSupportInboxActive = request()->routeIs('support.apptimatic-email.*') && ! $supportComposeRequested && ($supportMailFolder === '' || $supportMailFolder === 'inbox');
+                        $isSupportSentActive = request()->routeIs('support.apptimatic-email.*') && $supportMailFolder === 'sent';
+                        $isSupportDraftsActive = request()->routeIs('support.apptimatic-email.*') && $supportMailFolder === 'drafts';
+                        $isSupportSpamActive = request()->routeIs('support.apptimatic-email.*') && $supportMailFolder === 'spam';
+                    @endphp
+                    <div>
+                        @if($hasSupportMailRoute)
+                            <a
+                                href="{{ route('support.apptimatic-email.inbox') }}"
+                                class="{{ $isSupportMailActive ? 'nav-link nav-link-active' : 'nav-link' }}"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                <span>Apptimatic Email</span>
+                            </a>
+                        @else
+                            <span class="nav-link cursor-not-allowed opacity-60" title="Module route unavailable">
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                <span>Apptimatic Email</span>
+                            </span>
+                        @endif
+
+                        <div class="ml-8 mt-1 space-y-1 text-xs">
+                            @if($hasSupportMailRoute)
+                                <a href="{{ route('support.apptimatic-email.inbox', ['compose' => 'new']) }}" class="flex items-center gap-2 {{ activeIf($isSupportComposeActive) }}">
+                                    <span>Compose</span>
+                                </a>
+                                <a href="{{ route('support.apptimatic-email.inbox') }}" class="flex items-center gap-2 {{ activeIf($isSupportInboxActive) }}">
+                                    <span>Inbox</span>
+                                    <span id="apptimatic-email-sidebar-unread" class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">0</span>
+                                </a>
+                                <a href="{{ route('support.apptimatic-email.inbox', ['folder' => 'sent']) }}" class="flex items-center gap-2 {{ activeIf($isSupportSentActive) }}">
+                                    <span>Sent</span>
+                                </a>
+                                <a href="{{ route('support.apptimatic-email.inbox', ['folder' => 'drafts']) }}" class="flex items-center gap-2 {{ activeIf($isSupportDraftsActive) }}">
+                                    <span>Drafts</span>
+                                </a>
+                                <a href="{{ route('support.apptimatic-email.inbox', ['folder' => 'spam']) }}" class="flex items-center gap-2 {{ activeIf($isSupportSpamActive) }}">
+                                    <span>Spam</span>
+                                </a>
+                            @else
+                                <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Compose</span>
+                                <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Inbox</span>
+                                <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Sent</span>
+                                <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Drafts</span>
+                                <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Spam</span>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </nav>
 

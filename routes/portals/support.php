@@ -66,6 +66,24 @@ Route::middleware([
                         ->name('stream');
                     Route::post('/inbox/reply', [MailInboxController::class, 'reply'])
                         ->name('reply');
+                    Route::post('/compose', [MailInboxController::class, 'compose'])
+                        ->name('compose');
+                    Route::post('/inbox/messages/{message}/move-trash', [MailInboxController::class, 'moveToTrash'])
+                        ->where('message', '[A-Za-z0-9\-]+')
+                        ->name('move-trash');
+                    Route::post('/inbox/messages/{message}/restore', [MailInboxController::class, 'restoreFromTrash'])
+                        ->where('message', '[A-Za-z0-9\-]+')
+                        ->name('restore');
+                    Route::post('/inbox/messages/{message}/delete', [MailInboxController::class, 'deleteForever'])
+                        ->where('message', '[A-Za-z0-9\-]+')
+                        ->name('delete');
+                    Route::post('/inbox/messages/{message}/mark-unread', [MailInboxController::class, 'markUnread'])
+                        ->where('message', '[A-Za-z0-9\-]+')
+                        ->name('mark-unread');
+                    Route::get('/inbox/attachment/{message}/{part}', [MailInboxController::class, 'attachment'])
+                        ->where('message', '[A-Za-z0-9\-]+')
+                        ->where('part', '[0-9]+(?:\.[0-9]+)*')
+                        ->name('attachment');
                     Route::get('/inbox/view={message}', [MailInboxController::class, 'show'])
                         ->middleware(HandleInertiaRequests::class)
                         ->where('message', '[A-Za-z0-9\-]+')

@@ -31,12 +31,14 @@ class MailInboxController extends Controller
     public function index(Request $request, ApptimaticEmailStubRepository $mailbox): InertiaResponse
     {
         $historyEmail = $this->selectedHistoryEmail($request);
+        $folder = $this->selectedFolder($request);
         $selectedMessageId = $this->selectedViewMessageId($request);
         [$messages, $selectedMessage, $threadMessages, $syncMeta, $historyEmailOptions, $mailboxUnreadCount] = $this->resolveMailboxData(
             $request,
             $mailbox,
             $selectedMessageId,
             $historyEmail,
+            $folder,
             false
         );
 
@@ -48,18 +50,21 @@ class MailInboxController extends Controller
             $syncMeta,
             $historyEmail,
             $historyEmailOptions,
-            $mailboxUnreadCount
+            $mailboxUnreadCount,
+            $folder
         ));
     }
 
     public function show(Request $request, string $message, ApptimaticEmailStubRepository $mailbox): InertiaResponse
     {
         $historyEmail = $this->selectedHistoryEmail($request);
+        $folder = $this->selectedFolder($request);
         [$messages, $selectedMessage, $threadMessages, $syncMeta, $historyEmailOptions, $mailboxUnreadCount] = $this->resolveMailboxData(
             $request,
             $mailbox,
             $message,
             $historyEmail,
+            $folder,
             true
         );
 
@@ -71,18 +76,58 @@ class MailInboxController extends Controller
             $syncMeta,
             $historyEmail,
             $historyEmailOptions,
-            $mailboxUnreadCount
+            $mailboxUnreadCount,
+            $folder
         ));
     }
 
-    public function reply(Request $request): RedirectResponse
+    public function attachment(Request $request, string $message, string $part): \Symfony\Component\HttpFoundation\Response
+    {
+        $folder = $this->selectedFolder($request);
+        $session = $this->mailSessionService->validateSession($request);
+        $password = $this->mailSessionService->decryptPassword($request);
+        $mailAccount = $session?->mailAccount;
+
+        if (! $this->canUseLiveMailbox($mailAccount, $password)) {
+            abort(404);
+        }
+
+        $attachment = $this->imapInboxService->attachmentDataByUid($mailAccount, $password, $message, $part, $folder);
+        if (! is_array($attachment)) {
+            abort(404);
+        }
+
+        $content = (string) ($attachment['content'] ?? '');
+        $mime = (string) ($attachment['mime'] ?? 'application/octet-stream');
+        $filename = $this->safeAttachmentFilename((string) ($attachment['filename'] ?? 'attachment.bin'));
+        $isInline = (bool) ($attachment['is_inline'] ?? false)
+            || str_starts_with($mime, 'image/')
+            || $mime === 'application/pdf';
+
+        $dispositionType = $isInline ? 'inline' : 'attachment';
+        $disposition = sprintf("%s; filename=\"%s\"; filename*=UTF-8''%s", $dispositionType, addcslashes($filename, "\"\\"), rawurlencode($filename));
+
+        return response($content, 200, [
+            'Content-Type' => $mime !== '' ? $mime : 'application/octet-stream',
+            'Content-Disposition' => $disposition,
+            'Content-Length' => (string) strlen($content),
+            'Cache-Control' => 'private, max-age=3600',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function compose(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'message_id' => ['required', 'string', 'max:255'],
-            'to' => ['required', 'string', 'max:1000'],
-            'cc' => ['nullable', 'string', 'max:1000'],
+            'action' => ['required', 'in:send,draft'],
+            'message_id' => ['nullable', 'string', 'max:255'],
+            'to' => ['nullable', 'string', 'max:2000'],
+            'cc' => ['nullable', 'string', 'max:2000'],
+            'bcc' => ['nullable', 'string', 'max:2000'],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:20000'],
+            'folder' => ['nullable', 'string', 'max:20'],
+            'history_email' => ['nullable', 'string', 'max:255'],
         ]);
 
         $session = $this->mailSessionService->validateSession($request);
@@ -90,19 +135,43 @@ class MailInboxController extends Controller
         $mailAccount = $session?->mailAccount;
 
         if (! $this->canUseLiveMailbox($mailAccount, $password)) {
-            return back()->withErrors(['reply' => 'Mailbox session expired. Please login again.']);
+            return $this->mailboxRedirect($request)->withErrors(['compose' => 'Mailbox session expired. Please login again.']);
         }
 
-        $to = $this->parseAddressList((string) $data['to']);
+        $to = $this->parseAddressList((string) ($data['to'] ?? ''));
         $cc = $this->parseAddressList((string) ($data['cc'] ?? ''));
+        $bcc = $this->parseAddressList((string) ($data['bcc'] ?? ''));
+        $action = (string) ($data['action'] ?? 'send');
+        $subject = (string) ($data['subject'] ?? '');
+        $body = (string) ($data['body'] ?? '');
 
-        if ($to === []) {
-            return back()->withErrors(['reply' => 'Please provide at least one valid recipient email.']);
+        if ($action === 'send' && $to === []) {
+            return $this->mailboxRedirect($request)->withErrors(['compose' => 'Please provide at least one valid recipient email.']);
+        }
+
+        if ($action === 'draft') {
+            $saved = $this->imapInboxService->saveDraft(
+                $mailAccount,
+                (string) $password,
+                (string) $mailAccount->email,
+                (string) ($mailAccount->display_name ?: $mailAccount->email),
+                $to,
+                $cc,
+                $bcc,
+                $subject,
+                $body
+            );
+
+            if (! $saved) {
+                return $this->mailboxRedirect($request)->withErrors(['compose' => 'Draft save failed. Check IMAP Drafts folder access.']);
+            }
+
+            return $this->mailboxRedirect($request)->with('status', 'Draft saved.');
         }
 
         $smtp = $this->smtpSettingsForReply($mailAccount);
         if ($smtp['host'] === '' || $smtp['port'] <= 0) {
-            return back()->withErrors(['reply' => 'SMTP host/port is missing. Set APPTIMATIC_EMAIL_SMTP_* in .env.']);
+            return $this->mailboxRedirect($request)->withErrors(['compose' => 'SMTP host/port is missing. Set APPTIMATIC_EMAIL_SMTP_* in .env.']);
         }
 
         try {
@@ -131,25 +200,107 @@ class MailInboxController extends Controller
             $email = (new Email())
                 ->from(new Address((string) $mailAccount->email, (string) ($mailAccount->display_name ?: $mailAccount->email)))
                 ->replyTo((string) $mailAccount->email)
-                ->subject((string) $data['subject'])
-                ->text((string) $data['body']);
+                ->subject($subject)
+                ->text($body);
 
             foreach ($to as $address) {
                 $email->addTo($address);
             }
-
             foreach ($cc as $address) {
                 $email->addCc($address);
+            }
+            foreach ($bcc as $address) {
+                $email->addBcc($address);
             }
 
             $mailer->send($email);
 
-            return back()->with('status', 'Reply sent successfully.');
+            $this->imapInboxService->saveSentCopy(
+                $mailAccount,
+                (string) $password,
+                (string) $mailAccount->email,
+                (string) ($mailAccount->display_name ?: $mailAccount->email),
+                $to,
+                $cc,
+                $bcc,
+                $subject,
+                $body
+            );
+
+            return $this->mailboxRedirect($request)->with('status', 'Email sent successfully.');
         } catch (\Throwable $exception) {
-            return back()->withErrors([
-                'reply' => 'Reply send failed: ' . $this->shortError($exception->getMessage()),
+            return $this->mailboxRedirect($request)->withErrors([
+                'compose' => 'Email send failed: ' . $this->shortError($exception->getMessage()),
             ]);
         }
+    }
+
+    public function moveToTrash(Request $request, string $message): RedirectResponse
+    {
+        return $this->handleMoveAction($request, $message, 'trash');
+    }
+
+    public function restoreFromTrash(Request $request, string $message): RedirectResponse
+    {
+        return $this->handleMoveAction($request, $message, 'inbox');
+    }
+
+    public function deleteForever(Request $request, string $message): RedirectResponse
+    {
+        $session = $this->mailSessionService->validateSession($request);
+        $password = $this->mailSessionService->decryptPassword($request);
+        $mailAccount = $session?->mailAccount;
+
+        if (! $this->canUseLiveMailbox($mailAccount, $password)) {
+            return $this->mailboxRedirect($request)->withErrors(['mail_action' => 'Mailbox session expired. Please login again.']);
+        }
+
+        $sourceFolder = $this->selectedFolder($request);
+        $deleted = $this->imapInboxService->deleteForever(
+            $mailAccount,
+            (string) $password,
+            $message,
+            $sourceFolder
+        );
+
+        if (! $deleted) {
+            return $this->mailboxRedirect($request)->withErrors(['mail_action' => 'Could not permanently delete the email.']);
+        }
+
+        return $this->mailboxRedirect($request)->with('status', 'Email permanently deleted.');
+    }
+
+    public function markUnread(Request $request, string $message): RedirectResponse
+    {
+        $session = $this->mailSessionService->validateSession($request);
+        $password = $this->mailSessionService->decryptPassword($request);
+        $mailAccount = $session?->mailAccount;
+
+        if (! $this->canUseLiveMailbox($mailAccount, $password)) {
+            return $this->mailboxRedirect($request)->withErrors(['mail_action' => 'Mailbox session expired. Please login again.']);
+        }
+
+        $folder = $this->normalizeFolder((string) $request->input('folder', $request->query('folder', 'inbox')));
+        $marked = $this->imapInboxService->setSeenStatus(
+            $mailAccount,
+            (string) $password,
+            $message,
+            $folder,
+            false
+        );
+
+        if (! $marked) {
+            return $this->mailboxRedirect($request)->withErrors(['mail_action' => 'Could not mark the email as unread.']);
+        }
+
+        return $this->mailboxRedirect($request)->with('status', 'Email marked as unread.');
+    }
+
+    public function reply(Request $request): RedirectResponse
+    {
+        $request->merge(['action' => 'send']);
+
+        return $this->compose($request);
     }
 
     public function stream(Request $request, ApptimaticEmailStubRepository $stub): StreamedResponse
@@ -223,7 +374,8 @@ class MailInboxController extends Controller
         array $syncMeta,
         string $historyEmail,
         array $historyEmailOptions,
-        int $mailboxUnreadCount
+        int $mailboxUnreadCount,
+        string $folder
     ): array {
         $routeName = (string) $request->route()?->getName();
         $inboxRoute = $this->resolveRoute($routeName, 'inbox');
@@ -232,6 +384,12 @@ class MailInboxController extends Controller
         $loginRoute = $this->resolveRoute($routeName, 'login');
         $streamRoute = $this->resolveRoute($routeName, 'stream');
         $replyRoute = $this->resolveRoute($routeName, 'reply');
+        $composeRoute = $this->resolveRoute($routeName, 'compose');
+        $attachmentRoute = $this->resolveRoute($routeName, 'attachment');
+        $moveTrashRoute = $this->resolveRoute($routeName, 'move-trash');
+        $restoreRoute = $this->resolveRoute($routeName, 'restore');
+        $deleteRoute = $this->resolveRoute($routeName, 'delete');
+        $markUnreadRoute = $this->resolveRoute($routeName, 'mark-unread');
         $selectedMessageId = (string) ($selectedMessage['id'] ?? '');
 
         return [
@@ -240,13 +398,19 @@ class MailInboxController extends Controller
             'portal_label' => $this->portalLabelFromRoute($routeName),
             'profile_name' => (string) ($request->user()?->name ?? 'User'),
             'profile_avatar_path' => $request->user()?->avatar_path,
+            'mailbox_email' => $this->currentMailboxEmail($request),
             'routes' => [
                 'inbox' => route($inboxRoute),
                 'logout' => route($logoutRoute),
                 'login' => route($loginRoute),
-                'stream' => route($streamRoute),
+                'stream' => route($streamRoute, $folder !== 'inbox' ? ['folder' => $folder] : []),
                 'reply' => route($replyRoute),
+                'compose' => route($composeRoute),
                 'manage' => $this->resolveManageRoute($routeName),
+            ],
+            'folder_filter' => [
+                'selected' => $folder,
+                'options' => $this->folderOptions(),
             ],
             'history_email_filter' => [
                 'enabled' => $this->canFilterHistoryEmail($request),
@@ -254,9 +418,12 @@ class MailInboxController extends Controller
                 'options' => $historyEmailOptions,
             ],
             'mailbox_switch' => $this->mailboxSwitchData($request),
-            'messages' => collect($messages)->map(function (array $message) use ($selectedMessageId, $showRoute, $historyEmail) {
+            'messages' => collect($messages)->map(function (array $message) use ($selectedMessageId, $showRoute, $historyEmail, $folder) {
                 $id = (string) ($message['id'] ?? '');
                 $params = ['message' => $id];
+                if ($folder !== 'inbox') {
+                    $params['folder'] = $folder;
+                }
                 if ($historyEmail !== '') {
                     $params['history_email'] = $historyEmail;
                 }
@@ -269,6 +436,7 @@ class MailInboxController extends Controller
                     'subject' => (string) ($message['subject'] ?? '(No subject)'),
                     'snippet' => (string) ($message['snippet'] ?? ''),
                     'unread' => (bool) ($message['unread'] ?? false),
+                    'has_attachments' => (bool) ($message['has_attachments'] ?? false),
                     'is_selected' => $selectedMessageId !== '' && $selectedMessageId === $id,
                     'received_at_display' => DateTimeFormat::formatDateTime($message['received_at'] ?? null, ''),
                     'routes' => [
@@ -284,17 +452,51 @@ class MailInboxController extends Controller
                 'subject' => (string) ($selectedMessage['subject'] ?? '(No subject)'),
                 'received_at_display' => DateTimeFormat::formatDateTime($selectedMessage['received_at'] ?? null, ''),
                 'thread_count' => count($threadMessages),
+                'has_attachments' => (bool) ($selectedMessage['has_attachments'] ?? false),
+                'routes' => [
+                    'move_trash' => route($moveTrashRoute, ['message' => (string) ($selectedMessage['id'] ?? ''), 'folder' => $folder]),
+                    'restore' => route($restoreRoute, ['message' => (string) ($selectedMessage['id'] ?? ''), 'folder' => $folder]),
+                    'delete' => route($deleteRoute, ['message' => (string) ($selectedMessage['id'] ?? ''), 'folder' => $folder]),
+                    'mark_unread' => route($markUnreadRoute, ['message' => (string) ($selectedMessage['id'] ?? ''), 'folder' => $folder]),
+                ],
             ] : null,
-            'thread_messages' => collect($threadMessages)->map(function (array $threadMessage) use ($selectedMessageId) {
+            'thread_messages' => collect($threadMessages)->map(function (array $threadMessage) use ($selectedMessageId, $attachmentRoute, $folder) {
+                $messageId = (string) ($threadMessage['id'] ?? '');
+                $attachments = collect((array) ($threadMessage['attachments'] ?? []))
+                    ->map(function (array $attachment) use ($attachmentRoute, $messageId, $folder): array {
+                        $part = (string) ($attachment['part'] ?? '');
+                        $downloadRoute = ($messageId !== '' && $part !== '')
+                            ? route($attachmentRoute, ['message' => $messageId, 'part' => $part, 'folder' => $folder])
+                            : null;
+
+                        return [
+                            'part' => $part,
+                            'filename' => (string) ($attachment['filename'] ?? 'attachment.bin'),
+                            'mime' => (string) ($attachment['mime'] ?? 'application/octet-stream'),
+                            'size' => (int) ($attachment['size'] ?? 0),
+                            'is_inline' => (bool) ($attachment['is_inline'] ?? false),
+                            'cid' => (string) ($attachment['cid'] ?? ''),
+                            'routes' => [
+                                'download' => $downloadRoute,
+                                'preview' => $downloadRoute,
+                            ],
+                        ];
+                    })
+                    ->values()
+                    ->all();
+
                 return [
-                    'id' => (string) ($threadMessage['id'] ?? ''),
+                    'id' => $messageId,
                     'sender_name' => (string) ($threadMessage['sender_name'] ?? 'Unknown sender'),
                     'sender_email' => (string) ($threadMessage['sender_email'] ?? ''),
                     'to' => (string) ($threadMessage['to'] ?? ''),
                     'subject' => (string) ($threadMessage['subject'] ?? '(No subject)'),
                     'body' => (string) ($threadMessage['body'] ?? ''),
+                    'body_html' => (string) ($threadMessage['body_html'] ?? ''),
+                    'attachments' => $attachments,
+                    'has_attachments' => count($attachments) > 0,
                     'received_at_display' => DateTimeFormat::formatDateTime($threadMessage['received_at'] ?? null, ''),
-                    'is_selected' => $selectedMessageId !== '' && $selectedMessageId === (string) ($threadMessage['id'] ?? ''),
+                    'is_selected' => $selectedMessageId !== '' && $selectedMessageId === $messageId,
                 ];
             })->values()->all(),
             'sync_meta' => $syncMeta,
@@ -306,17 +508,19 @@ class MailInboxController extends Controller
         ApptimaticEmailStubRepository $stub,
         ?string $selectedMessageId = null,
         string $historyEmail = '',
+        string $folder = 'inbox',
         bool $strictSelection = false
     ): array {
         $session = $this->mailSessionService->validateSession($request);
         $password = $this->mailSessionService->decryptPassword($request);
         $mailAccount = $session?->mailAccount;
+        $folder = $this->normalizeFolder($folder);
 
         if ($this->canUseLiveMailbox($mailAccount, $password)) {
-            $allMessages = $this->imapInboxService->inbox($mailAccount, $password, 80);
+            $allMessages = $this->imapInboxService->folder($mailAccount, $password, $folder, 80);
             $historyEmailOptions = $this->historyEmailOptions($allMessages);
             $messages = $this->filterMessagesByHistoryEmail($allMessages, $historyEmail);
-            $mailboxUnreadCount = (int) collect($allMessages)->where('unread', true)->count();
+            $mailboxUnreadCount = $this->imapInboxService->unreadCount($mailAccount, $password, 'inbox');
 
             $selectedMessage = $selectedMessageId
                 ? collect($messages)->first(fn (array $message) => (string) ($message['id'] ?? '') === (string) $selectedMessageId)
@@ -342,10 +546,10 @@ class MailInboxController extends Controller
             return [$messages, $selectedMessage, $threadMessages, $this->syncMeta('live'), $historyEmailOptions, $mailboxUnreadCount];
         }
 
-        $allMessages = $stub->inbox();
+        $allMessages = $stub->folder($folder);
         $historyEmailOptions = $this->historyEmailOptions($allMessages);
         $messages = $this->filterMessagesByHistoryEmail($allMessages, $historyEmail);
-        $mailboxUnreadCount = (int) collect($allMessages)->where('unread', true)->count();
+        $mailboxUnreadCount = (int) collect($stub->folder('inbox'))->where('unread', true)->count();
         $selectedMessage = $selectedMessageId
             ? collect($messages)->first(fn (array $message) => (string) ($message['id'] ?? '') === (string) $selectedMessageId)
             : null;
@@ -386,11 +590,12 @@ class MailInboxController extends Controller
             return ['ok' => false, 'mode' => 'none', 'hash' => ''];
         }
 
+        $folder = $this->selectedFolder($request);
         $password = $this->mailSessionService->decryptPassword($request);
         $mailAccount = $session->mailAccount;
 
         if ($this->canUseLiveMailbox($mailAccount, $password)) {
-            $hash = $this->imapInboxService->snapshotHash($mailAccount, $password, 40);
+            $hash = $this->imapInboxService->snapshotHash($mailAccount, $password, 40, $folder);
 
             return [
                 'ok' => true,
@@ -399,7 +604,7 @@ class MailInboxController extends Controller
             ];
         }
 
-        $stubMessages = $stub->inbox();
+        $stubMessages = $stub->folder($folder);
         $stablePayload = array_map(static function (array $message): array {
             return [
                 'id' => (string) ($message['id'] ?? ''),
@@ -513,6 +718,13 @@ class MailInboxController extends Controller
         ];
     }
 
+    private function currentMailboxEmail(Request $request): string
+    {
+        $session = $this->mailSessionService->validateSession($request);
+
+        return strtolower(trim((string) ($session?->mailAccount?->email ?? '')));
+    }
+
     private function availableMailboxOptions(array $actor, mixed $user): array
     {
         if ($user && method_exists($user, 'isAdmin') && $user->isAdmin() && (bool) config('apptimatic_email.allow_admin_global_mailboxes', false)) {
@@ -562,6 +774,30 @@ class MailInboxController extends Controller
         $user = $request->user();
 
         return (bool) ($user && method_exists($user, 'isMasterAdmin') && $user->isMasterAdmin());
+    }
+
+    private function folderOptions(): array
+    {
+        return [
+            ['key' => 'inbox', 'label' => 'Inbox'],
+            ['key' => 'sent', 'label' => 'Sent'],
+            ['key' => 'drafts', 'label' => 'Drafts'],
+            ['key' => 'spam', 'label' => 'Spam'],
+            ['key' => 'trash', 'label' => 'Trash'],
+        ];
+    }
+
+    private function selectedFolder(Request $request): string
+    {
+        return $this->normalizeFolder((string) $request->query('folder', 'inbox'));
+    }
+
+    private function normalizeFolder(string $folder): string
+    {
+        $allowed = ['inbox', 'sent', 'drafts', 'spam', 'trash'];
+        $value = strtolower(trim($folder));
+
+        return in_array($value, $allowed, true) ? $value : 'inbox';
     }
 
     private function selectedHistoryEmail(Request $request): string
@@ -701,5 +937,66 @@ class MailInboxController extends Controller
         }
 
         return $value;
+    }
+
+    private function safeAttachmentFilename(string $filename): string
+    {
+        $value = trim($filename);
+        if ($value === '') {
+            return 'attachment.bin';
+        }
+
+        $value = preg_replace('/[\\\\\/\x00-\x1F\x7F]+/', '_', $value) ?: 'attachment.bin';
+        $value = trim($value, '. ');
+
+        return $value !== '' ? $value : 'attachment.bin';
+    }
+
+    private function mailboxRedirect(Request $request): RedirectResponse
+    {
+        $routeName = (string) $request->route()?->getName();
+        $inboxRoute = $this->resolveRoute($routeName, 'inbox');
+        $params = [];
+        $folder = $this->normalizeFolder((string) $request->input('folder', $request->query('folder', 'inbox')));
+        $historyEmail = strtolower(trim((string) $request->input('history_email', $request->query('history_email', ''))));
+
+        if ($folder !== 'inbox') {
+            $params['folder'] = $folder;
+        }
+        if ($historyEmail !== '' && str_contains($historyEmail, '@')) {
+            $params['history_email'] = $historyEmail;
+        }
+
+        return redirect()->route($inboxRoute, $params);
+    }
+
+    private function handleMoveAction(Request $request, string $message, string $targetFolder): RedirectResponse
+    {
+        $session = $this->mailSessionService->validateSession($request);
+        $password = $this->mailSessionService->decryptPassword($request);
+        $mailAccount = $session?->mailAccount;
+
+        if (! $this->canUseLiveMailbox($mailAccount, $password)) {
+            return $this->mailboxRedirect($request)->withErrors(['mail_action' => 'Mailbox session expired. Please login again.']);
+        }
+
+        $sourceFolder = $this->normalizeFolder((string) $request->input('folder', $request->query('folder', 'inbox')));
+        $moved = $this->imapInboxService->moveMessage(
+            $mailAccount,
+            (string) $password,
+            $message,
+            $sourceFolder,
+            $targetFolder
+        );
+
+        if (! $moved) {
+            return $this->mailboxRedirect($request)->withErrors(['mail_action' => 'Could not move the email.']);
+        }
+
+        if ($targetFolder === 'trash') {
+            return $this->mailboxRedirect($request)->with('status', 'Email moved to trash.');
+        }
+
+        return $this->mailboxRedirect($request)->with('status', 'Email restored to inbox.');
     }
 }

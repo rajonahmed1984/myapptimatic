@@ -367,6 +367,13 @@
                         @php
                             $hasApptimaticEmailRoute = \Illuminate\Support\Facades\Route::has('admin.apptimatic-email.inbox');
                             $isApptimaticEmailActive = $hasApptimaticEmailRoute && isActive('admin.apptimatic-email.*');
+                            $emailFolder = strtolower((string) request()->query('folder', 'inbox'));
+                            $composeRequested = (string) request()->query('compose', '') !== '';
+                            $isEmailComposeActive = request()->routeIs('admin.apptimatic-email.inbox') && $composeRequested;
+                            $isEmailInboxActive = request()->routeIs('admin.apptimatic-email.*') && ! $composeRequested && ($emailFolder === '' || $emailFolder === 'inbox');
+                            $isEmailSentActive = request()->routeIs('admin.apptimatic-email.*') && $emailFolder === 'sent';
+                            $isEmailDraftsActive = request()->routeIs('admin.apptimatic-email.*') && $emailFolder === 'drafts';
+                            $isEmailSpamActive = request()->routeIs('admin.apptimatic-email.*') && $emailFolder === 'spam';
                         @endphp
                         <div>
                             @if($hasApptimaticEmailRoute)
@@ -385,9 +392,21 @@
                             @endif
                             <div class="ml-8 mt-1 space-y-1 text-xs">
                                 @if($hasApptimaticEmailRoute)
-                                    <a href="{{ route('admin.apptimatic-email.inbox') }}" class="flex items-center gap-2 {{ activeIf(request()->routeIs('admin.apptimatic-email.*')) }}">
+                                    <a href="{{ route('admin.apptimatic-email.inbox', ['compose' => 'new']) }}" class="flex items-center gap-2 {{ activeIf($isEmailComposeActive) }}">
+                                        <span>Compose</span>
+                                    </a>
+                                    <a href="{{ route('admin.apptimatic-email.inbox') }}" class="flex items-center gap-2 {{ activeIf($isEmailInboxActive) }}">
                                         <span>Inbox</span>
                                         <span id="apptimatic-email-sidebar-unread" class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $adminHeaderStats['apptimatic_email_unread'] ?? 0 }}</span>
+                                    </a>
+                                    <a href="{{ route('admin.apptimatic-email.inbox', ['folder' => 'sent']) }}" class="flex items-center gap-2 {{ activeIf($isEmailSentActive) }}">
+                                        <span>Sent</span>
+                                    </a>
+                                    <a href="{{ route('admin.apptimatic-email.inbox', ['folder' => 'drafts']) }}" class="flex items-center gap-2 {{ activeIf($isEmailDraftsActive) }}">
+                                        <span>Drafts</span>
+                                    </a>
+                                    <a href="{{ route('admin.apptimatic-email.inbox', ['folder' => 'spam']) }}" class="flex items-center gap-2 {{ activeIf($isEmailSpamActive) }}">
+                                        <span>Spam</span>
                                     </a>
                                     @if(\Illuminate\Support\Facades\Route::has('admin.apptimatic-email.manage'))
                                         <a href="{{ route('admin.apptimatic-email.manage') }}" class="flex items-center gap-2 {{ activeIf(request()->routeIs('admin.apptimatic-email.manage')) }}">
@@ -395,11 +414,13 @@
                                         </a>
                                     @endif
                                 @else
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Compose</span>
                                     <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Inbox</span>
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Sent</span>
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Drafts</span>
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Spam</span>
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Manage</span>
                                 @endif
-                                <span class="block cursor-not-allowed text-slate-500/70" title="Coming soon">Sent</span>
-                                <span class="block cursor-not-allowed text-slate-500/70" title="Coming soon">Drafts</span>
-                                <span class="block cursor-not-allowed text-slate-500/70" title="Coming soon">Trash</span>
                             </div>
                         </div>
                     </div>
@@ -510,15 +531,60 @@
                             <span>Chat</span>
                             <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
                         </x-nav-link>
-                        @if(\Illuminate\Support\Facades\Route::has('employee.apptimatic-email.inbox'))
-                            <x-nav-link
-                                :href="route('employee.apptimatic-email.inbox')"
-                                routes="employee.apptimatic-email.*"
-                            >
-                                <span class="h-2 w-2 rounded-full bg-current"></span>
-                                <span>Apptimatic Email</span>
-                            </x-nav-link>
-                        @endif
+                        @php
+                            $hasEmployeeMailRoute = \Illuminate\Support\Facades\Route::has('employee.apptimatic-email.inbox');
+                            $employeeMailFolder = strtolower((string) request()->query('folder', 'inbox'));
+                            $employeeComposeRequested = (string) request()->query('compose', '') !== '';
+                            $isEmployeeMailActive = $hasEmployeeMailRoute && isActive('employee.apptimatic-email.*');
+                            $isEmployeeComposeActive = request()->routeIs('employee.apptimatic-email.inbox') && $employeeComposeRequested;
+                            $isEmployeeInboxActive = request()->routeIs('employee.apptimatic-email.*') && ! $employeeComposeRequested && ($employeeMailFolder === '' || $employeeMailFolder === 'inbox');
+                            $isEmployeeSentActive = request()->routeIs('employee.apptimatic-email.*') && $employeeMailFolder === 'sent';
+                            $isEmployeeDraftsActive = request()->routeIs('employee.apptimatic-email.*') && $employeeMailFolder === 'drafts';
+                            $isEmployeeSpamActive = request()->routeIs('employee.apptimatic-email.*') && $employeeMailFolder === 'spam';
+                        @endphp
+                        <div>
+                            @if($hasEmployeeMailRoute)
+                                <a
+                                    href="{{ route('employee.apptimatic-email.inbox') }}"
+                                    class="{{ $isEmployeeMailActive ? 'nav-link nav-link-active' : 'nav-link' }}"
+                                >
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    <span>Apptimatic Email</span>
+                                </a>
+                            @else
+                                <span class="nav-link cursor-not-allowed opacity-60" title="Module route unavailable">
+                                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                                    <span>Apptimatic Email</span>
+                                </span>
+                            @endif
+
+                            <div class="ml-8 mt-1 space-y-1 text-xs">
+                                @if($hasEmployeeMailRoute)
+                                    <a href="{{ route('employee.apptimatic-email.inbox', ['compose' => 'new']) }}" class="flex items-center gap-2 {{ activeIf($isEmployeeComposeActive) }}">
+                                        <span>Compose</span>
+                                    </a>
+                                    <a href="{{ route('employee.apptimatic-email.inbox') }}" class="flex items-center gap-2 {{ activeIf($isEmployeeInboxActive) }}">
+                                        <span>Inbox</span>
+                                        <span id="apptimatic-email-sidebar-unread" class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">0</span>
+                                    </a>
+                                    <a href="{{ route('employee.apptimatic-email.inbox', ['folder' => 'sent']) }}" class="flex items-center gap-2 {{ activeIf($isEmployeeSentActive) }}">
+                                        <span>Sent</span>
+                                    </a>
+                                    <a href="{{ route('employee.apptimatic-email.inbox', ['folder' => 'drafts']) }}" class="flex items-center gap-2 {{ activeIf($isEmployeeDraftsActive) }}">
+                                        <span>Drafts</span>
+                                    </a>
+                                    <a href="{{ route('employee.apptimatic-email.inbox', ['folder' => 'spam']) }}" class="flex items-center gap-2 {{ activeIf($isEmployeeSpamActive) }}">
+                                        <span>Spam</span>
+                                    </a>
+                                @else
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Compose</span>
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Inbox</span>
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Sent</span>
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Drafts</span>
+                                    <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Spam</span>
+                                @endif
+                            </div>
+                        </div>
                         @if($isEmployeeWorkSessionEligible)
                             <x-nav-link 
                                 :href="route('employee.timesheets.index')"
@@ -629,15 +695,60 @@
                                 <span>Chat</span>
                                 <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{{ $employeeHeaderStats['unread_chat'] ?? 0 }}</span>
                             </x-nav-link>
-                            @if(\Illuminate\Support\Facades\Route::has('employee.apptimatic-email.inbox'))
-                                <x-nav-link
-                                    :href="route('employee.apptimatic-email.inbox')"
-                                    routes="employee.apptimatic-email.*"
-                                >
-                                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                                    <span>Apptimatic Email</span>
-                                </x-nav-link>
-                            @endif
+                            @php
+                                $hasEmployeeMailRoute = \Illuminate\Support\Facades\Route::has('employee.apptimatic-email.inbox');
+                                $employeeMailFolder = strtolower((string) request()->query('folder', 'inbox'));
+                                $employeeComposeRequested = (string) request()->query('compose', '') !== '';
+                                $isEmployeeMailActive = $hasEmployeeMailRoute && isActive('employee.apptimatic-email.*');
+                                $isEmployeeComposeActive = request()->routeIs('employee.apptimatic-email.inbox') && $employeeComposeRequested;
+                                $isEmployeeInboxActive = request()->routeIs('employee.apptimatic-email.*') && ! $employeeComposeRequested && ($employeeMailFolder === '' || $employeeMailFolder === 'inbox');
+                                $isEmployeeSentActive = request()->routeIs('employee.apptimatic-email.*') && $employeeMailFolder === 'sent';
+                                $isEmployeeDraftsActive = request()->routeIs('employee.apptimatic-email.*') && $employeeMailFolder === 'drafts';
+                                $isEmployeeSpamActive = request()->routeIs('employee.apptimatic-email.*') && $employeeMailFolder === 'spam';
+                            @endphp
+                            <div>
+                                @if($hasEmployeeMailRoute)
+                                    <a
+                                        href="{{ route('employee.apptimatic-email.inbox') }}"
+                                        class="{{ $isEmployeeMailActive ? 'nav-link nav-link-active' : 'nav-link' }}"
+                                    >
+                                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                                        <span>Apptimatic Email</span>
+                                    </a>
+                                @else
+                                    <span class="nav-link cursor-not-allowed opacity-60" title="Module route unavailable">
+                                        <span class="h-2 w-2 rounded-full bg-current"></span>
+                                        <span>Apptimatic Email</span>
+                                    </span>
+                                @endif
+
+                                <div class="ml-8 mt-1 space-y-1 text-xs">
+                                    @if($hasEmployeeMailRoute)
+                                        <a href="{{ route('employee.apptimatic-email.inbox', ['compose' => 'new']) }}" class="flex items-center gap-2 {{ activeIf($isEmployeeComposeActive) }}">
+                                            <span>Compose</span>
+                                        </a>
+                                        <a href="{{ route('employee.apptimatic-email.inbox') }}" class="flex items-center gap-2 {{ activeIf($isEmployeeInboxActive) }}">
+                                            <span>Inbox</span>
+                                            <span id="apptimatic-email-sidebar-unread" class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">0</span>
+                                        </a>
+                                        <a href="{{ route('employee.apptimatic-email.inbox', ['folder' => 'sent']) }}" class="flex items-center gap-2 {{ activeIf($isEmployeeSentActive) }}">
+                                            <span>Sent</span>
+                                        </a>
+                                        <a href="{{ route('employee.apptimatic-email.inbox', ['folder' => 'drafts']) }}" class="flex items-center gap-2 {{ activeIf($isEmployeeDraftsActive) }}">
+                                            <span>Drafts</span>
+                                        </a>
+                                        <a href="{{ route('employee.apptimatic-email.inbox', ['folder' => 'spam']) }}" class="flex items-center gap-2 {{ activeIf($isEmployeeSpamActive) }}">
+                                            <span>Spam</span>
+                                        </a>
+                                    @else
+                                        <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Compose</span>
+                                        <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Inbox</span>
+                                        <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Sent</span>
+                                        <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Drafts</span>
+                                        <span class="block cursor-not-allowed text-slate-500/70" title="Module route unavailable">Spam</span>
+                                    @endif
+                                </div>
+                            </div>
                             @if($isEmployeeWorkSessionEligible)
                                 <x-nav-link 
                                     :href="route('employee.timesheets.index')"
