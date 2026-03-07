@@ -56,9 +56,10 @@ class LicenseRealtimeCheckService
         }
 
         $customerId = $customer->id;
-        $isAccessBlocked = array_key_exists($customerId, $accessBlockedCustomers)
-            ? (bool) $accessBlockedCustomers[$customerId]
-            : $this->accessBlockService->isCustomerBlocked($customer, true);
+        $scopeKey = $customerId.':'.(string) ($license->subscription_id ?? 0);
+        $isAccessBlocked = array_key_exists($scopeKey, $accessBlockedCustomers)
+            ? (bool) $accessBlockedCustomers[$scopeKey]
+            : $this->accessBlockService->isCustomerBlocked($customer, true, $license->subscription_id);
 
         if ($autoSuspendOverrideActive && $isAccessBlocked) {
             $isAccessBlocked = false;

@@ -7,7 +7,6 @@ use App\Jobs\EvaluateLicenseRiskJob;
 use App\Models\Invoice;
 use App\Models\License;
 use App\Models\LicenseDomain;
-use App\Models\Setting;
 use App\Events\LicenseBlocked;
 use App\Events\LicenseVerified;
 use Carbon\Carbon;
@@ -26,10 +25,7 @@ class LicenseVerificationController extends Controller
     public function verify(Request $request)
     {
         $requestId = (string) Str::uuid();
-        $signatureValid = (bool) $request->attributes->get('api_signature_valid', false);
         $includeSensitive = (bool) env('COMPAT_LEGACY_LICENSE_RESPONSE', true);
-        $autoBindOverride = env('AUTO_BIND_DOMAINS_ENABLED');
-        $requireSignedBind = (bool) env('AUTO_BIND_REQUIRE_SIGNATURE', false);
 
         $data = $request->validate([
             'license_key' => ['required', 'string'],
@@ -120,79 +116,53 @@ class LicenseVerificationController extends Controller
             }
         }
 
-        $activeDomain = LicenseDomain::query()
+        $activeDomains = LicenseDomain::query()
             ->where('license_id', $license->id)
             ->where('status', 'active')
             ->orderBy('id')
-            ->first();
+            ->get();
 
-        if ($activeDomain) {
-            $extraIds = LicenseDomain::query()
-                ->where('license_id', $license->id)
-                ->where('status', 'active')
-                ->where('id', '!=', $activeDomain->id)
-                ->pluck('id');
-
-            if ($extraIds->isNotEmpty()) {
-                LicenseDomain::query()
-                    ->whereIn('id', $extraIds)
-                    ->update(['status' => 'revoked']);
-            }
-
-            if (strtolower($activeDomain->domain) !== $domain) {
-                $decision = 'block';
-                $reason = 'domain_not_allowed';
-                $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request);
-
-                return $this->blockedResponse($reason, [], $requestId);
-            }
-
-            $activeDomain->update([
-                'last_seen_at' => Carbon::now(),
+        if ($activeDomains->isEmpty()) {
+            $decision = 'block';
+            $reason = 'domain_not_allowed';
+            $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request, [
+                'domain_not_bound' => true,
             ]);
-        } else {
-            $autoBindSetting = (bool) Setting::getValue('auto_bind_domains');
-            $autoBind = is_null($autoBindOverride) ? $autoBindSetting : (bool) $autoBindOverride;
 
-            if (! $autoBind) {
-                $decision = 'block';
-                $reason = 'domain_not_allowed';
-                $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request);
-
-                return $this->blockedResponse($reason, [], $requestId);
-            }
-
-            if ($requireSignedBind && ! $signatureValid) {
-                $decision = 'block';
-                $reason = 'domain_not_allowed';
-                $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request);
-
-                return $this->blockedResponse($reason);
-            }
-
-            $existingDomain = LicenseDomain::query()
-                ->where('license_id', $license->id)
-                ->where('domain', $domain)
-                ->first();
-
-            if ($existingDomain) {
-                $existingDomain->update([
-                    'status' => 'active',
-                    'verified_at' => Carbon::now(),
-                    'last_seen_at' => Carbon::now(),
-                ]);
-            } else {
-                LicenseDomain::create([
-                    'license_id' => $license->id,
-                    'domain' => $domain,
-                    'status' => 'active',
-                    'verified_at' => Carbon::now(),
-                    'last_seen_at' => Carbon::now(),
-                ]);
-            }
+            return $this->blockedResponse($reason, [], $requestId);
         }
 
-        $invoiceBlock = $this->accessBlockService->invoiceBlockStatus($customer, true);
+        $matchedDomain = $activeDomains->first(function (LicenseDomain $item) use ($domain) {
+            return strtolower((string) $item->domain) === $domain;
+        });
+
+        if (! $matchedDomain) {
+            $decision = 'block';
+            $reason = 'domain_not_allowed';
+            $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request);
+
+            return $this->blockedResponse($reason, [], $requestId);
+        }
+
+        $extraIds = $activeDomains
+            ->where('id', '!=', $matchedDomain->id)
+            ->pluck('id');
+
+        if ($extraIds->isNotEmpty()) {
+            LicenseDomain::query()
+                ->whereIn('id', $extraIds)
+                ->update(['status' => 'revoked']);
+        }
+
+        $matchedDomain->update([
+            'last_seen_at' => Carbon::now(),
+        ]);
+
+        $invoiceBlock = $this->accessBlockService->invoiceBlockStatus(
+            $customer,
+            true,
+            $license->subscription_id
+        );
         $invoiceBlock['auto_suspend_override_until'] = $autoSuspendOverrideUntil;
         $invoiceBlock['auto_suspend_override_active'] = $autoSuspendOverrideActive;
 

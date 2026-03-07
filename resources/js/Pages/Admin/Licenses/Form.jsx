@@ -7,7 +7,9 @@ export default function Form({ pageTitle = 'License', is_edit = false, products 
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
     const currentStatus = String(fields?.status || '').toLowerCase();
-    const canSuspendNow = is_edit && Boolean(routes?.suspend) && !['suspended', 'revoked'].includes(currentStatus);
+    const canSuspendNow = is_edit && Boolean(routes?.suspend) && currentStatus !== 'revoked';
+    const canUnsuspendNow = is_edit && Boolean(routes?.unsuspend) && currentStatus !== 'revoked';
+    const canManageImmediateStatus = is_edit && currentStatus !== 'revoked' && (Boolean(routes?.suspend) || Boolean(routes?.unsuspend));
 
     return (
         <>
@@ -83,29 +85,30 @@ export default function Form({ pageTitle = 'License', is_edit = false, products 
                         </div>
                     </div>
 
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700">Override Auto-Suspend until</label>
-                        <input
-                            type="date"
-                            name="auto_suspend_override_until"
-                            defaultValue={fields?.auto_suspend_override_until || ''}
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 md:w-72"
-                        />
-                        <p className="mt-1 text-xs text-slate-500">
-                            If set, this license will stay active until the selected date and automation will skip auto-suspend.
-                        </p>
-                        {errors?.auto_suspend_override_until ? <p className="mt-1 text-xs text-rose-600">{errors.auto_suspend_override_until}</p> : null}
-                    </div>
-
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700">Allowed Domain</label>
-                        <input
-                            name="allowed_domains"
-                            defaultValue={fields?.allowed_domains || ''}
-                            placeholder="example.com"
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                        />
-                        {errors?.allowed_domains ? <p className="mt-1 text-xs text-rose-600">{errors.allowed_domains}</p> : null}
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-slate-700">Override Auto-Suspend until</label>
+                            <input
+                                type="date"
+                                name="auto_suspend_override_until"
+                                defaultValue={fields?.auto_suspend_override_until || ''}
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                            />
+                            <p className="mt-1 text-xs text-slate-500">
+                                If set, this license will stay active until the selected date and automation will skip auto-suspend.
+                            </p>
+                            {errors?.auto_suspend_override_until ? <p className="mt-1 text-xs text-rose-600">{errors.auto_suspend_override_until}</p> : null}
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-slate-700">Allowed Domain</label>
+                            <input
+                                name="allowed_domains"
+                                defaultValue={fields?.allowed_domains || ''}
+                                placeholder="example.com"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                            />
+                            {errors?.allowed_domains ? <p className="mt-1 text-xs text-rose-600">{errors.allowed_domains}</p> : null}
+                        </div>
                     </div>
 
                     <div>
@@ -123,27 +126,48 @@ export default function Form({ pageTitle = 'License', is_edit = false, products 
                     </div>
                 </form>
 
-                {canSuspendNow ? (
+                {canManageImmediateStatus ? (
                     <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
                         <div className="mb-2 text-sm font-semibold text-rose-800">Immediate Suspend</div>
                         <p className="mb-3 text-xs text-rose-700">
-                            Use this to suspend the license right now without waiting for automation.
+                            Use these actions to change the license status immediately without waiting for automation.
                         </p>
-                        <form
-                            action={routes?.suspend}
-                            method="POST"
-                            data-native="true"
-                            onSubmit={(event) => {
-                                if (!window.confirm('Suspend this license now?')) {
-                                    event.preventDefault();
-                                }
-                            }}
-                        >
-                            <input type="hidden" name="_token" value={csrf} />
-                            <button type="submit" className="rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100">
-                                Suspend License
-                            </button>
-                        </form>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {canSuspendNow ? (
+                                <form
+                                    action={routes?.suspend}
+                                    method="POST"
+                                    data-native="true"
+                                    onSubmit={(event) => {
+                                        if (!window.confirm('Suspend this license now?')) {
+                                            event.preventDefault();
+                                        }
+                                    }}
+                                >
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <button type="submit" className="rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100">
+                                        Suspend License
+                                    </button>
+                                </form>
+                            ) : null}
+                            {canUnsuspendNow ? (
+                                <form
+                                    action={routes?.unsuspend}
+                                    method="POST"
+                                    data-native="true"
+                                    onSubmit={(event) => {
+                                        if (!window.confirm('Unsuspend this license now?')) {
+                                            event.preventDefault();
+                                        }
+                                    }}
+                                >
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <button type="submit" className="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
+                                        Unsuspend License
+                                    </button>
+                                </form>
+                            ) : null}
+                        </div>
                     </div>
                 ) : null}
 

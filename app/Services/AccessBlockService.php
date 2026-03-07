@@ -13,7 +13,11 @@ class AccessBlockService
     /**
      * Return the latest invoice block status for the provided customer.
      */
-    public function invoiceBlockStatus(?Customer $customer, bool $strictLicenseOverdue = false): array
+    public function invoiceBlockStatus(
+        ?Customer $customer,
+        bool $strictLicenseOverdue = false,
+        ?int $subscriptionId = null
+    ): array
     {
         if (! $customer) {
             return $this->emptyStatus();
@@ -30,6 +34,10 @@ class AccessBlockService
         $invoiceQuery = Invoice::query()
             ->with('customer')
             ->where('customer_id', $customer->id);
+
+        if ($subscriptionId !== null) {
+            $invoiceQuery->where('subscription_id', $subscriptionId);
+        }
 
         $invoice = null;
 
@@ -57,9 +65,13 @@ class AccessBlockService
     /**
      * Determine if the provided customer is currently access blocked.
      */
-    public function isCustomerBlocked(?Customer $customer, bool $strictLicenseOverdue = false): bool
+    public function isCustomerBlocked(
+        ?Customer $customer,
+        bool $strictLicenseOverdue = false,
+        ?int $subscriptionId = null
+    ): bool
     {
-        return $this->invoiceBlockStatus($customer, $strictLicenseOverdue)['blocked'];
+        return $this->invoiceBlockStatus($customer, $strictLicenseOverdue, $subscriptionId)['blocked'];
     }
 
     private function buildStatus(Invoice $invoice, int $graceDays, bool $strictLicenseOverdue): array

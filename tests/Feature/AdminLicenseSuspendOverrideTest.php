@@ -36,7 +36,7 @@ class AdminLicenseSuspendOverrideTest extends TestCase
                 'starts_at' => $license->starts_at->toDateString(),
                 'expires_at' => $license->expires_at?->toDateString(),
                 'auto_suspend_override_until' => $overrideDate,
-                'allowed_domains' => '',
+                'allowed_domains' => 'example.com',
                 'notes' => 'Override enabled for urgent grace period.',
             ]);
 

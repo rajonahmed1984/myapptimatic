@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -69,9 +70,14 @@ class LicenseController extends Controller
         foreach ($licenses as $license) {
             $customer = $license->subscription?->customer;
             $customerId = $customer?->id;
+            $scopeKey = $customerId ? ($customerId.':'.(string) ($license->subscription_id ?? 0)) : null;
 
-            if ($customerId && ! array_key_exists($customerId, $accessBlockedCustomers)) {
-                $accessBlockedCustomers[$customerId] = $this->accessBlockService->isCustomerBlocked($customer, true);
+            if ($scopeKey && ! array_key_exists($scopeKey, $accessBlockedCustomers)) {
+                $accessBlockedCustomers[$scopeKey] = $this->accessBlockService->isCustomerBlocked(
+                    $customer,
+                    true,
+                    $license->subscription_id
+                );
             }
 
             $realtimeChecks[$license->id] = $this->licenseRealtimeCheckService->evaluate($license, $accessBlockedCustomers);
@@ -109,7 +115,7 @@ class LicenseController extends Controller
             'starts_at' => ['required', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'auto_suspend_override_until' => ['nullable', 'date'],
-            'allowed_domains' => ['nullable', 'string'],
+            'allowed_domains' => ['required', 'string'],
             'notes' => ['nullable', 'string'],
         ]);
 
@@ -122,7 +128,15 @@ class LicenseController extends Controller
                 ->withInput();
         }
 
-        if ($allowedDomain && ! $this->normalizeDomain($allowedDomain)) {
+        if (! $allowedDomain) {
+            return back()
+                ->withErrors(['allowed_domains' => 'Allowed domain is required.'])
+                ->withInput();
+        }
+
+        $normalizedDomain = $this->normalizeDomain($allowedDomain);
+
+        if (! $normalizedDomain) {
             return back()
                 ->withErrors(['allowed_domains' => 'Invalid domain format. Use only the hostname.'])
                 ->withInput();
@@ -143,7 +157,7 @@ class LicenseController extends Controller
         if ($allowedDomain) {
             LicenseDomain::create([
                 'license_id' => $license->id,
-                'domain' => $this->normalizeDomain($allowedDomain),
+                'domain' => $normalizedDomain,
                 'status' => 'active',
                 'verified_at' => Carbon::now(),
             ]);
@@ -175,13 +189,11 @@ class LicenseController extends Controller
             'starts_at' => ['required', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'auto_suspend_override_until' => ['nullable', 'date'],
-            'allowed_domains' => ['nullable', 'string'],
+            'allowed_domains' => ['required', 'string'],
             'notes' => ['nullable', 'string'],
         ]);
 
         $data['max_domains'] = 1;
-
-        $license->update($data);
 
         $domainInput = $this->extractSingleDomain($data['allowed_domains'] ?? null);
 
@@ -191,32 +203,36 @@ class LicenseController extends Controller
                 ->withInput();
         }
 
-        if ($domainInput) {
-            $domain = $this->normalizeDomain($domainInput);
-
-            if (! $domain) {
-                return back()
-                    ->withErrors(['allowed_domains' => 'Invalid domain format. Use only the hostname or full URL.'])
-                    ->withInput();
-            }
-
-            LicenseDomain::updateOrCreate(
-                [
-                    'license_id' => $license->id,
-                    'domain' => $domain,
-                ],
-                [
-                    'status' => 'active',
-                    'verified_at' => Carbon::now(),
-                ]
-            );
-
-            $license->domains()
-                ->where('domain', '!=', $domain)
-                ->update(['status' => 'revoked']);
-        } else {
-            $license->domains()->update(['status' => 'revoked']);
+        if (! $domainInput) {
+            return back()
+                ->withErrors(['allowed_domains' => 'Allowed domain is required.'])
+                ->withInput();
         }
+
+        $domain = $this->normalizeDomain($domainInput);
+
+        if (! $domain) {
+            return back()
+                ->withErrors(['allowed_domains' => 'Invalid domain format. Use only the hostname or full URL.'])
+                ->withInput();
+        }
+
+        $license->update($data);
+
+        LicenseDomain::updateOrCreate(
+            [
+                'license_id' => $license->id,
+                'domain' => $domain,
+            ],
+            [
+                'status' => 'active',
+                'verified_at' => Carbon::now(),
+            ]
+        );
+
+        $license->domains()
+            ->where('domain', '!=', $domain)
+            ->update(['status' => 'revoked']);
 
         return redirect()->route('admin.licenses.edit', $license)
             ->with('status', 'License updated.');
@@ -251,6 +267,23 @@ class LicenseController extends Controller
 
         return redirect()->route('admin.licenses.edit', $license)
             ->with('status', 'License suspended.');
+    }
+
+    public function unsuspend(License $license)
+    {
+        $this->authorize('update', $license);
+
+        if ((string) $license->status === 'revoked') {
+            return redirect()->route('admin.licenses.edit', $license)
+                ->withErrors(['status' => 'Revoked licenses cannot be unsuspended.']);
+        }
+
+        if ((string) $license->status === 'suspended') {
+            $license->update(['status' => 'active']);
+        }
+
+        return redirect()->route('admin.licenses.edit', $license)
+            ->with('status', 'License unsuspended.');
     }
 
     public function destroy(License $license)
@@ -500,7 +533,12 @@ class LicenseController extends Controller
             ],
             'routes' => [
                 'index' => route('admin.licenses.index'),
-                'suspend' => $license ? route('admin.licenses.suspend', $license) : null,
+                'suspend' => ($license && Route::has('admin.licenses.suspend'))
+                    ? route('admin.licenses.suspend', $license)
+                    : null,
+                'unsuspend' => ($license && Route::has('admin.licenses.unsuspend'))
+                    ? route('admin.licenses.unsuspend', $license)
+                    : null,
             ],
         ];
     }

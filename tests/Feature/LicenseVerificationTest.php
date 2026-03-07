@@ -97,12 +97,6 @@ class LicenseVerificationTest extends TestCase
 
         [$customer, $subscription, $license] = $this->createLicenseSetup();
 
-        LicenseDomain::create([
-            'license_id' => $license->id,
-            'domain' => 'example.com',
-            'status' => 'active',
-        ]);
-
         $response = $this->postJson(route('api.licenses.verify'), [
             'license_key' => $license->license_key,
             'domain' => 'other.com',
@@ -117,11 +111,16 @@ class LicenseVerificationTest extends TestCase
     }
 
     #[Test]
-    public function auto_bind_adds_domain_when_allowed(): void
+    public function domain_must_be_prebound_before_verification(): void
     {
         Setting::setValue('auto_bind_domains', 1);
 
-        [$customer, $subscription, $license] = $this->createLicenseSetup();
+        [$customer, $subscription, $license] = $this->createLicenseSetup(
+            [],
+            [],
+            [],
+            null
+        );
 
         $response = $this->postJson(route('api.licenses.verify'), [
             'license_key' => $license->license_key,
@@ -130,12 +129,12 @@ class LicenseVerificationTest extends TestCase
 
         $response->assertOk();
         $response->assertJson([
-            'status' => 'active',
-            'blocked' => false,
-            'domain' => 'example.com',
+            'status' => 'blocked',
+            'blocked' => true,
+            'reason' => 'domain_not_allowed',
         ]);
 
-        $this->assertDatabaseHas('license_domains', [
+        $this->assertDatabaseMissing('license_domains', [
             'license_id' => $license->id,
             'domain' => 'example.com',
             'status' => 'active',
@@ -154,6 +153,7 @@ class LicenseVerificationTest extends TestCase
 
         Invoice::create([
             'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
             'number' => 'INV-DUE-DETAILS-1',
             'status' => 'unpaid',
             'issue_date' => now()->toDateString(),
@@ -197,6 +197,7 @@ class LicenseVerificationTest extends TestCase
 
         Invoice::create([
             'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
             'number' => 'INV-OVERDUE-1',
             'status' => 'overdue',
             'issue_date' => now()->subDays(10)->toDateString(),
@@ -222,6 +223,49 @@ class LicenseVerificationTest extends TestCase
     }
 
     #[Test]
+    public function overdue_invoice_from_other_subscription_does_not_block_license_verification(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup();
+
+        $otherSubscription = Subscription::create([
+            'customer_id' => $customer->id,
+            'plan_id' => $subscription->plan_id,
+            'status' => 'active',
+            'start_date' => now()->toDateString(),
+            'current_period_start' => now()->toDateString(),
+            'current_period_end' => now()->addMonth()->toDateString(),
+            'next_invoice_at' => now()->addMonth()->toDateString(),
+        ]);
+
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $otherSubscription->id,
+            'number' => 'INV-OTHER-SUB-OVERDUE-1',
+            'status' => 'overdue',
+            'issue_date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDays(3)->toDateString(),
+            'subtotal' => 120,
+            'late_fee' => 0,
+            'total' => 120,
+            'currency' => 'USD',
+            'type' => 'project_initial_payment',
+        ]);
+
+        $response = $this->postJson(route('api.licenses.verify'), [
+            'license_key' => $license->license_key,
+            'domain' => 'example.com',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'active',
+            'blocked' => false,
+        ]);
+    }
+
+    #[Test]
     public function overdue_notice_message_escalates_and_highlight_strengthens(): void
     {
         Setting::setValue('auto_bind_domains', 1);
@@ -230,6 +274,7 @@ class LicenseVerificationTest extends TestCase
 
         $invoice = Invoice::create([
             'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
             'number' => 'INV-OVERDUE-ESCALATION-1',
             'status' => 'overdue',
             'issue_date' => now()->subDays(10)->toDateString(),
@@ -297,6 +342,7 @@ class LicenseVerificationTest extends TestCase
 
         Invoice::create([
             'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
             'number' => 'INV-OVERRIDE-KEEP-ACTIVE-1',
             'status' => 'overdue',
             'issue_date' => now()->subDays(8)->toDateString(),
@@ -337,6 +383,7 @@ class LicenseVerificationTest extends TestCase
 
         Invoice::create([
             'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
             'number' => 'INV-DUE-NO-AMOUNT-1',
             'status' => 'unpaid',
             'issue_date' => now()->toDateString(),
@@ -437,7 +484,8 @@ class LicenseVerificationTest extends TestCase
     private function createLicenseSetup(
         array $customerOverrides = [],
         array $subscriptionOverrides = [],
-        array $licenseOverrides = []
+        array $licenseOverrides = [],
+        ?string $activeDomain = 'example.com'
     ): array {
         $product = Product::create([
             'name' => 'Test Product',
@@ -478,6 +526,15 @@ class LicenseVerificationTest extends TestCase
             'starts_at' => now()->toDateString(),
             'expires_at' => now()->addDays(30)->toDateString(),
         ], $licenseOverrides));
+
+        if ($activeDomain !== null) {
+            LicenseDomain::create([
+                'license_id' => $license->id,
+                'domain' => strtolower($activeDomain),
+                'status' => 'active',
+                'verified_at' => now(),
+            ]);
+        }
 
         return [$customer, $subscription, $license];
     }
