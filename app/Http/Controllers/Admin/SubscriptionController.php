@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\License;
+use App\Models\LicenseDomain;
 use App\Models\Plan;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
@@ -111,7 +113,12 @@ class SubscriptionController extends Controller
 
     public function edit(Request $request, Subscription $subscription): InertiaResponse
     {
-        $subscription = $subscription->load(['customer', 'plan.product']);
+        $subscription = $subscription->load([
+            'customer',
+            'plan.product',
+            'licenses.product',
+            'licenses.domains',
+        ]);
         $customers = Customer::query()->orderBy('name')->get();
         $plans = Plan::query()->with('product')->orderBy('name')->get();
         $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
@@ -201,8 +208,14 @@ class SubscriptionController extends Controller
                     'paid_date' => $invoice->paid_at?->format($dateFormat) ?? '--',
                     'total_display' => trim((string) (((string) ($invoice->currency ?? '') ? ((string) ($invoice->currency ?? '')).' ' : '').number_format((float) ($invoice->total ?? 0), 2))),
                     'commission_display' => $commissionDisplay,
+                    'can_record_payment' => (string) ($invoice->status ?? '') !== 'paid',
                     'show_url' => route('admin.invoices.show', $invoice),
                     'edit_url' => route('admin.invoices.show', $invoice),
+                    'payment_url' => route('admin.accounting.create', [
+                        'type' => 'payment',
+                        'invoice_id' => $invoice->id,
+                        'scope' => 'ledger',
+                    ]),
                     'destroy_url' => route('admin.invoices.destroy', $invoice),
                 ];
             })->values()->all(),
@@ -401,6 +414,7 @@ class SubscriptionController extends Controller
         Collection $salesReps
     ): array {
         $isEdit = $subscription !== null;
+        $oldLicenseInput = old('license', []);
         $effectiveSubscriptionAmount = $subscription
             ? (float) ($subscription->subscription_amount ?? $subscription->plan?->price ?? 0)
             : 0.0;
@@ -455,9 +469,116 @@ class SubscriptionController extends Controller
                     'notes' => (string) old('notes', (string) ($subscription?->notes ?? '')),
                 ],
             ],
+            'license_manager' => $this->licenseManagerInertiaProps($subscription, $oldLicenseInput),
             'routes' => [
                 'index' => route('admin.subscriptions.index'),
             ],
+        ];
+    }
+
+    private function licenseManagerInertiaProps(?Subscription $subscription, mixed $oldLicenseInput): array
+    {
+        if (! $subscription) {
+            return [
+                'product' => null,
+                'create' => null,
+                'licenses' => [],
+            ];
+        }
+
+        $product = $subscription->plan?->product;
+        $oldLicense = is_array($oldLicenseInput) ? $oldLicenseInput : [];
+        $oldMode = (string) ($oldLicense['mode'] ?? '');
+        $oldLicenseId = (string) ($oldLicense['id'] ?? '');
+        $defaultStartDate = $subscription->current_period_start?->toDateString()
+            ?? $subscription->start_date?->toDateString()
+            ?? now()->toDateString();
+        $defaultExpiryDate = $subscription->current_period_end?->toDateString() ?? '';
+        $subscriptionLabel = sprintf(
+            '#%d - %s%s',
+            $subscription->id,
+            (string) ($subscription->customer?->name ?? 'Unknown customer'),
+            $subscription->plan?->name ? ' ('.$subscription->plan->name.')' : ''
+        );
+
+        return [
+            'product' => $product ? [
+                'id' => $product->id,
+                'name' => (string) $product->name,
+            ] : null,
+            'subscription' => [
+                'id' => $subscription->id,
+                'label' => $subscriptionLabel,
+            ],
+            'create' => [
+                'enabled' => $product !== null,
+                'error_bag' => 'licenseCreate',
+                'subscription_label' => $subscriptionLabel,
+                'product_name' => (string) ($product?->name ?? ''),
+                'fields' => [
+                    'subscription_id' => (string) ($oldLicense['subscription_id'] ?? $subscription->id),
+                    'product_id' => (string) ($oldLicense['product_id'] ?? ($product?->id ?? '')),
+                    'license_key' => (string) ($oldLicense['license_key'] ?? ''),
+                    'status' => (string) ($oldLicense['status'] ?? 'active'),
+                    'starts_at' => (string) ($oldLicense['starts_at'] ?? $defaultStartDate),
+                    'expires_at' => (string) ($oldLicense['expires_at'] ?? $defaultExpiryDate),
+                    'auto_suspend_override_until' => (string) ($oldLicense['auto_suspend_override_until'] ?? ''),
+                    'allowed_domains' => (string) ($oldLicense['allowed_domains'] ?? ''),
+                    'notes' => (string) ($oldLicense['notes'] ?? ''),
+                ],
+                'form' => [
+                    'action' => route('admin.licenses.store'),
+                    'method' => 'POST',
+                ],
+            ],
+            'licenses' => $subscription->licenses
+                ->sortByDesc('id')
+                ->values()
+                ->map(function (License $license) use ($oldLicense, $oldLicenseId, $oldMode, $subscriptionLabel) {
+                    $activeDomain = $license->domains->firstWhere('status', 'active')?->domain
+                        ?? $license->domains->first()?->domain;
+                    $useOldValues = $oldMode === 'edit' && $oldLicenseId !== '' && $oldLicenseId === (string) $license->id;
+
+                    return [
+                        'id' => $license->id,
+                        'subscription_label' => $subscriptionLabel,
+                        'product_name' => (string) ($license->product?->name ?? $license->subscription?->plan?->product?->name ?? 'Product'),
+                        'error_bag' => 'licenseEdit'.$license->id,
+                        'fields' => [
+                            'subscription_id' => (string) ($useOldValues ? ($oldLicense['subscription_id'] ?? $license->subscription_id) : $license->subscription_id),
+                            'product_id' => (string) ($useOldValues ? ($oldLicense['product_id'] ?? $license->product_id) : $license->product_id),
+                            'license_key' => (string) ($useOldValues ? ($oldLicense['license_key'] ?? $license->license_key) : $license->license_key),
+                            'status' => (string) ($useOldValues ? ($oldLicense['status'] ?? $license->status) : $license->status),
+                            'starts_at' => (string) ($useOldValues ? ($oldLicense['starts_at'] ?? $license->starts_at?->toDateString()) : ($license->starts_at?->toDateString() ?? '')),
+                            'expires_at' => (string) ($useOldValues ? ($oldLicense['expires_at'] ?? $license->expires_at?->toDateString()) : ($license->expires_at?->toDateString() ?? '')),
+                            'auto_suspend_override_until' => (string) ($useOldValues
+                                ? ($oldLicense['auto_suspend_override_until'] ?? $license->auto_suspend_override_until?->toDateString())
+                                : ($license->auto_suspend_override_until?->toDateString() ?? '')),
+                            'allowed_domains' => (string) ($useOldValues ? ($oldLicense['allowed_domains'] ?? $activeDomain) : ($activeDomain ?? '')),
+                            'notes' => (string) ($useOldValues ? ($oldLicense['notes'] ?? $license->notes) : ($license->notes ?? '')),
+                        ],
+                        'form' => [
+                            'action' => route('admin.licenses.update', $license),
+                            'method' => 'PUT',
+                        ],
+                        'routes' => [
+                            'suspend' => route('admin.licenses.suspend', $license),
+                            'unsuspend' => route('admin.licenses.unsuspend', $license),
+                        ],
+                        'domains' => $license->domains->map(function (LicenseDomain $domain) use ($license) {
+                            return [
+                                'id' => $domain->id,
+                                'domain' => (string) $domain->domain,
+                                'status' => (string) $domain->status,
+                                'status_label' => ucfirst((string) $domain->status),
+                                'can_revoke' => $domain->status !== 'revoked',
+                                'routes' => [
+                                    'revoke' => route('admin.licenses.domains.revoke', [$license, $domain]),
+                                ],
+                            ];
+                        })->values()->all(),
+                    ];
+                })->all(),
         ];
     }
 

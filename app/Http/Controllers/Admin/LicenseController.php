@@ -5,16 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\License;
 use App\Models\LicenseDomain;
-use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\AccessBlockService;
 use App\Services\LicenseRealtimeCheckService;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -94,52 +94,31 @@ class LicenseController extends Controller
         );
     }
 
-    public function create(): InertiaResponse
+    public function create(): RedirectResponse
     {
-        $products = Product::query()->orderBy('name')->get();
-        $subscriptions = Subscription::query()->with('customer')->orderBy('id', 'desc')->get();
-
-        return Inertia::render(
-            'Admin/Licenses/Form',
-            $this->formInertiaProps(null, $products, $subscriptions)
-        );
+        return redirect()->route('admin.subscriptions.index')
+            ->with('status', 'Open a subscription and use the Licenses section to create a new license.');
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'subscription_id' => ['required', 'exists:subscriptions,id'],
-            'product_id' => ['required', 'exists:products,id'],
-            'license_key' => ['nullable', 'string', 'max:255', 'unique:licenses,license_key'],
-            'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
-            'starts_at' => ['required', 'date'],
-            'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'auto_suspend_override_until' => ['nullable', 'date'],
-            'allowed_domains' => ['required', 'string'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $data = $this->validatedLicenseData($request, false);
 
         $licenseKey = $data['license_key'] ?: License::generateKey();
         $allowedDomain = $this->extractSingleDomain($data['allowed_domains'] ?? null);
 
         if ($allowedDomain === false) {
-            return back()
-                ->withErrors(['allowed_domains' => 'Only one domain is allowed per license.'])
-                ->withInput();
+            return $this->backWithLicenseFormError($request, 'allowed_domains', 'Only one domain is allowed per license.');
         }
 
         if (! $allowedDomain) {
-            return back()
-                ->withErrors(['allowed_domains' => 'Allowed domain is required.'])
-                ->withInput();
+            return $this->backWithLicenseFormError($request, 'allowed_domains', 'Allowed domain is required.');
         }
 
         $normalizedDomain = $this->normalizeDomain($allowedDomain);
 
         if (! $normalizedDomain) {
-            return back()
-                ->withErrors(['allowed_domains' => 'Invalid domain format. Use only the hostname.'])
-                ->withInput();
+            return $this->backWithLicenseFormError($request, 'allowed_domains', 'Invalid domain format. Use only the hostname.');
         }
 
         $license = License::create([
@@ -163,58 +142,36 @@ class LicenseController extends Controller
             ]);
         }
 
-        return redirect()->route('admin.licenses.edit', $license)
-            ->with('status', 'License created.');
+        return $this->redirectAfterLicenseAction($request, $license, 'License created.');
     }
 
-    public function edit(License $license): InertiaResponse
+    public function edit(License $license): RedirectResponse
     {
-        $license = $license->load(['product', 'subscription.customer', 'subscription.plan.product', 'domains']);
-        $products = Product::query()->orderBy('name')->get();
-        $subscriptions = Subscription::query()->with(['customer', 'plan.product'])->orderBy('id', 'desc')->get();
+        $license->loadMissing('subscription');
 
-        return Inertia::render(
-            'Admin/Licenses/Form',
-            $this->formInertiaProps($license, $products, $subscriptions)
-        );
+        return redirect()->to($this->subscriptionEditUrl($license, 'license-'.$license->id));
     }
 
     public function update(Request $request, License $license)
     {
-        $data = $request->validate([
-            'subscription_id' => ['required', 'exists:subscriptions,id'],
-            'product_id' => ['required', 'exists:products,id'],
-            'license_key' => ['required', 'string', 'max:255', Rule::unique('licenses', 'license_key')->ignore($license->id)],
-            'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
-            'starts_at' => ['required', 'date'],
-            'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'auto_suspend_override_until' => ['nullable', 'date'],
-            'allowed_domains' => ['required', 'string'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $data = $this->validatedLicenseData($request, true, $license);
 
         $data['max_domains'] = 1;
 
         $domainInput = $this->extractSingleDomain($data['allowed_domains'] ?? null);
 
         if ($domainInput === false) {
-            return back()
-                ->withErrors(['allowed_domains' => 'Only one domain is allowed per license.'])
-                ->withInput();
+            return $this->backWithLicenseFormError($request, 'allowed_domains', 'Only one domain is allowed per license.');
         }
 
         if (! $domainInput) {
-            return back()
-                ->withErrors(['allowed_domains' => 'Allowed domain is required.'])
-                ->withInput();
+            return $this->backWithLicenseFormError($request, 'allowed_domains', 'Allowed domain is required.');
         }
 
         $domain = $this->normalizeDomain($domainInput);
 
         if (! $domain) {
-            return back()
-                ->withErrors(['allowed_domains' => 'Invalid domain format. Use only the hostname or full URL.'])
-                ->withInput();
+            return $this->backWithLicenseFormError($request, 'allowed_domains', 'Invalid domain format. Use only the hostname or full URL.');
         }
 
         $license->update($data);
@@ -234,11 +191,10 @@ class LicenseController extends Controller
             ->where('domain', '!=', $domain)
             ->update(['status' => 'revoked']);
 
-        return redirect()->route('admin.licenses.edit', $license)
-            ->with('status', 'License updated.');
+        return $this->redirectAfterLicenseAction($request, $license, 'License updated.');
     }
 
-    public function revokeDomain(License $license, LicenseDomain $domain)
+    public function revokeDomain(Request $request, License $license, LicenseDomain $domain)
     {
         if ($domain->license_id !== $license->id) {
             abort(404);
@@ -248,42 +204,37 @@ class LicenseController extends Controller
             'status' => 'revoked',
         ]);
 
-        return redirect()->route('admin.licenses.edit', $license)
-            ->with('status', 'Domain revoked.');
+        return $this->redirectAfterLicenseAction($request, $license, 'Domain revoked.');
     }
 
-    public function suspend(License $license)
+    public function suspend(Request $request, License $license)
     {
         $this->authorize('update', $license);
 
         if ((string) $license->status === 'revoked') {
-            return redirect()->route('admin.licenses.edit', $license)
-                ->withErrors(['status' => 'Revoked licenses cannot be suspended.']);
+            return $this->redirectAfterLicenseAction($request, $license, null, 'Revoked licenses cannot be suspended.');
         }
 
         if ((string) $license->status !== 'suspended') {
             $license->update(['status' => 'suspended']);
         }
 
-        return redirect()->route('admin.licenses.edit', $license)
-            ->with('status', 'License suspended.');
+        return $this->redirectAfterLicenseAction($request, $license, 'License suspended.');
     }
 
-    public function unsuspend(License $license)
+    public function unsuspend(Request $request, License $license)
     {
         $this->authorize('update', $license);
 
         if ((string) $license->status === 'revoked') {
-            return redirect()->route('admin.licenses.edit', $license)
-                ->withErrors(['status' => 'Revoked licenses cannot be unsuspended.']);
+            return $this->redirectAfterLicenseAction($request, $license, null, 'Revoked licenses cannot be unsuspended.');
         }
 
         if ((string) $license->status === 'suspended') {
             $license->update(['status' => 'active']);
         }
 
-        return redirect()->route('admin.licenses.edit', $license)
-            ->with('status', 'License unsuspended.');
+        return $this->redirectAfterLicenseAction($request, $license, 'License unsuspended.');
     }
 
     public function destroy(License $license)
@@ -388,7 +339,7 @@ class LicenseController extends Controller
             'search' => $search,
             'routes' => [
                 'index' => route('admin.licenses.index'),
-                'create' => route('admin.licenses.create'),
+                'manage_subscriptions' => route('admin.subscriptions.index'),
             ],
             'licenses' => collect($licenses->items())->values()->map(function (License $license) use ($realtimeChecks, $dateFormat, $request) {
                 $activeDomain = $license->domains->firstWhere('status', 'active');
@@ -472,74 +423,91 @@ class LicenseController extends Controller
         return $value;
     }
 
-    private function formInertiaProps(
-        ?License $license,
-        $products,
-        $subscriptions
-    ): array {
-        $isEdit = $license !== null;
-        $activeDomain = $license?->domains?->firstWhere('status', 'active')?->domain
-            ?? $license?->domains?->first()?->domain;
+    private function validatedLicenseData(Request $request, bool $isUpdate, ?License $license = null): array
+    {
+        $isNestedPayload = is_array($request->input('license'));
+        $payload = $isNestedPayload ? ['license' => $request->input('license')] : $request->all();
+        $prefix = $isNestedPayload ? 'license.' : '';
+        $errorBag = trim((string) $request->input('_error_bag', ''));
+        $licenseKeyRules = $isUpdate
+            ? ['required', 'string', 'max:255', Rule::unique('licenses', 'license_key')->ignore($license?->id)]
+            : ['nullable', 'string', 'max:255', 'unique:licenses,license_key'];
 
-        return [
-            'pageTitle' => $isEdit ? 'Edit License' : 'Add License',
-            'is_edit' => $isEdit,
-            'products' => $products->map(fn (Product $product) => [
-                'id' => $product->id,
-                'name' => (string) $product->name,
-            ])->values()->all(),
-            'subscriptions' => $subscriptions->map(function (Subscription $subscription) {
-                return [
-                    'id' => $subscription->id,
-                    'label' => sprintf(
-                        '#%d - %s%s',
-                        $subscription->id,
-                        (string) ($subscription->customer?->name ?? 'Unknown customer'),
-                        $subscription->plan?->name ? ' ('.$subscription->plan->name.')' : ''
-                    ),
-                ];
-            })->values()->all(),
-            'domains' => collect($license?->domains ?? [])->map(function (LicenseDomain $domain) use ($license) {
-                return [
-                    'id' => $domain->id,
-                    'domain' => (string) $domain->domain,
-                    'status' => (string) $domain->status,
-                    'status_label' => ucfirst((string) $domain->status),
-                    'can_revoke' => $domain->status !== 'revoked',
-                    'routes' => [
-                        'revoke' => route('admin.licenses.domains.revoke', [$license, $domain]),
-                    ],
-                ];
-            })->values()->all(),
-            'form' => [
-                'action' => $isEdit
-                    ? route('admin.licenses.update', $license)
-                    : route('admin.licenses.store'),
-                'method' => $isEdit ? 'PUT' : 'POST',
-                'fields' => [
-                    'subscription_id' => (string) old('subscription_id', (string) ($license?->subscription_id ?? '')),
-                    'product_id' => (string) old('product_id', (string) ($license?->product_id ?? '')),
-                    'license_key' => (string) old('license_key', (string) ($license?->license_key ?? '')),
-                    'status' => (string) old('status', (string) ($license?->status ?? 'active')),
-                    'starts_at' => (string) old('starts_at', (string) ($license?->starts_at?->toDateString() ?? now()->toDateString())),
-                    'expires_at' => (string) old('expires_at', (string) ($license?->expires_at?->toDateString() ?? '')),
-                    'auto_suspend_override_until' => (string) old(
-                        'auto_suspend_override_until',
-                        (string) ($license?->auto_suspend_override_until?->toDateString() ?? '')
-                    ),
-                    'allowed_domains' => (string) old('allowed_domains', (string) ($activeDomain ?? '')),
-                    'notes' => (string) old('notes', (string) ($license?->notes ?? '')),
-                ],
-            ],
-            'routes' => [
-                'index' => route('admin.licenses.index'),
-                'suspend' => ($license && Route::has('admin.licenses.suspend'))
-                    ? route('admin.licenses.suspend', $license)
-                    : null,
-                'unsuspend' => ($license && Route::has('admin.licenses.unsuspend'))
-                    ? route('admin.licenses.unsuspend', $license)
-                    : null,
-            ],
-        ];
+        $validator = Validator::make($payload, [
+            $prefix.'subscription_id' => ['required', 'exists:subscriptions,id'],
+            $prefix.'product_id' => ['required', 'exists:products,id'],
+            $prefix.'license_key' => $licenseKeyRules,
+            $prefix.'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
+            $prefix.'starts_at' => ['required', 'date'],
+            $prefix.'expires_at' => ['nullable', 'date', 'after_or_equal:'.$prefix.'starts_at'],
+            $prefix.'auto_suspend_override_until' => ['nullable', 'date'],
+            $prefix.'allowed_domains' => ['required', 'string'],
+            $prefix.'notes' => ['nullable', 'string'],
+        ]);
+
+        $validated = $errorBag !== ''
+            ? $validator->validateWithBag($errorBag)
+            : $validator->validate();
+
+        return $isNestedPayload ? $validated['license'] : $validated;
+    }
+
+    private function redirectAfterLicenseAction(
+        Request $request,
+        License $license,
+        ?string $status = null,
+        ?string $error = null
+    ): RedirectResponse {
+        if ($request->boolean('return_to_subscription')) {
+            $target = trim((string) $request->input('return_target', 'license-'.$license->id));
+            if ($target === '' || $target === 'license-create') {
+                $target = 'license-'.$license->id;
+            }
+            $redirect = redirect()->to($this->subscriptionEditUrl($license, $target));
+
+            if ($status !== null) {
+                return $redirect->with('status', $status);
+            }
+
+            if ($error !== null) {
+                return $redirect->with('error', $error);
+            }
+
+            return $redirect;
+        }
+
+        $redirect = redirect()->route('admin.licenses.edit', $license);
+
+        if ($status !== null) {
+            return $redirect->with('status', $status);
+        }
+
+        if ($error !== null) {
+            return $redirect->with('error', $error);
+        }
+
+        return $redirect;
+    }
+
+    private function backWithLicenseFormError(Request $request, string $field, string $message): RedirectResponse
+    {
+        $errorBag = trim((string) $request->input('_error_bag', ''));
+        $errorKey = is_array($request->input('license')) ? 'license.'.$field : $field;
+        $redirect = back()->withInput();
+
+        return $errorBag !== ''
+            ? $redirect->withErrors([$errorKey => $message], $errorBag)
+            : $redirect->withErrors([$errorKey => $message]);
+    }
+
+    private function subscriptionEditUrl(License $license, ?string $target = null): string
+    {
+        $url = route('admin.subscriptions.edit', $license->subscription_id);
+
+        if ($target !== null && $target !== '') {
+            $url .= '#'.ltrim($target, '#');
+        }
+
+        return $url;
     }
 }

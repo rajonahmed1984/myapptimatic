@@ -75,8 +75,8 @@ export default function Index({
                         </div>
                     </form>
                 </div>
-                <a href={routes?.create} data-native="true" className="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">
-                    New License
+                <a href={routes?.manage_subscriptions} data-native="true" className="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">
+                    Manage in Subscriptions
                 </a>
             </div>
 
@@ -161,9 +161,6 @@ export default function Index({
                                                         </button>
                                                     </form>
                                                 ) : null}
-                                                <a href={license?.routes?.edit} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                                    Manage
-                                                </a>
                                             </div>
                                         </td>
                                     </tr>

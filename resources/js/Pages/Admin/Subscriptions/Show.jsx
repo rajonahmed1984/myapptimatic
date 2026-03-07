@@ -157,26 +157,17 @@ export default function Show({
                                     <td className="px-4 py-3 font-semibold text-slate-700">{invoice.commission_display || '--'}</td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="inline-flex items-center gap-2">
-                                            <a href={invoice.edit_url || invoice.show_url} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                                Edit
+                                            {invoice.can_record_payment ? (
+                                                <>
+                                                    <a href={invoice.payment_url} data-native="true" className="text-emerald-600 hover:text-emerald-500">
+                                                        Payment
+                                                    </a>
+                                                    <span className="text-slate-300">|</span>
+                                                </>
+                                            ) : null}
+                                            <a href={invoice.show_url} data-native="true" className="text-teal-600 hover:text-teal-500">
+                                                Invoice View
                                             </a>
-                                            <span className="text-slate-300">|</span>
-                                            <form
-                                                method="POST"
-                                                action={invoice.destroy_url}
-                                                data-native="true"
-                                                onSubmit={(event) => {
-                                                    if (!window.confirm(`Delete invoice #${invoice.number || invoice.id}?`)) {
-                                                        event.preventDefault();
-                                                    }
-                                                }}
-                                            >
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <input type="hidden" name="_method" value="DELETE" />
-                                                <button type="submit" className="text-rose-600 hover:text-rose-500">
-                                                    Delete
-                                                </button>
-                                            </form>
                                         </div>
                                     </td>
                                 </tr>
