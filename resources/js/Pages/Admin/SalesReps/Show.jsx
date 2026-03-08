@@ -17,6 +17,14 @@ const payoutStatusBadgeClass = (status) => {
     if (key === 'reversed' || key === 'cancelled' || key === 'canceled') return 'border-rose-200 bg-rose-50 text-rose-700';
     return 'border-slate-300 bg-slate-50 text-slate-700';
 };
+const subscriptionStatusBadgeClass = (status) => {
+    const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
+    if (key === 'active') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    if (key === 'pending' || key === 'trial') return 'border-amber-200 bg-amber-50 text-amber-700';
+    if (key === 'suspended') return 'border-rose-200 bg-rose-50 text-rose-700';
+    if (key === 'cancelled' || key === 'canceled' || key === 'terminated' || key === 'expired') return 'border-slate-300 bg-slate-100 text-slate-700';
+    return 'border-sky-200 bg-sky-50 text-sky-700';
+};
 
 export default function Show({
     pageTitle = 'Sales Representative',
@@ -132,10 +140,57 @@ export default function Show({
             {tab === 'profile' ? (
                 <>
                     <div className="grid gap-4 md:grid-cols-4">
-                        <Metric title="Total Earned" value={money(summary?.total_earned)} note={`Projects: ${money(summary?.project_earned)} | Maintenances: ${money(summary?.maintenance_earned)}`} />
-                        <Metric title="Payable (Net)" value={money(summary?.payable)} note={summary?.payable_label} />
-                        <Metric title="Paid (Incl. Advance)" value={money(summary?.paid)} note="" />
-                        <Metric title="Advance Paid" value={money(summary?.advance_paid)} note={Number(summary?.overpaid || 0) > 0 ? `Overpaid: ${money(summary?.overpaid)}` : ''} />
+                        <Metric
+                            title="Total Commission Earned"
+                            value={money(summary?.total_earned)}
+                            note={
+                                <>
+                                    <div className="flex flex-wrap gap-2">
+                                        <SubBadge tone="sky" label="Projects" value={money(summary?.project_earned)} />
+                                        <SubBadge tone="violet" label="Services" value={money(summary?.maintenance_earned)} />
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">All confirmed commission generated so far.</div>
+                                </>
+                            }
+                        />
+                        <Metric
+                            title="Ready to Pay"
+                            value={money(summary?.payable)}
+                            note={
+                                <>
+                                    <div className="flex flex-wrap gap-2">
+                                        <SubBadge tone="emerald" label="Ready now" value={money(summary?.payable)} />
+                                        <SubBadge tone="amber" label="Held" value={money(summary?.not_yet_payable)} />
+                                    </div>
+                                    <div>{summary?.payable_label}</div>
+                                </>
+                            }
+                        />
+                        <Metric
+                            title="Paid to Rep"
+                            value={money(summary?.paid)}
+                            note={
+                                <>
+                                    <div className="flex flex-wrap gap-2">
+                                        <SubBadge tone="teal" label="Paid" value={money(summary?.paid)} />
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">Includes payouts and collected-retained amounts.</div>
+                                </>
+                            }
+                        />
+                        <Metric
+                            title="Advance / Retained"
+                            value={money(summary?.advance_paid)}
+                            note={
+                                <>
+                                    <div className="flex flex-wrap gap-2">
+                                        <SubBadge tone="rose" label="Retained" value={money(summary?.advance_paid)} />
+                                        {Number(summary?.overpaid || 0) > 0 ? <SubBadge tone="slate" label="Overpaid" value={money(summary?.overpaid)} /> : null}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">Company advance or client-collected amount kept by rep.</div>
+                                </>
+                            }
+                        />
                     </div>
 
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -176,9 +231,12 @@ export default function Show({
                         </div>
                     </div>
 
-                    <div className="mt-4 card p-4">
-                        <div className="text-sm font-semibold text-slate-800">Record advance payment</div>
-                        <div className="text-xs text-slate-500">Advance payments are deducted from future commissions.</div>
+                    <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50/60 p-4">
+                        <div className="text-sm font-semibold text-sky-900">Company Advance to Sales Rep</div>
+                        <div className="text-xs text-sky-700">Use this only when the company pays the rep directly. This amount will be deducted from future commissions.</div>
+                        <div className="mt-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-600">
+                            For customer-collected payments, use <span className="font-semibold text-emerald-700">Invoice &gt; Collected by Sales Rep</span>.
+                        </div>
                         <form method="POST" action={routes?.advance_payment} data-native="true" className="mt-3 grid gap-3 md:grid-cols-8">
                             <input type="hidden" name="_token" value={csrf} />
                             <div className="md:col-span-2">
@@ -204,7 +262,6 @@ export default function Show({
                                 <label className="text-xs text-slate-500">Amount</label>
                                 <input name="amount" type="number" step="0.01" min="0" required value={amountInput} onChange={(event) => setAmountInput(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                             </div>
-                            <div><label className="text-xs text-slate-500">Currency</label><input name="currency" defaultValue="BDT" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
                             <div>
                                 <label className="text-xs text-slate-500">Method</label>
                                 <select name="payout_method" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
@@ -223,9 +280,9 @@ export default function Show({
                             ) : (
                                 <div className="md:col-span-8 text-xs text-amber-700">No source found. Add project or products/services assignment first.</div>
                             )}
-                            <div><label className="text-xs text-slate-500">Reference</label><input name="reference" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                            <div className="md:col-span-8"><label className="text-xs text-slate-500">Note</label><input name="note" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                            <div className="md:col-span-8"><button type="submit" disabled={!selectedSource} className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400">Save advance payment</button></div>
+                            <div className="md:col-span-4"><label className="text-xs text-slate-500">Reference</label><input name="reference" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
+                            <div className="md:col-span-4"><label className="text-xs text-slate-500">Note</label><input name="note" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
+                            <div className="md:col-span-8"><button type="submit" disabled={!selectedSource} className="rounded-full bg-sky-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400">Save company advance</button></div>
                         </form>
                     </div>
                 </>
@@ -239,10 +296,12 @@ export default function Show({
                         s.customer_name,
                         s.product_plan || s.plan_name || '--',
                         s.interval_amount_commission || '--',
-                        s.status,
+                        <span key={`status-${s.id}`} className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${subscriptionStatusBadgeClass(s.status)}`}>
+                            {s.status}
+                        </span>,
                         s.next_invoice_at,
                     ])}
-                    headers={['Subscription', 'Customer', 'Product & Plan', 'Interval & Amount > Commission', 'Status', 'Next Invoice']}
+                    headers={['ID', 'Customer', 'Product & Plan', 'Interval & Amount > Commission', 'Status', 'Next Invoice']}
                     empty="No linked products or services for this rep."
                 />
                 : null}
@@ -263,6 +322,25 @@ export default function Show({
 
 function Metric({ title, value, note }) {
     return <div className="card p-4"><div className="text-xs uppercase tracking-[0.28em] text-slate-500">{title}</div><div className="mt-2 text-2xl font-semibold text-slate-900">{value}</div>{note ? <div className="text-xs text-slate-500">{note}</div> : null}</div>;
+}
+
+function SubBadge({ tone = 'slate', label, value }) {
+    const toneClass = {
+        emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        amber: 'border-amber-200 bg-amber-50 text-amber-700',
+        teal: 'border-teal-200 bg-teal-50 text-teal-700',
+        rose: 'border-rose-200 bg-rose-50 text-rose-700',
+        sky: 'border-sky-200 bg-sky-50 text-sky-700',
+        violet: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700',
+        slate: 'border-slate-200 bg-slate-50 text-slate-700',
+    }[tone] || 'border-slate-200 bg-slate-50 text-slate-700';
+
+    return (
+        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${toneClass}`}>
+            <span>{label}</span>
+            <span>{value}</span>
+        </span>
+    );
 }
 
 function SimpleTable({ title, headers, rows, empty }) {

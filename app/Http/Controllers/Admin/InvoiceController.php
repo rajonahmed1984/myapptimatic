@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountingEntry;
+use App\Models\CommissionAuditLog;
+use App\Models\CommissionPayout;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\PaymentGateway;
+use App\Models\PaymentMethod;
 use App\Models\Project;
+use App\Models\SalesRepresentative;
 use App\Models\Setting;
 use App\Models\TaxSetting;
 use App\Services\AdminNotificationService;
@@ -25,7 +30,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -191,8 +198,14 @@ class InvoiceController extends Controller
     {
         $invoice->load([
             'customer',
+            'customer.defaultSalesRep:id,name,email,status',
             'items',
             'accountingEntries.paymentGateway',
+            'subscription.salesRep:id,name,email,status',
+            'orders.salesRep:id,name,email,status',
+            'project.salesRepresentatives:id,name,email,status',
+            'maintenance.salesRepresentatives:id,name,email,status',
+            'maintenance.project.salesRepresentatives:id,name,email,status',
             'paymentProofs.paymentGateway',
             'paymentProofs.reviewer',
         ]);
@@ -200,12 +213,26 @@ class InvoiceController extends Controller
         return Inertia::render('Admin/Invoices/Show', [
             'pageTitle' => 'Invoice Details',
             'invoice' => $this->serializeInvoiceDetails($invoice),
+            'sales_rep_collection_options' => $this->invoiceSalesRepOptions($invoice)
+                ->map(fn (SalesRepresentative $salesRep) => [
+                    'id' => $salesRep->id,
+                    'name' => $salesRep->name,
+                    'email' => $salesRep->email,
+                    'label' => trim($salesRep->name.' '.($salesRep->email ? '('.$salesRep->email.')' : '')),
+                ])
+                ->values()
+                ->all(),
+            'payment_methods' => PaymentMethod::commissionPayoutDropdownOptions()
+                ->map(fn ($method) => ['code' => $method->code, 'name' => $method->name])
+                ->values()
+                ->all(),
             'routes' => [
                 'index' => route('admin.invoices.index'),
                 'client_view' => route('admin.invoices.client-view', $invoice),
                 'download' => route('admin.invoices.download', $invoice),
                 'update' => route('admin.invoices.update', $invoice),
                 'recalculate' => route('admin.invoices.recalculate', $invoice),
+                'collect_by_sales_rep' => route('admin.invoices.collect-by-sales-rep', $invoice),
                 'record_payment' => route('admin.accounting.create', [
                     'type' => 'payment',
                     'invoice_id' => $invoice->id,
@@ -325,6 +352,245 @@ class InvoiceController extends Controller
 
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice marked as paid.');
+    }
+
+    public function collectBySalesRep(
+        Request $request,
+        Invoice $invoice,
+        AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications,
+        CommissionService $commissionService,
+        SalesRepNotificationService $salesRepNotifications
+    ): RedirectResponse|JsonResponse {
+        $invoice->loadMissing([
+            'customer.defaultSalesRep:id,name,email,status',
+            'subscription.salesRep:id,name,email,status',
+            'orders.salesRep:id,name,email,status',
+            'project.salesRepresentatives:id,name,email,status',
+            'maintenance.salesRepresentatives:id,name,email,status',
+            'maintenance.project.salesRepresentatives:id,name,email,status',
+            'accountingEntries',
+        ]);
+
+        if ($invoice->status === 'paid') {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError('Invoice is already marked as paid.', 422);
+            }
+
+            return redirect()->route('admin.invoices.show', $invoice)
+                ->with('error', 'Invoice is already marked as paid.');
+        }
+
+        if (! Schema::hasColumn('accounting_entries', 'metadata')) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError('Collected-by-sales-rep flow requires the latest accounting entry migration.', 422);
+            }
+
+            return back()
+                ->withErrors(['sales_rep_id' => 'Collected-by-sales-rep flow requires the latest accounting entry migration.'])
+                ->withInput();
+        }
+
+        $data = $request->validate([
+            'sales_rep_id' => ['required', 'integer'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string'],
+            'retained_amount' => ['nullable', 'numeric', 'min:0'],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCommissionPayoutCodes())],
+        ]);
+
+        $salesRep = $this->invoiceSalesRepOptions($invoice)
+            ->first(fn (SalesRepresentative $item) => $item->id === (int) $data['sales_rep_id']);
+
+        if (! $salesRep) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError('Select a valid sales representative for this invoice.', 422, [
+                    'sales_rep_id' => ['Select a valid sales representative for this invoice.'],
+                ]);
+            }
+
+            return back()
+                ->withErrors(['sales_rep_id' => 'Select a valid sales representative for this invoice.'])
+                ->withInput();
+        }
+
+        $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
+        $paymentAmount = round(max(0, (float) $invoice->total - $creditTotal), 2);
+        $retainedAmount = round((float) ($data['retained_amount'] ?? 0), 2);
+        $reference = trim((string) ($data['reference'] ?? ''));
+        $note = trim((string) ($data['note'] ?? ''));
+        $payoutMethod = trim((string) ($data['payout_method'] ?? ''));
+
+        if ($paymentAmount <= 0) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError('No payable amount remains on this invoice.', 422);
+            }
+
+            return back()->withErrors(['sales_rep_id' => 'No payable amount remains on this invoice.'])->withInput();
+        }
+
+        if ($retainedAmount > $paymentAmount) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError('Retained amount cannot exceed the collected invoice amount.', 422, [
+                    'retained_amount' => ['Retained amount cannot exceed the collected invoice amount.'],
+                ]);
+            }
+
+            return back()
+                ->withErrors(['retained_amount' => 'Retained amount cannot exceed the collected invoice amount.'])
+                ->withInput();
+        }
+
+        if ($retainedAmount > 0 && ! Schema::hasColumn('commission_payouts', 'type')) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError('Sales rep retained collection requires the latest commission payout migration.', 422, [
+                    'retained_amount' => ['Sales rep retained collection requires the latest commission payout migration.'],
+                ]);
+            }
+
+            return back()
+                ->withErrors(['retained_amount' => 'Sales rep retained collection requires the latest commission payout migration.'])
+                ->withInput();
+        }
+
+        $invoiceNumber = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
+        $previousStatus = (string) $invoice->status;
+
+        DB::transaction(function () use (
+            $request,
+            $invoice,
+            $salesRep,
+            $paymentAmount,
+            $creditTotal,
+            $retainedAmount,
+            $reference,
+            $note,
+            $payoutMethod,
+            $invoiceNumber,
+            $previousStatus
+        ): void {
+            AccountingEntry::create([
+                'entry_date' => Carbon::today(),
+                'type' => 'payment',
+                'amount' => $paymentAmount,
+                'currency' => (string) $invoice->currency,
+                'description' => 'Collected by sales representative: '.$salesRep->name,
+                'reference' => $reference !== '' ? $reference : 'sales-rep-collection-'.$invoiceNumber,
+                'customer_id' => $invoice->customer_id,
+                'invoice_id' => $invoice->id,
+                'payment_gateway_id' => null,
+                'created_by' => $request->user()?->id,
+                'metadata' => [
+                    'payment_mode' => 'sales_rep_collection',
+                    'collected_by_sales_rep_id' => $salesRep->id,
+                    'collected_by_sales_rep_name' => $salesRep->name,
+                    'invoice_number' => $invoiceNumber,
+                    'invoice_total' => (float) $invoice->total,
+                    'credit_total' => $creditTotal,
+                    'collected_amount' => $paymentAmount,
+                    'retained_amount' => $retainedAmount,
+                    'note' => $note !== '' ? $note : null,
+                ],
+            ]);
+
+            $invoice->update([
+                'status' => 'paid',
+                'paid_at' => $invoice->paid_at ?? Carbon::now(),
+            ]);
+
+            \App\Models\StatusAuditLog::logChange(
+                Invoice::class,
+                $invoice->id,
+                $previousStatus,
+                'paid',
+                'sales_rep_collection',
+                $request->user()?->id,
+                [
+                    'sales_rep_id' => $salesRep->id,
+                    'sales_rep_name' => $salesRep->name,
+                    'reference' => $reference !== '' ? $reference : null,
+                    'retained_amount' => $retainedAmount,
+                ]
+            );
+
+            if ($retainedAmount <= 0) {
+                return;
+            }
+
+            $payoutPayload = [
+                'sales_representative_id' => $salesRep->id,
+                'type' => 'advance',
+                'total_amount' => $retainedAmount,
+                'currency' => (string) $invoice->currency,
+                'payout_method' => $payoutMethod !== '' ? $payoutMethod : null,
+                'reference' => $reference !== '' ? $reference : 'invoice-'.$invoiceNumber.'-collection',
+                'note' => $note !== '' ? $note : 'Retained from invoice collection.',
+                'status' => 'paid',
+                'paid_at' => Carbon::now(),
+            ];
+
+            if (Schema::hasColumn('commission_payouts', 'project_id')) {
+                $payoutPayload['project_id'] = $invoice->project_id ?: $invoice->maintenance?->project_id;
+            }
+
+            $payout = CommissionPayout::create($payoutPayload);
+
+            CommissionAuditLog::create([
+                'sales_representative_id' => $salesRep->id,
+                'commission_payout_id' => $payout->id,
+                'action' => 'advance_payment',
+                'status_from' => null,
+                'status_to' => 'paid',
+                'description' => 'Invoice collection retained by sales representative.',
+                'metadata' => [
+                    'amount' => $retainedAmount,
+                    'currency' => (string) $invoice->currency,
+                    'source_type' => 'invoice',
+                    'source_id' => $invoice->id,
+                    'source_label' => 'Invoice #'.$invoiceNumber.' collection',
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoiceNumber,
+                    'invoice_total' => (float) $invoice->total,
+                    'collected_amount' => $paymentAmount,
+                    'sales_rep_id' => $salesRep->id,
+                    'sales_rep_name' => $salesRep->name,
+                    'reference' => $reference !== '' ? $reference : null,
+                    'note' => $note !== '' ? $note : null,
+                ],
+                'created_by' => $request->user()?->id,
+            ]);
+        });
+
+        $freshInvoice = $invoice->fresh('customer');
+
+        $this->runInvoicePaidPostProcessing(
+            $request,
+            $freshInvoice,
+            $adminNotifications,
+            $clientNotifications,
+            $commissionService,
+            $salesRepNotifications,
+            $reference !== '' ? $reference : null
+        );
+
+        SystemLogger::write('activity', 'Invoice marked as paid via sales representative collection.', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+            'sales_representative_id' => $salesRep->id,
+            'payment_amount' => $paymentAmount,
+            'retained_amount' => $retainedAmount,
+            'currency' => $invoice->currency,
+        ], $request->user()?->id, $request->ip());
+
+        if (AjaxResponse::ajaxFromRequest($request)) {
+            return AjaxResponse::ajaxRedirect(
+                route('admin.invoices.show', $invoice),
+                'Invoice marked as paid via sales representative.'
+            );
+        }
+
+        return redirect()->route('admin.invoices.show', $invoice)
+            ->with('status', 'Invoice marked as paid via sales representative.');
     }
 
     public function recalculate(Request $request, Invoice $invoice): RedirectResponse|JsonResponse
@@ -790,6 +1056,7 @@ class InvoiceController extends Controller
         $companyEmail = (string) Setting::getValue('company_email');
         $payToText = (string) Setting::getValue('pay_to_text');
         $companyLogoUrl = Branding::url(Setting::getValue('company_logo_path'));
+        $salesRepCollection = $this->resolveSalesRepCollectionSummary($invoice);
 
         return [
             'id' => $invoice->id,
@@ -838,12 +1105,24 @@ class InvoiceController extends Controller
                 'payable_display' => sprintf('%s %s', (string) $invoice->currency, number_format($payableAmount, 2)),
             ],
             'notes' => $invoice->notes,
+            'sales_rep_collection' => $salesRepCollection,
             'accounting_entries' => $invoice->accountingEntries->map(function ($entry) {
+                $metadata = is_array($entry->metadata) ? $entry->metadata : [];
+                $collectedBySalesRepName = trim((string) ($metadata['collected_by_sales_rep_name'] ?? ''));
+                $retainedAmount = (float) ($metadata['retained_amount'] ?? 0);
+
                 return [
                     'id' => $entry->id,
                     'type_label' => ucfirst((string) $entry->type),
                     'entry_date_display' => $entry->entry_date?->format((string) config('app.date_format', 'd-m-Y')) ?? '--',
                     'gateway_name' => $entry->paymentGateway?->name,
+                    'description' => $entry->description,
+                    'sales_rep_collection' => $collectedBySalesRepName !== '' ? [
+                        'sales_rep_name' => $collectedBySalesRepName,
+                        'retained_amount_display' => sprintf('%s %s', (string) $entry->currency, number_format($retainedAmount, 2)),
+                        'reference' => $entry->reference ?: '--',
+                        'note' => (string) ($metadata['note'] ?? ''),
+                    ] : null,
                     'amount_display' => sprintf(
                         '%s%s %s',
                         $entry->isOutflow() ? '-' : '+',
@@ -970,6 +1249,150 @@ class InvoiceController extends Controller
                 'checkout' => route('client.invoices.checkout', $invoice),
                 'download' => route($downloadRouteName, $invoice),
             ],
+        ];
+    }
+
+    private function runInvoicePaidPostProcessing(
+        Request $request,
+        Invoice $invoice,
+        AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications,
+        CommissionService $commissionService,
+        SalesRepNotificationService $salesRepNotifications,
+        ?string $reference = null
+    ): void {
+        $freshInvoice = $invoice->fresh('customer');
+        if (! $freshInvoice) {
+            return;
+        }
+
+        $adminNotifications->sendInvoicePaid($freshInvoice);
+
+        try {
+            $clientNotifications->sendInvoicePaymentStatusNotification($freshInvoice, 'paid', $reference);
+        } catch (\Throwable $e) {
+            SystemLogger::write('module', 'Client invoice paid notification failed.', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ], level: 'error');
+        }
+
+        try {
+            $salesRepNotifications->sendInvoicePaymentStatusToRelatedSalesReps($freshInvoice, 'paid', $reference);
+        } catch (\Throwable $e) {
+            SystemLogger::write('module', 'Sales rep invoice paid notification failed.', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ], level: 'error');
+        }
+
+        $hasUnpaidInvoices = Invoice::query()
+            ->where('customer_id', $invoice->customer_id)
+            ->whereIn('status', ['unpaid', 'overdue'])
+            ->exists();
+
+        if (! $hasUnpaidInvoices) {
+            \App\Models\Customer::query()
+                ->where('id', $invoice->customer_id)
+                ->update(['access_override_until' => null]);
+        }
+
+        try {
+            $commissionService->createOrUpdateEarningOnInvoicePaid($freshInvoice->fresh('subscription.customer'));
+        } catch (\Throwable $e) {
+            SystemLogger::write('module', 'Commission earning failed on paid invoice.', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ], level: 'error');
+        }
+    }
+
+    /**
+     * @return Collection<int, SalesRepresentative>
+     */
+    private function invoiceSalesRepOptions(Invoice $invoice): Collection
+    {
+        $salesReps = collect();
+
+        if ($invoice->customer?->defaultSalesRep instanceof SalesRepresentative) {
+            $salesReps->push($invoice->customer->defaultSalesRep);
+        }
+
+        if ($invoice->subscription?->salesRep instanceof SalesRepresentative) {
+            $salesReps->push($invoice->subscription->salesRep);
+        }
+
+        foreach ($invoice->orders ?? [] as $order) {
+            if ($order->salesRep instanceof SalesRepresentative) {
+                $salesReps->push($order->salesRep);
+            }
+        }
+
+        foreach ($invoice->project?->salesRepresentatives ?? [] as $salesRep) {
+            if ($salesRep instanceof SalesRepresentative) {
+                $salesReps->push($salesRep);
+            }
+        }
+
+        foreach ($invoice->maintenance?->salesRepresentatives ?? [] as $salesRep) {
+            if ($salesRep instanceof SalesRepresentative) {
+                $salesReps->push($salesRep);
+            }
+        }
+
+        foreach ($invoice->maintenance?->project?->salesRepresentatives ?? [] as $salesRep) {
+            if ($salesRep instanceof SalesRepresentative) {
+                $salesReps->push($salesRep);
+            }
+        }
+
+        $resolved = $salesReps
+            ->filter(fn ($salesRep) => $salesRep instanceof SalesRepresentative && (string) $salesRep->status === 'active')
+            ->unique('id')
+            ->values();
+
+        if ($resolved->isNotEmpty()) {
+            return $resolved;
+        }
+
+        return SalesRepresentative::query()
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'status']);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function resolveSalesRepCollectionSummary(Invoice $invoice): ?array
+    {
+        $entry = $invoice->accountingEntries
+            ->filter(fn (AccountingEntry $item) => $item->type === 'payment')
+            ->sortByDesc('id')
+            ->first(function (AccountingEntry $item) {
+                $metadata = is_array($item->metadata) ? $item->metadata : [];
+
+                return (string) ($metadata['payment_mode'] ?? '') === 'sales_rep_collection';
+            });
+
+        if (! $entry) {
+            return null;
+        }
+
+        $metadata = is_array($entry->metadata) ? $entry->metadata : [];
+        $salesRepName = trim((string) ($metadata['collected_by_sales_rep_name'] ?? ''));
+        if ($salesRepName === '') {
+            return null;
+        }
+
+        $retainedAmount = (float) ($metadata['retained_amount'] ?? 0);
+
+        return [
+            'sales_rep_name' => $salesRepName,
+            'reference' => $entry->reference ?: '--',
+            'collected_amount_display' => sprintf('%s %s', (string) $entry->currency, number_format((float) $entry->amount, 2)),
+            'retained_amount_display' => sprintf('%s %s', (string) $entry->currency, number_format($retainedAmount, 2)),
+            'note' => (string) ($metadata['note'] ?? ''),
         ];
     }
 

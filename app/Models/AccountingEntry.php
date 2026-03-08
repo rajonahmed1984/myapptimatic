@@ -18,11 +18,13 @@ class AccountingEntry extends Model
         'invoice_id',
         'payment_gateway_id',
         'created_by',
+        'metadata',
     ];
 
     protected $casts = [
         'entry_date' => 'date',
         'amount' => 'decimal:2',
+        'metadata' => 'array',
     ];
 
     public function customer(): BelongsTo

@@ -13,6 +13,7 @@ export default function Index({
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
+    const hidePaidDate = statusFilter === 'unpaid' || statusFilter === 'overdue';
 
     const tabs = [
         { key: null, label: 'All', href: routes?.index },
@@ -72,13 +73,13 @@ export default function Index({
             </div>
 
             <div className="card overflow-x-auto">
-                <table className="w-full min-w-[1050px] text-left text-sm">
+                <table className={`w-full text-left text-sm ${hidePaidDate ? 'min-w-[930px]' : 'min-w-[1050px]'}`}>
                     <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
                             <th className="px-4 py-3">Invoice</th>
                             <th className="px-4 py-3">Customer</th>
                             <th className="px-4 py-3">Total</th>
-                            <th className="px-4 py-3">Paid date</th>
+                            {!hidePaidDate ? <th className="px-4 py-3">Paid date</th> : null}
                             <th className="px-4 py-3">Due</th>
                             <th className="px-4 py-3">Status</th>
                             <th className="px-4 py-3 text-right">Action</th>
@@ -87,7 +88,7 @@ export default function Index({
                     <tbody>
                         {invoices.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                                <td colSpan={hidePaidDate ? 6 : 7} className="px-4 py-6 text-center text-slate-500">
                                     {statusFilter ? `No ${pageTitle} found.` : 'No invoices yet.'}
                                 </td>
                             </tr>
@@ -121,9 +122,11 @@ export default function Index({
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500">
-                                        <DateTimeText value={invoice.paid_at_display} mode="datetime" />
-                                    </td>
+                                    {!hidePaidDate ? (
+                                        <td className="px-4 py-3 text-slate-500">
+                                            <DateTimeText value={invoice.paid_at_display} mode="datetime" />
+                                        </td>
+                                    ) : null}
                                     <td className="px-4 py-3">
                                         <DateTimeText value={invoice.due_date_display} mode="date" />
                                     </td>

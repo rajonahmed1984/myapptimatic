@@ -407,6 +407,25 @@ class RecurringExpenseController extends Controller
                     $advanceTotal = (float) ($recurringExpense->advances_sum_amount ?? 0);
                     $advanceUsed = (float) ($advanceUsedByRecurring->get($recurringExpense->id) ?? 0);
                     $advanceBalance = max(0, round($advanceTotal - $advanceUsed, 2));
+                    $nextDueDate = null;
+
+                    if (! empty($recurringExpense->next_due_date)) {
+                        try {
+                            $nextDueDate = Carbon::parse((string) $recurringExpense->next_due_date)->startOfDay();
+                        } catch (\Throwable $e) {
+                            $nextDueDate = null;
+                        }
+                    } elseif ($recurringExpense->next_run_date) {
+                        $nextDueDate = $recurringExpense->next_run_date->copy()->startOfDay();
+                    }
+
+                    $dueAmount = 0.0;
+                    if ($nextDueDate instanceof Carbon) {
+                        $dueStartsAt = $nextDueDate->copy()->subDays(7);
+                        if (Carbon::today()->greaterThanOrEqualTo($dueStartsAt)) {
+                            $dueAmount = max(0, round((float) $recurringExpense->amount - $advanceBalance, 2));
+                        }
+                    }
 
                     return [
                         'id' => $recurringExpense->id,
@@ -414,6 +433,7 @@ class RecurringExpenseController extends Controller
                         'category_name' => $recurringExpense->category?->name,
                         'amount' => (float) $recurringExpense->amount,
                         'advance_amount' => $advanceBalance,
+                        'due_amount' => $dueAmount,
                         'advance_total' => $advanceTotal,
                         'advance_used' => $advanceUsed,
                         'recurrence_type' => $recurringExpense->recurrence_type,

@@ -29,6 +29,7 @@ export default function Index({
     routes = {},
 }) {
     const { csrf_token: csrfToken } = usePage().props;
+    const [openActionId, setOpenActionId] = useState(null);
     const [advanceModal, setAdvanceModal] = useState({
         open: false,
         action: '',
@@ -55,6 +56,30 @@ export default function Index({
             window.removeEventListener('keydown', onEscape);
         };
     }, [advanceModal.open]);
+
+    useEffect(() => {
+        if (openActionId === null) {
+            return undefined;
+        }
+
+        const closeMenu = () => {
+            setOpenActionId(null);
+        };
+
+        const onEscape = (event) => {
+            if (event.key === 'Escape') {
+                closeMenu();
+            }
+        };
+
+        document.addEventListener('click', closeMenu);
+        window.addEventListener('keydown', onEscape);
+
+        return () => {
+            document.removeEventListener('click', closeMenu);
+            window.removeEventListener('keydown', onEscape);
+        };
+    }, [openActionId]);
 
     return (
         <>
@@ -89,12 +114,11 @@ export default function Index({
                         <thead>
                             <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <th className="px-3 py-2">ID</th>
-                                <th className="px-3 py-2">Title</th>
-                                <th className="px-3 py-2">Category</th>
+                                <th className="px-3 py-2">Description</th>
                                 <th className="px-3 py-2">Amount</th>
                                 <th className="px-3 py-2">Advance</th>
-                                <th className="px-3 py-2">Recurrence</th>
-                                <th className="px-3 py-2">Next due date</th>
+                                <th className="px-3 py-2">Due</th>
+                                <th className="px-3 py-2">Next due</th>
                                 <th className="px-3 py-2">Status</th>
                                 <th className="px-3 py-2 text-right">Actions</th>
                             </tr>
@@ -104,7 +128,7 @@ export default function Index({
                                 recurringExpenses.data.map((recurring) => (
                                     <tr key={recurring.id} className="border-b border-slate-100">
                                         <td className="px-3 py-2 font-semibold text-slate-900">{recurring.id}</td>
-                                        <td className="px-3 py-2 font-semibold text-slate-900">
+                                        <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-900">
                                             <a
                                                 href={recurring.routes?.show}
                                                 data-native="true"
@@ -112,15 +136,28 @@ export default function Index({
                                             >
                                                 {recurring.title}
                                             </a>
-                                        </td>
-                                        <td className="px-3 py-2">{recurring.category_name || '--'}</td>
-                                        <td className="px-3 py-2">{Number(recurring.amount ?? 0).toFixed(2)}</td>
-                                        <td className="px-3 py-2 font-semibold text-slate-900">
-                                            {formatCurrency(recurring.advance_amount, currency?.symbol, currency?.code)}
+                                            <div className="mt-1 text-xs font-normal text-slate-500">
+                                                Every {recurring.recurrence_interval}{' '}
+                                                {recurring.recurrence_type === 'yearly' ? 'year(s)' : 'month(s)'}
+                                            </div>
+                                            <div className="mt-1 text-xs font-normal text-slate-500">
+                                                Category: {recurring.category_name || '--'}
+                                            </div>
                                         </td>
                                         <td className="px-3 py-2">
-                                            Every {recurring.recurrence_interval}{' '}
-                                            {recurring.recurrence_type === 'yearly' ? 'year(s)' : 'month(s)'}
+                                            <span className="whitespace-nowrap text-xs font-semibold text-sky-700">
+                                                {formatCurrency(recurring.amount, currency?.symbol, currency?.code)}
+                                            </span>
+                                        </td>
+                                        <td className="px-3 py-2 font-semibold text-slate-900">
+                                            <span className="whitespace-nowrap text-xs font-semibold text-emerald-700">
+                                                {formatCurrency(recurring.advance_amount, currency?.symbol, currency?.code)}
+                                            </span>
+                                        </td>
+                                        <td className="px-3 py-2 font-semibold text-slate-900">
+                                            <span className="whitespace-nowrap text-xs font-semibold text-rose-700">
+                                                {formatCurrency(recurring.due_amount, currency?.symbol, currency?.code)}
+                                            </span>
                                         </td>
                                         <td className="whitespace-nowrap px-3 py-2">{recurring.next_due_display || '--'}</td>
                                         <td className="px-3 py-2">
@@ -131,49 +168,72 @@ export default function Index({
                                             </span>
                                         </td>
                                         <td className="px-3 py-2 text-right">
-                                            <div className="flex justify-end gap-3 text-xs font-semibold">
+                                            <div className="relative inline-flex justify-end text-left" onClick={(event) => event.stopPropagation()}>
                                                 <button
                                                     type="button"
-                                                    className="text-emerald-600 hover:text-emerald-500"
+                                                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
                                                     onClick={() =>
-                                                        setAdvanceModal({
-                                                            open: true,
-                                                            action: recurring.routes?.advance_store || '',
-                                                            title: recurring.title || 'Recurring Expense',
-                                                            currentAdvance: Number(recurring.advance_amount ?? 0).toFixed(2),
-                                                        })
+                                                        setOpenActionId((current) => (current === recurring.id ? null : recurring.id))
                                                     }
                                                 >
-                                                    Advance
+                                                    Actions
+                                                    <span className="text-[10px] text-slate-400">{openActionId === recurring.id ? '▲' : '▼'}</span>
                                                 </button>
-                                                <a
-                                                    href={recurring.routes?.edit}
-                                                    data-native="true"
-                                                    className="text-teal-600 hover:text-teal-500"
-                                                >
-                                                    Edit
-                                                </a>
-                                                {recurring.can_resume ? (
-                                                    <form method="POST" action={recurring.routes?.resume} data-native="true">
-                                                        <input type="hidden" name="_token" value={csrfToken} />
-                                                        <button type="submit" className="text-emerald-600 hover:text-emerald-500">
-                                                            Resume
+
+                                                {openActionId === recurring.id ? (
+                                                    <div className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                                                        <a
+                                                            href={recurring.routes?.show}
+                                                            data-native="true"
+                                                            className="block px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-teal-600"
+                                                        >
+                                                            View
+                                                        </a>
+                                                        <a
+                                                            href={recurring.routes?.edit}
+                                                            data-native="true"
+                                                            className="block px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-teal-600"
+                                                        >
+                                                            Edit
+                                                        </a>
+                                                        {recurring.can_resume ? (
+                                                            <form method="POST" action={recurring.routes?.resume} data-native="true">
+                                                                <input type="hidden" name="_token" value={csrfToken} />
+                                                                <button
+                                                                    type="submit"
+                                                                    className="block w-full px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                                                >
+                                                                    Resume
+                                                                </button>
+                                                            </form>
+                                                        ) : null}
+                                                        <form method="POST" action={recurring.routes?.stop} data-native="true">
+                                                            <input type="hidden" name="_token" value={csrfToken} />
+                                                            <button
+                                                                type="submit"
+                                                                className="block w-full px-4 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                                                            >
+                                                                Stop
+                                                            </button>
+                                                        </form>
+                                                        <div className="my-1 border-t border-slate-100" />
+                                                        <button
+                                                            type="button"
+                                                            className="block w-full px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                                            onClick={() => {
+                                                                setOpenActionId(null);
+                                                                setAdvanceModal({
+                                                                    open: true,
+                                                                    action: recurring.routes?.advance_store || '',
+                                                                    title: recurring.title || 'Recurring Expense',
+                                                                    currentAdvance: Number(recurring.advance_amount ?? 0).toFixed(2),
+                                                                });
+                                                            }}
+                                                        >
+                                                            Advance
                                                         </button>
-                                                    </form>
+                                                    </div>
                                                 ) : null}
-                                                <form method="POST" action={recurring.routes?.stop} data-native="true">
-                                                    <input type="hidden" name="_token" value={csrfToken} />
-                                                    <button type="submit" className="text-rose-600 hover:text-rose-500">
-                                                        Stop
-                                                    </button>
-                                                </form>
-                                                <a
-                                                    href={recurring.routes?.show}
-                                                    data-native="true"
-                                                    className="text-slate-600 hover:text-teal-600"
-                                                >
-                                                    View
-                                                </a>
                                             </div>
                                         </td>
                                     </tr>

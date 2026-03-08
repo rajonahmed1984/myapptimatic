@@ -276,6 +276,8 @@ class SalesRepresentativeController extends Controller
         $balance = $commissionService->computeRepBalance($salesRep->id);
         $payableNet = (float) ($balance['payable_balance'] ?? 0);
         $overpaid = (float) ($balance['overpaid'] ?? 0);
+        $outstanding = max(0, (float) ($balance['outstanding'] ?? 0));
+        $notYetPayable = max(0, round($outstanding - $payableNet, 2));
         $sourceBaseQuery = CommissionEarning::query()
             ->where('sales_representative_id', $salesRep->id)
             ->whereIn('status', ['pending', 'earned', 'payable', 'paid']);
@@ -296,7 +298,8 @@ class SalesRepresentativeController extends Controller
             'paid' => (float) ($balance['total_paid'] ?? 0),
             'advance_paid' => (float) ($balance['advance_paid'] ?? 0),
             'overpaid' => $overpaid,
-            'outstanding' => max(0, (float) ($balance['outstanding'] ?? 0)),
+            'outstanding' => $outstanding,
+            'not_yet_payable' => $notYetPayable,
             'payable_label' => $payableLabel,
             'project_earned' => $projectEarned,
             'maintenance_earned' => $serviceEarned,

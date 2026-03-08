@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
 export default function Index({
@@ -10,8 +10,33 @@ export default function Index({
     const csrfToken = page?.props?.csrf_token || '';
     const errors = page?.props?.errors || {};
     const hasErrors = Object.keys(errors).length > 0;
+    const [openActionId, setOpenActionId] = useState(null);
 
     const confirmDelete = () => window.confirm('Delete this payment method?');
+
+    useEffect(() => {
+        if (openActionId === null) {
+            return undefined;
+        }
+
+        const closeMenu = () => {
+            setOpenActionId(null);
+        };
+
+        const onEscape = (event) => {
+            if (event.key === 'Escape') {
+                closeMenu();
+            }
+        };
+
+        document.addEventListener('click', closeMenu);
+        window.addEventListener('keydown', onEscape);
+
+        return () => {
+            document.removeEventListener('click', closeMenu);
+            window.removeEventListener('keydown', onEscape);
+        };
+    }, [openActionId]);
 
     return (
         <>
@@ -105,12 +130,12 @@ export default function Index({
 
                 <div className="card p-6 lg:col-span-7">
                     <div className="text-sm font-semibold text-slate-900">Method list</div>
-                    <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+                    <div className="mt-4 rounded-xl border border-slate-200">
+                        <div className="overflow-x-auto">
                         <table className="min-w-full text-sm text-slate-700">
                             <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <tr>
                                     <th className="px-3 py-2">Name</th>
-                                    <th className="px-3 py-2">Code</th>
                                     <th className="px-3 py-2">Amount</th>
                                     <th className="px-3 py-2">Details</th>
                                     <th className="px-3 py-2">Status</th>
@@ -122,9 +147,13 @@ export default function Index({
                                 {methods.length > 0 ? (
                                     methods.map((method) => (
                                         <tr key={method.id} className="border-t border-slate-200">
-                                            <td className="px-3 py-2 font-medium text-slate-900">{method.name}</td>
-                                            <td className="px-3 py-2">{method.code}</td>
-                                            <td className="px-3 py-2 font-medium text-slate-800">{method.amount_display}</td>
+                                            <td className="px-3 py-2 font-medium text-slate-900">
+                                                <div>{method.name}</div>
+                                                <div className="mt-1 text-xs font-normal uppercase tracking-[0.16em] text-slate-500">
+                                                    {method.code}
+                                                </div>
+                                            </td>
+                                            <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-800">{method.amount_display}</td>
                                             <td className="px-3 py-2 text-xs text-slate-600">{method.account_details}</td>
                                             <td className="px-3 py-2">
                                                 <span
@@ -137,50 +166,69 @@ export default function Index({
                                             </td>
                                             <td className="px-3 py-2">{method.sort_order}</td>
                                             <td className="px-3 py-2 text-right">
-                                                <div className="inline-flex items-center gap-3">
-                                                    <a
-                                                        href={method?.routes?.show}
-                                                        data-native="true"
-                                                        className="text-slate-700 hover:text-slate-900"
+                                                <div className="relative inline-flex text-left" onClick={(event) => event.stopPropagation()}>
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                                        onClick={() =>
+                                                            setOpenActionId((current) => (current === method.id ? null : method.id))
+                                                        }
                                                     >
-                                                        View
-                                                    </a>
-                                                    <a
-                                                        href={method?.routes?.edit}
-                                                        data-native="true"
-                                                        className="text-teal-600 hover:text-teal-500"
-                                                    >
-                                                        Edit
-                                                    </a>
-                                                    <form
-                                                        method="POST"
-                                                        action={method?.routes?.destroy}
-                                                        data-native="true"
-                                                        onSubmit={(event) => {
-                                                            if (!confirmDelete()) {
-                                                                event.preventDefault();
-                                                            }
-                                                        }}
-                                                    >
-                                                        <input type="hidden" name="_token" value={csrfToken} />
-                                                        <input type="hidden" name="_method" value="DELETE" />
-                                                        <button type="submit" className="text-rose-600 hover:text-rose-500">
-                                                            Delete
-                                                        </button>
-                                                    </form>
+                                                        Actions
+                                                        <span className="text-[10px] text-slate-400">{openActionId === method.id ? '▲' : '▼'}</span>
+                                                    </button>
+
+                                                    {openActionId === method.id ? (
+                                                        <div className="absolute bottom-full right-0 z-20 mb-2 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                                                            <a
+                                                                href={method?.routes?.show}
+                                                                data-native="true"
+                                                                className="block px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-teal-600"
+                                                            >
+                                                                View
+                                                            </a>
+                                                            <a
+                                                                href={method?.routes?.edit}
+                                                                data-native="true"
+                                                                className="block px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-teal-600"
+                                                            >
+                                                                Edit
+                                                            </a>
+                                                            <form
+                                                                method="POST"
+                                                                action={method?.routes?.destroy}
+                                                                data-native="true"
+                                                                onSubmit={(event) => {
+                                                                    if (!confirmDelete()) {
+                                                                        event.preventDefault();
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <input type="hidden" name="_token" value={csrfToken} />
+                                                                <input type="hidden" name="_method" value="DELETE" />
+                                                                <button
+                                                                    type="submit"
+                                                                    className="block w-full px-4 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    ) : null}
                                                 </div>
                                             </td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={7} className="px-3 py-4 text-center text-slate-500">
+                                        <td colSpan={6} className="px-3 py-4 text-center text-slate-500">
                                             No payment methods found.
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -665,6 +665,7 @@ Route::middleware([
     Route::get('invoices/{invoice}/download', [AdminInvoiceController::class, 'download'])->name('invoices.download');
     Route::get('invoices/{invoice}', [AdminInvoiceController::class, 'show'])->name('invoices.show');
     Route::post('invoices/{invoice}/mark-paid', [AdminInvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
+    Route::post('invoices/{invoice}/collect-by-sales-rep', [AdminInvoiceController::class, 'collectBySalesRep'])->name('invoices.collect-by-sales-rep');
     Route::post('invoices/{invoice}/recalculate', [AdminInvoiceController::class, 'recalculate'])->name('invoices.recalculate');
     Route::put('invoices/{invoice}', [AdminInvoiceController::class, 'update'])->name('invoices.update');
     Route::delete('invoices/{invoice}', [AdminInvoiceController::class, 'destroy'])->name('invoices.destroy');

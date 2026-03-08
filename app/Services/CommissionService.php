@@ -86,6 +86,7 @@ class CommissionService
         $idempotencyKey = sprintf('invoice:%s:rep:%s:source:%s', $invoice->id, $salesRepId, $sourceType);
 
         return DB::transaction(function () use ($invoice, $salesRepId, $commissionAmount, $paidAmount, $sourceType, $idempotencyKey) {
+            $now = Carbon::now();
             $earning = CommissionEarning::lockForUpdate()->where('idempotency_key', $idempotencyKey)->first();
 
             $payload = [
@@ -99,14 +100,15 @@ class CommissionService
                 'currency' => $invoice->currency,
                 'paid_amount' => $paidAmount,
                 'commission_amount' => $commissionAmount,
-                'status' => 'earned',
-                'earned_at' => Carbon::now(),
+                'status' => 'payable',
+                'earned_at' => $now,
+                'payable_at' => $now,
                 'idempotency_key' => $idempotencyKey,
             ];
 
             if (! $earning) {
                 $earning = CommissionEarning::create($payload);
-                $this->logStatusChange($earning, null, 'earned', 'invoice_paid');
+                $this->logStatusChange($earning, null, 'payable', 'invoice_paid');
             } else {
                 $previousStatus = $earning->status;
                 // If already paid or reversed, keep the status but update metadata/amounts.
@@ -116,6 +118,10 @@ class CommissionService
                     $payload['payable_at'] = $earning->payable_at;
                     $payload['paid_at'] = $earning->paid_at;
                     $payload['reversed_at'] = $earning->reversed_at;
+                } elseif (in_array($earning->status, ['earned', 'pending'], true)) {
+                    $payload['status'] = 'payable';
+                    $payload['earned_at'] = $earning->earned_at ?? $now;
+                    $payload['payable_at'] = $earning->payable_at ?? $now;
                 }
 
                 $earning->update($payload);
