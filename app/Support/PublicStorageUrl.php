@@ -13,7 +13,11 @@ class PublicStorageUrl
             return null;
         }
 
-        return asset('storage/'.$normalized);
+        if (Str::startsWith($normalized, 'avatars/')) {
+            return self::mediaAvatarPath($normalized);
+        }
+
+        return self::storagePath($normalized);
     }
 
     public static function normalizePath(?string $path): string
@@ -43,5 +47,37 @@ class PublicStorageUrl
         }
 
         return ltrim($value, '/');
+    }
+
+    private static function storagePath(string $normalized): string
+    {
+        return self::basePath() . '/storage/' . ltrim($normalized, '/');
+    }
+
+    private static function mediaAvatarPath(string $normalized): string
+    {
+        $relative = ltrim($normalized, '/');
+
+        if (Str::startsWith($relative, 'avatars/')) {
+            $relative = substr($relative, strlen('avatars/'));
+        }
+
+        return self::basePath() . '/media/avatars/' . ltrim($relative, '/');
+    }
+
+    private static function basePath(): string
+    {
+        $basePath = '';
+
+        try {
+            if (app()->bound('request')) {
+                $basePath = (string) request()->getBaseUrl();
+            }
+        } catch (\Throwable) {
+            $basePath = '';
+        }
+
+        $basePath = trim(str_replace('\\', '/', $basePath));
+        return $basePath !== '' ? '/' . trim($basePath, '/') : '';
     }
 }

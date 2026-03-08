@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import mediaUrl from '../../../utils/mediaUrl';
+import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 
 export default function Edit({ user = {}, sales_rep = {}, form = {} }) {
     const page = usePage();
     const csrfToken = page?.props?.csrf_token || '';
     const errors = page?.props?.errors || {};
-    const image = mediaUrl(sales_rep?.avatar_path || user?.avatar_path);
+    const [avatarFile, setAvatarFile] = useState(null);
+    const previewUrl = useObjectUrlPreview(avatarFile, { enabled: String(avatarFile?.type || '').startsWith('image/') });
+    const image = previewUrl || mediaUrl(sales_rep?.avatar_path || user?.avatar_path) || '';
 
     return (
         <>
@@ -28,7 +31,13 @@ export default function Edit({ user = {}, sales_rep = {}, form = {} }) {
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Profile photo</label>
-                                <input name="avatar" type="file" accept="image/*" className="mt-2 text-sm text-slate-600" />
+                                <input
+                                    name="avatar"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
+                                    className="mt-2 text-sm text-slate-600"
+                                />
                                 {errors?.avatar ? <div className="mt-1 text-xs text-rose-600">{errors.avatar}</div> : null}
                             </div>
                         </div>

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 
 const initials = (name = '') =>
     String(name)
@@ -14,6 +15,9 @@ export default function Edit({ pageTitle = 'Profile', form = {} }) {
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
+    const [avatarFile, setAvatarFile] = useState(null);
+    const previewUrl = useObjectUrlPreview(avatarFile, { enabled: String(avatarFile?.type || '').startsWith('image/') });
+    const avatarUrl = previewUrl || form?.avatar_url || '';
 
     return (
         <>
@@ -35,8 +39,8 @@ export default function Edit({ pageTitle = 'Profile', form = {} }) {
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="flex items-center gap-4">
                             <div className="h-16 w-16 overflow-hidden rounded-full border border-slate-200 bg-white">
-                                {form?.avatar_url ? (
-                                    <img src={form.avatar_url} alt={fields?.name || 'Avatar'} className="h-16 w-16 object-cover" />
+                                {avatarUrl ? (
+                                    <img src={avatarUrl} alt={fields?.name || 'Avatar'} className="h-16 w-16 object-cover" />
                                 ) : (
                                     <div className="flex h-16 w-16 items-center justify-center text-sm font-semibold text-slate-700">
                                         {initials(fields?.name || '')}
@@ -45,7 +49,13 @@ export default function Edit({ pageTitle = 'Profile', form = {} }) {
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Profile photo</label>
-                                <input name="avatar" type="file" accept="image/*" className="mt-2 text-sm text-slate-600" />
+                                <input
+                                    name="avatar"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
+                                    className="mt-2 text-sm text-slate-600"
+                                />
                                 <p className="text-xs text-slate-500">PNG/JPG up to 2MB.</p>
                                 {errors?.avatar ? <p className="mt-1 text-xs text-rose-600">{errors.avatar}</p> : null}
                             </div>

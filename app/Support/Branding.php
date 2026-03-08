@@ -16,7 +16,7 @@ class Branding
         $publicPath = public_path('storage/' . $path);
 
         if (is_file($publicPath)) {
-            return asset('storage/' . $path);
+            return PublicStorageUrl::fromPath($path);
         }
 
         if (Storage::disk('public')->exists($path)) {

@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import AuthenticatedImageAttachment from '../../Components/AuthenticatedImageAttachment';
+import useObjectUrlPreview from '../../hooks/useObjectUrlPreview';
 
 const EMOJIS = ['👍', '❤️', '😂', '😮', '🙏'];
 
@@ -49,6 +51,11 @@ export default function TaskChat({
     const [attachmentFile, setAttachmentFile] = useState(null);
     const [notice, setNotice] = useState('');
     const [busy, setBusy] = useState(false);
+    const fileInputRef = useRef(null);
+    const attachmentPreviewUrl = useObjectUrlPreview(
+        attachmentFile,
+        { enabled: String(attachmentFile?.type || '').startsWith('image/') }
+    );
 
     const latestId = useMemo(() => {
         if (!Array.isArray(items) || items.length === 0) {
@@ -162,6 +169,9 @@ export default function TaskChat({
             setBody('');
             setReplyToId(0);
             setAttachmentFile(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
             setNotice(payload?.message || 'Message sent.');
         } catch (_error) {
             setNotice('Unable to send message.');
@@ -354,6 +364,29 @@ export default function TaskChat({
                                 </button>
                             </div>
                         ) : null}
+                        {attachmentPreviewUrl ? (
+                            <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                <div className="flex items-center gap-3">
+                                    <img src={attachmentPreviewUrl} alt="Selected preview" className="h-16 w-16 rounded-lg border border-slate-200 object-cover" />
+                                    <div className="text-xs text-slate-500">
+                                        <div className="font-semibold text-slate-700">{attachmentFile?.name || 'Selected image'}</div>
+                                        <div>Image will be sent with your message.</div>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAttachmentFile(null);
+                                        if (fileInputRef.current) {
+                                            fileInputRef.current.value = '';
+                                        }
+                                    }}
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        ) : null}
                         <textarea
                             value={body}
                             onChange={(event) => setBody(event.target.value)}
@@ -361,9 +394,14 @@ export default function TaskChat({
                             placeholder="Write a message"
                             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
                         />
-                        <input type="file" onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)} className="w-full text-xs text-slate-600" />
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)}
+                            className="w-full text-xs text-slate-600"
+                        />
                         <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500">{notice}</span>
+                            <span className="text-xs text-slate-500">{attachmentFile ? `Attached: ${attachmentFile.name}` : notice}</span>
                             <button type="submit" disabled={busy} className="rounded-full border border-teal-200 px-4 py-1.5 text-xs font-semibold text-teal-700 disabled:opacity-50">
                                 Send
                             </button>
@@ -391,9 +429,19 @@ export default function TaskChat({
 
                             {item.message ? <div className="mt-1 whitespace-pre-line text-sm text-slate-800">{item.message}</div> : null}
                             {item.attachment_url ? (
-                                <a href={item.attachment_url} target="_blank" rel="noopener" className="mt-1 inline-flex text-xs font-semibold text-teal-600">
-                                    {item.attachment_name || 'Attachment'}
-                                </a>
+                                item.attachment_is_image ? (
+                                    <AuthenticatedImageAttachment
+                                        url={item.attachment_url}
+                                        name={item.attachment_name || 'Attachment preview'}
+                                        wrapperClassName="mt-2 space-y-1"
+                                        imageClassName="max-h-56 rounded-lg border border-slate-200 object-cover"
+                                        linkClassName="mt-1 inline-flex text-xs font-semibold text-teal-600"
+                                    />
+                                ) : (
+                                    <a href={item.attachment_url} target="_blank" rel="noopener" className="mt-1 inline-flex text-xs font-semibold text-teal-600">
+                                        {item.attachment_name || 'Attachment'}
+                                    </a>
+                                )
                             ) : null}
 
                             <div className="mt-2 flex flex-wrap items-center gap-2">

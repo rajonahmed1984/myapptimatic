@@ -29,6 +29,7 @@ use App\Services\InvoiceTaxService;
 use App\Services\Mail\MailSender;
 use App\Support\Branding;
 use App\Support\Currency;
+use App\Support\PublicStorageUrl;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use Illuminate\Http\Request;
@@ -305,6 +306,12 @@ class CustomerController extends Controller
             $projects = $customer->projects()->orderBy('name')->get(['id', 'name']);
         }
         if ($tab === 'projects') {
+            $customer->loadMissing([
+                'projects.invoices' => function ($query) {
+                    $query->select(['id', 'project_id', 'type', 'status', 'total']);
+                },
+            ]);
+
             $projectMaintenances = $customer->projectMaintenances()
                 ->with('project:id,name')
                 ->withCount('invoices')
@@ -504,7 +511,7 @@ class CustomerController extends Controller
                 'address' => (string) ($customer->address ?? ''),
                 'company_name' => (string) ($customer->company_name ?? ''),
                 'status' => (string) ($customer->status ?? 'active'),
-                'avatar_url' => $customer->avatar_path ? asset('storage/'.$customer->avatar_path) : null,
+                'avatar_url' => PublicStorageUrl::fromPath($customer->avatar_path),
                 'nid_url' => $customer->nid_path
                     ? route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'nid'], false)
                     : null,
@@ -571,6 +578,8 @@ class CustomerController extends Controller
                 'name' => (string) ($project->name ?? '--'),
             ])->values()->all(),
             'projects' => $customer->projects->map(function ($project) use ($dateFormat) {
+                $financials = $this->projectFinancialSnapshot($project);
+
                 return [
                     'id' => $project->id,
                     'name' => (string) ($project->name ?? '--'),
@@ -580,6 +589,8 @@ class CustomerController extends Controller
                     'due_date_display' => $project->due_date?->format($dateFormat) ?? '--',
                     'currency' => (string) ($project->currency ?? ''),
                     'total_budget' => (float) ($project->total_budget ?? 0),
+                    'paid_amount' => (float) ($financials['paid_payment'] ?? 0),
+                    'due_amount' => (float) ($financials['remaining_budget'] ?? 0),
                     'show_url' => route('admin.projects.show', $project, false),
                     'edit_url' => route('admin.projects.edit', $project, false),
                 ];
@@ -1188,7 +1199,7 @@ class CustomerController extends Controller
                         'email' => (string) ($customer->email ?: '--'),
                         'phone' => (string) ($customer->phone ?: '--'),
                         'mobile' => (string) ($customer->phone ?: '--'),
-                        'avatar_url' => $customer->avatar_path ? asset('storage/'.$customer->avatar_path) : null,
+                        'avatar_url' => PublicStorageUrl::fromPath($customer->avatar_path),
                         'active_subscriptions_count' => (int) ($customer->active_subscriptions_count ?? 0),
                         'subscriptions_count' => (int) ($customer->subscriptions_count ?? 0),
                         'projects_count' => (int) ($customer->projects_count ?? 0),
@@ -1240,6 +1251,30 @@ class CustomerController extends Controller
         return round($price, 2);
     }
 
+    private function projectFinancialSnapshot($project): array
+    {
+        $budget = (float) ($project->total_budget ?? 0);
+        $overhead = (float) ($project->overhead_total ?? 0);
+        $budgetWithOverhead = $budget + $overhead;
+
+        if ($project->relationLoaded('invoices')) {
+            $paidPayment = (float) $project->invoices
+                ->whereIn('type', ['project_initial_payment', 'project_remaining_budget'])
+                ->where('status', 'paid')
+                ->sum(fn ($invoice) => (float) ($invoice->total ?? 0));
+        } else {
+            $paidPayment = (float) $project->invoices()
+                ->whereIn('type', ['project_initial_payment', 'project_remaining_budget'])
+                ->where('status', 'paid')
+                ->sum('total');
+        }
+
+        return [
+            'paid_payment' => $paidPayment,
+            'remaining_budget' => $budgetWithOverhead - $paidPayment,
+        ];
+    }
+
     private function nextServiceInvoiceAt(string $interval, Carbon $periodEnd, Carbon $startDate): Carbon
     {
         if ($interval === 'monthly') {
@@ -1287,7 +1322,7 @@ class CustomerController extends Controller
                     ? route('admin.customers.update', $customer)
                     : route('admin.customers.store'),
                 'method' => $isEdit ? 'PUT' : 'POST',
-                'avatar_url' => $isEdit && $customer?->avatar_path ? asset('storage/'.$customer->avatar_path) : null,
+                'avatar_url' => $isEdit ? PublicStorageUrl::fromPath($customer?->avatar_path) : null,
                 'fields' => [
                     'name' => (string) old('name', (string) ($customer?->name ?? '')),
                     'company_name' => (string) old('company_name', (string) ($customer?->company_name ?? '')),

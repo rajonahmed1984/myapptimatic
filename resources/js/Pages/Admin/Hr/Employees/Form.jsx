@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import mediaUrl from '../../../../utils/mediaUrl';
+import useObjectUrlPreview from '../../../../hooks/useObjectUrlPreview';
 
 export default function FormPage({
     mode = 'create',
@@ -20,7 +21,8 @@ export default function FormPage({
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const [employmentType, setEmploymentType] = useState(values.employment_type || 'full_time');
     const [salaryType, setSalaryType] = useState(values.salary_type || 'monthly');
-    const [photoPreview, setPhotoPreview] = useState(mediaUrl(values.photo_path));
+    const [photoFile, setPhotoFile] = useState(null);
+    const photoPreview = useObjectUrlPreview(photoFile, { enabled: String(photoFile?.type || '').startsWith('image/') }) || mediaUrl(values.photo_path) || '';
 
     const basicPayOptional = useMemo(
         () => employmentType === 'contract' && salaryType === 'project_base',
@@ -134,7 +136,7 @@ export default function FormPage({
                             <label className="text-xs text-slate-500">Photo (jpg/png)</label>
                             <input type="file" name="photo" accept=".jpg,.jpeg,.png" className="w-full text-sm text-slate-700" onChange={(e) => {
                                 const file = e.target.files && e.target.files[0];
-                                if (file) setPhotoPreview(URL.createObjectURL(file));
+                                setPhotoFile(file || null);
                             }} />
                             <div className="mt-2 h-16 w-16 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
                                 {photoPreview ? <img src={photoPreview} alt="Photo preview" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-500">{(values.name || 'E').charAt(0).toUpperCase()}</div>}

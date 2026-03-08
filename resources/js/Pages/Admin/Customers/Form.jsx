@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 
 export default function Form({
     pageTitle = 'Customer',
@@ -15,7 +16,9 @@ export default function Form({
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
-    const avatarUrl = form?.avatar_url || '';
+    const [avatarFile, setAvatarFile] = useState(null);
+    const previewUrl = useObjectUrlPreview(avatarFile, { enabled: String(avatarFile?.type || '').startsWith('image/') });
+    const avatarUrl = previewUrl || form?.avatar_url || '';
     const statusLabel = String(effective_status || fields?.status || 'active');
 
     return (
@@ -75,7 +78,13 @@ export default function Form({
                                 <div className="grid gap-4 md:col-span-2 md:grid-cols-2">
                                     <div>
                                         <label className="text-sm text-slate-600">Customer logo</label>
-                                        <input name="avatar" type="file" accept="image/*" className="mt-2 block w-full text-sm text-slate-600" />
+                                        <input
+                                            name="avatar"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
+                                            className="mt-2 block w-full text-sm text-slate-600"
+                                        />
                                         <p className="mt-1 text-xs text-slate-500">PNG/JPG/WEBP, max 2MB.</p>
                                         {errors?.avatar ? <p className="mt-1 text-xs text-rose-500">{errors.avatar}</p> : null}
                                     </div>
@@ -146,8 +155,19 @@ export default function Form({
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Profile Image</label>
-                                    <input name="avatar" type="file" accept="image/*" className="mt-2 block w-full text-sm text-slate-600" />
+                                    <input
+                                        name="avatar"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
+                                        className="mt-2 block w-full text-sm text-slate-600"
+                                    />
                                     <p className="mt-1 text-xs text-slate-500">PNG/JPG/WEBP, max 2MB.</p>
+                                    {avatarUrl ? (
+                                        <div className="mt-2 h-16 w-16 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                            <img src={avatarUrl} alt={fields?.name || 'Customer logo'} className="h-full w-full object-cover" />
+                                        </div>
+                                    ) : null}
                                     {errors?.avatar ? <p className="mt-1 text-xs text-rose-500">{errors.avatar}</p> : null}
                                 </div>
                                 <div className="md:col-span-2">

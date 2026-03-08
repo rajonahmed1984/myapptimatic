@@ -1,3 +1,24 @@
+const appBaseUrl = () => {
+    const metaValue = document.querySelector('meta[name="app-base-url"]')?.getAttribute('content') || '';
+    const normalized = String(metaValue).trim().replace(/\\/g, '/');
+
+    if (normalized === '' || normalized === '/') {
+        return '';
+    }
+
+    return `/${normalized.replace(/^\/+|\/+$/g, '')}`;
+};
+
+const mediaAvatarPath = (path) => {
+    const normalized = String(path)
+        .replace(/\\/g, '/')
+        .replace(/^\/+/, '')
+        .replace(/^avatars\//i, '');
+
+    return `${appBaseUrl()}/media/avatars/${normalized}`;
+};
+const storagePath = (path) => `${appBaseUrl()}/storage/${String(path).replace(/^\/+/, '')}`;
+
 export default function mediaUrl(input) {
     const raw = String(input ?? '').trim();
     if (raw === '') {
@@ -9,6 +30,14 @@ export default function mediaUrl(input) {
     }
 
     if (raw.startsWith('/')) {
+        if (raw.startsWith('/storage/avatars/')) {
+            return mediaAvatarPath(raw.replace(/^\/storage\/+/i, ''));
+        }
+
+        if (raw.startsWith('/storage/')) {
+            return `${appBaseUrl()}${raw}`;
+        }
+
         return raw;
     }
 
@@ -21,5 +50,9 @@ export default function mediaUrl(input) {
         return null;
     }
 
-    return `/storage/${normalized}`;
+    if (normalized.startsWith('avatars/')) {
+        return mediaAvatarPath(normalized);
+    }
+
+    return storagePath(normalized);
 }

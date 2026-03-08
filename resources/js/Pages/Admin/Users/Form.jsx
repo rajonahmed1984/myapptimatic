@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 
 const initials = (name = '') =>
     String(name)
@@ -22,6 +23,9 @@ export default function Form({
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
     const documents = form?.documents || {};
+    const [avatarFile, setAvatarFile] = useState(null);
+    const previewUrl = useObjectUrlPreview(avatarFile, { enabled: String(avatarFile?.type || '').startsWith('image/') });
+    const avatarUrl = previewUrl || documents?.avatar_url || '';
 
     return (
         <>
@@ -128,12 +132,13 @@ export default function Form({
                                     name="avatar"
                                     type="file"
                                     accept=".jpg,.jpeg,.png,.webp"
+                                    onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
                                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
                                 />
-                                {documents?.avatar_url ? (
+                                {avatarUrl ? (
                                     <div className="mt-2">
                                         <img
-                                            src={documents.avatar_url}
+                                            src={avatarUrl}
                                             alt="Avatar"
                                             className="h-16 w-16 rounded-full border border-slate-200 object-cover"
                                         />

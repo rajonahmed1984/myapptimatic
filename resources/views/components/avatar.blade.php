@@ -18,27 +18,22 @@
 @endphp
 
 @php
-    $basePath = rtrim(request()->getBasePath(), '/');
-    $prefix = $basePath === '' ? '' : $basePath;
     $avatarUrl = null;
 
     if (is_string($path) && trim($path) !== '') {
         $cleanPath = ltrim(trim($path), '/');
+        $resolvedPath = $cleanPath;
 
         if (preg_match('/^https?:\/\//i', $cleanPath)) {
             $avatarUrl = $cleanPath;
-        } elseif (str_starts_with($cleanPath, 'employees/photos/')) {
-            $avatarUrl = $prefix . '/storage/' . $cleanPath;
-        } elseif (str_starts_with($cleanPath, 'avatars/')) {
-            $avatarUrl = $prefix . '/storage/' . $cleanPath;
         } elseif (str_starts_with($cleanPath, 'users/')
             || str_starts_with($cleanPath, 'customers/')
             || str_starts_with($cleanPath, 'sales-reps/')) {
-            $avatarUrl = $prefix . '/storage/avatars/' . $cleanPath;
-        } elseif (str_starts_with($cleanPath, 'storage/')) {
-            $avatarUrl = $prefix . '/' . $cleanPath;
-        } else {
-            $avatarUrl = $prefix . '/storage/' . $cleanPath;
+            $resolvedPath = 'avatars/' . $cleanPath;
+        }
+
+        if (! $avatarUrl) {
+            $avatarUrl = \App\Support\PublicStorageUrl::fromPath($resolvedPath);
         }
     }
 @endphp

@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import AuthenticatedImageAttachment from '../../Components/AuthenticatedImageAttachment';
+import useObjectUrlPreview from '../../hooks/useObjectUrlPreview';
 
 const EMOJIS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F62E}', '\u{1F64F}'];
 
@@ -73,7 +75,6 @@ export default function ProjectChat({
     const [body, setBody] = useState('');
     const [replyToId, setReplyToId] = useState(0);
     const [attachmentFile, setAttachmentFile] = useState(null);
-    const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState('');
     const [selectedMentions, setSelectedMentions] = useState([]);
     const [mentionMenu, setMentionMenu] = useState({
         open: false,
@@ -87,6 +88,10 @@ export default function ProjectChat({
     const messageViewportRef = useRef(null);
     const fileInputRef = useRef(null);
     const composerRef = useRef(null);
+    const attachmentPreviewUrl = useObjectUrlPreview(
+        attachmentFile,
+        { enabled: String(attachmentFile?.type || '').startsWith('image/') }
+    );
 
     const replyTarget = useMemo(
         () => items.find((row) => Number(row.id || 0) === Number(replyToId || 0)) || null,
@@ -494,20 +499,6 @@ export default function ProjectChat({
     }, [mentionCandidates.length, mentionMenu.activeIndex, mentionMenu.open]);
 
     useEffect(() => {
-        if (!attachmentFile || !String(attachmentFile?.type || '').startsWith('image/')) {
-            setAttachmentPreviewUrl('');
-            return undefined;
-        }
-
-        const preview = URL.createObjectURL(attachmentFile);
-        setAttachmentPreviewUrl(preview);
-
-        return () => {
-            URL.revokeObjectURL(preview);
-        };
-    }, [attachmentFile]);
-
-    useEffect(() => {
         resizeComposer();
     }, [body]);
 
@@ -636,23 +627,23 @@ export default function ProjectChat({
                                                     {item.attachment_url ? (
                                                         <div className="mt-2">
                                                             {item.attachment_is_image ? (
-                                                                <a href={item.attachment_url} target="_blank" rel="noopener" className="block">
-                                                                    <img
-                                                                        src={item.attachment_url}
-                                                                        alt={item.attachment_name || 'Attachment preview'}
-                                                                        className="max-h-64 w-full rounded-lg border border-black/10 object-cover"
-                                                                        loading="lazy"
-                                                                    />
+                                                                <AuthenticatedImageAttachment
+                                                                    url={item.attachment_url}
+                                                                    name={item.attachment_name || 'Attachment preview'}
+                                                                    wrapperClassName="space-y-1"
+                                                                    imageClassName="max-h-64 w-full rounded-lg border border-black/10 object-cover"
+                                                                    linkClassName="mt-1 inline-flex max-w-full break-all rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                                                                />
+                                                            ) : (
+                                                                <a
+                                                                    href={item.attachment_url}
+                                                                    target="_blank"
+                                                                    rel="noopener"
+                                                                    className="mt-1 inline-flex max-w-full break-all rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                                                                >
+                                                                    {item.attachment_name || 'Attachment'}
                                                                 </a>
-                                                            ) : null}
-                                                            <a
-                                                                href={item.attachment_url}
-                                                                target="_blank"
-                                                                rel="noopener"
-                                                                className="mt-1 inline-flex max-w-full break-all rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
-                                                            >
-                                                                {item.attachment_name || 'Attachment'}
-                                                            </a>
+                                                            )}
                                                         </div>
                                                     ) : null}
 

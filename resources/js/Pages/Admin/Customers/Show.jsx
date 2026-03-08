@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DatePickerField from '../../../Components/DatePickerField';
+import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 
 const statusClass = (status) => {
     const key = String(status || '').toLowerCase();
@@ -96,6 +97,8 @@ export default function Show({
     const [planId, setPlanId] = useState(String(serviceDefaults?.plan_id || ''));
     const [startDate, setStartDate] = useState(String(serviceDefaults?.start_date || new Date().toISOString().slice(0, 10)));
     const [salesRepId, setSalesRepId] = useState(String(serviceDefaults?.sales_rep_id || ''));
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
     const plan = useMemo(
         () => service_plans.find((item) => String(item.id) === String(planId)) || null,
@@ -105,6 +108,8 @@ export default function Show({
     const projectProgressPercent = Math.max(0, Math.min(100, Number(project_task_progress?.percent || 0)));
     const customerInitials = useMemo(() => initialsFromName(customer?.name), [customer?.name]);
     const customerStatusClass = statusClass(customer?.effective_status || customer?.status);
+    const avatarPreviewUrl = useObjectUrlPreview(avatarFile, { enabled: String(avatarFile?.type || '').startsWith('image/') });
+    const customerAvatarUrl = avatarPreviewUrl || (avatarLoadFailed ? '' : String(customer?.avatar_url || ''));
     const invoiceStatusSummary = Array.isArray(metrics?.invoice_status_summary) ? metrics.invoice_status_summary : [];
     const summaryCards = useMemo(
         () => ([
@@ -266,16 +271,32 @@ export default function Show({
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Profile Image</label>
-                                <input name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp,image/*" className="mt-2 block w-full text-sm text-slate-600" />
+                                <input
+                                    name="avatar"
+                                    type="file"
+                                    accept=".jpg,.jpeg,.png,.webp,image/*"
+                                    onChange={(event) => {
+                                        setAvatarFile(event.target.files?.[0] || null);
+                                        setAvatarLoadFailed(false);
+                                    }}
+                                    className="mt-2 block w-full text-sm text-slate-600"
+                                />
                                 <p className="mt-1 text-xs text-slate-500">PNG/JPG/WEBP, max 2MB.</p>
                                 <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
-                                    <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Current logo</div>
+                                    <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                                        {avatarPreviewUrl ? 'Selected image preview' : 'Current logo'}
+                                    </div>
                                     <div className="mt-2">
-                                        {customer?.avatar_url ? (
-                                            <img src={customer.avatar_url} alt={customer?.name || 'Customer avatar'} className="h-16 w-16 rounded-xl object-cover" />
+                                        {customerAvatarUrl ? (
+                                            <img
+                                                src={customerAvatarUrl}
+                                                alt={customer?.name || 'Customer avatar'}
+                                                onError={() => setAvatarLoadFailed(true)}
+                                                className="h-16 w-16 rounded-xl object-cover"
+                                            />
                                         ) : (
-                                            <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-[11px] text-slate-500">
-                                                No image
+                                            <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-[11px] font-semibold text-slate-500">
+                                                {customerInitials}
                                             </div>
                                         )}
                                     </div>
@@ -493,16 +514,18 @@ export default function Show({
 
                         <div className="text-sm text-slate-600">Projects: {projects.length}</div>
                         <div className="overflow-x-auto rounded-2xl border border-slate-300">
-                            <table className="w-full min-w-[800px] text-left text-sm">
+                            <table className="w-full min-w-[980px] text-left text-sm">
                                 <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
-                                    <tr><th className="px-4 py-3">Project</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Budget</th><th className="px-4 py-3 text-right">Actions</th></tr>
+                                    <tr><th className="px-4 py-3">Project</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Budget</th><th className="px-4 py-3">Paid</th><th className="px-4 py-3">Due</th><th className="px-4 py-3 text-right">Actions</th></tr>
                                 </thead>
                                 <tbody>
-                                    {projects.length === 0 ? <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">No projects yet.</td></tr> : projects.map((item) => (
+                                    {projects.length === 0 ? <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">No projects yet.</td></tr> : projects.map((item) => (
                                         <tr key={item.id} className="border-b border-slate-100">
                                             <td className="px-4 py-3"><a href={item.show_url} data-native="true" className="text-teal-700 hover:text-teal-500">{item.name}</a></td>
                                             <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.status)}`}>{item.status}</span></td>
                                             <td className="px-4 py-3">{asMoney(item.total_budget, item.currency)}</td>
+                                            <td className="px-4 py-3">{asMoney(item.paid_amount, item.currency)}</td>
+                                            <td className="px-4 py-3">{asMoney(item.due_amount, item.currency)}</td>
                                             <td className="px-4 py-3 text-right"><a href={item.edit_url} data-native="true" className="text-slate-600 hover:text-teal-600">Edit</a></td>
                                         </tr>
                                     ))}

@@ -20,6 +20,7 @@ use App\Models\UserSession;
 use App\Services\CommissionService;
 use App\Services\SalesRepNotificationService;
 use App\Support\AjaxResponse;
+use App\Support\PublicStorageUrl;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -210,7 +211,7 @@ class SalesRepresentativeController extends Controller
                 'method' => 'PUT',
                 'fields' => $this->salesRepFormFields($salesRep),
                 'documents' => [
-                    'avatar_url' => $salesRep->avatar_path ? asset('storage/'.$salesRep->avatar_path) : null,
+                    'avatar_url' => PublicStorageUrl::fromPath($salesRep->avatar_path),
                     'nid_url' => $salesRep->nid_path
                         ? route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $salesRep->id, 'doc' => 'nid'], false)
                         : null,
@@ -637,7 +638,7 @@ class SalesRepresentativeController extends Controller
                 'user_name' => $salesRep->user?->name,
                 'user_email' => $salesRep->user?->email,
                 'employee_name' => $salesRep->employee?->name,
-                'avatar_url' => $salesRep->avatar_path ? asset('storage/'.$salesRep->avatar_path) : null,
+                'avatar_url' => PublicStorageUrl::fromPath($salesRep->avatar_path),
                 'nid_url' => $salesRep->nid_path
                     ? route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $salesRep->id, 'doc' => 'nid'], false)
                     : null,

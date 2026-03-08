@@ -878,7 +878,7 @@ class ProjectChatController extends Controller
         }
 
         if ($message->isImageAttachment()) {
-            return $disk->response($message->attachment_path);
+            return $this->inlinePublicAttachment($message->attachment_path);
         }
 
         return $disk->download($message->attachment_path, $message->attachmentName() ?? 'attachment');
@@ -895,7 +895,38 @@ class ProjectChatController extends Controller
             abort(404);
         }
 
-        return $disk->response($message->attachment_path);
+        return $this->inlinePublicAttachment($message->attachment_path);
+    }
+
+    private function inlinePublicAttachment(string $path)
+    {
+        $disk = Storage::disk('public');
+        $fullPath = $disk->path($path);
+        $mime = $this->guessInlineMimeType($path, (string) ($disk->mimeType($path) ?? ''));
+
+        return response()->file($fullPath, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+        ]);
+    }
+
+    private function guessInlineMimeType(string $path, string $detectedMime = ''): string
+    {
+        $normalizedDetectedMime = strtolower(trim($detectedMime));
+        if ($normalizedDetectedMime !== '' && $normalizedDetectedMime !== 'application/octet-stream') {
+            return $normalizedDetectedMime;
+        }
+
+        return match (strtolower((string) pathinfo($path, PATHINFO_EXTENSION))) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            'svg' => 'image/svg+xml',
+            'avif' => 'image/avif',
+            default => 'application/octet-stream',
+        };
     }
 
     private function resolveActor(Request $request): object
