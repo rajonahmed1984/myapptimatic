@@ -76,6 +76,14 @@ class AdminProjectCreateUiParityTest extends TestCase
                 'initial_payment_amount' => 1000,
                 'currency' => 'USD',
                 'budget_amount' => 2000,
+                'maintenances' => [[
+                    'title' => '',
+                    'amount' => '',
+                    'billing_cycle' => 'monthly',
+                    'start_date' => '',
+                    'auto_invoice' => 1,
+                    'sales_rep_visible' => 0,
+                ]],
                 'tasks' => [[
                     'title' => 'Initial setup',
                     'task_type' => 'feature',
@@ -93,6 +101,8 @@ class AdminProjectCreateUiParityTest extends TestCase
         $response
             ->assertRedirect(route('admin.projects.show', $project))
             ->assertSessionHas('status', 'Project created with initial tasks and invoice.');
+
+        $this->assertDatabaseCount('project_maintenances', 0);
     }
 
     #[Test]

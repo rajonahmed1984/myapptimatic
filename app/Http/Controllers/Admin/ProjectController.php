@@ -293,6 +293,21 @@ class ProjectController extends Controller
         $priorityOptions = array_keys(TaskSettings::priorityOptions());
         $maxMb = TaskSettings::uploadMaxMb();
 
+        $request->merge([
+            'maintenances' => collect($request->input('maintenances', []))
+                ->filter(function ($row) {
+                    if (! is_array($row)) {
+                        return false;
+                    }
+
+                    return trim((string) ($row['title'] ?? '')) !== ''
+                        || trim((string) ($row['amount'] ?? '')) !== ''
+                        || trim((string) ($row['start_date'] ?? '')) !== '';
+                })
+                ->values()
+                ->all(),
+        ]);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:190'],
             'customer_id' => ['required', 'exists:customers,id'],

@@ -58,7 +58,7 @@ export default function Create({
 
     const [maintenanceRows, setMaintenanceRows] = React.useState(() => {
         const seeded = asArray(maintenances).map((item) => ({ id: rowId(), ...item }));
-        return seeded.length ? seeded : [{ id: rowId(), title: '', amount: '', billing_cycle: 'monthly', start_date: '', auto_invoice: true, sales_rep_visible: false }];
+        return seeded.length ? seeded : [];
     });
 
     const [overheadRows, setOverheadRows] = React.useState(() => {
@@ -84,10 +84,7 @@ export default function Create({
     };
 
     const removeMaintenance = (id) => {
-        setMaintenanceRows((current) => {
-            const next = current.filter((row) => row.id !== id);
-            return next.length ? next : [{ id: rowId(), title: '', amount: '', billing_cycle: 'monthly', start_date: '', auto_invoice: true, sales_rep_visible: false }];
-        });
+        setMaintenanceRows((current) => current.filter((row) => row.id !== id));
     };
 
     const addOverhead = () => {
@@ -260,6 +257,11 @@ export default function Create({
                             <div className="section-label">Add Maintenance Plan</div>
                             <button type="button" onClick={addMaintenance} className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add plan</button>
                         </div>
+                        {maintenanceRows.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-5 text-sm text-slate-500">
+                                No maintenance plan added.
+                            </div>
+                        ) : null}
                         <div className="space-y-3">
                             {maintenanceRows.map((maintenance, index) => (
                                 <div key={maintenance.id} className="grid gap-3 md:grid-cols-6 mb-2">
