@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Branding
 {
@@ -16,13 +17,26 @@ class Branding
         $publicPath = public_path('storage/' . $path);
 
         if (is_file($publicPath)) {
-            return PublicStorageUrl::fromPath($path);
+            return self::absoluteUrl(PublicStorageUrl::fromPath($path));
         }
 
         if (Storage::disk('public')->exists($path)) {
-            return route('branding.asset', ['path' => $path]);
+            return self::absoluteUrl(route('branding.asset', ['path' => $path], false));
         }
 
         return null;
+    }
+
+    private static function absoluteUrl(?string $path): ?string
+    {
+        if (! is_string($path) || trim($path) === '') {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        return rtrim(UrlResolver::portalUrl(), '/') . '/' . ltrim($path, '/');
     }
 }
