@@ -2,7 +2,7 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
 export default function Index({
-    pageTitle = 'Projects',
+    pageTitle = 'All Projects',
     projects = [],
     statuses = [],
     types = [],
@@ -19,6 +19,10 @@ export default function Index({
 
             <div className="card space-y-4 p-6">
                 <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b-1">
+                    <div>
+                        <div className="section-label">Projects</div>
+                        <div className="text-sm text-slate-500">All project records moved here from the main projects dashboard.</div>
+                    </div>
                     <form method="GET" action={routes?.index} data-native="true" className="grid gap-3 p-2 md:grid-cols-4">
                         <div>
                             <label className="text-xs text-slate-500">Status</label>
@@ -60,13 +64,22 @@ export default function Index({
                         </div>
                     </form>
 
-                    <a
-                        href={routes?.create}
-                        data-native="true"
-                        className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                        New project
-                    </a>
+                    <div className="flex items-center gap-2">
+                        <a
+                            href={routes?.dashboard}
+                            data-native="true"
+                            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                        >
+                            Dashboard
+                        </a>
+                        <a
+                            href={routes?.create}
+                            data-native="true"
+                            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                        >
+                            New project
+                        </a>
+                    </div>
                 </div>
 
                 <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white/80">

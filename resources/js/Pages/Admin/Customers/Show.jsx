@@ -368,11 +368,45 @@ export default function Show({
                                             <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(row.status)}`}>{row.status}</span></td>
                                             <td className="px-4 py-3">{row.project_name || '--'}</td>
                                             <td className="px-4 py-3 text-right">
-                                                <form method="POST" action={row.routes?.destroy} data-native="true" className="inline">
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <input type="hidden" name="_method" value="DELETE" />
-                                                    <button type="submit" className="text-rose-600 hover:text-rose-500">Delete</button>
-                                                </form>
+                                                <div className="inline-flex items-center gap-3">
+                                                    <form
+                                                        method="POST"
+                                                        action={row.routes?.status}
+                                                        data-native="true"
+                                                        className="inline"
+                                                        onSubmit={(event) => {
+                                                            const nextStatus = row.status === 'active' ? 'inactive' : 'active';
+                                                            if (!window.confirm(`Set this user as ${nextStatus}?`)) {
+                                                                event.preventDefault();
+                                                            }
+                                                        }}
+                                                    >
+                                                        <input type="hidden" name="_token" value={csrf} />
+                                                        <input type="hidden" name="_method" value="PATCH" />
+                                                        <input type="hidden" name="status" value={row.status === 'active' ? 'inactive' : 'active'} />
+                                                        <button
+                                                            type="submit"
+                                                            className={row.status === 'active' ? 'text-amber-600 hover:text-amber-500' : 'text-emerald-600 hover:text-emerald-500'}
+                                                        >
+                                                            {row.status === 'active' ? 'Make Inactive' : 'Make Active'}
+                                                        </button>
+                                                    </form>
+                                                    <form
+                                                        method="POST"
+                                                        action={row.routes?.destroy}
+                                                        data-native="true"
+                                                        className="inline"
+                                                        onSubmit={(event) => {
+                                                            if (!window.confirm(`Delete project login ${row.email}?`)) {
+                                                                event.preventDefault();
+                                                            }
+                                                        }}
+                                                    >
+                                                        <input type="hidden" name="_token" value={csrf} />
+                                                        <input type="hidden" name="_method" value="DELETE" />
+                                                        <button type="submit" className="text-rose-600 hover:text-rose-500">Delete</button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -512,7 +546,16 @@ export default function Show({
                             </div>
                         </div>
 
-                        <div className="text-sm text-slate-600">Projects: {projects.length}</div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="text-sm text-slate-600">Projects: {projects.length}</div>
+                            <a
+                                href={routes?.create_project}
+                                data-native="true"
+                                className="inline-flex items-center rounded-full border border-teal-200 px-4 py-2 text-sm font-semibold text-teal-700 transition hover:border-teal-300 hover:bg-teal-50"
+                            >
+                                Create Project
+                            </a>
+                        </div>
                         <div className="overflow-x-auto rounded-2xl border border-slate-300">
                             <table className="w-full min-w-[980px] text-left text-sm">
                                 <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -533,7 +576,16 @@ export default function Show({
                             </table>
                         </div>
 
-                        <div className="text-sm text-slate-600">Maintenance: {project_maintenances.length}</div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="text-sm text-slate-600">Maintenance: {project_maintenances.length}</div>
+                            <a
+                                href={routes?.create_maintenance}
+                                data-native="true"
+                                className="inline-flex items-center rounded-full border border-teal-200 px-4 py-2 text-sm font-semibold text-teal-700 transition hover:border-teal-300 hover:bg-teal-50"
+                            >
+                                Create Maintenance
+                            </a>
+                        </div>
                         <div className="overflow-x-auto rounded-2xl border border-slate-300">
                             <table className="w-full min-w-[900px] text-left text-sm">
                                 <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">

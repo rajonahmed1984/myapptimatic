@@ -24,20 +24,6 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Finance</div>
-                    <div className="text-2xl font-semibold text-slate-900">{heading}</div>
-                </div>
-                <a
-                    href={routes?.back}
-                    data-native="true"
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
-                >
-                    Back to Expenses
-                </a>
-            </div>
-
             <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
                 <div className="card p-6">
                     <div className="section-label">{form?.title || 'Add category'}</div>

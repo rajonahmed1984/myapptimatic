@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 export default function Index({
     pageTitle = 'Income list',
@@ -8,25 +9,35 @@ export default function Index({
     incomes = [],
     pagination_links = [],
 }) {
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: search,
+        url: routes?.index,
+    });
+
     return (
         <>
             <Head title={pageTitle} />
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex-1">
-                    <form id="incomeSearchForm" method="GET" action={routes?.index} className="flex items-center gap-3" data-native="true">
+                    <form
+                        id="incomeSearchForm"
+                        method="GET"
+                        action={routes?.index}
+                        className="flex items-center gap-3"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitSearch();
+                        }}
+                    >
                         <div className="relative w-full max-w-sm">
                             <input
                                 type="text"
                                 name="search"
-                                defaultValue={search}
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search income..."
                                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                                onInput={(event) => {
-                                    const input = event.currentTarget;
-                                    clearTimeout(input.__searchTimer);
-                                    input.__searchTimer = setTimeout(() => input.form?.requestSubmit(), 300);
-                                }}
                             />
                         </div>
                     </form>
@@ -60,9 +71,7 @@ export default function Index({
                                         <th className="px-3 py-2 whitespace-nowrap">Date</th>
                                         <th className="px-3 py-2">Title & Ref</th>
                                         <th className="px-3 py-2">Category</th>
-                                        <th className="px-3 py-2">Source</th>
-                                        <th className="px-3 py-2">Customer</th>
-                                        <th className="px-3 py-2">Project</th>
+                                        <th className="px-3 py-2">Customer / Project</th>
                                         <th className="px-3 py-2">Amount</th>
                                         <th className="px-3 py-2">Attachment</th>
                                     </tr>
@@ -82,18 +91,12 @@ export default function Index({
                                                             Invoice #{income.invoice_number}
                                                         </div>
                                                     ) : null}
-                                                    {income.notes ? (
-                                                        <div className="text-xs text-slate-500">{income.notes}</div>
-                                                    ) : null}
                                                 </td>
                                                 <td className="px-3 py-2">{income.category_name}</td>
                                                 <td className="px-3 py-2">
-                                                    <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-600">
-                                                        {income.source_label}
-                                                    </span>
+                                                    <div className="font-medium text-slate-800">{income.customer_name}</div>
+                                                    <div className="text-xs text-slate-500">{income.project_name}</div>
                                                 </td>
-                                                <td className="px-3 py-2">{income.customer_name}</td>
-                                                <td className="px-3 py-2">{income.project_name}</td>
                                                 <td className="px-3 py-2 font-semibold text-slate-900">{income.amount_display}</td>
                                                 <td className="px-3 py-2">
                                                     {income.attachment_url ? (
@@ -108,7 +111,7 @@ export default function Index({
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={9} className="px-3 py-4 text-center text-slate-500">
+                                            <td colSpan={7} className="px-3 py-4 text-center text-slate-500">
                                                 No income found.
                                             </td>
                                         </tr>

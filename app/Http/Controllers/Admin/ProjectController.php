@@ -12,11 +12,13 @@ use App\Models\Project;
 use App\Models\ProjectMaintenance;
 use App\Models\ProjectMessageRead;
 use App\Models\ProjectTask;
+use App\Models\ProjectTaskSubtask;
 use App\Models\SalesRepresentative;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\BillingService;
+use App\Services\ChatAiSummaryCache;
 use App\Services\CommissionService;
 use App\Services\GeminiService;
 use App\Services\InvoiceTaxService;
@@ -36,6 +38,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -51,7 +54,207 @@ class ProjectController extends Controller
 
     private const TASK_STATUSES = ['pending', 'in_progress', 'blocked', 'completed'];
 
-    public function index(Request $request): InertiaResponse
+    public function index(
+        Request $request,
+        GeminiService $geminiService,
+        ChatAiSummaryCache $summaryCache
+    ): InertiaResponse
+    {
+        $today = now()->toDateString();
+        $dueSoonThreshold = now()->addDays(7)->toDateString();
+        $defaultCurrency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($defaultCurrency)) {
+            $defaultCurrency = Currency::DEFAULT;
+        }
+
+        $statusCounts = Project::query()
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $typeCounts = Project::query()
+            ->selectRaw('type, COUNT(*) as total')
+            ->groupBy('type')
+            ->pluck('total', 'type');
+
+        $taskTotals = ProjectTask::query()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN status IN ('pending', 'blocked', 'todo') THEN 1 ELSE 0 END) as open_count")
+            ->selectRaw("SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_count")
+            ->selectRaw("SUM(CASE WHEN status IN ('completed', 'done') THEN 1 ELSE 0 END) as completed_count")
+            ->first();
+
+        $overdueTasks = (int) ProjectTask::query()
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<', $today)
+            ->whereNotIn('status', ['completed', 'done'])
+            ->count();
+
+        $dueSoonTasks = (int) ProjectTask::query()
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '>=', $today)
+            ->whereDate('due_date', '<=', $dueSoonThreshold)
+            ->whereNotIn('status', ['completed', 'done'])
+            ->count();
+
+        $dashboardProjectQuery = function () use ($today, $dueSoonThreshold) {
+            return Project::query()
+                ->with('customer:id,name')
+                ->withCount([
+                    'tasks as total_tasks_count',
+                    'tasks as open_tasks_count' => fn ($query) => $query->whereIn('status', ['pending', 'in_progress', 'blocked', 'todo']),
+                    'tasks as completed_tasks_count' => fn ($query) => $query->whereIn('status', ['completed', 'done']),
+                    'tasks as overdue_tasks_count' => fn ($query) => $query
+                        ->whereNotNull('due_date')
+                        ->whereDate('due_date', '<', $today)
+                        ->whereNotIn('status', ['completed', 'done']),
+                    'tasks as due_soon_tasks_count' => fn ($query) => $query
+                        ->whereNotNull('due_date')
+                        ->whereDate('due_date', '>=', $today)
+                        ->whereDate('due_date', '<=', $dueSoonThreshold)
+                        ->whereNotIn('status', ['completed', 'done']),
+                    'maintenances as active_maintenances_count' => fn ($query) => $query->where('status', 'active'),
+                ])
+                ->get([
+                    'id',
+                    'name',
+                    'customer_id',
+                    'status',
+                    'type',
+                    'currency',
+                    'total_budget',
+                    'due_date',
+                    'created_at',
+                ]);
+        };
+
+        $recentProjects = $dashboardProjectQuery()
+            ->sortByDesc(fn (Project $project) => $project->created_at?->getTimestamp() ?? 0)
+            ->take(6)
+            ->map(fn (Project $project) => $this->serializeProjectDashboardRow($project))
+            ->values()
+            ->all();
+
+        $riskProjects = $dashboardProjectQuery()
+            ->filter(function (Project $project) {
+                return (string) $project->status === 'hold'
+                    || (int) ($project->overdue_tasks_count ?? 0) > 0
+                    || (int) ($project->due_soon_tasks_count ?? 0) > 0;
+            })
+            ->sortByDesc(function (Project $project) {
+                return ((int) ($project->overdue_tasks_count ?? 0) * 1000)
+                    + ((string) $project->status === 'hold' ? 500 : 0)
+                    + ((int) ($project->due_soon_tasks_count ?? 0) * 50)
+                    + (int) ($project->open_tasks_count ?? 0);
+            })
+            ->take(8)
+            ->map(fn (Project $project) => $this->serializeProjectDashboardRow($project))
+            ->values()
+            ->all();
+
+        $budgetTotals = $this->summarizeCurrencyTotals(
+            Project::query()->get(['currency', 'total_budget']),
+            fn ($project) => (float) ($project->total_budget ?? 0),
+            $defaultCurrency
+        );
+
+        $paidTotals = $this->summarizeCurrencyTotals(
+            Invoice::query()
+                ->whereNotNull('project_id')
+                ->whereIn('type', ['project_initial_payment', 'project_remaining_budget'])
+                ->where('status', 'paid')
+                ->get(['currency', 'total']),
+            fn ($invoice) => (float) ($invoice->total ?? 0),
+            $defaultCurrency
+        );
+
+        $totalTasks = (int) ($taskTotals->total ?? 0);
+        $completedTasks = (int) ($taskTotals->completed_count ?? 0);
+        $completionRate = $totalTasks > 0
+            ? (int) round(($completedTasks / $totalTasks) * 100)
+            : 0;
+
+        $statusCards = collect(self::STATUSES)
+            ->map(fn (string $status) => [
+                'key' => $status,
+                'label' => ucfirst(str_replace('_', ' ', $status)),
+                'count' => (int) ($statusCounts[$status] ?? 0),
+                'href' => route('admin.projects.all', ['status' => $status]),
+                'badge_class' => $this->projectStatusClass($status),
+            ])
+            ->values()
+            ->all();
+
+        $typeCards = collect(self::TYPES)
+            ->map(fn (string $type) => [
+                'key' => $type,
+                'label' => ucfirst(str_replace('_', ' ', $type)),
+                'count' => (int) ($typeCounts[$type] ?? 0),
+                'href' => route('admin.projects.all', ['type' => $type]),
+            ])
+            ->values()
+            ->all();
+
+        $portfolioSnapshot = [
+            'total_projects' => (int) $statusCounts->sum(),
+            'ongoing_projects' => (int) ($statusCounts['ongoing'] ?? 0),
+            'hold_projects' => (int) ($statusCounts['hold'] ?? 0),
+            'completed_projects' => (int) ($statusCounts['complete'] ?? 0),
+            'cancelled_projects' => (int) ($statusCounts['cancel'] ?? 0),
+            'total_tasks' => $totalTasks,
+            'open_tasks' => (int) ($taskTotals->open_count ?? 0),
+            'in_progress_tasks' => (int) ($taskTotals->in_progress_count ?? 0),
+            'completed_tasks' => $completedTasks,
+            'completion_rate' => $completionRate,
+            'overdue_tasks' => $overdueTasks,
+            'due_soon_tasks' => $dueSoonTasks,
+            'active_maintenances' => (int) ProjectMaintenance::query()->where('status', 'active')->count(),
+            'budget_totals' => $budgetTotals,
+            'paid_totals' => $paidTotals,
+        ];
+
+        $aiFocusProjects = $this->buildDashboardAiProjects(
+            collect($riskProjects)
+                ->pluck('id')
+                ->merge(collect($recentProjects)->pluck('id'))
+                ->unique()
+                ->take(5)
+                ->values()
+                ->all(),
+            $summaryCache,
+            $defaultCurrency
+        );
+
+        $forceAiRefresh = $request->query('ai') === 'refresh';
+        [$aiSummary, $aiError] = $this->buildPortfolioAiSummary(
+            $geminiService,
+            $portfolioSnapshot,
+            $riskProjects,
+            $recentProjects,
+            $aiFocusProjects,
+            $forceAiRefresh
+        );
+
+        return Inertia::render('Admin/Projects/Dashboard', [
+            'pageTitle' => 'Projects Dashboard',
+            'overview' => $portfolioSnapshot,
+            'statusCards' => $statusCards,
+            'typeCards' => $typeCards,
+            'riskProjects' => $riskProjects,
+            'recentProjects' => $recentProjects,
+            'aiSummary' => $aiSummary,
+            'aiError' => $aiError,
+            'aiFocusProjects' => $aiFocusProjects,
+            'routes' => [
+                'dashboard' => route('admin.projects.index'),
+                'all' => route('admin.projects.all'),
+                'create' => route('admin.projects.create'),
+                'refresh_ai' => route('admin.projects.index', ['ai' => 'refresh']),
+            ],
+        ]);
+    }
+
+    public function all(Request $request): InertiaResponse
     {
         $statusFilter = $request->query('status');
         $typeFilter = $request->query('type');
@@ -77,7 +280,7 @@ class ProjectController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Projects/Index', [
-            'pageTitle' => 'Projects',
+            'pageTitle' => 'All Projects',
             'projects' => $projects
                 ->through(fn (Project $project) => $this->serializeProjectIndexRow($project))
                 ->values(),
@@ -89,13 +292,14 @@ class ProjectController extends Controller
                 'type' => $typeFilter,
             ],
             'routes' => [
-                'index' => route('admin.projects.index'),
+                'index' => route('admin.projects.all'),
+                'dashboard' => route('admin.projects.index'),
                 'create' => route('admin.projects.create'),
             ],
         ]);
     }
 
-    public function create(): InertiaResponse
+    public function create(Request $request): InertiaResponse
     {
         $defaultCurrency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
         if (! Currency::isAllowed($defaultCurrency)) {
@@ -103,6 +307,8 @@ class ProjectController extends Controller
         }
 
         $customers = Customer::orderBy('name')->get(['id', 'name', 'company_name']);
+        $requestedCustomerId = $request->integer('customer_id');
+        $selectedCustomerId = $customers->contains('id', $requestedCustomerId) ? (string) $requestedCustomerId : '';
         $employees = Employee::where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'designation', 'employment_type']);
@@ -127,9 +333,6 @@ class ProjectController extends Controller
             'assignee' => '',
             'customer_visible' => false,
         ]]);
-        $maintenances = old('maintenances', []);
-        $overheads = old('overheads', [['short_details' => '', 'amount' => '']]);
-
         return Inertia::render('Admin/Projects/Create', [
             'pageTitle' => 'New Project',
             'statuses' => self::STATUSES,
@@ -163,7 +366,7 @@ class ProjectController extends Controller
             'priorityOptions' => TaskSettings::priorityOptions(),
             'form' => [
                 'name' => old('name'),
-                'customer_id' => old('customer_id'),
+                'customer_id' => old('customer_id', $selectedCustomerId),
                 'type' => old('type'),
                 'status' => old('status'),
                 'start_date' => old('start_date'),
@@ -180,10 +383,8 @@ class ProjectController extends Controller
                 'selected_employee_ids' => $selectedEmployeeIds->all(),
             ],
             'tasks' => $tasks,
-            'maintenances' => $maintenances,
-            'overheads' => $overheads,
             'routes' => [
-                'index' => route('admin.projects.index'),
+                'index' => route('admin.projects.all'),
                 'store' => route('admin.projects.store'),
             ],
         ]);
@@ -274,7 +475,7 @@ class ProjectController extends Controller
                 'selected_employee_ids' => $selectedEmployeeIds->all(),
             ],
             'routes' => [
-                'index' => route('admin.projects.index'),
+                'index' => route('admin.projects.all'),
                 'show' => route('admin.projects.show', $project),
                 'update' => route('admin.projects.update', $project),
                 'download_contract' => $project->contract_file_path
@@ -292,21 +493,6 @@ class ProjectController extends Controller
         $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
         $priorityOptions = array_keys(TaskSettings::priorityOptions());
         $maxMb = TaskSettings::uploadMaxMb();
-
-        $request->merge([
-            'maintenances' => collect($request->input('maintenances', []))
-                ->filter(function ($row) {
-                    if (! is_array($row)) {
-                        return false;
-                    }
-
-                    return trim((string) ($row['title'] ?? '')) !== ''
-                        || trim((string) ($row['amount'] ?? '')) !== ''
-                        || trim((string) ($row['start_date'] ?? '')) !== '';
-                })
-                ->values()
-                ->all(),
-        ]);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:190'],
@@ -328,9 +514,6 @@ class ProjectController extends Controller
             'budget_amount' => ['nullable', 'numeric', 'min:0'],
             'software_overhead' => ['nullable', 'numeric', 'min:0'],
             'website_overhead' => ['nullable', 'numeric', 'min:0'],
-            'overheads' => ['array'],
-            'overheads.*.short_details' => ['nullable', 'string', 'max:255'],
-            'overheads.*.amount' => ['nullable', 'numeric', 'min:0'],
             'contract_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:10240'],
             'proposal_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:10240'],
             'sales_rep_ids' => ['array'],
@@ -341,13 +524,6 @@ class ProjectController extends Controller
             'employee_ids.*' => ['exists:employees,id'],
             'contract_employee_amounts' => ['array'],
             'contract_employee_amounts.*' => ['nullable', 'numeric', 'min:0'],
-            'maintenances' => ['nullable', 'array'],
-            'maintenances.*.title' => ['required', 'string', 'max:255'],
-            'maintenances.*.amount' => ['required', 'numeric', 'min:0.01'],
-            'maintenances.*.billing_cycle' => ['required', 'in:monthly,yearly'],
-            'maintenances.*.start_date' => ['required', 'date'],
-            'maintenances.*.auto_invoice' => ['nullable', 'boolean'],
-            'maintenances.*.sales_rep_visible' => ['nullable', 'boolean'],
             'tasks' => ['required', 'array', 'min:1'],
             'tasks.*.title' => ['required', 'string', 'max:255'],
             'tasks.*.descriptions' => ['nullable', 'array'],
@@ -472,8 +648,6 @@ class ProjectController extends Controller
                 $commissionService->syncProjectEarnings($project, $salesRepSync);
             }
 
-            $this->createProjectOverheads($project, $data['overheads'] ?? [], $request->user());
-
             foreach ($data['tasks'] as $index => $task) {
                 $assignees = TaskAssignees::parse([$task['assignee']]);
                 if (empty($assignees)) {
@@ -520,11 +694,8 @@ class ProjectController extends Controller
             $dueDays = (int) Setting::getValue('invoice_due_days');
             $dueDate = $issueDate->copy()->addDays($dueDays);
 
-            $overheadItems = $project->overheads()->whereNull('invoice_id')->get();
-            $columnOverheadTotal = (float) ($project->software_overhead ?? 0) + (float) ($project->website_overhead ?? 0);
-            $overheadTotal = (float) $overheadItems->sum('amount') + $columnOverheadTotal;
             $initialPayment = (float) $project->initial_payment_amount;
-            $invoiceSubtotal = $initialPayment + $overheadTotal;
+            $invoiceSubtotal = $initialPayment;
 
             $taxData = $taxService->calculateTotals($invoiceSubtotal, 0.0, $issueDate);
 
@@ -552,44 +723,6 @@ class ProjectController extends Controller
                 'unit_price' => $project->initial_payment_amount,
                 'line_total' => $project->initial_payment_amount,
             ]);
-
-            $this->createColumnOverheadInvoiceItems($invoice, $project);
-
-            foreach ($overheadItems as $overhead) {
-                if ((float) $overhead->amount <= 0) {
-                    continue;
-                }
-
-                InvoiceItem::create([
-                    'invoice_id' => $invoice->id,
-                    'description' => sprintf(
-                        'Overhead: %s',
-                        $overhead->short_details ?: 'Overhead fee',
-                    ),
-                    'quantity' => 1,
-                    'unit_price' => $overhead->amount,
-                    'line_total' => $overhead->amount,
-                ]);
-
-                $overhead->update(['invoice_id' => $invoice->id]);
-            }
-
-            foreach ($data['maintenances'] ?? [] as $maintenance) {
-                ProjectMaintenance::create([
-                    'project_id' => $project->id,
-                    'customer_id' => $project->customer_id,
-                    'title' => $maintenance['title'],
-                    'amount' => $maintenance['amount'],
-                    'currency' => $project->currency,
-                    'billing_cycle' => $maintenance['billing_cycle'],
-                    'start_date' => $maintenance['start_date'],
-                    'next_billing_date' => $maintenance['start_date'],
-                    'status' => 'active',
-                    'auto_invoice' => (bool) ($maintenance['auto_invoice'] ?? true),
-                    'sales_rep_visible' => (bool) ($maintenance['sales_rep_visible'] ?? false),
-                    'created_by' => $request->user()?->id,
-                ]);
-            }
 
             SystemLogger::write('activity', 'Project created.', [
                 'project_id' => $project->id,
@@ -693,7 +826,7 @@ class ProjectController extends Controller
                 'unread' => (int) $projectChatUnreadCount,
             ],
             'routes' => [
-                'index' => route('admin.projects.index'),
+                'index' => route('admin.projects.all'),
                 'edit' => route('admin.projects.edit', $project),
                 'destroy' => route('admin.projects.destroy', $project),
                 'complete' => route('admin.projects.complete', $project),
@@ -713,7 +846,8 @@ class ProjectController extends Controller
         Request $request,
         Project $project,
         ProjectStatusAiService $aiService,
-        GeminiService $geminiService
+        GeminiService $geminiService,
+        ChatAiSummaryCache $summaryCache
     ): JsonResponse {
         $this->authorize('view', $project);
 
@@ -722,7 +856,7 @@ class ProjectController extends Controller
         }
 
         try {
-            $result = $aiService->analyze($project, $geminiService);
+            $result = $aiService->analyze($project, $geminiService, $summaryCache);
 
             return response()->json($result);
         } catch (\Throwable $e) {
@@ -1167,7 +1301,7 @@ class ProjectController extends Controller
             'customer_id' => $project->customer_id,
         ]);
 
-        return redirect()->route('admin.projects.index')->with('status', 'Project deleted.');
+        return redirect()->route('admin.projects.all')->with('status', 'Project deleted.');
     }
 
     public function storeTask(Request $request, Project $project): RedirectResponse
@@ -1296,6 +1430,38 @@ class ProjectController extends Controller
                 'show' => route('admin.projects.show', $project),
                 'edit' => route('admin.projects.edit', $project),
                 'destroy' => route('admin.projects.destroy', $project),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeProjectDashboardRow(Project $project): array
+    {
+        $totalTasks = (int) ($project->total_tasks_count ?? 0);
+        $completedTasks = (int) ($project->completed_tasks_count ?? 0);
+        $completionRate = $totalTasks > 0
+            ? (int) round(($completedTasks / $totalTasks) * 100)
+            : 0;
+
+        return [
+            'id' => (int) $project->id,
+            'name' => (string) $project->name,
+            'customer_name' => (string) ($project->customer?->name ?? '--'),
+            'status_label' => ucfirst(str_replace('_', ' ', (string) $project->status)),
+            'status_class' => $this->projectStatusClass((string) $project->status),
+            'type_label' => ucfirst((string) $project->type),
+            'due_date' => $project->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+            'open_tasks' => (int) ($project->open_tasks_count ?? 0),
+            'completed_tasks' => $completedTasks,
+            'overdue_tasks' => (int) ($project->overdue_tasks_count ?? 0),
+            'due_soon_tasks' => (int) ($project->due_soon_tasks_count ?? 0),
+            'active_maintenances' => (int) ($project->active_maintenances_count ?? 0),
+            'completion_rate' => $completionRate,
+            'routes' => [
+                'show' => route('admin.projects.show', $project),
+                'edit' => route('admin.projects.edit', $project),
             ],
         ];
     }
@@ -1482,6 +1648,514 @@ class ProjectController extends Controller
             'cancel' => 'bg-rose-100 text-rose-700 ring-rose-200',
             default => 'bg-slate-100 text-slate-700 ring-slate-200',
         };
+    }
+
+    /**
+     * @param  iterable<int, mixed>  $rows
+     * @return array<int, array{currency:string,amount:float,display:string}>
+     */
+    private function summarizeCurrencyTotals(iterable $rows, callable $amountResolver, string $fallbackCurrency): array
+    {
+        return collect($rows)
+            ->map(function ($row) use ($amountResolver, $fallbackCurrency) {
+                $currency = strtoupper((string) ($row->currency ?? $fallbackCurrency));
+                if (! Currency::isAllowed($currency)) {
+                    $currency = $fallbackCurrency;
+                }
+
+                return [
+                    'currency' => $currency,
+                    'amount' => (float) $amountResolver($row),
+                ];
+            })
+            ->groupBy('currency')
+            ->map(function ($items, $currency) {
+                $amount = (float) collect($items)->sum('amount');
+
+                return [
+                    'currency' => (string) $currency,
+                    'amount' => $amount,
+                    'display' => sprintf('%s %s', $currency, number_format($amount, 2)),
+                ];
+            })
+            ->sortByDesc('amount')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @param  array<int, array<string, mixed>>  $riskProjects
+     * @param  array<int, array<string, mixed>>  $recentProjects
+     * @param  array<int, array<string, mixed>>  $focusProjects
+     * @return array{0:?string,1:?string}
+     */
+    private function buildPortfolioAiSummary(
+        GeminiService $geminiService,
+        array $snapshot,
+        array $riskProjects,
+        array $recentProjects,
+        array $focusProjects,
+        bool $forceRefresh = false
+    ): array {
+        if (! config('google_ai.api_key')) {
+            return [null, 'Missing GOOGLE_AI_API_KEY.'];
+        }
+
+        $cacheKey = 'admin_projects_dashboard_ai_'.md5(json_encode([
+            'snapshot' => $snapshot,
+            'risk' => $riskProjects,
+            'recent' => $recentProjects,
+            'focus' => $focusProjects,
+        ]));
+
+        try {
+            $builder = function () use ($geminiService, $snapshot, $riskProjects, $recentProjects, $focusProjects) {
+                $budgetTotals = collect($snapshot['budget_totals'] ?? [])
+                    ->take(3)
+                    ->pluck('display')
+                    ->implode(', ');
+
+                $paidTotals = collect($snapshot['paid_totals'] ?? [])
+                    ->take(3)
+                    ->pluck('display')
+                    ->implode(', ');
+
+                $riskNames = collect($riskProjects)
+                    ->take(5)
+                    ->map(fn ($project) => sprintf(
+                        '%s (overdue: %d, due soon: %d)',
+                        $project['name'] ?? 'Project',
+                        (int) ($project['overdue_tasks'] ?? 0),
+                        (int) ($project['due_soon_tasks'] ?? 0)
+                    ))
+                    ->implode(', ');
+
+                $recentNames = collect($recentProjects)
+                    ->take(5)
+                    ->map(fn ($project) => sprintf(
+                        '%s [%s]',
+                        $project['name'] ?? 'Project',
+                        $project['status_label'] ?? 'Unknown'
+                    ))
+                    ->implode(', ');
+
+                $focusProjectsJson = json_encode(
+                    collect($focusProjects)
+                        ->map(fn (array $project) => [
+                            'project' => [
+                                'name' => $project['name'] ?? 'Project',
+                                'customer' => $project['customer_name'] ?? '--',
+                                'status' => $project['status_label'] ?? '--',
+                                'timeline' => [
+                                    'label' => data_get($project, 'timeline.label'),
+                                    'note' => data_get($project, 'timeline.note'),
+                                    'start' => data_get($project, 'timeline.start'),
+                                    'expected_end' => data_get($project, 'timeline.expected_end'),
+                                    'due' => data_get($project, 'timeline.due'),
+                                ],
+                            ],
+                            'profitability' => [
+                                'label' => data_get($project, 'profitability.label'),
+                                'profit' => data_get($project, 'profitability.profit_display'),
+                                'budget_with_overhead' => data_get($project, 'financials.budget_with_overhead_display'),
+                                'payouts_total' => data_get($project, 'financials.payouts_total_display'),
+                            ],
+                            'tasks' => [
+                                'total' => data_get($project, 'tasks.total'),
+                                'open' => data_get($project, 'tasks.open'),
+                                'in_progress' => data_get($project, 'tasks.in_progress'),
+                                'blocked' => data_get($project, 'tasks.blocked'),
+                                'completed' => data_get($project, 'tasks.completed'),
+                                'overdue' => data_get($project, 'tasks.overdue'),
+                                'due_soon' => data_get($project, 'tasks.due_soon'),
+                                'completion_rate' => data_get($project, 'tasks.completion_rate'),
+                                'next_due' => data_get($project, 'tasks.next_due'),
+                            ],
+                            'subtasks' => [
+                                'total' => data_get($project, 'subtasks.total'),
+                                'open' => data_get($project, 'subtasks.open'),
+                                'completed' => data_get($project, 'subtasks.completed'),
+                                'overdue' => data_get($project, 'subtasks.overdue'),
+                                'due_soon' => data_get($project, 'subtasks.due_soon'),
+                                'completion_rate' => data_get($project, 'subtasks.completion_rate'),
+                                'next_due' => data_get($project, 'subtasks.next_due'),
+                            ],
+                            'chat' => [
+                                'project_summary' => data_get($project, 'project_chat.summary'),
+                                'project_latest_activity' => data_get($project, 'project_chat.latest_activity'),
+                                'task_chat_summaries' => data_get($project, 'task_chats'),
+                            ],
+                        ])
+                        ->values()
+                        ->all(),
+                    JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
+                );
+
+                $prompt = <<<PROMPT
+You are a PMO analyst. Summarize the projects dashboard in Bengali.
+
+Rules:
+- Use only the provided data. Do not invent facts.
+- Focus on project profitability, task and subtask delivery pressure, timeline risk, and chat context.
+- If any chat summary is missing, say the chat insight is unavailable instead of guessing.
+- Return 6-10 concise bullet points in Bengali.
+- Mention immediate priorities where needed.
+
+Portfolio snapshot:
+- Total projects: {$snapshot['total_projects']}
+- Ongoing: {$snapshot['ongoing_projects']}
+- On hold: {$snapshot['hold_projects']}
+- Completed: {$snapshot['completed_projects']}
+- Cancelled: {$snapshot['cancelled_projects']}
+- Total tasks: {$snapshot['total_tasks']}
+- Open tasks: {$snapshot['open_tasks']}
+- In progress tasks: {$snapshot['in_progress_tasks']}
+- Completed tasks: {$snapshot['completed_tasks']}
+- Completion rate: {$snapshot['completion_rate']}%
+- Overdue tasks: {$snapshot['overdue_tasks']}
+- Due soon (7d): {$snapshot['due_soon_tasks']}
+- Active maintenances: {$snapshot['active_maintenances']}
+- Budget totals: {$budgetTotals}
+- Paid totals: {$paidTotals}
+
+Risk projects: {$riskNames}
+Recent projects: {$recentNames}
+Focus projects (JSON):
+{$focusProjectsJson}
+
+PROMPT;
+
+                return $geminiService->generateText($prompt);
+            };
+
+            if ($forceRefresh) {
+                $summary = $builder();
+                Cache::put($cacheKey, $summary, now()->addMinutes(10));
+            } else {
+                $summary = Cache::remember($cacheKey, now()->addMinutes(10), $builder);
+            }
+
+            return [$summary, null];
+        } catch (\Throwable $e) {
+            return [null, $e->getMessage()];
+        }
+    }
+
+    /**
+     * @param  array<int, int|string>  $projectIds
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildDashboardAiProjects(
+        array $projectIds,
+        ChatAiSummaryCache $summaryCache,
+        string $defaultCurrency
+    ): array {
+        $orderedIds = collect($projectIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($orderedIds === []) {
+            return [];
+        }
+
+        $today = now()->toDateString();
+        $dueSoonThreshold = now()->addDays(7)->toDateString();
+
+        return Project::query()
+            ->whereIn('id', $orderedIds)
+            ->with([
+                'customer:id,name',
+                'salesRepresentatives:id,name',
+                'overheads:id,project_id,amount',
+            ])
+            ->withCount([
+                'tasks as total_tasks_count',
+                'tasks as open_tasks_count' => fn ($query) => $query->whereIn('status', ['pending', 'in_progress', 'blocked', 'todo']),
+                'tasks as in_progress_tasks_count' => fn ($query) => $query->where('status', 'in_progress'),
+                'tasks as blocked_tasks_count' => fn ($query) => $query->where('status', 'blocked'),
+                'tasks as completed_tasks_count' => fn ($query) => $query->whereIn('status', ['completed', 'done']),
+                'tasks as overdue_tasks_count' => fn ($query) => $query
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '<', $today)
+                    ->whereNotIn('status', ['completed', 'done']),
+                'tasks as due_soon_tasks_count' => fn ($query) => $query
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '>=', $today)
+                    ->whereDate('due_date', '<=', $dueSoonThreshold)
+                    ->whereNotIn('status', ['completed', 'done']),
+                'subtasks as total_subtasks_count',
+                'subtasks as open_subtasks_count' => fn ($query) => $query->where('is_completed', false),
+                'subtasks as completed_subtasks_count' => fn ($query) => $query->where('is_completed', true),
+                'subtasks as overdue_subtasks_count' => fn ($query) => $query
+                    ->whereNotNull('project_task_subtasks.due_date')
+                    ->whereDate('project_task_subtasks.due_date', '<', $today)
+                    ->where('is_completed', false),
+                'subtasks as due_soon_subtasks_count' => fn ($query) => $query
+                    ->whereNotNull('project_task_subtasks.due_date')
+                    ->whereDate('project_task_subtasks.due_date', '>=', $today)
+                    ->whereDate('project_task_subtasks.due_date', '<=', $dueSoonThreshold)
+                    ->where('is_completed', false),
+                'messages as project_messages_count',
+            ])
+            ->get([
+                'id',
+                'name',
+                'customer_id',
+                'status',
+                'type',
+                'currency',
+                'total_budget',
+                'initial_payment_amount',
+                'contract_amount',
+                'contract_employee_total_earned',
+                'start_date',
+                'expected_end_date',
+                'due_date',
+                'software_overhead',
+                'website_overhead',
+            ])
+            ->sortBy(fn (Project $project) => array_search((int) $project->id, $orderedIds, true))
+            ->values()
+            ->map(fn (Project $project) => $this->serializeDashboardAiProject($project, $summaryCache, $defaultCurrency))
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeDashboardAiProject(
+        Project $project,
+        ChatAiSummaryCache $summaryCache,
+        string $defaultCurrency
+    ): array {
+        $financials = $this->financials($project);
+        $currency = strtoupper((string) ($project->currency ?: $defaultCurrency));
+        if (! Currency::isAllowed($currency)) {
+            $currency = $defaultCurrency;
+        }
+
+        $totalTasks = (int) ($project->total_tasks_count ?? 0);
+        $completedTasks = (int) ($project->completed_tasks_count ?? 0);
+        $taskCompletionRate = $totalTasks > 0
+            ? (int) round(($completedTasks / $totalTasks) * 100)
+            : 0;
+
+        $totalSubtasks = (int) ($project->total_subtasks_count ?? 0);
+        $completedSubtasks = (int) ($project->completed_subtasks_count ?? 0);
+        $subtaskCompletionRate = $totalSubtasks > 0
+            ? (int) round(($completedSubtasks / $totalSubtasks) * 100)
+            : 0;
+
+        $nextDueTask = $project->tasks()
+            ->whereNotNull('due_date')
+            ->whereNotIn('status', ['completed', 'done'])
+            ->orderBy('due_date')
+            ->orderBy('id')
+            ->first(['id', 'title', 'status', 'start_date', 'due_date']);
+
+        $nextDueSubtask = ProjectTaskSubtask::query()
+            ->select([
+                'project_task_subtasks.id',
+                'project_task_subtasks.title',
+                'project_task_subtasks.due_date',
+                'project_task_subtasks.status',
+                'project_tasks.title as task_title',
+            ])
+            ->join('project_tasks', 'project_tasks.id', '=', 'project_task_subtasks.project_task_id')
+            ->where('project_tasks.project_id', $project->id)
+            ->whereNotNull('project_task_subtasks.due_date')
+            ->where('project_task_subtasks.is_completed', false)
+            ->orderBy('project_task_subtasks.due_date')
+            ->orderBy('project_task_subtasks.id')
+            ->first();
+
+        $cachedProjectChat = $summaryCache->getProject($project->id) ?? [];
+        $latestProjectMessage = $project->messages()
+            ->with(['userAuthor:id,name', 'employeeAuthor:id,name', 'salesRepAuthor:id,name'])
+            ->latest('id')
+            ->first();
+
+        $taskChats = $project->tasks()
+            ->withCount('messages')
+            ->whereHas('messages')
+            ->orderByDesc('messages_count')
+            ->orderBy('due_date')
+            ->limit(2)
+            ->get(['id', 'title', 'status', 'due_date'])
+            ->map(function (ProjectTask $task) use ($summaryCache) {
+                $cachedSummary = $summaryCache->getTask($task->id) ?? [];
+                $latestMessage = $task->messages()
+                    ->with(['userAuthor:id,name', 'employeeAuthor:id,name', 'salesRepAuthor:id,name'])
+                    ->latest('id')
+                    ->first();
+
+                return [
+                    'task_title' => (string) $task->title,
+                    'status' => (string) ($task->status ?? 'pending'),
+                    'due_date' => $this->formatDateValue($task->due_date),
+                    'messages_count' => (int) ($task->messages_count ?? 0),
+                    'summary' => trim((string) ($cachedSummary['summary'] ?? '')),
+                    'priority' => $cachedSummary['priority'] ?? null,
+                    'sentiment' => $cachedSummary['sentiment'] ?? null,
+                    'latest_activity' => $latestMessage ? $this->chatActivitySnippet($latestMessage) : null,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $profit = (float) ($financials['profit'] ?? 0);
+
+        return [
+            'id' => (int) $project->id,
+            'name' => (string) $project->name,
+            'customer_name' => (string) ($project->customer?->name ?? '--'),
+            'status_label' => ucfirst(str_replace('_', ' ', (string) $project->status)),
+            'status_class' => $this->projectStatusClass((string) $project->status),
+            'timeline' => $this->projectTimelinePayload($project),
+            'financials' => [
+                'currency' => $currency,
+                'budget_with_overhead_display' => Currency::format((float) ($financials['budget_with_overhead'] ?? 0), $currency),
+                'payouts_total_display' => Currency::format((float) ($financials['payouts_total'] ?? 0), $currency),
+                'profit_display' => Currency::format($profit, $currency),
+            ],
+            'profitability' => [
+                'label' => ($financials['profitable'] ?? false) ? 'Profitable' : 'Loss',
+                'profit_display' => Currency::format($profit, $currency),
+                'tone_class' => ($financials['profitable'] ?? false)
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-rose-200 bg-rose-50 text-rose-700',
+            ],
+            'tasks' => [
+                'total' => $totalTasks,
+                'open' => (int) ($project->open_tasks_count ?? 0),
+                'in_progress' => (int) ($project->in_progress_tasks_count ?? 0),
+                'blocked' => (int) ($project->blocked_tasks_count ?? 0),
+                'completed' => $completedTasks,
+                'overdue' => (int) ($project->overdue_tasks_count ?? 0),
+                'due_soon' => (int) ($project->due_soon_tasks_count ?? 0),
+                'completion_rate' => $taskCompletionRate,
+                'next_due' => $nextDueTask ? [
+                    'title' => (string) $nextDueTask->title,
+                    'status' => (string) ($nextDueTask->status ?? 'pending'),
+                    'start' => $this->formatDateValue($nextDueTask->start_date),
+                    'due' => $this->formatDateValue($nextDueTask->due_date),
+                ] : null,
+            ],
+            'subtasks' => [
+                'total' => $totalSubtasks,
+                'open' => (int) ($project->open_subtasks_count ?? 0),
+                'completed' => $completedSubtasks,
+                'overdue' => (int) ($project->overdue_subtasks_count ?? 0),
+                'due_soon' => (int) ($project->due_soon_subtasks_count ?? 0),
+                'completion_rate' => $subtaskCompletionRate,
+                'next_due' => $nextDueSubtask ? [
+                    'title' => (string) ($nextDueSubtask->title ?? 'Subtask'),
+                    'task_title' => (string) ($nextDueSubtask->task_title ?? 'Task'),
+                    'status' => (string) ($nextDueSubtask->status ?? 'pending'),
+                    'due' => $this->formatDateValue($nextDueSubtask->due_date),
+                ] : null,
+            ],
+            'project_chat' => [
+                'summary' => trim((string) ($cachedProjectChat['summary'] ?? '')),
+                'priority' => $cachedProjectChat['priority'] ?? null,
+                'sentiment' => $cachedProjectChat['sentiment'] ?? null,
+                'generated_at' => $cachedProjectChat['generated_at'] ?? null,
+                'messages_count' => (int) ($project->project_messages_count ?? 0),
+                'latest_activity' => $latestProjectMessage ? $this->chatActivitySnippet($latestProjectMessage) : null,
+            ],
+            'task_chats' => $taskChats,
+            'routes' => [
+                'show' => route('admin.projects.show', $project),
+                'edit' => route('admin.projects.edit', $project),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function projectTimelinePayload(Project $project): array
+    {
+        $today = now()->startOfDay();
+        $isClosed = in_array((string) $project->status, ['complete', 'cancel'], true);
+        $dueDate = $project->due_date?->copy()->startOfDay();
+        $expectedEndDate = $project->expected_end_date?->copy()->startOfDay();
+
+        $label = 'On Track';
+        $note = 'Timeline looks stable.';
+
+        if ($dueDate && ! $isClosed && $dueDate->lt($today)) {
+            $label = 'Past Due';
+            $note = $dueDate->diffInDays($today).' days overdue.';
+        } elseif ($dueDate && ! $isClosed && $dueDate->lte($today->copy()->addDays(7))) {
+            $label = 'Due Soon';
+            $note = $today->diffInDays($dueDate).' days left to due date.';
+        } elseif ($expectedEndDate && ! $isClosed && $expectedEndDate->lt($today)) {
+            $label = 'Past Expected End';
+            $note = 'Expected end date already passed.';
+        } elseif (! $dueDate && ! $expectedEndDate) {
+            $label = 'Timeline Missing';
+            $note = 'No expected end or due date set.';
+        } elseif ($isClosed) {
+            $label = 'Closed';
+            $note = 'Project is already marked '.$this->projectStatusLabel((string) $project->status).'.';
+        } elseif ($dueDate) {
+            $note = $today->diffInDays($dueDate).' days left to due date.';
+        } elseif ($expectedEndDate) {
+            $note = 'Expected end on '.$this->formatDateValue($expectedEndDate).'.';
+        }
+
+        return [
+            'label' => $label,
+            'note' => $note,
+            'tone_class' => $this->timelineToneClass($label),
+            'start' => $this->formatDateValue($project->start_date),
+            'expected_end' => $this->formatDateValue($project->expected_end_date),
+            'due' => $this->formatDateValue($project->due_date),
+        ];
+    }
+
+    private function timelineToneClass(string $label): string
+    {
+        return match ($label) {
+            'Past Due', 'Past Expected End' => 'border-rose-200 bg-rose-50 text-rose-700',
+            'Due Soon' => 'border-amber-200 bg-amber-50 text-amber-700',
+            'Closed' => 'border-slate-200 bg-slate-100 text-slate-700',
+            'Timeline Missing' => 'border-slate-200 bg-slate-50 text-slate-600',
+            default => 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        };
+    }
+
+    private function projectStatusLabel(string $status): string
+    {
+        return ucfirst(str_replace('_', ' ', $status));
+    }
+
+    private function formatDateValue($date): string
+    {
+        return $date?->format(config('app.date_format', 'd-m-Y')) ?? '--';
+    }
+
+    private function chatActivitySnippet(object $message): string
+    {
+        $author = method_exists($message, 'authorName')
+            ? (string) $message->authorName()
+            : 'User';
+
+        $body = Str::squish((string) ($message->message ?? ''));
+        if ($body === '' && ! empty($message->attachment_path)) {
+            $body = '[attachment]';
+        }
+
+        if ($body === '') {
+            $body = 'No text message.';
+        }
+
+        return $author.': '.Str::limit($body, 140);
     }
 
     /**

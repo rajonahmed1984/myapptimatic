@@ -245,7 +245,7 @@ export default function Show({
                                     {sourceTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                                 </select>
                             </div>
-                            <div className="md:col-span-3">
+                            <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Project / Products &amp; Services</label>
                                 <select value={sourceId} onChange={(event) => setSourceId(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                                     {(sourcesByType[sourceType] || []).map((item) => (
@@ -258,11 +258,11 @@ export default function Show({
                             <input type="hidden" name="source_type" value={sourceType} />
                             <input type="hidden" name="source_id" value={sourceId} />
                             <input type="hidden" name="project_id" value={sourceType === 'project' ? sourceId : ''} />
-                            <div>
+                            <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Amount</label>
                                 <input name="amount" type="number" step="0.01" min="0" required value={amountInput} onChange={(event) => setAmountInput(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                             </div>
-                            <div>
+                            <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Method</label>
                                 <select name="payout_method" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                                     <option value="">Select</option>
@@ -355,8 +355,7 @@ function SimpleTable({ title, headers, rows, empty }) {
 function InvoiceTable({ rows }) {
     return (
         <div className="card p-6">
-            <div className="mb-3 text-sm font-semibold text-slate-800">Invoices</div>
-            {rows.length === 0 ? <div className="text-sm text-slate-600">No invoices linked to this rep.</div> : <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="text-xs uppercase tracking-[0.2em] text-slate-500"><tr><th className="px-3 py-2">Invoice</th><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Products / Services &amp; Project</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Total</th><th className="px-3 py-2">Commission</th><th className="px-3 py-2">Issued</th><th className="px-3 py-2">Due</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-slate-100"><td className="px-3 py-2">{row.invoice_show_route ? <a href={row.invoice_show_route} data-native="true" className="text-teal-700 hover:text-teal-600">{row.invoice_number}</a> : row.invoice_number}</td><td className="px-3 py-2">{row.customer_name}</td><td className="px-3 py-2">{row.project_name}</td><td className="px-3 py-2"><span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${invoiceBadgeClass(row.status_key || row.status)}`}>{row.status}</span></td><td className="px-3 py-2">{row.total_display}</td><td className="px-3 py-2">{row.commission_display || '--'}</td><td className="px-3 py-2">{row.issue_date}</td><td className="px-3 py-2">{row.due_date}</td></tr>)}</tbody></table></div>}
+            {rows.length === 0 ? <div className="text-sm text-slate-600">No invoices linked to this rep.</div> : <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="text-xs uppercase tracking-[0.2em] text-slate-500"><tr><th className="px-3 py-2">Invoice</th><th className="px-3 py-2">Customer &amp; Products / Services &amp; Project</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Total</th><th className="px-3 py-2">Commission</th><th className="px-3 py-2">Due</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-slate-100"><td className="px-3 py-2">{row.invoice_show_route ? <a href={row.invoice_show_route} data-native="true" className="text-teal-700 hover:text-teal-600">{row.invoice_number}</a> : row.invoice_number}</td><td className="px-3 py-2"><div className="font-medium text-slate-800">{row.customer_name || '--'}</div><div className="text-xs text-slate-500">{row.project_name || '--'}</div></td><td className="px-3 py-2"><span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${invoiceBadgeClass(row.status_key || row.status)}`}>{row.status}</span></td><td className="px-3 py-2">{row.total_display}</td><td className="px-3 py-2">{row.commission_display || '--'}</td><td className="px-3 py-2">{row.due_date}</td></tr>)}</tbody></table></div>}
         </div>
     );
 }
@@ -596,8 +595,6 @@ function ProjectsTable({ rows }) {
                             <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <tr>
                                     <th className="px-3 py-2">Project</th>
-                                    <th className="px-3 py-2">Status</th>
-                                    <th className="px-3 py-2">Customer</th>
                                     <th className="px-3 py-2">Commission & Taken</th>
                                     <th className="px-3 py-2">Assigned Tasks</th>
                                 </tr>
@@ -616,11 +613,11 @@ function ProjectsTable({ rows }) {
                                             <td className="px-3 py-3">
                                                 <a href={row.route} data-native="true" className="font-semibold text-teal-700 hover:text-teal-600">{row.name}</a>
                                                 <div className="text-xs text-slate-500">Project ID: {row.id}</div>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                                    <span className={`rounded-full border px-2 py-0.5 font-semibold ${statusBadgeClass(row.status)}`}>{row.status}</span>
+                                                    <span className="text-slate-500">{row.customer_name || '--'}</span>
+                                                </div>
                                             </td>
-                                            <td className="px-3 py-3">
-                                                <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusBadgeClass(row.status)}`}>{row.status}</span>
-                                            </td>
-                                            <td className="px-3 py-3">{row.customer_name}</td>
                                             <td className="px-3 py-3">
                                                 <div className="text-xs text-slate-500">
                                                     Commission: <span className="font-semibold text-slate-800">{row.currency || 'BDT'} {money(row.commission_amount)}</span>

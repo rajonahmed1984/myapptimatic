@@ -34,10 +34,10 @@ export default function Index({ pageTitle = 'Plans', routes = {}, plans = [] }) 
                             <th className="px-4 py-3">SL</th>
                             <th className="px-4 py-3">Plan</th>
                             <th className="px-4 py-3">Slug</th>
-                            <th className="px-4 py-3">Product</th>
                             <th className="px-4 py-3">Price</th>
                             <th className="px-4 py-3">Interval</th>
                             <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Usage</th>
                             <th className="px-4 py-3 text-right">Action</th>
                         </tr>
                     </thead>
@@ -48,7 +48,6 @@ export default function Index({ pageTitle = 'Plans', routes = {}, plans = [] }) 
                                     <td className="px-4 py-3 text-slate-500">{plan.serial}</td>
                                     <td className="px-4 py-3 font-medium text-slate-900">{plan.name}</td>
                                     <td className="px-4 py-3 text-slate-500">{plan.slug_path}</td>
-                                    <td className="px-4 py-3 text-slate-500">{plan.product_name}</td>
                                     <td className="px-4 py-3 text-slate-700">{plan.price_display}</td>
                                     <td className="px-4 py-3 text-slate-700">{plan.interval_label}</td>
                                     <td className="px-4 py-3">
@@ -56,6 +55,7 @@ export default function Index({ pageTitle = 'Plans', routes = {}, plans = [] }) 
                                             {plan.status_label}
                                         </span>
                                     </td>
+                                    <td className="px-4 py-3 text-slate-600">{Number(plan.usage_count || 0)}</td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-3">
                                             <a href={plan?.routes?.edit} data-native="true" className="text-teal-600 hover:text-teal-500">

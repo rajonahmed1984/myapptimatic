@@ -1,5 +1,6 @@
 import React from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 const statusBadgeClass = (status) => {
     if (status === 'active') {
@@ -21,7 +22,35 @@ export default function Index({
     affiliates = [],
     pagination = {},
 }) {
-    const hasFilters = Boolean((filters?.search ?? '') || (filters?.status ?? ''));
+    const [statusFilter, setStatusFilter] = React.useState(filters?.status ?? '');
+    const searchExtras = React.useMemo(() => (statusFilter ? { status: statusFilter } : null), [statusFilter]);
+    const { searchTerm, setSearchTerm } = useInertiaLiveSearch({
+        initialValue: filters?.search ?? '',
+        url: routes?.index,
+        extraData: searchExtras,
+    });
+    const hasFilters = Boolean(searchTerm.trim() || statusFilter);
+
+    React.useEffect(() => {
+        setStatusFilter(filters?.status ?? '');
+    }, [filters?.status]);
+
+    const handleFilterSubmit = (event) => {
+        event.preventDefault();
+
+        router.get(
+            routes?.index || '/admin/affiliates',
+            {
+                ...(searchTerm.trim() ? { search: searchTerm.trim() } : {}),
+                ...(statusFilter ? { status: statusFilter } : {}),
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    };
 
     return (
         <>
@@ -43,17 +72,19 @@ export default function Index({
             </div>
 
             <div className="card p-6">
-                <form method="GET" action={routes?.index} data-native="true" className="mb-6 flex flex-wrap gap-4">
+                <form method="GET" action={routes?.index} className="mb-6 flex flex-wrap gap-4" onSubmit={handleFilterSubmit}>
                     <input
                         type="text"
                         name="search"
-                        defaultValue={filters?.search ?? ''}
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
                         placeholder="Search by name, email, or code..."
                         className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                     />
                     <select
                         name="status"
-                        defaultValue={filters?.status ?? ''}
+                        value={statusFilter}
+                        onChange={(event) => setStatusFilter(event.target.value)}
                         className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                     >
                         {status_options.map((option) => (

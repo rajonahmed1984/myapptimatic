@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 const statusClass = (status) => {
     const map = {
@@ -16,6 +17,12 @@ const statusClass = (status) => {
 
 export default function Index({ status_filter = '', search = '', status_counts = {}, tasks = [], pagination = {}, routes = {} }) {
     const { csrf_token: csrfToken } = usePage().props;
+    const searchExtras = React.useMemo(() => (status_filter ? { status: status_filter } : null), [status_filter]);
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: search,
+        url: routes?.index,
+        extraData: searchExtras,
+    });
     const filters = [
         { key: '', label: 'All', count: status_counts.total || 0 },
         { key: 'open', label: 'Open', count: status_counts.open || 0 },
@@ -49,7 +56,7 @@ export default function Index({ status_filter = '', search = '', status_counts =
                             const isActive = status_filter === filter.key || (filter.key === '' && status_filter === '');
                             const query = new URLSearchParams();
                             if (filter.key !== '') query.set('status', filter.key);
-                            if (search !== '') query.set('search', search);
+                            if (searchTerm.trim() !== '') query.set('search', searchTerm.trim());
                             const href = query.toString() ? `${routes.index}?${query.toString()}` : routes.index;
 
                             return (
@@ -70,12 +77,21 @@ export default function Index({ status_filter = '', search = '', status_counts =
                         })}
                     </div>
 
-                    <form method="GET" action={routes.index} data-native="true" className="flex items-center gap-2">
+                    <form
+                        method="GET"
+                        action={routes.index}
+                        className="flex items-center gap-2"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitSearch();
+                        }}
+                    >
                         {status_filter !== '' ? <input type="hidden" name="status" value={status_filter} /> : null}
                         <input
                             type="text"
                             name="search"
-                            defaultValue={search}
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
                             placeholder="Search tasks"
                             className="w-48 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 focus:border-teal-300 focus:outline-none"
                         />

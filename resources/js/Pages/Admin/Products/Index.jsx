@@ -35,6 +35,7 @@ export default function Index({ pageTitle = 'Products', routes = {}, products = 
                             <th className="px-4 py-3">Name</th>
                             <th className="px-4 py-3">Slug</th>
                             <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Usage</th>
                             <th className="px-4 py-3 text-right">Action</th>
                         </tr>
                     </thead>
@@ -50,6 +51,7 @@ export default function Index({ pageTitle = 'Products', routes = {}, products = 
                                             {product.status_label}
                                         </span>
                                     </td>
+                                    <td className="px-4 py-3 text-slate-600">{Number(product.usage_count || 0)}</td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-3">
                                             <a href={product?.routes?.edit} data-native="true" className="text-teal-600 hover:text-teal-500">
@@ -77,7 +79,7 @@ export default function Index({ pageTitle = 'Products', routes = {}, products = 
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                                <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                                     No products yet.
                                 </td>
                             </tr>

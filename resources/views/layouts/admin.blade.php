@@ -60,6 +60,7 @@
                 // Nested menu: Projects/Maintenance
                 $projectsMenuRoutes = [
                     'admin.projects.index',
+                    'admin.projects.all',
                     'admin.projects.create',
                     'admin.projects.store',
                     'admin.projects.show',
@@ -149,7 +150,8 @@
                             label="Projects"
                             :alwaysOpen="true"
                         >
-                            <a href="{{ route('admin.projects.index') }}" class="block {{ activeIf(request()->routeIs('admin.projects.index')) }}">All Projects</a>
+                            <a href="{{ route('admin.projects.index') }}" class="block {{ activeIf(request()->routeIs('admin.projects.index')) }}">Dashboard</a>
+                            <a href="{{ route('admin.projects.all') }}" class="block {{ activeIf(request()->routeIs('admin.projects.all')) }}">All Projects</a>
                             <a href="{{ route('admin.projects.create') }}" class="block {{ activeIf(request()->routeIs('admin.projects.create')) }}">Create Project</a>
                             <a href="{{ route('admin.project-maintenances.index') }}" class="block {{ activeIf(request()->routeIs('admin.project-maintenances.*')) }}">Maintenance</a>
                         </x-nav-menu>
@@ -206,15 +208,13 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             <span>Manual Payments</span>
                         </x-nav-link>
-                        <x-nav-menu
-                            :href="route('admin.accounting.ledger')"
+                        <x-nav-link
+                            :href="route('admin.accounting.index')"
                             routes="admin.accounting.*"
-                            label="Accounting"
-                            :alwaysOpen="true"
                         >
-                            <a href="{{ route('admin.accounting.ledger') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.ledger') || request()->routeIs('admin.accounting.index')) }}">Ledger</a>
-                            <a href="{{ route('admin.accounting.transactions') }}" class="block {{ activeIf(request()->routeIs('admin.accounting.transactions')) }}">Transactions</a>
-                        </x-nav-menu>
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            <span>Accounting</span>
+                        </x-nav-link>
                         @if(auth()->user()?->isMasterAdmin())
                             <x-nav-menu
                                 :href="route('admin.income.index')"
@@ -1092,14 +1092,32 @@
                 return false;
             };
 
+            const normalizeSidebarPath = (value) => {
+                try {
+                    const url = new URL(value, window.location.origin);
+                    return `${url.pathname}${url.search}`;
+                } catch (error) {
+                    return String(value || '');
+                }
+            };
+
             const setSidebarActiveMenu = (anchor) => {
                 const navLinks = sidebar?.querySelectorAll('a.nav-link, a.nav-link-active') || [];
                 navLinks.forEach((item) => item.classList.remove('nav-link-active'));
+                const subMenuLinks = sidebar?.querySelectorAll('.ml-8 a') || [];
+                subMenuLinks.forEach((item) => {
+                    item.classList.remove('text-teal-300');
+                    item.classList.add('hover:text-slate-200');
+                });
 
                 let activeAnchor = anchor;
+                let activeChildAnchor = null;
                 if (!activeAnchor.classList.contains('nav-link') && !activeAnchor.classList.contains('nav-link-active')) {
                     const subMenu = activeAnchor.closest('.ml-8');
                     const parentAnchor = subMenu?.previousElementSibling;
+                    if (activeAnchor instanceof HTMLAnchorElement) {
+                        activeChildAnchor = activeAnchor;
+                    }
                     if (parentAnchor instanceof HTMLAnchorElement) {
                         activeAnchor = parentAnchor;
                     }
@@ -1107,6 +1125,21 @@
 
                 if (activeAnchor.classList.contains('nav-link') || activeAnchor.classList.contains('nav-link-active')) {
                     activeAnchor.classList.add('nav-link-active');
+                }
+
+                if (!activeChildAnchor && activeAnchor instanceof HTMLAnchorElement) {
+                    const subMenu = activeAnchor.nextElementSibling;
+                    if (subMenu instanceof HTMLDivElement && subMenu.classList.contains('ml-8')) {
+                        const currentPath = normalizeSidebarPath(activeAnchor.href);
+                        activeChildAnchor = Array.from(subMenu.querySelectorAll('a')).find((item) => {
+                            return normalizeSidebarPath(item.href) === currentPath;
+                        }) || null;
+                    }
+                }
+
+                if (activeChildAnchor instanceof HTMLAnchorElement) {
+                    activeChildAnchor.classList.remove('hover:text-slate-200');
+                    activeChildAnchor.classList.add('text-teal-300');
                 }
             };
 

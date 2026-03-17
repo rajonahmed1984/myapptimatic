@@ -1,7 +1,5 @@
 import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
-import DateRangePickerField from '../../../../Components/DateRangePickerField';
-
 const includesValue = (list, value) => Array.isArray(list) && list.includes(value);
 const num = (value) => {
     const parsed = Number(value ?? 0);
@@ -28,8 +26,6 @@ export default function Index({
     employee_totals = [],
     trend = {},
     month_totals = [],
-    income_categories = [],
-    expense_categories = [],
     currency = {},
 }) {
     const trendLabels = Array.isArray(trend?.labels) ? trend.labels : [];
@@ -63,69 +59,9 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Finance</div>
-                    <div className="text-2xl font-semibold text-slate-900">Master finance reports</div>
-                    <div className="mt-1 text-sm text-slate-500">One clean page for performance, profitability, tax, and payout health.</div>
-                </div>
-                <a href={routes?.tax_index} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
-                    Tax Settings
-                </a>
-            </div>
-
             <div className="card bg-gradient-to-br from-[#eef8fb] via-white to-[#f4f8ff] p-5">
                 <div className="section-label">Report Controls</div>
                 <form method="GET" action={routes?.index} className="mt-3 grid gap-3 text-sm md:grid-cols-6" data-native="true">
-                    <DateRangePickerField
-                        startName="start_date"
-                        endName="end_date"
-                        startValue={filters?.start_date || ''}
-                        endValue={filters?.end_date || ''}
-                        submitFormat="dmy"
-                        startLabel="Start date"
-                        endLabel="End date"
-                        className="md:col-span-2"
-                        gridClassName="grid gap-3 md:grid-cols-2"
-                        inputClassName="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
-                    />
-                    <div>
-                        <label className="text-xs text-slate-500">Income basis</label>
-                        <select name="income_basis" defaultValue={filters?.income_basis || 'received'} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm">
-                            <option value="received">Received</option>
-                            <option value="invoiced">Invoiced</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500">Income category</label>
-                        <select name="income_category_id" defaultValue={filters?.income_category_id || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm">
-                            <option value="">All</option>
-                            {income_categories.map((category) => (
-                                <option key={category.id} value={String(category.id)}>
-                                    {category.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500">Expense category</label>
-                        <select name="expense_category_id" defaultValue={filters?.expense_category_id || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm">
-                            <option value="">All</option>
-                            {expense_categories.map((category) => (
-                                <option key={category.id} value={String(category.id)}>
-                                    {category.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="mt-6 flex items-center gap-2">
-                        <button type="submit" className="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-500">
-                            Apply
-                        </button>
-                        <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
-                            Reset
-                        </a>
-                    </div>
                     <div className="md:col-span-3">
                         <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Income sources</div>
                         <div className="mt-1.5 flex flex-wrap gap-4 text-xs text-slate-600">
@@ -142,6 +78,14 @@ export default function Index({
                             <label className="flex items-center gap-2"><input type="checkbox" name="expense_sources[]" value="contract_payout" defaultChecked={includesValue(filters?.expense_sources, 'contract_payout')} className="h-4 w-4 rounded border-slate-300 text-emerald-600" /> Contract</label>
                             <label className="flex items-center gap-2"><input type="checkbox" name="expense_sources[]" value="sales_payout" defaultChecked={includesValue(filters?.expense_sources, 'sales_payout')} className="h-4 w-4 rounded border-slate-300 text-emerald-600" /> Sales payout</label>
                         </div>
+                    </div>
+                    <div className="md:col-span-6 flex items-center gap-2">
+                        <button type="submit" className="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-500">
+                            Apply
+                        </button>
+                        <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
+                            Reset
+                        </a>
                     </div>
                 </form>
             </div>
@@ -206,7 +150,7 @@ export default function Index({
                 <BreakdownCard title="Employee Payout Breakdown" rows={employee_totals} labelKey="label" valueKey="total" base={Math.max(payoutExpense, 1)} currency={currency} emptyText="No payout entries in this range." />
             </div>
 
-            <div className="mt-6 grid gap-6 xl:grid-cols-2">
+            <div className="mt-6 grid gap-6">
                 <div className="card p-6">
                     <div className="section-label">Monthly Summary</div>
                     <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white/80">
@@ -251,7 +195,7 @@ export default function Index({
 
                 <div className="card p-6">
                     <div className="section-label">Tax Deep Dive</div>
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                         <MetricMini label="Taxable Base" value={formatCurrency(tax?.taxable_base, currency)} />
                         <MetricMini label="Tax Amount" value={formatCurrency(tax?.tax_amount, currency)} />
                         <MetricMini label="Gross Total" value={formatCurrency(tax?.tax_gross, currency)} />

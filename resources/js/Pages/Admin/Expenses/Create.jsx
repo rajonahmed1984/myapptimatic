@@ -137,10 +137,8 @@ export default function Create({
                             <tr>
                                 <th className="pb-2 pr-3 font-medium">ID</th>
                                 <th className="pb-2 pr-3 font-medium">Date</th>
-                                <th className="pb-2 pr-3 font-medium">Title</th>
-                                <th className="pb-2 pr-3 font-medium">Category</th>
-                                <th className="pb-2 pr-3 text-right font-medium">Amount</th>
-                                <th className="pb-2 pr-3 text-right font-medium">Paid amount</th>
+                                <th className="pb-2 pr-3 font-medium">Title / Category</th>
+                                <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">Amount / Paid</th>
                                 <th className="pb-2 pr-3 text-center font-medium">Status</th>
                                 <th className="pb-2 pr-3 font-medium">Invoice</th>
                                 <th className="pb-2 text-right font-medium">Actions</th>
@@ -149,7 +147,7 @@ export default function Create({
                         <tbody className="divide-y divide-slate-100 text-slate-700">
                             {oneTimeExpenses.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="py-6 text-center text-sm text-slate-500">
+                                    <td colSpan={7} className="py-6 text-center text-sm text-slate-500">
                                         No one-time expenses yet.
                                     </td>
                                 </tr>
@@ -158,13 +156,17 @@ export default function Create({
                                     <tr key={item.id}>
                                         <td className="whitespace-nowrap py-2 pr-3 font-semibold text-slate-900">#{item.id}</td>
                                         <td className="whitespace-nowrap py-2 pr-3">{item.date_label || '--'}</td>
-                                        <td className="py-2 pr-3">{item.title}</td>
-                                        <td className="whitespace-nowrap py-2 pr-3">{item.category_name}</td>
-                                        <td className="whitespace-nowrap py-2 pr-3 text-right font-semibold text-slate-900">
-                                            {formatCurrency(currencyCode, item.amount)}
+                                        <td className="py-2 pr-3">
+                                            <div className="font-medium text-slate-900">{item.title}</div>
+                                            <div className="mt-1 text-xs text-slate-500">{item.category_name || '--'}</div>
                                         </td>
-                                        <td className="whitespace-nowrap py-2 pr-3 text-right font-semibold text-slate-900">
-                                            {formatCurrency(currencyCode, item.invoice?.paid ?? 0)}
+                                        <td className="whitespace-nowrap py-2 pr-3 text-right">
+                                            <div className="font-semibold text-slate-900">
+                                                {formatCurrency(currencyCode, item.amount)}
+                                            </div>
+                                            <div className="mt-1 text-xs text-slate-500">
+                                                Paid: {formatCurrency(currencyCode, item.invoice?.paid ?? 0)}
+                                            </div>
                                         </td>
                                         <td className="py-2 pr-3 text-center">
                                             <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${item.invoice?.payment_status_class || 'bg-slate-100 text-slate-500'}`}>

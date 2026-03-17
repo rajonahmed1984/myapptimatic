@@ -569,6 +569,7 @@ class CustomerController extends Controller
                     'created_at_display' => $projectUser->created_at?->format($dateFormat) ?? '--',
                     'routes' => [
                         'update' => route('admin.customers.project-users.update', ['customer' => $customer, 'user' => $projectUser], false),
+                        'status' => route('admin.customers.project-users.status', ['customer' => $customer, 'user' => $projectUser], false),
                         'destroy' => route('admin.customers.project-users.destroy', ['customer' => $customer, 'user' => $projectUser], false),
                     ],
                 ];
@@ -694,7 +695,7 @@ class CustomerController extends Controller
                     'email' => (string) old('email', (string) ($customer->email ?? '')),
                     'phone' => (string) old('phone', (string) ($customer->phone ?? '')),
                     'address' => (string) old('address', (string) ($customer->address ?? '')),
-                    'status' => (string) old('status', (string) ($customer->status ?? 'active')),
+                    'status' => (string) old('status', (string) ($effectiveStatus ?? $customer->status ?? 'active')),
                     'default_sales_rep_id' => (string) old('default_sales_rep_id', (string) ($customer->default_sales_rep_id ?? '')),
                     'access_override_until' => (string) old(
                         'access_override_until',
@@ -724,8 +725,8 @@ class CustomerController extends Controller
                 'create_ticket' => route('admin.support-tickets.create', ['customer_id' => $customer->id], false),
                 'project_user_store' => route('admin.customers.project-users.store', $customer, false),
                 'service_store' => route('admin.customers.services.store', $customer, false),
-                'create_project' => route('admin.projects.create', [], false),
-                'create_maintenance' => route('admin.project-maintenances.create', [], false),
+                'create_project' => route('admin.projects.create', ['customer_id' => $customer->id], false),
+                'create_maintenance' => route('admin.project-maintenances.create', ['customer_id' => $customer->id], false),
             ],
         ]);
     }

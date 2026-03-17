@@ -497,22 +497,38 @@ class IncomeController extends Controller
                     return "{$item['name']}: {$currencyCode} {$amount}";
                 })->implode(', ');
 
+                $selectedSources = collect($filters['sources'] ?? [])
+                    ->map(fn ($source) => match ((string) $source) {
+                        'manual' => 'Manual',
+                        'system' => 'System',
+                        'credit_settlement' => 'Credit Settlement',
+                        'carrothost' => 'CarrotHost',
+                        default => ucfirst((string) $source),
+                    })
+                    ->implode(', ');
+
                 $prompt = <<<PROMPT
-You are a finance analyst. Summarize the income dashboard in Bengali.
+You are a senior finance analyst. Write a richer income dashboard summary in Bengali for an admin user.
 
 Period: {$startDate} to {$endDate}
+Selected sources: {$selectedSources}
 Totals:
 - Total income: {$currencyCode} {$totalAmount}
-                - Manual income: {$currencyCode} {$manualTotal}
-                - System income: {$currencyCode} {$systemTotal}
-                - Credit settlement: {$currencyCode} {$creditSettlementTotal}
-                - CarrotHost income (net): {$currencyCode} {$carrotHostTotal}
-                - Entries: {$count}
+- Manual income: {$currencyCode} {$manualTotal}
+- System income: {$currencyCode} {$systemTotal}
+- Credit settlement: {$currencyCode} {$creditSettlementTotal}
+- CarrotHost income (net): {$currencyCode} {$carrotHostTotal}
+- Entries: {$count}
 
 Top categories: {$topCategories}
 Top customers: {$topCustomerText}
 
-Return 4-6 bullet points, short and clear.
+Instructions:
+- Start with a short 1-2 sentence executive overview.
+- Then provide 5-7 concise bullet points.
+- Must mention total income, source mix, strongest category, strongest customer, and filtered scope.
+- If one source is unusually dominant, mention that clearly.
+- Keep it practical and management-friendly, not generic.
 PROMPT;
 
                 return $geminiService->generateText($prompt);

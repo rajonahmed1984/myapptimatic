@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 export default function Index({
     pageTitle = 'Ledger',
@@ -14,6 +15,10 @@ export default function Index({
     const currencySummary = summary?.currencies || [];
     const typeSummary = summary?.types || [];
     const isTransactions = scope === 'transactions';
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: search,
+        url: searchAction,
+    });
 
     const confirmDelete = (label) => window.confirm(`Delete entry ${label}?`);
 
@@ -105,7 +110,7 @@ export default function Index({
                     </div>
 
                     {currencySummary.length > 0 ? (
-                        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="mt-3 grid gap-3 md:grid-cols-1 xl:grid-cols-1">
                             {currencySummary.map((currency) => (
                                 <div key={currency.currency} className="rounded-xl border border-slate-200 bg-white p-3">
                                     <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{currency.currency} summary</p>
@@ -166,34 +171,35 @@ export default function Index({
                 </div>
 
                 <div className="card p-4 md:p-5">
-                    <form method="GET" action={searchAction} className="flex flex-wrap items-center gap-3" data-native="true">
+                    <form
+                        method="GET"
+                        action={searchAction}
+                        className="flex flex-wrap items-center gap-3"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitSearch();
+                        }}
+                    >
                         <div className="relative w-full max-w-md">
                             <input
                                 type="text"
                                 name="search"
-                                defaultValue={search}
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search by reference, invoice, gateway, customer..."
                                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                                onInput={(event) => {
-                                    const input = event.currentTarget;
-                                    clearTimeout(input.__searchTimer);
-                                    input.__searchTimer = setTimeout(() => input.form?.requestSubmit(), 300);
-                                }}
                             />
                         </div>
                     </form>
 
                     <div id="accountingTableWrap" className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-                        <table className="w-full min-w-[1220px] text-left text-sm">
+                        <table className="w-full min-w-[960px] text-left text-sm">
                             <thead className="border-b border-slate-300 bg-slate-50 text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <tr>
-                                    <th className="sticky left-0 z-20 whitespace-nowrap border-r border-slate-200 bg-slate-50 px-4 py-3">Entry ID</th>
                                     <th className="whitespace-nowrap px-4 py-3">Date</th>
-                                    <th className="px-4 py-3">Entry</th>
                                     <th className="px-4 py-3">Customer / Invoice</th>
                                     <th className="px-4 py-3">Gateway / Ref</th>
-                                    <th className="px-4 py-3 text-right">Amount</th>
-                                    <th className="px-4 py-3 text-right">Running balance</th>
+                                    <th className="px-4 py-3 text-right">Amount / Balance</th>
                                     <th className="px-4 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -201,20 +207,7 @@ export default function Index({
                                 {entries.length > 0 ? (
                                 entries.map((entry) => (
                                         <tr key={entry.id} className="border-b border-slate-100 align-top">
-                                            <td className="sticky left-0 z-10 whitespace-nowrap border-r border-slate-100 bg-white px-4 py-3 font-semibold tabular-nums text-slate-700">
-                                                Entry #{entry.id}
-                                            </td>
                                             <td className="whitespace-nowrap px-4 py-3 tabular-nums text-slate-600">{entry.entry_date_display}</td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${entry.is_outflow ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                        {entry.type_label}
-                                                    </span>
-                                                </div>
-                                                <div className="mt-1 max-w-[280px] truncate text-xs text-slate-500" title={entry.description}>
-                                                    {entry.description}
-                                                </div>
-                                            </td>
                                             <td className="px-4 py-3 text-slate-600">
                                                 <div className="max-w-[240px] truncate" title={entry.customer_name}>
                                                     {entry?.routes?.customer_show ? (
@@ -247,12 +240,14 @@ export default function Index({
                                                     Ref: {entry.reference}
                                                 </div>
                                             </td>
-                                            <td className={`whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums ${entry.is_outflow ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                                {entry.amount_display}
-                                            </td>
-                                            <td className={`whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums ${entry.running_balance_is_negative ? 'text-rose-600' : 'text-slate-700'}`}>
-                                                {entry.running_balance_is_negative ? '-' : ''}
-                                                {entry.running_balance_display}
+                                            <td className="whitespace-nowrap px-4 py-3 text-right">
+                                                <div className={`font-semibold tabular-nums ${entry.is_outflow ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                    {entry.type_label}: {entry.amount_display}
+                                                </div>
+                                                <div className={`mt-1 text-xs font-semibold tabular-nums ${entry.running_balance_is_negative ? 'text-rose-600' : 'text-slate-700'}`}>
+                                                    Balance {entry.running_balance_is_negative ? '-' : ''}
+                                                    {entry.running_balance_display}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex items-center justify-end gap-3">
@@ -288,7 +283,7 @@ export default function Index({
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                                        <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                                             No accounting entries found.
                                         </td>
                                     </tr>

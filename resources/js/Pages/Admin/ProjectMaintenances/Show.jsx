@@ -157,6 +157,56 @@ export default function Show({ pageTitle = 'Maintenance', maintenance = null, in
                         >
                             View invoices
                         </a>
+
+                        {maintenance?.can_pause ? (
+                            <form method="POST" action={maintenance?.routes?.update} data-native="true">
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="hidden" name="_method" value="PATCH" />
+                                <input type="hidden" name="quick_status" value="1" />
+                                <input type="hidden" name="status" value="paused" />
+                                <button
+                                    type="submit"
+                                    className="inline-flex w-full items-center justify-center rounded-full border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700 hover:border-amber-300 hover:text-amber-600"
+                                >
+                                    Pause maintenance
+                                </button>
+                            </form>
+                        ) : null}
+
+                        {maintenance?.can_resume ? (
+                            <form method="POST" action={maintenance?.routes?.update} data-native="true">
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="hidden" name="_method" value="PATCH" />
+                                <input type="hidden" name="quick_status" value="1" />
+                                <input type="hidden" name="status" value="active" />
+                                <button
+                                    type="submit"
+                                    className="inline-flex w-full items-center justify-center rounded-full border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 hover:border-emerald-300 hover:text-emerald-600"
+                                >
+                                    Resume maintenance
+                                </button>
+                            </form>
+                        ) : null}
+
+                        {maintenance?.can_cancel ? (
+                            <form
+                                method="POST"
+                                action={maintenance?.routes?.update}
+                                data-native="true"
+                                onSubmit={(e) => !window.confirm('Cancel this maintenance plan?') && e.preventDefault()}
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="hidden" name="_method" value="PATCH" />
+                                <input type="hidden" name="quick_status" value="1" />
+                                <input type="hidden" name="status" value="cancelled" />
+                                <button
+                                    type="submit"
+                                    className="inline-flex w-full items-center justify-center rounded-full border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:border-rose-300 hover:text-rose-500"
+                                >
+                                    Cancel maintenance
+                                </button>
+                            </form>
+                        ) : null}
                     </div>
                 </div>
             </div>

@@ -67,10 +67,22 @@ class ProjectMaintenanceController extends Controller
 
     public function create(Request $request): InertiaResponse
     {
+        $requestedCustomerId = $request->integer('customer_id');
+
         $projects = Project::query()
             ->with('customer:id,name')
+            ->when($requestedCustomerId, fn ($query) => $query->where('customer_id', $requestedCustomerId))
             ->orderBy('name')
             ->get(['id', 'name', 'customer_id', 'currency']);
+
+        $selectedProjectId = $request->integer('project_id') ?: null;
+        if ($selectedProjectId && ! $projects->contains('id', $selectedProjectId)) {
+            $selectedProjectId = null;
+        }
+
+        if ($selectedProjectId === null && $projects->count() === 1) {
+            $selectedProjectId = (int) $projects->first()->id;
+        }
 
         $salesReps = SalesRepresentative::where('status', 'active')
             ->orderBy('name')
@@ -86,7 +98,7 @@ class ProjectMaintenanceController extends Controller
                 'method' => 'POST',
                 'fields' => $this->maintenanceFormFields(
                     null,
-                    $request->integer('project_id') ?: null,
+                    $selectedProjectId,
                     $salesReps
                 ),
             ],
@@ -330,9 +342,13 @@ class ProjectMaintenanceController extends Controller
             'customer_name' => $maintenance->customer?->name,
             'customer_route' => $maintenance->customer ? route('admin.customers.show', $maintenance->customer_id) : null,
             'creator_name' => $maintenance->creator?->name,
+            'can_pause' => $maintenance->status === 'active',
+            'can_resume' => $maintenance->status === 'paused',
+            'can_cancel' => $maintenance->status !== 'cancelled',
             'routes' => [
                 'index' => route('admin.project-maintenances.index'),
                 'edit' => route('admin.project-maintenances.edit', $maintenance),
+                'update' => route('admin.project-maintenances.update', $maintenance),
                 'invoices' => route('admin.invoices.index', ['maintenance_id' => $maintenance->id]),
             ],
         ];

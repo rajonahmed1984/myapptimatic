@@ -18,7 +18,17 @@ class ProductController extends Controller
 {
     public function index(Request $request): InertiaResponse
     {
-        $products = Product::query()->latest()->get();
+        $products = Product::query()
+            ->select('products.*')
+            ->selectSub(function ($query) {
+                $query->from('subscriptions')
+                    ->join('plans', 'plans.id', '=', 'subscriptions.plan_id')
+                    ->whereColumn('plans.product_id', 'products.id')
+                    ->where('subscriptions.status', 'active')
+                    ->selectRaw('COUNT(DISTINCT subscriptions.customer_id)');
+            }, 'usage_count')
+            ->latest()
+            ->get();
 
         return Inertia::render(
             'Admin/Products/Index',
@@ -137,6 +147,7 @@ class ProductController extends Controller
                     'slug' => (string) $product->slug,
                     'status' => (string) $product->status,
                     'status_label' => ucfirst((string) $product->status),
+                    'usage_count' => (int) ($product->usage_count ?? 0),
                     'routes' => [
                         'edit' => route('admin.products.edit', $product),
                         'destroy' => route('admin.products.destroy', $product),

@@ -86,13 +86,11 @@ export default function Index({
                             <thead>
                                 <tr className="text-xs uppercase text-slate-500">
                                     <th className="px-3 py-2">ID</th>
-                                    <th className="px-3 py-2">Sales rep</th>
-                                    <th className="px-3 py-2">Project</th>
+                                    <th className="px-3 py-2">Sales rep / Project</th>
                                     <th className="px-3 py-2">Type</th>
                                     <th className="px-3 py-2">Amount</th>
                                     <th className="px-3 py-2">Status</th>
                                     <th className="px-3 py-2">Paid at</th>
-                                    <th className="px-3 py-2">Updated</th>
                                     <th className="px-3 py-2" />
                                 </tr>
                             </thead>
@@ -101,8 +99,10 @@ export default function Index({
                                     payouts.map((payout) => (
                                         <tr key={payout.id} className="border-t border-slate-300">
                                             <td className="px-3 py-2">#{payout.id}</td>
-                                            <td className="px-3 py-2">{payout.sales_rep_name}</td>
-                                            <td className="px-3 py-2">{payout.project_name}</td>
+                                            <td className="px-3 py-2">
+                                                <div className="font-medium text-slate-900">{payout.sales_rep_name || '--'}</div>
+                                                <div className="text-xs text-slate-500">{payout.project_name || '--'}</div>
+                                            </td>
                                             <td className="px-3 py-2">{payout.type_label}</td>
                                             <td className="px-3 py-2">{payout.total_amount_display}</td>
                                             <td className="px-3 py-2">
@@ -115,7 +115,6 @@ export default function Index({
                                                 </span>
                                             </td>
                                             <td className="px-3 py-2">{payout.paid_at_display}</td>
-                                            <td className="px-3 py-2">{payout.updated_at_display}</td>
                                             <td className="px-3 py-2">
                                                 <a
                                                     href={payout?.routes?.show}
@@ -129,7 +128,7 @@ export default function Index({
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={9} className="px-3 py-3 text-slate-500">
+                                        <td colSpan={7} className="px-3 py-3 text-slate-500">
                                             No payouts yet.
                                         </td>
                                     </tr>

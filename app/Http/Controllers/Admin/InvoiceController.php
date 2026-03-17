@@ -393,6 +393,7 @@ class InvoiceController extends Controller
 
         $data = $request->validate([
             'sales_rep_id' => ['required', 'integer'],
+            'collected_amount' => ['required', 'numeric', 'min:0.01'],
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
             'retained_amount' => ['nullable', 'numeric', 'min:0'],
@@ -415,18 +416,32 @@ class InvoiceController extends Controller
         }
 
         $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
-        $paymentAmount = round(max(0, (float) $invoice->total - $creditTotal), 2);
+        $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
+        $outstandingAmount = round(max(0, (float) $invoice->total - ($paidTotal + $creditTotal)), 2);
+        $paymentAmount = round((float) ($data['collected_amount'] ?? 0), 2);
         $retainedAmount = round((float) ($data['retained_amount'] ?? 0), 2);
         $reference = trim((string) ($data['reference'] ?? ''));
         $note = trim((string) ($data['note'] ?? ''));
         $payoutMethod = trim((string) ($data['payout_method'] ?? ''));
 
-        if ($paymentAmount <= 0) {
+        if ($outstandingAmount <= 0) {
             if (AjaxResponse::ajaxFromRequest($request)) {
                 return AjaxResponse::ajaxError('No payable amount remains on this invoice.', 422);
             }
 
             return back()->withErrors(['sales_rep_id' => 'No payable amount remains on this invoice.'])->withInput();
+        }
+
+        if ($paymentAmount > $outstandingAmount) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError('Collected amount cannot exceed the outstanding invoice amount.', 422, [
+                    'collected_amount' => ['Collected amount cannot exceed the outstanding invoice amount.'],
+                ]);
+            }
+
+            return back()
+                ->withErrors(['collected_amount' => 'Collected amount cannot exceed the outstanding invoice amount.'])
+                ->withInput();
         }
 
         if ($retainedAmount > $paymentAmount) {
@@ -455,19 +470,23 @@ class InvoiceController extends Controller
 
         $invoiceNumber = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
         $previousStatus = (string) $invoice->status;
+        $marksInvoicePaid = round($paymentAmount, 2) >= round($outstandingAmount, 2);
 
         DB::transaction(function () use (
             $request,
             $invoice,
             $salesRep,
             $paymentAmount,
+            $paidTotal,
             $creditTotal,
+            $outstandingAmount,
             $retainedAmount,
             $reference,
             $note,
             $payoutMethod,
             $invoiceNumber,
-            $previousStatus
+            $previousStatus,
+            $marksInvoicePaid,
         ): void {
             AccountingEntry::create([
                 'entry_date' => Carbon::today(),
@@ -486,32 +505,38 @@ class InvoiceController extends Controller
                     'collected_by_sales_rep_name' => $salesRep->name,
                     'invoice_number' => $invoiceNumber,
                     'invoice_total' => (float) $invoice->total,
+                    'paid_total_before_collection' => $paidTotal,
                     'credit_total' => $creditTotal,
+                    'outstanding_before_collection' => $outstandingAmount,
                     'collected_amount' => $paymentAmount,
                     'retained_amount' => $retainedAmount,
+                    'invoice_marked_paid' => $marksInvoicePaid,
                     'note' => $note !== '' ? $note : null,
                 ],
             ]);
 
-            $invoice->update([
-                'status' => 'paid',
-                'paid_at' => $invoice->paid_at ?? Carbon::now(),
-            ]);
+            if ($marksInvoicePaid) {
+                $invoice->update([
+                    'status' => 'paid',
+                    'paid_at' => $invoice->paid_at ?? Carbon::now(),
+                ]);
 
-            \App\Models\StatusAuditLog::logChange(
-                Invoice::class,
-                $invoice->id,
-                $previousStatus,
-                'paid',
-                'sales_rep_collection',
-                $request->user()?->id,
-                [
-                    'sales_rep_id' => $salesRep->id,
-                    'sales_rep_name' => $salesRep->name,
-                    'reference' => $reference !== '' ? $reference : null,
-                    'retained_amount' => $retainedAmount,
-                ]
-            );
+                \App\Models\StatusAuditLog::logChange(
+                    Invoice::class,
+                    $invoice->id,
+                    $previousStatus,
+                    'paid',
+                    'sales_rep_collection',
+                    $request->user()?->id,
+                    [
+                        'sales_rep_id' => $salesRep->id,
+                        'sales_rep_name' => $salesRep->name,
+                        'reference' => $reference !== '' ? $reference : null,
+                        'collected_amount' => $paymentAmount,
+                        'retained_amount' => $retainedAmount,
+                    ]
+                );
+            }
 
             if ($retainedAmount <= 0) {
                 return;
@@ -563,34 +588,43 @@ class InvoiceController extends Controller
 
         $freshInvoice = $invoice->fresh('customer');
 
-        $this->runInvoicePaidPostProcessing(
-            $request,
-            $freshInvoice,
-            $adminNotifications,
-            $clientNotifications,
-            $commissionService,
-            $salesRepNotifications,
-            $reference !== '' ? $reference : null
-        );
+        if ($marksInvoicePaid && $freshInvoice) {
+            $this->runInvoicePaidPostProcessing(
+                $request,
+                $freshInvoice,
+                $adminNotifications,
+                $clientNotifications,
+                $commissionService,
+                $salesRepNotifications,
+                $reference !== '' ? $reference : null
+            );
+        }
 
-        SystemLogger::write('activity', 'Invoice marked as paid via sales representative collection.', [
+        SystemLogger::write('activity', $marksInvoicePaid ? 'Invoice marked as paid via sales representative collection.' : 'Partial invoice collection recorded via sales representative.', [
             'invoice_id' => $invoice->id,
             'customer_id' => $invoice->customer_id,
             'sales_representative_id' => $salesRep->id,
             'payment_amount' => $paymentAmount,
+            'paid_total_before_collection' => $paidTotal,
+            'outstanding_before_collection' => $outstandingAmount,
             'retained_amount' => $retainedAmount,
             'currency' => $invoice->currency,
+            'invoice_marked_paid' => $marksInvoicePaid,
         ], $request->user()?->id, $request->ip());
 
         if (AjaxResponse::ajaxFromRequest($request)) {
             return AjaxResponse::ajaxRedirect(
                 route('admin.invoices.show', $invoice),
-                'Invoice marked as paid via sales representative.'
+                $marksInvoicePaid
+                    ? 'Invoice marked as paid via sales representative.'
+                    : 'Collected payment saved. Invoice still has an outstanding balance.'
             );
         }
 
         return redirect()->route('admin.invoices.show', $invoice)
-            ->with('status', 'Invoice marked as paid via sales representative.');
+            ->with('status', $marksInvoicePaid
+                ? 'Invoice marked as paid via sales representative.'
+                : 'Collected payment saved. Invoice still has an outstanding balance.');
     }
 
     public function recalculate(Request $request, Invoice $invoice): RedirectResponse|JsonResponse
@@ -933,6 +967,8 @@ class InvoiceController extends Controller
             });
         }
 
+        $invoiceInsights = $this->invoiceInsights((clone $query)->get());
+
         $payload = [
             'invoices' => $query->paginate(25)->withQueryString(),
             'title' => $title,
@@ -950,6 +986,7 @@ class InvoiceController extends Controller
             'filters' => [
                 'search' => $search,
             ],
+            'invoiceInsights' => $invoiceInsights,
             'project' => $project ? [
                 'id' => $project->id,
                 'name' => $project->name,
@@ -969,6 +1006,87 @@ class InvoiceController extends Controller
                 'current' => url()->current(),
             ],
         ]);
+    }
+
+    /**
+     * @param  Collection<int, Invoice>  $invoices
+     * @return array<string, mixed>
+     */
+    private function invoiceInsights(Collection $invoices): array
+    {
+        $currency = (string) ($invoices->first()?->currency ?: Setting::getValue('currency', 'BDT'));
+
+        $overview = [
+            'count' => $invoices->count(),
+            'billed' => 0.0,
+            'collected' => 0.0,
+            'outstanding' => 0.0,
+        ];
+
+        $statusCounts = [
+            'paid' => 0,
+            'unpaid' => 0,
+            'overdue' => 0,
+            'cancelled' => 0,
+            'refunded' => 0,
+            'partial' => 0,
+        ];
+
+        $watchlist = [
+            'overdue_count' => 0,
+            'overdue_amount' => 0.0,
+            'pending_proof_count' => 0,
+            'rejected_proof_count' => 0,
+        ];
+
+        foreach ($invoices as $invoice) {
+            $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
+            $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
+            $collected = max(0, $paidTotal + $creditTotal);
+            $outstanding = max(0, (float) $invoice->total - $collected);
+            $status = (string) $invoice->status;
+
+            $overview['billed'] += (float) $invoice->total;
+            $overview['collected'] += $collected;
+            $overview['outstanding'] += $outstanding;
+
+            if (array_key_exists($status, $statusCounts)) {
+                $statusCounts[$status]++;
+            }
+
+            if ($collected > 0 && $outstanding > 0) {
+                $statusCounts['partial']++;
+            }
+
+            if ($status === 'overdue') {
+                $watchlist['overdue_count']++;
+                $watchlist['overdue_amount'] += $outstanding;
+            }
+
+            if ($invoice->paymentProofs->firstWhere('status', 'pending')) {
+                $watchlist['pending_proof_count']++;
+            }
+
+            if ($invoice->paymentProofs->firstWhere('status', 'rejected')) {
+                $watchlist['rejected_proof_count']++;
+            }
+        }
+
+        return [
+            'overview' => [
+                'count' => $overview['count'],
+                'billed_display' => $this->formatMoney($currency, $overview['billed']),
+                'collected_display' => $this->formatMoney($currency, $overview['collected']),
+                'outstanding_display' => $this->formatMoney($currency, $overview['outstanding']),
+            ],
+            'statuses' => $statusCounts,
+            'watchlist' => [
+                'overdue_count' => $watchlist['overdue_count'],
+                'overdue_amount_display' => $this->formatMoney($currency, $watchlist['overdue_amount']),
+                'pending_proof_count' => $watchlist['pending_proof_count'],
+                'rejected_proof_count' => $watchlist['rejected_proof_count'],
+            ],
+        ];
     }
 
     private function listRedirectFromRequest(Request $request): string
@@ -1046,12 +1164,14 @@ class InvoiceController extends Controller
     private function serializeInvoiceDetails(Invoice $invoice): array
     {
         $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
+        $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
         $taxSetting = \App\Models\TaxSetting::current();
         $taxLabel = $taxSetting->invoice_tax_label ?: 'Tax';
         $taxNote = $taxSetting->renderNote($invoice->tax_rate_percent);
         $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
         $discountAmount = $creditTotal;
         $payableAmount = max(0, (float) $invoice->total - $discountAmount);
+        $outstandingAmount = max(0, (float) $invoice->total - ($paidTotal + $creditTotal));
         $companyName = (string) Setting::getValue('company_name', config('app.name', 'MyApptimatic'));
         $companyEmail = (string) Setting::getValue('company_email');
         $payToText = (string) Setting::getValue('pay_to_text');
@@ -1102,7 +1222,10 @@ class InvoiceController extends Controller
                 'tax_amount_display' => sprintf('%s %s', (string) $invoice->currency, number_format((float) $invoice->tax_amount, 2)),
                 'tax_note' => $taxNote,
                 'discount_display' => '- '.(string) $invoice->currency.' '.number_format($discountAmount, 2),
+                'collected_display' => sprintf('%s %s', (string) $invoice->currency, number_format($paidTotal, 2)),
                 'payable_display' => sprintf('%s %s', (string) $invoice->currency, number_format($payableAmount, 2)),
+                'outstanding_display' => sprintf('%s %s', (string) $invoice->currency, number_format($outstandingAmount, 2)),
+                'outstanding_value' => number_format($outstandingAmount, 2, '.', ''),
             ],
             'notes' => $invoice->notes,
             'sales_rep_collection' => $salesRepCollection,
@@ -1152,7 +1275,7 @@ class InvoiceController extends Controller
                     ],
                 ];
             })->values(),
-            'can_record_payment' => $invoice->status !== 'paid',
+            'can_record_payment' => in_array((string) $invoice->status, ['unpaid', 'overdue'], true) && $outstandingAmount > 0,
             'can_record_refund' => $invoice->status === 'paid',
         ];
     }
@@ -1423,6 +1546,11 @@ class InvoiceController extends Controller
             'cancelled', 'refunded' => 'bg-slate-100 text-slate-700',
             default => 'bg-slate-100 text-slate-700',
         };
+    }
+
+    private function formatMoney(string $currency, float $amount): string
+    {
+        return sprintf('%s %s', $currency, number_format($amount, 2));
     }
 
     private function statusTitle(?string $status): string

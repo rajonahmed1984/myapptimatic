@@ -488,10 +488,10 @@ export default function Dashboard({
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <SmallLinkCard href={`${routes?.projects_index}?status=ongoing`} title="Ongoing projects" value={metricValue(projectMaintenance?.projects_active)} />
+                <SmallLinkCard href={`${routes?.projects_all}?status=ongoing`} title="Ongoing projects" value={metricValue(projectMaintenance?.projects_active)} />
                 <SmallLinkCard href={routes?.subscriptions_index} title="Blocked services" value={metricValue(projectMaintenance?.subscriptions_blocked)} tone="text-rose-600" />
                 <SmallLinkCard href={routes?.project_maintenances_index} title="Renewals (30d)" value={metricValue(projectMaintenance?.renewals_30d)} tone="text-emerald-600" />
-                <SmallLinkCard href={routes?.projects_index} title="Loss risk projects" value={metricValue(projectMaintenance?.projects_loss)} tone="text-rose-600" />
+                <SmallLinkCard href={routes?.projects_all} title="Loss risk projects" value={metricValue(projectMaintenance?.projects_loss)} tone="text-rose-600" />
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -76,6 +76,7 @@ class DashboardController extends Controller
                     'orders_index' => route('admin.orders.index'),
                     'support_tickets_index' => route('admin.support-tickets.index'),
                     'projects_index' => route('admin.projects.index'),
+                    'projects_all' => route('admin.projects.all'),
                     'project_maintenances_index' => route('admin.project-maintenances.index'),
                     'hr_employees_index' => route('admin.hr.employees.index'),
                     'hr_timesheets_index' => route('admin.hr.timesheets.index'),

@@ -41,7 +41,9 @@ class ExpenseDashboardController extends Controller
             'person' => $request->query('person'),
         ];
 
-        $entries = $entryService->entries($filters);
+        $entries = $entryService->entries($filters)
+            ->sortByDesc(fn ($entry) => ! empty($entry['expense_date']) ? Carbon::parse((string) $entry['expense_date']) : now())
+            ->values();
         $expenseTotal = (float) $entries->sum('amount');
         $payoutExpenseTotal = (float) $entries
             ->whereIn('expense_type', ['salary', 'contract_payout', 'sales_payout'])
@@ -130,7 +132,7 @@ class ExpenseDashboardController extends Controller
             ->take(5);
 
         $periodSeries = $this->buildPeriodSeries($entries);
-        $expenseStatus = $this->buildExpenseStatus($entries, $allTimeTotal);
+        $expenseStatus = $this->buildExpenseStatus($entries);
 
         $categories = ExpenseCategory::query()->orderBy('name')->get();
         $peopleOptions = $entryService->peopleOptions();
@@ -139,6 +141,22 @@ class ExpenseDashboardController extends Controller
             $currencyCode = Currency::DEFAULT;
         }
         $currencySymbol = Currency::symbol($currencyCode);
+        $globalDateFormat = (string) config('app.date_format', 'd-m-Y');
+        $recentEntries = $entries
+            ->take(6)
+            ->values()
+            ->map(function (array $entry) use ($globalDateFormat, $currencySymbol, $currencyCode) {
+                return [
+                    'key' => (string) ($entry['key'] ?? uniqid('expense:', true)),
+                    'expense_date_display' => $this->formatEntryDate($entry['expense_date'] ?? null, $globalDateFormat),
+                    'title' => (string) ($entry['title'] ?? '--'),
+                    'source_label' => (string) ($entry['source_label'] ?? '--'),
+                    'category_name' => (string) (($entry['category_name'] ?? '') ?: '--'),
+                    'person_name' => (string) (($entry['person_name'] ?? '') ?: '--'),
+                    'amount_display' => $currencySymbol.number_format((float) ($entry['amount'] ?? 0), 2).$currencyCode,
+                ];
+            })
+            ->all();
 
         $forceAiRefresh = $request->query('ai') === 'refresh';
         [$aiSummary, $aiError] = $this->buildAiSummary(
@@ -164,6 +182,7 @@ class ExpenseDashboardController extends Controller
                 'sources' => array_values($filters['sources'] ?? []),
             ],
             'expenseTotal' => $expenseTotal,
+            'entriesCount' => $entries->count(),
             'incomeReceived' => $incomeReceived,
             'payoutExpenseTotal' => $payoutExpenseTotal,
             'netIncome' => $netIncome,
@@ -176,6 +195,7 @@ class ExpenseDashboardController extends Controller
             'yearlyTotal' => $yearlyTotal,
             'topCategories' => $topCategories->values(),
             'periodSeries' => $periodSeries,
+            'recentEntries' => $recentEntries,
             'categories' => $categories->map(fn (ExpenseCategory $category) => [
                 'id' => $category->id,
                 'name' => $category->name,
@@ -309,7 +329,7 @@ class ExpenseDashboardController extends Controller
         ];
     }
 
-    private function buildExpenseStatus(Collection $entries, float $allTimeTotal): array
+    private function buildExpenseStatus(Collection $entries): array
     {
         $entriesWithDate = $entries->map(function ($entry) {
             $entry['parsed_expense_date'] = ! empty($entry['expense_date']) ? Carbon::parse($entry['expense_date']) : null;
@@ -365,9 +385,9 @@ class ExpenseDashboardController extends Controller
             ],
             'filtered' => [
                 'label' => 'Filtered Total',
-                'amount' => $allTimeTotal,
+                'amount' => (float) $entries->sum(fn ($entry) => (float) ($entry['amount'] ?? 0)),
                 'change_percent' => null,
-                'comparison_label' => 'all time',
+                'comparison_label' => 'selected filters',
             ],
         ];
     }
@@ -412,7 +432,8 @@ class ExpenseDashboardController extends Controller
                 $expenseTotal,
                 $expenseBySource,
                 $categoryTotals,
-                $employeeTotals
+                $employeeTotals,
+                $filters
             ) {
                 $topCategories = collect($categoryTotals)->take(3)->map(function ($item) use ($currencyCode) {
                     $amount = number_format((float) ($item['total'] ?? 0), 2);
@@ -432,11 +453,21 @@ class ExpenseDashboardController extends Controller
                 $salesTotal = number_format((float) ($expenseBySource['sales_payout'] ?? 0), 2);
                 $periodStart = $startDate ?: 'all time';
                 $periodEnd = $endDate ?: 'today';
+                $selectedSources = collect($filters['sources'] ?? [])
+                    ->map(fn ($source) => match ((string) $source) {
+                        'manual' => 'Manual',
+                        'salary' => 'Salary',
+                        'contract_payout' => 'Contract Payout',
+                        'sales_payout' => 'Sales Rep Payout',
+                        default => ucfirst((string) $source),
+                    })
+                    ->implode(', ');
 
                 $prompt = <<<PROMPT
-You are a finance analyst. Summarize the expense dashboard in Bengali.
+You are a senior finance analyst. Write a richer expense dashboard summary in Bengali for an admin user.
 
 Period: {$periodStart} to {$periodEnd}
+Selected sources: {$selectedSources}
 Totals:
 - Total expenses: {$currencyCode} {$expenseTotal}
 - Manual expenses: {$currencyCode} {$manualTotal}
@@ -447,7 +478,12 @@ Totals:
 Top categories: {$topCategories}
 Top employees: {$topEmployees}
 
-Return 4-6 bullet points, short and clear.
+Instructions:
+- Start with a short 1-2 sentence executive overview.
+- Then provide 5-7 concise bullet points.
+- Must mention total expense, source mix, strongest category, biggest payee, and filtered scope.
+- If one source dominates spending, mention it clearly.
+- Keep it practical and management-friendly, not generic.
 PROMPT;
 
                 return $geminiService->generateText($prompt);
@@ -463,6 +499,19 @@ PROMPT;
             return [$summary, null];
         } catch (\Throwable $e) {
             return [null, $e->getMessage()];
+        }
+    }
+
+    private function formatEntryDate(mixed $value, string $format): string
+    {
+        if (empty($value)) {
+            return '--';
+        }
+
+        try {
+            return Carbon::parse((string) $value)->format($format);
+        } catch (\Throwable) {
+            return '--';
         }
     }
 }

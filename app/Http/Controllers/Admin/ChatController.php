@@ -56,7 +56,7 @@ class ChatController extends Controller
             'pageTitle' => 'Chat',
             'pageUnreadTotal' => $pageUnreadTotal,
             'routes' => [
-                'projects_index' => route('admin.projects.index'),
+                'projects_index' => route('admin.projects.all'),
             ],
             'projects' => [
                 'data' => collect($projects->items())->map(function (Project $project) {

@@ -179,35 +179,40 @@ export default function Show({
                 </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-                <div className="card px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Next due date</div>
-                    <div className="mt-2 text-lg font-semibold text-slate-900">{recurringExpense.next_run_display || '--'}</div>
-                </div>
-                <div className="card px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Next due</div>
-                    <div className="mt-2 text-lg font-semibold text-slate-900">{stats.next_due_display || '--'}</div>
-                </div>
-                <div className="card px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Total invoices</div>
-                    <div className="mt-2 text-lg font-semibold text-slate-900">{stats.total_invoices ?? 0}</div>
-                </div>
-                <div className="card px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Unpaid</div>
-                    <div className="mt-2 text-lg font-semibold text-amber-600">{stats.unpaid_count ?? 0}</div>
-                </div>
-                <div className="card px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Overdue</div>
-                    <div className="mt-2 text-lg font-semibold text-rose-600">{stats.overdue_count ?? 0}</div>
-                </div>
-                <div className="card px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Advance balance</div>
-                    <div className="mt-2 text-lg font-semibold text-emerald-600">
-                        {formatCurrency(stats.advance_balance, currency.symbol, currency.code)}
+            <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                    <div className="card px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Next due date</div>
+                        <div className="mt-2 text-lg font-semibold text-slate-900">{recurringExpense.next_run_display || '--'}</div>
                     </div>
-                    <div className="mt-1 text-[11px] text-slate-500">
-                        Total: {formatCurrency(stats.advance_total, currency.symbol, currency.code)} | Used:{' '}
-                        {formatCurrency(stats.advance_used, currency.symbol, currency.code)}
+                    <div className="card px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Next due</div>
+                        <div className="mt-2 text-lg font-semibold text-slate-900">{stats.next_due_display || '--'}</div>
+                    </div>
+                    <div className="card px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Total invoices</div>
+                        <div className="mt-2 text-lg font-semibold text-slate-900">{stats.total_invoices ?? 0}</div>
+                    </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    <div className="card px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Unpaid</div>
+                        <div className="mt-2 text-lg font-semibold text-amber-600">{stats.unpaid_count ?? 0}</div>
+                    </div>
+                    <div className="card px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Overdue</div>
+                        <div className="mt-2 text-lg font-semibold text-rose-600">{stats.overdue_count ?? 0}</div>
+                    </div>
+                    <div className="card px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Advance balance</div>
+                        <div className="mt-2 text-lg font-semibold text-emerald-600">
+                            {formatCurrency(stats.advance_balance, currency.symbol, currency.code)}
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                            Total: {formatCurrency(stats.advance_total, currency.symbol, currency.code)} | Used:{' '}
+                            {formatCurrency(stats.advance_used, currency.symbol, currency.code)}
+                        </div>
                     </div>
                 </div>
             </div>

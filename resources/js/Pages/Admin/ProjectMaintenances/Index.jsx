@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 const statusBadgeClass = (status) => {
     if (status === 'active') {
@@ -22,6 +23,10 @@ export default function Index({
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: filters?.search ?? '',
+        url: routes?.index,
+    });
 
     return (
         <>
@@ -29,12 +34,21 @@ export default function Index({
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex-1">
-                    <form method="GET" action={routes?.index} data-native="true" className="flex items-center gap-3">
+                    <form
+                        method="GET"
+                        action={routes?.index}
+                        className="flex items-center gap-3"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitSearch();
+                        }}
+                    >
                         <div className="relative w-full max-w-sm">
                             <input
                                 type="text"
                                 name="search"
-                                defaultValue={filters?.search ?? ''}
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search maintenance..."
                                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                             />
@@ -52,13 +66,11 @@ export default function Index({
 
             <div className="card overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1000px] divide-y divide-slate-200 text-left text-sm">
+                    <table className="w-full min-w-[920px] divide-y divide-slate-200 text-left text-sm">
                         <thead className="bg-slate-50 text-xs uppercase tracking-[0.2em] text-slate-500">
                             <tr>
                                 <th className="px-4 py-3 text-left">ID</th>
-                                <th className="px-4 py-3 text-left">Project</th>
-                                <th className="px-4 py-3 text-left">Customer</th>
-                                <th className="px-4 py-3 text-left">Title</th>
+                                <th className="px-4 py-3 text-left">Project &amp; Customer</th>
                                 <th className="px-4 py-3 text-left">Cycle</th>
                                 <th className="px-4 py-3 text-left">Next Billing</th>
                                 <th className="px-4 py-3 text-left">Status</th>
@@ -69,7 +81,7 @@ export default function Index({
                         <tbody className="divide-y divide-slate-100 text-slate-700">
                             {maintenances.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
+                                    <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
                                         No maintenance plans yet.
                                     </td>
                                 </tr>
@@ -91,21 +103,20 @@ export default function Index({
                                                     '--'
                                                 )}
                                             </div>
+                                            <div className="mt-1">
+                                                {maintenance.customer_route ? (
+                                                    <a
+                                                        href={maintenance.customer_route}
+                                                        data-native="true"
+                                                        className="text-sm font-medium text-teal-700 hover:text-teal-600"
+                                                    >
+                                                        {maintenance.customer_name}
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-sm text-slate-500">--</span>
+                                                )}
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-3">
-                                            {maintenance.customer_route ? (
-                                                <a
-                                                    href={maintenance.customer_route}
-                                                    data-native="true"
-                                                    className="text-teal-700 hover:text-teal-600"
-                                                >
-                                                    {maintenance.customer_name}
-                                                </a>
-                                            ) : (
-                                                '--'
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3">{maintenance.title}</td>
                                         <td className="px-4 py-3">{maintenance.billing_cycle_label}</td>
                                         <td className="px-4 py-3 text-xs text-slate-600">{maintenance.next_billing_date}</td>
                                         <td className="px-4 py-3">
@@ -127,18 +138,6 @@ export default function Index({
                                                     Edit
                                                 </a>
 
-                                                {maintenance.can_pause ? (
-                                                    <form method="POST" action={maintenance.routes?.update} data-native="true">
-                                                        <input type="hidden" name="_token" value={csrf} />
-                                                        <input type="hidden" name="_method" value="PATCH" />
-                                                        <input type="hidden" name="quick_status" value="1" />
-                                                        <input type="hidden" name="status" value="paused" />
-                                                        <button type="submit" className="text-amber-700 hover:text-amber-600">
-                                                            Pause
-                                                        </button>
-                                                    </form>
-                                                ) : null}
-
                                                 {maintenance.can_resume ? (
                                                     <form method="POST" action={maintenance.routes?.update} data-native="true">
                                                         <input type="hidden" name="_token" value={csrf} />
@@ -147,18 +146,6 @@ export default function Index({
                                                         <input type="hidden" name="status" value="active" />
                                                         <button type="submit" className="text-emerald-700 hover:text-emerald-600">
                                                             Resume
-                                                        </button>
-                                                    </form>
-                                                ) : null}
-
-                                                {maintenance.can_cancel ? (
-                                                    <form method="POST" action={maintenance.routes?.update} data-native="true">
-                                                        <input type="hidden" name="_token" value={csrf} />
-                                                        <input type="hidden" name="_method" value="PATCH" />
-                                                        <input type="hidden" name="quick_status" value="1" />
-                                                        <input type="hidden" name="status" value="cancelled" />
-                                                        <button type="submit" className="text-rose-600 hover:text-rose-500">
-                                                            Cancel
                                                         </button>
                                                     </form>
                                                 ) : null}

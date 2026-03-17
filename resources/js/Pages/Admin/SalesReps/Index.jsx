@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 const statusBadgeClass = (status) =>
     status === 'active'
@@ -12,18 +13,32 @@ export default function Index({
     reps = [],
     routes = {},
 }) {
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: filters?.search ?? '',
+        url: routes?.index,
+    });
+
     return (
         <>
             <Head title={pageTitle} />
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex-1">
-                    <form method="GET" action={routes?.index} data-native="true" className="flex items-center gap-3">
+                    <form
+                        method="GET"
+                        action={routes?.index}
+                        className="flex items-center gap-3"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitSearch();
+                        }}
+                    >
                         <div className="relative">
                             <input
                                 type="text"
                                 name="search"
-                                defaultValue={filters?.search ?? ''}
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search sales reps..."
                                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                             />

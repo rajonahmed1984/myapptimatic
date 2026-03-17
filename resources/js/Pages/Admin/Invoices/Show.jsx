@@ -232,7 +232,7 @@ export default function Show({
                     <div ref={collectionPanelRef} className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
                         <div className="mb-1 text-sm font-semibold text-slate-800">Mark paid via sales representative</div>
                         <div className="text-xs text-slate-500">
-                            This will mark the invoice paid, save a payment accounting entry, and optionally record any retained amount as a sales rep advance/taken amount.
+                            Record the collected amount from the sales representative. Full outstanding collection marks the invoice paid. A smaller amount saves a partial collection only. Retained / Taken Amount is the portion of that collected cash kept by the sales rep.
                         </div>
                         <form method="POST" action={routes?.collect_by_sales_rep} data-native="true" className="mt-4 grid gap-4 md:grid-cols-2">
                             <input type="hidden" name="_token" value={csrf} />
@@ -255,6 +255,21 @@ export default function Show({
                                 ) : null}
                             </div>
                             <div>
+                                <label className="text-sm text-slate-600">Collected Amount</label>
+                                <input
+                                    name="collected_amount"
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    required
+                                    defaultValue={invoice.totals?.outstanding_value || ''}
+                                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                />
+                                <div className="mt-2 text-xs text-slate-500">
+                                    Outstanding now: {invoice.totals?.outstanding_display || invoice.totals?.payable_display || '--'}
+                                </div>
+                            </div>
+                            <div>
                                 <label className="text-sm text-slate-600">Retained / Taken Amount</label>
                                 <input
                                     name="retained_amount"
@@ -264,6 +279,9 @@ export default function Show({
                                     defaultValue="0.00"
                                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
                                 />
+                                <div className="mt-2 text-xs text-slate-500">
+                                    Optional. This amount must be less than or equal to the collected amount.
+                                </div>
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Payout Method</label>

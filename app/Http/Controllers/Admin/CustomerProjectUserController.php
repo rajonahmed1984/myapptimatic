@@ -11,7 +11,9 @@ use App\Models\Project;
 use App\Models\User;
 use App\Support\StatusColorHelper;
 use App\Support\SystemLogger;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class CustomerProjectUserController extends Controller
 {
@@ -60,10 +62,7 @@ class CustomerProjectUserController extends Controller
 
     public function update(UpdateProjectClientUserRequest $request, Customer $customer, User $user)
     {
-        // Verify user belongs to this customer and is a project client
-        if ($user->customer_id !== $customer->id || $user->role !== Role::CLIENT_PROJECT) {
-            abort(404);
-        }
+        $this->ensureProjectClientBelongsToCustomer($customer, $user);
 
         $data = $request->validated();
         $project = Project::findOrFail($data['project_id']);
@@ -105,12 +104,42 @@ class CustomerProjectUserController extends Controller
             ->with('status', 'Project client user updated.');
     }
 
+    public function updateStatus(Request $request, Customer $customer, User $user)
+    {
+        $this->ensureProjectClientBelongsToCustomer($customer, $user);
+
+        $data = $request->validate([
+            'status' => ['required', Rule::in(['active', 'inactive'])],
+        ]);
+
+        $user->update([
+            'status' => $data['status'],
+        ]);
+
+        SystemLogger::write('activity', 'Project client login status updated.', [
+            'customer_id' => $customer->id,
+            'project_id' => $user->project_id,
+            'user_id' => $user->id,
+            'status' => $data['status'],
+        ], $request->user()?->id, $request->ip());
+
+        if ($request->expectsJson()) {
+            $user->load('project');
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Project client user status updated.',
+                'data' => $this->formatPayload($user),
+            ]);
+        }
+
+        return redirect()->route('admin.customers.show', ['customer' => $customer, 'tab' => 'project-specific'])
+            ->with('status', 'Project client user status updated.');
+    }
+
     public function destroy(Customer $customer, User $user)
     {
-        // Verify user belongs to this customer and is a project client
-        if ($user->customer_id !== $customer->id || $user->role !== Role::CLIENT_PROJECT) {
-            abort(404);
-        }
+        $this->ensureProjectClientBelongsToCustomer($customer, $user);
 
         SystemLogger::write('activity', 'Project client login deleted.', [
             'customer_id' => $customer->id,
@@ -142,5 +171,12 @@ class CustomerProjectUserController extends Controller
             'created_at' => $user->created_at?->format($dateFormat),
             'updated_at' => $user->updated_at?->format($dateFormat),
         ];
+    }
+
+    private function ensureProjectClientBelongsToCustomer(Customer $customer, User $user): void
+    {
+        if ($user->customer_id !== $customer->id || $user->role !== Role::CLIENT_PROJECT) {
+            abort(404);
+        }
     }
 }

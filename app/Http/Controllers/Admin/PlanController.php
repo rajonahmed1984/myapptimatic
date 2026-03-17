@@ -22,7 +22,17 @@ class PlanController extends Controller
 {
     public function index(Request $request): InertiaResponse
     {
-        $plans = Plan::query()->with('product')->latest()->get();
+        $plans = Plan::query()
+            ->select('plans.*')
+            ->selectSub(function ($query) {
+                $query->from('subscriptions')
+                    ->whereColumn('subscriptions.plan_id', 'plans.id')
+                    ->where('subscriptions.status', 'active')
+                    ->selectRaw('COUNT(DISTINCT subscriptions.customer_id)');
+            }, 'usage_count')
+            ->with('product')
+            ->latest()
+            ->get();
         $defaultCurrency = Setting::getValue('currency');
 
         return Inertia::render(
@@ -273,11 +283,11 @@ class PlanController extends Controller
                     'slug_path' => ($plan->slug && $product?->slug)
                         ? (string) ($product->slug.'/plans/'.$plan->slug)
                         : '--',
-                    'product_name' => (string) ($product?->name ?? '--'),
                     'price_display' => trim($defaultCurrency.' '.(string) $plan->price),
                     'interval_label' => ucfirst((string) $plan->interval),
                     'status' => $plan->is_active ? 'active' : 'inactive',
                     'status_label' => $plan->is_active ? 'Active' : 'Inactive',
+                    'usage_count' => (int) ($plan->usage_count ?? 0),
                     'routes' => [
                         'edit' => route('admin.plans.edit', $plan),
                         'destroy' => route('admin.plans.destroy', $plan),

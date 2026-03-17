@@ -115,9 +115,7 @@ export default function Index({
                             <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <th className="px-3 py-2">ID</th>
                                 <th className="px-3 py-2">Description</th>
-                                <th className="px-3 py-2">Amount</th>
-                                <th className="px-3 py-2">Advance</th>
-                                <th className="px-3 py-2">Due</th>
+                                <th className="px-3 py-2 whitespace-nowrap">Amount / Advance / Due</th>
                                 <th className="px-3 py-2">Next due</th>
                                 <th className="px-3 py-2">Status</th>
                                 <th className="px-3 py-2 text-right">Actions</th>
@@ -145,19 +143,15 @@ export default function Index({
                                             </div>
                                         </td>
                                         <td className="px-3 py-2">
-                                            <span className="whitespace-nowrap text-xs font-semibold text-sky-700">
-                                                {formatCurrency(recurring.amount, currency?.symbol, currency?.code)}
-                                            </span>
-                                        </td>
-                                        <td className="px-3 py-2 font-semibold text-slate-900">
-                                            <span className="whitespace-nowrap text-xs font-semibold text-emerald-700">
-                                                {formatCurrency(recurring.advance_amount, currency?.symbol, currency?.code)}
-                                            </span>
-                                        </td>
-                                        <td className="px-3 py-2 font-semibold text-slate-900">
-                                            <span className="whitespace-nowrap text-xs font-semibold text-rose-700">
-                                                {formatCurrency(recurring.due_amount, currency?.symbol, currency?.code)}
-                                            </span>
+                                            <div className="whitespace-nowrap text-xs font-semibold text-sky-700">
+                                                Amount: {formatCurrency(recurring.amount, currency?.symbol, currency?.code)}
+                                            </div>
+                                            <div className="mt-1 whitespace-nowrap text-xs font-semibold text-emerald-700">
+                                                Advance: {formatCurrency(recurring.advance_amount, currency?.symbol, currency?.code)}
+                                            </div>
+                                            <div className="mt-1 whitespace-nowrap text-xs font-semibold text-rose-700">
+                                                Due: {formatCurrency(recurring.due_amount, currency?.symbol, currency?.code)}
+                                            </div>
                                         </td>
                                         <td className="whitespace-nowrap px-3 py-2">{recurring.next_due_display || '--'}</td>
                                         <td className="px-3 py-2">
@@ -240,7 +234,7 @@ export default function Index({
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={9} className="px-3 py-4 text-center text-slate-500">
+                                    <td colSpan={6} className="px-3 py-4 text-center text-slate-500">
                                         No recurring expenses yet.
                                     </td>
                                 </tr>

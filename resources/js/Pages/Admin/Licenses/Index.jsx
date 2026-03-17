@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 const licenseStatusClass = (status) => {
     if (status === 'active') {
@@ -116,6 +117,10 @@ export default function Index({
     const [toast, setToast] = React.useState(null);
     const [syncingIds, setSyncingIds] = React.useState({});
     const toastTimerRef = React.useRef(null);
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: search,
+        url: routes?.index,
+    });
 
     const showToast = React.useCallback((message, type = 'success') => {
         if (toastTimerRef.current) {
@@ -229,19 +234,24 @@ export default function Index({
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex-1">
-                    <form id="licensesSearchForm" method="GET" action={routes?.index} className="flex items-center gap-3" data-native="true">
+                    <form
+                        id="licensesSearchForm"
+                        method="GET"
+                        action={routes?.index}
+                        className="flex items-center gap-3"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitSearch();
+                        }}
+                    >
                         <div className="relative w-full max-w-sm">
                             <input
                                 type="text"
                                 name="search"
-                                defaultValue={search}
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search licenses..."
                                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                                onInput={(event) => {
-                                    const input = event.currentTarget;
-                                    clearTimeout(input.__searchTimer);
-                                    input.__searchTimer = setTimeout(() => input.form?.requestSubmit(), 300);
-                                }}
                             />
                         </div>
                     </form>

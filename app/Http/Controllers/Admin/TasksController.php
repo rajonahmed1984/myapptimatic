@@ -41,6 +41,7 @@ class TasksController extends Controller
         $tasks->setCollection($taskQueryService->actionableTasksForUser($user, $tasks->getCollection()));
 
         $statusCounts = $taskQueryService->tasksSummaryForUser($user);
+        $taskInsights = $taskQueryService->taskInsightsForUser($user);
 
         return Inertia::render(
             'Admin/Tasks/Index',
@@ -54,6 +55,7 @@ class TasksController extends Controller
                     'completed' => (int) ($statusCounts['completed'] ?? 0),
                     'total' => (int) ($statusCounts['total'] ?? 0),
                 ],
+                'task_insights' => $taskInsights,
                 'tasks' => $tasks->getCollection()->map(function ($task) {
                     $status = (string) ($task->status ?? 'pending');
 
@@ -91,7 +93,7 @@ class TasksController extends Controller
                 ],
                 'routes' => [
                     'index' => route('admin.tasks.index'),
-                    'projects' => route('admin.projects.index'),
+                    'projects' => route('admin.projects.all'),
                 ],
             ]
         );

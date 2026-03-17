@@ -3,6 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 const rowId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const formatCustomerLabel = (customer) => `#${customer.id} - ${customer.display_name}`;
 
 function StepSection({ step, title, description, children, optional = false }) {
     return (
@@ -38,32 +39,28 @@ export default function Create({
     priorityOptions = {},
     form = {},
     tasks = [],
-    maintenances = [],
-    overheads = [],
     routes = {},
 }) {
     const { props } = usePage();
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
+    const customerFieldRef = React.useRef(null);
 
     const [selectedEmployeeIds, setSelectedEmployeeIds] = React.useState(asArray(form.selected_employee_ids).map(Number));
     const [selectedSalesRepIds, setSelectedSalesRepIds] = React.useState(asArray(form.selected_sales_rep_ids).map(Number));
+    const [selectedCustomerId, setSelectedCustomerId] = React.useState(String(form.customer_id || ''));
+    const [customerSearch, setCustomerSearch] = React.useState(() => {
+        const currentCustomer = customers.find((customer) => String(customer.id) === String(form.customer_id || ''));
+
+        return currentCustomer ? formatCustomerLabel(currentCustomer) : '';
+    });
+    const [isCustomerMenuOpen, setIsCustomerMenuOpen] = React.useState(false);
 
     const [taskRows, setTaskRows] = React.useState(() => {
         const seeded = asArray(tasks).map((task) => ({ id: rowId(), ...task, descriptions: asArray(task?.descriptions).length ? task.descriptions : [''] }));
         return seeded.length
             ? seeded
             : [{ id: rowId(), title: '', task_type: 'feature', priority: 'medium', descriptions: [''], start_date: '', due_date: '', assignee: '', customer_visible: false }];
-    });
-
-    const [maintenanceRows, setMaintenanceRows] = React.useState(() => {
-        const seeded = asArray(maintenances).map((item) => ({ id: rowId(), ...item }));
-        return seeded.length ? seeded : [];
-    });
-
-    const [overheadRows, setOverheadRows] = React.useState(() => {
-        const seeded = asArray(overheads).map((item) => ({ id: rowId(), ...item }));
-        return seeded.length ? seeded : [{ id: rowId(), short_details: '', amount: '' }];
     });
 
     const toggleId = (setter, current, id) => setter(current.includes(id) ? current.filter((v) => v !== id) : [...current, id]);
@@ -79,23 +76,40 @@ export default function Create({
         setTaskRows((current) => (current.length > 1 ? current.filter((row) => row.id !== id) : current));
     };
 
-    const addMaintenance = () => {
-        setMaintenanceRows((current) => [...current, { id: rowId(), title: '', amount: '', billing_cycle: 'monthly', start_date: '', auto_invoice: true, sales_rep_visible: false }]);
-    };
+    const filteredCustomers = React.useMemo(() => {
+        const keyword = customerSearch.trim().toLowerCase();
 
-    const removeMaintenance = (id) => {
-        setMaintenanceRows((current) => current.filter((row) => row.id !== id));
-    };
+        if (!keyword) {
+            return customers.slice(0, 20);
+        }
 
-    const addOverhead = () => {
-        setOverheadRows((current) => [...current, { id: rowId(), short_details: '', amount: '' }]);
-    };
+        return customers
+            .filter((customer) => {
+                const haystack = `${customer.id} ${customer.display_name}`.toLowerCase();
 
-    const removeOverhead = (id) => {
-        setOverheadRows((current) => {
-            const next = current.filter((row) => row.id !== id);
-            return next.length ? next : [{ id: rowId(), short_details: '', amount: '' }];
-        });
+                return haystack.includes(keyword);
+            })
+            .slice(0, 20);
+    }, [customerSearch, customers]);
+
+    React.useEffect(() => {
+        const handleOutsideClick = (event) => {
+            if (!customerFieldRef.current?.contains(event.target)) {
+                setIsCustomerMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+        };
+    }, []);
+
+    const handleCustomerSelect = (customer) => {
+        setSelectedCustomerId(String(customer.id));
+        setCustomerSearch(formatCustomerLabel(customer));
+        setIsCustomerMenuOpen(false);
     };
 
     return (
@@ -121,9 +135,7 @@ export default function Create({
                             <span className="rounded-full bg-white px-2.5 py-1">2 Team</span>
                             <span className="rounded-full bg-white px-2.5 py-1">3 Timeline & Files</span>
                             <span className="rounded-full bg-white px-2.5 py-1">4 Budget</span>
-                            <span className="rounded-full bg-white px-2.5 py-1">5 Maintenance</span>
-                            <span className="rounded-full bg-white px-2.5 py-1">6 Overhead</span>
-                            <span className="rounded-full bg-white px-2.5 py-1">7 Initial Tasks</span>
+                            <span className="rounded-full bg-white px-2.5 py-1">5 Initial Tasks</span>
                         </div>
                     </div>
 
@@ -140,10 +152,48 @@ export default function Create({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Customer</label>
-                                <select name="customer_id" defaultValue={form.customer_id || ''} required className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                    <option value="">Select customer</option>
-                                    {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.display_name}</option>)}
-                                </select>
+                                <div ref={customerFieldRef} className="relative mt-1">
+                                    <input
+                                        type="hidden"
+                                        name="customer_id"
+                                        value={selectedCustomerId}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={customerSearch}
+                                        onChange={(event) => {
+                                            setCustomerSearch(event.target.value);
+                                            setSelectedCustomerId('');
+                                            setIsCustomerMenuOpen(true);
+                                        }}
+                                        onFocus={() => setIsCustomerMenuOpen(true)}
+                                        placeholder="Search customer by name or ID"
+                                        required
+                                        autoComplete="off"
+                                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    />
+                                    {isCustomerMenuOpen ? (
+                                        <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                            {filteredCustomers.length > 0 ? filteredCustomers.map((customer) => {
+                                                const isActive = String(customer.id) === selectedCustomerId;
+
+                                                return (
+                                                    <button
+                                                        key={customer.id}
+                                                        type="button"
+                                                        onClick={() => handleCustomerSelect(customer)}
+                                                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition ${isActive ? 'bg-teal-50 text-teal-700' : 'hover:bg-slate-50'}`}
+                                                    >
+                                                        <span className="truncate text-sm text-slate-800">{customer.display_name}</span>
+                                                        <span className="ml-3 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">ID #{customer.id}</span>
+                                                    </button>
+                                                );
+                                            }) : (
+                                                <div className="px-3 py-2 text-sm text-slate-500">No customer found.</div>
+                                            )}
+                                        </div>
+                                    ) : null}
+                                </div>
                                 {errors.customer_id ? <div className="mt-1 text-xs text-rose-600">{errors.customer_id}</div> : null}
                             </div>
                         </div>
@@ -249,65 +299,6 @@ export default function Create({
 
                     <StepSection
                         step="5"
-                        title="Maintenance Plan"
-                        description="Optional recurring billing tied to this project."
-                        optional
-                    >
-                        <div className="mb-3 flex items-center justify-between">
-                            <div className="section-label">Add Maintenance Plan</div>
-                            <button type="button" onClick={addMaintenance} className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add plan</button>
-                        </div>
-                        {maintenanceRows.length === 0 ? (
-                            <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-5 text-sm text-slate-500">
-                                No maintenance plan added.
-                            </div>
-                        ) : null}
-                        <div className="space-y-3">
-                            {maintenanceRows.map((maintenance, index) => (
-                                <div key={maintenance.id} className="grid gap-3 md:grid-cols-6 mb-2">
-                                    <div className="md:col-span-2"><label className="text-xs text-slate-500">Title</label><input name={`maintenances[${index}][title]`} defaultValue={maintenance.title || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
-                                    <div><label className="text-xs text-slate-500">Amount</label><input name={`maintenances[${index}][amount]`} type="number" min="0.01" step="0.01" defaultValue={maintenance.amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
-                                    <div><label className="text-xs text-slate-500">Billing cycle</label><select name={`maintenances[${index}][billing_cycle]`} defaultValue={maintenance.billing_cycle || 'monthly'} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></div>
-                                    <div><label className="text-xs text-slate-500">Start date</label><input name={`maintenances[${index}][start_date]`} type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={maintenance.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
-                                    <div className="flex items-end justify-between gap-2">
-                                        <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-xs text-slate-600"><input type="hidden" name={`maintenances[${index}][auto_invoice]`} value="0" /><input type="checkbox" name={`maintenances[${index}][auto_invoice]`} value="1" defaultChecked={maintenance.auto_invoice === undefined || Boolean(Number(maintenance.auto_invoice) || maintenance.auto_invoice)} /><span>Auto invoice</span></label>
-                                            <label className="flex items-center gap-2 text-xs text-slate-600"><input type="hidden" name={`maintenances[${index}][sales_rep_visible]`} value="0" /><input type="checkbox" name={`maintenances[${index}][sales_rep_visible]`} value="1" defaultChecked={Boolean(Number(maintenance.sales_rep_visible) || maintenance.sales_rep_visible)} /><span>Sales rep visible</span></label>
-                                        </div>
-                                        <button type="button" onClick={() => removeMaintenance(maintenance.id)} className="rounded-full border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300">Remove</button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </StepSection>
-
-                    <StepSection
-                        step="6"
-                        title="Overhead Fees"
-                        description="Optional project overhead line items."
-                        optional
-                    >
-                        <div className="mb-3 flex items-center justify-between">
-                            <div className="section-label">Overhead Fees</div>
-                            <button type="button" onClick={addOverhead} className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Add fee</button>
-                        </div>
-                        <div className="space-y-3">
-                            {overheadRows.map((overhead, index) => (
-                                <div key={overhead.id} className="grid gap-3 md:grid-cols-3 items-end">
-                                    <div className="md:col-span-2"><label className="text-xs text-slate-500">Details</label><input name={`overheads[${index}][short_details]`} defaultValue={overhead.short_details || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                                    <div>
-                                        <label className="text-xs text-slate-500">Amount</label>
-                                        <div className="flex items-center gap-2">
-                                            <input name={`overheads[${index}][amount]`} type="number" step="0.01" min="0" defaultValue={overhead.amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                                            <button type="button" onClick={() => removeOverhead(overhead.id)} className="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300">Remove</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </StepSection>
-                    <StepSection
-                        step="7"
                         title="Initial Tasks"
                         description="Add at least one task with assignee and dates."
                     >

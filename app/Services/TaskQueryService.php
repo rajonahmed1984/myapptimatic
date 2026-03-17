@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ProjectTask;
+use App\Models\ProjectTaskSubtask;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Support\TaskCompletionManager;
@@ -160,6 +161,70 @@ class TaskQueryService
             'open' => $openCount,
             'in_progress' => $inProgressCount,
             'completed' => $completedCount,
+        ];
+    }
+
+    public function taskInsightsForUser(User $user): array
+    {
+        $taskBaseQuery = $this->visibleTasksForUser($user);
+        $today = now()->toDateString();
+
+        $taskStatusCounts = (clone $taskBaseQuery)
+            ->select('status', DB::raw('COUNT(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $taskTotal = (int) $taskStatusCounts->sum();
+        $taskOpen = (int) (($taskStatusCounts['pending'] ?? 0)
+            + ($taskStatusCounts['todo'] ?? 0)
+            + ($taskStatusCounts['blocked'] ?? 0));
+        $taskInProgress = (int) ($taskStatusCounts['in_progress'] ?? 0);
+        $taskBlocked = (int) ($taskStatusCounts['blocked'] ?? 0);
+        $taskCompleted = (int) (($taskStatusCounts['completed'] ?? 0) + ($taskStatusCounts['done'] ?? 0));
+        $taskOverdue = (int) (clone $taskBaseQuery)
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<', $today)
+            ->whereNotIn('status', ['completed', 'done'])
+            ->count();
+
+        $subtaskBaseQuery = ProjectTaskSubtask::query()
+            ->whereIn('project_task_id', (clone $taskBaseQuery)->select('project_tasks.id'));
+
+        $subtaskTotal = (int) (clone $subtaskBaseQuery)->count();
+        $subtaskCompleted = (int) (clone $subtaskBaseQuery)->where('is_completed', true)->count();
+        $subtaskOpen = $subtaskTotal - $subtaskCompleted;
+        $subtaskOverdue = (int) (clone $subtaskBaseQuery)
+            ->where('is_completed', false)
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<', $today)
+            ->count();
+
+        $overallTotal = $taskTotal + $subtaskTotal;
+        $overallCompleted = $taskCompleted + $subtaskCompleted;
+
+        return [
+            'overview' => [
+                'total_items' => $overallTotal,
+                'completed_items' => $overallCompleted,
+                'completion_rate' => $overallTotal > 0 ? (int) round(($overallCompleted / $overallTotal) * 100) : 0,
+                'overdue_items' => $taskOverdue + $subtaskOverdue,
+            ],
+            'tasks' => [
+                'total' => $taskTotal,
+                'open' => $taskOpen,
+                'in_progress' => $taskInProgress,
+                'blocked' => $taskBlocked,
+                'completed' => $taskCompleted,
+                'overdue' => $taskOverdue,
+                'completion_rate' => $taskTotal > 0 ? (int) round(($taskCompleted / $taskTotal) * 100) : 0,
+            ],
+            'subtasks' => [
+                'total' => $subtaskTotal,
+                'open' => $subtaskOpen,
+                'completed' => $subtaskCompleted,
+                'overdue' => $subtaskOverdue,
+                'completion_rate' => $subtaskTotal > 0 ? (int) round(($subtaskCompleted / $subtaskTotal) * 100) : 0,
+            ],
         ];
     }
 

@@ -482,6 +482,7 @@ Route::middleware([
     Route::post('customers/{customer}/project-users', [CustomerProjectUserController::class, 'store'])->name('customers.project-users.store');
     Route::get('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'show'])->name('customers.project-users.show');
     Route::put('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'update'])->name('customers.project-users.update');
+    Route::patch('customers/{customer}/project-users/{user}/status', [CustomerProjectUserController::class, 'updateStatus'])->name('customers.project-users.status');
     Route::delete('customers/{customer}/project-users/{user}', [CustomerProjectUserController::class, 'destroy'])->name('customers.project-users.destroy');
     Route::get('products', [ProductController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
@@ -543,7 +544,9 @@ Route::middleware([
     Route::patch('orders/{order}/amounts', [AdminOrderController::class, 'updateAmounts'])->name('orders.amounts');
     Route::post('orders/{order}/milestones', [MilestoneController::class, 'store'])->name('orders.milestones.store');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
-    Route::resource('projects', ProjectController::class);
+    Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
+    Route::get('projects/all', [ProjectController::class, 'all'])->name('projects.all');
+    Route::resource('projects', ProjectController::class)->except(['index']);
     Route::post('projects/{project}/complete', [ProjectController::class, 'markComplete'])->name('projects.complete');
     Route::post('projects/{project}/ai-summary', [ProjectController::class, 'aiSummary'])->name('projects.ai');
     Route::get('projects/{project}/invoices', [AdminInvoiceController::class, 'projectInvoices'])->name('projects.invoices');

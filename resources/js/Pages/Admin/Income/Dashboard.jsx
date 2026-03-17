@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Head } from '@inertiajs/react';
-import DateRangePickerField from '../../../Components/DateRangePickerField';
 
 const CHART_FRAME = {
     width: 1120,
@@ -43,6 +42,17 @@ const PERIOD_OPTIONS = [
     { key: 'day', label: 'Daily' },
     { key: 'week', label: 'Weekly' },
     { key: 'month', label: 'Monthly' },
+];
+
+const QUICK_RANGE_OPTIONS = [
+    { key: 'today', label: 'Today' },
+    { key: 'yesterday', label: 'Yesterday' },
+    { key: 'last7', label: 'Last 7 days' },
+    { key: 'last30', label: 'Last 30 days' },
+    { key: 'thisMonth', label: 'This month' },
+    { key: 'lastMonth', label: 'Last month' },
+    { key: 'thisYear', label: 'This year' },
+    { key: 'lastYear', label: 'Last year' },
 ];
 
 function money(amount, symbol = '', code = '') {
@@ -147,6 +157,69 @@ function changeText(percent) {
     return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
 }
 
+function formatIsoDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function rangeDays(days) {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(end.getDate() - (days - 1));
+
+    return {
+        start: formatIsoDate(start),
+        end: formatIsoDate(end),
+    };
+}
+
+function getQuickRange(key) {
+    const today = new Date();
+
+    switch (key) {
+        case 'today':
+            return { start: formatIsoDate(today), end: formatIsoDate(today) };
+        case 'yesterday': {
+            const day = new Date(today);
+            day.setDate(today.getDate() - 1);
+            return { start: formatIsoDate(day), end: formatIsoDate(day) };
+        }
+        case 'last7':
+            return rangeDays(7);
+        case 'last30':
+            return rangeDays(30);
+        case 'thisMonth': {
+            const start = new Date(today.getFullYear(), today.getMonth(), 1);
+            return { start: formatIsoDate(start), end: formatIsoDate(today) };
+        }
+        case 'lastMonth': {
+            const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const end = new Date(today.getFullYear(), today.getMonth(), 0);
+            return { start: formatIsoDate(start), end: formatIsoDate(end) };
+        }
+        case 'thisYear': {
+            const start = new Date(today.getFullYear(), 0, 1);
+            return { start: formatIsoDate(start), end: formatIsoDate(today) };
+        }
+        case 'lastYear': {
+            const start = new Date(today.getFullYear() - 1, 0, 1);
+            const end = new Date(today.getFullYear() - 1, 11, 31);
+            return { start: formatIsoDate(start), end: formatIsoDate(end) };
+        }
+        default:
+            return { start: '', end: '' };
+    }
+}
+
+function findMatchingQuickRange(startDate, endDate) {
+    return QUICK_RANGE_OPTIONS.find((option) => {
+        const range = getQuickRange(option.key);
+        return range.start === startDate && range.end === endDate;
+    })?.key ?? null;
+}
+
 export default function Dashboard({
     pageTitle = 'Income Dashboard',
     categories = [],
@@ -155,21 +228,61 @@ export default function Dashboard({
     income_status = {},
     period_series = {},
     entries_count = 0,
+    recent_entries = [],
+    category_totals = [],
+    top_customers = [],
     currency = {},
     ai = {},
     whmcs_errors = [],
     routes = {},
 }) {
     const [period, setPeriod] = useState('day');
+    const formRef = useRef(null);
+    const startDateRef = useRef(null);
+    const endDateRef = useRef(null);
     const [seriesVisible, setSeriesVisible] = useState({
         total: true,
         manual: true,
         system: true,
     });
     const [hoveredIndex, setHoveredIndex] = useState(null);
+    const [activeQuickRange, setActiveQuickRange] = useState(() => findMatchingQuickRange(filters?.start_date || '', filters?.end_date || ''));
 
     const activeSeries = period_series?.[period] || { labels: [], total: [], manual: [], system: [] };
     const sources = Array.isArray(filters?.sources) ? filters.sources : [];
+    const totalIncomeAmount = Number(totals?.total_amount || 0);
+    const sourceSummaryCards = [
+        {
+            label: 'Total Income',
+            amount: totalIncomeAmount,
+            note: `${Number(entries_count || 0)} filtered entries`,
+            accent: 'text-slate-900',
+        },
+        {
+            label: 'Manual Income',
+            amount: Number(totals?.manual_total || 0),
+            note: shareText(totals?.manual_total, totalIncomeAmount),
+            accent: 'text-emerald-700',
+        },
+        {
+            label: 'System Income',
+            amount: Number(totals?.system_total || 0),
+            note: shareText(totals?.system_total, totalIncomeAmount),
+            accent: 'text-blue-700',
+        },
+        {
+            label: 'Credit Settlement',
+            amount: Number(totals?.credit_settlement_total || 0),
+            note: shareText(totals?.credit_settlement_total, totalIncomeAmount),
+            accent: 'text-amber-700',
+        },
+        {
+            label: 'CarrotHost Income',
+            amount: Number(totals?.carrothost_total || 0),
+            note: shareText(totals?.carrothost_total, totalIncomeAmount),
+            accent: 'text-violet-700',
+        },
+    ];
 
     const chartModel = useMemo(() => {
         const labels = Array.isArray(activeSeries?.labels) ? activeSeries.labels : [];
@@ -249,56 +362,98 @@ export default function Dashboard({
         }));
     };
 
+    const applyQuickRange = (key) => {
+        const range = getQuickRange(key);
+
+        if (startDateRef.current) {
+            startDateRef.current.value = range.start;
+        }
+
+        if (endDateRef.current) {
+            endDateRef.current.value = range.end;
+        }
+
+        setActiveQuickRange(key);
+        formRef.current?.requestSubmit();
+    };
+
     const hasChartData = chartModel.seriesLength > 0;
 
     return (
         <>
             <Head title={pageTitle} />
 
-            <div className="card bg-gradient-to-br from-[#eef8fb] via-white to-[#f4f8ff] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <div className="section-label">Income Controls</div>
-                        <div className="mt-1 text-xs text-slate-500">Filter sources and period, then review day/week/month performance.</div>
-                    </div>
-                    <div className="rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
-                        Filtered entries: {Number(entries_count || 0)}
-                    </div>
-                </div>
+            <div className="card overflow-hidden bg-gradient-to-br from-[#ecfbf6] via-[#f8fbff] to-[#eef6ff] p-4 md:p-5">
+                <form ref={formRef} method="GET" action={routes?.dashboard} data-native="true" className="space-y-4 text-sm">
+                    <input ref={startDateRef} type="hidden" name="start_date" defaultValue={filters?.start_date || ''} />
+                    <input ref={endDateRef} type="hidden" name="end_date" defaultValue={filters?.end_date || ''} />
+                    <input type="hidden" name="category_id" defaultValue={filters?.category_id || ''} />
 
-                <form method="GET" action={routes?.dashboard} data-native="true" className="mt-3 grid gap-2 text-sm md:grid-cols-4 lg:grid-cols-5">
-                    <DateRangePickerField
-                        startName="start_date"
-                        endName="end_date"
-                        startValue={filters?.start_date || ''}
-                        endValue={filters?.end_date || ''}
-                        submitFormat="iso"
-                        startLabel="Start date"
-                        endLabel="End date"
-                        className="md:col-span-2 lg:col-span-2"
-                        gridClassName="grid gap-2 md:grid-cols-2"
-                        inputClassName="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
-                    />
-                    <div>
-                        <label className="text-xs text-slate-500">Category</label>
-                        <select name="category_id" defaultValue={filters?.category_id || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm">
-                            <option value="">All</option>
-                            {categories.map((category) => (
-                                <option key={category.id} value={category.id}>{category.name}</option>
+                    <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Quick Range</div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 lg:justify-end">
+                                <div className="text-[11px] uppercase tracking-[0.2em] text-emerald-700">Filtered Snapshot</div>
+                                <div className="text-1xl font-semibold leading-none text-slate-900">{Number(entries_count || 0)}</div>
+                            </div>
+                        </div>
+                        <div className="mt-3 inline-flex flex-wrap rounded-lg border border-slate-200 bg-white/90 p-1 text-xs font-semibold shadow-sm">
+                            {QUICK_RANGE_OPTIONS.map((option) => (
+                                <button
+                                    key={option.key}
+                                    type="button"
+                                    onClick={() => applyQuickRange(option.key)}
+                                    className={`rounded-md px-3 py-1 transition ${
+                                        activeQuickRange === option.key
+                                            ? 'bg-slate-900 text-white shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                >
+                                    {option.label}
+                                </button>
                             ))}
-                        </select>
+                        </div>
                     </div>
-                    <div className="mt-6 flex items-center gap-2">
-                        <button type="submit" className="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-500">Apply</button>
-                        <a href={routes?.dashboard} data-native="true" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">Reset</a>
-                    </div>
-                    <div className="md:col-span-4 lg:col-span-5">
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Sources</div>
-                        <div className="mt-1.5 flex flex-wrap gap-3 text-xs text-slate-600">
-                            <label className="flex items-center gap-2"><input type="checkbox" name="sources[]" value="manual" defaultChecked={sources.includes('manual')} /> Manual</label>
-                            <label className="flex items-center gap-2"><input type="checkbox" name="sources[]" value="system" defaultChecked={sources.includes('system')} /> System</label>
-                            <label className="flex items-center gap-2"><input type="checkbox" name="sources[]" value="credit_settlement" defaultChecked={sources.includes('credit_settlement')} /> Credit Settlement</label>
-                            <label className="flex items-center gap-2"><input type="checkbox" name="sources[]" value="carrothost" defaultChecked={sources.includes('carrothost')} /> CarrotHost</label>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Sources</div>
+                                <div className="mt-1 text-xs text-slate-500">Choose which income streams should be included in this dashboard view.</div>
+                            </div>
+                            <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                                {sources.length} selected
+                            </div>
+                        </div>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-700">
+                                <input type="checkbox" name="sources[]" value="manual" defaultChecked={sources.includes('manual')} className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                <span>Manual</span>
+                            </label>
+                            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-700">
+                                <input type="checkbox" name="sources[]" value="system" defaultChecked={sources.includes('system')} className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                <span>System</span>
+                            </label>
+                            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-700">
+                                <input type="checkbox" name="sources[]" value="credit_settlement" defaultChecked={sources.includes('credit_settlement')} className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                <span>Credit Settlement</span>
+                            </label>
+                            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-700">
+                                <input type="checkbox" name="sources[]" value="carrothost" defaultChecked={sources.includes('carrothost')} className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                <span>CarrotHost</span>
+                            </label>
+                        </div>
+                        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+                            <button type="submit" className="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-500">
+                                Apply Filters
+                            </button>
+                            <a
+                                href={routes?.dashboard}
+                                data-native="true"
+                                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
+                            >
+                                Reset View
+                            </a>
                         </div>
                     </div>
                 </form>
@@ -324,8 +479,8 @@ export default function Dashboard({
                     </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.85fr)_minmax(260px,1fr)]">
-                    <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm">
+                <div className="mt-4 space-y-4">
+                    <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm md:p-5">
                         <div className="mb-2 flex flex-wrap gap-2">
                             {Object.entries(CHART_SERIES).map(([key, config]) => (
                                 <button
@@ -468,7 +623,7 @@ export default function Dashboard({
                         )}
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <StatusMetric data={income_status?.today} currency={currency} />
                         <StatusMetric data={income_status?.week} currency={currency} />
                         <StatusMetric data={income_status?.month} currency={currency} />
@@ -481,14 +636,89 @@ export default function Dashboard({
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <div className="section-label">Google AI Summary</div>
-                        <div className="mt-1 text-sm text-slate-500">AI-generated snapshot based on selected income filters.</div>
+                        <div className="mt-1 text-sm text-slate-500">Detailed overall income summary with AI insight, source mix, and filtered performance highlights.</div>
                     </div>
                     <a href={routes?.ai_refresh || `${routes?.dashboard}?ai=refresh`} data-native="true" className="inline-flex rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300 hover:text-emerald-600">
                         Refresh AI
                     </a>
                 </div>
-                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm whitespace-pre-line text-slate-600 shadow-sm">
-                    {ai?.summary || (ai?.error ? `AI summary unavailable: ${ai.error}` : 'AI summary is not available yet.')}
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                    {sourceSummaryCards.map((item) => (
+                        <AISummaryMetric
+                            key={item.label}
+                            label={item.label}
+                            amount={item.amount}
+                            note={item.note}
+                            currency={currency}
+                            accent={item.accent}
+                        />
+                    ))}
+                </div>
+
+                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">AI Narrative</div>
+                            <div className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                {sources.length} sources
+                            </div>
+                            <div className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                {Number(entries_count || 0)} entries
+                            </div>
+                        </div>
+                        <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-sm whitespace-pre-line leading-relaxed text-slate-600">
+                            {ai?.summary || (ai?.error ? `AI summary unavailable: ${ai.error}` : 'AI summary is not available yet.')}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <SummaryListCard
+                            title="Top Categories"
+                            emptyLabel="No category totals found."
+                            items={Array.isArray(category_totals) ? category_totals.slice(0, 5).map((item) => ({
+                                label: item?.name || '--',
+                                value: money(item?.total, currency?.symbol, currency?.code),
+                            })) : []}
+                        />
+                        <SummaryListCard
+                            title="Top Customers"
+                            emptyLabel="No customer income found."
+                            items={Array.isArray(top_customers) ? top_customers.slice(0, 5).map((item) => ({
+                                label: item?.name || '--',
+                                value: money(item?.total, currency?.symbol, currency?.code),
+                            })) : []}
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Recent Income Activity</div>
+                        <div className="text-xs text-slate-500">Latest filtered entries</div>
+                    </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {(Array.isArray(recent_entries) ? recent_entries.slice(0, 6) : []).map((entry) => (
+                            <div key={entry?.key || `${entry?.title}-${entry?.income_date_display}`} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="truncate text-sm font-semibold text-slate-800">{entry?.title || '--'}</div>
+                                        <div className="mt-1 text-xs text-slate-500">{entry?.income_date_display || '--'} • {entry?.source_label || '--'}</div>
+                                    </div>
+                                    <div className="shrink-0 text-sm font-semibold text-slate-900">{entry?.amount_display || money(0, currency?.symbol, currency?.code)}</div>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+                                    <span>{entry?.customer_name || '--'}</span>
+                                    <span>{entry?.category_name || '--'}</span>
+                                </div>
+                            </div>
+                        ))}
+                        {Array.isArray(recent_entries) && recent_entries.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-500">
+                                No recent income entries available for the current filters.
+                            </div>
+                        ) : null}
+                    </div>
                 </div>
             </div>
 
@@ -513,19 +743,63 @@ function StatusMetric({ data = {}, currency = {} }) {
     const icon = (data?.label || 'I').slice(0, 1).toUpperCase();
 
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-700 text-xs font-semibold text-white">
+        <div className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition hover:border-slate-300">
+            <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-700 text-xs font-semibold text-white shadow-sm">
                     {icon}
                 </div>
-                <div className="min-w-0">
-                    <div className="truncate text-xs text-slate-500">{data?.label || '--'}</div>
-                    <div className="whitespace-nowrap text-2xl font-semibold leading-7 text-slate-900">{money(data?.amount, currency?.symbol, currency?.code)}</div>
-                    <div className={`truncate text-xs font-semibold ${tone}`}>
+                <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-medium text-slate-500">{data?.label || '--'}</div>
+                    <div className="mt-0.5 whitespace-nowrap text-xl font-semibold leading-none tracking-tight text-slate-900">
+                        {money(data?.amount, currency?.symbol, currency?.code)}
+                    </div>
+                    <div className={`mt-1 truncate text-xs font-medium ${tone}`}>
                         {changeText(change)} {data?.comparison_label || ''}
                     </div>
                 </div>
             </div>
         </div>
     );
+}
+
+function AISummaryMetric({ label, amount, note, currency = {}, accent = 'text-slate-900' }) {
+    return (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">{label}</div>
+            <div className={`mt-2 text-xl font-semibold leading-none ${accent}`}>
+                {money(amount, currency?.symbol, currency?.code)}
+            </div>
+            <div className="mt-2 text-xs text-slate-500">{note}</div>
+        </div>
+    );
+}
+
+function SummaryListCard({ title, items = [], emptyLabel = '--' }) {
+    return (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">{title}</div>
+            <div className="mt-3 space-y-2.5">
+                {items.length > 0 ? items.map((item) => (
+                    <div key={`${title}-${item.label}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2">
+                        <div className="min-w-0 truncate text-sm font-medium text-slate-700">{item.label}</div>
+                        <div className="shrink-0 text-sm font-semibold text-slate-900">{item.value}</div>
+                    </div>
+                )) : (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-3 py-4 text-sm text-slate-500">
+                        {emptyLabel}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function shareText(amount, totalAmount) {
+    const total = Number(totalAmount || 0);
+    if (total <= 0) {
+        return '0.0% of total';
+    }
+
+    const share = (Number(amount || 0) / total) * 100;
+    return `${share.toFixed(1)}% of total`;
 }

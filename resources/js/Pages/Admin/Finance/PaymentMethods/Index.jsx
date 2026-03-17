@@ -42,14 +42,6 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Finance</div>
-                    <h1 className="mt-2 text-2xl font-semibold text-slate-900">Payment methods</h1>
-                    <p className="mt-1 text-sm text-slate-500">Manage payout/payment accounts for all finance forms.</p>
-                </div>
-            </div>
-
             <div className="grid gap-6 lg:grid-cols-10">
                 <div className="card p-6 lg:col-span-3">
                     <div className="text-sm font-semibold text-slate-900">{form?.title || 'Add payment method'}</div>
