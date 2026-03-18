@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Enums\Role;
 use App\Models\AccountingEntry;
+use App\Models\CommissionEarning;
 use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\EmployeeWorkSummary;
+use App\Models\ExpenseInvoice;
 use App\Models\Income;
 use App\Models\Invoice;
 use App\Models\License;
@@ -94,6 +96,9 @@ class DashboardMetricsService
         $monthIncome = $this->incomeTotalBetween($monthStart, $monthEnd);
         $prevMonthIncome = $this->incomeTotalBetween($previousStart, $previousEnd);
         $todayIncome = $this->incomeTotalBetween($todayStart, $todayEnd);
+        $monthIncome += $this->carrotHostIncomeBetween($monthStart, $monthEnd);
+        $prevMonthIncome += $this->carrotHostIncomeBetween($previousStart, $previousEnd);
+        $todayIncome += $this->carrotHostIncomeBetween($todayStart, $todayEnd);
 
         $monthExpense = $this->expenseTotalBetween($monthStart, $monthEnd);
 
@@ -114,18 +119,70 @@ class DashboardMetricsService
         $net30d = $monthIncome - $monthExpense;
         $receivableBase = max(1, $unpaidCount + $overdueCount);
         $overdueShare = ($overdueCount / $receivableBase) * 100;
+        $expenseRatioPercent = ($monthExpense / max(1, $monthIncome)) * 100;
 
-        $healthScore = 100;
-        $healthScore -= min(35, $overdueCount * 3);
-        $healthScore -= min(20, $pendingOrders * 2);
-        $healthScore -= min(20, $openSupportLoad);
-        if ($net30d < 0) {
-            $healthScore -= 15;
+        $projectionStart = now()->startOfDay();
+        $projectionEnd = now()->addDays(30)->endOfDay();
+        $expenseDueQuery = ExpenseInvoice::query()
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '>=', $projectionStart->toDateString())
+            ->whereDate('due_date', '<=', $projectionEnd->toDateString())
+            ->where('status', '!=', 'paid');
+        $expenseDue30d = (float) (clone $expenseDueQuery)->sum('amount');
+        $expenseDue30dCount = (int) (clone $expenseDueQuery)->count();
+
+        $commissionPayable = (float) CommissionEarning::query()
+            ->where('status', 'payable')
+            ->sum('commission_amount');
+
+        $payrollPayable = PayrollItem::query()
+            ->whereIn('status', ['approved', 'partial'])
+            ->get(['net_pay', 'paid_amount'])
+            ->sum(fn (PayrollItem $item) => max(0, (float) ($item->net_pay ?? 0) - (float) ($item->paid_amount ?? 0)));
+
+        $payableTotal = $expenseDue30d + $commissionPayable + $payrollPayable;
+        $payablePressurePercent = ($payableTotal / max(1, $monthIncome)) * 100;
+
+        $incomeScore = 100;
+        if ($monthIncome <= 0) {
+            $incomeScore -= 60;
         }
         if (($incomeGrowthPercent ?? 0) < 0) {
-            $healthScore -= 10;
+            $incomeScore -= min(20, abs((float) $incomeGrowthPercent) * 0.5);
         }
-        $healthScore = max(0, min(100, $healthScore));
+        if ($net30d < 0) {
+            $incomeScore -= 15;
+        }
+        if ($overdueShare > 35) {
+            $incomeScore -= min(10, ($overdueShare - 35) * 0.25);
+        }
+        $incomeScore = (int) max(0, min(100, round($incomeScore)));
+
+        $expenseScore = 100;
+        if ($expenseRatioPercent > 60) {
+            $expenseScore -= min(35, ($expenseRatioPercent - 60) * 0.7);
+        }
+        if ($payablePressurePercent > 25) {
+            $expenseScore -= min(30, ($payablePressurePercent - 25) * 0.45);
+        }
+        $expenseScore -= min(10, $expenseDue30dCount * 2);
+        if ($net30d < 0) {
+            $expenseScore -= 10;
+        }
+        $expenseScore = (int) max(0, min(100, round($expenseScore)));
+
+        $operationsScore = 100;
+        $operationsScore -= min(30, $overdueCount * 3);
+        $operationsScore -= min(20, $pendingOrders * 2);
+        $operationsScore -= min(20, $openSupportLoad);
+        if ($net30d < 0) {
+            $operationsScore -= 10;
+        }
+        $operationsScore = (int) max(0, min(100, round($operationsScore)));
+
+        $healthScore = (int) max(0, min(100, round(
+            ($incomeScore * 0.4) + ($expenseScore * 0.35) + ($operationsScore * 0.25)
+        )));
 
         $health = [
             'label' => 'Healthy',
@@ -149,6 +206,7 @@ class DashboardMetricsService
             'income_30d' => $monthIncome,
             'previous_income_30d' => $prevMonthIncome,
             'expense_30d' => $monthExpense,
+            'expense_ratio_percent' => $expenseRatioPercent,
             'net_30d' => $net30d,
             'income_growth_percent' => $incomeGrowthPercent,
             'pending_orders' => $pendingOrders,
@@ -158,6 +216,15 @@ class DashboardMetricsService
             'open_tickets' => $openTickets,
             'customer_reply_tickets' => $customerReplyTickets,
             'support_load' => $openSupportLoad,
+            'expense_due_30d' => $expenseDue30d,
+            'expense_due_30d_count' => $expenseDue30dCount,
+            'commission_payable' => $commissionPayable,
+            'payroll_payable' => $payrollPayable,
+            'payable_total' => $payableTotal,
+            'payable_pressure_percent' => $payablePressurePercent,
+            'income_score' => $incomeScore,
+            'expense_score' => $expenseScore,
+            'operations_score' => $operationsScore,
             'health_score' => $healthScore,
             'health_label' => $health['label'],
             'health_classes' => $health['classes'],

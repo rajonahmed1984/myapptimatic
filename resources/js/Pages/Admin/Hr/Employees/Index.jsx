@@ -28,10 +28,8 @@ export default function Index({
                             <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <th className="py-2 px-3">ID</th>
                                 <th className="py-2 px-3">Photo</th>
-                                <th className="py-2 px-3">Name</th>
-                                <th className="py-2 px-3">Designation</th>
-                                <th className="py-2 px-3">Employment</th>
-                                <th className="py-2 px-3">Salary Type</th>
+                                <th className="py-2 px-3">Name / Designation</th>
+                                <th className="py-2 px-3">Employment / Salary Type</th>
                                 <th className="py-2 px-3">Join Date</th>
                                 <th className="py-2 px-3">Manager</th>
                                 <th className="py-2 px-3">Status</th>
@@ -41,7 +39,7 @@ export default function Index({
                         </thead>
                         <tbody>
                             {employees.length === 0 ? (
-                                <tr><td colSpan={11} className="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
+                                <tr><td colSpan={9} className="py-3 px-3 text-center text-slate-500">No employees found.</td></tr>
                             ) : employees.map((employee) => (
                                 <tr key={employee.id} className="border-b border-slate-100">
                                     <td className="py-2 px-3 font-semibold text-slate-900">{employee.id}</td>
@@ -64,10 +62,12 @@ export default function Index({
                                             <a href={employee.routes.show} data-native="true" className="hover:text-teal-600">{employee.name}</a>
                                         </div>
                                         <div className="text-xs text-slate-500">{employee.email}</div>
+                                        <div className="mt-1 text-xs text-slate-500">{employee.designation || '--'}</div>
                                     </td>
-                                    <td className="py-2 px-3">{employee.designation}</td>
-                                    <td className="py-2 px-3">{employee.employment_type}</td>
-                                    <td className="py-2 px-3">{employee.salary_type_label || employee.salary_type || '--'}</td>
+                                    <td className="py-2 px-3">
+                                        <div>{employee.employment_type || '--'}</div>
+                                        <div className="mt-1 text-xs text-slate-500">{employee.salary_type_label || employee.salary_type || '--'}</div>
+                                    </td>
                                     <td className="py-2 px-3">{employee.join_date}</td>
                                     <td className="py-2 px-3">{employee.manager_name}</td>
                                     <td className="py-2 px-3">

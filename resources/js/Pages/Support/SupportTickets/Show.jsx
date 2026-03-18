@@ -148,7 +148,7 @@ export default function Show({ ticket = {}, replies = [], ai_ready = false, rout
                 <div className="section-label">Post reply</div>
                 <form method="POST" action={routes?.reply} className="mt-4 space-y-4" encType="multipart/form-data" data-native="true">
                     <input type="hidden" name="_token" value={csrfToken} />
-                    <textarea id="ticket-reply-message" name="message" rows={5} required className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700" defaultValue={suggestedReply} />
+                    <textarea id="ticket-reply-message" name="message" rows={5} required className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700" defaultValue={suggestedReply} />
                     {errors?.message ? <div className="text-xs text-rose-600">{errors.message}</div> : null}
                     <div>
                         <label className="text-sm text-slate-600">Attachment (image/PDF)</label>

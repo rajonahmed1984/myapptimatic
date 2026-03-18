@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\AutomationStatusService;
+use App\Services\BusinessStatusSummaryService;
 use App\Services\DashboardMetricsService;
+use App\Services\ExpenseEntryService;
+use App\Services\GeminiService;
+use App\Services\IncomeEntryService;
 use App\Services\TaskQueryService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -18,7 +23,14 @@ class DashboardController extends Controller
     ) {
     }
 
-    public function index(Request $request, TaskQueryService $taskQueryService): InertiaResponse
+    public function index(
+        Request $request,
+        TaskQueryService $taskQueryService,
+        BusinessStatusSummaryService $businessStatusSummaryService,
+        IncomeEntryService $incomeEntryService,
+        ExpenseEntryService $expenseEntryService,
+        GeminiService $geminiService
+    ): InertiaResponse
     {
         $automationStatusPayload = $this->automationStatusService->getStatusPayload();
         $automationSummary = [
@@ -40,6 +52,16 @@ class DashboardController extends Controller
         $user = $request->user();
         $showTasksWidget = $taskQueryService->canViewTasks($user);
         $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
+        $forceAiRefresh = $request->query('ai') === 'refresh';
+        [$businessPulseAi, $businessPulseAiError] = $this->buildBusinessPulseAiSummary(
+            $request,
+            $taskQueryService,
+            $businessStatusSummaryService,
+            $incomeEntryService,
+            $expenseEntryService,
+            $geminiService,
+            $forceAiRefresh
+        );
 
         $clientActivity = $metrics['clientActivity'];
         $clientActivity['recentClients'] = collect($clientActivity['recentClients'] ?? [])->values()->all();
@@ -66,18 +88,24 @@ class DashboardController extends Controller
                 'taskSummary' => $tasksWidget['summary'] ?? null,
                 'openTasks' => $this->taskRows($tasksWidget['openTasks'] ?? collect()),
                 'inProgressTasks' => $this->taskRows($tasksWidget['inProgressTasks'] ?? collect()),
+                'businessPulseAi' => array_merge($businessPulseAi, [
+                    'error' => $businessPulseAiError,
+                ]),
                 'routes' => [
+                    'dashboard_refresh_ai' => route('admin.dashboard', array_merge($request->query(), ['ai' => 'refresh'])),
                     'customers_index' => route('admin.customers.index'),
                     'customers_show_template' => route('admin.customers.show', ['customer' => '__CUSTOMER__']),
                     'subscriptions_index' => route('admin.subscriptions.index'),
                     'licenses_index' => route('admin.licenses.index'),
                     'invoices_unpaid' => route('admin.invoices.unpaid'),
                     'invoices_overdue' => route('admin.invoices.overdue'),
+                    'expenses_dashboard' => route('admin.expenses.dashboard'),
                     'orders_index' => route('admin.orders.index'),
                     'support_tickets_index' => route('admin.support-tickets.index'),
                     'projects_index' => route('admin.projects.index'),
                     'projects_all' => route('admin.projects.all'),
                     'project_maintenances_index' => route('admin.project-maintenances.index'),
+                    'commission_payouts_index' => route('admin.commission-payouts.index'),
                     'hr_employees_index' => route('admin.hr.employees.index'),
                     'hr_timesheets_index' => route('admin.hr.timesheets.index'),
                     'hr_payroll_index' => route('admin.hr.payroll.index'),
@@ -86,6 +114,81 @@ class DashboardController extends Controller
                 ],
             ]
         ));
+    }
+
+    private function buildBusinessPulseAiSummary(
+        Request $request,
+        TaskQueryService $taskQueryService,
+        BusinessStatusSummaryService $businessStatusSummaryService,
+        IncomeEntryService $incomeEntryService,
+        ExpenseEntryService $expenseEntryService,
+        GeminiService $geminiService,
+        bool $forceRefresh = false
+    ): array {
+        if (! config('google_ai.enabled')) {
+            return [[
+                'verdict' => null,
+                'score' => null,
+                'confidence' => null,
+                'reason' => null,
+                'action' => null,
+            ], 'Google AI is disabled.'];
+        }
+
+        $startDate = now()->subDays(30)->startOfDay();
+        $endDate = now()->endOfDay();
+        $projectionDays = 30;
+        $user = $request->user();
+
+        $cacheKey = 'ai:admin-dashboard:business-pulse:' . md5(json_encode([
+            'user_id' => $user?->id,
+            'start_date' => $startDate->toDateString(),
+            'end_date' => $endDate->toDateString(),
+            'projection_days' => $projectionDays,
+        ]));
+
+        try {
+            $builder = function () use (
+                $startDate,
+                $endDate,
+                $projectionDays,
+                $user,
+                $incomeEntryService,
+                $expenseEntryService,
+                $taskQueryService,
+                $businessStatusSummaryService,
+                $geminiService
+            ) {
+                $metrics = $businessStatusSummaryService->buildMetrics(
+                    $startDate,
+                    $endDate,
+                    $projectionDays,
+                    $user,
+                    $incomeEntryService,
+                    $expenseEntryService,
+                    $taskQueryService
+                );
+
+                return $businessStatusSummaryService->summarizeDashboard($metrics, $geminiService);
+            };
+
+            if ($forceRefresh) {
+                $summary = $builder();
+                Cache::put($cacheKey, $summary, now()->addMinutes(10));
+            } else {
+                $summary = Cache::remember($cacheKey, now()->addMinutes(10), $builder);
+            }
+
+            return [$summary, null];
+        } catch (\Throwable $e) {
+            return [[
+                'verdict' => null,
+                'score' => null,
+                'confidence' => null,
+                'reason' => null,
+                'action' => null,
+            ], $e->getMessage()];
+        }
     }
 
     private function taskRows(iterable $tasks): array

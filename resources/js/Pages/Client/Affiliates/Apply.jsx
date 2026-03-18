@@ -23,11 +23,11 @@ export default function Apply({ routes = {} }) {
                     <input type="hidden" name="_token" value={csrfToken} />
                     <div>
                         <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment details</label>
-                        <textarea name="payment_details" rows={4} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                        <textarea name="payment_details" rows={1} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                     </div>
                     <div>
                         <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Notes</label>
-                        <textarea name="notes" rows={4} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                        <textarea name="notes" rows={1} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                     </div>
                     <div className="flex justify-end">
                         <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white hover:bg-teal-400">

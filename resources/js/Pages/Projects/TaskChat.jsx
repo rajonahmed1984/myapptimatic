@@ -3,7 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import AuthenticatedImageAttachment from '../../Components/AuthenticatedImageAttachment';
 import useObjectUrlPreview from '../../hooks/useObjectUrlPreview';
 
-const EMOJIS = ['👍', '❤️', '😂', '😮', '🙏'];
+const EMOJIS = ['ðŸ‘', 'â¤ï¸', 'ðŸ˜‚', 'ðŸ˜®', 'ðŸ™'];
 
 const normalizeItem = (item) => {
     if (!item || typeof item !== 'object') {
@@ -390,7 +390,7 @@ export default function TaskChat({
                         <textarea
                             value={body}
                             onChange={(event) => setBody(event.target.value)}
-                            rows={3}
+                            rows={1}
                             placeholder="Write a message"
                             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
                         />

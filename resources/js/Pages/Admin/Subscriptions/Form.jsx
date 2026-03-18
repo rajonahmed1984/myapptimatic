@@ -241,7 +241,7 @@ export default function Form({
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
-                        <textarea name="notes" rows={4} defaultValue={fields?.notes || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
                     </div>
 
                     <div className="flex flex-wrap items-center gap-5">

@@ -490,7 +490,7 @@ export default function Show({
                                 <textarea
                                     id="expensePaymentNote"
                                     name="note"
-                                    rows={2}
+                                    rows={1}
                                     maxLength={500}
                                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                                     placeholder="Optional note"
@@ -606,7 +606,7 @@ export default function Show({
                                 <textarea
                                     id="editInvoiceNotes"
                                     name="notes"
-                                    rows={3}
+                                    rows={1}
                                     maxLength={1000}
                                     value={editModal.notes}
                                     onChange={(event) => setEditModal((prev) => ({ ...prev, notes: event.target.value }))}

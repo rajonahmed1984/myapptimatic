@@ -25,7 +25,7 @@
                         id="delete-confirm-input"
                         type="text"
                         autocomplete="off"
-                        class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 focus:border-rose-300 focus:ring-0"
+                        class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 focus:border-rose-300 focus:ring-0"
                         placeholder="Type the confirmation text"
                     />
                     <div data-delete-confirm-hint class="mt-2 text-xs text-slate-400"></div>

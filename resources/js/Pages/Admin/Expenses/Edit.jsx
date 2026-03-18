@@ -94,7 +94,7 @@ export default function Edit({
                         <label className="text-xs text-slate-500">Notes</label>
                         <textarea
                             name="notes"
-                            rows={3}
+                            rows={1}
                             defaultValue={expense?.notes ?? ''}
                             className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                         />

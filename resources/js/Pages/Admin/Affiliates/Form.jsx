@@ -131,7 +131,7 @@ export default function Form({
                         <label className="text-sm text-slate-600">Payment Details</label>
                         <textarea
                             name="payment_details"
-                            rows={3}
+                            rows={1}
                             defaultValue={fields?.payment_details ?? ''}
                             className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                         />
@@ -143,7 +143,7 @@ export default function Form({
                         <label className="text-sm text-slate-600">Notes</label>
                         <textarea
                             name="notes"
-                            rows={3}
+                            rows={1}
                             defaultValue={fields?.notes ?? ''}
                             className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                         />

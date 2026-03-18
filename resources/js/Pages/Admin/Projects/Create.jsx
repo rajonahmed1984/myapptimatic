@@ -212,7 +212,7 @@ export default function Create({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Notes</label>
-                                <textarea name="notes" rows={2} defaultValue={form.notes || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <textarea name="notes" rows={1} defaultValue={form.notes || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                             </div>
                         </div>
                     </StepSection>

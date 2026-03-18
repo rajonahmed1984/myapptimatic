@@ -82,33 +82,54 @@ class PaidHolidayController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'holiday_date' => ['required', 'date_format:Y-m-d'],
+            'start_date' => ['required', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
             'name' => ['required', 'string', Rule::in(self::HOLIDAY_TYPES)],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $month = Carbon::parse($data['holiday_date'])->format('Y-m');
-        $existing = PaidHoliday::query()
-            ->whereDate('holiday_date', $data['holiday_date'])
-            ->first();
+        $startDate = Carbon::createFromFormat('Y-m-d', $data['start_date'])->startOfDay();
+        $endDate = Carbon::createFromFormat('Y-m-d', $data['end_date'] ?? $data['start_date'])->startOfDay();
+        $month = $startDate->format('Y-m');
 
-        if ($existing) {
+        $existingDates = PaidHoliday::query()
+            ->whereBetween('holiday_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->pluck('holiday_date')
+            ->map(fn ($date) => Carbon::parse((string) $date)->toDateString())
+            ->all();
+
+        $existingDateLookup = array_fill_keys($existingDates, true);
+        $rows = [];
+
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            $dateKey = $date->toDateString();
+
+            if (isset($existingDateLookup[$dateKey])) {
+                continue;
+            }
+
+            $rows[] = [
+                'holiday_date' => $dateKey,
+                'name' => trim($data['name']),
+                'note' => isset($data['note']) ? trim((string) $data['note']) : null,
+                'is_paid' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if ($rows === []) {
             return redirect()
                 ->route('admin.hr.paid-holidays.index', ['month' => $month])
-                ->withErrors(['holiday_date' => 'The holiday date has already been taken.'])
+                ->withErrors(['start_date' => 'All selected holiday dates already exist.'])
                 ->withInput();
         }
 
-        PaidHoliday::create([
-            'holiday_date' => $data['holiday_date'],
-            'name' => trim($data['name']),
-            'note' => isset($data['note']) ? trim((string) $data['note']) : null,
-            'is_paid' => true,
-        ]);
+        PaidHoliday::insert($rows);
 
         return redirect()
             ->route('admin.hr.paid-holidays.index', ['month' => $month])
-            ->with('status', 'Paid holiday saved.');
+            ->with('status', count($rows) === 1 ? 'Paid holiday saved.' : 'Paid holiday range saved.');
     }
 
     public function destroy(PaidHoliday $paidHoliday): RedirectResponse

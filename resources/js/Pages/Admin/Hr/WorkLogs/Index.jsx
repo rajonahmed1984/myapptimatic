@@ -99,28 +99,22 @@ export default function Index({
                         <thead>
                             <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 border-b border-slate-200">
                                 <th className="py-2 px-3">Employee</th>
-                                <th className="py-2 px-3 whitespace-nowrap">Date</th>
                                 <th className="py-2 px-3 whitespace-nowrap text-right">Sessions</th>
-                                <th className="py-2 px-3 whitespace-nowrap">First Start</th>
-                                <th className="py-2 px-3 whitespace-nowrap">Last Activity</th>
-                                <th className="py-2 px-3 whitespace-nowrap text-right">Active Time</th>
-                                <th className="py-2 px-3 whitespace-nowrap text-right">Required</th>
+                                <th className="py-2 px-3 whitespace-nowrap">First Start &gt; Last Activity</th>
+                                <th className="py-2 px-3 whitespace-nowrap text-right">Required &gt; Active Time</th>
                                 <th className="py-2 px-3 whitespace-nowrap text-right">Coverage</th>
                                 <th className="py-2 px-3 whitespace-nowrap text-right">Est. Salary</th>
                             </tr>
                         </thead>
                         <tbody>
                             {dailyLogs.length === 0 ? (
-                                <tr><td colSpan={9} className="py-3 px-3 text-center text-slate-500">No work logs.</td></tr>
+                                <tr><td colSpan={6} className="py-3 px-3 text-center text-slate-500">No work logs.</td></tr>
                             ) : dailyLogs.map((log, index) => (
                                 <tr key={`${log.employee_name}-${log.work_date}-${index}`} className="border-b border-slate-100">
                                     <td className="py-2 px-3 font-medium text-slate-900">{log.employee_name}</td>
-                                    <td className="py-2 px-3 whitespace-nowrap tabular-nums">{log.work_date}</td>
                                     <td className="py-2 px-3 text-right whitespace-nowrap tabular-nums">{log.sessions_count}</td>
-                                    <td className="py-2 px-3 whitespace-nowrap tabular-nums">{log.first_started_at}</td>
-                                    <td className="py-2 px-3 whitespace-nowrap tabular-nums">{log.last_activity_at}</td>
-                                    <td className="py-2 px-3 text-right whitespace-nowrap tabular-nums">{log.active_duration}</td>
-                                    <td className="py-2 px-3 text-right whitespace-nowrap tabular-nums">{log.required_duration}</td>
+                                    <td className="py-2 px-3 whitespace-nowrap tabular-nums">{log.first_started_at} &gt; {log.last_activity_at}</td>
+                                    <td className="py-2 px-3 text-right whitespace-nowrap tabular-nums">{log.required_duration} &gt; {log.active_duration}</td>
                                     <td className="py-2 px-3 text-right">
                                         <CoverageBadge value={log.coverage_percent} />
                                     </td>

@@ -169,7 +169,7 @@ export default function Show({
                                 </div>
                                 <div className="md:col-span-2">
                                     <label htmlFor="adjustDeductionNote" className="text-xs uppercase tracking-[0.2em] text-slate-500">Deduction Reason</label>
-                                    <textarea id="adjustDeductionNote" name="deduction_note" rows={2} maxLength={500} defaultValue={adjustItem.deduction_note || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                    <textarea id="adjustDeductionNote" name="deduction_note" rows={1} maxLength={500} defaultValue={adjustItem.deduction_note || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                                 </div>
                             </div>
                             <div className="flex items-center justify-end gap-3 pt-2">

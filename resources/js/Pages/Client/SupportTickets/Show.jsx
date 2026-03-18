@@ -70,7 +70,7 @@ export default function Show({ ticket = {}, replies = [], form = {}, routes = {}
                             rows="5"
                             defaultValue={form.message || ''}
                             required
-                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
                         />
                         <div>
                             <label className="text-sm text-slate-600">Attachment (image/PDF)</label>

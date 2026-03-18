@@ -201,8 +201,82 @@ PROMPT;
         return $geminiService->generateText($prompt);
     }
 
+    public function summarizeDashboard(array $metrics, GeminiService $geminiService): array
+    {
+        $currency = Arr::get($metrics, 'currency.code', '');
+        $start = Arr::get($metrics, 'period.start_date');
+        $end = Arr::get($metrics, 'period.end_date');
+        $window = Arr::get($metrics, 'period.projection_days');
+        $json = json_encode($metrics, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+        $prompt = <<<PROMPT
+You are a finance and operations analyst. Evaluate the business pulse for an admin dashboard.
+
+Rules:
+- Use only the provided metrics. Do not invent data.
+- Output MUST be strict JSON only. No markdown, no code fences, no extra text.
+- JSON keys: verdict, score, confidence, reason, action.
+- verdict must be one of: Healthy, Watch, Critical.
+- score must be an integer from 0 to 100.
+- confidence must be one of: Low, Medium, High.
+- reason must be one short Bengali sentence explaining the current status using the metrics.
+- action must be one short Bengali sentence explaining the most important next action.
+- Consider the reporting period ($start to $end), the projection window ($window days), and amounts using currency code $currency where relevant.
+
+Metrics (JSON):
+{$json}
+PROMPT;
+
+        $raw = $geminiService->generateText($prompt);
+
+        return $this->parseDashboardSummary($raw);
+    }
+
     private function roundMoney(float $value): float
     {
         return round($value, 2);
+    }
+
+    private function parseDashboardSummary(string $raw): array
+    {
+        $text = trim($raw);
+        $text = preg_replace('/^```(?:json)?|```$/m', '', $text) ?? $text;
+        $decoded = json_decode(trim($text), true);
+
+        if (! is_array($decoded)) {
+            if (preg_match('/\{.*\}/s', $text, $matches)) {
+                $decoded = json_decode($matches[0], true);
+            }
+        }
+
+        if (! is_array($decoded)) {
+            return [
+                'verdict' => null,
+                'score' => null,
+                'confidence' => null,
+                'reason' => trim($text) !== '' ? trim($text) : null,
+                'action' => null,
+            ];
+        }
+
+        $verdict = Arr::get($decoded, 'verdict');
+        $verdict = in_array($verdict, ['Healthy', 'Watch', 'Critical'], true) ? $verdict : null;
+
+        $confidence = Arr::get($decoded, 'confidence');
+        $confidence = in_array($confidence, ['Low', 'Medium', 'High'], true) ? $confidence : null;
+
+        $score = Arr::get($decoded, 'score');
+        $score = is_numeric($score) ? max(0, min(100, (int) $score)) : null;
+
+        $reason = Arr::get($decoded, 'reason');
+        $action = Arr::get($decoded, 'action');
+
+        return [
+            'verdict' => $verdict,
+            'score' => $score,
+            'confidence' => $confidence,
+            'reason' => is_string($reason) && trim($reason) !== '' ? trim($reason) : null,
+            'action' => is_string($action) && trim($action) !== '' ? trim($action) : null,
+        ];
     }
 }

@@ -236,7 +236,7 @@ export default function Edit({
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="text-sm text-slate-600">Payment instructions</label>
-                                    <textarea name="payment_instructions" rows={4} defaultValue={settings.payment_instructions || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                    <textarea name="payment_instructions" rows={1} defaultValue={settings.payment_instructions || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                                     <InputError errors={errors} name="payment_instructions" />
                                 </div>
                             </div>

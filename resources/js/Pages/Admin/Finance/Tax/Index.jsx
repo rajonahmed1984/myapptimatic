@@ -549,7 +549,7 @@ export default function Index({
                             <label className="text-xs text-slate-500">Invoice tax note template</label>
                             <textarea
                                 name="invoice_tax_note_template"
-                                rows={3}
+                                rows={1}
                                 defaultValue={settings_form?.invoice_tax_note_template || ''}
                                 className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                             />

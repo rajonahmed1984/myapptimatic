@@ -174,14 +174,14 @@ export default function Form({
                                     <label className="text-sm text-slate-600">Address</label>
                                     <textarea
                                         name="address"
-                                        rows={2}
+                                        rows={1}
                                         defaultValue={fields?.address || ''}
                                         className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                                     />
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Notes</label>
-                                    <textarea name="notes" rows={2} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                    <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">New Password</label>
@@ -226,7 +226,7 @@ export default function Form({
                                     <label className="text-sm text-slate-600">Address</label>
                                     <textarea
                                         name="address"
-                                        rows={2}
+                                        rows={1}
                                         defaultValue={fields?.address || ''}
                                         className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                                     />
@@ -274,7 +274,7 @@ export default function Form({
                     {is_edit ? (
                         <div>
                             <label className="text-sm text-slate-600">Notes</label>
-                            <textarea name="notes" rows={3} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                            <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                             {errors?.notes ? <p className="mt-1 text-xs text-rose-500">{errors.notes}</p> : null}
                         </div>
                     ) : null}

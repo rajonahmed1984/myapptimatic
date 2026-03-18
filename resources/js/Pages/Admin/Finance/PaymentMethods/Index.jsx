@@ -90,7 +90,7 @@ export default function Index({
                             <label className="text-xs text-slate-500">Account details</label>
                             <textarea
                                 name="account_details"
-                                rows={3}
+                                rows={1}
                                 defaultValue={form?.fields?.account_details || ''}
                                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
                                 placeholder="Account number, wallet number, branch, etc."
@@ -167,7 +167,7 @@ export default function Index({
                                                         }
                                                     >
                                                         Actions
-                                                        <span className="text-[10px] text-slate-400">{openActionId === method.id ? '▲' : '▼'}</span>
+                                                        <span className="text-[10px] text-slate-400">{openActionId === method.id ? 'â–²' : 'â–¼'}</span>
                                                     </button>
 
                                                     {openActionId === method.id ? (

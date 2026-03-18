@@ -138,7 +138,7 @@ export default function Edit({
 
                         <div>
                             <label className="text-xs text-slate-500">Notes</label>
-                            <textarea name="notes" rows={2} defaultValue={form.notes || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                            <textarea name="notes" rows={1} defaultValue={form.notes || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">

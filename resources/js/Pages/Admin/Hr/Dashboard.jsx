@@ -99,9 +99,6 @@ export default function Dashboard({
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <div className="section-label">HR & Payroll</div>
-                    <div className="text-2xl font-semibold text-slate-900">Master HR Dashboard</div>
-                    <div className="text-sm text-slate-500">Workforce health, attendance, leave, work output, and payroll readiness in one control view.</div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <a href={routes?.employeesCreate} data-native="true" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Add employee</a>
@@ -336,4 +333,3 @@ function ListCard({ title, href, rows, empty }) {
         </div>
     );
 }
-

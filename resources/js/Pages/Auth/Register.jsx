@@ -176,7 +176,7 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                                         defaultValue={form?.phone || ''}
                                         placeholder="Mobile number"
                                         autoComplete="off"
-                                        className="mt-2 w-full rounded-xl border border-white/20 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                                        className="mt-2 w-full rounded-xl border border-white/20 bg-white px-4 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-200"
                                     />
                                     {errors?.phone ? <p className="mt-1 text-xs text-rose-300">{errors.phone}</p> : null}
                                 </div>
@@ -276,7 +276,7 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                                     name="address"
                                     defaultValue={form?.address || ''}
                                     className="md:col-span-2"
-                                    rows={2}
+                                    rows={1}
                                     error={errors?.address}
                                 />
                             </div>

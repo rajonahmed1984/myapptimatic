@@ -171,7 +171,7 @@ export default function Index({
                                                     }
                                                 >
                                                     Actions
-                                                    <span className="text-[10px] text-slate-400">{openActionId === recurring.id ? '▲' : '▼'}</span>
+                                                    <span className="text-[10px] text-slate-400">{openActionId === recurring.id ? 'â–²' : 'â–¼'}</span>
                                                 </button>
 
                                                 {openActionId === recurring.id ? (
@@ -360,7 +360,7 @@ export default function Index({
                                 <textarea
                                     id="recurringAdvanceNote"
                                     name="note"
-                                    rows={3}
+                                    rows={1}
                                     maxLength={500}
                                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                                     placeholder="Optional note"

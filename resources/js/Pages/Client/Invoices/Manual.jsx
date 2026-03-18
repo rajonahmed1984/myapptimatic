@@ -99,7 +99,7 @@ export default function Manual({
                             <label className="text-sm text-slate-600">Notes</label>
                             <textarea
                                 name="notes"
-                                rows="3"
+                                rows="1"
                                 defaultValue={form.notes || ''}
                                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
                                 placeholder="Add any extra details"

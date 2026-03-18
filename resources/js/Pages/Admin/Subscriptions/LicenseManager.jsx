@@ -158,7 +158,7 @@ function LicenseFormCard({
                     <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
                     <textarea
                         name="license[notes]"
-                        rows={4}
+                        rows={1}
                         defaultValue={fields?.notes || ''}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2"
                     />

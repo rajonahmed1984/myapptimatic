@@ -198,7 +198,7 @@ export default function TaskFormPage({
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Description</label>
                             <textarea
                                 name="description"
-                                rows={3}
+                                rows={1}
                                 defaultValue={form.description ?? task?.description ?? ''}
                                 className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                             />
@@ -226,7 +226,7 @@ export default function TaskFormPage({
                                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Notes</label>
                                     <textarea
                                         name="notes"
-                                        rows={2}
+                                        rows={1}
                                         defaultValue={form.notes ?? task?.notes ?? ''}
                                         className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                                     />

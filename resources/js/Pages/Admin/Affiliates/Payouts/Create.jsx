@@ -109,7 +109,7 @@ export default function Create({
                             <span className="mb-1 block text-sm font-medium text-slate-700">Payment details</span>
                             <textarea
                                 name="payment_details"
-                                rows={3}
+                                rows={1}
                                 className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm"
                             />
                         </label>
@@ -118,7 +118,7 @@ export default function Create({
                             <span className="mb-1 block text-sm font-medium text-slate-700">Notes</span>
                             <textarea
                                 name="notes"
-                                rows={3}
+                                rows={1}
                                 className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm"
                             />
                         </label>

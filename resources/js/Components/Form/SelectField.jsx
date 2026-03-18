@@ -18,7 +18,7 @@ export default function SelectField({
                 name={name}
                 defaultValue={defaultValue}
                 className={[
-                    'mt-2 w-full rounded-xl border border-white/20 bg-white px-4 py-3 text-sm text-slate-900 focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-200',
+                    'mt-2 w-full rounded-xl border border-white/20 bg-white px-4 py-2 text-sm text-slate-900 focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-200',
                     error ? 'border-rose-300' : '',
                     selectClassName,
                 ]

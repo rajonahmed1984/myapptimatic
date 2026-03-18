@@ -335,7 +335,7 @@ export default function Create({
                             <label className="text-xs text-slate-500">Notes</label>
                             <textarea
                                 name="notes"
-                                rows={3}
+                                rows={1}
                                 defaultValue={form?.notes ?? ''}
                                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                             />
@@ -458,7 +458,7 @@ export default function Create({
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Note</label>
                             <textarea
                                 name="note"
-                                rows={2}
+                                rows={1}
                                 maxLength={500}
                                 className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                                 placeholder="Optional note"

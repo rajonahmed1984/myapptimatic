@@ -5,7 +5,7 @@ export default function SubmitButton({ children, className = '', ...props }) {
         <button
             type="submit"
             className={[
-                'w-full rounded-xl bg-teal-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-400',
+                'w-full rounded-xl bg-teal-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-400',
                 className,
             ]
                 .filter(Boolean)

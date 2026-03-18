@@ -158,7 +158,7 @@ export default function Show({
                                 <label className="text-sm text-slate-600">Notes</label>
                                 <textarea
                                     name="notes"
-                                    rows={2}
+                                    rows={1}
                                     defaultValue={invoice.notes_value}
                                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
                                 />
@@ -302,7 +302,7 @@ export default function Show({
                                 <label className="text-sm text-slate-600">Note</label>
                                 <textarea
                                     name="note"
-                                    rows={2}
+                                    rows={1}
                                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
                                     placeholder="Optional note about the collection or retained amount"
                                 />

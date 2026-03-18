@@ -240,6 +240,7 @@ export default function Dashboard({
     licenseCount = 0,
     pendingInvoiceCount = 0,
     businessPulse = {},
+    businessPulseAi = {},
     projectMaintenance = {},
     hrStats = {},
     periodMetrics = {},
@@ -256,6 +257,29 @@ export default function Dashboard({
     inProgressTasks = [],
     routes = {},
 }) {
+    const businessPulseVerdict = businessPulseAi?.verdict || businessPulse?.health_label || 'Unknown';
+    const businessPulseScore = Number(businessPulseAi?.score ?? businessPulse?.health_score ?? 0);
+    const businessPulseIncomeScore = Number(businessPulse?.income_score ?? 0);
+    const businessPulseExpenseScore = Number(businessPulse?.expense_score ?? 0);
+    const businessPulseOperationsScore = Number(businessPulse?.operations_score ?? 0);
+    const businessPulseMessage = businessPulseAi?.reason || 'AI-verified business pulse with supporting health, cashflow and operational pressure metrics.';
+    const businessPulseAction = businessPulseAi?.action || (businessPulseAi?.error ? `AI insight unavailable: ${businessPulseAi.error}` : null);
+    const hasAiVerification = Boolean(businessPulseAi?.verdict || businessPulseAi?.reason);
+    const scoreBadgeClass = (score) => {
+        if (score >= 80) {
+            return 'bg-emerald-50 text-emerald-700';
+        }
+        if (score >= 65) {
+            return 'bg-amber-50 text-amber-700';
+        }
+        return 'bg-rose-50 text-rose-700';
+    };
+    const aiVerdictClass = {
+        Healthy: 'bg-emerald-100 text-emerald-700',
+        Watch: 'bg-amber-100 text-amber-700',
+        Critical: 'bg-rose-100 text-rose-700',
+    }[businessPulseAi?.verdict] || (businessPulse?.health_classes || 'bg-slate-100 text-slate-700');
+
     const [period, setPeriod] = useState('month');
     const [seriesVisible, setSeriesVisible] = useState({
         new_orders: true,
@@ -431,22 +455,53 @@ export default function Dashboard({
             <Head title={pageTitle} />
 
             <div className="card p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <div className="section-label">Business Pulse</div>
-                        <div className="mt-1 text-sm text-slate-500">Quick view of health, cashflow and operational pressure.</div>
+                        <div className="section-label">
+                            Business Pulse                           
+                            {hasAiVerification ? (
+                                <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-700 ml-2">
+                                    AI Verified
+                                </span>
+                            ) : null}
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${businessPulse?.health_classes || 'bg-slate-100 text-slate-700'}`}>
-                            {businessPulse?.health_label || 'Unknown'}
+                    <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
+                        {routes?.dashboard_refresh_ai ? (
+                            <a href={routes.dashboard_refresh_ai} data-native="true" className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:border-violet-300 hover:bg-violet-100">
+                                Refresh AI
+                            </a>
+                        ) : null}
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${aiVerdictClass}`}>
+                            {businessPulseVerdict}
                         </span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                            Score {Number(businessPulse?.health_score || 0)}/100
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scoreBadgeClass(businessPulseScore)}`}>
+                            Score {businessPulseScore}/100
                         </span>
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scoreBadgeClass(businessPulseIncomeScore)}`}>
+                            Income {businessPulseIncomeScore}/100
+                        </span>
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scoreBadgeClass(businessPulseExpenseScore)}`}>
+                            Expense {businessPulseExpenseScore}/100
+                        </span>
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scoreBadgeClass(businessPulseOperationsScore)}`}>
+                            Ops {businessPulseOperationsScore}/100
+                        </span>
+                        {businessPulseAi?.confidence ? (
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                                Confidence {businessPulseAi.confidence}
+                            </span>
+                        ) : null}
                     </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {businessPulseAction ? (
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        {businessPulseAction}
+                    </div>
+                ) : null}
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
                     <SmallMetric
                         label="Net (30d)"
                         value={money(currency, businessPulse?.net_30d)}
@@ -462,6 +517,20 @@ export default function Dashboard({
                         note={`Overdue ${Number(businessPulse?.overdue_invoices || 0)} / Open ${Number(businessPulse?.unpaid_invoices || 0) + Number(businessPulse?.overdue_invoices || 0)}`}
                         href={routes?.invoices_overdue}
                         action="View overdue invoices"
+                    />
+                    <SmallMetric
+                        label="Expense Burn"
+                        value={money(currency, businessPulse?.expense_30d)}
+                        tone={Number(businessPulse?.expense_ratio_percent || 0) > 85 ? 'text-rose-600' : 'text-amber-600'}
+                        note={`Expense is ${Number(businessPulse?.expense_ratio_percent || 0).toFixed(1)}% of 30d income.`}
+                        href={routes?.expenses_dashboard}
+                        action="Review expense flow"
+                    />
+                    <SmallMetric
+                        label="Payable Pressure"
+                        value={money(currency, businessPulse?.payable_total)}
+                        tone={Number(businessPulse?.payable_pressure_percent || 0) > 60 ? 'text-rose-600' : 'text-amber-600'}
+                        note={`Next 30d due ${money(currency, businessPulse?.expense_due_30d)} | Payroll ${money(currency, businessPulse?.payroll_payable)} | Commission ${money(currency, businessPulse?.commission_payable)}`}
                     />
                     <SmallMetric
                         label="Sales Pipeline"
@@ -481,24 +550,24 @@ export default function Dashboard({
             </div>
 
             <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <MetricLink href={routes?.customers_index} label="Customers" value={metricValue(customerCount)} />
-                <MetricLink href={routes?.subscriptions_index} label="Subscriptions" value={metricValue(subscriptionCount)} />
-                <MetricLink href={routes?.licenses_index} label="Licenses" value={metricValue(licenseCount)} />
-                <MetricLink href={routes?.invoices_unpaid} label="Unpaid invoices" value={metricValue(pendingInvoiceCount)} tone="text-blue-600" />
+                <MetricLink href={routes?.customers_index} label="Customers" value={metricValue(customerCount)} className="border-slate-200 bg-slate-50 hover:border-slate-300" labelClassName="text-slate-500" />
+                <MetricLink href={routes?.subscriptions_index} label="Subscriptions" value={metricValue(subscriptionCount)} tone="text-sky-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-sky-700" />
+                <MetricLink href={routes?.licenses_index} label="Licenses" value={metricValue(licenseCount)} tone="text-teal-700" className="border-teal-200 bg-teal-50 hover:border-teal-300" labelClassName="text-teal-700" />
+                <MetricLink href={routes?.invoices_unpaid} label="Unpaid invoices" value={metricValue(pendingInvoiceCount)} tone="text-blue-700" className="border-blue-200 bg-blue-50 hover:border-blue-300" labelClassName="text-blue-700" />
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <SmallLinkCard href={`${routes?.projects_all}?status=ongoing`} title="Ongoing projects" value={metricValue(projectMaintenance?.projects_active)} />
-                <SmallLinkCard href={routes?.subscriptions_index} title="Blocked services" value={metricValue(projectMaintenance?.subscriptions_blocked)} tone="text-rose-600" />
-                <SmallLinkCard href={routes?.project_maintenances_index} title="Renewals (30d)" value={metricValue(projectMaintenance?.renewals_30d)} tone="text-emerald-600" />
-                <SmallLinkCard href={routes?.projects_all} title="Loss risk projects" value={metricValue(projectMaintenance?.projects_loss)} tone="text-rose-600" />
+                <SmallLinkCard href={`${routes?.projects_all}?status=ongoing`} title="Ongoing projects" value={metricValue(projectMaintenance?.projects_active)} tone="text-sky-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-sky-700" />
+                <SmallLinkCard href={routes?.subscriptions_index} title="Blocked services" value={metricValue(projectMaintenance?.subscriptions_blocked)} tone="text-rose-700" className="border-rose-200 bg-rose-50 hover:border-rose-300" labelClassName="text-rose-700" />
+                <SmallLinkCard href={routes?.project_maintenances_index} title="Renewals (30d)" value={metricValue(projectMaintenance?.renewals_30d)} tone="text-emerald-700" className="border-emerald-200 bg-emerald-50 hover:border-emerald-300" labelClassName="text-emerald-700" />
+                <SmallLinkCard href={routes?.projects_all} title="Loss risk projects" value={metricValue(projectMaintenance?.projects_loss)} tone="text-rose-700" className="border-rose-200 bg-rose-50 hover:border-rose-300" labelClassName="text-rose-700" />
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <SmallLinkCard href={routes?.hr_employees_index} title="Active employees" value={metricValue(hrStats?.active_employees)} />
-                <SmallLinkCard href={routes?.hr_timesheets_index} title="Work logs (7d)" value={metricValue(hrStats?.pending_timesheets)} tone="text-amber-600" />
-                <SmallLinkCard href={routes?.hr_payroll_index} title="Draft payroll periods" value={metricValue(hrStats?.draft_payroll_periods)} />
-                <SmallLinkCard href={routes?.hr_payroll_index} title="Payroll to pay" value={metricValue(hrStats?.payroll_items_to_pay)} tone="text-rose-600" />
+                <SmallLinkCard href={routes?.hr_employees_index} title="Active employees" value={metricValue(hrStats?.active_employees)} tone="text-emerald-700" className="border-emerald-200 bg-emerald-50 hover:border-emerald-300" labelClassName="text-emerald-700" />
+                <SmallLinkCard href={routes?.hr_timesheets_index} title="Work logs (7d)" value={metricValue(hrStats?.pending_timesheets)} tone="text-amber-700" className="border-amber-200 bg-amber-50 hover:border-amber-300" labelClassName="text-amber-700" />
+                <SmallLinkCard href={routes?.hr_payroll_index} title="Draft payroll periods" value={metricValue(hrStats?.draft_payroll_periods)} tone="text-slate-700" className="border-slate-200 bg-slate-50 hover:border-slate-300" labelClassName="text-slate-600" />
+                <SmallLinkCard href={routes?.hr_payroll_index} title="Payroll to pay" value={metricValue(hrStats?.payroll_items_to_pay)} tone="text-rose-700" className="border-rose-200 bg-rose-50 hover:border-rose-300" labelClassName="text-rose-700" />
             </div>
 
             <div className="mt-8 card p-6">
@@ -748,8 +817,8 @@ export default function Dashboard({
 
             </div>
 
-            <div className="mt-6 card p-6">
-                <div className="flex items-center justify-between gap-3">
+            <div className="mt-8 card p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <div className="section-label">Client Activity</div>
                         <div className="mt-1 text-sm text-slate-500">Last 30 clients login (all time)</div>
@@ -796,7 +865,7 @@ export default function Dashboard({
 
             <div className="mt-8 grid gap-6 lg:grid-cols-2">
                 <div className="card p-6">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <div className="section-label">Billing Status</div>
                             <div className="mt-1 text-sm text-slate-500">Revenue snapshots (including hosting income)</div>
@@ -812,7 +881,7 @@ export default function Dashboard({
                 </div>
 
                 <div className="card p-6">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <div className="section-label">Automation Overview</div>
                             <div className="mt-1 text-sm text-slate-500">Last automation run: {systemOverview?.automation_last_run || '--'}</div>
@@ -844,17 +913,44 @@ export default function Dashboard({
 
             {showTasksWidget ? (
                 <div className="mt-8 card p-6">
-                    <div className="section-label">Task Snapshot</div>
+                    <div>
+                        <div className="section-label">Task Snapshot</div>
+                        <div className="mt-1 text-sm text-slate-500">Open pipeline and current execution buckets at a glance.</div>
+                    </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-4">
-                        <SmallMetricTile label="Total" value={metricValue(summary?.total)} />
-                        <SmallMetricTile label="Open" value={metricValue(summary?.open)} />
-                        <SmallMetricTile label="In progress" value={metricValue(summary?.in_progress)} />
-                        <SmallMetricTile label="Completed" value={metricValue(summary?.completed)} />
+                        <SmallMetricTile
+                            label="Total"
+                            value={metricValue(summary?.total)}
+                            className="border-slate-200 bg-slate-50"
+                            labelClassName="text-slate-500"
+                            tone="text-slate-900"
+                        />
+                        <SmallMetricTile
+                            label="Open"
+                            value={metricValue(summary?.open)}
+                            className="border-amber-200 bg-amber-50"
+                            labelClassName="text-amber-700"
+                            tone="text-amber-700"
+                        />
+                        <SmallMetricTile
+                            label="In progress"
+                            value={metricValue(summary?.in_progress)}
+                            className="border-sky-200 bg-sky-50"
+                            labelClassName="text-sky-700"
+                            tone="text-sky-700"
+                        />
+                        <SmallMetricTile
+                            label="Completed"
+                            value={metricValue(summary?.completed)}
+                            className="border-emerald-200 bg-emerald-50"
+                            labelClassName="text-emerald-700"
+                            tone="text-emerald-700"
+                        />
                     </div>
 
                     <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                        <TaskList title="Open tasks" tasks={openTasks} routes={routes} />
-                        <TaskList title="In progress tasks" tasks={inProgressTasks} routes={routes} />
+                        <TaskList title="Open tasks" tasks={openTasks} routes={routes} variant="open" />
+                        <TaskList title="In progress tasks" tasks={inProgressTasks} routes={routes} variant="in_progress" />
                     </div>
                 </div>
             ) : null}
@@ -864,11 +960,18 @@ export default function Dashboard({
 
 Dashboard.title = 'Admin Dashboard';
 
-function MetricLink({ href, label, value, tone = 'text-slate-900' }) {
+function MetricLink({
+    href,
+    label,
+    value,
+    tone = 'text-slate-900',
+    className = 'border-slate-200 bg-white hover:border-teal-300',
+    labelClassName = 'text-slate-500',
+}) {
     return (
-        <a href={href} data-native="true" className="card px-4 py-3 leading-tight transition hover:border-teal-300 hover:shadow-sm">
+        <a href={href} data-native="true" className={`card h-full px-4 py-3 leading-tight transition hover:shadow-sm ${className}`}>
             <div className="flex items-center justify-between gap-3">
-                <div className="section-label">{label}</div>
+                <div className={`section-label ${labelClassName}`}>{label}</div>
                 <div className={`text-xl font-semibold ${tone}`}>{value}</div>
             </div>
         </a>
@@ -877,7 +980,7 @@ function MetricLink({ href, label, value, tone = 'text-slate-900' }) {
 
 function SmallMetric({ label, value, note, tone = 'text-slate-900', href = null, action = null }) {
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="h-full rounded-2xl border border-slate-200 bg-white p-4">
             <div className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</div>
             <div className={`mt-2 text-2xl font-semibold ${tone}`}>{value}</div>
             <div className="mt-1 text-xs text-slate-500">{note}</div>
@@ -886,11 +989,18 @@ function SmallMetric({ label, value, note, tone = 'text-slate-900', href = null,
     );
 }
 
-function SmallLinkCard({ href, title, value, tone = 'text-slate-900' }) {
+function SmallLinkCard({
+    href,
+    title,
+    value,
+    tone = 'text-slate-900',
+    className = 'border-slate-200 bg-white hover:border-teal-300',
+    labelClassName = 'text-slate-600',
+}) {
     return (
-        <a href={href} data-native="true" className="card px-4 py-3 transition hover:border-teal-300 hover:shadow-sm">
+        <a href={href} data-native="true" className={`card h-full px-4 py-3 transition hover:shadow-sm ${className}`}>
             <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 truncate text-sm font-medium text-slate-600" title={title}>{title}</div>
+                <div className={`min-w-0 truncate text-sm font-medium ${labelClassName}`} title={title}>{title}</div>
                 <div className={`shrink-0 text-lg font-semibold ${tone}`}>{value}</div>
             </div>
         </a>
@@ -906,10 +1016,16 @@ function CompactOverviewStat({ label, value, tone = 'text-slate-900' }) {
     );
 }
 
-function SmallMetricTile({ label, value, tone = 'text-slate-900' }) {
+function SmallMetricTile({
+    label,
+    value,
+    tone = 'text-slate-900',
+    className = 'border-slate-100 bg-white',
+    labelClassName = 'text-slate-500',
+}) {
     return (
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <div className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</div>
+        <div className={`h-full rounded-2xl border p-4 shadow-sm ${className}`}>
+            <div className={`text-xs uppercase tracking-[0.2em] ${labelClassName}`}>{label}</div>
             <div className={`mt-2 text-xl font-semibold ${tone}`}>{value}</div>
         </div>
     );
@@ -924,7 +1040,7 @@ function AutomationMetricCard({ label, value, color = 'slate', stroke = null, se
     const lastPoint = points.length > 0 ? points[points.length - 1] : null;
 
     return (
-        <div className="rounded-xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm">
+        <div className="h-full rounded-xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
                 <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
                 <div className={`text-lg font-semibold ${palette.tone}`}>{metricValue(value)}</div>
@@ -940,12 +1056,37 @@ function AutomationMetricCard({ label, value, color = 'slate', stroke = null, se
     );
 }
 
-function TaskList({ title, tasks, routes }) {
+function TaskList({ title, tasks, routes, variant = 'default' }) {
     const rows = Array.isArray(tasks) ? tasks : [];
+    const styles = {
+        open: {
+            wrapper: 'border-amber-200 bg-amber-50/50',
+            title: 'text-amber-700',
+            row: 'border-amber-100 bg-white hover:border-amber-300',
+            badge: 'bg-amber-100 text-amber-700',
+        },
+        in_progress: {
+            wrapper: 'border-sky-200 bg-sky-50/50',
+            title: 'text-sky-700',
+            row: 'border-sky-100 bg-white hover:border-sky-300',
+            badge: 'bg-sky-100 text-sky-700',
+        },
+        default: {
+            wrapper: 'border-slate-200 bg-white',
+            title: 'text-slate-400',
+            row: 'border-slate-100 bg-white hover:border-teal-200',
+            badge: 'bg-slate-100 text-slate-500',
+        },
+    }[variant] || {
+        wrapper: 'border-slate-200 bg-white',
+        title: 'text-slate-400',
+        row: 'border-slate-100 bg-white hover:border-teal-200',
+        badge: 'bg-slate-100 text-slate-500',
+    };
 
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</div>
+        <div className={`rounded-2xl border p-4 ${styles.wrapper}`}>
+            <div className={`text-xs uppercase tracking-[0.2em] ${styles.title}`}>{title}</div>
             <div className="mt-3 space-y-2">
                 {rows.length === 0 ? (
                     <div className="text-xs text-slate-500">No tasks in this bucket.</div>
@@ -954,11 +1095,11 @@ function TaskList({ title, tasks, routes }) {
                         key={task.id}
                         href={taskRoute(routes?.tasks_show_template, task.project_id, task.id)}
                         data-native="true"
-                        className="block rounded-lg border border-slate-100 px-3 py-2 hover:border-teal-200"
+                        className={`block rounded-lg border px-3 py-2 transition ${styles.row}`}
                     >
                         <div className="flex items-center justify-between gap-3">
                             <div className="text-sm font-semibold text-slate-900">{task.title}</div>
-                            <span className="text-[11px] text-slate-500">{task.status}</span>
+                            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${styles.badge}`}>{task.status}</span>
                         </div>
                         <div className="mt-1 text-xs text-slate-500">
                             {task.project_name} | Subtasks: {metricValue(task.subtasks_count)} | Due: {task.due_date || '--'}

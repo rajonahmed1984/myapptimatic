@@ -37,9 +37,10 @@ export default function Index({
 
                 <div className="max-w-4xl">
                     <div className="section-label">Add paid holiday</div>
-                    <form method="POST" action={routes?.store} data-native="true" className="mt-4 grid gap-3 text-sm md:grid-cols-4">
+                    <form method="POST" action={routes?.store} data-native="true" className="mt-4 grid gap-3 text-sm md:grid-cols-5">
                         <input type="hidden" name="_token" value={csrf} />
-                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="holiday_date" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
+                        <input type="date" name="start_date" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
+                        <input type="date" name="end_date" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                         <select name="name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm md:col-span-2" required>
                             <option value="">Select holiday type</option>
                             {holidayTypes.map((holidayType) => (
@@ -47,7 +48,8 @@ export default function Index({
                             ))}
                         </select>
                         <input name="note" placeholder="Optional note" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                        <div className="md:col-span-4">
+                        <div className="md:col-span-5">
+                            <div className="mb-2 text-xs text-slate-500">For one day, use only the start date. For a range, every date from start to end will be saved.</div>
                             <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Save holiday</button>
                         </div>
                     </form>

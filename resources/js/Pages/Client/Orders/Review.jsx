@@ -83,7 +83,7 @@ export default function Review({
                     <form method="POST" action={routes.store} data-native="true" className="mt-6">
                         <input type="hidden" name="_token" value={csrfToken} />
                         <input type="hidden" name="plan_id" value={plan.id} />
-                        <button type="submit" className="w-full rounded-full bg-teal-500 px-4 py-3 text-sm font-semibold text-white">
+                        <button type="submit" className="w-full rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">
                             Place order
                         </button>
                     </form>

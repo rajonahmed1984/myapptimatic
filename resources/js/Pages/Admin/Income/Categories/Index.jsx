@@ -80,7 +80,7 @@ export default function Index({
                         <div>
                             <textarea
                                 name="description"
-                                rows={3}
+                                rows={1}
                                 defaultValue={form?.fields?.description || ''}
                                 placeholder="Description (optional)"
                                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
