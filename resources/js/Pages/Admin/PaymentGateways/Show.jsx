@@ -13,7 +13,7 @@ export default function Show({ pageTitle = 'Gateway Ledger', gateway = {}, entri
                 <div>
                     <h1 className="text-2xl font-semibold text-slate-900">{gateway?.name || 'Payment Gateway'}</h1>
                     <p className="mt-1 text-sm text-slate-500">
-                        {gateway?.driver || '--'} / {gateway?.slug || '--'}
+                        {gateway?.details_display || '--'}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">

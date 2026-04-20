@@ -89,7 +89,10 @@
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Billing & Payments</div>
                     <a class="{{ request()->routeIs('client.invoices.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.invoices.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
-                        Invoices
+                        <span>Invoices</span>
+                        @if(($clientHeaderStats['unpaid_invoices'] ?? 0) > 0)
+                            <span class="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">{{ $clientHeaderStats['unpaid_invoices'] }}</span>
+                        @endif
                     </a>
                 </div>
 

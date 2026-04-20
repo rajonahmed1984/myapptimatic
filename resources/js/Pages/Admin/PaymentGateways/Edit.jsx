@@ -1,41 +1,33 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
-const textFields = [
-    'instructions',
-    'payment_url',
-    'account_name',
-    'account_number',
-    'bank_name',
-    'branch',
-    'routing_number',
-    'merchant_number',
-    'api_key',
-    'merchant_short_code',
-    'service_id',
-    'username',
-    'password',
-    'app_key',
-    'app_secret',
-    'button_label',
-    'store_id',
-    'store_password',
-    'client_id',
-    'client_secret',
-    'paypal_email',
-    'api_username',
-    'api_password',
-    'api_signature',
-];
-
-const toggleFields = [
-    'sandbox',
-    'easy_checkout',
-    'force_one_time',
-    'force_subscriptions',
-    'require_shipping',
-    'client_address_matching',
-];
+const driverFieldConfig = {
+    manual: {
+        textFields: ['instructions', 'payment_url', 'account_name', 'account_number', 'bank_name', 'branch', 'routing_number', 'button_label'],
+        toggleFields: [],
+        showProcessingCurrency: false,
+    },
+    bkash: {
+        textFields: ['merchant_number', 'instructions', 'payment_url', 'account_name', 'account_number', 'button_label'],
+        toggleFields: [],
+        showProcessingCurrency: false,
+    },
+    bkash_api: {
+        textFields: ['api_key', 'merchant_short_code', 'service_id'],
+        toggleFields: ['sandbox'],
+        showProcessingCurrency: false,
+    },
+    sslcommerz: {
+        textFields: ['store_id', 'store_password', 'instructions', 'payment_url', 'button_label'],
+        toggleFields: ['easy_checkout', 'sandbox'],
+        showProcessingCurrency: true,
+    },
+    paypal: {
+        textFields: ['instructions', 'payment_url', 'paypal_email', 'api_username', 'api_password', 'api_signature', 'client_id', 'client_secret', 'button_label'],
+        toggleFields: ['sandbox', 'force_one_time', 'force_subscriptions', 'require_shipping', 'client_address_matching'],
+        showProcessingCurrency: false,
+    },
+};
 
 function formatLabel(value) {
     return String(value || '')
@@ -48,6 +40,14 @@ export default function Edit({ pageTitle = 'Edit Payment Gateway', gateway = {},
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = gateway?.fields || {};
+    const driver = String(gateway?.driver || '').toLowerCase();
+    const config = driverFieldConfig[driver] || {
+        textFields: ['instructions', 'payment_url'],
+        toggleFields: [],
+        showProcessingCurrency: false,
+    };
+    const textFields = config.textFields || [];
+    const toggleFields = config.toggleFields || [];
 
     return (
         <>
@@ -109,33 +109,37 @@ export default function Edit({ pageTitle = 'Edit Payment Gateway', gateway = {},
                         ))}
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-700">Processing Currency</label>
-                            <select
-                                name="processing_currency"
-                                defaultValue={fields?.processing_currency || default_currency || ''}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                            >
-                                <option value="">Select currency</option>
-                                {currency_options.map((currency) => (
-                                    <option key={currency} value={currency}>
-                                        {currency}
-                                    </option>
-                                ))}
-                            </select>
+                    {config.showProcessingCurrency ? (
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">Processing Currency</label>
+                                <select
+                                    name="processing_currency"
+                                    defaultValue={fields?.processing_currency || default_currency || ''}
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                >
+                                    <option value="">Select currency</option>
+                                    {currency_options.map((currency) => (
+                                        <option key={currency} value={currency}>
+                                            {currency}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-                    </div>
+                    ) : null}
 
-                    <div className="flex flex-wrap gap-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        {toggleFields.map((field) => (
-                            <label key={field} className="inline-flex items-center gap-2 text-sm text-slate-700">
-                                <input type="hidden" name={field} value="0" />
-                                <input type="checkbox" name={field} value="1" defaultChecked={Boolean(fields?.[field])} />
-                                {formatLabel(field)}
-                            </label>
-                        ))}
-                    </div>
+                    {toggleFields.length > 0 ? (
+                        <div className="flex flex-wrap gap-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            {toggleFields.map((field) => (
+                                <label key={field} className="inline-flex items-center gap-2 text-sm text-slate-700">
+                                    <input type="hidden" name={field} value="0" />
+                                    <input type="checkbox" name={field} value="1" defaultChecked={Boolean(fields?.[field])} />
+                                    {formatLabel(field)}
+                                </label>
+                            ))}
+                        </div>
+                    ) : null}
 
                     <div className="flex items-center gap-3 pt-2">
                         <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">

@@ -185,6 +185,7 @@ class PaymentGatewayController extends Controller
                 'name' => (string) $paymentGateway->name,
                 'driver' => ucfirst((string) $paymentGateway->driver),
                 'slug' => (string) $paymentGateway->slug,
+                'details_display' => $this->gatewayDetailsDisplay($paymentGateway),
                 'is_active' => $isGatewayActive,
                 'linked_methods' => $methodDetails->all(),
                 'accounting_summary' => $accountingSummary,
@@ -284,7 +285,11 @@ class PaymentGatewayController extends Controller
             case 'bkash':
                 $settings = array_merge($settings, [
                     'merchant_number' => $data['merchant_number'] ?? '',
+                    'instructions' => $data['instructions'] ?? '',
                     'payment_url' => $data['payment_url'] ?? '',
+                    'account_name' => $data['account_name'] ?? '',
+                    'account_number' => $data['account_number'] ?? '',
+                    'button_label' => $data['button_label'] ?? '',
                 ]);
                 break;
             case 'bkash_api':
@@ -411,6 +416,7 @@ class PaymentGatewayController extends Controller
                     'name' => $gateway->name,
                     'driver' => ucfirst((string) $gateway->driver),
                     'slug' => (string) $gateway->slug,
+                    'details_display' => $this->gatewayDetailsDisplay($gateway),
                     'is_active' => (bool) $gateway->is_active,
                     'accounting_summary' => $accountingSummary,
                     'linked_methods' => $methodDetails->all(),
@@ -587,6 +593,51 @@ class PaymentGatewayController extends Controller
     private function isCashGateway(string $gatewayName, string $gatewaySlug): bool
     {
         return str_contains($gatewaySlug, 'cash') || str_contains($gatewayName, 'cash');
+    }
+
+    private function gatewayDetailsDisplay(PaymentGateway $gateway): string
+    {
+        $settings = is_array($gateway->settings) ? $gateway->settings : [];
+        $detailValues = collect([
+            (string) ($settings['account_name'] ?? ''),
+            (string) ($settings['account_number'] ?? ''),
+            (string) ($settings['merchant_number'] ?? ''),
+            (string) ($settings['merchant_short_code'] ?? ''),
+            (string) ($settings['store_id'] ?? ''),
+            (string) ($settings['paypal_email'] ?? ''),
+            (string) ($settings['bank_name'] ?? ''),
+        ])
+            ->map(fn (string $value) => trim($value))
+            ->filter(fn (string $value) => $value !== '')
+            ->unique()
+            ->values();
+
+        $driverRaw = (string) $gateway->driver;
+        $driverLabel = $this->normalizeLookup($driverRaw) === 'bkash'
+            ? 'Manual bKash'
+            : $this->humanizeGatewayToken($driverRaw);
+        if ($detailValues->isNotEmpty()) {
+            return $driverLabel.' | '.$detailValues->take(2)->implode(' | ');
+        }
+
+        $slugLabel = $this->humanizeGatewayToken((string) $gateway->slug);
+        if ($this->normalizeLookup($driverLabel) === $this->normalizeLookup($slugLabel)) {
+            return $driverLabel;
+        }
+
+        return $driverLabel.' / '.$slugLabel;
+    }
+
+    private function humanizeGatewayToken(string $value): string
+    {
+        $normalized = str_replace(['_', '-'], ' ', trim($value));
+        $normalized = preg_replace('/\s+/', ' ', $normalized) ?? $normalized;
+
+        if ($normalized === '') {
+            return '--';
+        }
+
+        return ucwords(strtolower($normalized));
     }
 
     private function normalizeLookup(string $value): string

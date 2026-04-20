@@ -241,6 +241,11 @@ class AppServiceProvider extends ServiceProvider
                             ->where('status', 'answered')
                             ->count()
                         : 0,
+                    'unpaid_invoices' => $customer
+                        ? Invoice::where('customer_id', $customer->id)
+                            ->whereIn('status', ['unpaid', 'overdue'])
+                            ->count()
+                        : 0,
                     'unread_chat' => $unreadChatCount,
                     'task_badge' => $taskBadgeCount,
                 ]);
