@@ -33,7 +33,7 @@ export default function Pay({
     })();
 
     const gatewayTarget = selectedGateway?.driver === 'bkash' && selectedGateway?.payment_url ? '_blank' : '_self';
-    const showPaymentPanel = String(invoice.status || '').toLowerCase() !== 'paid';
+    const showPaymentPanel = Boolean(invoice.is_payable);
 
     return (
         <>

@@ -61,9 +61,13 @@ class InvoiceController extends Controller
         ]);
 
         $taxSetting = TaxSetting::current();
+        $paymentTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
         $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
+        $settledTotal = $paymentTotal + $creditTotal;
         $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
-        $payableAmount = max(0, (float) $invoice->total - $creditTotal);
+        $payableAmount = round(max(0, (float) $invoice->total - $settledTotal), 2);
+        $effectiveStatus = $this->effectiveInvoiceStatusFromOutstanding((string) $invoice->status, $payableAmount);
+        $isPayable = in_array($effectiveStatus, ['unpaid', 'overdue'], true) && $payableAmount > 0.009;
         $displayNumber = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
         $dateFormat = config('app.date_format', 'd-m-Y');
         $portalBranding = (array) $request->attributes->get('portalBranding', []);
@@ -79,9 +83,9 @@ class InvoiceController extends Controller
             'invoice' => [
                 'id' => $invoice->id,
                 'number_display' => $displayNumber,
-                'status' => (string) $invoice->status,
-                'status_label' => strtoupper((string) $invoice->status),
-                'status_class' => strtolower((string) $invoice->status),
+                'status' => $effectiveStatus,
+                'status_label' => strtoupper($effectiveStatus),
+                'status_class' => strtolower($effectiveStatus),
                 'issue_date_display' => $invoice->issue_date?->format($dateFormat) ?? '--',
                 'due_date_display' => $invoice->due_date?->format($dateFormat) ?? '--',
                 'paid_at_display' => $invoice->paid_at?->format($dateFormat),
@@ -107,7 +111,7 @@ class InvoiceController extends Controller
                     : null,
                 'discount_display' => (string) $invoice->currency.' '.number_format($creditTotal, 2),
                 'payable_amount_display' => (string) $invoice->currency.' '.number_format($payableAmount, 2),
-                'is_payable' => in_array($invoice->status, ['unpaid', 'overdue'], true),
+                'is_payable' => $isPayable,
                 'pending_proof' => (bool) $pendingProof,
                 'rejected_proof' => (bool) $rejectedProof,
             ],
@@ -150,7 +154,13 @@ class InvoiceController extends Controller
 
         abort_unless($invoice->customer_id === $customerId, 403);
 
-        if (! in_array($invoice->status, ['unpaid', 'overdue'], true)) {
+        $status = (string) $invoice->status;
+        $settledAmount = (float) $invoice->accountingEntries()
+            ->whereIn('type', ['payment', 'credit'])
+            ->sum('amount');
+        $outstandingAmount = round(max(0, (float) $invoice->total - $settledAmount), 2);
+
+        if (! in_array($status, ['unpaid', 'overdue'], true) || $outstandingAmount <= 0.009) {
             return redirect()->route('client.invoices.pay', $invoice)
                 ->with('status', 'This invoice is already paid.');
         }
@@ -163,7 +173,13 @@ class InvoiceController extends Controller
             ->where('is_active', true)
             ->findOrFail($data['payment_gateway_id']);
 
-        $attempt = $paymentService->createAttempt($invoice, $gateway);
+        try {
+            $attempt = $paymentService->createAttempt($invoice, $gateway);
+        } catch (\RuntimeException $exception) {
+            return redirect()->route('client.invoices.pay', $invoice)
+                ->with('status', $exception->getMessage());
+        }
+
         $result = $paymentService->initiate($attempt);
 
         if ($result['status'] === 'redirect' && ! empty($result['url'])) {
@@ -215,10 +231,26 @@ class InvoiceController extends Controller
             : null;
 
         if ($query && $status) {
-            $query->where('status', $status);
+            if (! in_array($status, ['paid', 'unpaid', 'overdue'], true)) {
+                $query->where('status', $status);
+            }
         }
 
         $invoices = $query?->get() ?? collect();
+        if ($status) {
+            $invoices = $invoices
+                ->filter(function (Invoice $invoice) use ($status) {
+                    if (! in_array($status, ['paid', 'unpaid', 'overdue'], true)) {
+                        return (string) $invoice->status === $status;
+                    }
+
+                    $outstandingAmount = $this->invoiceOutstandingAmount($invoice);
+                    $effectiveStatus = $this->effectiveInvoiceStatusFromOutstanding((string) $invoice->status, $outstandingAmount);
+
+                    return $effectiveStatus === $status;
+                })
+                ->values();
+        }
 
         return Inertia::render('Client/Invoices/Index', [
             'customer' => $customer,
@@ -238,6 +270,9 @@ class InvoiceController extends Controller
                 $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
                 $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
                 $paidAmount = $paidTotal + $creditTotal;
+                $outstandingAmount = round(max(0, (float) $invoice->total - $paidAmount), 2);
+                $effectiveStatus = $this->effectiveInvoiceStatusFromOutstanding((string) $invoice->status, $outstandingAmount);
+                $isPayable = in_array($effectiveStatus, ['unpaid', 'overdue'], true) && $outstandingAmount > 0.009;
                 $isPartial = $paidAmount > 0 && $paidAmount < (float) $invoice->total;
                 $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
                 $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
@@ -251,23 +286,16 @@ class InvoiceController extends Controller
                     'issue_date_display' => $invoice->issue_date?->format($dateFormat) ?? '--',
                     'due_date_display' => $invoice->due_date?->format($dateFormat) ?? '--',
                     'paid_at_display' => $invoice->paid_at?->format($dateFormat) ?? '--',
-                    'status' => (string) $invoice->status,
-                    'status_label' => ucfirst((string) $invoice->status),
-                    'status_class' => match ($invoice->status) {
-                        'paid' => 'bg-emerald-100 text-emerald-700',
-                        'unpaid' => 'bg-amber-100 text-amber-700',
-                        'overdue' => 'bg-rose-100 text-rose-700',
-                        'refunded' => 'bg-sky-100 text-sky-700',
-                        'cancelled' => 'bg-slate-100 text-slate-600',
-                        default => 'bg-slate-100 text-slate-600',
-                    },
+                    'status' => $effectiveStatus,
+                    'status_label' => ucfirst($effectiveStatus),
+                    'status_class' => $this->invoiceStatusClass($effectiveStatus),
                     'is_partial' => (bool) $isPartial,
                     'paid_amount_display' => (string) $invoice->currency.' '.number_format($paidAmount, 2),
                     'has_pending_proof' => (bool) $pendingProof,
                     'has_rejected_proof' => (bool) $rejectedProof,
                     'routes' => [
                         'show' => route('client.invoices.show', $invoice),
-                        'pay' => in_array($invoice->status, ['unpaid', 'overdue'], true)
+                        'pay' => $isPayable
                             ? route('client.invoices.pay', $invoice)
                             : null,
                         'manual' => ($pendingProof && $pendingProof->paymentAttempt)
@@ -289,5 +317,34 @@ class InvoiceController extends Controller
                 'refunded' => route('client.invoices.refunded'),
             ],
         ]);
+    }
+
+    private function invoiceOutstandingAmount(Invoice $invoice): float
+    {
+        $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
+        $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
+
+        return round(max(0, (float) $invoice->total - ($paidTotal + $creditTotal)), 2);
+    }
+
+    private function effectiveInvoiceStatusFromOutstanding(string $status, float $outstandingAmount): string
+    {
+        if (in_array($status, ['unpaid', 'overdue'], true) && $outstandingAmount <= 0.009) {
+            return 'paid';
+        }
+
+        return $status;
+    }
+
+    private function invoiceStatusClass(string $status): string
+    {
+        return match ($status) {
+            'paid' => 'bg-emerald-100 text-emerald-700',
+            'unpaid' => 'bg-amber-100 text-amber-700',
+            'overdue' => 'bg-rose-100 text-rose-700',
+            'refunded' => 'bg-sky-100 text-sky-700',
+            'cancelled' => 'bg-slate-100 text-slate-600',
+            default => 'bg-slate-100 text-slate-600',
+        };
     }
 }

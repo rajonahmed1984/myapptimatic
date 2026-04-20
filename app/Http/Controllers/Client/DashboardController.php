@@ -28,26 +28,33 @@ class DashboardController extends Controller
 
         $customer = $user->customer;
         $subscriptions = $customer?->subscriptions()->with('plan.product')->get() ?? collect();
-        $invoices = $customer?->invoices()->latest('issue_date')->limit(5)->get() ?? collect();
+        $invoices = $customer
+            ? $customer->invoices()
+                ->with('accountingEntries')
+                ->latest('issue_date')
+                ->limit(5)
+                ->get()
+            : collect();
         $licenses = $customer?->licenses()
             ->with(['product', 'subscription.plan', 'domains'])
             ->get() ?? collect();
-        $openInvoices = $customer
+        $invoiceCandidates = $customer
             ? $customer->invoices()
+                ->with('accountingEntries')
                 ->whereIn('status', ['unpaid', 'overdue'])
                 ->orderBy('due_date')
                 ->get()
             : collect();
-        $overdueInvoices = $customer
-            ? $customer->invoices()
-                ->where('status', 'overdue')
-                ->orderBy('due_date')
-                ->get()
-            : collect();
+        $openInvoices = $invoiceCandidates
+            ->filter(fn ($invoice) => $this->invoiceOutstandingAmount($invoice) > 0.009)
+            ->values();
+        $overdueInvoices = $openInvoices
+            ->filter(fn ($invoice) => (string) $invoice->status === 'overdue')
+            ->values();
         $openInvoiceCount = $openInvoices->count();
         $overdueInvoiceCount = $overdueInvoices->count();
-        $openInvoiceBalance = $openInvoices->sum('total');
-        $overdueInvoiceBalance = $overdueInvoices->sum('total');
+        $openInvoiceBalance = round($openInvoices->sum(fn ($invoice) => $this->invoiceOutstandingAmount($invoice)), 2);
+        $overdueInvoiceBalance = round($overdueInvoices->sum(fn ($invoice) => $this->invoiceOutstandingAmount($invoice)), 2);
         $nextOverdueInvoice = $overdueInvoices->first();
         $nextOpenInvoice = $openInvoices->first();
         $ticketOpenCount = $customer
@@ -126,15 +133,18 @@ class DashboardController extends Controller
                 ];
             })->values()->all(),
             'invoices' => $invoices->map(function ($invoice) use ($dateFormat) {
+                $outstandingAmount = $this->invoiceOutstandingAmount($invoice);
+                $effectiveStatus = $this->effectiveInvoiceStatusFromOutstanding((string) $invoice->status, $outstandingAmount);
+
                 return [
                     'id' => $invoice->id,
                     'number' => is_numeric($invoice->number) ? $invoice->number : $invoice->id,
                     'currency' => $invoice->currency,
                     'total' => (float) $invoice->total,
                     'due_date_display' => $invoice->due_date?->format($dateFormat) ?? '--',
-                    'status' => $invoice->status,
-                    'status_label' => ucfirst((string) $invoice->status),
-                    'can_pay' => in_array($invoice->status, ['unpaid', 'overdue'], true),
+                    'status' => $effectiveStatus,
+                    'status_label' => ucfirst($effectiveStatus),
+                    'can_pay' => in_array($effectiveStatus, ['unpaid', 'overdue'], true) && $outstandingAmount > 0.009,
                     'routes' => [
                         'pay' => route('client.invoices.pay', $invoice),
                     ],
@@ -208,6 +218,23 @@ class DashboardController extends Controller
                 'invoices_index' => route('client.invoices.index'),
             ],
         ]);
+    }
+
+    private function invoiceOutstandingAmount($invoice): float
+    {
+        $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
+        $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
+
+        return round(max(0, (float) $invoice->total - ($paidTotal + $creditTotal)), 2);
+    }
+
+    private function effectiveInvoiceStatusFromOutstanding(string $status, float $outstandingAmount): string
+    {
+        if (in_array($status, ['unpaid', 'overdue'], true) && $outstandingAmount <= 0.009) {
+            return 'paid';
+        }
+
+        return $status;
     }
 
     private function projectSpecificDashboard(Request $request, $user, TaskQueryService $taskQueryService): InertiaResponse

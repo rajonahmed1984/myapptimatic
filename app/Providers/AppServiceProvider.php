@@ -204,6 +204,7 @@ class AppServiceProvider extends ServiceProvider
                 $customer = $user?->customer;
                 $unreadChatCount = 0;
                 $taskBadgeCount = 0;
+                $unpaidInvoiceCount = 0;
 
                 if ($user) {
                     $projectIds = collect();
@@ -235,17 +236,37 @@ class AppServiceProvider extends ServiceProvider
                     }
                 }
 
+                if ($customer) {
+                    $candidateInvoices = Invoice::query()
+                        ->where('customer_id', $customer->id)
+                        ->whereIn('status', ['unpaid', 'overdue'])
+                        ->get(['id', 'total']);
+
+                    if ($candidateInvoices->isNotEmpty()) {
+                        $settledTotals = DB::table('accounting_entries')
+                            ->select('invoice_id', DB::raw("SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) as settled_total"))
+                            ->whereIn('invoice_id', $candidateInvoices->pluck('id')->all())
+                            ->groupBy('invoice_id')
+                            ->pluck('settled_total', 'invoice_id');
+
+                        $unpaidInvoiceCount = $candidateInvoices
+                            ->filter(function (Invoice $invoice) use ($settledTotals) {
+                                $settled = (float) ($settledTotals[$invoice->id] ?? 0);
+                                $outstanding = round(max(0, (float) $invoice->total - $settled), 2);
+
+                                return $outstanding > 0;
+                            })
+                            ->count();
+                    }
+                }
+
                 $view->with('clientHeaderStats', [
                     'pending_admin_replies' => $customer
                         ? SupportTicket::where('customer_id', $customer->id)
                             ->where('status', 'answered')
                             ->count()
                         : 0,
-                    'unpaid_invoices' => $customer
-                        ? Invoice::where('customer_id', $customer->id)
-                            ->whereIn('status', ['unpaid', 'overdue'])
-                            ->count()
-                        : 0,
+                    'unpaid_invoices' => $unpaidInvoiceCount,
                     'unread_chat' => $unreadChatCount,
                     'task_badge' => $taskBadgeCount,
                 ]);

@@ -20,6 +20,14 @@ class PaymentService
     public function createAttempt(Invoice $invoice, PaymentGateway $gateway): PaymentAttempt
     {
         $currency = strtoupper($invoice->currency ?? Currency::DEFAULT);
+        $settledAmount = (float) $invoice->accountingEntries()
+            ->whereIn('type', ['payment', 'credit'])
+            ->sum('amount');
+        $payableAmount = round(max(0, (float) $invoice->total - $settledAmount), 2);
+
+        if ($payableAmount <= 0.009) {
+            throw new \RuntimeException('Invoice has no outstanding balance.');
+        }
         
         // Ensure currency is allowed
         if (!Currency::isAllowed($currency)) {
@@ -31,7 +39,7 @@ class PaymentService
             'customer_id' => $invoice->customer_id,
             'payment_gateway_id' => $gateway->id,
             'status' => 'pending',
-            'amount' => (float) $invoice->total,
+            'amount' => $payableAmount,
             'currency' => $currency,
             'gateway_reference' => null,
         ]);
@@ -165,6 +173,9 @@ class PaymentService
             $hasUnpaidInvoices = \App\Models\Invoice::query()
                 ->where('customer_id', $customerId)
                 ->whereIn('status', ['unpaid', 'overdue'])
+                ->whereRaw(
+                    "(COALESCE(total, 0) - COALESCE((SELECT SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) FROM accounting_entries WHERE accounting_entries.invoice_id = invoices.id), 0)) > 0.009"
+                )
                 ->exists();
 
             if (! $hasUnpaidInvoices) {
