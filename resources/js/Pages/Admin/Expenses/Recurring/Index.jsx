@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { formatDate } from '@/utils/datetime';
 
@@ -30,6 +30,8 @@ export default function Index({
 }) {
     const { csrf_token: csrfToken } = usePage().props;
     const [openActionId, setOpenActionId] = useState(null);
+    const actionOpenIcon = '\u25B2';
+    const actionClosedIcon = '\u25BC';
     const [advanceModal, setAdvanceModal] = useState({
         open: false,
         action: '',
@@ -112,13 +114,13 @@ export default function Index({
                 <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white/80 px-3 py-3">
                     <table className="min-w-full text-sm text-slate-700">
                         <thead>
-                            <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <th className="px-3 py-2">ID</th>
                                 <th className="px-3 py-2">Description</th>
                                 <th className="px-3 py-2 whitespace-nowrap">Amount / Advance / Due</th>
                                 <th className="px-3 py-2">Next due</th>
                                 <th className="px-3 py-2">Status</th>
-                                <th className="px-3 py-2 text-right">Actions</th>
+                                <th className="px-3 py-2 text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -171,7 +173,7 @@ export default function Index({
                                                     }
                                                 >
                                                     Actions
-                                                    <span className="text-[10px] text-slate-400">{openActionId === recurring.id ? 'â–²' : 'â–¼'}</span>
+                                                    <span className="text-[10px] text-slate-400">{openActionId === recurring.id ? actionOpenIcon : actionClosedIcon}</span>
                                                 </button>
 
                                                 {openActionId === recurring.id ? (
@@ -388,3 +390,4 @@ export default function Index({
         </>
     );
 }
+

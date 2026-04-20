@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Enums\MailCategory;
 use App\Models\Invoice;
+use App\Models\License;
 use App\Models\Order;
 use App\Models\PaymentProof;
 use App\Models\Setting;
@@ -175,6 +176,13 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 $apptimaticEmailUnread = $this->resolveApptimaticEmailUnreadCount(request());
+                $verifiedActiveSyncedLicenses = License::query()
+                    ->where('status', 'active')
+                    ->whereNotNull('last_check_at')
+                    ->whereNotNull('last_verified_at')
+                    ->where('last_check_at', '>=', now()->subHours(48))
+                    ->whereColumn('last_verified_at', '>=', 'last_check_at')
+                    ->count();
 
                 $view->with('adminHeaderStats', [
                     'pending_orders' => Order::where('status', 'pending')->count(),
@@ -186,6 +194,7 @@ class AppServiceProvider extends ServiceProvider
                     'tasks_badge' => $adminTaskBadge,
                     'unread_chat' => $adminUnreadChat,
                     'apptimatic_email_unread' => $apptimaticEmailUnread,
+                    'verified_active_synced_licenses' => $verifiedActiveSyncedLicenses,
                 ]);
                 $view->with('employeeHeaderStats', $employeeHeaderStats);
             });
@@ -299,6 +308,7 @@ class AppServiceProvider extends ServiceProvider
                 'open_support_tickets' => 0,
                 'pending_manual_payments' => 0,
                 'pending_leave_requests' => 0,
+                'verified_active_synced_licenses' => 0,
             ]);
             View::share('employeeHeaderStats', [
                 'task_badge' => 0,

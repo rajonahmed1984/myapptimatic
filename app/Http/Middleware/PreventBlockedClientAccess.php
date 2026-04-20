@@ -20,10 +20,16 @@ class PreventBlockedClientAccess
     {
         $customer = $request->user()?->customer;
         $blockStatus = $this->accessBlockService->invoiceBlockStatus($customer);
+        $isManualInactiveBlock = ($blockStatus['reason'] ?? null) === 'customer_inactive';
+
+        if (! $isManualInactiveBlock) {
+            // Invoice due/overdue should never hard-block client area access.
+            $blockStatus['blocked'] = false;
+        }
 
         View::share('clientAccessBlock', $blockStatus);
 
-        if ($blockStatus['blocked'] && ! $this->allowsRoute($request)) {
+        if ($isManualInactiveBlock && ! $this->allowsRoute($request)) {
             $message = $blockStatus['reason'] === 'customer_inactive'
                 ? 'Your account is inactive. Please contact admin for access.'
                 : 'Access is limited. Please contact admin for support.';

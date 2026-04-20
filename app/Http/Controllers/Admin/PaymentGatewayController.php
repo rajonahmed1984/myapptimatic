@@ -3,12 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountingEntry;
+use App\Models\CommissionPayout;
+use App\Models\EmployeePayout;
 use App\Models\PaymentGateway;
+use App\Models\PaymentMethod;
+use App\Models\PayrollAuditLog;
+use App\Models\PayrollItem;
 use App\Models\Setting;
 use App\Support\Currency;
 use App\Support\SystemLogger;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -17,12 +26,190 @@ class PaymentGatewayController extends Controller
 {
     public function index(Request $request): InertiaResponse
     {
-        $gateways = PaymentGateway::query()->orderBy('sort_order')->get();
+        $gateways = PaymentGateway::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+        $methods = PaymentMethod::catalog();
+
+        $methodLedgerMap = [];
+        foreach ($methods as $method) {
+            $methodLedgerMap[$method->id] = $this->ledgerEntriesForMethod($method);
+        }
+
+        $accountingByGateway = collect();
+        $gatewayIds = $gateways->pluck('id')->filter()->values();
+        if ($gatewayIds->isNotEmpty()) {
+            $accountingByGateway = AccountingEntry::query()
+                ->whereIn('payment_gateway_id', $gatewayIds->all())
+                ->get(['id', 'payment_gateway_id', 'type', 'amount', 'currency', 'entry_date'])
+                ->groupBy('payment_gateway_id');
+        }
 
         return Inertia::render(
             'Admin/PaymentGateways/Index',
-            $this->indexInertiaProps($gateways)
+            $this->indexInertiaProps($gateways, $methods, $methodLedgerMap, $accountingByGateway)
         );
+    }
+
+    public function show(PaymentGateway $paymentGateway): InertiaResponse
+    {
+        $dateFormat = (string) config('app.date_format', 'd-m-Y');
+        $methods = PaymentMethod::catalog();
+        $isGatewayActive = (bool) $paymentGateway->is_active;
+
+        $matchedMethods = $isGatewayActive
+            ? $this->matchedMethodsForGateway($paymentGateway, $methods)
+            : collect();
+
+        $methodLedgerMap = [];
+        foreach ($matchedMethods as $method) {
+            $methodLedgerMap[$method->id] = $this->ledgerEntriesForMethod($method);
+        }
+
+        $legacyEntries = $matchedMethods
+            ->flatMap(fn (PaymentMethod $method) => $methodLedgerMap[$method->id] ?? collect())
+            ->values();
+        $legacyLastEntry = $legacyEntries->sortByDesc(fn (array $entry) => (string) ($entry['date'] ?? ''))->first();
+        $legacyTotals = $this->totalsByCurrencyFromLedgerEntries($legacyEntries);
+
+        $methodDetails = $matchedMethods->map(function (PaymentMethod $method) use ($methodLedgerMap, $dateFormat) {
+            $entries = collect($methodLedgerMap[$method->id] ?? [])->values();
+            $lastEntry = $entries->sortByDesc(fn (array $entry) => (string) ($entry['date'] ?? ''))->first();
+
+            return [
+                'id' => $method->id,
+                'name' => (string) $method->name,
+                'code' => (string) $method->code,
+                'account_details' => (string) ($method->account_details ?? '--'),
+                'is_active' => (bool) $method->is_active,
+                'entries_count' => $entries->count(),
+                'total_display' => $this->formatCurrencyTotalsFromEntries($entries),
+                'last_date_display' => ! empty($lastEntry['date'])
+                    ? Carbon::parse((string) $lastEntry['date'])->format($dateFormat)
+                    : '--',
+            ];
+        })->values();
+
+        $gatewayAccountingEntries = $isGatewayActive
+            ? AccountingEntry::query()
+                ->with(['customer:id,name', 'invoice:id,number'])
+                ->where('payment_gateway_id', $paymentGateway->id)
+                ->get([
+                    'id',
+                    'payment_gateway_id',
+                    'type',
+                    'amount',
+                    'currency',
+                    'entry_date',
+                    'reference',
+                    'description',
+                    'customer_id',
+                    'invoice_id',
+                ])
+            : collect();
+
+        $accountingSummary = $this->accountingSummaryForGateway($gatewayAccountingEntries, $dateFormat);
+        $gatewayInflowTotals = $this->totalsByCurrencyFromAccountingEntries($gatewayAccountingEntries, false);
+        $gatewayOutflowTotals = $this->totalsByCurrencyFromAccountingEntries($gatewayAccountingEntries, true);
+        $combinedOutflowTotals = $this->mergeCurrencyTotals($gatewayOutflowTotals, $legacyTotals);
+        $latestActivityDate = $this->resolveLatestActivityDate(
+            $gatewayAccountingEntries,
+            (string) ($legacyLastEntry['date'] ?? '')
+        );
+
+        $accountingRows = $gatewayAccountingEntries
+            ->map(function (AccountingEntry $entry) use ($dateFormat) {
+                $isOutflow = $entry->isOutflow();
+                $currency = strtoupper((string) $entry->currency);
+                $amountDisplay = number_format((float) $entry->amount, 2).' '.$currency;
+
+                return [
+                    'id' => 'acc-'.$entry->id,
+                    'date_iso' => $entry->entry_date?->toDateString() ?? '',
+                    'date_display' => $entry->entry_date?->format($dateFormat) ?? '--',
+                    'source' => 'Gateway',
+                    'type_label' => ucfirst((string) $entry->type),
+                    'party' => (string) ($entry->customer?->name ?? '--'),
+                    'reference' => (string) ($entry->reference ?: ($entry->invoice?->number ?? '--')),
+                    'description' => (string) ($entry->description ?: '--'),
+                    'in_display' => $isOutflow ? '-' : $amountDisplay,
+                    'out_display' => $isOutflow ? $amountDisplay : '-',
+                    'sort_key' => sprintf('%s|2|%010d', $entry->entry_date?->toDateString() ?? '', (int) $entry->id),
+                ];
+            })
+            ->values();
+
+        $methodRows = $matchedMethods
+            ->flatMap(function (PaymentMethod $method) use ($methodLedgerMap, $dateFormat) {
+                $entries = collect($methodLedgerMap[$method->id] ?? [])->values();
+
+                return $entries->map(function (array $entry, int $index) use ($method, $dateFormat) {
+                    $date = (string) ($entry['date'] ?? '');
+                    $parsedDate = trim($date) !== '' ? Carbon::parse($date) : null;
+                    $currency = strtoupper((string) ($entry['currency'] ?? 'BDT'));
+                    $amountDisplay = number_format((float) ($entry['amount'] ?? 0), 2).' '.$currency;
+
+                    return [
+                        'id' => 'method-'.$method->id.'-'.$index,
+                        'date_iso' => $parsedDate?->toDateString() ?? '',
+                        'date_display' => $parsedDate?->format($dateFormat) ?? '--',
+                        'source' => 'Method',
+                        'type_label' => (string) ($entry['type'] ?? 'Method payout'),
+                        'party' => (string) ($entry['party'] ?? '--'),
+                        'reference' => (string) ($entry['reference'] ?? '--'),
+                        'description' => 'Matched method: '.$method->name,
+                        'in_display' => '-',
+                        'out_display' => $amountDisplay,
+                        'sort_key' => sprintf('%s|1|%010d', $parsedDate?->toDateString() ?? '', $index),
+                    ];
+                });
+            })
+            ->values();
+
+        $entries = $accountingRows
+            ->concat($methodRows)
+            ->sortByDesc(fn (array $entry) => (string) ($entry['sort_key'] ?? ''))
+            ->map(function (array $entry) {
+                unset($entry['sort_key']);
+
+                return $entry;
+            })
+            ->values()
+            ->all();
+
+        return Inertia::render('Admin/PaymentGateways/Show', [
+            'pageTitle' => (string) $paymentGateway->name.' Ledger',
+            'gateway' => [
+                'id' => $paymentGateway->id,
+                'name' => (string) $paymentGateway->name,
+                'driver' => ucfirst((string) $paymentGateway->driver),
+                'slug' => (string) $paymentGateway->slug,
+                'is_active' => $isGatewayActive,
+                'linked_methods' => $methodDetails->all(),
+                'accounting_summary' => $accountingSummary,
+                'legacy_summary' => [
+                    'entries_count' => $legacyEntries->count(),
+                    'total_display' => $this->formatCurrencyTotalsFromEntries($legacyEntries),
+                    'last_date_display' => ! empty($legacyLastEntry['date'])
+                        ? Carbon::parse((string) $legacyLastEntry['date'])->format($dateFormat)
+                        : '--',
+                ],
+                'financial_summary' => [
+                    'transactions_count' => $gatewayAccountingEntries->count() + $legacyEntries->count(),
+                    'tk_in_display' => $this->formatCurrencyTotals($gatewayInflowTotals),
+                    'tk_out_display' => $this->formatCurrencyTotals($combinedOutflowTotals),
+                    'gateway_out_display' => $this->formatCurrencyTotals($gatewayOutflowTotals),
+                    'method_out_display' => $this->formatCurrencyTotals($legacyTotals),
+                    'last_activity_display' => $latestActivityDate?->format($dateFormat) ?? '--',
+                ],
+            ],
+            'entries' => $entries,
+            'routes' => [
+                'index' => route('admin.payment-gateways.index'),
+                'edit' => route('admin.payment-gateways.edit', $paymentGateway),
+            ],
+        ]);
     }
 
     public function edit(PaymentGateway $paymentGateway): InertiaResponse
@@ -167,22 +354,404 @@ class PaymentGatewayController extends Controller
             ->with('status', 'Payment gateway updated.');
     }
 
-    private function indexInertiaProps($gateways): array
+    private function indexInertiaProps(
+        Collection $gateways,
+        Collection $methods,
+        array $methodLedgerMap,
+        Collection $accountingByGateway
+    ): array
     {
+        $dateFormat = (string) config('app.date_format', 'd-m-Y');
+
         return [
             'pageTitle' => 'Payment Gateways',
-            'gateways' => collect($gateways)->map(function (PaymentGateway $gateway) {
+            'gateways' => collect($gateways)->map(function (PaymentGateway $gateway) use ($methods, $methodLedgerMap, $accountingByGateway, $dateFormat) {
+                $isGatewayActive = (bool) $gateway->is_active;
+                $matchedMethods = $isGatewayActive
+                    ? $this->matchedMethodsForGateway($gateway, $methods)
+                    : collect();
+                $legacyEntries = $matchedMethods
+                    ->flatMap(fn (PaymentMethod $method) => $methodLedgerMap[$method->id] ?? collect())
+                    ->values();
+                $legacyLastEntry = $legacyEntries->sortByDesc(fn (array $entry) => (string) ($entry['date'] ?? ''))->first();
+                $legacyTotals = $this->totalsByCurrencyFromLedgerEntries($legacyEntries);
+
+                $methodDetails = $matchedMethods->map(function (PaymentMethod $method) use ($methodLedgerMap, $dateFormat) {
+                    $entries = collect($methodLedgerMap[$method->id] ?? [])->values();
+                    $lastEntry = $entries->sortByDesc(fn (array $entry) => (string) ($entry['date'] ?? ''))->first();
+
+                    return [
+                        'id' => $method->id,
+                        'name' => (string) $method->name,
+                        'code' => (string) $method->code,
+                        'account_details' => (string) ($method->account_details ?? '--'),
+                        'is_active' => (bool) $method->is_active,
+                        'entries_count' => $entries->count(),
+                        'total_display' => $this->formatCurrencyTotalsFromEntries($entries),
+                        'last_date_display' => ! empty($lastEntry['date'])
+                            ? Carbon::parse((string) $lastEntry['date'])->format($dateFormat)
+                            : '--',
+                    ];
+                })->values();
+
+                $gatewayAccountingEntries = $isGatewayActive
+                    ? collect($accountingByGateway->get($gateway->id, []))->values()
+                    : collect();
+                $accountingSummary = $this->accountingSummaryForGateway($gatewayAccountingEntries, $dateFormat);
+                $gatewayInflowTotals = $this->totalsByCurrencyFromAccountingEntries($gatewayAccountingEntries, false);
+                $gatewayOutflowTotals = $this->totalsByCurrencyFromAccountingEntries($gatewayAccountingEntries, true);
+                $combinedOutflowTotals = $this->mergeCurrencyTotals($gatewayOutflowTotals, $legacyTotals);
+                $latestActivityDate = $this->resolveLatestActivityDate(
+                    $gatewayAccountingEntries,
+                    (string) ($legacyLastEntry['date'] ?? '')
+                );
+
                 return [
                     'id' => $gateway->id,
                     'name' => $gateway->name,
                     'driver' => ucfirst((string) $gateway->driver),
+                    'slug' => (string) $gateway->slug,
                     'is_active' => (bool) $gateway->is_active,
+                    'accounting_summary' => $accountingSummary,
+                    'linked_methods' => $methodDetails->all(),
+                    'legacy_summary' => [
+                        'entries_count' => $legacyEntries->count(),
+                        'total_display' => $this->formatCurrencyTotalsFromEntries($legacyEntries),
+                        'last_date_display' => ! empty($legacyLastEntry['date'])
+                            ? Carbon::parse((string) $legacyLastEntry['date'])->format($dateFormat)
+                            : '--',
+                    ],
+                    'financial_summary' => [
+                        'transactions_count' => $gatewayAccountingEntries->count() + $legacyEntries->count(),
+                        'tk_in_display' => $this->formatCurrencyTotals($gatewayInflowTotals),
+                        'tk_out_display' => $this->formatCurrencyTotals($combinedOutflowTotals),
+                        'gateway_out_display' => $this->formatCurrencyTotals($gatewayOutflowTotals),
+                        'method_out_display' => $this->formatCurrencyTotals($legacyTotals),
+                        'last_activity_display' => $latestActivityDate?->format($dateFormat) ?? '--',
+                    ],
                     'routes' => [
+                        'view' => route('admin.payment-gateways.show', $gateway),
                         'edit' => route('admin.payment-gateways.edit', $gateway),
                     ],
                 ];
             })->values()->all(),
         ];
+    }
+
+    private function accountingSummaryForGateway(Collection $entries, string $dateFormat): array
+    {
+        $inflowByCurrency = $this->totalsByCurrencyFromAccountingEntries($entries, false);
+        $outflowByCurrency = $this->totalsByCurrencyFromAccountingEntries($entries, true);
+        $latestEntry = $entries
+            ->sortByDesc(fn (AccountingEntry $entry) => (string) ($entry->entry_date?->toDateString() ?? ''))
+            ->first();
+
+        return [
+            'entries_count' => $entries->count(),
+            'in_display' => $this->formatCurrencyTotals($inflowByCurrency),
+            'out_display' => $this->formatCurrencyTotals($outflowByCurrency),
+            'latest_entry_display' => $latestEntry?->entry_date?->format($dateFormat) ?? '--',
+        ];
+    }
+
+    private function totalsByCurrencyFromAccountingEntries(Collection $entries, bool $outflow): array
+    {
+        return $entries
+            ->filter(function (AccountingEntry $entry) use ($outflow) {
+                return $outflow ? $entry->isOutflow() : ! $entry->isOutflow();
+            })
+            ->groupBy(fn (AccountingEntry $entry) => strtoupper((string) $entry->currency))
+            ->map(fn (Collection $rows) => (float) $rows->sum('amount'))
+            ->all();
+    }
+
+    private function totalsByCurrencyFromLedgerEntries(Collection $entries): array
+    {
+        return $entries
+            ->groupBy(fn (array $entry) => strtoupper((string) ($entry['currency'] ?? 'BDT')))
+            ->map(fn (Collection $rows) => (float) $rows->sum('amount'))
+            ->all();
+    }
+
+    private function mergeCurrencyTotals(array ...$totalSets): array
+    {
+        $merged = [];
+
+        foreach ($totalSets as $totalsByCurrency) {
+            foreach ($totalsByCurrency as $currency => $amount) {
+                $key = strtoupper((string) $currency);
+                $merged[$key] = (float) ($merged[$key] ?? 0) + (float) $amount;
+            }
+        }
+
+        return $merged;
+    }
+
+    private function resolveLatestActivityDate(Collection $accountingEntries, string $legacyDate): ?Carbon
+    {
+        $latestAccountingDate = $accountingEntries
+            ->sortByDesc(fn (AccountingEntry $entry) => (string) ($entry->entry_date?->toDateString() ?? ''))
+            ->first()?->entry_date;
+        $latestLegacyDate = trim($legacyDate) !== '' ? Carbon::parse($legacyDate) : null;
+
+        if ($latestAccountingDate === null) {
+            return $latestLegacyDate;
+        }
+
+        if ($latestLegacyDate === null) {
+            return Carbon::parse($latestAccountingDate);
+        }
+
+        return Carbon::parse($latestAccountingDate)->greaterThan($latestLegacyDate)
+            ? Carbon::parse($latestAccountingDate)
+            : $latestLegacyDate;
+    }
+
+    private function matchedMethodsForGateway(PaymentGateway $gateway, Collection $methods): Collection
+    {
+        $settings = is_array($gateway->settings) ? $gateway->settings : [];
+        $gatewayName = $this->normalizeLookup((string) $gateway->name);
+        $gatewaySlug = $this->normalizeLookup((string) $gateway->slug);
+        $gatewayDriver = $this->normalizeLookup((string) $gateway->driver);
+        $gatewayAccountNumber = $this->normalizeLookup((string) ($settings['account_number'] ?? ''));
+        $isCashGateway = $this->isCashGateway($gatewayName, $gatewaySlug);
+
+        $strictMatches = $methods->filter(function (PaymentMethod $method) use ($gatewayName, $gatewaySlug, $gatewayDriver, $gatewayAccountNumber, $isCashGateway) {
+            $code = $this->normalizeLookup((string) $method->code);
+            $name = $this->normalizeLookup((string) $method->name);
+            $accountDetails = $this->normalizeLookup((string) ($method->account_details ?? ''));
+
+            if ($isCashGateway) {
+                return $code === 'cash'
+                    || $name === 'cash'
+                    || str_contains($code, 'cash')
+                    || str_contains($name, 'cash');
+            }
+
+            if ($code !== '' && ($code === $gatewaySlug || $code === $gatewayDriver)) {
+                return true;
+            }
+
+            if ($name !== '' && ($name === $gatewayName || $gatewayName === $code)) {
+                return true;
+            }
+
+            if (
+                $name !== ''
+                && strlen($name) >= 6
+                && (str_contains($gatewayName, $name) || str_contains($name, $gatewayName))
+            ) {
+                return true;
+            }
+
+            if (
+                $gatewayAccountNumber !== ''
+                && $accountDetails !== ''
+                && (str_contains($accountDetails, $gatewayAccountNumber) || str_contains($gatewayAccountNumber, $accountDetails))
+            ) {
+                return true;
+            }
+
+            return false;
+        })->values();
+
+        if ($strictMatches->isNotEmpty()) {
+            return $strictMatches;
+        }
+
+        $keywordMatches = $methods->filter(function (PaymentMethod $method) use ($gatewayName, $gatewaySlug, $gatewayDriver, $isCashGateway) {
+            $haystack = $this->normalizeLookup((string) $method->name.' '.(string) $method->code);
+
+            if ($isCashGateway) {
+                return str_contains($haystack, 'cash');
+            }
+
+            if (str_contains($gatewayDriver, 'bkash') || str_contains($gatewaySlug, 'bkash') || str_contains($gatewayName, 'bkash')) {
+                return str_contains($haystack, 'bkash') || str_contains($haystack, 'mobile');
+            }
+
+            if (str_contains($gatewayDriver, 'paypal') || str_contains($gatewaySlug, 'paypal') || str_contains($gatewayName, 'paypal')) {
+                return str_contains($haystack, 'paypal');
+            }
+
+            if (str_contains($gatewayName, 'bank') || str_contains($gatewaySlug, 'bank')) {
+                return str_contains($haystack, 'bank');
+            }
+
+            return false;
+        })->values();
+
+        return $keywordMatches;
+    }
+
+    private function isCashGateway(string $gatewayName, string $gatewaySlug): bool
+    {
+        return str_contains($gatewaySlug, 'cash') || str_contains($gatewayName, 'cash');
+    }
+
+    private function normalizeLookup(string $value): string
+    {
+        return strtolower(preg_replace('/[^a-z0-9]/', '', $value) ?? '');
+    }
+
+    private function ledgerEntriesForMethod(PaymentMethod $method): Collection
+    {
+        $code = (string) $method->code;
+
+        $employeePayouts = EmployeePayout::query()
+            ->with('employee:id,name')
+            ->where('payout_method', $code)
+            ->get()
+            ->map(function (EmployeePayout $row) {
+                return [
+                    'date' => optional($row->paid_at)->toDateString() ?? optional($row->created_at)->toDateString(),
+                    'type' => 'Employee payout',
+                    'party' => (string) ($row->employee?->name ?? 'N/A'),
+                    'reference' => (string) ($row->reference ?? '--'),
+                    'amount' => (float) ($row->amount ?? 0),
+                    'currency' => (string) ($row->currency ?? 'BDT'),
+                ];
+            });
+
+        $commissionPayouts = CommissionPayout::query()
+            ->with('salesRep:id,name')
+            ->where('payout_method', $code)
+            ->where('status', 'paid')
+            ->get()
+            ->map(function (CommissionPayout $row) {
+                return [
+                    'date' => optional($row->paid_at)->toDateString() ?? optional($row->created_at)->toDateString(),
+                    'type' => 'Commission payout',
+                    'party' => (string) ($row->salesRep?->name ?? 'N/A'),
+                    'reference' => (string) ($row->reference ?? '--'),
+                    'amount' => (float) ($row->total_amount ?? 0),
+                    'currency' => (string) ($row->currency ?? 'BDT'),
+                ];
+            });
+
+        $payrollPayments = PayrollAuditLog::query()
+            ->with('payrollItem.employee:id,name', 'payrollItem:id,employee_id,currency')
+            ->whereIn('event', ['payment_partial', 'payment_completed'])
+            ->get()
+            ->filter(function (PayrollAuditLog $log) use ($method) {
+                $reference = (string) data_get($log->meta, 'reference', '');
+
+                return $this->matchesMethodReference($reference, $method);
+            })
+            ->map(function (PayrollAuditLog $log) {
+                $paidAt = data_get($log->meta, 'paid_at');
+                $date = $paidAt ? Carbon::parse((string) $paidAt)->toDateString() : optional($log->created_at)->toDateString();
+
+                return [
+                    'payroll_item_id' => (int) ($log->payroll_item_id ?? 0),
+                    'date' => $date,
+                    'type' => 'Payroll payment',
+                    'party' => (string) ($log->payrollItem?->employee?->name ?? 'N/A'),
+                    'reference' => (string) (data_get($log->meta, 'reference') ?? '--'),
+                    'amount' => (float) (data_get($log->meta, 'amount') ?? 0),
+                    'currency' => (string) ($log->payrollItem?->currency ?? 'BDT'),
+                ];
+            });
+
+        $loggedPayrollItemIds = $payrollPayments
+            ->map(fn (array $row) => (int) ($row['payroll_item_id'] ?? 0))
+            ->filter(fn (int $id) => $id > 0)
+            ->values();
+
+        $legacyPayrollPayments = PayrollItem::query()
+            ->with('employee:id,name')
+            ->where(function ($query) use ($method) {
+                $query->where('payment_reference', $method->name)
+                    ->orWhere('payment_reference', 'like', $method->name.' - %')
+                    ->orWhere('payment_reference', ucfirst((string) $method->code))
+                    ->orWhere('payment_reference', 'like', ucfirst((string) $method->code).' - %');
+            })
+            ->where(function ($query) {
+                $query->where('paid_amount', '>', 0)
+                    ->orWhere('status', 'paid');
+            })
+            ->get()
+            ->filter(function (PayrollItem $item) use ($loggedPayrollItemIds) {
+                return ! $loggedPayrollItemIds->contains((int) $item->id);
+            })
+            ->map(function (PayrollItem $item) {
+                $amount = (float) ($item->paid_amount ?? 0);
+                if ($amount <= 0 && $item->status === 'paid') {
+                    $amount = (float) ($item->net_pay ?? 0);
+                }
+
+                return [
+                    'date' => optional($item->paid_at)->toDateString() ?? optional($item->updated_at)->toDateString(),
+                    'type' => 'Payroll payment',
+                    'party' => (string) ($item->employee?->name ?? 'N/A'),
+                    'reference' => (string) ($item->payment_reference ?? '--'),
+                    'amount' => max(0, $amount),
+                    'currency' => (string) ($item->currency ?? 'BDT'),
+                ];
+            });
+
+        return $employeePayouts
+            ->concat($commissionPayouts)
+            ->concat($payrollPayments)
+            ->concat($legacyPayrollPayments)
+            ->sortByDesc(fn (array $row) => (string) $row['date'])
+            ->values();
+    }
+
+    private function matchesMethodReference(string $reference, PaymentMethod $method): bool
+    {
+        $reference = trim($reference);
+        if ($reference === '') {
+            return false;
+        }
+
+        $codeLabel = ucfirst((string) $method->code);
+        $nameLabel = trim((string) $method->name);
+        $candidates = array_filter([$codeLabel, $nameLabel]);
+
+        foreach ($candidates as $candidate) {
+            if (Str::lower($reference) === Str::lower($candidate)) {
+                return true;
+            }
+
+            if (Str::startsWith(Str::lower($reference), Str::lower($candidate.' - '))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function formatCurrencyTotalsFromEntries(Collection $entries): string
+    {
+        $totalsByCurrency = $entries
+            ->groupBy(fn (array $entry) => strtoupper((string) ($entry['currency'] ?? 'BDT')))
+            ->map(fn (Collection $rows) => (float) $rows->sum('amount'))
+            ->all();
+
+        return $this->formatCurrencyTotals($totalsByCurrency);
+    }
+
+    private function formatCurrencyTotals(array $totalsByCurrency): string
+    {
+        if (empty($totalsByCurrency)) {
+            return '0.00';
+        }
+
+        $parts = [];
+        foreach ($totalsByCurrency as $currency => $amount) {
+            if ((float) $amount <= 0) {
+                continue;
+            }
+
+            $parts[] = number_format((float) $amount, 2).' '.$currency;
+        }
+
+        if (empty($parts)) {
+            return '0.00';
+        }
+
+        return implode(' + ', $parts);
     }
 
     private function editInertiaProps(PaymentGateway $gateway, string $defaultCurrency): array

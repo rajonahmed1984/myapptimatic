@@ -282,35 +282,12 @@ class StatusUpdateService
     }
 
     /**
-     * Update customer status based on subscription activity
-     * Activates customer if they have active subscription
-     * Deactivates customer if they have no active subscriptions
+     * Customer status is managed manually by admins.
      */
     public function updateCustomerStatus(): int
     {
-        $activated = Customer::query()
-            ->where('status', 'inactive')
-            ->whereHas('subscriptions', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->update(['status' => 'active']);
-
-        if ($activated > 0) {
-            SystemLogger::write('activity', "Customer status updated: $activated customers activated.");
-        }
-
-        $deactivated = Customer::query()
-            ->where('status', 'active')
-            ->whereDoesntHave('subscriptions', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->update(['status' => 'inactive']);
-
-        if ($deactivated > 0) {
-            SystemLogger::write('activity', "Customer status updated: $deactivated customers deactivated.");
-        }
-
-        return $activated + $deactivated;
+        // Customer active/inactive is now a manual admin decision only.
+        return 0;
     }
 
     /**

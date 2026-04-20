@@ -106,7 +106,6 @@ class CustomerController extends Controller
             'phone' => $data['phone'] ?? null,
             'address' => $data['address'] ?? null,
             'status' => $data['status'],
-            'access_override_until' => $data['access_override_until'] ?? null,
             'notes' => $data['notes'] ?? null,
             'default_sales_rep_id' => $data['default_sales_rep_id'] ?? null,
         ]);
@@ -221,18 +220,11 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer): InertiaResponse
     {
-        $activeServices = $customer->subscriptions()->where('status', 'active')->count();
-        $activeProjects = $customer->projects()->whereIn('status', ['ongoing', 'complete'])->count();
-        $activeMaintenances = $customer->projectMaintenances()->where('status', 'active')->count();
-        $effectiveStatus = ($activeServices > 0 || $activeProjects > 0 || $activeMaintenances > 0)
-            ? 'active'
-            : $customer->status;
-
         $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
 
         return Inertia::render(
             'Admin/Customers/Form',
-            $this->formInertiaProps($customer, $salesReps, $effectiveStatus)
+            $this->formInertiaProps($customer, $salesReps, (string) $customer->status)
         );
     }
 
@@ -465,17 +457,7 @@ class CustomerController extends Controller
             })->values();
         }
 
-        $activeServices = $customer->subscriptions->where('status', 'active')->count();
-        $activeProjects = $customer->projects
-            ->whereIn('status', ['ongoing', 'complete'])
-            ->count();
-        $activeMaintenances = ProjectMaintenance::query()
-            ->where('customer_id', $customer->id)
-            ->where('status', 'active')
-            ->count();
-        $effectiveStatus = ($activeServices > 0 || $activeProjects > 0 || $activeMaintenances > 0)
-            ? 'active'
-            : $customer->status;
+        $effectiveStatus = (string) $customer->status;
 
         $dateFormat = config('app.date_format', 'd-m-Y');
         $dateTimeFormat = config('app.datetime_format', 'd-m-Y h:i A');
@@ -522,7 +504,6 @@ class CustomerController extends Controller
                     ? route('admin.user-documents.show', ['type' => 'customer', 'id' => $customer->id, 'doc' => 'cv'], false)
                     : null,
                 'default_sales_rep_id' => (string) ($customer->default_sales_rep_id ?? ''),
-                'access_override_until' => $customer->access_override_until?->format($dateFormat) ?? '',
                 'notes' => (string) ($customer->notes ?? ''),
                 'effective_status' => (string) $effectiveStatus,
                 'created_at_display' => $customer->created_at?->format($dateFormat) ?? '--',
@@ -697,10 +678,6 @@ class CustomerController extends Controller
                     'address' => (string) old('address', (string) ($customer->address ?? '')),
                     'status' => (string) old('status', (string) ($effectiveStatus ?? $customer->status ?? 'active')),
                     'default_sales_rep_id' => (string) old('default_sales_rep_id', (string) ($customer->default_sales_rep_id ?? '')),
-                    'access_override_until' => (string) old(
-                        'access_override_until',
-                        $customer->access_override_until?->format($dateFormat) ?? ''
-                    ),
                     'notes' => (string) old('notes', (string) ($customer->notes ?? '')),
                 ],
                 'project_user' => [
@@ -922,7 +899,6 @@ class CustomerController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'access_override_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'default_sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
@@ -1181,12 +1157,7 @@ class CustomerController extends Controller
                         default => 'border-rose-200 text-rose-700 bg-rose-50',
                     };
 
-                    $hasActiveService = ($customer->active_subscriptions_count ?? 0) > 0;
-                    $hasActiveProject = ($customer->active_projects_count ?? 0) > 0;
-                    $hasActiveMaintenance = ($customer->active_project_maintenances_count ?? 0) > 0;
-                    $effectiveStatus = ($hasActiveService || $hasActiveProject || $hasActiveMaintenance)
-                        ? 'active'
-                        : (string) $customer->status;
+                    $effectiveStatus = (string) $customer->status;
                     $statusClasses = match ($effectiveStatus) {
                         'active' => 'bg-emerald-100 text-emerald-700',
                         'inactive' => 'bg-slate-200 text-slate-700',
@@ -1331,10 +1302,6 @@ class CustomerController extends Controller
                     'phone' => (string) old('phone', (string) ($customer?->phone ?? '')),
                     'status' => (string) old('status', (string) ($effectiveStatus ?? $customer?->status ?? 'active')),
                     'default_sales_rep_id' => (string) old('default_sales_rep_id', (string) ($customer?->default_sales_rep_id ?? '')),
-                    'access_override_until' => (string) old(
-                        'access_override_until',
-                        $customer?->access_override_until?->format(config('app.date_format', 'd-m-Y')) ?? ''
-                    ),
                     'address' => (string) old('address', (string) ($customer?->address ?? '')),
                     'notes' => (string) old('notes', (string) ($customer?->notes ?? '')),
                     'send_account_message' => (bool) old('send_account_message', false),

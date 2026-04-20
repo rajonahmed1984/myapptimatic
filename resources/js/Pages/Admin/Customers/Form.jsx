@@ -154,6 +154,11 @@ export default function Form({
                                     </select>
                                 </div>
                                 <div>
+                                    <label className="text-sm text-slate-600">Notes</label>
+                                    <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                    {errors?.notes ? <p className="mt-1 text-xs text-rose-500">{errors.notes}</p> : null}
+                                </div>
+                                <div>
                                     <label className="text-sm text-slate-600">Profile Image</label>
                                     <input
                                         name="avatar"
@@ -178,10 +183,6 @@ export default function Form({
                                         defaultValue={fields?.address || ''}
                                         className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                                     />
-                                </div>
-                                <div>
-                                    <label className="text-sm text-slate-600">Notes</label>
-                                    <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">New Password</label>
@@ -238,10 +239,10 @@ export default function Form({
                                         <option value="active">Active</option>
                                         <option value="inactive">Inactive</option>
                                     </select>
-                                    <p className="mt-1 text-xs text-slate-500">Status is auto-active when services, projects, or maintenance are active.</p>
+                                    <p className="mt-1 text-xs text-slate-500">Status is controlled manually by admin.</p>
                                     {errors?.status ? <p className="mt-1 text-xs text-rose-500">{errors.status}</p> : null}
                                 </div>
-                                <div>
+                                <div className="md:col-start-1">
                                     <label className="text-sm text-slate-600">Default sales rep</label>
                                     <select
                                         name="default_sales_rep_id"
@@ -257,27 +258,13 @@ export default function Form({
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-sm text-slate-600">Access Override Until</label>
-                                    <input
-                                        name="access_override_until"
-                                        type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
-                                        defaultValue={fields?.access_override_until || ''}
-                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                                    />
-                                    <p className="mt-1 text-xs text-slate-500">Grant temporary access even if status is inactive</p>
-                                    {errors?.access_override_until ? <p className="mt-1 text-xs text-rose-500">{errors.access_override_until}</p> : null}
+                                    <label className="text-sm text-slate-600">Notes</label>
+                                    <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                    {errors?.notes ? <p className="mt-1 text-xs text-rose-500">{errors.notes}</p> : null}
                                 </div>
                             </>
                         )}
                     </div>
-
-                    {is_edit ? (
-                        <div>
-                            <label className="text-sm text-slate-600">Notes</label>
-                            <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
-                            {errors?.notes ? <p className="mt-1 text-xs text-rose-500">{errors.notes}</p> : null}
-                        </div>
-                    ) : null}
 
                     <div className="flex items-center gap-3">
                         <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">

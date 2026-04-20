@@ -24,7 +24,6 @@ class StoreClientUserRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'access_override_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'user_password' => ['nullable', 'string', 'min:8'],
             'send_account_message' => ['nullable', 'boolean'],

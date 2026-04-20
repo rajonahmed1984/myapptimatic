@@ -40,7 +40,6 @@ use App\Http\Controllers\Admin\CarrotHostIncomeController as AdminCarrotHostInco
 use App\Http\Controllers\Admin\ExpenseInvoiceController as AdminExpenseInvoiceController;
 use App\Http\Controllers\Admin\FinanceReportController as AdminFinanceReportController;
 use App\Http\Controllers\Admin\FinanceTaxController as AdminFinanceTaxController;
-use App\Http\Controllers\Admin\Finance\PaymentMethodController as AdminPaymentMethodController;
 use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
 use App\Http\Controllers\Admin\Hr\AttendanceController as HrAttendanceController;
 use App\Http\Controllers\Admin\Hr\PaidHolidayController as HrPaidHolidayController;
@@ -427,15 +426,6 @@ Route::middleware([
             Route::get('/reports', [AdminFinanceReportController::class, 'index'])
                 ->middleware(HandleInertiaRequests::class)
                 ->name('reports.index');
-            Route::get('/payment-methods', [AdminPaymentMethodController::class, 'index'])
-                ->middleware(HandleInertiaRequests::class)
-                ->name('payment-methods.index');
-            Route::get('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'show'])
-                ->middleware(HandleInertiaRequests::class)
-                ->name('payment-methods.show');
-            Route::post('/payment-methods', [AdminPaymentMethodController::class, 'store'])->name('payment-methods.store');
-            Route::put('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'update'])->name('payment-methods.update');
-            Route::delete('/payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 
             Route::get('/tax', [AdminFinanceTaxController::class, 'index'])
                 ->middleware(HandleInertiaRequests::class)
@@ -668,6 +658,9 @@ Route::middleware([
     Route::get('invoices/{invoice}/download', [AdminInvoiceController::class, 'download'])->name('invoices.download');
     Route::get('invoices/{invoice}', [AdminInvoiceController::class, 'show'])->name('invoices.show');
     Route::post('invoices/{invoice}/mark-paid', [AdminInvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
+    Route::post('invoices/{invoice}/add-payment', [AdminInvoiceController::class, 'storePayment'])->name('invoices.add-payment');
+    Route::post('invoices/{invoice}/add-credit', [AdminInvoiceController::class, 'storeCredit'])->name('invoices.add-credit');
+    Route::post('invoices/{invoice}/add-refund', [AdminInvoiceController::class, 'storeRefund'])->name('invoices.add-refund');
     Route::post('invoices/{invoice}/collect-by-sales-rep', [AdminInvoiceController::class, 'collectBySalesRep'])->name('invoices.collect-by-sales-rep');
     Route::post('invoices/{invoice}/recalculate', [AdminInvoiceController::class, 'recalculate'])->name('invoices.recalculate');
     Route::put('invoices/{invoice}', [AdminInvoiceController::class, 'update'])->name('invoices.update');
@@ -681,6 +674,9 @@ Route::middleware([
     Route::get('payment-gateways', [PaymentGatewayController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('payment-gateways.index');
+    Route::get('payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('payment-gateways.show');
     Route::get('payment-gateways/{paymentGateway}/edit', [PaymentGatewayController::class, 'edit'])
         ->middleware(HandleInertiaRequests::class)
         ->name('payment-gateways.edit');

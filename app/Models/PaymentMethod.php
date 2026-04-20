@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -24,40 +23,49 @@ class PaymentMethod extends Model
         'sort_order' => 'integer',
     ];
 
-    public function scopeActive(Builder $query): Builder
+    public static function catalog(): Collection
     {
-        return $query->where('is_active', true);
+        return collect(static::defaultCatalogRows())
+            ->map(function (array $row, int $index) {
+                $method = new static();
+                $method->forceFill([
+                    'id' => (int) ($row['id'] ?? ($index + 1)),
+                    'name' => (string) ($row['name'] ?? ''),
+                    'code' => (string) ($row['code'] ?? ''),
+                    'account_details' => (string) ($row['account_details'] ?? ''),
+                    'is_active' => (bool) ($row['is_active'] ?? true),
+                    'sort_order' => (int) ($row['sort_order'] ?? (($index + 1) * 10)),
+                ]);
+
+                return $method;
+            })
+            ->values();
     }
 
-    public function scopeOrdered(Builder $query): Builder
+    private static function activeCatalog(): Collection
     {
-        return $query->orderBy('sort_order')->orderBy('name');
+        return static::catalog()
+            ->filter(fn (PaymentMethod $method) => (bool) $method->is_active)
+            ->values();
     }
 
     public static function allowedCodes(): array
     {
-        return static::dropdownOptions()->pluck('code')->values()->all();
+        return static::activeCatalog()
+            ->pluck('code')
+            ->map(fn ($code) => (string) $code)
+            ->values()
+            ->all();
     }
 
     public static function dropdownOptions(): Collection
     {
-        if (! Schema::hasTable('payment_methods')) {
-            return static::defaultOptions();
-        }
-
-        $options = static::query()
-            ->active()
-            ->ordered()
-            ->get(['code', 'name']);
-
-        if ($options->isEmpty()) {
-            return static::defaultOptions();
-        }
-
-        return $options->map(fn (PaymentMethod $method) => [
-            'code' => (string) $method->code,
-            'name' => (string) $method->name,
-        ])->map(fn (array $row) => (object) $row);
+        return static::activeCatalog()
+            ->map(fn (PaymentMethod $method) => (object) [
+                'code' => (string) $method->code,
+                'name' => (string) $method->name,
+            ])
+            ->values();
     }
 
     /**
@@ -105,11 +113,50 @@ class PaymentMethod extends Model
 
     private static function defaultOptions(): Collection
     {
-        return collect([
-            (object) ['code' => 'bank', 'name' => 'Bank'],
-            (object) ['code' => 'mobile', 'name' => 'Mobile'],
-            (object) ['code' => 'cash', 'name' => 'Cash'],
-            (object) ['code' => 'other', 'name' => 'Other'],
-        ]);
+        return collect(static::defaultCatalogRows())
+            ->filter(fn (array $row) => (bool) ($row['is_active'] ?? true))
+            ->map(fn (array $row) => (object) [
+                'code' => (string) ($row['code'] ?? ''),
+                'name' => (string) ($row['name'] ?? ''),
+            ])
+            ->values();
+    }
+
+    private static function defaultCatalogRows(): array
+    {
+        return [
+            [
+                'id' => 1,
+                'name' => 'Bank',
+                'code' => 'bank',
+                'account_details' => '',
+                'is_active' => true,
+                'sort_order' => 10,
+            ],
+            [
+                'id' => 2,
+                'name' => 'Mobile',
+                'code' => 'mobile',
+                'account_details' => '',
+                'is_active' => true,
+                'sort_order' => 20,
+            ],
+            [
+                'id' => 3,
+                'name' => 'Cash',
+                'code' => 'cash',
+                'account_details' => '',
+                'is_active' => true,
+                'sort_order' => 30,
+            ],
+            [
+                'id' => 4,
+                'name' => 'Other',
+                'code' => 'other',
+                'account_details' => '',
+                'is_active' => true,
+                'sort_order' => 40,
+            ],
+        ];
     }
 }

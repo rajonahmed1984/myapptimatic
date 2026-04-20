@@ -226,12 +226,26 @@ class InvoiceController extends Controller
                 ->map(fn ($method) => ['code' => $method->code, 'name' => $method->name])
                 ->values()
                 ->all(),
+            'payment_gateways' => PaymentGateway::query()
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (PaymentGateway $gateway) => [
+                    'id' => $gateway->id,
+                    'name' => (string) $gateway->name,
+                ])
+                ->values()
+                ->all(),
             'routes' => [
                 'index' => route('admin.invoices.index'),
                 'client_view' => route('admin.invoices.client-view', $invoice),
                 'download' => route('admin.invoices.download', $invoice),
                 'update' => route('admin.invoices.update', $invoice),
+                'mark_paid' => route('admin.invoices.mark-paid', $invoice),
                 'recalculate' => route('admin.invoices.recalculate', $invoice),
+                'add_payment' => route('admin.invoices.add-payment', $invoice),
+                'add_credit' => route('admin.invoices.add-credit', $invoice),
+                'add_refund' => route('admin.invoices.add-refund', $invoice),
                 'collect_by_sales_rep' => route('admin.invoices.collect-by-sales-rep', $invoice),
                 'record_payment' => route('admin.accounting.create', [
                     'type' => 'payment',
@@ -352,6 +366,292 @@ class InvoiceController extends Controller
 
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('status', 'Invoice marked as paid.');
+    }
+
+    public function storePayment(
+        Request $request,
+        Invoice $invoice,
+        AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications,
+        CommissionService $commissionService,
+        SalesRepNotificationService $salesRepNotifications
+    ): RedirectResponse {
+        if (in_array((string) $invoice->status, ['cancelled', 'refunded'], true)) {
+            return redirect()->route('admin.invoices.show', $invoice)
+                ->with('error', 'Payment cannot be added to cancelled or refunded invoices.');
+        }
+
+        $data = $request->validate([
+            'entry_date' => ['required', 'date'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'payment_gateway_id' => ['nullable', 'exists:payment_gateways,id'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $paymentAmount = round((float) $data['amount'], 2);
+        $creditTotal = (float) AccountingEntry::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('type', 'credit')
+            ->sum('amount');
+        $paidTotalBefore = (float) AccountingEntry::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('type', 'payment')
+            ->sum('amount');
+        $outstandingBefore = round(max(0, (float) $invoice->total - ($paidTotalBefore + $creditTotal)), 2);
+
+        if ($outstandingBefore <= 0) {
+            return redirect()->route('admin.invoices.show', $invoice)
+                ->with('error', 'Invoice has no outstanding balance.');
+        }
+
+        if ($paymentAmount > $outstandingBefore) {
+            return back()
+                ->withErrors(['amount' => 'Payment amount cannot exceed outstanding balance.'])
+                ->withInput();
+        }
+
+        $reference = trim((string) ($data['reference'] ?? ''));
+        $description = trim((string) ($data['description'] ?? ''));
+        $gatewayId = isset($data['payment_gateway_id']) && $data['payment_gateway_id'] !== ''
+            ? (int) $data['payment_gateway_id']
+            : null;
+        $previousStatus = (string) $invoice->status;
+
+        AccountingEntry::create([
+            'entry_date' => Carbon::parse((string) $data['entry_date'])->toDateString(),
+            'type' => 'payment',
+            'amount' => $paymentAmount,
+            'currency' => (string) $invoice->currency,
+            'description' => $description !== '' ? $description : 'Payment for invoice #'.(string) ($invoice->number ?? $invoice->id),
+            'reference' => $reference !== '' ? $reference : (string) ($invoice->number ?? $invoice->id),
+            'customer_id' => $invoice->customer_id,
+            'invoice_id' => $invoice->id,
+            'payment_gateway_id' => $gatewayId,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        $paidTotalAfter = (float) AccountingEntry::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('type', 'payment')
+            ->sum('amount');
+        $outstandingAfter = round(max(0, (float) $invoice->total - ($paidTotalAfter + $creditTotal)), 2);
+        $marksPaid = $outstandingAfter <= 0;
+
+        if ($marksPaid && $previousStatus !== 'paid') {
+            $invoice->update([
+                'status' => 'paid',
+                'paid_at' => $invoice->paid_at ?? Carbon::now(),
+                'overdue_at' => null,
+            ]);
+
+            \App\Models\StatusAuditLog::logChange(
+                Invoice::class,
+                $invoice->id,
+                $previousStatus,
+                'paid',
+                'invoice_add_payment',
+                $request->user()?->id
+            );
+
+            $this->runInvoicePaidPostProcessing(
+                $request,
+                $invoice,
+                $adminNotifications,
+                $clientNotifications,
+                $commissionService,
+                $salesRepNotifications,
+                $reference !== '' ? $reference : null
+            );
+        }
+
+        SystemLogger::write('activity', $marksPaid ? 'Invoice payment added and marked paid.' : 'Invoice partial payment added.', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+            'amount' => $paymentAmount,
+            'outstanding_before' => $outstandingBefore,
+            'outstanding_after' => $outstandingAfter,
+            'currency' => $invoice->currency,
+            'payment_gateway_id' => $gatewayId,
+        ], $request->user()?->id, $request->ip());
+
+        return redirect()->route('admin.invoices.show', $invoice)
+            ->with('status', $marksPaid ? 'Payment added and invoice marked as paid.' : 'Payment added. Invoice still has outstanding balance.');
+    }
+
+    public function storeCredit(
+        Request $request,
+        Invoice $invoice,
+        AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications,
+        CommissionService $commissionService,
+        SalesRepNotificationService $salesRepNotifications
+    ): RedirectResponse {
+        if (in_array((string) $invoice->status, ['cancelled', 'refunded'], true)) {
+            return redirect()->route('admin.invoices.show', $invoice)
+                ->with('error', 'Credit cannot be applied to cancelled or refunded invoices.');
+        }
+
+        $data = $request->validate([
+            'entry_date' => ['required', 'date'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $creditAmount = round((float) $data['amount'], 2);
+        $paidTotal = (float) AccountingEntry::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('type', 'payment')
+            ->sum('amount');
+        $creditTotalBefore = (float) AccountingEntry::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('type', 'credit')
+            ->sum('amount');
+        $outstandingBefore = round(max(0, (float) $invoice->total - ($paidTotal + $creditTotalBefore)), 2);
+
+        if ($outstandingBefore <= 0) {
+            return redirect()->route('admin.invoices.show', $invoice)
+                ->with('error', 'Invoice has no outstanding balance for additional credit.');
+        }
+
+        if ($creditAmount > $outstandingBefore) {
+            return back()
+                ->withErrors(['amount' => 'Credit amount cannot exceed outstanding balance.'])
+                ->withInput();
+        }
+
+        $reference = trim((string) ($data['reference'] ?? ''));
+        $description = trim((string) ($data['description'] ?? ''));
+        $previousStatus = (string) $invoice->status;
+
+        AccountingEntry::create([
+            'entry_date' => Carbon::parse((string) $data['entry_date'])->toDateString(),
+            'type' => 'credit',
+            'amount' => $creditAmount,
+            'currency' => (string) $invoice->currency,
+            'description' => $description !== '' ? $description : 'Credit applied to invoice #'.(string) ($invoice->number ?? $invoice->id),
+            'reference' => $reference !== '' ? $reference : 'credit-'.(string) ($invoice->number ?? $invoice->id),
+            'customer_id' => $invoice->customer_id,
+            'invoice_id' => $invoice->id,
+            'payment_gateway_id' => null,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        $creditTotalAfter = (float) AccountingEntry::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('type', 'credit')
+            ->sum('amount');
+        $outstandingAfter = round(max(0, (float) $invoice->total - ($paidTotal + $creditTotalAfter)), 2);
+        $marksPaid = $outstandingAfter <= 0;
+
+        if ($marksPaid && $previousStatus !== 'paid') {
+            $invoice->update([
+                'status' => 'paid',
+                'paid_at' => $invoice->paid_at ?? Carbon::now(),
+                'overdue_at' => null,
+            ]);
+
+            \App\Models\StatusAuditLog::logChange(
+                Invoice::class,
+                $invoice->id,
+                $previousStatus,
+                'paid',
+                'invoice_add_credit',
+                $request->user()?->id
+            );
+
+            $this->runInvoicePaidPostProcessing(
+                $request,
+                $invoice,
+                $adminNotifications,
+                $clientNotifications,
+                $commissionService,
+                $salesRepNotifications,
+                $reference !== '' ? $reference : null
+            );
+        }
+
+        SystemLogger::write('activity', $marksPaid ? 'Invoice credit added and marked paid.' : 'Invoice credit added.', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+            'amount' => $creditAmount,
+            'outstanding_before' => $outstandingBefore,
+            'outstanding_after' => $outstandingAfter,
+            'currency' => $invoice->currency,
+        ], $request->user()?->id, $request->ip());
+
+        return redirect()->route('admin.invoices.show', $invoice)
+            ->with('status', $marksPaid ? 'Credit applied and invoice marked as paid.' : 'Credit applied successfully.');
+    }
+
+    public function storeRefund(Request $request, Invoice $invoice): RedirectResponse
+    {
+        if (! in_array((string) $invoice->status, ['paid', 'refunded'], true)) {
+            return redirect()->route('admin.invoices.show', $invoice)
+                ->with('error', 'Refund can only be added for paid/refunded invoices.');
+        }
+
+        $data = $request->validate([
+            'entry_date' => ['required', 'date'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'payment_gateway_id' => ['nullable', 'exists:payment_gateways,id'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $refundAmount = round((float) $data['amount'], 2);
+        $paidTotal = (float) AccountingEntry::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('type', 'payment')
+            ->sum('amount');
+        $refundedTotalBefore = (float) AccountingEntry::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('type', 'refund')
+            ->sum('amount');
+        $refundableBalance = round(max(0, $paidTotal - $refundedTotalBefore), 2);
+
+        if ($refundableBalance <= 0) {
+            return redirect()->route('admin.invoices.show', $invoice)
+                ->with('error', 'No refundable payment balance found for this invoice.');
+        }
+
+        if ($refundAmount > $refundableBalance) {
+            return back()
+                ->withErrors(['amount' => 'Refund amount cannot exceed paid balance.'])
+                ->withInput();
+        }
+
+        $reference = trim((string) ($data['reference'] ?? ''));
+        $description = trim((string) ($data['description'] ?? ''));
+        $gatewayId = isset($data['payment_gateway_id']) && $data['payment_gateway_id'] !== ''
+            ? (int) $data['payment_gateway_id']
+            : null;
+
+        AccountingEntry::create([
+            'entry_date' => Carbon::parse((string) $data['entry_date'])->toDateString(),
+            'type' => 'refund',
+            'amount' => $refundAmount,
+            'currency' => (string) $invoice->currency,
+            'description' => $description !== '' ? $description : 'Refund for invoice #'.(string) ($invoice->number ?? $invoice->id),
+            'reference' => $reference !== '' ? $reference : 'refund-'.(string) ($invoice->number ?? $invoice->id),
+            'customer_id' => $invoice->customer_id,
+            'invoice_id' => $invoice->id,
+            'payment_gateway_id' => $gatewayId,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        SystemLogger::write('activity', 'Invoice refund recorded.', [
+            'invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+            'amount' => $refundAmount,
+            'refundable_balance_before' => $refundableBalance,
+            'currency' => $invoice->currency,
+            'payment_gateway_id' => $gatewayId,
+        ], $request->user()?->id, $request->ip());
+
+        return redirect()->route('admin.invoices.show', $invoice)
+            ->with('status', 'Refund recorded successfully.');
     }
 
     public function collectBySalesRep(
@@ -940,7 +1240,9 @@ class InvoiceController extends Controller
             $query->where('project_id', $project->id);
         }
 
-        if ($status) {
+        if ($status === 'unpaid') {
+            $query->whereIn('status', ['unpaid', 'overdue']);
+        } elseif ($status) {
             $query->where('status', $status);
         }
 
@@ -1193,9 +1495,11 @@ class InvoiceController extends Controller
             'selected_status' => (string) old('status', $invoice->status),
             'currency' => (string) $invoice->currency,
             'customer' => [
+                'id' => $invoice->customer?->id,
                 'name' => $invoice->customer?->name ?? '--',
                 'email' => $invoice->customer?->email ?? '--',
                 'address' => $invoice->customer?->address ?? '--',
+                'show_route' => $invoice->customer ? route('admin.customers.show', $invoice->customer) : null,
             ],
             'company' => [
                 'name' => $companyName,
@@ -1214,6 +1518,7 @@ class InvoiceController extends Controller
                 ),
             ])->values(),
             'totals' => [
+                'total_display' => sprintf('%s %s', (string) $invoice->currency, number_format((float) $invoice->total, 2)),
                 'subtotal_display' => sprintf('%s %s', (string) $invoice->currency, number_format((float) $invoice->subtotal, 2)),
                 'has_tax' => $hasTax,
                 'tax_label' => $taxLabel,
@@ -1221,25 +1526,37 @@ class InvoiceController extends Controller
                 'tax_mode' => $invoice->tax_mode,
                 'tax_amount_display' => sprintf('%s %s', (string) $invoice->currency, number_format((float) $invoice->tax_amount, 2)),
                 'tax_note' => $taxNote,
+                'credit_display' => sprintf('%s %s', (string) $invoice->currency, number_format($discountAmount, 2)),
                 'discount_display' => '- '.(string) $invoice->currency.' '.number_format($discountAmount, 2),
                 'collected_display' => sprintf('%s %s', (string) $invoice->currency, number_format($paidTotal, 2)),
+                'collected_value' => number_format($paidTotal, 2, '.', ''),
                 'payable_display' => sprintf('%s %s', (string) $invoice->currency, number_format($payableAmount, 2)),
                 'outstanding_display' => sprintf('%s %s', (string) $invoice->currency, number_format($outstandingAmount, 2)),
                 'outstanding_value' => number_format($outstandingAmount, 2, '.', ''),
             ],
             'notes' => $invoice->notes,
+            'payment_method_display' => (string) (
+                $invoice->paymentProofs->sortByDesc('id')->first()?->paymentGateway?->name
+                ?? $invoice->accountingEntries->sortByDesc('id')->first()?->paymentGateway?->name
+                ?? '--'
+            ),
             'sales_rep_collection' => $salesRepCollection,
             'accounting_entries' => $invoice->accountingEntries->map(function ($entry) {
                 $metadata = is_array($entry->metadata) ? $entry->metadata : [];
                 $collectedBySalesRepName = trim((string) ($metadata['collected_by_sales_rep_name'] ?? ''));
                 $retainedAmount = (float) ($metadata['retained_amount'] ?? 0);
+                $transactionFee = (float) ($metadata['transaction_fee'] ?? $metadata['fees'] ?? 0);
 
                 return [
                     'id' => $entry->id,
+                    'type' => (string) $entry->type,
                     'type_label' => ucfirst((string) $entry->type),
+                    'status_label' => ucfirst((string) $entry->type),
                     'entry_date_display' => $entry->entry_date?->format((string) config('app.date_format', 'd-m-Y')) ?? '--',
                     'gateway_name' => $entry->paymentGateway?->name,
                     'description' => $entry->description,
+                    'reference' => $entry->reference ?: '--',
+                    'transaction_fee_display' => sprintf('%s %s', (string) $entry->currency, number_format($transactionFee, 2)),
                     'sales_rep_collection' => $collectedBySalesRepName !== '' ? [
                         'sales_rep_name' => $collectedBySalesRepName,
                         'retained_amount_display' => sprintf('%s %s', (string) $entry->currency, number_format($retainedAmount, 2)),

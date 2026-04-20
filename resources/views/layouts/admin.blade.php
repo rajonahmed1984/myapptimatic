@@ -77,6 +77,12 @@
                 ];
                 $projectsMenuActive = isActive($projectsMenuRoutes);
                 $tasksMenuRoutes = ['admin.tasks.*', 'admin.projects.tasks.*'];
+                $productsMenuRoutes = [
+                    'admin.products.*',
+                    'admin.plans.*',
+                    'admin.subscriptions.*',
+                    'admin.licenses.*',
+                ];
 
                 // Nested menu: Invoices
                 $invoiceMenuActive = isActive('admin.invoices.*');
@@ -124,37 +130,38 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Affiliates
                         </x-nav-link>
-                        <x-nav-link 
-                            :href="route('admin.products.index')"
-                            routes="admin.products.*"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Products
-                        </x-nav-link>
-                        <x-nav-link 
-                            :href="route('admin.plans.index')"
-                            routes="admin.plans.*"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            Plans
-                        </x-nav-link>
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Delivery & Services</div>
-                        
-                        {{-- Nested menu: Projects --}}
-                        <x-nav-menu
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Projects</div>
+                        <x-nav-link
                             :href="route('admin.projects.index')"
-                            :routes="$projectsMenuRoutes"
-                            label="Projects"
-                            :alwaysOpen="true"
+                            routes="admin.projects.index"
                         >
-                            <a href="{{ route('admin.projects.index') }}" class="block {{ activeIf(request()->routeIs('admin.projects.index')) }}">Dashboard</a>
-                            <a href="{{ route('admin.projects.all') }}" class="block {{ activeIf(request()->routeIs('admin.projects.all')) }}">All Projects</a>
-                            <a href="{{ route('admin.projects.create') }}" class="block {{ activeIf(request()->routeIs('admin.projects.create')) }}">Create Project</a>
-                            <a href="{{ route('admin.project-maintenances.index') }}" class="block {{ activeIf(request()->routeIs('admin.project-maintenances.*')) }}">Maintenance</a>
-                        </x-nav-menu>
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Dashboard
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.projects.all')"
+                            routes="admin.projects.all"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            All Projects
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.projects.create')"
+                            routes="admin.projects.create"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Create Project
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.project-maintenances.index')"
+                            routes="admin.project-maintenances.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Maintenance
+                        </x-nav-link>
                         @if($canViewTasks)
                             <x-nav-link
                                 :href="route('admin.tasks.index')"
@@ -162,20 +169,38 @@
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 <span>Tasks</span>
-                                <span class="ml-auto ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">{{ $adminHeaderStats['tasks_badge'] ?? 0 }}</span>
+                                <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">{{ $adminHeaderStats['tasks_badge'] ?? 0 }}</span>
                             </x-nav-link>
                         @endif
-                        
-                        <x-nav-link 
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Products</div>
+                        <x-nav-link
+                            :href="route('admin.products.index')"
+                            routes="admin.products.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Products
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.plans.index')"
+                            routes="admin.plans.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Plans
+                        </x-nav-link>
+                        <x-nav-link
                             :href="route('admin.subscriptions.index')"
                             routes="admin.subscriptions.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Subscriptions
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.licenses.index')"
                             routes="admin.licenses.*"
+                            :badge="$adminHeaderStats['verified_active_synced_licenses'] ?? 0"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Licenses
@@ -183,23 +208,49 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Billing & Finance</div>
-                        
-                        {{-- Nested menu: Invoices --}}
-                        <x-nav-menu
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Billing</div>
+                        <x-nav-link
                             :href="route('admin.invoices.index')"
-                            routes="admin.invoices.*"
-                            label="Invoices"
-                            :alwaysOpen="true"
+                            routes="admin.invoices.index"
                         >
-                            <a href="{{ route('admin.invoices.index') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.index')) }}">All invoices</a>
-                            <a href="{{ route('admin.invoices.paid') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.paid')) }}">Paid</a>
-                            <a href="{{ route('admin.invoices.unpaid') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.unpaid')) }}">Unpaid</a>
-                            <a href="{{ route('admin.invoices.overdue') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.overdue')) }}">Overdue</a>
-                            <a href="{{ route('admin.invoices.cancelled') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.cancelled')) }}">Cancelled</a>
-                            <a href="{{ route('admin.invoices.refunded') }}" class="block {{ activeIf(request()->routeIs('admin.invoices.refunded')) }}">Refunded</a>
-                        </x-nav-menu>
-                        
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            All invoices
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.invoices.paid')"
+                            routes="admin.invoices.paid"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Paid
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.invoices.unpaid')"
+                            routes="admin.invoices.unpaid"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Unpaid
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.invoices.overdue')"
+                            routes="admin.invoices.overdue"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Overdue
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.invoices.cancelled')"
+                            routes="admin.invoices.cancelled"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Cancelled
+                        </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.invoices.refunded')"
+                            routes="admin.invoices.refunded"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Refunded
+                        </x-nav-link>
                         <x-nav-link 
                             :href="route('admin.payment-proofs.index')"
                             routes="admin.payment-proofs.*"
@@ -208,13 +259,10 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             <span>Manual Payments</span>
                         </x-nav-link>
-                        <x-nav-link
-                            :href="route('admin.accounting.index')"
-                            routes="admin.accounting.*"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-current"></span>
-                            <span>Accounting</span>
-                        </x-nav-link>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Finance</div>
                         @if(auth()->user()?->isMasterAdmin())
                             <x-nav-menu
                                 :href="route('admin.income.index')"
@@ -240,26 +288,12 @@
                                 <a href="{{ route('admin.expenses.recurring.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.recurring.*')) }}">Recurring expense</a>
                                 <a href="{{ route('admin.expenses.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.categories.*')) }}">Expense Categories</a>
                             </x-nav-menu>
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('admin.finance.tax.index')"
                                 routes="admin.finance.tax.*"
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 Tax Settings
-                            </x-nav-link>
-                            <x-nav-link
-                                :href="route('admin.finance.payment-methods.index')"
-                                routes="admin.finance.payment-methods.*"
-                            >
-                                <span class="h-2 w-2 rounded-full bg-current"></span>
-                                Payment Methods
-                            </x-nav-link>
-                            <x-nav-link 
-                                :href="route('admin.finance.reports.index')"
-                                routes="admin.finance.reports.*"
-                            >
-                                <span class="h-2 w-2 rounded-full bg-current"></span>
-                                Finance Reports
                             </x-nav-link>
                         @endif
                         <x-nav-link 
@@ -269,6 +303,15 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Payment Gateways
                         </x-nav-link>
+                        @if(auth()->user()?->isMasterAdmin())
+                            <x-nav-link 
+                                :href="route('admin.finance.reports.index')"
+                                routes="admin.finance.reports.*"
+                            >
+                                <span class="h-2 w-2 rounded-full bg-current"></span>
+                                Finance Reports
+                            </x-nav-link>
+                        @endif
                         <x-nav-link 
                             :href="route('admin.commission-payouts.index')"
                             routes="admin.commission-payouts.*"
@@ -347,7 +390,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Support & Communication</div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Support & Chat</div>
                         <x-nav-link 
                             :href="route('admin.support-tickets.index')"
                             routes="admin.support-tickets.*"
@@ -382,12 +425,12 @@
                                     class="{{ $isApptimaticEmailActive ? 'nav-link nav-link-active' : 'nav-link' }}"
                                 >
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
-                                    <span>Apptimatic Email</span>
+                                    <span>Email</span>
                                 </a>
                             @else
                                 <span class="nav-link cursor-not-allowed opacity-60" title="Module route unavailable">
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
-                                    <span>Apptimatic Email</span>
+                                    <span>Email</span>
                                 </span>
                             @endif
                             <div class="ml-8 mt-1 space-y-1 text-xs">

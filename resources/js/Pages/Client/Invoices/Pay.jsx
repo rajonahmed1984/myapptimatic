@@ -197,7 +197,6 @@ export default function Pay({
                                     </tr>
                                 </tbody>
                             </table>
-                            {tax.note ? <div className="small-text text-muted">{tax.note}</div> : null}
                         </div>
                     </div>
                 </div>

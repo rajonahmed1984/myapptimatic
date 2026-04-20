@@ -227,6 +227,7 @@
 
                     @if(!empty($clientAccessBlock['blocked']) && !auth()->user()->isClientProject())
                         @php
+                            $isInactiveBlock = ($clientAccessBlock['reason'] ?? null) === 'customer_inactive';
                             $graceEnds = $clientAccessBlock['grace_ends_at']
                                 ? \Illuminate\Support\Carbon::parse($clientAccessBlock['grace_ends_at'])->format($globalDateTimeFormat)
                                 : null;
@@ -237,15 +238,19 @@
                                 <div class="text-xs uppercase tracking-[0.35em] text-rose-500">Account blocked</div>
                                 <div class="flex-1 text-sm text-rose-700">
                                     <span class="font-semibold">Access to most areas is restricted.</span>
-                                    <span class="ml-1">
-                                        Please pay {{ $invoiceLabel }} to restore access
-                                        @if($graceEnds)
-                                            before <span class="whitespace-nowrap tabular-nums">{{ $graceEnds }}</span>
-                                        @endif
-                                        .
-                                    </span>
+                                    @if($isInactiveBlock)
+                                        <span class="ml-1">Your account is inactive. Please contact admin to restore access.</span>
+                                    @else
+                                        <span class="ml-1">
+                                            Please pay {{ $invoiceLabel }} to restore access
+                                            @if($graceEnds)
+                                                before <span class="whitespace-nowrap tabular-nums">{{ $graceEnds }}</span>
+                                            @endif
+                                            .
+                                        </span>
+                                    @endif
                                 </div>
-                                @if(!empty($clientAccessBlock['payment_url']))
+                                @if(!$isInactiveBlock && !empty($clientAccessBlock['payment_url']))
                                     <a href="{{ $clientAccessBlock['payment_url'] }}" class="inline-flex items-center rounded-full border border-rose-300 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">
                                         Pay invoice
                                     </a>

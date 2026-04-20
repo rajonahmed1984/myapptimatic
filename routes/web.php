@@ -39,7 +39,6 @@ use App\Http\Controllers\Admin\CarrotHostIncomeController as AdminCarrotHostInco
 use App\Http\Controllers\Admin\ExpenseInvoiceController as AdminExpenseInvoiceController;
 use App\Http\Controllers\Admin\FinanceReportController as AdminFinanceReportController;
 use App\Http\Controllers\Admin\FinanceTaxController as AdminFinanceTaxController;
-use App\Http\Controllers\Admin\Finance\PaymentMethodController as AdminPaymentMethodController;
 use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
 use App\Http\Controllers\Admin\Hr\AttendanceController as HrAttendanceController;
 use App\Http\Controllers\Admin\Hr\PaidHolidayController as HrPaidHolidayController;
