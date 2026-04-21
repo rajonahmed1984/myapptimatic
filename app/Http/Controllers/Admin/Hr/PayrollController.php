@@ -8,7 +8,7 @@ use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeeWorkSession;
 use App\Models\PaidHoliday;
-use App\Models\PaymentMethod;
+use App\Models\PaymentGateway;
 use App\Models\PayrollAuditLog;
 use App\Models\PayrollItem;
 use App\Models\PayrollPeriod;
@@ -215,15 +215,26 @@ class PayrollController extends Controller
             return back()->withErrors(['payroll' => 'Only approved/partial payroll items can be paid.']);
         }
 
+        $paymentGateways = PaymentGateway::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        $allowedPaymentMethods = $paymentGateways
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->values()
+            ->all();
+
         $data = $request->validate([
-            'payment_method' => ['required', Rule::in(PaymentMethod::allowedCodes())],
+            'payment_method' => ['required', Rule::in($allowedPaymentMethods)],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_reference' => ['nullable', 'string', 'max:120'],
             'paid_at' => ['required', 'date_format:Y-m-d'],
             'payment_proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ]);
 
-        $methodLabel = ucfirst((string) $data['payment_method']);
+        $selectedGateway = $paymentGateways->firstWhere('id', (int) $data['payment_method']);
+        $methodLabel = (string) ($selectedGateway?->name ?? 'Payment Gateway');
         $rawReference = isset($data['payment_reference']) ? trim((string) $data['payment_reference']) : '';
         $composedReference = $rawReference !== '' ? ($methodLabel.' - '.$rawReference) : $methodLabel;
         $paymentAmount = round((float) $data['amount'], 2, PHP_ROUND_HALF_UP);
@@ -586,10 +597,13 @@ class PayrollController extends Controller
             })
             ->values();
 
-        $paymentMethods = PaymentMethod::dropdownOptions()
-            ->map(fn ($method) => [
-                'code' => $method->code,
-                'name' => $method->name,
+        $paymentMethods = PaymentGateway::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (PaymentGateway $gateway) => [
+                'code' => (string) $gateway->id,
+                'name' => (string) $gateway->name,
             ])
             ->values();
 

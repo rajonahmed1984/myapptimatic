@@ -44,6 +44,11 @@ class PaymentMethod extends Model
 
     private static function activeCatalog(): Collection
     {
+        $gatewayOptions = static::gatewayDropdownOptions();
+        if ($gatewayOptions->isNotEmpty()) {
+            return $gatewayOptions;
+        }
+
         return static::catalog()
             ->filter(fn (PaymentMethod $method) => (bool) $method->is_active)
             ->values();
@@ -61,9 +66,9 @@ class PaymentMethod extends Model
     public static function dropdownOptions(): Collection
     {
         return static::activeCatalog()
-            ->map(fn (PaymentMethod $method) => (object) [
-                'code' => (string) $method->code,
-                'name' => (string) $method->name,
+            ->map(fn ($method) => (object) [
+                'code' => (string) ($method->code ?? ''),
+                'name' => (string) ($method->name ?? ''),
             ])
             ->values();
     }
@@ -74,22 +79,26 @@ class PaymentMethod extends Model
      */
     public static function allowedCommissionPayoutCodes(): array
     {
-        $codes = static::allowedCodes();
-
         if (! static::commissionPayoutMethodUsesEnum()) {
-            return $codes;
+            return static::allowedCodes();
         }
 
-        $legacy = ['bank', 'mobile', 'cash'];
-
-        return array_values(array_intersect($codes, $legacy));
+        return ['bank', 'mobile', 'cash'];
     }
 
     public static function commissionPayoutDropdownOptions(): Collection
     {
         $allowed = static::allowedCommissionPayoutCodes();
 
-        return static::dropdownOptions()
+        $options = static::dropdownOptions()
+            ->filter(fn (object $method) => in_array((string) $method->code, $allowed, true))
+            ->values();
+
+        if ($options->isNotEmpty() || ! static::commissionPayoutMethodUsesEnum()) {
+            return $options;
+        }
+
+        return static::defaultOptions()
             ->filter(fn (object $method) => in_array((string) $method->code, $allowed, true))
             ->values();
     }
@@ -108,6 +117,28 @@ class PaymentMethod extends Model
             return static::$commissionPayoutMethodIsEnum = Schema::getColumnType('commission_payouts', 'payout_method') === 'enum';
         } catch (\Throwable) {
             return static::$commissionPayoutMethodIsEnum = false;
+        }
+    }
+
+    private static function gatewayDropdownOptions(): Collection
+    {
+        if (! Schema::hasTable('payment_gateways')) {
+            return collect();
+        }
+
+        try {
+            return PaymentGateway::query()
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'slug', 'name', 'is_active'])
+                ->map(fn (PaymentGateway $gateway) => (object) [
+                    'code' => (string) ($gateway->slug ?: $gateway->id),
+                    'name' => (string) $gateway->name,
+                    'is_active' => (bool) $gateway->is_active,
+                ])
+                ->values();
+        } catch (\Throwable) {
+            return collect();
         }
     }
 
