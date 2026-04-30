@@ -30,13 +30,14 @@ class PublicStorageUrlTest extends TestCase
     #[Test]
     public function it_generates_asset_url_from_relative_or_prefixed_path(): void
     {
+        // Avatar paths are served through the media/avatars proxy route, not /storage.
         $this->assertStringEndsWith(
-            '/storage/avatars/users/1/avatar.png',
+            '/media/avatars/users/1/avatar.png',
             (string) PublicStorageUrl::fromPath('avatars/users/1/avatar.png')
         );
 
         $this->assertStringEndsWith(
-            '/storage/avatars/users/1/avatar.png',
+            '/media/avatars/users/1/avatar.png',
             (string) PublicStorageUrl::fromPath('/storage/avatars/users/1/avatar.png')
         );
     }

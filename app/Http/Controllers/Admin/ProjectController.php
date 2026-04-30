@@ -1020,11 +1020,19 @@ class ProjectController extends Controller
         ]);
 
         $amount = (float) $data['amount'];
+        $remainingAmountAfterInvoice = max(0, round($remainingBudget - $amount, 2));
         $issueDate = Carbon::today();
         $dueDays = (int) Setting::getValue('invoice_due_days');
         $dueDate = $issueDate->copy()->addDays($dueDays);
 
         $taxData = $taxService->calculateTotals($amount, 0.0, $issueDate);
+        $remainingAmountNote = $remainingAmountAfterInvoice > 0
+            ? sprintf(
+                'Remaining budget after this invoice: %s %s',
+                (string) $project->currency,
+                number_format($remainingAmountAfterInvoice, 2, '.', '')
+            )
+            : null;
 
         $invoice = Invoice::create([
             'customer_id' => $project->customer_id,
@@ -1040,6 +1048,7 @@ class ProjectController extends Controller
             'late_fee' => 0,
             'total' => $taxData['total'],
             'currency' => $project->currency,
+            'notes' => $remainingAmountNote,
             'type' => 'project_remaining_budget',
         ]);
 
@@ -1051,14 +1060,39 @@ class ProjectController extends Controller
             'line_total' => $amount,
         ]);
 
+        if ($remainingAmountAfterInvoice > 0) {
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'description' => (string) $remainingAmountNote,
+                'quantity' => 1,
+                'unit_price' => 0,
+                'line_total' => 0,
+            ]);
+        }
+
         SystemLogger::write('activity', 'Project remaining budget invoiced.', [
             'project_id' => $project->id,
             'invoice_id' => $invoice->id,
             'amount' => $amount,
+            'remaining_amount_after_invoice' => $remainingAmountAfterInvoice,
         ], $request->user()?->id, $request->ip());
 
+        $statusMessage = sprintf(
+            'Invoice #%s created for %s %s.',
+            $invoice->number ?? $invoice->id,
+            $project->currency,
+            number_format($amount, 2)
+        );
+        if ($remainingAmountAfterInvoice > 0) {
+            $statusMessage .= sprintf(
+                ' Remaining budget: %s %s.',
+                $project->currency,
+                number_format($remainingAmountAfterInvoice, 2)
+            );
+        }
+
         return redirect()->route('admin.projects.show', $project)
-            ->with('status', sprintf('Invoice #%s created for %s %s.', $invoice->number ?? $invoice->id, $project->currency, number_format($amount, 2)));
+            ->with('status', $statusMessage);
     }
 
     public function update(Request $request, Project $project, CommissionService $commissionService): RedirectResponse
@@ -1579,10 +1613,14 @@ class ProjectController extends Controller
      */
     private function serializeProjectInvoice(Invoice $invoice): array
     {
+        $remainingAmountDisplay = $this->remainingAmountDisplayForProjectInvoice($invoice);
+
         return [
             'id' => $invoice->id,
             'number_display' => '#'.($invoice->number ?: $invoice->id),
+            'invoiced_amount_display' => sprintf('%s %s', $invoice->currency, number_format((float) $invoice->subtotal, 2)),
             'total_display' => sprintf('%s %s', $invoice->currency, number_format((float) $invoice->total, 2)),
+            'remaining_amount_display' => $remainingAmountDisplay,
             'issue_date' => $invoice->issue_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
             'due_date' => $invoice->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
             'paid_at' => $invoice->paid_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
@@ -1590,6 +1628,30 @@ class ProjectController extends Controller
             'status_label' => ucfirst((string) $invoice->status),
             'show_route' => route('admin.invoices.show', $invoice),
         ];
+    }
+
+    private function remainingAmountDisplayForProjectInvoice(Invoice $invoice): ?string
+    {
+        if ((string) $invoice->type !== 'project_remaining_budget') {
+            return null;
+        }
+
+        $note = trim((string) ($invoice->notes ?? ''));
+        if ($note === '') {
+            return null;
+        }
+
+        if (! preg_match('/Remaining budget after this invoice:\s*([A-Z]{3})\s*([0-9]+(?:\.[0-9]{1,2})?)/i', $note, $matches)) {
+            return null;
+        }
+
+        $currency = strtoupper((string) ($matches[1] ?? ''));
+        $amount = isset($matches[2]) ? (float) $matches[2] : 0.0;
+        if ($currency === '' || $amount <= 0) {
+            return null;
+        }
+
+        return sprintf('%s %s', $currency, number_format($amount, 2));
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SalesRep;
 
 use App\Http\Controllers\Controller;
+use App\Models\CommissionEarning;
 use App\Models\Project;
 use App\Models\ProjectMessageRead;
 use App\Models\SalesRepresentative;
@@ -35,15 +36,29 @@ class ProjectController extends Controller
                 return [$project->id => $amount !== null ? (float) $amount : null];
             })
             ->all();
+        $projectIds = $projects->getCollection()->pluck('id')->filter()->values();
+        $takenCommissionMap = [];
+        if ($projectIds->isNotEmpty()) {
+            $takenCommissionMap = CommissionEarning::query()
+                ->where('sales_representative_id', $repId)
+                ->whereIn('project_id', $projectIds->all())
+                ->where('status', 'paid')
+                ->selectRaw('project_id, SUM(commission_amount) as total_taken')
+                ->groupBy('project_id')
+                ->pluck('total_taken', 'project_id')
+                ->map(fn ($amount) => (float) $amount)
+                ->all();
+        }
 
         return Inertia::render('Rep/Projects/Index', [
-            'projects' => $projects->getCollection()->map(function (Project $project) use ($commissionMap) {
+            'projects' => $projects->getCollection()->map(function (Project $project) use ($commissionMap, $takenCommissionMap) {
                 return [
                     'id' => $project->id,
                     'name' => $project->name,
                     'customer_name' => $project->customer?->name ?? '--',
                     'status_label' => ucfirst(str_replace('_', ' ', (string) $project->status)),
                     'commission_amount' => $commissionMap[$project->id] ?? null,
+                    'taken_commission_amount' => (float) ($takenCommissionMap[$project->id] ?? 0),
                     'currency' => $project->currency,
                     'routes' => [
                         'show' => route('rep.projects.show', $project),

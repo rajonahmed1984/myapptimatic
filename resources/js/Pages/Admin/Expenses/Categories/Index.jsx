@@ -99,6 +99,7 @@ export default function Index({
                             <thead>
                                 <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                     <th className="px-3 py-2">Name</th>
+                                    <th className="px-3 py-2">Total expense</th>
                                     <th className="px-3 py-2">Status</th>
                                     <th className="px-3 py-2">Description</th>
                                     <th className="px-3 py-2 text-right">Actions</th>
@@ -109,6 +110,7 @@ export default function Index({
                                     categories.map((category) => (
                                         <tr key={category.id} className="border-b border-slate-100">
                                             <td className="px-3 py-2 font-semibold text-slate-900">{category.name}</td>
+                                            <td className="px-3 py-2 text-slate-700">{category.total_expense_display || '0.00'}</td>
                                             <td className="px-3 py-2">
                                                 <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusClass(category.status)}`}>
                                                     {category.status_label}
@@ -141,7 +143,7 @@ export default function Index({
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="px-3 py-4 text-center text-slate-500">
+                                        <td colSpan={5} className="px-3 py-4 text-center text-slate-500">
                                             No categories yet.
                                         </td>
                                     </tr>

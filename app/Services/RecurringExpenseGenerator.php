@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class RecurringExpenseGenerator
 {
-    public const DEFAULT_LOOKAHEAD_DAYS = 3;
+    public const DEFAULT_LOOKAHEAD_DAYS = 10;
 
     public function __construct(private ExpenseInvoiceService $invoiceService)
     {

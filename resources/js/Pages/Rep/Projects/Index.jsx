@@ -2,6 +2,10 @@ import React from 'react';
 import { Head } from '@inertiajs/react';
 
 export default function Index({ projects = [], pagination = {} }) {
+    const commissionTotal = projects.reduce((sum, project) => sum + Number(project?.commission_amount || 0), 0);
+    const takenTotal = projects.reduce((sum, project) => sum + Number(project?.taken_commission_amount || 0), 0);
+    const displayCurrency = projects.find((project) => project?.currency)?.currency || '';
+
     return (
         <>
             <Head title="Projects" />
@@ -23,12 +27,13 @@ export default function Index({ projects = [], pagination = {} }) {
                                     <th className="px-4 py-3">Customer</th>
                                     <th className="px-4 py-3">Status</th>
                                     <th className="px-4 py-3">Commission</th>
+                                    <th className="px-4 py-3">Taken Commission</th>
                                     <th className="px-4 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {projects.length === 0 ? (
-                                    <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">No projects assigned.</td></tr>
+                                    <tr><td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-500">No projects assigned.</td></tr>
                                 ) : projects.map((project) => (
                                     <tr key={project.id} className="border-t border-slate-100 hover:bg-slate-50/70">
                                         <td className="px-4 py-3 font-semibold text-slate-900">#{project.id}</td>
@@ -36,10 +41,21 @@ export default function Index({ projects = [], pagination = {} }) {
                                         <td className="px-4 py-3">{project.customer_name}</td>
                                         <td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{project.status_label}</span></td>
                                         <td className="px-4 py-3 text-sm text-slate-600">{project.commission_amount !== null ? `${Number(project.commission_amount).toFixed(2)} ${project.currency}` : '--'}</td>
+                                        <td className="px-4 py-3 text-sm text-slate-600">{`${Number(project.taken_commission_amount || 0).toFixed(2)} ${project.currency}`}</td>
                                         <td className="px-4 py-3 text-right"><a href={project?.routes?.show} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">View</a></td>
                                     </tr>
                                 ))}
                             </tbody>
+                            {projects.length > 0 ? (
+                                <tfoot>
+                                    <tr className="border-t-2 border-slate-200 bg-slate-50">
+                                        <td colSpan={4} className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Totals</td>
+                                        <td className="px-4 py-3 text-sm font-semibold text-slate-800">{`${commissionTotal.toFixed(2)} ${displayCurrency}`}</td>
+                                        <td className="px-4 py-3 text-sm font-semibold text-slate-800">{`${takenTotal.toFixed(2)} ${displayCurrency}`}</td>
+                                        <td className="px-4 py-3" />
+                                    </tr>
+                                </tfoot>
+                            ) : null}
                         </table>
                     </div>
                 </div>

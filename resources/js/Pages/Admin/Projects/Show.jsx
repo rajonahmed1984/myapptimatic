@@ -352,7 +352,10 @@ export default function Show({
                                         {remainingBudgetInvoices.map((invoice) => (
                                             <tr key={invoice.id} className="border-t border-slate-100">
                                                 <td className="px-3 py-2"><a href={invoice.show_route} className="text-teal-700 hover:text-teal-600">{invoice.number_display}</a></td>
-                                                <td className="px-3 py-2">{invoice.total_display}</td>
+                                                <td className="px-3 py-2">
+                                                    <div>{invoice.invoiced_amount_display || invoice.total_display}</div>
+                                                    {invoice.remaining_amount_display ? <div className="text-[11px] text-slate-500">Remaining: {invoice.remaining_amount_display}</div> : null}
+                                                </td>
                                                 <td className="px-3 py-2">{invoice.issue_date}</td>
                                                 <td className="px-3 py-2">{invoice.due_date}</td>
                                                 <td className="px-3 py-2">{invoice.paid_at}</td>

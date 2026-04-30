@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\RecurringExpense;
+use App\Models\Setting;
+use App\Support\Currency;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -77,6 +79,17 @@ class ExpenseCategoryController extends Controller
 
     private function indexInertiaProps(Request $request, Collection $categories): array
     {
+        $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($currencyCode)) {
+            $currencyCode = Currency::DEFAULT;
+        }
+
+        $expenseTotalsByCategory = Expense::query()
+            ->selectRaw('category_id, SUM(amount) as total_amount')
+            ->whereNotNull('category_id')
+            ->groupBy('category_id')
+            ->pluck('total_amount', 'category_id');
+
         $editId = $request->old('edit_id', $request->query('edit'));
         $editCategoryId = is_numeric($editId) ? (int) $editId : null;
         $editCategory = $editCategoryId
@@ -109,13 +122,17 @@ class ExpenseCategoryController extends Controller
                     'description' => (string) old('description', (string) ($editCategory?->description ?? '')),
                 ],
             ],
-            'categories' => $categories->values()->map(function (ExpenseCategory $category) {
+            'categories' => $categories->values()->map(function (ExpenseCategory $category) use ($expenseTotalsByCategory, $currencyCode) {
+                $totalExpense = (float) ($expenseTotalsByCategory->get($category->id) ?? 0);
+
                 return [
                     'id' => $category->id,
                     'name' => (string) $category->name,
                     'status' => (string) $category->status,
                     'status_label' => ucfirst((string) $category->status),
                     'description' => (string) ($category->description ?? '--'),
+                    'total_expense' => $totalExpense,
+                    'total_expense_display' => sprintf('%s %s', $currencyCode, number_format($totalExpense, 2)),
                     'routes' => [
                         'edit' => route('admin.expenses.categories.index', ['edit' => $category->id]),
                         'destroy' => route('admin.expenses.categories.destroy', $category),

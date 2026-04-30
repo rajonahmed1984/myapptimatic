@@ -352,7 +352,7 @@ class ExpenseController extends Controller
             $invoiceService->createForExpense($expense, $request->user()->id);
         }
 
-        return redirect()->route('admin.expenses.index')
+        return redirect()->route('admin.expenses.create')
             ->with('status', 'Expense recorded.');
     }
 

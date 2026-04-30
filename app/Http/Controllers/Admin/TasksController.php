@@ -22,8 +22,15 @@ class TasksController extends Controller
 
         $tasksQuery = $taskQueryService->visibleTasksForUser($user)
             ->with(['project', 'createdBy'])
-            ->withCount('subtasks')
-            ->orderByDesc('created_at');
+            ->withCount('subtasks');
+
+        if ($statusFilter === '') {
+            $tasksQuery
+                ->orderByRaw("CASE WHEN status IN ('completed', 'done') THEN 1 ELSE 0 END ASC")
+                ->orderByDesc('created_at');
+        } else {
+            $tasksQuery->orderByDesc('created_at');
+        }
 
         if ($statusFilter === 'open') {
             $tasksQuery->whereIn('status', ['pending', 'todo', 'blocked']);

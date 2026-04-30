@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AccountingEntry;
 use App\Models\CommissionPayout;
 use App\Models\EmployeePayout;
+use App\Models\ExpenseInvoicePayment;
 use App\Models\PaymentGateway;
 use App\Models\PaymentMethod;
 use App\Models\PayrollAuditLog;
@@ -30,7 +31,7 @@ class PaymentGatewayController extends Controller
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
-        $methods = PaymentMethod::catalog();
+        $methods = $this->methodCatalog($gateways);
 
         $methodLedgerMap = [];
         foreach ($methods as $method) {
@@ -55,7 +56,7 @@ class PaymentGatewayController extends Controller
     public function show(PaymentGateway $paymentGateway): InertiaResponse
     {
         $dateFormat = (string) config('app.date_format', 'd-m-Y');
-        $methods = PaymentMethod::catalog();
+        $methods = $this->methodCatalog(collect([$paymentGateway]));
         $isGatewayActive = (bool) $paymentGateway->is_active;
 
         $matchedMethods = $isGatewayActive
@@ -520,9 +521,10 @@ class PaymentGatewayController extends Controller
         $gatewaySlug = $this->normalizeLookup((string) $gateway->slug);
         $gatewayDriver = $this->normalizeLookup((string) $gateway->driver);
         $gatewayAccountNumber = $this->normalizeLookup((string) ($settings['account_number'] ?? ''));
+        $gatewayMerchantNumber = $this->normalizeLookup((string) ($settings['merchant_number'] ?? ''));
         $isCashGateway = $this->isCashGateway($gatewayName, $gatewaySlug);
 
-        $strictMatches = $methods->filter(function (PaymentMethod $method) use ($gatewayName, $gatewaySlug, $gatewayDriver, $gatewayAccountNumber, $isCashGateway) {
+        $strictMatches = $methods->filter(function (PaymentMethod $method) use ($gatewayName, $gatewaySlug, $gatewayDriver, $gatewayAccountNumber, $gatewayMerchantNumber, $isCashGateway) {
             $code = $this->normalizeLookup((string) $method->code);
             $name = $this->normalizeLookup((string) $method->name);
             $accountDetails = $this->normalizeLookup((string) ($method->account_details ?? ''));
@@ -558,6 +560,16 @@ class PaymentGatewayController extends Controller
                 return true;
             }
 
+            if (
+                $gatewayMerchantNumber !== ''
+                && (
+                    ($code !== '' && (str_contains($code, $gatewayMerchantNumber) || str_contains($gatewayMerchantNumber, $code)))
+                    || ($accountDetails !== '' && (str_contains($accountDetails, $gatewayMerchantNumber) || str_contains($gatewayMerchantNumber, $accountDetails)))
+                )
+            ) {
+                return true;
+            }
+
             return false;
         })->values();
 
@@ -588,6 +600,107 @@ class PaymentGatewayController extends Controller
         })->values();
 
         return $keywordMatches;
+    }
+
+    private function methodCatalog(Collection $gateways): Collection
+    {
+        $methods = collect();
+        $nextId = 1;
+
+        foreach (PaymentMethod::catalog() as $method) {
+            $nextId = $this->appendMethodCandidate(
+                $methods,
+                $nextId,
+                (string) $method->code,
+                (string) $method->name,
+                (string) ($method->account_details ?? ''),
+                (bool) ($method->is_active ?? true)
+            );
+        }
+
+        foreach ($gateways as $gateway) {
+            if (! $gateway instanceof PaymentGateway) {
+                continue;
+            }
+
+            $settings = is_array($gateway->settings) ? $gateway->settings : [];
+            $name = (string) ($gateway->name ?? '');
+            $slug = (string) ($gateway->slug ?? '');
+            $driver = (string) ($gateway->driver ?? '');
+            $accountNumber = trim((string) ($settings['account_number'] ?? ''));
+            $merchantNumber = trim((string) ($settings['merchant_number'] ?? ''));
+            $isActive = (bool) ($gateway->is_active ?? true);
+
+            $nextId = $this->appendMethodCandidate(
+                $methods,
+                $nextId,
+                $slug !== '' ? $slug : (string) $gateway->id,
+                $name !== '' ? $name : $this->humanizeGatewayToken($driver),
+                $accountNumber,
+                $isActive
+            );
+
+            if ($accountNumber !== '') {
+                $nextId = $this->appendMethodCandidate(
+                    $methods,
+                    $nextId,
+                    $accountNumber,
+                    $name !== '' ? $name.' Account' : 'Gateway Account',
+                    $accountNumber,
+                    $isActive
+                );
+            }
+
+            if ($merchantNumber !== '') {
+                $nextId = $this->appendMethodCandidate(
+                    $methods,
+                    $nextId,
+                    $merchantNumber,
+                    $name !== '' ? $name.' Merchant' : 'Gateway Merchant',
+                    $merchantNumber,
+                    $isActive
+                );
+            }
+        }
+
+        return $methods->values();
+    }
+
+    private function appendMethodCandidate(
+        Collection $methods,
+        int $nextId,
+        string $code,
+        string $name,
+        string $accountDetails,
+        bool $isActive
+    ): int {
+        $code = trim($code);
+        if ($code === '') {
+            return $nextId;
+        }
+
+        $key = $this->normalizeLookup($code);
+        if ($key === '') {
+            return $nextId;
+        }
+
+        if ($methods->has($key)) {
+            return $nextId;
+        }
+
+        $method = new PaymentMethod();
+        $method->forceFill([
+            'id' => $nextId,
+            'code' => $code,
+            'name' => trim($name) !== '' ? trim($name) : $code,
+            'account_details' => trim($accountDetails),
+            'is_active' => $isActive,
+            'sort_order' => $nextId * 10,
+        ]);
+
+        $methods->put($key, $method);
+
+        return $nextId + 1;
     }
 
     private function isCashGateway(string $gatewayName, string $gatewaySlug): bool
@@ -680,6 +793,21 @@ class PaymentGatewayController extends Controller
                 ];
             });
 
+        $expenseInvoicePayments = ExpenseInvoicePayment::query()
+            ->with('invoice:id,invoice_no,currency')
+            ->where('payment_method', $code)
+            ->get()
+            ->map(function (ExpenseInvoicePayment $row) {
+                return [
+                    'date' => optional($row->paid_at)->toDateString() ?? optional($row->created_at)->toDateString(),
+                    'type' => 'Expense payment',
+                    'party' => (string) ($row->invoice?->invoice_no ?? 'Expense invoice'),
+                    'reference' => (string) ($row->payment_reference ?? '--'),
+                    'amount' => (float) ($row->amount ?? 0),
+                    'currency' => (string) ($row->invoice?->currency ?? 'BDT'),
+                ];
+            });
+
         $payrollPayments = PayrollAuditLog::query()
             ->with('payrollItem.employee:id,name', 'payrollItem:id,employee_id,currency')
             ->whereIn('event', ['payment_partial', 'payment_completed'])
@@ -714,6 +842,8 @@ class PaymentGatewayController extends Controller
             ->where(function ($query) use ($method) {
                 $query->where('payment_reference', $method->name)
                     ->orWhere('payment_reference', 'like', $method->name.' - %')
+                    ->orWhere('payment_reference', (string) $method->code)
+                    ->orWhere('payment_reference', 'like', (string) $method->code.' - %')
                     ->orWhere('payment_reference', ucfirst((string) $method->code))
                     ->orWhere('payment_reference', 'like', ucfirst((string) $method->code).' - %');
             })
@@ -743,6 +873,7 @@ class PaymentGatewayController extends Controller
 
         return $employeePayouts
             ->concat($commissionPayouts)
+            ->concat($expenseInvoicePayments)
             ->concat($payrollPayments)
             ->concat($legacyPayrollPayments)
             ->sortByDesc(fn (array $row) => (string) $row['date'])
@@ -756,9 +887,10 @@ class PaymentGatewayController extends Controller
             return false;
         }
 
+        $codeRaw = trim((string) $method->code);
         $codeLabel = ucfirst((string) $method->code);
         $nameLabel = trim((string) $method->name);
-        $candidates = array_filter([$codeLabel, $nameLabel]);
+        $candidates = array_values(array_filter([$codeRaw, $codeLabel, $nameLabel]));
 
         foreach ($candidates as $candidate) {
             if (Str::lower($reference) === Str::lower($candidate)) {
