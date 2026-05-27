@@ -21,10 +21,14 @@ class CommissionPayoutController extends Controller
 {
     public function index(Request $request): InertiaResponse
     {
+        $search = trim((string) $request->query('search', ''));
+
         $payouts = CommissionPayout::query()
-            ->with(['salesRep', 'project:id,name'])
+            ->with(['salesRep:id,name', 'project:id,name'])
+            ->search($search)
             ->latest()
-            ->paginate(25);
+            ->paginate((int) config('admin.pagination.per_page', 15))
+            ->withQueryString();
 
         $payableByRep = CommissionEarning::query()
             ->select('sales_representative_id', DB::raw('COUNT(*) as earnings_count'), DB::raw('SUM(commission_amount) as total_amount'))
@@ -40,7 +44,7 @@ class CommissionPayoutController extends Controller
 
         return Inertia::render(
             'Admin/CommissionPayouts/Index',
-            $this->indexInertiaProps($payouts, $salesReps, $payableByRep)
+            $this->indexInertiaProps($payouts, $salesReps, $payableByRep, $search)
         );
     }
 
@@ -172,16 +176,19 @@ class CommissionPayoutController extends Controller
     private function indexInertiaProps(
         LengthAwarePaginator $payouts,
         Collection $salesReps,
-        Collection $payableByRep
+        Collection $payableByRep,
+        string $search
     ): array {
         $dateFormat = config('app.date_format', 'd-m-Y');
 
         return [
             'pageTitle' => 'Commission Payouts',
+            'search' => $search,
             'routes' => [
                 'export_payouts' => route('admin.commission-payouts.export'),
                 'export_earnings' => route('admin.commission-earnings.export'),
                 'create' => route('admin.commission-payouts.create'),
+                'index' => route('admin.commission-payouts.index'),
             ],
             'payable_by_rep' => $salesReps->map(function (SalesRepresentative $rep) use ($payableByRep) {
                 $aggregate = $payableByRep->get($rep->id);

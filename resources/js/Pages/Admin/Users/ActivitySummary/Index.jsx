@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
 import DateRangePickerField from '../../../../Components/DateRangePickerField';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 const initials = (name) => {
     const value = String(name || '').trim();
@@ -25,6 +26,18 @@ export default function Index({
     showRange = false,
     routes = {},
 }) {
+    const typeOptions = [
+        { value: 'all', label: 'All User Types' },
+        { value: 'employee', label: 'Employees' },
+        { value: 'customer', label: 'Customers' },
+        { value: 'salesrep', label: 'Sales Representatives' },
+        { value: 'admin', label: 'Admin/Web Users' },
+    ];
+    const specificUserOptions = [
+        { value: '', label: `All ${String(type).charAt(0).toUpperCase() + String(type).slice(1)}` },
+        ...userOptions.map((option) => ({ value: String(option.id), label: option.name })),
+    ];
+
     const totals = useMemo(() => {
         const rows = Array.isArray(users) ? users : [];
         return rows.reduce((acc, row) => {
@@ -77,37 +90,26 @@ export default function Index({
                         <label htmlFor="type" className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                             User Type
                         </label>
-                        <select
+                        <SearchableSelect
                             name="type"
-                            id="type"
-                            defaultValue={filters?.type || 'all'}
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                        >
-                            <option value="all">All User Types</option>
-                            <option value="employee">Employees</option>
-                            <option value="customer">Customers</option>
-                            <option value="salesrep">Sales Representatives</option>
-                            <option value="admin">Admin/Web Users</option>
-                        </select>
+                            defaultValue={String(filters?.type || 'all')}
+                            options={typeOptions}
+                            className="mt-2"
+                            placeholder="Select user type"
+                        />
                     </div>
 
                     <div>
                         <label htmlFor="user_id" className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                             Specific User (Optional)
                         </label>
-                        <select
+                        <SearchableSelect
                             name="user_id"
-                            id="user_id"
-                            defaultValue={filters?.user_id ?? ''}
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                        >
-                            <option value="">All {String(type).charAt(0).toUpperCase() + String(type).slice(1)}</option>
-                            {userOptions.map((option) => (
-                                <option key={String(option.id)} value={option.id}>
-                                    {option.name}
-                                </option>
-                            ))}
-                        </select>
+                            defaultValue={String(filters?.user_id ?? '')}
+                            options={specificUserOptions}
+                            className="mt-2"
+                            placeholder="Select user"
+                        />
                     </div>
 
                     <DateRangePickerField

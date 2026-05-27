@@ -516,7 +516,6 @@ class SubscriptionController extends Controller
         Collection $salesReps
     ): array {
         $isEdit = $subscription !== null;
-        $oldLicenseInput = old('license', []);
         $effectiveSubscriptionAmount = $subscription
             ? (float) ($subscription->subscription_amount ?? $subscription->plan?->price ?? 0)
             : 0.0;
@@ -528,9 +527,6 @@ class SubscriptionController extends Controller
         ) {
             $commissionPercent = round((((float) $subscription->sales_rep_commission_amount) / $effectiveSubscriptionAmount) * 100, 2);
         }
-
-        $license = $subscription ? $subscription->licenses->first() : null;
-        $activeDomain = $license ? ($license->domains->firstWhere('status', 'active')?->domain ?? $license->domains->first()?->domain) : '';
 
         return [
             'pageTitle' => $isEdit ? 'Edit Subscription' : 'Add Subscription',
@@ -572,12 +568,8 @@ class SubscriptionController extends Controller
                     'auto_renew' => (bool) old('auto_renew', (bool) ($subscription?->auto_renew ?? false)),
                     'cancel_at_period_end' => (bool) old('cancel_at_period_end', (bool) ($subscription?->cancel_at_period_end ?? false)),
                     'notes' => (string) old('notes', (string) ($subscription?->notes ?? '')),
-                    'license_key' => (string) old('license_key', (string) ($license?->license_key ?? '')),
-                    'license_status' => (string) old('license_status', (string) ($license?->status ?? 'active')),
-                    'allowed_domains' => (string) old('allowed_domains', (string) ($activeDomain ?? '')),
                 ],
             ],
-            'license_manager' => $this->licenseManagerInertiaProps($subscription, $oldLicenseInput),
             'routes' => [
                 'index' => route('admin.subscriptions.index'),
             ],

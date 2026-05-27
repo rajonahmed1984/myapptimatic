@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { formatDate } from '@/utils/datetime';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 const formatCurrency = (amount, symbol, code) => {
     const numeric = Number.parseFloat(String(amount ?? 0));
@@ -87,6 +88,20 @@ export default function Show({
         () => paymentMethods.some((method) => String(method.code) === 'advance'),
         [paymentMethods],
     );
+    const paymentMethodOptions = useMemo(() => {
+        const options = [{ value: '', label: 'Select' }];
+        if (!hasAdvanceMethod) {
+            options.push({ value: 'advance', label: 'Advance' });
+        }
+        paymentMethods.forEach((method) => {
+            options.push({ value: String(method.code), label: method.name });
+        });
+        return options;
+    }, [hasAdvanceMethod, paymentMethods]);
+    const paymentTypeOptions = [
+        { value: 'full', label: 'Full Payment' },
+        { value: 'partial', label: 'Partial Payment' },
+    ];
     const advanceBalance = Number(stats?.advance_balance ?? 0);
     const invoiceRows = invoices?.data ?? [];
     const advanceRows = advances?.data ?? [];
@@ -403,38 +418,29 @@ export default function Show({
                                 <label htmlFor="expensePaymentMethod" className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                     Payment Method
                                 </label>
-                                <select
-                                    id="expensePaymentMethod"
+                                <SearchableSelect
                                     name="payment_method"
                                     value={paymentModal.paymentMethod}
-                                    onChange={(event) => setPaymentModal((prev) => ({ ...prev, paymentMethod: event.target.value }))}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    onChange={(nextValue) => setPaymentModal((prev) => ({ ...prev, paymentMethod: String(nextValue || '') }))}
+                                    options={paymentMethodOptions}
+                                    className="mt-1"
+                                    placeholder="Select"
                                     required
-                                >
-                                    <option value="">Select</option>
-                                    {!hasAdvanceMethod ? <option value="advance">Advance</option> : null}
-                                    {paymentMethods.map((method) => (
-                                        <option key={method.code} value={method.code}>
-                                            {method.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                />
                             </div>
                             <div>
                                 <label htmlFor="expensePaymentType" className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                     Payment Type
                                 </label>
-                                <select
-                                    id="expensePaymentType"
+                                <SearchableSelect
                                     name="payment_type"
                                     value={paymentModal.paymentType}
                                     onChange={(event) => onPaymentTypeChange(event.target.value)}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    options={paymentTypeOptions}
+                                    className="mt-1"
+                                    placeholder="Select payment type"
                                     required
-                                >
-                                    <option value="full">Full Payment</option>
-                                    <option value="partial">Partial Payment</option>
-                                </select>
+                                />
                             </div>
                             <div>
                                 <label htmlFor="expensePaymentAmount" className="text-xs uppercase tracking-[0.2em] text-slate-500">

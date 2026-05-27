@@ -1,5 +1,11 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+
+const BTN = {
+    primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+};
 
 const statusBadgeClass = (status) => {
     if (status === 'Paid') {
@@ -15,11 +21,17 @@ const statusBadgeClass = (status) => {
 
 export default function Index({
     pageTitle = 'Commission Payouts',
+    search = '',
     routes = {},
     payable_by_rep = [],
     payouts = [],
     pagination = {},
 }) {
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: search,
+        url: routes?.index,
+    });
+
     return (
         <>
             <Head title={pageTitle} />
@@ -30,25 +42,43 @@ export default function Index({
                     <h1 className="text-2xl font-semibold text-slate-900">Payouts</h1>
                     <p className="text-sm text-slate-500">Review payouts and create new ones from payable earnings.</p>
                 </div>
+                <form
+                    method="GET"
+                    action={routes?.index}
+                    className="flex-1"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        submitSearch();
+                    }}
+                >
+                    <input
+                        type="text"
+                        name="search"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="Search payouts..."
+                        className="w-full max-w-sm rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    />
+                </form>
                 <div className="flex flex-wrap items-center gap-3">
                     <a
                         href={routes.export_payouts}
                         data-native="true"
-                        className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700"
+                        className={BTN.secondary}
                     >
                         Export payouts CSV
                     </a>
                     <a
                         href={routes.export_earnings}
                         data-native="true"
-                        className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700"
+                        className={BTN.secondary}
                     >
                         Export earnings CSV
                     </a>
                     <a
                         href={routes.create}
                         data-native="true"
-                        className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+                        className={BTN.primary}
                     >
                         New payout
                     </a>
@@ -119,7 +149,7 @@ export default function Index({
                                                 <a
                                                     href={payout?.routes?.show}
                                                     data-native="true"
-                                                    className="font-semibold text-emerald-700 hover:underline"
+                                                    className="text-xs font-semibold text-teal-600 hover:text-teal-500"
                                                 >
                                                     View
                                                 </a>
@@ -143,7 +173,7 @@ export default function Index({
                                 <a
                                     href={pagination.previous_url}
                                     data-native="true"
-                                    className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-emerald-300 hover:text-emerald-700"
+                                    className={BTN.secondary}
                                 >
                                     Previous
                                 </a>
@@ -154,7 +184,7 @@ export default function Index({
                                 <a
                                     href={pagination.next_url}
                                     data-native="true"
-                                    className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-emerald-300 hover:text-emerald-700"
+                                    className={BTN.secondary}
                                 >
                                     Next
                                 </a>

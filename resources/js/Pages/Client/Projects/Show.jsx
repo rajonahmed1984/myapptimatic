@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const STATUS_LABELS = {
     pending: 'To Do',
@@ -60,6 +61,8 @@ export default function Show({
     const { csrf_token: csrfToken } = usePage().props;
     const currencyCode = project.currency || '';
     const [taskViewMode, setTaskViewMode] = React.useState('list');
+    const taskTypeSelectOptions = Object.entries(taskTypeOptions || {}).map(([value, label]) => ({ value: String(value), label: String(label) }));
+    const prioritySelectOptions = Object.entries(priorityOptions || {}).map(([value, label]) => ({ value: String(value), label: String(label) }));
 
     const groupedTasks = React.useMemo(() => {
         const groups = {
@@ -228,13 +231,14 @@ export default function Show({
                             </div>
                             <div className="md:col-span-1">
                                 <label className="text-xs text-slate-500">Task type</label>
-                                <select name="task_type" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                    {Object.entries(taskTypeOptions).map(([value, label]) => (
-                                        <option key={value} value={value}>
-                                            {label}
-                                        </option>
-                                    ))}
-                                </select>
+                                <SearchableSelect
+                                    name="task_type"
+                                    defaultValue={String(taskTypeSelectOptions[0]?.value || '')}
+                                    options={taskTypeSelectOptions}
+                                    className="mt-1"
+                                    placeholder="Select task type"
+                                    required
+                                />
                             </div>
                             <div className="md:col-span-3">
                                 <label className="text-xs text-slate-500">Description</label>
@@ -242,13 +246,13 @@ export default function Show({
                             </div>
                             <div className="md:col-span-1">
                                 <label className="text-xs text-slate-500">Priority</label>
-                                <select name="priority" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                    {Object.entries(priorityOptions).map(([value, label]) => (
-                                        <option key={value} value={value}>
-                                            {label}
-                                        </option>
-                                    ))}
-                                </select>
+                                <SearchableSelect
+                                    name="priority"
+                                    defaultValue={String(prioritySelectOptions[0]?.value || '')}
+                                    options={prioritySelectOptions}
+                                    className="mt-1"
+                                    placeholder="Select priority"
+                                />
                             </div>
                             <div className="md:col-span-1">
                                 <label className="text-xs text-slate-500">Attachment (required for Upload type)</label>

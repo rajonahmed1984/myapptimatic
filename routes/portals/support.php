@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthFresh\PortalLoginController;
 use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\Support\DashboardController as SupportDashboardController;
+use App\Http\Controllers\PortalTaskController;
 use App\Http\Controllers\Support\SupportTicketController as SupportSupportTicketController;
 use App\Http\Controllers\Support\TasksController as SupportTasksController;
 use App\Http\Controllers\Mail\MailInboxController;
@@ -97,4 +98,11 @@ Route::middleware([
         Route::patch('/support-tickets/{ticket}/status', [SupportSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
         Route::patch('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'update'])->name('support-tickets.update');
         Route::delete('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'destroy'])->name('support-tickets.destroy');
+
+        Route::prefix('portal/api')->name('portal.api.')->group(function () {
+            Route::get('/tasks', [PortalTaskController::class, 'index'])->name('tasks.index');
+            Route::post('/tasks', [PortalTaskController::class, 'store'])->name('tasks.store');
+            Route::patch('/tasks/{task}', [PortalTaskController::class, 'update'])->name('tasks.update');
+            Route::delete('/tasks/{task}', [PortalTaskController::class, 'destroy'])->name('tasks.destroy');
+        });
     });

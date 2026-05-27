@@ -1,38 +1,62 @@
 import React from 'react';
-import ErrorMessage from './ErrorMessage';
+import SearchableSelect from '../SearchableSelect';
 
 export default function SelectField({
     label = null,
     name,
     defaultValue = '',
+    value,
     options = [],
     className = '',
     selectClassName = '',
     error = null,
+    onChange,
+    required = false,
+    disabled = false,
+    placeholder = 'Select an option',
     ...props
 }) {
+    const normalizedOptions = (Array.isArray(options) ? options : []).map((option) => ({
+        value: String(option?.value ?? ''),
+        label: String(option?.label ?? ''),
+    }));
+
+    const handleChange = (nextValue, selectedOption) => {
+        if (typeof onChange !== 'function') {
+            return;
+        }
+
+        onChange(
+            {
+                target: {
+                    name,
+                    value: nextValue,
+                },
+            },
+            selectedOption,
+        );
+    };
+
     return (
         <div className={className}>
             {label ? <label className="text-sm text-slate-200/85">{label}</label> : null}
-            <select
+            <SearchableSelect
                 name={name}
                 defaultValue={defaultValue}
-                className={[
-                    'mt-2 w-full rounded-xl border border-white/20 bg-white px-4 py-2 text-sm text-slate-900 focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-200',
-                    error ? 'border-rose-300' : '',
+                value={value}
+                options={normalizedOptions}
+                onChange={handleChange}
+                required={required}
+                disabled={disabled}
+                placeholder={placeholder}
+                className="mt-2"
+                triggerClassName={[
+                    'h-10 rounded-xl border-white/20 px-4 text-sm text-slate-900',
                     selectClassName,
-                ]
-                    .filter(Boolean)
-                    .join(' ')}
+                ].filter(Boolean).join(' ')}
+                error={error}
                 {...props}
-            >
-                {options.map((option) => (
-                    <option key={option.value} value={option.value}>
-                        {option.label}
-                    </option>
-                ))}
-            </select>
-            <ErrorMessage message={error} />
+            />
         </div>
     );
 }

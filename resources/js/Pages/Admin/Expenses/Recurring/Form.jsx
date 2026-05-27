@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 export default function Form({
     pageTitle,
@@ -11,6 +12,17 @@ export default function Form({
 }) {
     const { csrf_token: csrfToken, errors = {} } = usePage().props;
     const method = String(submit?.http_method || 'POST').toUpperCase();
+    const categoryOptions = [
+        { value: '', label: 'Select category' },
+        ...categories.map((category) => ({
+            value: String(category.id),
+            label: category.name,
+        })),
+    ];
+    const recurrenceTypeOptions = [
+        { value: 'monthly', label: 'Monthly' },
+        { value: 'yearly', label: 'Yearly' },
+    ];
 
     return (
         <>
@@ -37,20 +49,15 @@ export default function Form({
 
                     <div>
                         <label className="text-xs text-slate-500">Category</label>
-                        <select
+                        <SearchableSelect
                             name="category_id"
                             required
-                            defaultValue={form.category_id ?? ''}
-                            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                        >
-                            <option value="">Select category</option>
-                            {categories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                    {category.name}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.category_id ? <div className="mt-1 text-xs text-rose-600">{errors.category_id}</div> : null}
+                            defaultValue={String(form.category_id ?? '')}
+                            options={categoryOptions}
+                            className="mt-1"
+                            placeholder="Select category"
+                            error={errors.category_id}
+                        />
                     </div>
 
                     <div>
@@ -82,14 +89,14 @@ export default function Form({
                         <div>
                             <label className="text-xs text-slate-500">Recurrence</label>
                             <div className="mt-1 flex gap-2">
-                                <select
+                                <SearchableSelect
                                     name="recurrence_type"
-                                    defaultValue={form.recurrence_type ?? 'monthly'}
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="monthly">Monthly</option>
-                                    <option value="yearly">Yearly</option>
-                                </select>
+                                    defaultValue={String(form.recurrence_type ?? 'monthly')}
+                                    options={recurrenceTypeOptions}
+                                    className="w-full"
+                                    placeholder="Recurrence type"
+                                    error={errors.recurrence_type}
+                                />
                                 <input
                                     type="number"
                                     min="1"
@@ -99,7 +106,6 @@ export default function Form({
                                     title="Interval"
                                 />
                             </div>
-                            {errors.recurrence_type ? <div className="mt-1 text-xs text-rose-600">{errors.recurrence_type}</div> : null}
                             {errors.recurrence_interval ? (
                                 <div className="mt-1 text-xs text-rose-600">{errors.recurrence_interval}</div>
                             ) : null}

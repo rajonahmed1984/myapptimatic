@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, router } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const statusBadgeClass = (status) => {
     if (status === 'active') {
@@ -30,6 +31,7 @@ export default function Index({
         extraData: searchExtras,
     });
     const hasFilters = Boolean(searchTerm.trim() || statusFilter);
+    const statusOptions = status_options.map((option) => ({ value: String(option.value || ''), label: option.label }));
 
     React.useEffect(() => {
         setStatusFilter(filters?.status ?? '');
@@ -81,18 +83,14 @@ export default function Index({
                         placeholder="Search by name, email, or code..."
                         className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
                     />
-                    <select
+                    <SearchableSelect
                         name="status"
                         value={statusFilter}
-                        onChange={(event) => setStatusFilter(event.target.value)}
-                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                    >
-                        {status_options.map((option) => (
-                            <option key={option.value || 'all'} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                        onChange={(nextValue) => setStatusFilter(String(nextValue || ''))}
+                        options={statusOptions}
+                        className="min-w-[180px]"
+                        placeholder="All statuses"
+                    />
                     <button type="submit" className="rounded-full bg-slate-900 px-6 py-2 text-sm font-semibold text-white">
                         Filter
                     </button>

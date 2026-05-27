@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 
 // Premium styled dynamic Daily Calendar Task Manager Widget
 export default function DailyCalendarWidget() {
+    const apiBase = '/support/portal/api/tasks';
+
     const [selectedDate, setSelectedDate] = useState(() => {
         const today = new Date();
         const yyyy = today.getFullYear();
@@ -21,7 +23,7 @@ export default function DailyCalendarWidget() {
         const baseDate = new Date(selectedDate);
         // adjust by weekOffset * 7 days
         baseDate.setDate(baseDate.getDate() + (weekOffset * 7));
-        
+
         // Find Monday of that baseDate's week
         const dayOfWeek = baseDate.getDay();
         const diffToMon = baseDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
@@ -35,7 +37,7 @@ export default function DailyCalendarWidget() {
             const mm = String(day.getMonth() + 1).padStart(2, '0');
             const dd = String(day.getDate()).padStart(2, '0');
             const formatted = `${yyyy}-${mm}-${dd}`;
-            
+
             week.push({
                 dateString: formatted,
                 dayName: day.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -56,7 +58,7 @@ export default function DailyCalendarWidget() {
         const start = visibleWeek[0].dateString;
         const end = visibleWeek[6].dateString;
         try {
-            const response = await fetch(`/portal/api/tasks?start_date=${start}&end_date=${end}`, {
+            const response = await fetch(`${apiBase}?start_date=${start}&end_date=${end}`, {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
@@ -87,7 +89,7 @@ export default function DailyCalendarWidget() {
 
         setLoading(true);
         try {
-            const response = await fetch('/portal/api/tasks', {
+            const response = await fetch(apiBase, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -118,7 +120,7 @@ export default function DailyCalendarWidget() {
     // Toggle task completion
     const handleToggleTask = async (task) => {
         try {
-            const response = await fetch(`/portal/api/tasks/${task.id}`, {
+            const response = await fetch(`${apiBase}/${task.id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -145,7 +147,7 @@ export default function DailyCalendarWidget() {
     // Delete task
     const handleDeleteTask = async (taskId) => {
         try {
-            const response = await fetch(`/portal/api/tasks/${taskId}`, {
+            const response = await fetch(`${apiBase}/${taskId}`, {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
@@ -194,8 +196,8 @@ export default function DailyCalendarWidget() {
                 </div>
                 {/* Navigation week chevrons */}
                 <div className="flex items-center gap-1">
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={() => setWeekOffset(prev => prev - 1)}
                         className="p-2 rounded-full border border-slate-200 hover:bg-slate-50 hover:text-teal-600 transition"
                         title="Previous Week"
@@ -204,7 +206,7 @@ export default function DailyCalendarWidget() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <button 
+                    <button
                         type="button"
                         onClick={() => {
                             setWeekOffset(0);
@@ -218,8 +220,8 @@ export default function DailyCalendarWidget() {
                     >
                         Today
                     </button>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={() => setWeekOffset(prev => prev + 1)}
                         className="p-2 rounded-full border border-slate-200 hover:bg-slate-50 hover:text-teal-600 transition"
                         title="Next Week"
@@ -244,8 +246,8 @@ export default function DailyCalendarWidget() {
                                 setSelectedDate(day.dateString);
                             }}
                             className={`flex flex-col items-center py-2.5 rounded-xl transition ${
-                                isSelected 
-                                    ? 'bg-teal-600 text-white shadow-md shadow-teal-100 font-bold scale-105' 
+                                isSelected
+                                    ? 'bg-teal-600 text-white shadow-md shadow-teal-100 font-bold scale-105'
                                     : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
                             }`}
                         >
@@ -282,8 +284,8 @@ export default function DailyCalendarWidget() {
                     </div>
                 ) : (
                     tasksForSelectedDay.map((task) => (
-                        <div 
-                            key={task.id} 
+                        <div
+                            key={task.id}
                             className="flex items-center justify-between px-3 py-2.5 bg-slate-50/60 rounded-xl border border-slate-100 hover:border-slate-200 transition group"
                         >
                             <label className="flex items-center gap-3 cursor-pointer select-none min-w-0 flex-1">

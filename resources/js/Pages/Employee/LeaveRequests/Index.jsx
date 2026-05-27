@@ -1,8 +1,10 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Index({ leave_requests = [], leave_types = [], pagination = {}, routes = {} }) {
     const { csrf_token: csrfToken = '', errors = {} } = usePage().props || {};
+    const leaveTypeOptions = leave_types.map((type) => ({ value: String(type.id), label: type.name }));
 
     return (
         <>
@@ -17,10 +19,14 @@ export default function Index({ leave_requests = [], leave_types = [], paginatio
                     <input type="hidden" name="_token" value={csrfToken} />
                     <div>
                         <label className="text-xs text-slate-500">Leave type</label>
-                        <select name="leave_type_id" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                            {leave_types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
-                        </select>
-                        {errors?.leave_type_id ? <div className="mt-1 text-xs text-rose-600">{errors.leave_type_id}</div> : null}
+                        <SearchableSelect
+                            name="leave_type_id"
+                            defaultValue={String(leaveTypeOptions[0]?.value || '')}
+                            options={leaveTypeOptions}
+                            className="mt-1"
+                            placeholder="Select leave type"
+                            error={errors?.leave_type_id}
+                        />
                     </div>
                     <div>
                         <label className="text-xs text-slate-500">Start date</label>

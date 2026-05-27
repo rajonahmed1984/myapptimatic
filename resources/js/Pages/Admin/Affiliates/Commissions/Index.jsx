@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 const statusBadgeClass = (status) => {
     if (status === 'paid') {
@@ -33,6 +34,11 @@ export default function Index({
         () => Boolean((filters?.affiliate_id ?? '') || (filters?.status ?? '')),
         [filters],
     );
+    const affiliateOptions = [
+        { value: '', label: 'All affiliates' },
+        ...affiliates.map((affiliate) => ({ value: String(affiliate.id), label: `${affiliate.name} (${affiliate.code})` })),
+    ];
+    const statusOptions = status_options.map((option) => ({ value: String(option.value || ''), label: option.label }));
 
     const toggleId = (id) => {
         setSelectedIds((prev) =>
@@ -71,29 +77,20 @@ export default function Index({
 
             <div className="card p-6">
                 <form method="GET" action={routes?.index} data-native="true" className="mb-6 flex flex-wrap gap-4">
-                    <select
+                    <SearchableSelect
                         name="affiliate_id"
-                        defaultValue={filters?.affiliate_id ?? ''}
-                        className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                    >
-                        <option value="">All affiliates</option>
-                        {affiliates.map((affiliate) => (
-                            <option key={affiliate.id} value={affiliate.id}>
-                                {affiliate.name} ({affiliate.code})
-                            </option>
-                        ))}
-                    </select>
-                    <select
+                        defaultValue={String(filters?.affiliate_id ?? '')}
+                        options={affiliateOptions}
+                        className="flex-1"
+                        placeholder="All affiliates"
+                    />
+                    <SearchableSelect
                         name="status"
-                        defaultValue={filters?.status ?? ''}
-                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                    >
-                        {status_options.map((option) => (
-                            <option key={option.value || 'all'} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                        defaultValue={String(filters?.status ?? '')}
+                        options={statusOptions}
+                        className="min-w-[180px]"
+                        placeholder="All statuses"
+                    />
                     <button
                         type="submit"
                         className="rounded-full bg-slate-900 px-6 py-2 text-sm font-semibold text-white"

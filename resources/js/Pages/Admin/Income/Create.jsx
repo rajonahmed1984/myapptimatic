@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Create({
     pageTitle = 'Add Income',
@@ -9,6 +10,10 @@ export default function Create({
 }) {
     const { csrf_token: csrfToken = '', errors = {} } = usePage().props || {};
     const fields = form?.fields || {};
+    const categoryOptions = [
+        { value: '', label: 'Select category' },
+        ...categories.map((category) => ({ value: String(category.id), label: category.name })),
+    ];
 
     return (
         <>
@@ -41,22 +46,15 @@ export default function Create({
                     <div className="grid gap-3 md:grid-cols-2">
                         <div>
                             <label className="text-xs text-slate-500">Category</label>
-                            <select
+                            <SearchableSelect
                                 name="income_category_id"
                                 required
-                                defaultValue={fields?.income_category_id ?? ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            >
-                                <option value="">Select category</option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>
-                                        {category.name}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.income_category_id ? (
-                                <div className="mt-1 text-xs text-rose-600">{errors.income_category_id}</div>
-                            ) : null}
+                                defaultValue={String(fields?.income_category_id ?? '')}
+                                options={categoryOptions}
+                                className="mt-1"
+                                placeholder="Select category"
+                                error={errors?.income_category_id}
+                            />
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Title</label>

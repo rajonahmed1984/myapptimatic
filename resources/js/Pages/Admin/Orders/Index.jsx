@@ -3,6 +3,10 @@ import { Head, usePage } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
+const BTN = {
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+};
+
 const statusClass = (status) => {
     if (status === 'accepted') {
         return 'bg-emerald-100 text-emerald-700';
@@ -118,7 +122,7 @@ export default function Index({
                                                         <input type="hidden" name="_token" value={csrfToken} />
                                                         <button
                                                             type="submit"
-                                                            className="rounded-full border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-600 hover:border-rose-300"
+                                                            className="text-xs font-semibold text-rose-600 hover:text-rose-500"
                                                         >
                                                             Cancel
                                                         </button>
@@ -140,7 +144,7 @@ export default function Index({
                                                 <input type="hidden" name="_method" value="DELETE" />
                                                 <button
                                                     type="submit"
-                                                    className="rounded-full border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-600 hover:border-rose-300"
+                                                    className="text-xs font-semibold text-rose-600 hover:text-rose-500"
                                                 >
                                                     Delete
                                                 </button>
@@ -166,7 +170,7 @@ export default function Index({
                         <a
                             href={pagination.previous_url}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                            className={BTN.secondary}
                         >
                             Previous
                         </a>
@@ -177,7 +181,7 @@ export default function Index({
                         <a
                             href={pagination.next_url}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                            className={BTN.secondary}
                         >
                             Next
                         </a>

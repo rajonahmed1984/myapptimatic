@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 
+const BTN = {
+    primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+};
+
 const initials = (value) => {
     const text = String(value || '').trim();
     if (!text) {
@@ -68,7 +73,7 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                 <a
                     href={routes?.create}
                     data-native="true"
-                    className="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white"
+                    className={BTN.primary}
                 >
                     New Customer
                 </a>
@@ -163,14 +168,14 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                     <a
                         href={pagination.previous_url || '#'}
                         data-native="true"
-                        className={`rounded-full border px-3 py-1 ${pagination.previous_url ? 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600' : 'cursor-not-allowed border-slate-200 text-slate-400'}`}
+                        className={pagination.previous_url ? BTN.secondary : 'cursor-not-allowed rounded-full border border-slate-200 px-3 py-1 text-slate-400'}
                     >
                         Previous
                     </a>
                     <a
                         href={pagination.next_url || '#'}
                         data-native="true"
-                        className={`rounded-full border px-3 py-1 ${pagination.next_url ? 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600' : 'cursor-not-allowed border-slate-200 text-slate-400'}`}
+                        className={pagination.next_url ? BTN.secondary : 'cursor-not-allowed rounded-full border border-slate-200 px-3 py-1 text-slate-400'}
                     >
                         Next
                     </a>

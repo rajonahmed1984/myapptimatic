@@ -24,18 +24,19 @@ class SupportTicketController extends Controller
     public function index(Request $request): InertiaResponse
     {
         $status = $request->query('status');
+        $search = trim((string) $request->query('search', ''));
         $allowedStatuses = ['open', 'answered', 'customer_reply', 'closed'];
 
         $ticketsQuery = SupportTicket::query()
-            ->with(['customer'])
+            ->with(['customer:id,name,email'])
+            ->inStatus($status, $allowedStatuses)
+            ->search($search)
             ->orderByDesc('last_reply_at')
             ->orderByDesc('created_at');
 
-        if ($status && in_array($status, $allowedStatuses, true)) {
-            $ticketsQuery->where('status', $status);
-        }
-
-        $tickets = $ticketsQuery->paginate(25);
+        $tickets = $ticketsQuery
+            ->paginate((int) config('admin.pagination.per_page', 15))
+            ->withQueryString();
 
         $statusCounts = [
             'all' => SupportTicket::count(),
@@ -47,7 +48,7 @@ class SupportTicketController extends Controller
 
         return Inertia::render(
             'Admin/SupportTickets/Index',
-            $this->indexInertiaProps($tickets, $status, $statusCounts)
+            $this->indexInertiaProps($tickets, $status, $statusCounts, $search)
         );
     }
 
@@ -304,7 +305,8 @@ class SupportTicketController extends Controller
     private function indexInertiaProps(
         LengthAwarePaginator $tickets,
         ?string $status,
-        array $statusCounts
+        array $statusCounts,
+        string $search
     ): array {
         $dateFormat = config('app.date_format', 'd-m-Y');
         $activeStatus = $status ?: 'all';
@@ -319,19 +321,29 @@ class SupportTicketController extends Controller
         return [
             'pageTitle' => 'Support Tickets',
             'active_status' => $activeStatus,
+            'search' => $search,
             'filter_links' => collect($filters)->map(function (string $label, string $key) use ($activeStatus, $statusCounts) {
+                $query = [];
+                $currentSearch = trim((string) request()->query('search', ''));
+                if ($currentSearch !== '') {
+                    $query['search'] = $currentSearch;
+                }
+                if ($key !== 'all') {
+                    $query['status'] = $key;
+                }
+
                 return [
                     'key' => $key,
                     'label' => $label,
                     'count' => (int) ($statusCounts[$key] ?? 0),
                     'active' => $activeStatus === $key,
-                    'href' => $key === 'all'
-                        ? route('admin.support-tickets.index')
-                        : route('admin.support-tickets.index', ['status' => $key]),
+                    'href' => route('admin.support-tickets.index', $query),
                 ];
             })->values()->all(),
             'routes' => [
                 'create' => route('admin.support-tickets.create'),
+                'index' => route('admin.support-tickets.index'),
+                'current' => url()->current(),
             ],
             'tickets' => collect($tickets->items())->values()->map(function (SupportTicket $ticket, int $index) use ($tickets, $dateFormat) {
                 return [

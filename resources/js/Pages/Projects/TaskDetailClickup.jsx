@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../Components/SearchableSelect';
 
 function HiddenMethod({ method = 'PATCH' }) {
     return <input type="hidden" name="_method" value={method} />;
@@ -55,6 +56,10 @@ export default function TaskDetailClickup({
 
     const subtaskRows = Array.isArray(subtasks) ? subtasks : [];
     const employeeOptions = Array.isArray(employees) ? employees : [];
+    const assigneeOptions = employeeOptions.map((employee) => ({ value: String(employee.id), label: employee.name }));
+    const statusSelectOptions = Object.entries(statusOptions || {}).map(([value, label]) => ({ value, label: String(label) }));
+    const prioritySelectOptions = Object.entries(priorityOptions || {}).map(([value, label]) => ({ value, label: String(label) }));
+    const taskTypeSelectOptions = Object.entries(taskTypeOptions || {}).map(([value, label]) => ({ value, label: String(label) }));
     const currentTaskStatus = String(task?.status || '').toLowerCase();
     const taskIsInProgress = currentTaskStatus === 'in_progress';
     const taskIsCompleted = ['completed', 'done'].includes(currentTaskStatus);
@@ -244,16 +249,16 @@ export default function TaskDetailClickup({
 
                         {routePrefix === 'admin' && canEdit && routes?.assignees ? (
                             <form onSubmit={submitAssignees} className="mt-3 space-y-2">
-                                <select
+                                <SearchableSelect
+                                    name="employee_ids[]"
                                     multiple
                                     value={employeeIds}
-                                    onChange={(event) => setEmployeeIds(Array.from(event.target.selectedOptions).map((option) => option.value))}
-                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
-                                >
-                                    {employeeOptions.map((employee) => (
-                                        <option key={employee.id} value={String(employee.id)}>{employee.name}</option>
-                                    ))}
-                                </select>
+                                    onChange={(values) => setEmployeeIds(Array.isArray(values) ? values.map((value) => String(value)) : [])}
+                                    options={assigneeOptions}
+                                    className="w-full"
+                                    closeOnSelect={false}
+                                    placeholder="Select assignees"
+                                />
                                 <div className="flex items-center justify-between">
                                     <span className="text-[11px] text-slate-500">{assigneeNotice}</span>
                                     <button type="submit" className="rounded-full border border-teal-200 px-3 py-1 text-[11px] font-semibold text-teal-700">Save assignees</button>
@@ -499,15 +504,24 @@ export default function TaskDetailClickup({
                         <input type="hidden" name="_token" value={csrfToken} />
                         <HiddenMethod method="PATCH" />
                         <div className="grid gap-3 md:grid-cols-3">
-                            <select name="status" defaultValue={task?.status || 'pending'} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                                {Object.entries(statusOptions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                            </select>
-                            <select name="priority" defaultValue={task?.priority || 'medium'} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                                {Object.entries(priorityOptions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                            </select>
-                            <select name="task_type" defaultValue={task?.task_type || 'feature'} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                                {Object.entries(taskTypeOptions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                            </select>
+                            <SearchableSelect
+                                name="status"
+                                defaultValue={String(task?.status || 'pending')}
+                                options={statusSelectOptions}
+                                placeholder="Select status"
+                            />
+                            <SearchableSelect
+                                name="priority"
+                                defaultValue={String(task?.priority || 'medium')}
+                                options={prioritySelectOptions}
+                                placeholder="Select priority"
+                            />
+                            <SearchableSelect
+                                name="task_type"
+                                defaultValue={String(task?.task_type || 'feature')}
+                                options={taskTypeSelectOptions}
+                                placeholder="Select task type"
+                            />
                         </div>
                         <input name="time_estimate_minutes" type="number" min="0" defaultValue={task?.time_estimate_minutes || ''} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
                         <input name="tags" defaultValue={Array.isArray(task?.tags) ? task.tags.join(', ') : ''} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
@@ -525,9 +539,12 @@ export default function TaskDetailClickup({
                     <form method="POST" action={routes.update} data-native="true" id="task-edit-panel" className="card space-y-3 p-6">
                         <input type="hidden" name="_token" value={csrfToken} />
                         <HiddenMethod method="PATCH" />
-                        <select name="status" defaultValue={task?.status || 'pending'} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                            {Object.entries(statusOptions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                        </select>
+                        <SearchableSelect
+                            name="status"
+                            defaultValue={String(task?.status || 'pending')}
+                            options={statusSelectOptions}
+                            placeholder="Select status"
+                        />
                         <textarea name="description" defaultValue={task?.description || ''} rows={1} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
                         <div className="flex justify-end"><button type="submit" className="rounded-lg bg-teal-600 px-6 py-2 font-semibold text-white">Update Task</button></div>
                     </form>

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const toHtmlWithLineBreaks = (value) => String(value || '').replace(/\n/g, '<br>');
 
@@ -13,6 +14,7 @@ export default function Pay({
 }) {
     const initialGatewayId = gateways.length > 0 ? String(gateways[0].id) : '';
     const [gatewayId, setGatewayId] = useState(initialGatewayId);
+    const gatewayOptions = gateways.map((gateway) => ({ value: String(gateway.id), label: gateway.name }));
 
     const selectedGateway = useMemo(
         () => gateways.find((gateway) => String(gateway.id) === String(gatewayId)) || null,
@@ -217,19 +219,14 @@ export default function Pay({
                                 <label htmlFor="gateway-select" className="small-text">
                                     <strong>Select gateway</strong>
                                 </label>
-                                <select
-                                    id="gateway-select"
+                                <SearchableSelect
                                     name="payment_gateway_id"
-                                    className="form-control"
                                     value={gatewayId}
-                                    onChange={(event) => setGatewayId(event.target.value)}
-                                >
-                                    {gateways.map((gateway) => (
-                                        <option key={gateway.id} value={gateway.id}>
-                                            {gateway.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={(nextValue) => setGatewayId(String(nextValue || ''))}
+                                    options={gatewayOptions}
+                                    className="mt-2"
+                                    placeholder="Select gateway"
+                                />
                                 <div
                                     id="gateway-instructions"
                                     className="small-text text-muted"

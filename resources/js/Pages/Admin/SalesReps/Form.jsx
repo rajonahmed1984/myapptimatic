@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const initials = (name = '') =>
     String(name)
@@ -26,6 +27,14 @@ export default function Form({
     const [avatarFile, setAvatarFile] = useState(null);
     const previewUrl = useObjectUrlPreview(avatarFile, { enabled: String(avatarFile?.type || '').startsWith('image/') });
     const avatarUrl = previewUrl || documents?.avatar_url || '';
+    const employeeOptions = [
+        { value: '', label: 'None' },
+        ...employees.map((employee) => ({ value: String(employee.id), label: employee.name })),
+    ];
+    const statusOptions = [
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+    ];
 
     return (
         <>
@@ -73,31 +82,25 @@ export default function Form({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Employee link (optional)</label>
-                                <select
+                                <SearchableSelect
                                     name="employee_id"
-                                    defaultValue={fields?.employee_id || ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="">None</option>
-                                    {employees.map((employee) => (
-                                        <option key={employee.id} value={employee.id}>
-                                            {employee.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors?.employee_id ? <p className="mt-1 text-xs text-rose-600">{errors.employee_id}</p> : null}
+                                    defaultValue={String(fields?.employee_id || '')}
+                                    options={employeeOptions}
+                                    className="mt-1"
+                                    placeholder="None"
+                                    error={errors?.employee_id}
+                                />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Status</label>
-                                <select
+                                <SearchableSelect
                                     name="status"
-                                    defaultValue={fields?.status || 'active'}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                </select>
-                                {errors?.status ? <p className="mt-1 text-xs text-rose-600">{errors.status}</p> : null}
+                                    defaultValue={String(fields?.status || 'active')}
+                                    options={statusOptions}
+                                    className="mt-1"
+                                    placeholder="Select status"
+                                    error={errors?.status}
+                                />
                             </div>
                         </div>
                     ) : null}
@@ -106,19 +109,14 @@ export default function Form({
                         {!is_edit ? (
                             <div>
                                 <label className="text-xs text-slate-500">Employee link (optional)</label>
-                                <select
+                                <SearchableSelect
                                     name="employee_id"
-                                    defaultValue={fields?.employee_id || ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="">None</option>
-                                    {employees.map((employee) => (
-                                        <option key={employee.id} value={employee.id}>
-                                            {employee.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors?.employee_id ? <p className="mt-1 text-xs text-rose-600">{errors.employee_id}</p> : null}
+                                    defaultValue={String(fields?.employee_id || '')}
+                                    options={employeeOptions}
+                                    className="mt-1"
+                                    placeholder="None"
+                                    error={errors?.employee_id}
+                                />
                             </div>
                         ) : null}
                         <div>
@@ -160,15 +158,14 @@ export default function Form({
                                 </div>
                                 <div>
                                     <label className="text-xs text-slate-500">Status</label>
-                                    <select
+                                    <SearchableSelect
                                         name="status"
-                                        defaultValue={fields?.status || 'active'}
-                                        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                    >
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
-                                    {errors?.status ? <p className="mt-1 text-xs text-rose-600">{errors.status}</p> : null}
+                                        defaultValue={String(fields?.status || 'active')}
+                                        options={statusOptions}
+                                        className="mt-1"
+                                        placeholder="Select status"
+                                        error={errors?.status}
+                                    />
                                 </div>
                             </>
                         ) : null}

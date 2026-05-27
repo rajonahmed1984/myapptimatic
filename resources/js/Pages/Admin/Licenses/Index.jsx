@@ -2,6 +2,11 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
+const BTN = {
+    primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+};
+
 const licenseStatusClass = (status) => {
     if (status === 'active') {
         return 'bg-emerald-100 text-emerald-700';
@@ -256,7 +261,7 @@ export default function Index({
                         </div>
                     </form>
                 </div>
-                <a href={routes?.manage_subscriptions} data-native="true" className="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">
+                <a href={routes?.manage_subscriptions} data-native="true" className={BTN.primary}>
                     Manage in Subscriptions
                 </a>
             </div>
@@ -399,7 +404,7 @@ export default function Index({
                             <a
                                 href={pagination.previous_url}
                                 data-native="true"
-                                className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                className={BTN.secondary}
                             >
                                 Previous
                             </a>
@@ -410,7 +415,7 @@ export default function Index({
                             <a
                                 href={pagination.next_url}
                                 data-native="true"
-                                className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                className={BTN.secondary}
                             >
                                 Next
                             </a>

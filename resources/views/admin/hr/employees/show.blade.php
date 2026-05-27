@@ -94,22 +94,39 @@
                     @csrf
                     <div class="md:col-span-2">
                         <label class="text-xs text-slate-500">Project filter</label>
-                        <select id="employeeAdvanceProjectFilter" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                            <option value="all">All projects</option>
-                            <option value="active">Active projects</option>
-                            <option value="complete">Completed projects</option>
-                        </select>
+                        <div id="employeeAdvanceProjectFilter" data-searchable-select data-placeholder="All projects" class="relative mt-1">
+                            <input type="hidden" value="all" data-ss-input>
+                            <button type="button" data-ss-trigger class="flex h-10 w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:border-teal-300"></button>
+                            <div data-ss-panel class="absolute z-20 mt-1 hidden w-full rounded-xl border border-slate-200 bg-white shadow-lg">
+                                <input type="text" data-ss-search placeholder="Search..." class="w-full border-b border-slate-200 px-3 py-2 text-sm focus:outline-none">
+                                <div class="max-h-56 overflow-y-auto py-1">
+                                    <button type="button" data-ss-option data-value="all" data-label="All projects" class="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">All projects</button>
+                                    <button type="button" data-ss-option data-value="active" data-label="Active projects" class="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">Active projects</button>
+                                    <button type="button" data-ss-option data-value="complete" data-label="Completed projects" class="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">Completed projects</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="md:col-span-2">
                         <label class="text-xs text-slate-500">Project</label>
-                        <select id="employeeAdvanceProjectSelect" name="project_id" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                            <option value="">Select project</option>
-                            @foreach($advanceProjects ?? [] as $projectOption)
-                                <option value="{{ $projectOption->id }}" data-status="{{ $projectOption->status ?? '' }}" @selected(old('project_id') == $projectOption->id)>
-                                    {{ $projectOption->name }} @if($projectOption->customer) ({{ $projectOption->customer->name }}) @endif
-                                </option>
-                            @endforeach
-                        </select>
+                        <div id="employeeAdvanceProjectSelect" data-searchable-select data-placeholder="Select project" class="relative mt-1">
+                            <input type="hidden" name="project_id" value="{{ old('project_id', '') }}" data-ss-input>
+                            <button type="button" data-ss-trigger class="flex h-10 w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:border-teal-300"></button>
+                            <div data-ss-panel class="absolute z-20 mt-1 hidden w-full rounded-xl border border-slate-200 bg-white shadow-lg">
+                                <input type="text" data-ss-search placeholder="Search..." class="w-full border-b border-slate-200 px-3 py-2 text-sm focus:outline-none">
+                                <div class="max-h-56 overflow-y-auto py-1">
+                                    <button type="button" data-ss-option data-value="" data-label="Select project" data-status="" class="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">Select project</button>
+                                    @foreach($advanceProjects ?? [] as $projectOption)
+                                        @php
+                                            $projectLabel = $projectOption->name . ($projectOption->customer ? ' (' . $projectOption->customer->name . ')' : '');
+                                        @endphp
+                                        <button type="button" data-ss-option data-value="{{ $projectOption->id }}" data-label="{{ $projectLabel }}" data-status="{{ $projectOption->status ?? '' }}" class="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                                            {{ $projectLabel }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Amount</label>
@@ -124,12 +141,19 @@
                         @php
                             $paymentMethods = \App\Models\PaymentMethod::dropdownOptions();
                         @endphp
-                        <select name="payout_method" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                            <option value="">Select</option>
-                            @foreach($paymentMethods as $method)
-                                <option value="{{ $method->code }}" @selected(old('payout_method') === $method->code)>{{ $method->name }}</option>
-                            @endforeach
-                        </select>
+                        <div data-searchable-select data-placeholder="Select" class="relative mt-1">
+                            <input type="hidden" name="payout_method" value="{{ old('payout_method', '') }}" data-ss-input>
+                            <button type="button" data-ss-trigger class="flex h-10 w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:border-teal-300"></button>
+                            <div data-ss-panel class="absolute z-20 mt-1 hidden w-full rounded-xl border border-slate-200 bg-white shadow-lg">
+                                <input type="text" data-ss-search placeholder="Search..." class="w-full border-b border-slate-200 px-3 py-2 text-sm focus:outline-none">
+                                <div class="max-h-56 overflow-y-auto py-1">
+                                    <button type="button" data-ss-option data-value="" data-label="Select" class="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">Select</button>
+                                    @foreach($paymentMethods as $method)
+                                        <button type="button" data-ss-option data-value="{{ $method->code }}" data-label="{{ $method->name }}" class="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">{{ $method->name }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label class="text-xs text-slate-500">Reference</label>
@@ -155,21 +179,95 @@
             @push('scripts')
                 <script>
                     document.addEventListener('DOMContentLoaded', () => {
-                        const filter = document.getElementById('employeeAdvanceProjectFilter');
-                        const select = document.getElementById('employeeAdvanceProjectSelect');
+                        const allSearchableSelects = [...document.querySelectorAll('[data-searchable-select]')];
 
-                        if (!filter || !select) return;
+                        const setupSearchableSelect = (root) => {
+                            const hiddenInput = root.querySelector('[data-ss-input]');
+                            const trigger = root.querySelector('[data-ss-trigger]');
+                            const panel = root.querySelector('[data-ss-panel]');
+                            const searchInput = root.querySelector('[data-ss-search]');
+                            const optionButtons = [...root.querySelectorAll('[data-ss-option]')];
+                            const placeholder = root.dataset.placeholder || 'Select';
+
+                            if (!hiddenInput || !trigger || !panel || !searchInput) {
+                                return null;
+                            }
+
+                            const updateTrigger = () => {
+                                const match = optionButtons.find((button) => button.dataset.value === hiddenInput.value);
+                                trigger.textContent = match?.dataset.label || placeholder;
+                            };
+
+                            const closePanel = () => {
+                                panel.classList.add('hidden');
+                                searchInput.value = '';
+                                optionButtons.forEach((button) => {
+                                    button.hidden = false;
+                                });
+                            };
+
+                            const openPanel = () => {
+                                panel.classList.remove('hidden');
+                                searchInput.focus();
+                            };
+
+                            trigger.addEventListener('click', () => {
+                                if (panel.classList.contains('hidden')) {
+                                    openPanel();
+                                } else {
+                                    closePanel();
+                                }
+                            });
+
+                            optionButtons.forEach((button) => {
+                                button.addEventListener('click', () => {
+                                    hiddenInput.value = button.dataset.value || '';
+                                    updateTrigger();
+                                    closePanel();
+                                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                                });
+                            });
+
+                            searchInput.addEventListener('input', () => {
+                                const query = searchInput.value.trim().toLowerCase();
+                                optionButtons.forEach((button) => {
+                                    const label = (button.dataset.label || button.textContent || '').toLowerCase();
+                                    button.hidden = query !== '' && !label.includes(query);
+                                });
+                            });
+
+                            updateTrigger();
+
+                            return {
+                                root,
+                                hiddenInput,
+                                optionButtons,
+                                closePanel,
+                                getValue: () => hiddenInput.value,
+                                setValue: (value) => {
+                                    hiddenInput.value = value;
+                                    updateTrigger();
+                                },
+                            };
+                        };
+
+                        const initializedSelects = allSearchableSelects.map(setupSearchableSelect).filter(Boolean);
+                        const filter = initializedSelects.find((item) => item.root.id === 'employeeAdvanceProjectFilter');
+                        const select = initializedSelects.find((item) => item.root.id === 'employeeAdvanceProjectSelect');
+
+                        if (!filter || !select) {
+                            return;
+                        }
 
                         const applyFilter = () => {
-                            const value = filter.value;
+                            const value = filter.getValue();
                             const activeStatuses = ['ongoing'];
                             const completeStatuses = ['complete'];
 
-                            [...select.options].forEach((option) => {
+                            select.optionButtons.forEach((option) => {
                                 const status = option.dataset.status || '';
                                 if (!status) {
                                     option.hidden = false;
-                                    option.disabled = false;
                                     return;
                                 }
 
@@ -178,11 +276,24 @@
                                     || (value === 'complete' && completeStatuses.includes(status));
 
                                 option.hidden = !show;
-                                option.disabled = !show;
+                            });
+
+                            const selectedOption = select.optionButtons.find((option) => option.dataset.value === select.getValue());
+                            if (selectedOption && selectedOption.hidden) {
+                                select.setValue('');
                             });
                         };
 
-                        filter.addEventListener('change', applyFilter);
+                        filter.hiddenInput.addEventListener('change', applyFilter);
+
+                        document.addEventListener('click', (event) => {
+                            initializedSelects.forEach((item) => {
+                                if (!item.root.contains(event.target)) {
+                                    item.closePanel();
+                                }
+                            });
+                        });
+
                         applyFilter();
                     });
                 </script>
@@ -372,12 +483,19 @@
                             @php
                                 $paymentMethods = \App\Models\PaymentMethod::dropdownOptions();
                             @endphp
-                            <select name="payout_method" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                <option value="">Select</option>
-                                @foreach($paymentMethods as $method)
-                                    <option value="{{ $method->code }}" @selected(old('payout_method') === $method->code)>{{ $method->name }}</option>
-                                @endforeach
-                            </select>
+                            <div data-searchable-select data-placeholder="Select" class="relative mt-1">
+                                <input type="hidden" name="payout_method" value="{{ old('payout_method', '') }}" data-ss-input>
+                                <button type="button" data-ss-trigger class="flex h-10 w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:border-teal-300"></button>
+                                <div data-ss-panel class="absolute z-20 mt-1 hidden w-full rounded-xl border border-slate-200 bg-white shadow-lg">
+                                    <input type="text" data-ss-search placeholder="Search..." class="w-full border-b border-slate-200 px-3 py-2 text-sm focus:outline-none">
+                                    <div class="max-h-56 overflow-y-auto py-1">
+                                        <button type="button" data-ss-option data-value="" data-label="Select" class="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">Select</button>
+                                        @foreach($paymentMethods as $method)
+                                            <button type="button" data-ss-option data-value="{{ $method->code }}" data-label="{{ $method->name }}" class="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">{{ $method->name }}</button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="text-xs text-slate-500">Reference</label>
@@ -399,12 +517,82 @@
                             <button type="submit" class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Save salary advance</button>
                         </div>
                     </form>
+                    @push('scripts')
+                        <script>
+                            document.addEventListener('DOMContentLoaded', () => {
+                                const allSearchableSelects = [...document.querySelectorAll('[data-searchable-select]')];
+
+                                allSearchableSelects.forEach((root) => {
+                                    if (root.dataset.ssReady === '1') {
+                                        return;
+                                    }
+
+                                    const hiddenInput = root.querySelector('[data-ss-input]');
+                                    const trigger = root.querySelector('[data-ss-trigger]');
+                                    const panel = root.querySelector('[data-ss-panel]');
+                                    const searchInput = root.querySelector('[data-ss-search]');
+                                    const optionButtons = [...root.querySelectorAll('[data-ss-option]')];
+                                    const placeholder = root.dataset.placeholder || 'Select';
+
+                                    if (!hiddenInput || !trigger || !panel || !searchInput) {
+                                        return;
+                                    }
+
+                                    root.dataset.ssReady = '1';
+
+                                    const updateTrigger = () => {
+                                        const match = optionButtons.find((button) => button.dataset.value === hiddenInput.value);
+                                        trigger.textContent = match?.dataset.label || placeholder;
+                                    };
+
+                                    const closePanel = () => {
+                                        panel.classList.add('hidden');
+                                        searchInput.value = '';
+                                        optionButtons.forEach((button) => {
+                                            button.hidden = false;
+                                        });
+                                    };
+
+                                    trigger.addEventListener('click', () => {
+                                        panel.classList.toggle('hidden');
+                                        if (!panel.classList.contains('hidden')) {
+                                            searchInput.focus();
+                                        }
+                                    });
+
+                                    optionButtons.forEach((button) => {
+                                        button.addEventListener('click', () => {
+                                            hiddenInput.value = button.dataset.value || '';
+                                            updateTrigger();
+                                            closePanel();
+                                        });
+                                    });
+
+                                    searchInput.addEventListener('input', () => {
+                                        const query = searchInput.value.trim().toLowerCase();
+                                        optionButtons.forEach((button) => {
+                                            const label = (button.dataset.label || button.textContent || '').toLowerCase();
+                                            button.hidden = query !== '' && !label.includes(query);
+                                        });
+                                    });
+
+                                    document.addEventListener('click', (event) => {
+                                        if (!root.contains(event.target)) {
+                                            closePanel();
+                                        }
+                                    });
+
+                                    updateTrigger();
+                                });
+                            });
+                        </script>
+                    @endpush
                 @else
                     <div class="text-sm text-slate-600">Payroll advance applies to monthly/hourly employees.</div>
                 @endif
             </div>
         @endif
-        
+
         @if($tab === 'timesheets')
             <div class="mt-4 card p-4">
                 <div class="mb-3 text-sm font-semibold text-slate-800">Recent Work Sessions</div>

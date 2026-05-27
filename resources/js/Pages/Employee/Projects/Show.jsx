@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const statusLabel = (status) => {
     const map = {
@@ -63,6 +64,8 @@ export default function Show({
 }) {
     const { csrf_token: csrfToken = '' } = usePage().props || {};
     const [taskViewMode, setTaskViewMode] = React.useState('list');
+    const taskTypeSelectOptions = Object.entries(task_type_options || {}).map(([value, label]) => ({ value: String(value), label: String(label) }));
+    const prioritySelectOptions = Object.entries(priority_options || {}).map(([value, label]) => ({ value: String(value), label: String(label) }));
 
     const groupedTasks = React.useMemo(() => {
         const groups = {
@@ -126,11 +129,11 @@ export default function Show({
                             <form method="POST" action={routes?.task_store} className="mt-4 grid gap-3 md:grid-cols-6" encType="multipart/form-data" data-native="true">
                                 <input type="hidden" name="_token" value={csrfToken} />
                                 <div className="md:col-span-4"><label className="text-xs text-slate-500">Title</label><input name="title" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></div>
-                                <div className="md:col-span-2"><label className="text-xs text-slate-500">Task type</label><select name="task_type" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" required>{Object.entries(task_type_options || {}).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+                                <div className="md:col-span-2"><label className="text-xs text-slate-500">Task type</label><SearchableSelect name="task_type" className="mt-1" defaultValue={String(taskTypeSelectOptions[0]?.value || '')} options={taskTypeSelectOptions} placeholder="Select task type" required /></div>
                                 <div className="md:col-span-6"><label className="text-xs text-slate-500">Description</label><input name="description" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></div>
                                 <div className="md:col-span-2"><label className="text-xs text-slate-500">Start date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></div>
                                 <div className="md:col-span-2"><label className="text-xs text-slate-500">Due date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="due_date" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></div>
-                                <div className="md:col-span-2"><label className="text-xs text-slate-500">Priority</label><select name="priority" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">{Object.entries(priority_options || {}).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+                                <div className="md:col-span-2"><label className="text-xs text-slate-500">Priority</label><SearchableSelect name="priority" className="mt-1" defaultValue={String(prioritySelectOptions[0]?.value || '')} options={prioritySelectOptions} placeholder="Select priority" /></div>
                                 <div className="md:col-span-2"><label className="text-xs text-slate-500">Attachment</label><input type="file" name="attachment" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" className="mt-1 w-full text-xs text-slate-600" /></div>
                                 <div className="flex items-center gap-2"><input type="hidden" name="customer_visible" value="0" /><input type="checkbox" name="customer_visible" value="1" /><span className="text-xs text-slate-600">Customer visible</span></div>
                                 <div className="md:col-span-6 flex justify-end"><button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Add task</button></div>

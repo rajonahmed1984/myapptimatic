@@ -1,6 +1,13 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+
+const BTN = {
+    primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+    danger: 'bg-red-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-red-500',
+};
 
 const statusClass = (status) => {
     if (status === 'open') {
@@ -24,12 +31,17 @@ const statusClass = (status) => {
 
 export default function Index({
     pageTitle = 'Support Tickets',
+    search = '',
     filter_links = [],
     routes = {},
     tickets = [],
     pagination = {},
 }) {
     const { csrf_token: csrfToken = '' } = usePage().props || {};
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: search,
+        url: routes?.current || routes?.index,
+    });
 
     const confirmDelete = (ticketNumber) => window.confirm(`Delete ticket ${ticketNumber}?`);
 
@@ -42,10 +54,28 @@ export default function Index({
                     <h1 className="text-2xl font-semibold text-slate-900">Support Tickets</h1>
                     <p className="mt-1 text-sm text-slate-500">Track and reply to client support requests.</p>
                 </div>
+                <form
+                    method="GET"
+                    action={routes?.current || routes?.index}
+                    className="flex-1"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        submitSearch();
+                    }}
+                >
+                    <input
+                        type="text"
+                        name="search"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="Search tickets..."
+                        className="w-full max-w-sm rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    />
+                </form>
                 <a
                     href={routes?.create}
                     data-native="true"
-                    className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                    className={BTN.primary}
                 >
                     Open Ticket
                 </a>
@@ -60,8 +90,8 @@ export default function Index({
                             data-native="true"
                             className={
                                 filter.active
-                                    ? 'rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-teal-600'
-                                    : 'rounded-full border border-slate-300 px-3 py-1 text-slate-500 hover:text-teal-600'
+                                    ? BTN.primary
+                                    : BTN.secondary
                             }
                         >
                             {filter.label} ({filter.count})
@@ -80,7 +110,7 @@ export default function Index({
                             <th className="px-4 py-3">Customer</th>
                             <th className="px-4 py-3">Status</th>
                             <th className="px-4 py-3">Last Reply</th>
-                            <th className="px-4 py-3 text-right">Action</th>
+                            <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -104,14 +134,14 @@ export default function Index({
                                             <a
                                                 href={ticket?.routes?.reply}
                                                 data-native="true"
-                                                className="text-teal-600 hover:text-teal-500"
+                                                className="text-xs font-semibold text-teal-600 hover:text-teal-500"
                                             >
                                                 Reply
                                             </a>
                                             <a
                                                 href={ticket?.routes?.show}
                                                 data-native="true"
-                                                className="text-slate-600 hover:text-slate-500"
+                                                className="text-xs font-semibold text-slate-600 hover:text-teal-600"
                                             >
                                                 View
                                             </a>
@@ -127,7 +157,7 @@ export default function Index({
                                             >
                                                 <input type="hidden" name="_token" value={csrfToken} />
                                                 <input type="hidden" name="_method" value="DELETE" />
-                                                <button type="submit" className="text-rose-600 hover:text-rose-500">
+                                                <button type="submit" className="text-xs font-semibold text-rose-600 hover:text-rose-500">
                                                     Delete
                                                 </button>
                                             </form>
@@ -152,7 +182,7 @@ export default function Index({
                         <a
                             href={pagination.previous_url}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                            className={BTN.secondary}
                         >
                             Previous
                         </a>
@@ -163,7 +193,7 @@ export default function Index({
                         <a
                             href={pagination.next_url}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                            className={BTN.secondary}
                         >
                             Next
                         </a>

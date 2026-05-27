@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const initials = (name = '') =>
     String(name)
@@ -26,6 +27,7 @@ export default function Form({
     const [avatarFile, setAvatarFile] = useState(null);
     const previewUrl = useObjectUrlPreview(avatarFile, { enabled: String(avatarFile?.type || '').startsWith('image/') });
     const avatarUrl = previewUrl || documents?.avatar_url || '';
+    const roleOptions = roles.map((role) => ({ value: String(role.value), label: role.label }));
 
     return (
         <>
@@ -100,19 +102,15 @@ export default function Form({
                     {is_edit ? (
                         <div>
                             <label className="text-sm text-slate-600">Role</label>
-                            <select
+                            <SearchableSelect
                                 name="role"
-                                defaultValue={fields?.role || ''}
+                                defaultValue={String(fields?.role || '')}
                                 required
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                            >
-                                {roles.map((role) => (
-                                    <option key={role.value} value={role.value}>
-                                        {role.label}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.role ? <p className="mt-1 text-xs text-rose-600">{errors.role}</p> : null}
+                                options={roleOptions}
+                                className="mt-2"
+                                placeholder="Select role"
+                                error={errors?.role}
+                            />
                         </div>
                     ) : (
                         <div>

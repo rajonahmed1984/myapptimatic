@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import DatePickerField from '../../../../Components/DatePickerField';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 import { formatDate } from '../../../../utils/datetime';
 import mediaUrl from '../../../../utils/mediaUrl';
 
@@ -120,6 +121,24 @@ export default function Show({
     const [editingSalaryAdvanceId, setEditingSalaryAdvanceId] = React.useState(null);
     const [salaryAdvanceForm, setSalaryAdvanceForm] = React.useState(defaultSalaryAdvanceForm);
     const salaryAdvanceFormRef = React.useRef(null);
+    const advanceProjectOptions = React.useMemo(() => [
+        { value: '', label: 'Select project' },
+        ...asArray(advanceProjects).map((project) => ({
+            value: String(project.id),
+            label: `${project.name}${project?.customer?.name ? ` (${project.customer.name})` : ''}`,
+        })),
+    ], [advanceProjects]);
+    const paymentMethodOptions = React.useMemo(() => [
+        { value: '', label: 'Select' },
+        ...asArray(paymentMethods).map((method) => ({ value: String(method.code), label: method.name })),
+    ], [paymentMethods]);
+    const coordinationMonthOptions = React.useMemo(() => [
+        { value: '', label: 'Select month' },
+        ...asArray(payrollMonthOptions).map((month) => ({
+            value: String(month.value),
+            label: month.label || String(month.value),
+        })),
+    ], [payrollMonthOptions]);
     const isEditingSalaryAdvance = editingSalaryAdvanceId !== null;
     const salaryAdvanceSubmitAction = isEditingSalaryAdvance
         ? payrollAdvanceUpdateUrl(editingSalaryAdvanceId)
@@ -414,14 +433,12 @@ export default function Show({
                         <div className="mt-5 grid gap-4 md:grid-cols-5">
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Project</div>
-                                <select name="project_id" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                    <option value="">Select project</option>
-                                    {asArray(advanceProjects).map((project) => (
-                                        <option key={project.id} value={project.id}>
-                                            {project.name}{project?.customer?.name ? ` (${project.customer.name})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                <SearchableSelect
+                                    name="project_id"
+                                    defaultValue=""
+                                    options={advanceProjectOptions}
+                                    placeholder="Select project"
+                                />
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Amount</div>
@@ -433,12 +450,12 @@ export default function Show({
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Method</div>
-                                <select name="payout_method" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                    <option value="">Select</option>
-                                    {asArray(paymentMethods).map((method) => (
-                                        <option key={method.code} value={method.code}>{method.name}</option>
-                                    ))}
-                                </select>
+                                <SearchableSelect
+                                    name="payout_method"
+                                    defaultValue=""
+                                    options={paymentMethodOptions}
+                                    placeholder="Select"
+                                />
                             </div>
                             <div>
                                 <DatePickerField
@@ -632,32 +649,24 @@ export default function Show({
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Coordination Month</div>
-                                <select
+                                <SearchableSelect
                                     name="coordination_month"
                                     value={salaryAdvanceForm.coordination_month}
-                                    onChange={(event) => updateSalaryAdvanceField('coordination_month', event.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    onChange={(nextValue) => updateSalaryAdvanceField('coordination_month', String(nextValue || ''))}
+                                    options={coordinationMonthOptions}
                                     required
-                                >
-                                    <option value="">Select month</option>
-                                    {asArray(payrollMonthOptions).map((month) => (
-                                        <option key={month.value} value={month.value}>{month.label || month.value}</option>
-                                    ))}
-                                </select>
+                                    placeholder="Select month"
+                                />
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Method</div>
-                                <select
+                                <SearchableSelect
                                     name="payout_method"
                                     value={salaryAdvanceForm.payout_method}
-                                    onChange={(event) => updateSalaryAdvanceField('payout_method', event.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="">Select</option>
-                                    {asArray(paymentMethods).map((method) => (
-                                        <option key={method.code} value={method.code}>{method.name}</option>
-                                    ))}
-                                </select>
+                                    onChange={(nextValue) => updateSalaryAdvanceField('payout_method', String(nextValue || ''))}
+                                    options={paymentMethodOptions}
+                                    placeholder="Select"
+                                />
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Reference</div>

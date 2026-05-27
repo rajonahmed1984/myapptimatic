@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Form({
     pageTitle = 'Subscription',
@@ -7,7 +8,6 @@ export default function Form({
     customers = [],
     plans = [],
     sales_reps = [],
-    license_manager = {},
     form = {},
     routes = {},
 }) {
@@ -19,6 +19,44 @@ export default function Form({
     const [selectedSalesRepId, setSelectedSalesRepId] = useState(String(fields?.sales_rep_id || ''));
     const [commissionPercent, setCommissionPercent] = useState(String(fields?.sales_rep_commission_percent || ''));
     const hasSelectedSalesRep = selectedSalesRepId !== '';
+    const customerOptions = useMemo(
+        () => [
+            { value: '', label: 'Select customer' },
+            ...customers.map((customer) => ({
+                value: String(customer.id),
+                label: customer.name,
+            })),
+        ],
+        [customers],
+    );
+    const planOptions = useMemo(
+        () => [
+            { value: '', label: 'Select plan' },
+            ...plans.map((plan) => ({
+                value: String(plan.id),
+                label: `${plan.product_name} - ${plan.name} (${plan.interval})`,
+            })),
+        ],
+        [plans],
+    );
+    const salesRepOptions = useMemo(
+        () => [
+            { value: '', label: 'None' },
+            ...sales_reps.map((rep) => ({
+                value: String(rep.id),
+                label: `${rep.name} (${rep.status})`,
+            })),
+        ],
+        [sales_reps],
+    );
+    const statusOptions = useMemo(
+        () => [
+            { value: 'active', label: 'Active' },
+            { value: 'cancelled', label: 'Cancelled' },
+            { value: 'suspended', label: 'Suspended' },
+        ],
+        [],
+    );
     const planById = useMemo(() => {
         const map = {};
         plans.forEach((plan) => {
@@ -63,14 +101,6 @@ export default function Form({
         return ((amountValue * percentValue) / 100).toFixed(2);
     }, [commissionPercent, subscriptionAmount]);
 
-    const handlePlanChange = (event) => {
-        const planId = String(event.target.value || '');
-        setSelectedPlanId(planId);
-
-        const plan = planById[planId];
-        setSubscriptionAmount(plan ? formatAmount(plan.price) : '');
-    };
-
     return (
         <>
             <Head title={pageTitle} />
@@ -91,32 +121,31 @@ export default function Form({
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
-                            <select name="customer_id" defaultValue={fields?.customer_id || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="">Select customer</option>
-                                {customers.map((customer) => (
-                                    <option key={customer.id} value={customer.id}>
-                                        {customer.name}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.customer_id ? <p className="mt-1 text-xs text-rose-600">{errors.customer_id}</p> : null}
+                            <SearchableSelect
+                                name="customer_id"
+                                defaultValue={String(fields?.customer_id || '')}
+                                options={customerOptions}
+                                className="mt-2"
+                                error={errors?.customer_id}
+                                placeholder="Select customer"
+                            />
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Plan</label>
-                            <select
+                            <SearchableSelect
                                 name="plan_id"
                                 value={selectedPlanId}
-                                onChange={handlePlanChange}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                            >
-                                <option value="">Select plan</option>
-                                {plans.map((plan) => (
-                                    <option key={plan.id} value={plan.id}>
-                                        {plan.product_name} - {plan.name} ({plan.interval})
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.plan_id ? <p className="mt-1 text-xs text-rose-600">{errors.plan_id}</p> : null}
+                                onChange={(nextValue) => {
+                                    const planId = String(nextValue || '');
+                                    setSelectedPlanId(planId);
+                                    const plan = planById[planId];
+                                    setSubscriptionAmount(plan ? formatAmount(plan.price) : '');
+                                }}
+                                options={planOptions}
+                                className="mt-2"
+                                error={errors?.plan_id}
+                                placeholder="Select plan"
+                            />
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Subscription Amount</label>
@@ -189,20 +218,15 @@ export default function Form({
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep</label>
-                            <select
+                            <SearchableSelect
                                 name="sales_rep_id"
                                 value={selectedSalesRepId}
-                                onChange={(event) => setSelectedSalesRepId(event.target.value)}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                            >
-                                <option value="">None</option>
-                                {sales_reps.map((rep) => (
-                                    <option key={rep.id} value={rep.id}>
-                                        {rep.name} ({rep.status})
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.sales_rep_id ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_id}</p> : null}
+                                onChange={(nextValue) => setSelectedSalesRepId(String(nextValue || ''))}
+                                options={salesRepOptions}
+                                className="mt-2"
+                                error={errors?.sales_rep_id}
+                                placeholder="None"
+                            />
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep Commission (%)</label>
@@ -229,12 +253,14 @@ export default function Form({
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
-                            <select name="status" defaultValue={fields?.status || 'active'} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="active">Active</option>
-                                <option value="cancelled">Cancelled</option>
-                                <option value="suspended">Suspended</option>
-                            </select>
-                            {errors?.status ? <p className="mt-1 text-xs text-rose-600">{errors.status}</p> : null}
+                            <SearchableSelect
+                                name="status"
+                                defaultValue={String(fields?.status || 'active')}
+                                options={statusOptions}
+                                className="mt-2"
+                                error={errors?.status}
+                                placeholder="Select status"
+                            />
                         </div>
                     </div>
 

@@ -1,6 +1,10 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 
+const BTN = {
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+};
+
 const unreadBadgeClass = (unread) =>
     unread > 0
         ? 'border-amber-300 bg-amber-100 text-amber-800'
@@ -85,7 +89,7 @@ export default function Index({
                                                 <a
                                                     href={project?.routes?.chat}
                                                     data-native="true"
-                                                    className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
+                                                    className="text-xs font-semibold text-teal-600 hover:text-teal-500"
                                                 >
                                                     Open Chat
                                                 </a>
@@ -115,7 +119,7 @@ export default function Index({
                                     className={`rounded-full border px-3 py-1 ${
                                         link.active
                                             ? 'border-slate-900 bg-slate-900 text-white'
-                                            : 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600'
+                                            : BTN.secondary
                                     }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />

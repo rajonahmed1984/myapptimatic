@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Show({ pageTitle = 'Order', order = {}, plan_options = [], routes = {} }) {
     const { props } = usePage();
@@ -22,6 +23,13 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
     const [invoiceTotal, setInvoiceTotal] = useState(String(order?.invoice_total_value || ''));
     const [recurringAmount, setRecurringAmount] = useState(String(order?.recurring_amount_value || ''));
     const [hasPlanChanged, setHasPlanChanged] = useState(false);
+    const planOptions = [
+        { value: '', label: 'Select plan' },
+        ...plan_options.map((plan) => ({
+            value: String(plan.id),
+            label: `${plan.name} (${formatIntervalLabel(plan.interval)}) - ${formatPlanPriceLabel(plan.price, plan.currency)}`,
+        })),
+    ];
 
     const formatIntervalLabel = (interval) => {
         const normalized = String(interval || '').trim().toLowerCase();
@@ -156,22 +164,16 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                     <input type="hidden" name="_method" value="PATCH" />
                                     <div>
                                         <label className="mb-1 block text-sm font-medium text-slate-700">Plan & Interval</label>
-                                        <select
+                                        <SearchableSelect
                                             name="plan_id"
                                             value={selectedPlanId}
-                                            onChange={(event) => {
-                                                setSelectedPlanId(event.target.value);
+                                            onChange={(nextValue) => {
+                                                setSelectedPlanId(String(nextValue || ''));
                                                 setHasPlanChanged(true);
                                             }}
-                                            className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-slate-900 focus:border-teal-400 focus:outline-none"
-                                        >
-                                            <option value="" disabled>Select plan</option>
-                                            {plan_options.map((plan) => (
-                                                <option key={plan.id} value={plan.id}>
-                                                    {plan.name} ({formatIntervalLabel(plan.interval)}) - {formatPlanPriceLabel(plan.price, plan.currency)}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            options={planOptions}
+                                            placeholder="Select plan"
+                                        />
                                         {errors?.plan_id ? <p className="mt-1 text-xs text-rose-600">{errors.plan_id}</p> : null}
                                         {errors?.interval ? <p className="mt-1 text-xs text-rose-600">{errors.interval}</p> : null}
                                     </div>
@@ -236,7 +238,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                     <p className="mt-2 text-sm text-slate-600">Billing amounts are locked for this order status.</p>
                                 </div>
                             )}
-                            
+
                         </div>
 
                         {canProcess ? (

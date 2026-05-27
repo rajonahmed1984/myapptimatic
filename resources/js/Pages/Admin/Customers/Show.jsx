@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DatePickerField from '../../../Components/DatePickerField';
+import SearchableSelect from '../../../Components/SearchableSelect';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 
 const statusClass = (status) => {
@@ -94,6 +95,7 @@ export default function Show({
     const projectUserDefaults = forms?.project_user || {};
 
     const [showServiceForm, setShowServiceForm] = useState(Boolean(serviceDefaults?.plan_id || errors?.plan_id));
+    const [resendingById, setResendingById] = useState({});
     const [planId, setPlanId] = useState(String(serviceDefaults?.plan_id || ''));
     const [startDate, setStartDate] = useState(String(serviceDefaults?.start_date || new Date().toISOString().slice(0, 10)));
     const [salesRepId, setSalesRepId] = useState(String(serviceDefaults?.sales_rep_id || ''));
@@ -130,6 +132,50 @@ export default function Show({
         ]),
         [metrics?.gross_revenue, metrics?.client_expenses, metrics?.net_income, metrics?.credit_balance, currency?.code]
     );
+    const profileSalesRepOptions = useMemo(
+        () => [
+            { value: '', label: 'None' },
+            ...profile_sales_reps.map((rep) => ({
+                value: String(rep.id),
+                label: `${rep.name} ${rep.status !== 'active' ? `(${String(rep.status).charAt(0).toUpperCase() + String(rep.status).slice(1)})` : ''}`.trim(),
+            })),
+        ],
+        [profile_sales_reps],
+    );
+    const profileStatusOptions = useMemo(
+        () => [
+            { value: 'active', label: 'Active' },
+            { value: 'inactive', label: 'Inactive' },
+        ],
+        [],
+    );
+    const projectOptions = useMemo(
+        () => [
+            { value: '', label: 'Select a project' },
+            ...project_options.map((project) => ({ value: String(project.id), label: project.name })),
+        ],
+        [project_options],
+    );
+    const servicePlanOptions = useMemo(
+        () => [
+            { value: '', label: 'Select a plan' },
+            ...service_plans.map((item) => ({
+                value: String(item.id),
+                label: `${item.product_name} - ${item.name} (${item.interval})`,
+            })),
+        ],
+        [service_plans],
+    );
+    const serviceSalesRepOptions = useMemo(
+        () => [
+            { value: '', label: 'None' },
+            ...service_sales_reps.map((rep) => ({
+                value: String(rep.id),
+                label: `${rep.name} (${rep.status})`,
+            })),
+        ],
+        [service_sales_reps],
+    );
 
     return (
         <>
@@ -140,7 +186,7 @@ export default function Show({
                 <div className="pointer-events-none absolute -bottom-24 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-teal-300/20 blur-2xl" />
                 <div className="relative flex flex-wrap items-center justify-between gap-4">
                     <div className="flex min-w-[260px] items-start gap-4">
-                        <div>                            
+                        <div>
                             <div className="mt-1 text-2xl font-semibold text-white">{customer?.name || 'Customer'}</div>
                             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                                 <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1">ID #{customer?.id || '--'}</span>
@@ -259,15 +305,14 @@ export default function Show({
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Default Sales Rep</label>
-                                <select name="default_sales_rep_id" defaultValue={profileDefaults?.default_sales_rep_id || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
-                                    <option value="">None</option>
-                                    {profile_sales_reps.map((rep) => (
-                                        <option key={rep.id} value={rep.id}>
-                                            {rep.name} {rep.status !== 'active' ? `(${String(rep.status).charAt(0).toUpperCase() + String(rep.status).slice(1)})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors?.default_sales_rep_id ? <p className="mt-1 text-xs text-rose-500">{errors.default_sales_rep_id}</p> : null}
+                                <SearchableSelect
+                                    name="default_sales_rep_id"
+                                    defaultValue={String(profileDefaults?.default_sales_rep_id || '')}
+                                    options={profileSalesRepOptions}
+                                    className="mt-2"
+                                    placeholder="None"
+                                    error={errors?.default_sales_rep_id}
+                                />
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Profile Image</label>
@@ -335,11 +380,15 @@ export default function Show({
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Status</label>
-                                <select name="status" defaultValue={profileDefaults?.status || 'active'} required className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                </select>
-                                {errors?.status ? <p className="mt-1 text-xs text-rose-500">{errors.status}</p> : null}
+                                <SearchableSelect
+                                    name="status"
+                                    defaultValue={String(profileDefaults?.status || 'active')}
+                                    options={profileStatusOptions}
+                                    className="mt-2"
+                                    placeholder="Select status"
+                                    error={errors?.status}
+                                    required
+                                />
                             </div>
 
                             <div className="md:col-span-3 flex items-center justify-end gap-3">
@@ -418,10 +467,13 @@ export default function Show({
                             <input type="hidden" name="_token" value={csrf} />
                             <div>
                                 <label className="text-slate-600">Project</label>
-                                <select name="project_id" defaultValue={projectUserDefaults?.project_id || ''} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2">
-                                    <option value="">Select a project</option>
-                                    {project_options.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-                                </select>
+                                <SearchableSelect
+                                    name="project_id"
+                                    defaultValue={String(projectUserDefaults?.project_id || '')}
+                                    options={projectOptions}
+                                    className="mt-2"
+                                    placeholder="Select a project"
+                                />
                             </div>
                             <div><label className="text-slate-600">Name</label><input name="name" defaultValue={projectUserDefaults?.name || ''} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2" /></div>
                             <div><label className="text-slate-600">Email</label><input name="email" type="email" defaultValue={projectUserDefaults?.email || ''} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2" /></div>
@@ -444,10 +496,14 @@ export default function Show({
                                 <input type="hidden" name="_token" value={csrf} />
                                 <div>
                                     <label className="mb-1 block text-sm font-medium text-slate-700">Product / Service Plan</label>
-                                    <select name="plan_id" value={planId} onChange={(event) => setPlanId(event.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                        <option value="">Select a plan</option>
-                                        {service_plans.map((item) => <option key={item.id} value={item.id}>{item.product_name} - {item.name} ({item.interval})</option>)}
-                                    </select>
+                                    <SearchableSelect
+                                        name="plan_id"
+                                        value={String(planId || '')}
+                                        onChange={(nextValue) => setPlanId(String(nextValue || ''))}
+                                        options={servicePlanOptions}
+                                        placeholder="Select a plan"
+                                        error={errors?.plan_id}
+                                    />
                                 </div>
                                 <div>
                                     <DatePickerField
@@ -462,10 +518,14 @@ export default function Show({
                                 </div>
                                 <div>
                                     <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep</label>
-                                    <select name="sales_rep_id" value={salesRepId} onChange={(event) => setSalesRepId(event.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                        <option value="">None</option>
-                                        {service_sales_reps.map((rep) => <option key={rep.id} value={rep.id}>{rep.name} ({rep.status})</option>)}
-                                    </select>
+                                    <SearchableSelect
+                                        name="sales_rep_id"
+                                        value={String(salesRepId || '')}
+                                        onChange={(nextValue) => setSalesRepId(String(nextValue || ''))}
+                                        options={serviceSalesRepOptions}
+                                        placeholder="None"
+                                        error={errors?.sales_rep_id}
+                                    />
                                 </div>
                                 {salesRepId ? (
                                     <div>
@@ -688,7 +748,27 @@ export default function Show({
                                             <td className="px-4 py-3 text-slate-500">{log.created_at_display}</td>
                                             <td className="px-4 py-3 text-slate-700">{log.subject}</td>
                                             <td className="px-4 py-3 text-right">
-                                                <form method="POST" action={log.resend_url} data-native="true" className="inline mr-2"><input type="hidden" name="_token" value={csrf} /><button type="submit" className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600">Resend</button></form>
+                                                <form
+                                                    method="POST"
+                                                    action={log.resend_url}
+                                                    data-native="true"
+                                                    className="inline mr-2"
+                                                    onSubmit={() => {
+                                                        setResendingById((current) => ({
+                                                            ...current,
+                                                            [log.id]: true,
+                                                        }));
+                                                    }}
+                                                >
+                                                    <input type="hidden" name="_token" value={csrf} />
+                                                    <button
+                                                        type="submit"
+                                                        disabled={Boolean(resendingById[log.id])}
+                                                        className="text-xs font-semibold text-slate-600 hover:text-teal-600 disabled:opacity-50"
+                                                    >
+                                                        {resendingById[log.id] ? 'Sending...' : 'Resend'}
+                                                    </button>
+                                                </form>
                                             </td>
                                         </tr>
                                     ))}

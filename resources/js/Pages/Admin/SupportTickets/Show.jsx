@@ -1,10 +1,22 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Show({ pageTitle = 'Support Ticket', ticket = {}, replies = [], ai_ready = false, routes = {} }) {
     const { props } = usePage();
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
+    const priorityOptions = [
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+    ];
+    const statusOptions = [
+        { value: 'open', label: 'Open' },
+        { value: 'answered', label: 'Answered' },
+        { value: 'customer_reply', label: 'Customer Reply' },
+        { value: 'closed', label: 'Closed' },
+    ];
 
     return (
         <>
@@ -75,20 +87,23 @@ export default function Show({ pageTitle = 'Support Ticket', ticket = {}, replie
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
-                            <select name="priority" defaultValue={ticket?.priority || 'medium'} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
+                            <SearchableSelect
+                                name="priority"
+                                defaultValue={String(ticket?.priority || 'medium')}
+                                options={priorityOptions}
+                                className="mt-1"
+                                placeholder="Select priority"
+                            />
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
-                            <select name="status" defaultValue={ticket?.status || 'open'} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="open">Open</option>
-                                <option value="answered">Answered</option>
-                                <option value="customer_reply">Customer Reply</option>
-                                <option value="closed">Closed</option>
-                            </select>
+                            <SearchableSelect
+                                name="status"
+                                defaultValue={String(ticket?.status || 'open')}
+                                options={statusOptions}
+                                className="mt-1"
+                                placeholder="Select status"
+                            />
                         </div>
                         <div className="md:col-span-3 flex items-center gap-3">
                             <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">

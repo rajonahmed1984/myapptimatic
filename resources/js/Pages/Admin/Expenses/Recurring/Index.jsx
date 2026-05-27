@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { formatDate } from '@/utils/datetime';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 const statusClass = (status) => {
     if (status === 'active') {
@@ -38,6 +39,10 @@ export default function Index({
         title: 'Recurring Expense',
         currentAdvance: '0.00',
     });
+    const paymentMethodOptions = [
+        { value: '', label: 'Select' },
+        ...paymentMethods.map((method) => ({ value: String(method.code), label: method.name })),
+    ];
 
     const hasRows = useMemo(() => (recurringExpenses?.data ?? []).length > 0, [recurringExpenses]);
 
@@ -300,20 +305,14 @@ export default function Index({
                                 <label htmlFor="recurringAdvanceMethod" className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                     Payment Method
                                 </label>
-                                <select
-                                    id="recurringAdvanceMethod"
+                                <SearchableSelect
                                     name="payment_method"
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                                     defaultValue=""
+                                    options={paymentMethodOptions}
+                                    className="mt-1"
+                                    placeholder="Select"
                                     required
-                                >
-                                    <option value="">Select</option>
-                                    {paymentMethods.map((method) => (
-                                        <option key={method.code} value={method.code}>
-                                            {method.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                />
                             </div>
                             <div>
                                 <label htmlFor="recurringAdvanceDate" className="text-xs uppercase tracking-[0.2em] text-slate-500">

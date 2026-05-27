@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const reloadTargets = ['messages', 'selected_message', 'thread_messages', 'unread_count', 'sync_meta', 'history_email_filter', 'mailbox_switch', 'folder_filter'];
 
@@ -108,6 +109,14 @@ export default function Inbox({
     const inboxListUrl = routes?.inbox
         ? (inboxQuery ? `${routes.inbox}?${inboxQuery}` : routes.inbox)
         : '#';
+    const mailboxSwitchSelectOptions = mailboxSwitchOptions.map((mailbox) => ({
+        value: String(mailbox.email),
+        label: mailbox.label || mailbox.email,
+    }));
+    const historyEmailSelectOptions = [
+        { value: '', label: 'All emails' },
+        ...emailFilterOptions.map((email) => ({ value: String(email), label: email })),
+    ];
     const [composeMode, setComposeMode] = useState('');
     const [composeForm, setComposeForm] = useState({
         to: '',
@@ -214,8 +223,8 @@ export default function Inbox({
         body: '',
     });
 
-    const handleHistoryEmailChange = (event) => {
-        const nextHistoryEmail = String(event?.target?.value || '');
+    const handleHistoryEmailChange = (nextValue) => {
+        const nextHistoryEmail = String(nextValue || '');
         if (!routes?.inbox) {
             return;
         }
@@ -497,17 +506,13 @@ export default function Inbox({
                             {mailboxSwitchEnabled ? (
                                 <div className="inline-flex items-center gap-2 rounded-full bg-white text-xs font-semibold text-slate-600">
                                     <span>Mailbox</span>
-                                    <select
+                                    <SearchableSelect
+                                        name="mailbox_switch_email"
                                         value={mailboxSwitchEmail}
-                                        onChange={(event) => setMailboxSwitchEmail(String(event?.target?.value || ''))}
-                                        className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 focus:border-teal-400 focus:outline-none"
-                                    >
-                                        {mailboxSwitchOptions.map((mailbox) => (
-                                            <option key={mailbox.id} value={mailbox.email}>
-                                                {mailbox.label || mailbox.email}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        onChange={(nextValue) => setMailboxSwitchEmail(String(nextValue || ''))}
+                                        options={mailboxSwitchSelectOptions}
+                                        placeholder="Select mailbox"
+                                    />
                                     <button
                                         type="button"
                                         onClick={handleMailboxSwitch}
@@ -521,18 +526,13 @@ export default function Inbox({
                             {emailFilterEnabled ? (
                                 <label className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-slate-600">
                                     <span>Email history</span>
-                                    <select
+                                    <SearchableSelect
+                                        name="history_email"
                                         value={selectedHistoryEmail}
                                         onChange={handleHistoryEmailChange}
-                                        className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 focus:border-teal-400 focus:outline-none"
-                                    >
-                                        <option value="">All emails</option>
-                                        {emailFilterOptions.map((email) => (
-                                            <option key={email} value={email}>
-                                                {email}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        options={historyEmailSelectOptions}
+                                        placeholder="All emails"
+                                    />
                                 </label>
                             ) : null}
                             {routes?.logout ? (

@@ -14,4 +14,7 @@ if (is_string($configuredPanelRoles) && trim($configuredPanelRoles) !== '') {
 
 return [
     'panel_roles' => $panelRoles,
+    'pagination' => [
+        'per_page' => (int) env('ADMIN_PER_PAGE', 15),
+    ],
 ];

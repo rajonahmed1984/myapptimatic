@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const money = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const invoiceBadgeClass = (status) => {
@@ -98,6 +99,24 @@ export default function Show({
     const sourceAdvancedAfter = sourceAdvancedAmount + (enteredAmount > 0 ? enteredAmount : 0);
     const sourceRemainingAfter = Math.max(0, sourceCommissionAmount - sourceAdvancedAfter);
     const sourceOverpaidAfter = Math.max(0, sourceAdvancedAfter - sourceCommissionAmount);
+    const sourceTypeSelectOptions = React.useMemo(
+        () => sourceTypeOptions.map((option) => ({ value: String(option.value), label: option.label })),
+        [sourceTypeOptions],
+    );
+    const sourceSelectOptions = React.useMemo(
+        () => (sourcesByType[sourceType] || []).map((item) => ({
+            value: String(item.id),
+            label: `${item.label}${item.subtitle ? ` (${item.subtitle})` : ''}`,
+        })),
+        [sourceType, sourcesByType],
+    );
+    const paymentMethodOptions = React.useMemo(
+        () => [
+            { value: '', label: 'Select' },
+            ...paymentMethods.map((method) => ({ value: String(method.code), label: method.name })),
+        ],
+        [paymentMethods],
+    );
 
     return (
         <>
@@ -241,19 +260,26 @@ export default function Show({
                             <input type="hidden" name="_token" value={csrf} />
                             <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Source Type</label>
-                                <select value={sourceType} onChange={(event) => setSourceType(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                    {sourceTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                </select>
+                                <SearchableSelect
+                                    name="_source_type_select"
+                                    value={String(sourceType || '')}
+                                    onChange={(nextValue) => setSourceType(String(nextValue || ''))}
+                                    options={sourceTypeSelectOptions}
+                                    className="mt-1"
+                                    placeholder="Select source type"
+                                />
                             </div>
                             <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Project / Products &amp; Services</label>
-                                <select value={sourceId} onChange={(event) => setSourceId(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                    {(sourcesByType[sourceType] || []).map((item) => (
-                                        <option key={item.key || `${item.type}:${item.id}`} value={item.id}>
-                                            {item.label}{item.subtitle ? ` (${item.subtitle})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                <SearchableSelect
+                                    name="_source_id_select"
+                                    value={String(sourceId || '')}
+                                    onChange={(nextValue) => setSourceId(String(nextValue || ''))}
+                                    options={sourceSelectOptions}
+                                    className="mt-1"
+                                    placeholder="Select source"
+                                    disabled={sourceSelectOptions.length === 0}
+                                />
                             </div>
                             <input type="hidden" name="source_type" value={sourceType} />
                             <input type="hidden" name="source_id" value={sourceId} />
@@ -264,10 +290,13 @@ export default function Show({
                             </div>
                             <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Method</label>
-                                <select name="payout_method" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                    <option value="">Select</option>
-                                    {paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}
-                                </select>
+                                <SearchableSelect
+                                    name="payout_method"
+                                    defaultValue=""
+                                    options={paymentMethodOptions}
+                                    className="mt-1"
+                                    placeholder="Select"
+                                />
                             </div>
                             {selectedSource ? (
                                 <div className="md:col-span-8 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 md:grid-cols-4">

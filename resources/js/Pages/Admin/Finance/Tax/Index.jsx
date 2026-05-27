@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 const statusClass = (isActive) => (
     isActive
@@ -137,6 +138,19 @@ export default function Index({
     const trendLabels = tax_analytics?.trend?.labels || [];
     const trendSeries = asNumberList(tax_analytics?.trend?.series || []);
     const [hoveredIndex, setHoveredIndex] = React.useState(null);
+    const effectiveYearFormRef = React.useRef(null);
+    const effectiveYearOptions = (tax_analytics?.effective_year_options || []).map((year) => ({
+        value: String(year.value),
+        label: year.label,
+    }));
+    const taxModeOptions = [
+        { value: 'exclusive', label: 'Exclusive (add tax on top)' },
+        { value: 'inclusive', label: 'Inclusive (included in total)' },
+    ];
+    const defaultTaxRateOptions = [
+        { value: '', label: 'No default' },
+        ...rate_options.map((rate) => ({ value: String(rate.id), label: rate.label })),
+    ];
 
     const chartModel = React.useMemo(() => {
         const labels = Array.isArray(trendLabels) ? trendLabels : [];
@@ -228,20 +242,15 @@ export default function Index({
                         <div className="section-label">Effective Year Tax</div>
                         <div className="text-sm text-slate-500">Month-to-month and year-to-year tax performance.</div>
                     </div>
-                    <form method="GET" action={routes?.index} data-native="true" className="flex items-center gap-2">
+                    <form ref={effectiveYearFormRef} method="GET" action={routes?.index} data-native="true" className="flex items-center gap-2">
                         <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Effective year</label>
-                        <select
+                        <SearchableSelect
                             name="effective_year"
                             defaultValue={String(tax_analytics?.effective_year || '')}
-                            onChange={(event) => event.currentTarget.form?.submit()}
-                            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                            {(tax_analytics?.effective_year_options || []).map((year) => (
-                                <option key={year.value} value={year.value}>
-                                    {year.label}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={() => effectiveYearFormRef.current?.submit()}
+                            options={effectiveYearOptions}
+                            placeholder="Select year"
+                        />
                     </form>
                 </div>
 
@@ -509,32 +518,26 @@ export default function Index({
 
                         <div>
                             <label className="text-xs text-slate-500">Default tax mode</label>
-                            <select
+                            <SearchableSelect
                                 name="tax_mode_default"
-                                defaultValue={settings_form?.tax_mode_default || 'exclusive'}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            >
-                                <option value="exclusive">Exclusive (add tax on top)</option>
-                                <option value="inclusive">Inclusive (included in total)</option>
-                            </select>
-                            {errors.tax_mode_default ? <div className="mt-1 text-xs text-rose-600">{errors.tax_mode_default}</div> : null}
+                                defaultValue={String(settings_form?.tax_mode_default || 'exclusive')}
+                                options={taxModeOptions}
+                                className="mt-1"
+                                placeholder="Select tax mode"
+                                error={errors.tax_mode_default}
+                            />
                         </div>
 
                         <div>
                             <label className="text-xs text-slate-500">Default tax rate</label>
-                            <select
+                            <SearchableSelect
                                 name="default_tax_rate_id"
-                                defaultValue={settings_form?.default_tax_rate_id || ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            >
-                                <option value="">No default</option>
-                                {rate_options.map((rate) => (
-                                    <option key={rate.id} value={rate.id}>
-                                        {rate.label}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.default_tax_rate_id ? <div className="mt-1 text-xs text-rose-600">{errors.default_tax_rate_id}</div> : null}
+                                defaultValue={String(settings_form?.default_tax_rate_id || '')}
+                                options={defaultTaxRateOptions}
+                                className="mt-1"
+                                placeholder="No default"
+                                error={errors.default_tax_rate_id}
+                            />
                         </div>
 
                         <div>

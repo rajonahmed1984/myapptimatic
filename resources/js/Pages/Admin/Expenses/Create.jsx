@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { formatDate } from '@/utils/datetime';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 function formatCurrency(code, amount) {
     const value = Number.parseFloat(amount ?? 0);
@@ -8,6 +9,12 @@ function formatCurrency(code, amount) {
 
     return `${code} ${safe.toFixed(2)}`;
 }
+
+const BTN = {
+    primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+    danger: 'bg-red-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-red-500',
+};
 
 export default function Create({
     pageTitle = 'Add Expense',
@@ -35,6 +42,18 @@ export default function Create({
         type: 'full',
     });
     const [paymentAmount, setPaymentAmount] = React.useState('0.00');
+    const categoryOptions = [
+        { value: '', label: 'Select category' },
+        ...categories.map((category) => ({ value: String(category.id), label: category.name })),
+    ];
+    const paymentMethodOptions = [
+        { value: '', label: 'Select' },
+        ...paymentMethods.map((method) => ({ value: String(method.code), label: method.name })),
+    ];
+    const paymentTypeOptions = [
+        { value: 'full', label: 'Full Payment' },
+        { value: 'partial', label: 'Partial Payment' },
+    ];
 
     React.useEffect(() => {
         const shouldOpen = Boolean(
@@ -68,8 +87,7 @@ export default function Create({
 
     const closePayment = () => setPaymentModal((current) => ({ ...current, open: false }));
 
-    const onPaymentTypeChange = (event) => {
-        const nextType = event.target.value;
+    const onPaymentTypeChange = (nextType) => {
         const remaining = Number(paymentModal.remaining || 0);
         setPaymentModal((current) => ({ ...current, type: nextType }));
         if (nextType === 'full') {
@@ -104,14 +122,14 @@ export default function Create({
                     <a
                         href={routes?.index}
                         data-native="true"
-                        className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                        className={BTN.secondary}
                     >
                         Back
                     </a>
                     <button
                         type="button"
                         onClick={() => setShowAddModal(true)}
-                        className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                        className={BTN.primary}
                     >
                         Add expense
                     </button>
@@ -127,7 +145,7 @@ export default function Create({
                     <a
                         href={routes?.index_one_time || routes?.index}
                         data-native="true"
-                        className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                        className={BTN.secondary}
                     >
                         View all
                     </a>
@@ -201,7 +219,7 @@ export default function Create({
                                                         <button
                                                             type="button"
                                                             onClick={() => openPayment(item)}
-                                                            className="rounded-full border border-emerald-200 px-3 py-1 text-emerald-700 hover:border-emerald-300"
+                                                            className="text-xs font-semibold text-teal-600 hover:text-teal-500"
                                                         >
                                                             Add payment
                                                         </button>
@@ -213,7 +231,7 @@ export default function Create({
                                                         <input type="hidden" name="source_id" value={item.id} />
                                                         <button
                                                             type="submit"
-                                                            className="rounded-full border border-emerald-200 px-3 py-1 text-emerald-700 hover:border-emerald-300"
+                                                            className="text-xs font-semibold text-teal-600 hover:text-teal-500"
                                                         >
                                                             Generate invoice
                                                         </button>
@@ -223,7 +241,7 @@ export default function Create({
                                                 <a
                                                     href={item.routes?.edit}
                                                     data-native="true"
-                                                    className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                                    className="text-xs font-semibold text-slate-600 hover:text-teal-600"
                                                 >
                                                     Edit
                                                 </a>
@@ -242,7 +260,7 @@ export default function Create({
                                                     <input type="hidden" name="_method" value="DELETE" />
                                                     <button
                                                         type="submit"
-                                                        className="rounded-full border border-rose-200 px-3 py-1 text-rose-700 hover:border-rose-300"
+                                                        className="text-xs font-semibold text-rose-600 hover:text-rose-500"
                                                     >
                                                         Delete
                                                     </button>
@@ -294,7 +312,7 @@ export default function Create({
                         <button
                             type="button"
                             onClick={() => setShowAddModal(false)}
-                            className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                            className={BTN.secondary}
                         >
                             Close
                         </button>
@@ -305,20 +323,15 @@ export default function Create({
                         <div className="grid gap-3 md:grid-cols-2">
                             <div>
                                 <label className="text-xs text-slate-500">Category</label>
-                                <select
+                                <SearchableSelect
                                     name="category_id"
                                     required
-                                    defaultValue={form?.category_id ?? ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="">Select category</option>
-                                    {categories.map((category) => (
-                                        <option key={category.id} value={category.id}>
-                                            {category.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.category_id ? <div className="mt-1 text-xs text-rose-600">{errors.category_id}</div> : null}
+                                    defaultValue={String(form?.category_id ?? '')}
+                                    options={categoryOptions}
+                                    className="mt-1"
+                                    placeholder="Select category"
+                                    error={errors.category_id}
+                                />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Title</label>
@@ -422,27 +435,26 @@ export default function Create({
                         <input type="hidden" name="_token" value={csrf} />
                         <div>
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Method</label>
-                            <select name="payment_method" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
-                                <option value="">Select</option>
-                                {paymentMethods.map((method) => (
-                                    <option key={method.code} value={method.code}>
-                                        {method.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <SearchableSelect
+                                name="payment_method"
+                                defaultValue=""
+                                options={paymentMethodOptions}
+                                className="mt-1"
+                                placeholder="Select"
+                                required
+                            />
                         </div>
                         <div>
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Type</label>
-                            <select
+                            <SearchableSelect
                                 name="payment_type"
                                 value={paymentModal.type}
                                 onChange={onPaymentTypeChange}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                options={paymentTypeOptions}
+                                className="mt-1"
+                                placeholder="Select payment type"
                                 required
-                            >
-                                <option value="full">Full Payment</option>
-                                <option value="partial">Partial Payment</option>
-                            </select>
+                            />
                         </div>
                         <div>
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Amount</label>

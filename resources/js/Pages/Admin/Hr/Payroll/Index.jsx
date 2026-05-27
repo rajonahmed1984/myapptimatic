@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 export default function Index({
     pageTitle = 'Payroll',
@@ -15,6 +16,12 @@ export default function Index({
     routes = {},
 }) {
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const generatePeriodOptions = generatePeriods.map((periodOption) => ({ value: String(periodOption.value), label: periodOption.label }));
+    const statusFilterOptions = [
+        { value: '', label: 'All' },
+        { value: 'draft', label: 'Draft' },
+        { value: 'finalized', label: 'Finalized' },
+    ];
 
     return (
         <>
@@ -28,11 +35,13 @@ export default function Index({
                 </div>
                 <form method="POST" action={routes?.generate} data-native="true" className="flex items-center gap-2">
                     <input type="hidden" name="_token" value={token} />
-                    <select name="period_key" defaultValue={selectedGeneratePeriod} className="w-40 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                        {generatePeriods.map((periodOption) => (
-                            <option key={periodOption.value} value={periodOption.value}>{periodOption.label}</option>
-                        ))}
-                    </select>
+                    <SearchableSelect
+                        name="period_key"
+                        defaultValue={String(selectedGeneratePeriod || '')}
+                        options={generatePeriodOptions}
+                        className="w-40"
+                        placeholder="Select period"
+                    />
                     <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Generate</button>
                 </form>
             </div>
@@ -54,11 +63,13 @@ export default function Index({
                     </div>
                     <div>
                         <label htmlFor="periodStatusFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>
-                        <select id="periodStatusFilter" name="status" defaultValue={selectedStatus || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                            <option value="">All</option>
-                            <option value="draft">Draft</option>
-                            <option value="finalized">Finalized</option>
-                        </select>
+                        <SearchableSelect
+                            name="status"
+                            defaultValue={String(selectedStatus || '')}
+                            options={statusFilterOptions}
+                            className="mt-1"
+                            placeholder="All"
+                        />
                     </div>
                     <div className="md:col-span-2 flex items-end gap-2">
                         <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Apply filter</button>

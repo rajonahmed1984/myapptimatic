@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function TaskFormPage({
     pageTitle = 'Task Form',
@@ -17,6 +18,16 @@ export default function TaskFormPage({
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const [selectedAssignees, setSelectedAssignees] = React.useState(Array.isArray(form.assignees) ? form.assignees : []);
+    const taskTypeSelectOptions = Object.entries(taskTypeOptions).map(([value, label]) => ({ value, label }));
+    const prioritySelectOptions = Object.entries(priorityOptions).map(([value, label]) => ({ value, label }));
+    const statusSelectOptions = statusOptions.map((status) => ({
+        value: String(status),
+        label: status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    }));
+    const assigneeSelectOptions = [
+        ...employees.map((employee) => ({ value: `employee:${employee.id}`, label: `Employee: ${employee.name}` })),
+        ...salesReps.map((rep) => ({ value: `sales_rep:${rep.id}`, label: `Sales rep: ${rep.name}` })),
+    ];
 
     return (
         <>
@@ -91,50 +102,38 @@ export default function TaskFormPage({
                         {isEdit ? (
                             <div>
                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>
-                                <select
+                                <SearchableSelect
                                     name="status"
-                                    defaultValue={form.status || task?.status || 'pending'}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    defaultValue={String(form.status || task?.status || 'pending')}
+                                    options={statusSelectOptions}
+                                    className="mt-1"
+                                    placeholder="Select status"
                                     required
-                                >
-                                    {statusOptions.map((status) => (
-                                        <option key={status} value={status}>
-                                            {status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                                        </option>
-                                    ))}
-                                </select>
+                                />
                             </div>
                         ) : null}
 
                         <div>
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Task type</label>
-                            <select
+                            <SearchableSelect
                                 name="task_type"
-                                defaultValue={form.task_type || task?.task_type || ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                defaultValue={String(form.task_type || task?.task_type || '')}
+                                options={taskTypeSelectOptions}
+                                className="mt-1"
+                                placeholder="Select task type"
                                 required
-                            >
-                                {Object.entries(taskTypeOptions).map(([value, label]) => (
-                                    <option key={value} value={value}>
-                                        {label}
-                                    </option>
-                                ))}
-                            </select>
+                            />
                         </div>
 
                         <div>
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Priority</label>
-                            <select
+                            <SearchableSelect
                                 name="priority"
-                                defaultValue={form.priority || task?.priority || 'medium'}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            >
-                                {Object.entries(priorityOptions).map(([value, label]) => (
-                                    <option key={value} value={value}>
-                                        {label}
-                                    </option>
-                                ))}
-                            </select>
+                                defaultValue={String(form.priority || task?.priority || 'medium')}
+                                options={prioritySelectOptions}
+                                className="mt-1"
+                                placeholder="Select priority"
+                            />
                         </div>
 
                         {isEdit ? (
@@ -165,25 +164,17 @@ export default function TaskFormPage({
 
                         <div className="md:col-span-2">
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Assignees</label>
-                            <select
+                            <SearchableSelect
                                 name="assignees[]"
-                                multiple
-                                size={6}
                                 value={selectedAssignees}
-                                onChange={(event) => setSelectedAssignees(Array.from(event.target.selectedOptions).map((option) => option.value))}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            >
-                                {employees.map((employee) => (
-                                    <option key={`employee:${employee.id}`} value={`employee:${employee.id}`}>
-                                        Employee: {employee.name}
-                                    </option>
-                                ))}
-                                {salesReps.map((rep) => (
-                                    <option key={`sales_rep:${rep.id}`} value={`sales_rep:${rep.id}`}>
-                                        Sales rep: {rep.name}
-                                    </option>
-                                ))}
-                            </select>
+                                onChange={(nextValues) => setSelectedAssignees(Array.isArray(nextValues) ? nextValues : [])}
+                                options={assigneeSelectOptions}
+                                className="mt-1"
+                                placeholder="Select assignees"
+                                searchPlaceholder="Search assignees..."
+                                closeOnSelect={false}
+                                multiple
+                            />
                             {!isEdit ? <p className="mt-1 text-xs text-slate-500">Select at least one assignee.</p> : null}
                         </div>
 

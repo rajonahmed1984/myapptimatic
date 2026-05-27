@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const on = (v) => v === true || v === 1 || v === '1' || v === 'true';
 
@@ -60,6 +61,24 @@ export default function Edit({
 }) {
     const { csrf_token: csrf = '', errors = {} } = usePage().props || {};
     const [tab, setTab] = useState(active_tab || 'general');
+    const countryOptions = [
+        { value: '', label: 'Select country' },
+        ...countries.map((country) => ({ value: String(country), label: country })),
+    ];
+    const dateFormatOptions = Object.entries(date_formats).map(([value, label]) => ({ value: String(value), label: String(label) }));
+    const timeZoneOptions = time_zones.map((zone) => ({ value: String(zone), label: zone }));
+    const currencyOptions = [
+        { value: 'BDT', label: 'BDT' },
+        { value: 'USD', label: 'USD' },
+    ];
+    const lateFeeTypeOptions = [
+        { value: 'fixed', label: 'Fixed' },
+        { value: 'percent', label: 'Percent' },
+    ];
+    const overageBillingModeOptions = [
+        { value: 'last_day_separate', label: 'Last day separate invoice' },
+        { value: 'last_day_next_invoice', label: 'Last day include next invoice' },
+    ];
 
     const activeTabMeta = TAB_CONFIG.find((item) => item.key === tab) || TAB_CONFIG[0];
 
@@ -141,10 +160,14 @@ export default function Edit({
                                         <input name="app_url" type="url" defaultValue={settings.app_url || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
                                     </Field>
                                     <Field label="Country" name="company_country" errors={errors}>
-                                        <select name="company_country" defaultValue={settings.company_country || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                                            <option value="">Select country</option>
-                                            {countries.map((country) => <option key={country} value={country}>{country}</option>)}
-                                        </select>
+                                        <SearchableSelect
+                                            name="company_country"
+                                            defaultValue={String(settings.company_country || '')}
+                                            options={countryOptions}
+                                            className="mt-2"
+                                            placeholder="Select country"
+                                            error={errors?.company_country}
+                                        />
                                     </Field>
                                 </div>
                             </div>
@@ -153,14 +176,24 @@ export default function Edit({
                                 <div className="section-label">Locale & Schedule</div>
                                 <div className="mt-4 grid gap-4">
                                     <Field label="Date format" name="date_format" errors={errors}>
-                                        <select name="date_format" defaultValue={settings.date_format || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                                            {Object.entries(date_formats).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                                        </select>
+                                        <SearchableSelect
+                                            name="date_format"
+                                            defaultValue={String(settings.date_format || '')}
+                                            options={dateFormatOptions}
+                                            className="mt-2"
+                                            placeholder="Select date format"
+                                            error={errors?.date_format}
+                                        />
                                     </Field>
                                     <Field label="Time zone" name="time_zone" errors={errors}>
-                                        <select name="time_zone" defaultValue={settings.time_zone || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                                            {time_zones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
-                                        </select>
+                                        <SearchableSelect
+                                            name="time_zone"
+                                            defaultValue={String(settings.time_zone || '')}
+                                            options={timeZoneOptions}
+                                            className="mt-2"
+                                            placeholder="Select time zone"
+                                            error={errors?.time_zone}
+                                        />
                                     </Field>
                                     <Field label="Automation time" name="automation_time_of_day" errors={errors}>
                                         <input name="automation_time_of_day" type="time" defaultValue={settings.automation_time_of_day || '00:00'} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
@@ -225,10 +258,14 @@ export default function Edit({
                             <div className="section-label">Invoice Settings</div>
                             <div className="mt-4 grid gap-4 md:grid-cols-2">
                                 <Field label="Currency" name="currency" errors={errors}>
-                                    <select name="currency" defaultValue={settings.currency || 'USD'} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                                        <option value="BDT">BDT</option>
-                                        <option value="USD">USD</option>
-                                    </select>
+                                    <SearchableSelect
+                                        name="currency"
+                                        defaultValue={String(settings.currency || 'USD')}
+                                        options={currencyOptions}
+                                        className="mt-2"
+                                        placeholder="Select currency"
+                                        error={errors?.currency}
+                                    />
                                 </Field>
                                 <div>
                                     <label className="text-sm text-slate-600">Invoice due days</label>
@@ -281,17 +318,25 @@ export default function Edit({
                                 <div><label className="text-sm text-slate-600">Third overdue reminder</label><Num name="third_overdue_reminder_days" value={settings.third_overdue_reminder_days} errors={errors} /></div>
                                 <div><label className="text-sm text-slate-600">Late fee days</label><Num name="late_fee_days" value={settings.late_fee_days} errors={errors} /></div>
                                 <Field label="Late fee type" name="late_fee_type" errors={errors}>
-                                    <select name="late_fee_type" defaultValue={settings.late_fee_type || 'fixed'} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                                        <option value="fixed">Fixed</option>
-                                        <option value="percent">Percent</option>
-                                    </select>
+                                    <SearchableSelect
+                                        name="late_fee_type"
+                                        defaultValue={String(settings.late_fee_type || 'fixed')}
+                                        options={lateFeeTypeOptions}
+                                        className="mt-2"
+                                        placeholder="Select late fee type"
+                                        error={errors?.late_fee_type}
+                                    />
                                 </Field>
                                 <div><label className="text-sm text-slate-600">Late fee amount</label><Num name="late_fee_amount" value={settings.late_fee_amount} errors={errors} step={0.01} min={0} max={1000000} /></div>
                                 <Field label="Overage billing mode" name="overage_billing_mode" errors={errors}>
-                                    <select name="overage_billing_mode" defaultValue={settings.overage_billing_mode || 'last_day_separate'} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                                        <option value="last_day_separate">Last day separate invoice</option>
-                                        <option value="last_day_next_invoice">Last day include next invoice</option>
-                                    </select>
+                                    <SearchableSelect
+                                        name="overage_billing_mode"
+                                        defaultValue={String(settings.overage_billing_mode || 'last_day_separate')}
+                                        options={overageBillingModeOptions}
+                                        className="mt-2"
+                                        placeholder="Select overage mode"
+                                        error={errors?.overage_billing_mode}
+                                    />
                                 </Field>
                                 <Check name="change_invoice_status_on_reversal" checked={settings.change_invoice_status_on_reversal} label="Change status on reversal" />
                                 <Check name="change_due_dates_on_reversal" checked={settings.change_due_dates_on_reversal} label="Change due dates on reversal" />

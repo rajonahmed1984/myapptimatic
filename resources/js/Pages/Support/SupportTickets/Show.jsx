@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Show({ ticket = {}, replies = [], ai_ready = false, routes = {} }) {
     const { csrf_token: csrfToken = '', errors = {} } = usePage().props || {};
@@ -11,6 +12,17 @@ export default function Show({ ticket = {}, replies = [], ai_ready = false, rout
     const [sentiment, setSentiment] = useState('--');
     const [nextSteps, setNextSteps] = useState(['--']);
     const [suggestedReply, setSuggestedReply] = useState('');
+    const priorityOptions = [
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+    ];
+    const statusOptions = [
+        { value: 'open', label: 'Open' },
+        { value: 'answered', label: 'Answered' },
+        { value: 'customer_reply', label: 'Customer Reply' },
+        { value: 'closed', label: 'Closed' },
+    ];
 
     const runAi = async () => {
         if (!routes?.ai || aiLoading) return;
@@ -82,20 +94,23 @@ export default function Show({ ticket = {}, replies = [], ai_ready = false, rout
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Priority</label>
-                            <select name="priority" defaultValue={ticket.priority} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
+                            <SearchableSelect
+                                name="priority"
+                                defaultValue={String(ticket.priority || 'medium')}
+                                options={priorityOptions}
+                                className="mt-2"
+                                placeholder="Select priority"
+                            />
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Status</label>
-                            <select name="status" defaultValue={ticket.status} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
-                                <option value="open">Open</option>
-                                <option value="answered">Answered</option>
-                                <option value="customer_reply">Customer Reply</option>
-                                <option value="closed">Closed</option>
-                            </select>
+                            <SearchableSelect
+                                name="status"
+                                defaultValue={String(ticket.status || 'open')}
+                                options={statusOptions}
+                                className="mt-2"
+                                placeholder="Select status"
+                            />
                         </div>
                         <div className="md:col-span-2 flex justify-end"><button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Save changes</button></div>
                     </form>

@@ -1,6 +1,12 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+
+const BTN = {
+    primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+};
 
 const levelClasses = (level) => {
     if (level === 'error') {
@@ -22,13 +28,38 @@ export default function Index({
     pageTitle = 'System Logs',
     logTypes = [],
     logs = [],
+    filters = {},
+    routes = {},
     pagination = {},
 }) {
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: filters?.search ?? '',
+        url: routes?.current,
+    });
+
     return (
         <>
             <Head title={pageTitle} />
 
             <div className="card p-6">
+                <form
+                    method="GET"
+                    action={routes?.current}
+                    className="mb-4 flex items-center gap-2"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        submitSearch();
+                    }}
+                >
+                    <input
+                        type="text"
+                        name="search"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="Search logs..."
+                        className="w-full max-w-sm rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    />
+                </form>
                 <div className="flex flex-wrap gap-2 text-sm">
                     {logTypes.map((type) => (
                         <a
@@ -37,8 +68,8 @@ export default function Index({
                             data-native="true"
                             className={
                                 type.active
-                                    ? 'rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-white'
-                                    : 'rounded-full border border-slate-200 px-4 py-2 text-slate-600 hover:border-teal-300 hover:text-teal-600'
+                                    ? BTN.primary
+                                    : BTN.secondary
                             }
                         >
                             {type.label}
@@ -94,7 +125,7 @@ export default function Index({
                                         <a
                                             href={pagination.previous_url}
                                             data-native="true"
-                                            className="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                                            className={BTN.secondary}
                                         >
                                             Previous
                                         </a>
@@ -105,7 +136,7 @@ export default function Index({
                                         <a
                                             href={pagination.next_url}
                                             data-native="true"
-                                            className="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                                            className={BTN.secondary}
                                         >
                                             Next
                                         </a>

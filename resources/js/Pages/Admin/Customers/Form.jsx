@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Form({
     pageTitle = 'Customer',
@@ -20,6 +21,17 @@ export default function Form({
     const previewUrl = useObjectUrlPreview(avatarFile, { enabled: String(avatarFile?.type || '').startsWith('image/') });
     const avatarUrl = previewUrl || form?.avatar_url || '';
     const statusLabel = String(effective_status || fields?.status || 'active');
+    const salesRepOptions = [
+        { value: '', label: 'None' },
+        ...sales_reps.map((rep) => ({
+            value: String(rep.id),
+            label: `${rep.name} ${rep.status !== 'active' ? `(${String(rep.status).charAt(0).toUpperCase() + String(rep.status).slice(1)})` : ''}`.trim(),
+        })),
+    ];
+    const customerStatusOptions = [
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+    ];
 
     return (
         <>
@@ -140,18 +152,13 @@ export default function Form({
                             <>
                                 <div>
                                     <label className="text-sm text-slate-600">Default Sales Rep</label>
-                                    <select
+                                    <SearchableSelect
                                         name="default_sales_rep_id"
-                                        defaultValue={fields?.default_sales_rep_id || ''}
-                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                                    >
-                                        <option value="">None</option>
-                                        {sales_reps.map((rep) => (
-                                            <option key={rep.id} value={rep.id}>
-                                                {rep.name} {rep.status !== 'active' ? `(${String(rep.status).charAt(0).toUpperCase() + String(rep.status).slice(1)})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        defaultValue={String(fields?.default_sales_rep_id || '')}
+                                        options={salesRepOptions}
+                                        className="mt-2"
+                                        placeholder="None"
+                                    />
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Notes</label>
@@ -203,11 +210,14 @@ export default function Form({
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Status</label>
-                                    <select name="status" defaultValue={fields?.status || 'active'} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
-                                    {errors?.status ? <p className="mt-1 text-xs text-rose-500">{errors.status}</p> : null}
+                                    <SearchableSelect
+                                        name="status"
+                                        defaultValue={String(fields?.status || 'active')}
+                                        options={customerStatusOptions}
+                                        className="mt-2"
+                                        error={errors?.status}
+                                        placeholder="Select status"
+                                    />
                                 </div>
                                 <div className="md:col-span-3 flex items-center gap-2 text-sm text-slate-600">
                                     <input type="hidden" name="send_account_message" value="0" />
@@ -235,27 +245,26 @@ export default function Form({
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Status</label>
-                                    <select name="status" defaultValue={fields?.status || 'active'} required className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
+                                    <SearchableSelect
+                                        name="status"
+                                        defaultValue={String(fields?.status || 'active')}
+                                        options={customerStatusOptions}
+                                        className="mt-2"
+                                        error={errors?.status}
+                                        placeholder="Select status"
+                                        required
+                                    />
                                     <p className="mt-1 text-xs text-slate-500">Status is controlled manually by admin.</p>
-                                    {errors?.status ? <p className="mt-1 text-xs text-rose-500">{errors.status}</p> : null}
                                 </div>
                                 <div className="md:col-start-1">
                                     <label className="text-sm text-slate-600">Default sales rep</label>
-                                    <select
+                                    <SearchableSelect
                                         name="default_sales_rep_id"
-                                        defaultValue={fields?.default_sales_rep_id || ''}
-                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                                    >
-                                        <option value="">None</option>
-                                        {sales_reps.map((rep) => (
-                                            <option key={rep.id} value={rep.id}>
-                                                {rep.name} {rep.status !== 'active' ? `(${String(rep.status).charAt(0).toUpperCase() + String(rep.status).slice(1)})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        defaultValue={String(fields?.default_sales_rep_id || '')}
+                                        options={salesRepOptions}
+                                        className="mt-2"
+                                        placeholder="None"
+                                    />
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Notes</label>

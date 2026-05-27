@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Create({
     pageTitle = 'Create Commission Payout',
@@ -13,6 +14,14 @@ export default function Create({
     const { props } = usePage();
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
+    const salesRepOptions = [
+        { value: '', label: 'Select rep' },
+        ...sales_reps.map((rep) => ({ value: String(rep.id), label: `${rep.name} (${rep.status})` })),
+    ];
+    const payoutMethodOptions = [
+        { value: '', label: 'Select method' },
+        ...payout_methods.map((method) => ({ value: String(method.code), label: method.name })),
+    ];
 
     return (
         <>
@@ -37,28 +46,26 @@ export default function Create({
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep</label>
-                            <select name="sales_rep_id" defaultValue={selected_rep || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="">Select rep</option>
-                                {sales_reps.map((rep) => (
-                                    <option key={rep.id} value={rep.id}>
-                                        {rep.name} ({rep.status})
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.sales_rep_id ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_id}</p> : null}
+                            <SearchableSelect
+                                name="sales_rep_id"
+                                defaultValue={String(selected_rep || '')}
+                                options={salesRepOptions}
+                                className="mt-1"
+                                placeholder="Select rep"
+                                error={errors?.sales_rep_id}
+                            />
                         </div>
 
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Payout Method</label>
-                            <select name="payout_method" className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="">Select method</option>
-                                {payout_methods.map((method) => (
-                                    <option key={method.code} value={method.code}>
-                                        {method.name}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.payout_method ? <p className="mt-1 text-xs text-rose-600">{errors.payout_method}</p> : null}
+                            <SearchableSelect
+                                name="payout_method"
+                                defaultValue=""
+                                options={payoutMethodOptions}
+                                className="mt-1"
+                                placeholder="Select method"
+                                error={errors?.payout_method}
+                            />
                         </div>
 
                         <div>

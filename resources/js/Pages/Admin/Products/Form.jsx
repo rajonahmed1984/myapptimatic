@@ -1,11 +1,16 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Form({ pageTitle = 'Product', is_edit = false, form = {}, routes = {} }) {
     const { props } = usePage();
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
+    const statusOptions = [
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+    ];
 
     return (
         <>
@@ -38,11 +43,13 @@ export default function Form({ pageTitle = 'Product', is_edit = false, form = {}
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
-                        <select name="status" defaultValue={fields?.status || 'active'} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                        {errors?.status ? <p className="mt-1 text-xs text-rose-600">{errors.status}</p> : null}
+                        <SearchableSelect
+                            name="status"
+                            defaultValue={String(fields?.status || 'active')}
+                            options={statusOptions}
+                            placeholder="Select status"
+                            error={errors?.status}
+                        />
                     </div>
 
                     <div>

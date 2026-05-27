@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 export default function Create({
     pageTitle = 'Create Affiliate Payout',
@@ -12,6 +13,13 @@ export default function Create({
 }) {
     const { csrf_token: csrfToken = '' } = usePage().props || {};
     const [selectedIds, setSelectedIds] = useState(approved_commissions.map((item) => item.id));
+    const affiliateOptions = [
+        { value: '', label: 'Select affiliate' },
+        ...affiliates.map((affiliate) => ({
+            value: String(affiliate.id),
+            label: `${affiliate.name} (${affiliate.code}) - ${affiliate.balance_display}`,
+        })),
+    ];
 
     const selectedTotal = useMemo(
         () =>
@@ -47,18 +55,13 @@ export default function Create({
 
             <div className="card p-6">
                 <form method="GET" action={routes?.create} data-native="true" className="mb-6 flex flex-wrap gap-3">
-                    <select
+                    <SearchableSelect
                         name="affiliate_id"
-                        defaultValue={selected_affiliate_id}
-                        className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                    >
-                        <option value="">Select affiliate</option>
-                        {affiliates.map((affiliate) => (
-                            <option key={affiliate.id} value={affiliate.id}>
-                                {affiliate.name} ({affiliate.code}) - {affiliate.balance_display}
-                            </option>
-                        ))}
-                    </select>
+                        defaultValue={String(selected_affiliate_id || '')}
+                        options={affiliateOptions}
+                        className="flex-1"
+                        placeholder="Select affiliate"
+                    />
                     <button
                         type="submit"
                         className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white"

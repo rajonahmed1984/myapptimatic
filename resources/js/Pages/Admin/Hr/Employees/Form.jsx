@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import mediaUrl from '../../../../utils/mediaUrl';
 import useObjectUrlPreview from '../../../../hooks/useObjectUrlPreview';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 export default function FormPage({
     mode = 'create',
@@ -23,6 +24,34 @@ export default function FormPage({
     const [salaryType, setSalaryType] = useState(values.salary_type || 'monthly');
     const [photoFile, setPhotoFile] = useState(null);
     const photoPreview = useObjectUrlPreview(photoFile, { enabled: String(photoFile?.type || '').startsWith('image/') }) || mediaUrl(values.photo_path) || '';
+    const managerOptions = [
+        { value: '', label: '-- none --' },
+        ...managers.map((manager) => ({ value: String(manager.id), label: manager.name })),
+    ];
+    const userOptions = [
+        { value: '', label: '-- none --' },
+        ...users.map((user) => ({ value: String(user.id), label: `${user.name} (${user.email})` })),
+    ];
+    const employmentTypeOptions = [
+        { value: 'full_time', label: 'Full-time' },
+        { value: 'part_time', label: 'Part-time' },
+        { value: 'contract', label: 'Contract' },
+    ];
+    const workModeOptions = [
+        { value: 'remote', label: 'Remote' },
+        { value: 'on_site', label: 'On-site' },
+        { value: 'hybrid', label: 'Hybrid' },
+    ];
+    const employeeStatusOptions = [
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+    ];
+    const salaryTypeOptions = [
+        { value: 'monthly', label: 'Monthly' },
+        { value: 'hourly', label: 'Hourly' },
+        { value: 'project_base', label: 'Project base' },
+    ];
+    const currencySelectOptions = currencyOptions.map((currency) => ({ value: String(currency), label: currency }));
 
     const basicPayOptional = useMemo(
         () => employmentType === 'contract' && salaryType === 'project_base',
@@ -57,17 +86,23 @@ export default function FormPage({
                         <Input label="Designation" name="designation" defaultValue={values.designation || ''} />
                         <div>
                             <label className="text-xs text-slate-500">Manager (optional)</label>
-                            <select name="manager_id" defaultValue={values.manager_id || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                <option value="">-- none --</option>
-                                {managers.map((manager) => <option key={manager.id} value={manager.id}>{manager.name}</option>)}
-                            </select>
+                            <SearchableSelect
+                                name="manager_id"
+                                defaultValue={String(values.manager_id || '')}
+                                options={managerOptions}
+                                className="mt-1"
+                                placeholder="-- none --"
+                            />
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Linked user (optional)</label>
-                            <select name="user_id" defaultValue={values.user_id || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                <option value="">-- none --</option>
-                                {users.map((user) => <option key={user.id} value={user.id}>{user.name} ({user.email})</option>)}
-                            </select>
+                            <SearchableSelect
+                                name="user_id"
+                                defaultValue={String(values.user_id || '')}
+                                options={userOptions}
+                                className="mt-1"
+                                placeholder="-- none --"
+                            />
                         </div>
                         <Input label="Login password (optional)" name="user_password" type="password" />
                         <Input label="Confirm password" name="user_password_confirmation" type="password" />
@@ -78,26 +113,36 @@ export default function FormPage({
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="text-xs text-slate-500">Employment type</label>
-                            <select name="employment_type" value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                <option value="full_time">Full-time</option>
-                                <option value="part_time">Part-time</option>
-                                <option value="contract">Contract</option>
-                            </select>
+                            <SearchableSelect
+                                name="employment_type"
+                                value={String(employmentType || '')}
+                                onChange={(nextValue) => setEmploymentType(String(nextValue || ''))}
+                                options={employmentTypeOptions}
+                                className="mt-1"
+                                placeholder="Select employment type"
+                                required
+                            />
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Work mode</label>
-                            <select name="work_mode" defaultValue={values.work_mode || 'remote'} required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                <option value="remote">Remote</option>
-                                <option value="on_site">On-site</option>
-                                <option value="hybrid">Hybrid</option>
-                            </select>
+                            <SearchableSelect
+                                name="work_mode"
+                                defaultValue={String(values.work_mode || 'remote')}
+                                options={workModeOptions}
+                                className="mt-1"
+                                placeholder="Select work mode"
+                                required
+                            />
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Status</label>
-                            <select name="status" defaultValue={values.status || 'active'} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
+                            <SearchableSelect
+                                name="status"
+                                defaultValue={String(values.status || 'active')}
+                                options={employeeStatusOptions}
+                                className="mt-1"
+                                placeholder="Select status"
+                            />
                         </div>
                     </div>
 
@@ -105,17 +150,26 @@ export default function FormPage({
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="text-xs text-slate-500">Salary type</label>
-                            <select name="salary_type" value={salaryType} onChange={(e) => setSalaryType(e.target.value)} required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                <option value="monthly">Monthly</option>
-                                <option value="hourly">Hourly</option>
-                                <option value="project_base">Project base</option>
-                            </select>
+                            <SearchableSelect
+                                name="salary_type"
+                                value={String(salaryType || '')}
+                                onChange={(nextValue) => setSalaryType(String(nextValue || ''))}
+                                options={salaryTypeOptions}
+                                className="mt-1"
+                                placeholder="Select salary type"
+                                required
+                            />
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Currency</label>
-                            <select name="currency" defaultValue={values.currency || 'BDT'} required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                {currencyOptions.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
-                            </select>
+                            <SearchableSelect
+                                name="currency"
+                                defaultValue={String(values.currency || 'BDT')}
+                                options={currencySelectOptions}
+                                className="mt-1"
+                                placeholder="Select currency"
+                                required
+                            />
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Basic pay</label>

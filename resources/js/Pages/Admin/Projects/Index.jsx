@@ -1,5 +1,11 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
+
+const BTN = {
+    primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+};
 
 export default function Index({
     pageTitle = 'All Projects',
@@ -12,6 +18,20 @@ export default function Index({
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
+    const statusOptions = [
+        { value: '', label: 'All' },
+        ...statuses.map((status) => ({
+            value: String(status),
+            label: status.replace('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
+        })),
+    ];
+    const typeOptions = [
+        { value: '', label: 'All' },
+        ...types.map((type) => ({
+            value: String(type),
+            label: type.replace('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
+        })),
+    ];
 
     return (
         <>
@@ -26,38 +46,28 @@ export default function Index({
                     <form method="GET" action={routes?.index} data-native="true" className="grid gap-3 p-2 md:grid-cols-4">
                         <div>
                             <label className="text-xs text-slate-500">Status</label>
-                            <select
+                            <SearchableSelect
                                 name="status"
-                                defaultValue={filters?.status ?? ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            >
-                                <option value="">All</option>
-                                {statuses.map((status) => (
-                                    <option key={status} value={status}>
-                                        {status.replace('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase())}
-                                    </option>
-                                ))}
-                            </select>
+                                defaultValue={String(filters?.status ?? '')}
+                                options={statusOptions}
+                                className="mt-1"
+                                placeholder="All"
+                            />
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Type</label>
-                            <select
+                            <SearchableSelect
                                 name="type"
-                                defaultValue={filters?.type ?? ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            >
-                                <option value="">All</option>
-                                {types.map((type) => (
-                                    <option key={type} value={type}>
-                                        {type.replace('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase())}
-                                    </option>
-                                ))}
-                            </select>
+                                defaultValue={String(filters?.type ?? '')}
+                                options={typeOptions}
+                                className="mt-1"
+                                placeholder="All"
+                            />
                         </div>
                         <div className="self-end">
                             <button
                                 type="submit"
-                                className="w-full rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                className={`w-full ${BTN.secondary}`}
                             >
                                 Apply filters
                             </button>
@@ -68,14 +78,14 @@ export default function Index({
                         <a
                             href={routes?.dashboard}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                            className={BTN.secondary}
                         >
                             Dashboard
                         </a>
                         <a
                             href={routes?.create}
                             data-native="true"
-                            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                            className={BTN.primary}
                         >
                             New project
                         </a>
@@ -200,7 +210,7 @@ export default function Index({
                             <a
                                 href={pagination.previous_url}
                                 data-native="true"
-                                className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                className={BTN.secondary}
                             >
                                 Previous
                             </a>
@@ -212,7 +222,7 @@ export default function Index({
                             <a
                                 href={pagination.next_url}
                                 data-native="true"
-                                className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                className={BTN.secondary}
                             >
                                 Next
                             </a>

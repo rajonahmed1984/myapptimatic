@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
 import DatePickerField from '../../../../Components/DatePickerField';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 export default function Index({
     pageTitle = 'Attendance',
@@ -47,6 +48,13 @@ export default function Index({
 
     const previousDay = formatDateForInput(shiftDate(selectedDateObject, -1));
     const nextDay = formatDateForInput(shiftDate(selectedDateObject, 1));
+    const attendanceStatusOptions = [
+        { value: '', label: 'Not set' },
+        { value: 'present', label: 'Present' },
+        { value: 'absent', label: 'Absent' },
+        { value: 'leave', label: 'Leave' },
+        { value: 'half_day', label: 'Half Day' },
+    ];
 
     return (
         <>
@@ -148,13 +156,12 @@ export default function Index({
                                         <td className="py-2 px-3">{employee.department}</td>
                                         <td className="py-2 px-3">{employee.designation}</td>
                                         <td className="py-2 px-3">
-                                            <select name={`records[${index}][status]`} defaultValue={employee.status || ''} className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs">
-                                                <option value="">Not set</option>
-                                                <option value="present">Present</option>
-                                                <option value="absent">Absent</option>
-                                                <option value="leave">Leave</option>
-                                                <option value="half_day">Half Day</option>
-                                            </select>
+                                            <SearchableSelect
+                                                name={`records[${index}][status]`}
+                                                defaultValue={String(employee.status || '')}
+                                                options={attendanceStatusOptions}
+                                                placeholder="Not set"
+                                            />
                                         </td>
                                         <td className="py-2 px-3">
                                             <input type="text" name={`records[${index}][note]`} defaultValue={employee.note || ''} placeholder="Optional note" className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs" />

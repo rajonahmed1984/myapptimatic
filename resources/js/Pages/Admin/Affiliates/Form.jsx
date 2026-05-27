@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Form({
     pageTitle = 'Affiliate',
@@ -15,6 +16,15 @@ export default function Form({
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
+    const customerOptions = [
+        { value: '', label: 'Select customer' },
+        ...customers.map((customer) => ({
+            value: String(customer.id),
+            label: `${customer.name} (${customer.email})`,
+        })),
+    ];
+    const statusOptions = status_options.map((option) => ({ value: String(option.value || ''), label: option.label }));
+    const commissionTypeOptions = commission_type_options.map((option) => ({ value: String(option.value || ''), label: option.label }));
 
     return (
         <>
@@ -48,54 +58,41 @@ export default function Form({
                     <div className="grid gap-6 md:grid-cols-2">
                         <div>
                             <label className="text-sm text-slate-600">Customer *</label>
-                            <select
+                            <SearchableSelect
                                 name="customer_id"
                                 required
-                                defaultValue={fields?.customer_id ?? ''}
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                            >
-                                <option value="">Select customer</option>
-                                {customers.map((customer) => (
-                                    <option key={customer.id} value={customer.id}>
-                                        {customer.name} ({customer.email})
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.customer_id ? <p className="mt-1 text-xs text-rose-600">{errors.customer_id}</p> : null}
+                                defaultValue={String(fields?.customer_id ?? '')}
+                                options={customerOptions}
+                                className="mt-2"
+                                placeholder="Select customer"
+                                error={errors?.customer_id}
+                            />
                         </div>
 
                         <div>
                             <label className="text-sm text-slate-600">Status *</label>
-                            <select
+                            <SearchableSelect
                                 name="status"
                                 required
-                                defaultValue={fields?.status ?? 'active'}
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                            >
-                                {status_options.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.status ? <p className="mt-1 text-xs text-rose-600">{errors.status}</p> : null}
+                                defaultValue={String(fields?.status ?? 'active')}
+                                options={statusOptions}
+                                className="mt-2"
+                                placeholder="Select status"
+                                error={errors?.status}
+                            />
                         </div>
 
                         <div>
                             <label className="text-sm text-slate-600">Commission Type *</label>
-                            <select
+                            <SearchableSelect
                                 name="commission_type"
                                 required
-                                defaultValue={fields?.commission_type ?? 'percentage'}
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                            >
-                                {commission_type_options.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.commission_type ? <p className="mt-1 text-xs text-rose-600">{errors.commission_type}</p> : null}
+                                defaultValue={String(fields?.commission_type ?? 'percentage')}
+                                options={commissionTypeOptions}
+                                className="mt-2"
+                                placeholder="Select commission type"
+                                error={errors?.commission_type}
+                            />
                         </div>
 
                         <div>

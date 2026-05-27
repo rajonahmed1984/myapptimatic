@@ -1,10 +1,15 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Show({ pageTitle = 'Commission Payout', payout = {}, earnings = [], payout_methods = [], routes = {} }) {
     const { props } = usePage();
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
+    const payoutMethodOptions = [
+        { value: '', label: 'Select method' },
+        ...payout_methods.map((method) => ({ value: String(method.code), label: method.name })),
+    ];
 
     return (
         <>
@@ -40,14 +45,13 @@ export default function Show({ pageTitle = 'Commission Payout', payout = {}, ear
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Payout Method</label>
-                            <select name="payout_method" className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="">Select method</option>
-                                {payout_methods.map((method) => (
-                                    <option key={method.code} value={method.code}>
-                                        {method.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <SearchableSelect
+                                name="payout_method"
+                                defaultValue=""
+                                options={payoutMethodOptions}
+                                className="mt-1"
+                                placeholder="Select method"
+                            />
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Note</label>

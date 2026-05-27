@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 const rowId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -91,6 +92,37 @@ export default function Create({
             })
             .slice(0, 20);
     }, [customerSearch, customers]);
+    const typeOptions = React.useMemo(
+        () => types.map((type) => ({ value: String(type), label: type.charAt(0).toUpperCase() + type.slice(1) })),
+        [types],
+    );
+    const statusOptions = React.useMemo(
+        () => statuses.map((status) => ({
+            value: String(status),
+            label: status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        })),
+        [statuses],
+    );
+    const currencySelectOptions = React.useMemo(
+        () => currencyOptions.map((currency) => ({ value: String(currency), label: currency })),
+        [currencyOptions],
+    );
+    const taskTypeSelectOptions = React.useMemo(
+        () => Object.entries(taskTypeOptions).map(([value, label]) => ({ value, label })),
+        [taskTypeOptions],
+    );
+    const prioritySelectOptions = React.useMemo(
+        () => Object.entries(priorityOptions).map(([value, label]) => ({ value, label })),
+        [priorityOptions],
+    );
+    const assigneeOptions = React.useMemo(
+        () => [
+            { value: '', label: 'Select assignee' },
+            ...employees.map((employee) => ({ value: `employee:${employee.id}`, label: `Employee: ${employee.name}` })),
+            ...salesReps.map((rep) => ({ value: `sales_rep:${rep.id}`, label: `Sales Rep: ${rep.name}` })),
+        ],
+        [employees, salesReps],
+    );
 
     React.useEffect(() => {
         const handleOutsideClick = (event) => {
@@ -200,15 +232,23 @@ export default function Create({
                         <div className="mt-4 grid gap-4 md:grid-cols-3">
                             <div>
                                 <label className="text-xs text-slate-500">Type</label>
-                                <select name="type" defaultValue={form.type || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                    {types.map((type) => <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>)}
-                                </select>
+                                <SearchableSelect
+                                    name="type"
+                                    defaultValue={String(form.type || '')}
+                                    options={typeOptions}
+                                    className="mt-1"
+                                    placeholder="Select type"
+                                />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Status</label>
-                                <select name="status" defaultValue={form.status || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                                    {statuses.map((status) => <option key={status} value={status}>{status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>)}
-                                </select>
+                                <SearchableSelect
+                                    name="status"
+                                    defaultValue={String(form.status || '')}
+                                    options={statusOptions}
+                                    className="mt-1"
+                                    placeholder="Select status"
+                                />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Notes</label>
@@ -292,7 +332,17 @@ export default function Create({
                         <div className="grid gap-4 md:grid-cols-4">
                             <div><label className="text-xs text-slate-500">Total budget</label><input name="total_budget" type="number" step="0.01" defaultValue={form.total_budget || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
                             <div><label className="text-xs text-slate-500">Initial payment</label><input name="initial_payment_amount" type="number" step="0.01" defaultValue={form.initial_payment_amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
-                            <div><label className="text-xs text-slate-500">Currency</label><select name="currency" defaultValue={form.currency || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>{currencyOptions.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></div>
+                            <div>
+                                <label className="text-xs text-slate-500">Currency</label>
+                                <SearchableSelect
+                                    name="currency"
+                                    defaultValue={String(form.currency || '')}
+                                    options={currencySelectOptions}
+                                    className="mt-1"
+                                    placeholder="Select currency"
+                                    required
+                                />
+                            </div>
                             <div><label className="text-xs text-slate-500">Budget (legacy)</label><input name="budget_amount" type="number" step="0.01" defaultValue={form.budget_amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
                         </div>
                     </StepSection>
@@ -311,17 +361,39 @@ export default function Create({
                                 <div key={task.id} className="rounded-xl border border-slate-100 bg-white p-3">
                                     <div className="grid gap-3 md:grid-cols-5 mb-3">
                                         <div className="md:col-span-2"><label className="text-xs text-slate-500">Title</label><input name={`tasks[${index}][title]`} defaultValue={task.title || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
-                                        <div><label className="text-xs text-slate-500">Task type</label><select name={`tasks[${index}][task_type]`} defaultValue={task.task_type || 'feature'} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>{Object.entries(taskTypeOptions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-                                        <div><label className="text-xs text-slate-500">Priority</label><select name={`tasks[${index}][priority]`} defaultValue={task.priority || 'medium'} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">{Object.entries(priorityOptions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+                                        <div>
+                                            <label className="text-xs text-slate-500">Task type</label>
+                                            <SearchableSelect
+                                                name={`tasks[${index}][task_type]`}
+                                                defaultValue={String(task.task_type || 'feature')}
+                                                options={taskTypeSelectOptions}
+                                                className="mt-1"
+                                                placeholder="Select task type"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500">Priority</label>
+                                            <SearchableSelect
+                                                name={`tasks[${index}][priority]`}
+                                                defaultValue={String(task.priority || 'medium')}
+                                                options={prioritySelectOptions}
+                                                className="mt-1"
+                                                placeholder="Select priority"
+                                            />
+                                        </div>
                                         <div><label className="text-xs text-slate-500">Start date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name={`tasks[${index}][start_date]`} defaultValue={task.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
                                         <div><label className="text-xs text-slate-500">Due date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name={`tasks[${index}][due_date]`} defaultValue={task.due_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
                                         <div className="md:col-span-2">
                                             <label className="text-xs text-slate-500">Assign to</label>
-                                            <select name={`tasks[${index}][assignee]`} defaultValue={task.assignee || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
-                                                <option value="">Select assignee</option>
-                                                {employees.map((employee) => <option key={`employee-${employee.id}`} value={`employee:${employee.id}`}>Employee: {employee.name}</option>)}
-                                                {salesReps.map((rep) => <option key={`sales-rep-${rep.id}`} value={`sales_rep:${rep.id}`}>Sales Rep: {rep.name}</option>)}
-                                            </select>
+                                            <SearchableSelect
+                                                name={`tasks[${index}][assignee]`}
+                                                defaultValue={String(task.assignee || '')}
+                                                options={assigneeOptions}
+                                                className="mt-1"
+                                                placeholder="Select assignee"
+                                                required
+                                            />
                                         </div>
                                         <div className="flex items-end"><label className="mt-1 flex w-full items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-600"><input type="hidden" name={`tasks[${index}][customer_visible]`} value="0" /><input type="checkbox" name={`tasks[${index}][customer_visible]`} value="1" defaultChecked={Boolean(task.customer_visible)} className="h-4 w-4 rounded border-slate-300 text-teal-600" /><span>Customer visible</span></label></div>
                                         <div><label className="text-xs text-slate-500">Attachment (required for Upload type)</label><input type="file" name={`tasks[${index}][attachment]`} accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" className="mt-1 w-full text-xs text-slate-600" /></div>

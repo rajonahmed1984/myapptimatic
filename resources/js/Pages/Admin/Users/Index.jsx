@@ -1,6 +1,11 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
+const BTN = {
+    primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+};
+
 const initials = (name = '') =>
     String(name)
         .split(' ')
@@ -32,7 +37,7 @@ export default function Index({
                 <a
                     href={routes?.create}
                     data-native="true"
-                    className="inline-flex items-center gap-2 rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-600"
+                    className={BTN.primary}
                 >
                     New {selected_role_label}
                 </a>
@@ -44,10 +49,10 @@ export default function Index({
                         key={role.value}
                         href={role.route}
                         data-native="true"
-                        className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
+                        className={`rounded-full text-xs px-3 py-1.5 font-semibold transition ${
                             selectedRole === String(role.value)
-                                ? 'border-teal-500 bg-teal-50 text-teal-700'
-                                : 'border-slate-300 text-slate-600 hover:border-teal-300 hover:text-teal-700'
+                                ? BTN.primary
+                                : BTN.secondary
                         }`}
                     >
                         {role.label}

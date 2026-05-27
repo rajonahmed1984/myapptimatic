@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\MailCategory;
 use App\Http\Controllers\Controller;
+use App\Jobs\ResendSystemLogEmailJob;
 use App\Models\SystemLog;
-use App\Services\Mail\MailSender;
-use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -14,7 +12,6 @@ use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 class SystemLogController extends Controller
 {
@@ -27,66 +24,41 @@ class SystemLogController extends Controller
         }
 
         $config = $types[$type];
+        $search = trim((string) $request->query('search', ''));
         $logs = SystemLog::query()
-            ->with('user')
-            ->where('category', $config['category'])
+            ->with('user:id,name')
+            ->forCategory($config['category'])
+            ->search($search)
             ->latest()
-            ->paginate(50);
+            ->paginate((int) config('admin.pagination.per_page', 15))
+            ->withQueryString();
 
         return Inertia::render(
             'Admin/Logs/Index',
-            $this->indexInertiaProps($logs, $types, $type, $config['label'])
+            $this->indexInertiaProps($logs, $types, $type, $config['label'], $search)
         );
     }
 
-    public function resend(SystemLog $systemLog): RedirectResponse
+    public function resend(Request $request, SystemLog $systemLog): RedirectResponse
     {
         if ($systemLog->category !== 'email') {
             abort(404);
         }
 
-        $lock = Cache::lock('email_resend_lock_' . $systemLog->id, 10);
-
-        if (!$lock->get()) {
-            return back()->withErrors(['email' => 'An email resend is already in progress. Please wait.']);
+        $userId = (int) ($request->user()?->id ?? 0);
+        $window = (int) floor(now()->timestamp / 30);
+        $idempotencyKey = sprintf('email_resend:%d:%d:%d', (int) $systemLog->id, $userId, $window);
+        if (! Cache::add($idempotencyKey, true, now()->addSeconds(45))) {
+            return back()->withErrors(['email' => 'Duplicate resend blocked. Please wait a moment.']);
         }
 
-        try {
-            $context = $systemLog->context ?? [];
-            $recipients = $context['to'] ?? [];
-            $subject = (string) ($context['subject'] ?? '');
-            $html = (string) ($context['html'] ?? '');
-            $text = (string) ($context['text'] ?? '');
+        ResendSystemLogEmailJob::dispatch(
+            systemLogId: (int) $systemLog->id,
+            requestedBy: $userId,
+            requestIp: (string) $request->ip(),
+        )->onQueue('default');
 
-            if (empty($recipients) || $subject === '' || ($html === '' && $text === '')) {
-                $lock->release();
-                return back()->withErrors(['email' => 'Cannot resend this email log.']);
-            }
-
-            try {
-                app(MailSender::class)->sendHtmlText(
-                    MailCategory::SYSTEM,
-                    $recipients,
-                    $subject,
-                    $html !== '' ? $html : null,
-                    $text !== '' ? $text : null
-                );
-            } catch (\Throwable $e) {
-                $lock->release();
-                return back()->withErrors(['email' => 'Resend failed: '.$e->getMessage()]);
-            }
-
-            SystemLogger::write('email', 'Email resent.', [
-                'subject' => $subject,
-                'to' => $recipients,
-            ]);
-
-            $lock->release();
-            return back()->with('status', 'Email resent.');
-        } catch (\Throwable $e) {
-            $lock->release();
-            throw $e;
-        }
+        return back()->with('status', 'Email resend queued.');
     }
 
     public function destroy(SystemLog $systemLog): RedirectResponse
@@ -135,13 +107,20 @@ class SystemLogController extends Controller
         LengthAwarePaginator $logs,
         array $types,
         string $activeType,
-        string $pageTitle
+        string $pageTitle,
+        string $search
     ): array {
         $dateFormat = config('app.date_format', 'd-m-Y');
 
         return [
             'pageTitle' => $pageTitle,
             'activeType' => $activeType,
+            'filters' => [
+                'search' => $search,
+            ],
+            'routes' => [
+                'current' => url()->current(),
+            ],
             'logTypes' => collect($types)->map(function (array $type, string $slug) use ($activeType) {
                 return [
                     'slug' => $slug,

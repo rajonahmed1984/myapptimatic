@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DatePickerField from '../../../Components/DatePickerField';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, form = {}, types = [], customers = [], invoices = [], gateways = [], routes = {} }) {
     const { props } = usePage();
@@ -22,12 +23,28 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
     const [amountValue, setAmountValue] = useState(String(fields?.amount || ''));
     const [referenceValue, setReferenceValue] = useState(String(fields?.reference || ''));
     const [descriptionValue, setDescriptionValue] = useState(String(fields?.description || ''));
+    const typeOptions = types.map((type) => ({ value: String(type), label: type }));
+    const customerOptions = [
+        { value: '', label: 'Select customer' },
+        ...customers.map((customer) => ({ value: String(customer.id), label: customer.name })),
+    ];
+    const invoiceOptions = [
+        { value: '', label: 'Select invoice' },
+        ...invoices.map((invoice) => ({
+            value: String(invoice.id),
+            label: `${invoice.label} - ${invoice.customer_name}`,
+        })),
+    ];
+    const gatewayOptions = [
+        { value: '', label: 'Select gateway' },
+        ...gateways.map((gateway) => ({ value: String(gateway.id), label: gateway.name })),
+    ];
 
     const activeInvoice = selectedInvoiceId ? invoicesById[selectedInvoiceId] || null : null;
     const invoiceSummary = activeInvoice || selectedInvoicePrefill;
 
-    const handleInvoiceChange = (event) => {
-        const nextInvoiceId = String(event.target.value || '');
+    const handleInvoiceChange = (nextValue) => {
+        const nextInvoiceId = String(nextValue || '');
         setSelectedInvoiceId(nextInvoiceId);
 
         const invoice = invoicesById[nextInvoiceId];
@@ -99,18 +116,13 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">Type</label>
-                                <select
+                                <SearchableSelect
                                     name="type"
                                     value={selectedType}
-                                    onChange={(event) => setSelectedType(String(event.target.value || 'payment'))}
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                                >
-                                    {types.map((type) => (
-                                        <option key={type} value={type}>
-                                            {type}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={(nextValue) => setSelectedType(String(nextValue || 'payment'))}
+                                    options={typeOptions}
+                                    placeholder="Select type"
+                                />
                             </div>
                             <div>
                                 <DatePickerField
@@ -149,50 +161,36 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
-                                <select
+                                <SearchableSelect
                                     name="customer_id"
                                     value={selectedCustomerId}
-                                    onChange={(event) => setSelectedCustomerId(event.target.value)}
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                                >
-                                    <option value="">Select customer</option>
-                                    {customers.map((customer) => (
-                                        <option key={customer.id} value={customer.id}>
-                                            {customer.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors?.customer_id ? <p className="mt-1 text-xs text-rose-600">{errors.customer_id}</p> : null}
+                                    onChange={(nextValue) => setSelectedCustomerId(String(nextValue || ''))}
+                                    options={customerOptions}
+                                    placeholder="Select customer"
+                                    error={errors?.customer_id}
+                                />
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">Invoice</label>
-                                <select
+                                <SearchableSelect
                                     name="invoice_id"
                                     value={selectedInvoiceId}
                                     onChange={handleInvoiceChange}
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                                >
-                                    <option value="">Select invoice</option>
-                                    {invoices.map((invoice) => (
-                                        <option key={invoice.id} value={invoice.id}>
-                                            {invoice.label} - {invoice.customer_name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors?.invoice_id ? <p className="mt-1 text-xs text-rose-600">{errors.invoice_id}</p> : null}
+                                    options={invoiceOptions}
+                                    placeholder="Select invoice"
+                                    error={errors?.invoice_id}
+                                />
                             </div>
                         </div>
 
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Payment Gateway</label>
-                            <select name="payment_gateway_id" defaultValue={fields?.payment_gateway_id || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="">Select gateway</option>
-                                {gateways.map((gateway) => (
-                                    <option key={gateway.id} value={gateway.id}>
-                                        {gateway.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <SearchableSelect
+                                name="payment_gateway_id"
+                                defaultValue={String(fields?.payment_gateway_id || '')}
+                                options={gatewayOptions}
+                                placeholder="Select gateway"
+                            />
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">

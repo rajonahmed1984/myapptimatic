@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Form({ pageTitle = 'Plan', is_edit = false, products = [], form = {}, routes = {}, default_currency = '' }) {
     const { props } = usePage();
@@ -16,6 +17,14 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
             price: row?.price ?? '',
         }))
     );
+    const productOptions = [
+        { value: '', label: 'Select product' },
+        ...products.map((product) => ({ value: String(product.id), label: product.name })),
+    ];
+    const intervalOptions = [
+        { value: 'monthly', label: 'Monthly' },
+        { value: 'yearly', label: 'Yearly' },
+    ];
 
     const addPricingRow = () => {
         setPricingRows((prev) => [...prev, { id: '', interval: 'monthly', price: '' }]);
@@ -50,15 +59,13 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Product</label>
-                        <select name="product_id" defaultValue={fields?.product_id || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                            <option value="">Select product</option>
-                            {products.map((product) => (
-                                <option key={product.id} value={product.id}>
-                                    {product.name}
-                                </option>
-                            ))}
-                        </select>
-                        {errors?.product_id ? <p className="mt-1 text-xs text-rose-600">{errors.product_id}</p> : null}
+                        <SearchableSelect
+                            name="product_id"
+                            defaultValue={String(fields?.product_id || '')}
+                            options={productOptions}
+                            placeholder="Select product"
+                            error={errors?.product_id}
+                        />
                     </div>
 
                     <div>
@@ -91,15 +98,13 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
 
                                 <div>
                                     <label className="mb-1 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Interval</label>
-                                    <select
+                                    <SearchableSelect
                                         name={`pricing_rows[${index}][interval]`}
                                         value={row.interval}
-                                        onChange={(event) => updatePricingRow(index, 'interval', event.target.value)}
-                                        className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                                    >
-                                        <option value="monthly">Monthly</option>
-                                        <option value="yearly">Yearly</option>
-                                    </select>
+                                        onChange={(nextValue) => updatePricingRow(index, 'interval', String(nextValue || 'monthly'))}
+                                        options={intervalOptions}
+                                        placeholder="Select interval"
+                                    />
                                     {errors?.[`pricing_rows.${index}.interval`] ? (
                                         <p className="mt-1 text-xs text-rose-600">{errors[`pricing_rows.${index}.interval`]}</p>
                                     ) : null}

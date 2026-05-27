@@ -1,7 +1,14 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Create({ form = {}, routes = {} }) {
+    const priorityOptions = [
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+    ];
+
     return (
         <>
             <Head title="New Support Ticket" />
@@ -24,15 +31,13 @@ export default function Create({ form = {}, routes = {} }) {
                     </div>
                     <div>
                         <label className="text-sm text-slate-600">Priority</label>
-                        <select
+                        <SearchableSelect
                             name="priority"
-                            defaultValue={form.priority || 'medium'}
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
-                        >
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                        </select>
+                            defaultValue={String(form.priority || 'medium')}
+                            options={priorityOptions}
+                            className="mt-2"
+                            placeholder="Select priority"
+                        />
                     </div>
                     <div>
                         <label className="text-sm text-slate-600">Message</label>

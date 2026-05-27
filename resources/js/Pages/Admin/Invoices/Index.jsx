@@ -3,6 +3,11 @@ import { Head, usePage } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
+const BTN = {
+    primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
+    secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+};
+
 export default function Index({
     pageTitle = 'Invoices',
     statusFilter = null,
@@ -57,7 +62,7 @@ export default function Index({
                         </div>
                     </form>
                 </div>
-                <a href={routes?.create} data-native="true" className="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">
+                <a href={routes?.create} data-native="true" className={BTN.primary}>
                     Create Invoice
                 </a>
             </div>
@@ -75,11 +80,7 @@ export default function Index({
                             key={tab.label}
                             href={tab.href}
                             data-native="true"
-                            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                                active
-                                    ? 'border-slate-900 bg-slate-900 text-white'
-                                    : 'border-slate-300 text-slate-600 hover:border-teal-300 hover:text-teal-600'
-                            }`}
+                            className={active ? 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500' : BTN.secondary}
                         >
                             {tab.label}
                         </a>
@@ -220,7 +221,7 @@ export default function Index({
                         <a
                             href={pagination.previous_url}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                            className={BTN.secondary}
                         >
                             Previous
                         </a>
@@ -232,7 +233,7 @@ export default function Index({
                         <a
                             href={pagination.next_url}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                            className={BTN.secondary}
                         >
                             Next
                         </a>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Edit({
     pageTitle = 'Edit Project',
@@ -22,6 +23,16 @@ export default function Edit({
     const [selectedSalesRepIds, setSelectedSalesRepIds] = React.useState(
         Array.isArray(form.selected_sales_rep_ids) ? form.selected_sales_rep_ids.map((id) => Number(id)) : [],
     );
+    const customerOptions = [
+        { value: '', label: 'Select customer' },
+        ...customers.map((customer) => ({ value: String(customer.id), label: customer.display_name })),
+    ];
+    const typeOptions = types.map((type) => ({ value: String(type), label: type.charAt(0).toUpperCase() + type.slice(1) }));
+    const statusOptions = statuses.map((status) => ({
+        value: String(status),
+        label: status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    }));
+    const currencySelectOptions = currencyOptions.map((currency) => ({ value: String(currency), label: currency }));
 
     const toggleSelected = (current, id) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
 
@@ -65,51 +76,38 @@ export default function Edit({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Customer</label>
-                                <select
+                                <SearchableSelect
                                     name="customer_id"
-                                    defaultValue={form.customer_id || ''}
+                                    defaultValue={String(form.customer_id || '')}
                                     required
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="">Select customer</option>
-                                    {customers.map((customer) => (
-                                        <option key={customer.id} value={customer.id}>
-                                            {customer.display_name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.customer_id ? <div className="mt-1 text-xs text-rose-600">{errors.customer_id}</div> : null}
+                                    options={customerOptions}
+                                    className="mt-1"
+                                    placeholder="Select customer"
+                                    error={errors.customer_id}
+                                />
                             </div>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-3">
                             <div>
                                 <label className="text-xs text-slate-500">Type</label>
-                                <select
+                                <SearchableSelect
                                     name="type"
-                                    defaultValue={form.type || ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                                >
-                                    {types.map((type) => (
-                                        <option key={type} value={type}>
-                                            {type.charAt(0).toUpperCase() + type.slice(1)}
-                                        </option>
-                                    ))}
-                                </select>
+                                    defaultValue={String(form.type || '')}
+                                    options={typeOptions}
+                                    className="mt-1"
+                                    placeholder="Select type"
+                                />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Status</label>
-                                <select
+                                <SearchableSelect
                                     name="status"
-                                    defaultValue={form.status || ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                                >
-                                    {statuses.map((status) => (
-                                        <option key={status} value={status}>
-                                            {status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                                        </option>
-                                    ))}
-                                </select>
+                                    defaultValue={String(form.status || '')}
+                                    options={statusOptions}
+                                    className="mt-1"
+                                    placeholder="Select status"
+                                />
                             </div>
                         </div>
 
@@ -276,18 +274,14 @@ export default function Edit({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Currency</label>
-                                <select
+                                <SearchableSelect
                                     name="currency"
-                                    defaultValue={form.currency || ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    defaultValue={String(form.currency || '')}
+                                    options={currencySelectOptions}
+                                    className="mt-1"
+                                    placeholder="Select currency"
                                     required
-                                >
-                                    {currencyOptions.map((currency) => (
-                                        <option key={currency} value={currency}>
-                                            {currency}
-                                        </option>
-                                    ))}
-                                </select>
+                                />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Budget (legacy)</label>

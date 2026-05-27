@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const DEFAULT_MAILBOX_FORM = {
     email: 'youremail@apptimatic.com',
@@ -112,6 +113,26 @@ export default function Manage({
             return label.includes(query) || meta.includes(query);
         });
     }, [assignmentQuery, selectedAccount, assignees]);
+    const encryptionOptions = [
+        { value: 'ssl', label: 'SSL' },
+        { value: 'tls', label: 'TLS' },
+        { value: 'none', label: 'None' },
+    ];
+    const mailboxStatusOptions = [
+        { value: 'active', label: 'Active' },
+        { value: 'auth_failed', label: 'Auth failed' },
+        { value: 'disabled', label: 'Disabled' },
+    ];
+    const assigneeTypeOptions = [
+        { value: 'support', label: 'Support' },
+        { value: 'user', label: 'Admin user' },
+        { value: 'employee', label: 'Employee' },
+        { value: 'sales_rep', label: 'Sales rep' },
+    ];
+    const assigneeSelectOptions = [
+        { value: '', label: 'Select assignee' },
+        ...assigneeOptions.map((option) => ({ value: String(option.id), label: option.label })),
+    ];
 
     useEffect(() => {
         setSelectedAssignmentIds([]);
@@ -475,16 +496,20 @@ export default function Manage({
                                 <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Display name" value={mailboxForm.display_name} onChange={(e) => setMailboxForm((prev) => ({ ...prev, display_name: e.target.value }))} />
                                 <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="IMAP host" value={mailboxForm.imap_host} onChange={(e) => setMailboxForm((prev) => ({ ...prev, imap_host: e.target.value }))} />
                                 <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="IMAP port" type="number" min="1" max="65535" value={mailboxForm.imap_port} onChange={(e) => setMailboxForm((prev) => ({ ...prev, imap_port: Number(e.target.value || 993) }))} />
-                                <select className="rounded-xl border border-slate-300 px-3 py-2 text-sm" value={mailboxForm.imap_encryption} onChange={(e) => setMailboxForm((prev) => ({ ...prev, imap_encryption: e.target.value }))}>
-                                    <option value="ssl">SSL</option>
-                                    <option value="tls">TLS</option>
-                                    <option value="none">None</option>
-                                </select>
-                                <select className="rounded-xl border border-slate-300 px-3 py-2 text-sm" value={mailboxForm.status} onChange={(e) => setMailboxForm((prev) => ({ ...prev, status: e.target.value }))}>
-                                    <option value="active">Active</option>
-                                    <option value="auth_failed">Auth failed</option>
-                                    <option value="disabled">Disabled</option>
-                                </select>
+                                <SearchableSelect
+                                    name="imap_encryption"
+                                    value={String(mailboxForm.imap_encryption || 'ssl')}
+                                    onChange={(nextValue) => setMailboxForm((prev) => ({ ...prev, imap_encryption: String(nextValue || 'ssl') }))}
+                                    options={encryptionOptions}
+                                    placeholder="Select encryption"
+                                />
+                                <SearchableSelect
+                                    name="mailbox_status"
+                                    value={String(mailboxForm.status || 'active')}
+                                    onChange={(nextValue) => setMailboxForm((prev) => ({ ...prev, status: String(nextValue || 'active') }))}
+                                    options={mailboxStatusOptions}
+                                    placeholder="Select status"
+                                />
                             </div>
                             <label className="inline-flex items-center gap-2 text-sm text-slate-600">
                                 <input type="checkbox" checked={Boolean(mailboxForm.imap_validate_cert)} onChange={(e) => setMailboxForm((prev) => ({ ...prev, imap_validate_cert: e.target.checked }))} />
@@ -558,26 +583,20 @@ export default function Manage({
                                     </div>
 
                                     <form onSubmit={saveAssignment} className="grid gap-3 md:grid-cols-2">
-                                        <select
-                                            className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                        <SearchableSelect
+                                            name="assignee_type"
                                             value={assignmentForm.assignee_type}
-                                            onChange={(e) => setAssignmentForm((prev) => ({ ...prev, assignee_type: e.target.value, assignee_id: '' }))}
-                                        >
-                                            <option value="support">Support</option>
-                                            <option value="user">Admin user</option>
-                                            <option value="employee">Employee</option>
-                                            <option value="sales_rep">Sales rep</option>
-                                        </select>
-                                        <select
-                                            className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                            onChange={(nextValue) => setAssignmentForm((prev) => ({ ...prev, assignee_type: String(nextValue || 'support'), assignee_id: '' }))}
+                                            options={assigneeTypeOptions}
+                                            placeholder="Select type"
+                                        />
+                                        <SearchableSelect
+                                            name="assignee_id"
                                             value={assignmentForm.assignee_id}
-                                            onChange={(e) => setAssignmentForm((prev) => ({ ...prev, assignee_id: e.target.value }))}
-                                        >
-                                            <option value="">Select assignee</option>
-                                            {assigneeOptions.map((option) => (
-                                                <option key={option.id} value={option.id}>{option.label}</option>
-                                            ))}
-                                        </select>
+                                            onChange={(nextValue) => setAssignmentForm((prev) => ({ ...prev, assignee_id: String(nextValue || '') }))}
+                                            options={assigneeSelectOptions}
+                                            placeholder="Select assignee"
+                                        />
                                         <label className="inline-flex items-center gap-2 text-sm text-slate-600">
                                             <input type="checkbox" checked={Boolean(assignmentForm.can_read)} onChange={(e) => setAssignmentForm((prev) => ({ ...prev, can_read: e.target.checked }))} />
                                             Can read

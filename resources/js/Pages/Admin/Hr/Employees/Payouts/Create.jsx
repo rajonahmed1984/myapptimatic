@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import SearchableSelect from '../../../../../Components/SearchableSelect';
 
 export default function Create({
     pageTitle = 'Employee Payout',
@@ -10,10 +11,19 @@ export default function Create({
     paymentMethods = [],
     routes = {},
 }) {
+    const filterFormRef = React.useRef(null);
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const selectedTotal = earnings.reduce((sum, earning) => sum + Number(earning?.contract_employee_payable || 0), 0);
     const outstanding = Number(summary?.payable || 0);
     const cappedByOutstanding = selectedTotal > outstanding && outstanding > 0;
+    const employeeOptions = [
+        { value: '', label: 'Select employee' },
+        ...employees.map((employee) => ({ value: String(employee.id), label: employee.name })),
+    ];
+    const payoutMethodOptions = [
+        { value: '', label: 'Not set' },
+        ...paymentMethods.map((method) => ({ value: String(method.code), label: method.name })),
+    ];
 
     return (
         <>
@@ -29,15 +39,19 @@ export default function Create({
             </div>
 
             <div className="card p-6 space-y-6">
-                <form method="GET" action={routes?.create} data-native="true" className="grid gap-3 md:grid-cols-3">
+                <form ref={filterFormRef} method="GET" action={routes?.create} data-native="true" className="grid gap-3 md:grid-cols-3">
                     <div>
                         <label className="text-xs text-slate-500">Employee</label>
-                        <select name="employee_id" defaultValue={selectedEmployee || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" onChange={(e) => e.currentTarget.form?.submit()}>
-                            <option value="">Select employee</option>
-                            {employees.map((employee) => (
-                                <option key={employee.id} value={employee.id}>{employee.name}</option>
-                            ))}
-                        </select>
+                        <SearchableSelect
+                            name="employee_id"
+                            defaultValue={String(selectedEmployee || '')}
+                            options={employeeOptions}
+                            className="mt-1"
+                            placeholder="Select employee"
+                            onChange={() => {
+                                filterFormRef.current?.submit();
+                            }}
+                        />
                     </div>
                 </form>
 
@@ -97,10 +111,13 @@ export default function Create({
                     <div className="grid gap-3 md:grid-cols-3">
                         <div>
                             <label className="text-xs text-slate-500">Payout method</label>
-                            <select name="payout_method" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                                <option value="">Not set</option>
-                                {paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}
-                            </select>
+                            <SearchableSelect
+                                name="payout_method"
+                                defaultValue=""
+                                options={payoutMethodOptions}
+                                className="mt-1"
+                                placeholder="Not set"
+                            />
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Reference</label>

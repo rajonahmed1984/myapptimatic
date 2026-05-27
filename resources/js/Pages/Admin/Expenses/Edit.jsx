@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Edit({
     pageTitle = 'Edit Expense',
@@ -10,6 +11,13 @@ export default function Edit({
     const { props } = usePage();
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
+    const categoryOptions = [
+        { value: '', label: 'Select category' },
+        ...categories.map((category) => ({
+            value: String(category.id),
+            label: category.name,
+        })),
+    ];
 
     return (
         <>
@@ -36,20 +44,15 @@ export default function Edit({
 
                     <div>
                         <label className="text-xs text-slate-500">Category</label>
-                        <select
+                        <SearchableSelect
                             name="category_id"
                             required
-                            defaultValue={expense?.category_id ?? ''}
-                            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                        >
-                            <option value="">Select category</option>
-                            {categories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                    {category.name}
-                                </option>
-                            ))}
-                        </select>
-                        {errors?.category_id ? <div className="mt-1 text-xs text-rose-600">{errors.category_id}</div> : null}
+                            defaultValue={String(expense?.category_id ?? '')}
+                            options={categoryOptions}
+                            className="mt-1"
+                            placeholder="Select category"
+                            error={errors?.category_id}
+                        />
                     </div>
 
                     <div>

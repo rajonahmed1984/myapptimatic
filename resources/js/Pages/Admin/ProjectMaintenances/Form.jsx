@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const statusBadgeClass = (status) => {
     if (status === 'active') {
@@ -31,6 +32,19 @@ export default function Form({
     const [selectedProjectId, setSelectedProjectId] = React.useState(String(fields?.project_id || ''));
     const selectedProject = projects.find((project) => String(project.id) === selectedProjectId) || null;
     const selectedSalesRepIds = new Set((fields?.selected_sales_rep_ids || []).map((id) => String(id)));
+    const projectOptions = [
+        { value: '', label: 'Select project' },
+        ...projects.map((project) => ({ value: String(project.id), label: `${project.name} (${project.customer_name})` })),
+    ];
+    const billingCycleOptions = [
+        { value: 'monthly', label: 'Monthly' },
+        { value: 'yearly', label: 'Yearly' },
+    ];
+    const statusOptions = [
+        { value: 'active', label: 'Active' },
+        { value: 'paused', label: 'Paused' },
+        { value: 'cancelled', label: 'Cancelled' },
+    ];
 
     return (
         <>
@@ -88,21 +102,16 @@ export default function Form({
                         ) : (
                             <div>
                                 <label className="text-xs text-slate-500">Project</label>
-                                <select
+                                <SearchableSelect
                                     name="project_id"
-                                    defaultValue={fields?.project_id || ''}
-                                    onChange={(event) => setSelectedProjectId(event.target.value)}
+                                    value={selectedProjectId}
+                                    onChange={(nextValue) => setSelectedProjectId(String(nextValue || ''))}
+                                    options={projectOptions}
                                     required
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="">Select project</option>
-                                    {projects.map((project) => (
-                                        <option key={project.id} value={project.id}>
-                                            {project.name} ({project.customer_name})
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors?.project_id ? <p className="mt-1 text-xs text-rose-600">{errors.project_id}</p> : null}
+                                    className="mt-1"
+                                    placeholder="Select project"
+                                    error={errors?.project_id}
+                                />
                                 <div className="mt-2 text-xs text-slate-500">
                                     Currency: <span>{selectedProject?.currency || '--'}</span>
                                 </div>
@@ -137,16 +146,15 @@ export default function Form({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Billing cycle</label>
-                                <select
+                                <SearchableSelect
                                     name="billing_cycle"
-                                    defaultValue={fields?.billing_cycle || 'monthly'}
+                                    defaultValue={String(fields?.billing_cycle || 'monthly')}
+                                    options={billingCycleOptions}
                                     required
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="monthly">Monthly</option>
-                                    <option value="yearly">Yearly</option>
-                                </select>
-                                {errors?.billing_cycle ? <p className="mt-1 text-xs text-rose-600">{errors.billing_cycle}</p> : null}
+                                    className="mt-1"
+                                    placeholder="Select billing cycle"
+                                    error={errors?.billing_cycle}
+                                />
                             </div>
                         </div>
 
@@ -190,16 +198,14 @@ export default function Form({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Status</label>
-                                <select
+                                <SearchableSelect
                                     name="status"
-                                    defaultValue={fields?.status || 'active'}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="active">Active</option>
-                                    <option value="paused">Paused</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
-                                {errors?.status ? <p className="mt-1 text-xs text-rose-600">{errors.status}</p> : null}
+                                    defaultValue={String(fields?.status || 'active')}
+                                    options={statusOptions}
+                                    className="mt-1"
+                                    placeholder="Select status"
+                                    error={errors?.status}
+                                />
                             </div>
                         </div>
 

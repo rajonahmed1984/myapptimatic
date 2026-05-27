@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 export default function Index({
     pageTitle = 'Work Logs',
@@ -10,6 +11,11 @@ export default function Index({
     pagination = {},
     routes = {},
 }) {
+    const employeeOptions = [
+        { value: '', label: 'All employees' },
+        ...employees.map((employee) => ({ value: String(employee.id), label: employee.name })),
+    ];
+
     const summary = useMemo(() => {
         const rows = Array.isArray(dailyLogs) ? dailyLogs : [];
 
@@ -71,12 +77,13 @@ export default function Index({
                     </div>
                     <div>
                         <label htmlFor="workLogEmployee" className="text-xs uppercase tracking-[0.2em] text-slate-500">Employee</label>
-                        <select id="workLogEmployee" name="employee_id" defaultValue={selectedEmployeeId ?? ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                            <option value="">All employees</option>
-                            {employees.map((employee) => (
-                                <option key={employee.id} value={employee.id}>{employee.name}</option>
-                            ))}
-                        </select>
+                        <SearchableSelect
+                            name="employee_id"
+                            defaultValue={String(selectedEmployeeId ?? '')}
+                            options={employeeOptions}
+                            className="mt-1"
+                            placeholder="All employees"
+                        />
                     </div>
                     <div className="md:col-span-2 flex items-end gap-2">
                         <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Apply filter</button>

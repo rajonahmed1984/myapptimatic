@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const tabs = [
     { key: 'summary', label: 'Summary' },
@@ -59,6 +60,31 @@ export default function Show({
     };
 
     const canCollection = Boolean(invoice.can_record_payment);
+    const salesRepCollectionOptions = useMemo(
+        () => [
+            { value: '', label: 'Select sales rep' },
+            ...sales_rep_collection_options.map((item) => ({ value: String(item.id), label: item.label })),
+        ],
+        [sales_rep_collection_options],
+    );
+    const payoutMethodOptions = useMemo(
+        () => [
+            { value: '', label: 'Select' },
+            ...payment_methods.map((method) => ({ value: String(method.code), label: method.name })),
+        ],
+        [payment_methods],
+    );
+    const paymentGatewayOptions = useMemo(
+        () => [
+            { value: '', label: 'Select' },
+            ...payment_gateways.map((gateway) => ({ value: String(gateway.id), label: gateway.name })),
+        ],
+        [payment_gateways],
+    );
+    const statusSelectOptions = useMemo(
+        () => status_options.map((option) => ({ value: String(option), label: option.charAt(0).toUpperCase() + option.slice(1) })),
+        [status_options],
+    );
 
     const hiddenInvoiceStateFields = (
         statusOverride = invoice.selected_status,
@@ -218,16 +244,14 @@ export default function Show({
                                             <input type="hidden" name="_token" value={csrf} />
                                             <div>
                                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Sales Representative</label>
-                                                <select
+                                                <SearchableSelect
                                                     name="sales_rep_id"
                                                     required
-                                                    defaultValue={sales_rep_collection_options[0]?.id || ''}
-                                                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                                >
-                                                    {sales_rep_collection_options.map((item) => (
-                                                        <option key={item.id} value={item.id}>{item.label}</option>
-                                                    ))}
-                                                </select>
+                                                    defaultValue={String(sales_rep_collection_options[0]?.id || '')}
+                                                    options={salesRepCollectionOptions}
+                                                    className="mt-1"
+                                                    placeholder="Select sales rep"
+                                                />
                                             </div>
                                             <div>
                                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Collected Amount</label>
@@ -254,12 +278,13 @@ export default function Show({
                                             </div>
                                             <div>
                                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Payout Method</label>
-                                                <select name="payout_method" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-                                                    <option value="">Select</option>
-                                                    {payment_methods.map((method) => (
-                                                        <option key={method.code} value={method.code}>{method.name}</option>
-                                                    ))}
-                                                </select>
+                                                <SearchableSelect
+                                                    name="payout_method"
+                                                    defaultValue=""
+                                                    options={payoutMethodOptions}
+                                                    className="mt-1"
+                                                    placeholder="Select"
+                                                />
                                             </div>
                                             <div>
                                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Reference</label>
@@ -312,12 +337,13 @@ export default function Show({
                                 </div>
                                 <div>
                                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Method</label>
-                                    <select name="payment_gateway_id" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-                                        <option value="">Select</option>
-                                        {payment_gateways.map((gateway) => (
-                                            <option key={gateway.id} value={gateway.id}>{gateway.name}</option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect
+                                        name="payment_gateway_id"
+                                        defaultValue=""
+                                        options={paymentGatewayOptions}
+                                        className="mt-1"
+                                        placeholder="Select"
+                                    />
                                 </div>
                                 <div>
                                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Transaction ID</label>
@@ -390,11 +416,13 @@ export default function Show({
                                     </div>
                                     <div>
                                         <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>
-                                        <select name="status" defaultValue={invoice.selected_status} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-                                            {status_options.map((option) => (
-                                                <option key={option} value={option}>{option.charAt(0).toUpperCase() + option.slice(1)}</option>
-                                            ))}
-                                        </select>
+                                        <SearchableSelect
+                                            name="status"
+                                            defaultValue={String(invoice.selected_status || '')}
+                                            options={statusSelectOptions}
+                                            className="mt-1"
+                                            placeholder="Select status"
+                                        />
                                     </div>
                                 </div>
 
@@ -538,12 +566,13 @@ export default function Show({
                                 </div>
                                 <div>
                                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Refund Type / Gateway</label>
-                                    <select name="payment_gateway_id" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-                                        <option value="">Select</option>
-                                        {payment_gateways.map((gateway) => (
-                                            <option key={gateway.id} value={gateway.id}>{gateway.name}</option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect
+                                        name="payment_gateway_id"
+                                        defaultValue=""
+                                        options={paymentGatewayOptions}
+                                        className="mt-1"
+                                        placeholder="Select"
+                                    />
                                 </div>
                                 <div>
                                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Transaction ID</label>

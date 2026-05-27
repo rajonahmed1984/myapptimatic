@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 const statusBadgeClass = (status) => {
     if (status === 'completed') {
@@ -17,6 +18,8 @@ export default function Index({
     payouts = [],
     pagination = {},
 }) {
+    const statusOptions = status_options.map((option) => ({ value: String(option.value || ''), label: option.label }));
+
     return (
         <>
             <Head title={pageTitle} />
@@ -37,17 +40,13 @@ export default function Index({
 
             <div className="card p-6">
                 <form method="GET" action={routes?.index} data-native="true" className="mb-6 flex flex-wrap gap-4">
-                    <select
+                    <SearchableSelect
                         name="status"
-                        defaultValue={filters?.status ?? ''}
-                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                    >
-                        {status_options.map((option) => (
-                            <option key={option.value || 'all'} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                        defaultValue={String(filters?.status ?? '')}
+                        options={statusOptions}
+                        className="min-w-[180px]"
+                        placeholder="All statuses"
+                    />
                     <button
                         type="submit"
                         className="rounded-full bg-slate-900 px-6 py-2 text-sm font-semibold text-white"

@@ -1,7 +1,17 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Index({ earnings = [], status = '', status_options = [], assigned_projects = [], pagination = {}, routes = {} }) {
+    const filterFormRef = React.useRef(null);
+    const statusFilterOptions = [
+        { value: '', label: 'All' },
+        ...status_options.map((option) => ({
+            value: String(option),
+            label: String(option).charAt(0).toUpperCase() + String(option).slice(1),
+        })),
+    ];
+
     return (
         <>
             <Head title="My Earnings" />
@@ -16,13 +26,17 @@ export default function Index({ earnings = [], status = '', status_options = [],
                     <a href={routes?.dashboard} data-native="true" className="text-sm text-slate-600 hover:text-slate-800">Dashboard</a>
                 </div>
 
-                <form method="GET" action={routes?.index} className="grid gap-3 md:grid-cols-4" data-native="true">
+                <form ref={filterFormRef} method="GET" action={routes?.index} className="grid gap-3 md:grid-cols-4" data-native="true">
                     <div>
                         <label className="text-xs text-slate-500">Status</label>
-                        <select name="status" defaultValue={status || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" onChange={(e) => e.target.form.submit()}>
-                            <option value="">All</option>
-                            {status_options.map((option) => <option key={option} value={option}>{String(option).charAt(0).toUpperCase() + String(option).slice(1)}</option>)}
-                        </select>
+                        <SearchableSelect
+                            name="status"
+                            defaultValue={String(status || '')}
+                            options={statusFilterOptions}
+                            className="mt-1"
+                            placeholder="All"
+                            onChange={() => filterFormRef.current?.submit()}
+                        />
                     </div>
                 </form>
 

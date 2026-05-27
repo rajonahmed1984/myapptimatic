@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const driverFieldConfig = {
     manual: {
@@ -48,6 +49,10 @@ export default function Edit({ pageTitle = 'Edit Payment Gateway', gateway = {},
     };
     const textFields = config.textFields || [];
     const toggleFields = config.toggleFields || [];
+    const currencyOptions = [
+        { value: '', label: 'Select currency' },
+        ...currency_options.map((currency) => ({ value: String(currency), label: currency })),
+    ];
 
     return (
         <>
@@ -113,18 +118,12 @@ export default function Edit({ pageTitle = 'Edit Payment Gateway', gateway = {},
                         <div className="grid gap-4 md:grid-cols-3">
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">Processing Currency</label>
-                                <select
+                                <SearchableSelect
                                     name="processing_currency"
-                                    defaultValue={fields?.processing_currency || default_currency || ''}
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                                >
-                                    <option value="">Select currency</option>
-                                    {currency_options.map((currency) => (
-                                        <option key={currency} value={currency}>
-                                            {currency}
-                                        </option>
-                                    ))}
-                                </select>
+                                    defaultValue={String(fields?.processing_currency || default_currency || '')}
+                                    options={currencyOptions}
+                                    placeholder="Select currency"
+                                />
                             </div>
                         </div>
                     ) : null}

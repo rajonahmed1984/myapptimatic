@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
+import SearchableSelect from '../../Components/SearchableSelect';
 
 export default function Login({
     pageTitle = 'Email Login',
@@ -11,6 +12,16 @@ export default function Login({
     const initialEmail = String(prefill_email || '');
     const [selectedEmail, setSelectedEmail] = useState(initialEmail);
     const options = useMemo(() => Array.isArray(mailboxes) ? mailboxes : [], [mailboxes]);
+    const mailboxOptions = useMemo(
+        () => [
+            { value: '', label: 'Select mailbox' },
+            ...options.map((mailbox) => ({
+                value: String(mailbox.email || ''),
+                label: mailbox.display_name ? `${mailbox.display_name} (${mailbox.email})` : String(mailbox.email || ''),
+            })),
+        ],
+        [options],
+    );
 
     const { data, setData, post, processing, errors } = useForm({
         email: initialEmail,
@@ -29,10 +40,10 @@ export default function Login({
         post(routes.login);
     };
 
-    const onMailboxPick = (event) => {
-        const value = event.target.value;
-        setSelectedEmail(value);
-        setData('email', value);
+    const onMailboxPick = (value) => {
+        const nextValue = String(value || '');
+        setSelectedEmail(nextValue);
+        setData('email', nextValue);
     };
 
     return (
@@ -56,18 +67,13 @@ export default function Login({
                         {options.length > 0 ? (
                             <label className="block space-y-1">
                                 <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Assigned Mailbox</span>
-                                <select
+                                <SearchableSelect
+                                    name="mailbox_email"
                                     value={selectedEmail}
                                     onChange={onMailboxPick}
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 outline-none ring-0 transition focus:border-teal-400"
-                                >
-                                    <option value="">Select mailbox</option>
-                                    {options.map((mailbox) => (
-                                        <option key={mailbox.id} value={mailbox.email}>
-                                            {mailbox.display_name ? `${mailbox.display_name} (${mailbox.email})` : mailbox.email}
-                                        </option>
-                                    ))}
-                                </select>
+                                    options={mailboxOptions}
+                                    placeholder="Select mailbox"
+                                />
                             </label>
                         ) : null}
 

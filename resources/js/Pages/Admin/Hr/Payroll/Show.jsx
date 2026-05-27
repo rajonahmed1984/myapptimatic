@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 export default function Show({
     pageTitle = 'Payroll',
@@ -199,12 +200,17 @@ export default function Show({
                             <Field label="Amount" name="amount" defaultValue={paymentItem.payment_data.remaining_amount} min="0.01" step="0.01" />
                             <div>
                                 <label htmlFor="paymentMethod" className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Method</label>
-                                <select id="paymentMethod" name="payment_method" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required>
-                                    <option value="">Select</option>
-                                    {paymentMethods.map((method) => (
-                                        <option key={method.code} value={method.code}>{method.name}</option>
-                                    ))}
-                                </select>
+                                <SearchableSelect
+                                    name="payment_method"
+                                    defaultValue=""
+                                    options={[
+                                        { value: '', label: 'Select' },
+                                        ...paymentMethods.map((method) => ({ value: String(method.code), label: method.name })),
+                                    ]}
+                                    className="mt-1"
+                                    placeholder="Select"
+                                    required
+                                />
                             </div>
                             <div>
                                 <label htmlFor="paymentReference" className="text-xs uppercase tracking-[0.2em] text-slate-500">Reference</label>

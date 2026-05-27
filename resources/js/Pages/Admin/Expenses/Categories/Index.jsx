@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../../Components/SearchableSelect';
 
 const statusClass = (status) => {
     if (status === 'active') {
@@ -19,6 +20,10 @@ export default function Index({
     const { csrf_token: csrfToken = '', errors = {} } = usePage().props || {};
     const method = String(form?.method || 'POST').toUpperCase();
     const isEditing = Boolean(form?.editing);
+    const statusOptions = [
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+    ];
 
     return (
         <>
@@ -52,15 +57,13 @@ export default function Index({
                         </div>
 
                         <div>
-                            <select
+                            <SearchableSelect
                                 name="status"
-                                defaultValue={form?.fields?.status || 'active'}
-                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            >
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                            {errors.status ? <div className="mt-1 text-xs text-rose-600">{errors.status}</div> : null}
+                                defaultValue={String(form?.fields?.status || 'active')}
+                                options={statusOptions}
+                                placeholder="Select status"
+                                error={errors.status}
+                            />
                         </div>
 
                         <div>

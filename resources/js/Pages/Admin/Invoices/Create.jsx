@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Create({
     pageTitle = 'Create Invoice',
@@ -11,6 +12,10 @@ export default function Create({
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
     const fields = form?.fields || {};
+    const customerOptions = [
+        { value: '', label: 'Select customer' },
+        ...customers.map((customer) => ({ value: String(customer.id), label: customer.label })),
+    ];
     const initialItems = Array.isArray(fields?.items) && fields.items.length > 0 ? fields.items : [{ description: '', quantity: 1, unit_price: '0' }];
     const [items, setItems] = React.useState(initialItems);
 
@@ -66,20 +71,15 @@ export default function Create({
                     <div className="grid gap-4 md:grid-cols-3">
                         <div className="md:col-span-2">
                             <label className="text-sm text-slate-600">Customer</label>
-                            <select
+                            <SearchableSelect
                                 name="customer_id"
-                                defaultValue={fields?.customer_id || ''}
+                                defaultValue={String(fields?.customer_id || '')}
+                                options={customerOptions}
+                                className="mt-2"
+                                placeholder="Select customer"
                                 required
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
-                            >
-                                <option value="">Select customer</option>
-                                {customers.map((customer) => (
-                                    <option key={customer.id} value={customer.id}>
-                                        {customer.label}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors?.customer_id ? <p className="mt-1 text-xs text-rose-600">{errors.customer_id}</p> : null}
+                                error={errors?.customer_id}
+                            />
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Issue Date</label>

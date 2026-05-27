@@ -732,9 +732,11 @@ Route::middleware([
         ->middleware(HandleInertiaRequests::class)
         ->name('logs.ticket-mail-import')
         ->defaults('type', 'ticket-mail-import');
-    Route::post('logs/email/{systemLog}/resend', [SystemLogController::class, 'resend'])->name('logs.email.resend');
+    Route::post('logs/email/{systemLog}/resend', [SystemLogController::class, 'resend'])
+        ->middleware('throttle:20,1')
+        ->name('logs.email.resend');
     Route::delete('logs/email/{systemLog}', [SystemLogController::class, 'destroy'])->name('logs.email.delete');
-    
+
     // Affiliate routes
     Route::resource('affiliates', AdminAffiliateController::class)->whereNumber('affiliate');
     Route::get('affiliates/commissions', [AffiliateCommissionController::class, 'index'])->name('affiliates.commissions.index');

@@ -1,10 +1,23 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Create({ pageTitle = 'Create Support Ticket', customers = [], selected_customer_id = '', routes = {} }) {
     const { props } = usePage();
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
+    const customerOptions = [
+        { value: '', label: 'Select customer' },
+        ...customers.map((customer) => ({
+            value: String(customer.id),
+            label: `${customer.name}${customer.email ? ` (${customer.email})` : ''}`,
+        })),
+    ];
+    const priorityOptions = [
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+    ];
 
     return (
         <>
@@ -22,15 +35,14 @@ export default function Create({ pageTitle = 'Create Support Ticket', customers 
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
-                        <select name="customer_id" defaultValue={selected_customer_id || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                            <option value="">Select customer</option>
-                            {customers.map((customer) => (
-                                <option key={customer.id} value={customer.id}>
-                                    {customer.name} {customer.email ? `(${customer.email})` : ''}
-                                </option>
-                            ))}
-                        </select>
-                        {errors?.customer_id ? <p className="mt-1 text-xs text-rose-600">{errors.customer_id}</p> : null}
+                        <SearchableSelect
+                            name="customer_id"
+                            defaultValue={String(selected_customer_id || '')}
+                            options={customerOptions}
+                            className="mt-1"
+                            placeholder="Select customer"
+                            error={errors?.customer_id}
+                        />
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
@@ -41,12 +53,14 @@ export default function Create({ pageTitle = 'Create Support Ticket', customers 
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
-                            <select name="priority" defaultValue="medium" className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
-                            {errors?.priority ? <p className="mt-1 text-xs text-rose-600">{errors.priority}</p> : null}
+                            <SearchableSelect
+                                name="priority"
+                                defaultValue="medium"
+                                options={priorityOptions}
+                                className="mt-1"
+                                placeholder="Select priority"
+                                error={errors?.priority}
+                            />
                         </div>
                     </div>
 
