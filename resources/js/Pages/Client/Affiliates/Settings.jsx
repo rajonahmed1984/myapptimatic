@@ -36,7 +36,7 @@ export default function Settings({ affiliate = {}, routes = {} }) {
                         />
                     </div>
                     <div className="flex justify-end">
-                        <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white hover:bg-teal-400">
+                        <button type="submit" className="ui-btn-primary hover:bg-teal-400">
                             Save settings
                         </button>
                     </div>

@@ -124,7 +124,7 @@ export default function Form({
                                 name="title"
                                 defaultValue={fields?.title || ''}
                                 required
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="ui-input mt-1"
                                 placeholder="Annual Hosting & Support"
                             />
                             {errors?.title ? <p className="mt-1 text-xs text-rose-600">{errors.title}</p> : null}
@@ -140,7 +140,7 @@ export default function Form({
                                     step="0.01"
                                     defaultValue={fields?.amount || ''}
                                     required
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                                 {errors?.amount ? <p className="mt-1 text-xs text-rose-600">{errors.amount}</p> : null}
                             </div>
@@ -186,7 +186,7 @@ export default function Form({
                                                         step="0.01"
                                                         name={`sales_rep_amounts[${rep.id}]`}
                                                         defaultValue={fields?.sales_rep_amounts?.[rep.id] ?? '0'}
-                                                        className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
+                                                        className="w-28 rounded-full border border-slate-300 bg-white px-3 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                                     />
                                                 </div>
                                             </div>
@@ -217,7 +217,7 @@ export default function Form({
                                     type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                     defaultValue={fields?.start_date || ''}
                                     required
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                                 {errors?.start_date ? <p className="mt-1 text-xs text-rose-600">{errors.start_date}</p> : null}
                             </div>

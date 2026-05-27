@@ -57,7 +57,7 @@ export default function Index({
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
                         placeholder="Search payouts..."
-                        className="w-full max-w-sm rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                        className="w-full max-w-sm h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                     />
                 </form>
                 <div className="flex flex-wrap items-center gap-3">

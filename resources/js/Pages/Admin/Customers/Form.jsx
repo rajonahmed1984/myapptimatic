@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
-import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Form({
     pageTitle = 'Customer',
@@ -120,7 +119,7 @@ export default function Form({
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="text-sm text-slate-600">Full Name</label>
-                            <input name="name" defaultValue={fields?.name || ''} required className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                            <input name="name" defaultValue={fields?.name || ''} required className="ui-input mt-2" />
                             {errors?.name ? <p className="mt-1 text-xs text-rose-500">{errors.name}</p> : null}
                         </div>
                         <div>
@@ -128,7 +127,7 @@ export default function Form({
                             <input
                                 name="company_name"
                                 defaultValue={fields?.company_name || ''}
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                             {errors?.company_name ? <p className="mt-1 text-xs text-rose-500">{errors.company_name}</p> : null}
                         </div>
@@ -138,13 +137,13 @@ export default function Form({
                                 name="email"
                                 type="email"
                                 defaultValue={fields?.email || ''}
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                             {errors?.email ? <p className="mt-1 text-xs text-rose-500">{errors.email}</p> : null}
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Phone Number</label>
-                            <input name="phone" defaultValue={fields?.phone || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                            <input name="phone" defaultValue={fields?.phone || ''} className="ui-input mt-2" />
                             {errors?.phone ? <p className="mt-1 text-xs text-rose-500">{errors.phone}</p> : null}
                         </div>
 
@@ -152,17 +151,17 @@ export default function Form({
                             <>
                                 <div>
                                     <label className="text-sm text-slate-600">Default Sales Rep</label>
-                                    <SearchableSelect
+                                    <select
                                         name="default_sales_rep_id"
                                         defaultValue={String(fields?.default_sales_rep_id || '')}
-                                        options={salesRepOptions}
-                                        className="mt-2"
-                                        placeholder="None"
-                                    />
+                                        className="ui-select mt-2"
+                                    >
+                                        {salesRepOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Notes</label>
-                                    <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                    <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="ui-textarea mt-2" />
                                     {errors?.notes ? <p className="mt-1 text-xs text-rose-500">{errors.notes}</p> : null}
                                 </div>
                                 <div>
@@ -188,7 +187,7 @@ export default function Form({
                                         name="address"
                                         rows={1}
                                         defaultValue={fields?.address || ''}
-                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                        className="ui-textarea mt-2"
                                     />
                                 </div>
                                 <div>
@@ -196,7 +195,7 @@ export default function Form({
                                     <input
                                         name="user_password"
                                         type="password"
-                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                        className="ui-input mt-2"
                                     />
                                     {errors?.user_password ? <p className="mt-1 text-xs text-rose-500">{errors.user_password}</p> : null}
                                 </div>
@@ -205,19 +204,19 @@ export default function Form({
                                     <input
                                         name="user_password_confirmation"
                                         type="password"
-                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                        className="ui-input mt-2"
                                     />
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Status</label>
-                                    <SearchableSelect
+                                    <select
                                         name="status"
                                         defaultValue={String(fields?.status || 'active')}
-                                        options={customerStatusOptions}
-                                        className="mt-2"
-                                        error={errors?.status}
-                                        placeholder="Select status"
-                                    />
+                                        className="ui-select mt-2"
+                                    >
+                                        {customerStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                    </select>
+                                    {errors?.status ? <p className="mt-1 text-xs text-rose-500">{errors.status}</p> : null}
                                 </div>
                                 <div className="md:col-span-3 flex items-center gap-2 text-sm text-slate-600">
                                     <input type="hidden" name="send_account_message" value="0" />
@@ -239,36 +238,36 @@ export default function Form({
                                         name="address"
                                         rows={1}
                                         defaultValue={fields?.address || ''}
-                                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                        className="ui-textarea mt-2"
                                     />
                                     {errors?.address ? <p className="mt-1 text-xs text-rose-500">{errors.address}</p> : null}
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Status</label>
-                                    <SearchableSelect
+                                    <select
                                         name="status"
                                         defaultValue={String(fields?.status || 'active')}
-                                        options={customerStatusOptions}
-                                        className="mt-2"
-                                        error={errors?.status}
-                                        placeholder="Select status"
+                                        className="ui-select mt-2"
                                         required
-                                    />
+                                    >
+                                        {customerStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                    </select>
+                                    {errors?.status ? <p className="mt-1 text-xs text-rose-500">{errors.status}</p> : null}
                                     <p className="mt-1 text-xs text-slate-500">Status is controlled manually by admin.</p>
                                 </div>
                                 <div className="md:col-start-1">
                                     <label className="text-sm text-slate-600">Default sales rep</label>
-                                    <SearchableSelect
+                                    <select
                                         name="default_sales_rep_id"
                                         defaultValue={String(fields?.default_sales_rep_id || '')}
-                                        options={salesRepOptions}
-                                        className="mt-2"
-                                        placeholder="None"
-                                    />
+                                        className="ui-select mt-2"
+                                    >
+                                        {salesRepOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Notes</label>
-                                    <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                    <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="ui-textarea mt-2" />
                                     {errors?.notes ? <p className="mt-1 text-xs text-rose-500">{errors.notes}</p> : null}
                                 </div>
                             </>
@@ -276,10 +275,10 @@ export default function Form({
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">
+                        <button type="submit" className="ui-btn-primary">
                             {is_edit ? 'Update customer' : 'Save customer'}
                         </button>
-                        <a href={routes?.index} data-native="true" className="text-sm text-slate-600 hover:text-teal-600">
+                        <a href={routes?.index} data-native="true" className="ui-btn-secondary">
                             Cancel
                         </a>
                     </div>
@@ -301,7 +300,7 @@ export default function Form({
                             <input type="hidden" name="_method" value="DELETE" />
                             <button
                                 type="submit"
-                                className="rounded-full border border-rose-200 px-5 py-2 text-sm font-semibold text-rose-600 hover:border-rose-300 hover:text-rose-500"
+                                className="ui-btn-danger"
                             >
                                 Delete Clients Account
                             </button>

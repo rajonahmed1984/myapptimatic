@@ -61,7 +61,7 @@ export default function Edit({
                             name="title"
                             defaultValue={expense?.title ?? ''}
                             required
-                            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            className="mt-1 ui-input"
                         />
                         {errors?.title ? <div className="mt-1 text-xs text-rose-600">{errors.title}</div> : null}
                     </div>
@@ -76,7 +76,7 @@ export default function Edit({
                                 name="amount"
                                 defaultValue={expense?.amount ?? ''}
                                 required
-                                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                className="mt-1 ui-input"
                             />
                             {errors?.amount ? <div className="mt-1 text-xs text-rose-600">{errors.amount}</div> : null}
                         </div>
@@ -87,7 +87,7 @@ export default function Edit({
                                 name="expense_date"
                                 defaultValue={expense?.expense_date ?? ''}
                                 required
-                                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                className="mt-1 ui-input"
                             />
                             {errors?.expense_date ? <div className="mt-1 text-xs text-rose-600">{errors.expense_date}</div> : null}
                         </div>
@@ -99,7 +99,7 @@ export default function Edit({
                             name="notes"
                             rows={1}
                             defaultValue={expense?.notes ?? ''}
-                            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            className="mt-1 ui-input"
                         />
                         {errors?.notes ? <div className="mt-1 text-xs text-rose-600">{errors.notes}</div> : null}
                     </div>

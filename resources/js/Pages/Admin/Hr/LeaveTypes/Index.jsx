@@ -22,13 +22,13 @@ export default function Index({ pageTitle = 'Leave Types', types = [], paginatio
 
                     <form method="POST" action={routes?.store} data-native="true" className="mt-4 grid gap-3 text-sm">
                         <input type="hidden" name="_token" value={csrf} />
-                        <input name="name" defaultValue="" placeholder="Name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                        <input name="code" defaultValue="" placeholder="Code" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input name="name" defaultValue="" placeholder="Name" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
+                        <input name="code" defaultValue="" placeholder="Code" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                         <div className="flex items-center gap-2">
                             <input type="checkbox" name="is_paid" value="1" className="h-4 w-4 rounded border-slate-300 text-emerald-600" />
                             <span className="text-xs text-slate-600">Paid</span>
                         </div>
-                        <input type="number" step="0.01" name="default_allocation" defaultValue="" placeholder="Default days" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input type="number" step="0.01" name="default_allocation" defaultValue="" placeholder="Default days" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                         <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Add</button>
                     </form>
 
@@ -38,13 +38,13 @@ export default function Index({ pageTitle = 'Leave Types', types = [], paginatio
                             <form method="POST" action={editingType.routes?.update} data-native="true" className="mt-4 grid gap-3 text-sm">
                                 <input type="hidden" name="_token" value={csrf} />
                                 <input type="hidden" name="_method" value="PUT" />
-                                <input name="name" defaultValue={editingType.name || ''} placeholder="Name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                                <input name="code" defaultValue={editingType.code || ''} placeholder="Code" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <input name="name" defaultValue={editingType.name || ''} placeholder="Name" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
+                                <input name="code" defaultValue={editingType.code || ''} placeholder="Code" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                                 <div className="flex items-center gap-2">
                                     <input type="checkbox" name="is_paid" value="1" defaultChecked={Boolean(editingType.is_paid)} className="h-4 w-4 rounded border-slate-300 text-emerald-600" />
                                     <span className="text-xs text-slate-600">Paid</span>
                                 </div>
-                                <input type="number" step="0.01" name="default_allocation" defaultValue={editingType.default_allocation ?? ''} placeholder="Default days" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <input type="number" step="0.01" name="default_allocation" defaultValue={editingType.default_allocation ?? ''} placeholder="Default days" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                                 <div className="flex items-center gap-3">
                                     <button className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Update</button>
                                     <a href={routes?.index} data-native="true" className="text-xs font-semibold text-slate-600 hover:text-slate-900">Cancel</a>

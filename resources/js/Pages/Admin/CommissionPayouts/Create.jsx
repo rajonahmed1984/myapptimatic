@@ -70,7 +70,7 @@ export default function Create({
 
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Note</label>
-                            <input name="note" className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input name="note" className="ui-input" />
                             {errors?.note ? <p className="mt-1 text-xs text-rose-600">{errors.note}</p> : null}
                         </div>
                     </div>
@@ -109,7 +109,7 @@ export default function Create({
                     {errors?.earning_ids ? <p className="text-xs text-rose-600">{errors.earning_ids}</p> : null}
                     {errors?.payout ? <p className="text-xs text-rose-600">{errors.payout}</p> : null}
 
-                    <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    <button type="submit" className="ui-btn-primary">
                         Create Payout Draft
                     </button>
                 </form>

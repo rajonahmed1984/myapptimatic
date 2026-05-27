@@ -26,7 +26,7 @@ export default function Create({ form = {}, routes = {} }) {
                             name="subject"
                             defaultValue={form.subject || ''}
                             required
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
+                            className="ui-input mt-2 text-slate-700"
                         />
                     </div>
                     <div>
@@ -46,7 +46,7 @@ export default function Create({ form = {}, routes = {} }) {
                             rows="6"
                             defaultValue={form.message || ''}
                             required
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
+                            className="ui-input mt-2 text-slate-700"
                         />
                     </div>
                     <div>

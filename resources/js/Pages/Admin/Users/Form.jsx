@@ -59,7 +59,7 @@ export default function Form({
                             name="name"
                             defaultValue={fields?.name || ''}
                             required
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            className="ui-input mt-2"
                         />
                         {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
                     </div>
@@ -71,7 +71,7 @@ export default function Form({
                             type="email"
                             defaultValue={fields?.email || ''}
                             required
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            className="ui-input mt-2"
                         />
                         {errors?.email ? <p className="mt-1 text-xs text-rose-600">{errors.email}</p> : null}
                     </div>
@@ -84,7 +84,7 @@ export default function Form({
                             name="password"
                             type="password"
                             required={!is_edit}
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            className="ui-input mt-2"
                         />
                         {errors?.password ? <p className="mt-1 text-xs text-rose-600">{errors.password}</p> : null}
                     </div>
@@ -95,7 +95,7 @@ export default function Form({
                             name="password_confirmation"
                             type="password"
                             required={!is_edit}
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            className="ui-input mt-2"
                         />
                     </div>
 
@@ -131,7 +131,7 @@ export default function Form({
                                     type="file"
                                     accept=".jpg,.jpeg,.png,.webp"
                                     onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
-                                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                    className="ui-input mt-2"
                                 />
                                 {avatarUrl ? (
                                     <div className="mt-2">
@@ -155,7 +155,7 @@ export default function Form({
                                     name="nid_file"
                                     type="file"
                                     accept=".jpg,.jpeg,.png,.pdf"
-                                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                    className="ui-input mt-2"
                                 />
                                 {documents?.nid_url ? (
                                     <div className="mt-1 text-xs text-slate-500">
@@ -173,7 +173,7 @@ export default function Form({
                                     name="cv_file"
                                     type="file"
                                     accept=".pdf"
-                                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                    className="ui-input mt-2"
                                 />
                                 {documents?.cv_url ? (
                                     <div className="mt-1 text-xs text-slate-500">
@@ -188,7 +188,7 @@ export default function Form({
                     </div>
 
                     <div className="md:col-span-2 flex justify-end">
-                        <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">
+                        <button type="submit" className="ui-btn-primary">
                             {is_edit ? 'Save Changes' : 'Create User'}
                         </button>
                     </div>

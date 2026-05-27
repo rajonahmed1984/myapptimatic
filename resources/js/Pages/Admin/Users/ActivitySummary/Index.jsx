@@ -122,7 +122,7 @@ export default function Index({
                         endLabel="To Date (Optional)"
                         className="md:col-span-2"
                         gridClassName="grid gap-4 md:grid-cols-2"
-                        inputClassName="mt-2 w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+                        inputClassName="ui-input mt-2"
                     />
 
                     <div className="md:col-span-2 flex items-end gap-2">

@@ -70,7 +70,7 @@ export default function Manual({
                             <input
                                 name="reference"
                                 defaultValue={form.reference || ''}
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                                 placeholder="e.g. TRX123456"
                             />
                         </div>
@@ -82,7 +82,7 @@ export default function Manual({
                                 step="0.01"
                                 min="0"
                                 defaultValue={form.amount || ''}
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                                 required
                             />
                         </div>
@@ -92,7 +92,7 @@ export default function Manual({
                                 name="paid_at"
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 defaultValue={form.paid_at || ''}
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                         </div>
                         <div>
@@ -101,13 +101,13 @@ export default function Manual({
                                 name="notes"
                                 rows="1"
                                 defaultValue={form.notes || ''}
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                                 placeholder="Add any extra details"
                             />
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Transfer receipt image</label>
-                            <input name="receipt" type="file" accept="image/*" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="receipt" type="file" accept="image/*" className="ui-input mt-2" />
                             <p className="mt-2 text-xs text-slate-500">Upload a clear screenshot or photo of the transfer.</p>
                         </div>
                         <button type="submit" className="w-full rounded-full bg-teal-500 px-4 py-2 text-xs font-semibold text-white">

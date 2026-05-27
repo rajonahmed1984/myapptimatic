@@ -41,7 +41,7 @@ export default function Show({ pageTitle = 'Commission Payout', payout = {}, ear
                         <input type="hidden" name="_token" value={csrf} />
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Reference</label>
-                            <input name="reference" className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input name="reference" className="ui-input" />
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Payout Method</label>
@@ -55,10 +55,10 @@ export default function Show({ pageTitle = 'Commission Payout', payout = {}, ear
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Note</label>
-                            <input name="note" className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input name="note" className="ui-input" />
                         </div>
                         <div className="md:col-span-3">
-                            <button type="submit" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">
+                            <button type="submit" className="ui-btn-primary">
                                 Mark Paid
                             </button>
                         </div>
@@ -70,8 +70,8 @@ export default function Show({ pageTitle = 'Commission Payout', payout = {}, ear
                     <h2 className="mb-3 text-lg font-semibold text-amber-900">Reverse Payout</h2>
                     <form action={routes?.reverse} method="POST" data-native="true" className="space-y-3">
                         <input type="hidden" name="_token" value={csrf} />
-                        <input name="note" placeholder="Reason" className="w-full rounded-lg border border-amber-300 px-3 py-2" />
-                        <button type="submit" className="rounded-lg border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100">
+                        <input name="note" placeholder="Reason" className="ui-input" />
+                        <button type="submit" className="ui-btn-secondary">
                             Reverse
                         </button>
                     </form>

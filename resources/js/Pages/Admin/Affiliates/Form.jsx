@@ -40,7 +40,7 @@ export default function Form({
                 <a
                     href={is_edit ? routes?.show : routes?.index}
                     data-native="true"
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                    className="ui-btn-secondary"
                 >
                     {is_edit ? 'Back to affiliate' : 'Back to affiliates'}
                 </a>
@@ -103,7 +103,7 @@ export default function Form({
                                 name="commission_rate"
                                 required
                                 defaultValue={fields?.commission_rate ?? '10.00'}
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                             {errors?.commission_rate ? <p className="mt-1 text-xs text-rose-600">{errors.commission_rate}</p> : null}
                         </div>
@@ -115,7 +115,7 @@ export default function Form({
                                 step="0.01"
                                 name="fixed_commission_amount"
                                 defaultValue={fields?.fixed_commission_amount ?? ''}
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                             <p className="mt-1 text-xs text-slate-500">Only used if commission type is "Fixed Amount"</p>
                             {errors?.fixed_commission_amount ? (
@@ -130,7 +130,7 @@ export default function Form({
                             name="payment_details"
                             rows={1}
                             defaultValue={fields?.payment_details ?? ''}
-                            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                            className="ui-textarea mt-2"
                         />
                         <p className="mt-1 text-xs text-slate-500">Bank account, PayPal email, or other payment information</p>
                         {errors?.payment_details ? <p className="mt-1 text-xs text-rose-600">{errors.payment_details}</p> : null}
@@ -142,7 +142,7 @@ export default function Form({
                             name="notes"
                             rows={1}
                             defaultValue={fields?.notes ?? ''}
-                            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                            className="ui-textarea mt-2"
                         />
                         {errors?.notes ? <p className="mt-1 text-xs text-rose-600">{errors.notes}</p> : null}
                     </div>
@@ -151,11 +151,11 @@ export default function Form({
                         <a
                             href={is_edit ? routes?.show : routes?.index}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-6 py-2 text-sm font-semibold text-slate-600"
+                            className="ui-btn-secondary"
                         >
                             Cancel
                         </a>
-                        <button type="submit" className="rounded-full bg-teal-500 px-6 py-2 text-sm font-semibold text-white">
+                        <button type="submit" className="ui-btn-primary">
                             {is_edit ? 'Update affiliate' : 'Create affiliate'}
                         </button>
                     </div>

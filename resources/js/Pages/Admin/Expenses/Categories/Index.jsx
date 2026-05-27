@@ -51,7 +51,7 @@ export default function Index({
                                 name="name"
                                 defaultValue={form?.fields?.name || ''}
                                 placeholder="Category name"
-                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                             />
                             {errors.name ? <div className="mt-1 text-xs text-rose-600">{errors.name}</div> : null}
                         </div>
@@ -72,7 +72,7 @@ export default function Index({
                                 rows={1}
                                 defaultValue={form?.fields?.description || ''}
                                 placeholder="Description (optional)"
-                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                             />
                             {errors.description ? <div className="mt-1 text-xs text-rose-600">{errors.description}</div> : null}
                         </div>

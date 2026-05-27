@@ -452,7 +452,7 @@ export default function Manage({
                         </div>
                         <div className="mb-3">
                             <input
-                                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                className="w-full rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                 placeholder="Search mailbox by name or email"
                                 value={mailboxQuery}
                                 onChange={(event) => setMailboxQuery(event.target.value)}
@@ -492,10 +492,10 @@ export default function Manage({
                                 {editingMailboxId ? 'Edit Mailbox' : 'Create Mailbox'}
                             </h2>
                             <div className="grid gap-3 md:grid-cols-2">
-                                <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Mailbox email" value={mailboxForm.email} onChange={(e) => setMailboxForm((prev) => ({ ...prev, email: e.target.value }))} required />
-                                <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Display name" value={mailboxForm.display_name} onChange={(e) => setMailboxForm((prev) => ({ ...prev, display_name: e.target.value }))} />
-                                <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="IMAP host" value={mailboxForm.imap_host} onChange={(e) => setMailboxForm((prev) => ({ ...prev, imap_host: e.target.value }))} />
-                                <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="IMAP port" type="number" min="1" max="65535" value={mailboxForm.imap_port} onChange={(e) => setMailboxForm((prev) => ({ ...prev, imap_port: Number(e.target.value || 993) }))} />
+                                <input className="rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" placeholder="Mailbox email" value={mailboxForm.email} onChange={(e) => setMailboxForm((prev) => ({ ...prev, email: e.target.value }))} required />
+                                <input className="rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" placeholder="Display name" value={mailboxForm.display_name} onChange={(e) => setMailboxForm((prev) => ({ ...prev, display_name: e.target.value }))} />
+                                <input className="rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" placeholder="IMAP host" value={mailboxForm.imap_host} onChange={(e) => setMailboxForm((prev) => ({ ...prev, imap_host: e.target.value }))} />
+                                <input className="rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" placeholder="IMAP port" type="number" min="1" max="65535" value={mailboxForm.imap_port} onChange={(e) => setMailboxForm((prev) => ({ ...prev, imap_port: Number(e.target.value || 993) }))} />
                                 <SearchableSelect
                                     name="imap_encryption"
                                     value={String(mailboxForm.imap_encryption || 'ssl')}
@@ -560,7 +560,7 @@ export default function Manage({
 
                                     <div className="grid gap-2 md:grid-cols-[1fr_auto_auto] md:items-center">
                                         <input
-                                            className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                            className="rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                             placeholder="Search assignments"
                                             value={assignmentQuery}
                                             onChange={(event) => setAssignmentQuery(event.target.value)}

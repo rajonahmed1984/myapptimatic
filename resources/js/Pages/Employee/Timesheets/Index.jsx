@@ -17,7 +17,7 @@ export default function Index({
             <div className="card p-6">
                 <div className="flex items-center justify-between">
                     <form method="GET" action={routes?.index} className="mt-4 flex flex-wrap items-end gap-2" data-native="true">
-                        <input type="month" name="month" defaultValue={selected_month} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input type="month" name="month" defaultValue={selected_month} className="ui-input mt-1" />
                         <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Apply filter</button>
                         <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Reset</a>
                     </form>

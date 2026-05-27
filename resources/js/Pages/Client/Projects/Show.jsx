@@ -227,7 +227,7 @@ export default function Show({
                             <input type="hidden" name="_token" value={csrfToken} />
                             <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Title</label>
-                                <input name="title" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <input name="title" required className="ui-input mt-1" />
                             </div>
                             <div className="md:col-span-1">
                                 <label className="text-xs text-slate-500">Task type</label>
@@ -242,7 +242,7 @@ export default function Show({
                             </div>
                             <div className="md:col-span-3">
                                 <label className="text-xs text-slate-500">Description</label>
-                                <input name="description" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <input name="description" className="ui-input mt-1" />
                             </div>
                             <div className="md:col-span-1">
                                 <label className="text-xs text-slate-500">Priority</label>

@@ -67,7 +67,7 @@ export default function Edit({ pageTitle = 'Profile', form = {} }) {
                                 name="name"
                                 defaultValue={fields?.name || ''}
                                 required
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                             {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
                         </div>
@@ -79,7 +79,7 @@ export default function Edit({ pageTitle = 'Profile', form = {} }) {
                                 type="email"
                                 defaultValue={fields?.email || ''}
                                 required
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                             {errors?.email ? <p className="mt-1 text-xs text-rose-600">{errors.email}</p> : null}
                         </div>
@@ -88,12 +88,12 @@ export default function Edit({ pageTitle = 'Profile', form = {} }) {
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="text-sm text-slate-600">Current password</label>
-                            <input name="current_password" type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="current_password" type="password" className="ui-input mt-2" />
                             {errors?.current_password ? <p className="mt-1 text-xs text-rose-600">{errors.current_password}</p> : null}
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">New password</label>
-                            <input name="password" type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="password" type="password" className="ui-input mt-2" />
                             {errors?.password ? <p className="mt-1 text-xs text-rose-600">{errors.password}</p> : null}
                         </div>
                         <div>
@@ -101,7 +101,7 @@ export default function Edit({ pageTitle = 'Profile', form = {} }) {
                             <input
                                 name="password_confirmation"
                                 type="password"
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                         </div>
                     </div>

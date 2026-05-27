@@ -89,7 +89,7 @@ export default function Show({ ticket = {}, replies = [], ai_ready = false, rout
                         <input type="hidden" name="_method" value="PATCH" />
                         <div className="md:col-span-2">
                             <label className="text-sm text-slate-600">Subject</label>
-                            <input name="subject" defaultValue={ticket.subject} required className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                            <input name="subject" defaultValue={ticket.subject} required className="ui-input mt-2" />
                             {errors?.subject ? <div className="mt-1 text-xs text-rose-600">{errors.subject}</div> : null}
                         </div>
                         <div>
@@ -112,7 +112,7 @@ export default function Show({ ticket = {}, replies = [], ai_ready = false, rout
                                 placeholder="Select status"
                             />
                         </div>
-                        <div className="md:col-span-2 flex justify-end"><button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Save changes</button></div>
+                        <div className="md:col-span-2 flex justify-end"><button type="submit" className="ui-btn-primary">Save changes</button></div>
                     </form>
                     <div className="mt-4 flex justify-end">
                         <form method="POST" action={routes?.destroy} data-native="true" onSubmit={(e) => { if (!window.confirm(`Delete ticket ${ticket.ticket_no}?`)) e.preventDefault(); }}>
@@ -141,7 +141,7 @@ export default function Show({ ticket = {}, replies = [], ai_ready = false, rout
                     <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Summary</div><div className="mt-2 text-slate-700">{summary}</div></div>
                     <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Signals</div><div className="mt-2 text-slate-600">Category: {category}</div><div className="mt-1 text-slate-600">Urgency: {urgency}</div><div className="mt-1 text-slate-600">Sentiment: {sentiment}</div></div>
                     <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Next steps</div><ul className="mt-2 list-disc space-y-1 pl-4 text-slate-700">{nextSteps.map((step, index) => <li key={`${step}-${index}`}>{step}</li>)}</ul></div>
-                    <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Suggested reply</div><textarea value={suggestedReply} onChange={(e) => setSuggestedReply(e.target.value)} rows={6} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700" /></div>
+                    <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Suggested reply</div><textarea value={suggestedReply} onChange={(e) => setSuggestedReply(e.target.value)} rows={6} className="mt-2 ui-input text-slate-700" /></div>
                 </div>
             </div>
 
@@ -163,14 +163,14 @@ export default function Show({ ticket = {}, replies = [], ai_ready = false, rout
                 <div className="section-label">Post reply</div>
                 <form method="POST" action={routes?.reply} className="mt-4 space-y-4" encType="multipart/form-data" data-native="true">
                     <input type="hidden" name="_token" value={csrfToken} />
-                    <textarea id="ticket-reply-message" name="message" rows={5} required className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700" defaultValue={suggestedReply} />
+                    <textarea id="ticket-reply-message" name="message" rows={5} required className="ui-input text-slate-700" defaultValue={suggestedReply} />
                     {errors?.message ? <div className="text-xs text-rose-600">{errors.message}</div> : null}
                     <div>
                         <label className="text-sm text-slate-600">Attachment (image/PDF)</label>
                         <input name="attachment" type="file" accept="image/*,.pdf" className="mt-2 block w-full text-sm text-slate-600" />
                         {errors?.attachment ? <div className="mt-1 text-xs text-rose-600">{errors.attachment}</div> : null}
                     </div>
-                    <div className="flex justify-end"><button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Send reply</button></div>
+                    <div className="flex justify-end"><button type="submit" className="ui-btn-primary">Send reply</button></div>
                 </form>
             </div>
         </>

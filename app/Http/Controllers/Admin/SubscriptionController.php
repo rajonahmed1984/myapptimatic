@@ -62,29 +62,8 @@ class SubscriptionController extends Controller
             'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
             'subscription_amount' => ['nullable', 'numeric', 'min:0'],
             'sales_rep_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'license_key' => ['nullable', 'string', 'max:255', 'unique:licenses,license_key'],
-            'license_status' => ['nullable', Rule::in(['active', 'suspended', 'revoked'])],
-            'allowed_domains' => ['nullable', 'string'],
         ]);
 
-        $domain = null;
-        if ($request->filled('allowed_domains')) {
-            $domainInput = $this->extractSingleDomain($data['allowed_domains'] ?? null);
-
-            if ($domainInput === false) {
-                return back()->withErrors(['allowed_domains' => 'Only one domain is allowed per license.'])->withInput();
-            }
-
-            if ($domainInput) {
-                $domain = $this->normalizeDomain($domainInput);
-
-                if (!$domain) {
-                    return back()->withErrors(['allowed_domains' => 'Invalid domain format. Use only the hostname or full URL.'])->withInput();
-                }
-            }
-        }
-
-        $licenseKey = $data['license_key'] ?: License::generateKey();
         $plan = Plan::findOrFail($data['plan_id']);
         $startDate = Carbon::parse($data['start_date']);
         $periodEnd = $plan->interval === 'monthly'
@@ -101,7 +80,7 @@ class SubscriptionController extends Controller
             )
             : null;
 
-        $subscription = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $startDate, $periodEnd, $baseAmount, $salesRepId, $commissionAmount, $request, $licenseKey, $domain, $plan) {
+        $subscription = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $startDate, $periodEnd, $baseAmount, $salesRepId, $commissionAmount, $request) {
             $subscription = Subscription::create([
                 'customer_id' => $data['customer_id'],
                 'plan_id' => $data['plan_id'],
@@ -118,27 +97,6 @@ class SubscriptionController extends Controller
                 'notes' => $data['notes'] ?? null,
             ]);
 
-            if ($request->filled('allowed_domains') && $domain) {
-                $license = License::create([
-                    'subscription_id' => $subscription->id,
-                    'product_id' => $plan->product_id ?? 1,
-                    'license_key' => $licenseKey,
-                    'status' => $data['license_status'] ?? 'active',
-                    'starts_at' => $startDate->toDateString(),
-                    'expires_at' => $periodEnd->toDateString(),
-                    'auto_suspend_override_until' => null,
-                    'max_domains' => 1,
-                    'notes' => $data['notes'] ?? null,
-                ]);
-
-                LicenseDomain::create([
-                    'license_id' => $license->id,
-                    'domain' => $domain,
-                    'status' => 'active',
-                    'verified_at' => Carbon::now(),
-                ]);
-            }
-
             return $subscription;
         });
 
@@ -147,14 +105,11 @@ class SubscriptionController extends Controller
         }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxRedirect(
-                route('admin.subscriptions.edit', $subscription),
-                'Subscription and license created.',
-            );
+            return AjaxResponse::ajaxRedirect(route('admin.subscriptions.edit', $subscription), 'Subscription created.');
         }
 
         return redirect()->route('admin.subscriptions.edit', $subscription)
-            ->with('status', 'Subscription and license created.');
+            ->with('status', 'Subscription created.');
     }
 
     public function edit(Request $request, Subscription $subscription): InertiaResponse
@@ -274,8 +229,6 @@ class SubscriptionController extends Controller
 
     public function update(Request $request, Subscription $subscription): RedirectResponse|JsonResponse
     {
-        $license = $subscription->licenses()->first();
-
         $data = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
             'plan_id' => ['required', 'exists:plans,id'],
@@ -290,27 +243,7 @@ class SubscriptionController extends Controller
             'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
             'subscription_amount' => ['nullable', 'numeric', 'min:0'],
             'sales_rep_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'license_key' => ['nullable', 'string', 'max:255', Rule::unique('licenses', 'license_key')->ignore($license?->id)],
-            'license_status' => ['nullable', Rule::in(['active', 'suspended', 'revoked'])],
-            'allowed_domains' => ['nullable', 'string'],
         ]);
-
-        $domain = null;
-        if ($request->filled('allowed_domains')) {
-            $domainInput = $this->extractSingleDomain($data['allowed_domains'] ?? null);
-
-            if ($domainInput === false) {
-                return back()->withErrors(['allowed_domains' => 'Only one domain is allowed per license.'])->withInput();
-            }
-
-            if ($domainInput) {
-                $domain = $this->normalizeDomain($domainInput);
-
-                if (!$domain) {
-                    return back()->withErrors(['allowed_domains' => 'Invalid domain format. Use only the hostname or full URL.'])->withInput();
-                }
-            }
-        }
 
         $plan = Plan::findOrFail($data['plan_id']);
         $baseAmount = array_key_exists('subscription_amount', $data) && $data['subscription_amount'] !== null
@@ -324,7 +257,7 @@ class SubscriptionController extends Controller
             )
             : null;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $data, $commissionAmount, $request, $license, $domain) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $data, $commissionAmount, $request) {
             $subscription->update([
                 'customer_id' => $data['customer_id'],
                 'plan_id' => $data['plan_id'],
@@ -345,48 +278,14 @@ class SubscriptionController extends Controller
                     ->whereKey($data['customer_id'])
                     ->update(['access_override_until' => $data['access_override_until'] ?? null]);
             }
-
-            if ($request->filled('allowed_domains') && $domain) {
-                if (!$license) {
-                    $license = new License();
-                    $license->subscription_id = $subscription->id;
-                    $license->product_id = $subscription->plan?->product_id ?? 1;
-                }
-
-                $license->license_key = $data['license_key'] ?: License::generateKey();
-                $license->status = $data['license_status'] ?? 'active';
-                $license->starts_at = $data['current_period_start'];
-                $license->expires_at = $data['current_period_end'];
-                $license->auto_suspend_override_until = $data['access_override_until'] ?? null;
-                $license->max_domains = 1;
-                $license->save();
-
-                LicenseDomain::updateOrCreate(
-                    [
-                        'license_id' => $license->id,
-                        'domain' => $domain,
-                    ],
-                    [
-                        'status' => 'active',
-                        'verified_at' => Carbon::now(),
-                    ]
-                );
-
-                $license->domains()
-                    ->where('domain', '!=', $domain)
-                    ->update(['status' => 'revoked']);
-            }
         });
 
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxRedirect(
-                route('admin.subscriptions.edit', $subscription),
-                'Subscription and license updated.',
-            );
+            return AjaxResponse::ajaxRedirect(route('admin.subscriptions.edit', $subscription), 'Subscription updated.');
         }
 
         return redirect()->route('admin.subscriptions.edit', $subscription)
-            ->with('status', 'Subscription and license updated.');
+            ->with('status', 'Subscription updated.');
     }
 
     public function destroy(Request $request, Subscription $subscription): RedirectResponse|JsonResponse
@@ -696,39 +595,4 @@ class SubscriptionController extends Controller
         return round(($baseAmount * $percent) / 100, 2);
     }
 
-    private function extractSingleDomain(?string $input): string|bool|null
-    {
-        if ($input === null) {
-            return null;
-        }
-
-        $domains = collect(preg_split('/\r\n|\r|\n/', $input))
-            ->map(fn ($domain) => trim($domain))
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($domains->count() > 1) {
-            return false;
-        }
-
-        return $domains->first();
-    }
-
-    private function normalizeDomain(string $input): ?string
-    {
-        $value = trim(strtolower($input));
-
-        if (\Illuminate\Support\Str::startsWith($value, ['http://', 'https://'])) {
-            $value = parse_url($value, PHP_URL_HOST) ?: '';
-        }
-
-        $value = preg_replace('/^www\./', '', $value);
-
-        if ($value === '' || ! preg_match('/^[a-z0-9.-]+$/', $value)) {
-            return null;
-        }
-
-        return $value;
-    }
 }

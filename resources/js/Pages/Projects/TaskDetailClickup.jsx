@@ -477,7 +477,7 @@ export default function TaskDetailClickup({
                                         name="title"
                                         required
                                         placeholder="What needs to be done?"
-                                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm focus:border-teal-300 focus:outline-none"
+                                        className="ui-input focus:border-teal-300 focus:outline-none"
                                     />
                                     <div>
                                         <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Image (optional)</div>
@@ -485,10 +485,10 @@ export default function TaskDetailClickup({
                                         <div className="mt-1 text-xs text-slate-500">Max {uploadMaxMb}MB.</div>
                                     </div>
                                     <div className="flex justify-end gap-2">
-                                        <button type="button" onClick={() => setSubtaskFormOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">
+                                        <button type="button" onClick={() => setSubtaskFormOpen(false)} className="ui-btn-secondary">
                                             Cancel
                                         </button>
-                                        <button type="submit" className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white">
+                                        <button type="submit" className="ui-btn-primary">
                                             Add Subtask
                                         </button>
                                     </div>
@@ -523,15 +523,15 @@ export default function TaskDetailClickup({
                                 placeholder="Select task type"
                             />
                         </div>
-                        <input name="time_estimate_minutes" type="number" min="0" defaultValue={task?.time_estimate_minutes || ''} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
-                        <input name="tags" defaultValue={Array.isArray(task?.tags) ? task.tags.join(', ') : ''} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
-                        <textarea name="description" defaultValue={task?.description || ''} rows={1} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                        <input name="time_estimate_minutes" type="number" min="0" defaultValue={task?.time_estimate_minutes || ''} className="ui-input" />
+                        <input name="tags" defaultValue={Array.isArray(task?.tags) ? task.tags.join(', ') : ''} className="ui-input" />
+                        <textarea name="description" defaultValue={task?.description || ''} rows={1} className="ui-input" />
                         <label className="flex items-center gap-2 text-sm text-slate-700">
                             <input type="hidden" name="customer_visible" value="0" />
                             <input type="checkbox" name="customer_visible" value="1" defaultChecked={Boolean(task?.customer_visible)} />
                             Visible to customer
                         </label>
-                        <div className="flex justify-end"><button type="submit" className="rounded-lg bg-teal-600 px-6 py-2 font-semibold text-white">Update Task</button></div>
+                        <div className="flex justify-end"><button type="submit" className="ui-btn-primary">Update Task</button></div>
                     </form>
                 ) : null}
 
@@ -545,8 +545,8 @@ export default function TaskDetailClickup({
                             options={statusSelectOptions}
                             placeholder="Select status"
                         />
-                        <textarea name="description" defaultValue={task?.description || ''} rows={1} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
-                        <div className="flex justify-end"><button type="submit" className="rounded-lg bg-teal-600 px-6 py-2 font-semibold text-white">Update Task</button></div>
+                        <textarea name="description" defaultValue={task?.description || ''} rows={1} className="ui-input" />
+                        <div className="flex justify-end"><button type="submit" className="ui-btn-primary">Update Task</button></div>
                     </form>
                 ) : null}
 

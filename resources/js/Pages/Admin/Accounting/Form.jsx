@@ -131,7 +131,7 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                                     submitFormat="iso"
                                     label="Entry Date"
                                     labelClassName="mb-1 block text-sm font-medium text-slate-700"
-                                    inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                    inputClassName="ui-input"
                                 />
                                 {errors?.entry_date ? <p className="mt-1 text-xs text-rose-600">{errors.entry_date}</p> : null}
                             </div>
@@ -147,13 +147,13 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                                     name="amount"
                                     value={amountValue}
                                     onChange={(event) => setAmountValue(event.target.value)}
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                    className="ui-input"
                                 />
                                 {errors?.amount ? <p className="mt-1 text-xs text-rose-600">{errors.amount}</p> : null}
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">Currency</label>
-                                <input name="currency" defaultValue={fields?.currency || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                                <input name="currency" defaultValue={fields?.currency || ''} className="ui-input" />
                                 {errors?.currency ? <p className="mt-1 text-xs text-rose-600">{errors.currency}</p> : null}
                             </div>
                         </div>
@@ -196,11 +196,11 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">Reference</label>
-                                <input name="reference" value={referenceValue} onChange={(event) => setReferenceValue(event.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                                <input name="reference" value={referenceValue} onChange={(event) => setReferenceValue(event.target.value)} className="ui-input" />
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">Description</label>
-                                <input name="description" value={descriptionValue} onChange={(event) => setDescriptionValue(event.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                                <input name="description" value={descriptionValue} onChange={(event) => setDescriptionValue(event.target.value)} className="ui-input" />
                             </div>
                         </div>
 
@@ -208,7 +208,7 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                             <p className="text-sm text-slate-500">Invoice due amount: {Number((invoiceSummary?.due_amount ?? form.due_amount) || 0).toFixed(2)}</p>
                         ) : null}
 
-                        <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                        <button type="submit" className="ui-btn-primary">
                             {is_edit ? 'Update Entry' : 'Create Entry'}
                         </button>
                     </form>

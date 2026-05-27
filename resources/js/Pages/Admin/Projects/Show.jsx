@@ -324,11 +324,11 @@ export default function Show({
                             <input type="hidden" name="_token" value={csrf} />
                             <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Details</label>
-                                <input name="short_details" required className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Feature fee or description" />
+                                <input name="short_details" required className="ui-input mt-1" placeholder="Feature fee or description" />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Amount</label>
-                                <input name="amount" required type="number" step="0.01" min="0" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <input name="amount" required type="number" step="0.01" min="0" className="ui-input mt-1" />
                             </div>
                             <div className="md:col-span-3 flex justify-end">
                                 <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Add overhead fee</button>
@@ -374,7 +374,7 @@ export default function Show({
                                     <input type="hidden" name="_token" value={csrf} />
                                     <div className="space-y-1">
                                         <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Amount</label>
-                                        <input name="amount" type="number" step="0.01" min="0.01" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                        <input name="amount" type="number" step="0.01" min="0.01" className="ui-input mt-1" />
                                     </div>
                                     <div className="flex justify-end">
                                         <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Invoice remaining budget</button>

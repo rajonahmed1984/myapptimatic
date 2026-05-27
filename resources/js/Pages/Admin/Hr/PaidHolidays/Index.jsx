@@ -34,7 +34,7 @@ export default function Index({
                 <form method="GET" action={routes?.index} data-native="true" className="mb-5 flex flex-wrap items-end gap-2">
                     <div>
                         <label htmlFor="paidHolidayMonth" className="text-xs uppercase tracking-[0.2em] text-slate-500">Month</label>
-                        <input id="paidHolidayMonth" type="month" name="month" defaultValue={selectedMonth} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input id="paidHolidayMonth" type="month" name="month" defaultValue={selectedMonth} className="ui-input mt-1" />
                     </div>
                     <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Load</button>
                     <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Current month</a>
@@ -44,8 +44,8 @@ export default function Index({
                     <div className="section-label">Add paid holiday</div>
                     <form method="POST" action={routes?.store} data-native="true" className="mt-4 grid gap-3 text-sm md:grid-cols-5">
                         <input type="hidden" name="_token" value={csrf} />
-                        <input type="date" name="start_date" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
-                        <input type="date" name="end_date" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input type="date" name="start_date" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" required />
+                        <input type="date" name="end_date" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                         <SearchableSelect
                             name="name"
                             defaultValue=""
@@ -54,7 +54,7 @@ export default function Index({
                             placeholder="Select holiday type"
                             required
                         />
-                        <input name="note" placeholder="Optional note" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input name="note" placeholder="Optional note" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                         <div className="md:col-span-5">
                             <div className="mb-2 text-xs text-slate-500">For one day, use only the start date. For a range, every date from start to end will be saved.</div>
                             <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Save holiday</button>

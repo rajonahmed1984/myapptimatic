@@ -13,8 +13,9 @@
     $isActive = isActive($routePatterns);
 @endphp
 
-<a 
+<a
     href="{{ $href }}"
+    data-inertia-link="true"
     {{ $attributes->merge(['class' => $isActive ? $activeClass : $inactiveClass]) }}
 >
     {{ $slot }}

@@ -27,7 +27,7 @@ class CommissionPayoutController extends Controller
             ->with(['salesRep:id,name', 'project:id,name'])
             ->search($search)
             ->latest()
-            ->paginate((int) config('admin.pagination.per_page', 15))
+            ->paginate(15)
             ->withQueryString();
 
         $payableByRep = CommissionEarning::query()

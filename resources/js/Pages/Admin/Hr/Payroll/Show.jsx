@@ -166,11 +166,11 @@ export default function Show({
                                 <Field label="Deduction" name="deductions" defaultValue={adjustItem.deduction} />
                                 <div>
                                     <label htmlFor="adjustDeductionReference" className="text-xs uppercase tracking-[0.2em] text-slate-500">Deduction Reference</label>
-                                    <input id="adjustDeductionReference" name="deduction_reference" type="text" maxLength={120} defaultValue={adjustItem.deduction_reference || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                    <input id="adjustDeductionReference" name="deduction_reference" type="text" maxLength={120} defaultValue={adjustItem.deduction_reference || ''} className="ui-input mt-1" />
                                 </div>
                                 <div className="md:col-span-2">
                                     <label htmlFor="adjustDeductionNote" className="text-xs uppercase tracking-[0.2em] text-slate-500">Deduction Reason</label>
-                                    <textarea id="adjustDeductionNote" name="deduction_note" rows={1} maxLength={500} defaultValue={adjustItem.deduction_note || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                    <textarea id="adjustDeductionNote" name="deduction_note" rows={1} maxLength={500} defaultValue={adjustItem.deduction_note || ''} className="ui-input mt-1" />
                                 </div>
                             </div>
                             <div className="flex items-center justify-end gap-3 pt-2">
@@ -214,15 +214,15 @@ export default function Show({
                             </div>
                             <div>
                                 <label htmlFor="paymentReference" className="text-xs uppercase tracking-[0.2em] text-slate-500">Reference</label>
-                                <input id="paymentReference" name="payment_reference" type="text" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <input id="paymentReference" name="payment_reference" type="text" className="ui-input mt-1" />
                             </div>
                             <div>
                                 <label htmlFor="paymentProof" className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Proof</label>
-                                <input id="paymentProof" type="file" name="payment_proof" accept=".jpg,.jpeg,.png,.webp,.pdf" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <input id="paymentProof" type="file" name="payment_proof" accept=".jpg,.jpeg,.png,.webp,.pdf" className="ui-input mt-1" />
                             </div>
                             <div>
                                 <label htmlFor="paidAt" className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Date</label>
-                                <input id="paidAt" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="paid_at" defaultValue={today} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required />
+                                <input id="paidAt" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="paid_at" defaultValue={today} className="ui-input mt-1" required />
                             </div>
                             <div className="flex items-center justify-end gap-3 pt-2">
                                 <button type="button" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600" onClick={() => setPaymentItem(null)}>Cancel</button>
@@ -240,7 +240,7 @@ function Field({ label, name, defaultValue, min = '0', step = '0.01' }) {
     return (
         <div>
             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</label>
-            <input name={name} type="number" step={step} min={min} defaultValue={defaultValue} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+            <input name={name} type="number" step={step} min={min} defaultValue={defaultValue} className="ui-input mt-1" />
         </div>
     );
 }

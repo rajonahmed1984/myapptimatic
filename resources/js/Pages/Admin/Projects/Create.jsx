@@ -179,7 +179,7 @@ export default function Create({
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="text-xs text-slate-500">Project name</label>
-                                <input name="name" defaultValue={form.name || ''} required className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <input name="name" defaultValue={form.name || ''} required className="ui-input mt-1" />
                                 {errors.name ? <div className="mt-1 text-xs text-rose-600">{errors.name}</div> : null}
                             </div>
                             <div>
@@ -202,7 +202,7 @@ export default function Create({
                                         placeholder="Search customer by name or ID"
                                         required
                                         autoComplete="off"
-                                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        className="ui-input"
                                     />
                                     {isCustomerMenuOpen ? (
                                         <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
@@ -252,7 +252,7 @@ export default function Create({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Notes</label>
-                                <textarea name="notes" rows={1} defaultValue={form.notes || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <textarea name="notes" rows={1} defaultValue={form.notes || ''} className="ui-input mt-1" />
                             </div>
                         </div>
                     </StepSection>
@@ -280,7 +280,7 @@ export default function Create({
                                                 {isContract ? (
                                                     <div className={`flex items-center gap-2 ${isSelected ? '' : 'hidden'}`}>
                                                         <span className="text-xs text-slate-500">Amount</span>
-                                                        <input type="number" min="0" step="0.01" name={`contract_employee_amounts[${employee.id}]`} defaultValue={employee.contract_amount ?? ''} disabled={!isSelected} className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+                                                        <input type="number" min="0" step="0.01" name={`contract_employee_amounts[${employee.id}]`} defaultValue={employee.contract_amount ?? ''} disabled={!isSelected} className="w-28 rounded-full border border-slate-300 bg-white px-3 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                                                     </div>
                                                 ) : null}
                                             </div>
@@ -299,7 +299,7 @@ export default function Create({
                                             </label>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xs text-slate-500">Amount</span>
-                                                <input type="number" min="0" step="0.01" name={`sales_rep_amounts[${rep.id}]`} defaultValue={rep.amount ?? 0} className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+                                                <input type="number" min="0" step="0.01" name={`sales_rep_amounts[${rep.id}]`} defaultValue={rep.amount ?? 0} className="w-28 rounded-full border border-slate-300 bg-white px-3 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                                             </div>
                                         </div>
                                     ))}
@@ -314,9 +314,9 @@ export default function Create({
                         description="Set delivery dates and attach project source files."
                     >
                         <div className="grid gap-4 md:grid-cols-3">
-                            <div><label className="text-xs text-slate-500">Start date</label><input name="start_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                            <div><label className="text-xs text-slate-500">Expected end date</label><input name="expected_end_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.expected_end_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                            <div><label className="text-xs text-slate-500">Due date (internal)</label><input name="due_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.due_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
+                            <div><label className="text-xs text-slate-500">Start date</label><input name="start_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.start_date || ''} className="ui-input mt-1" /></div>
+                            <div><label className="text-xs text-slate-500">Expected end date</label><input name="expected_end_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.expected_end_date || ''} className="ui-input mt-1" /></div>
+                            <div><label className="text-xs text-slate-500">Due date (internal)</label><input name="due_date" type="text" placeholder="DD-MM-YYYY" inputMode="numeric" defaultValue={form.due_date || ''} className="ui-input mt-1" /></div>
                         </div>
                         <div className="mt-4 grid gap-4 md:grid-cols-2">
                             <div><label className="text-xs text-slate-500">Contract file</label><input type="file" name="contract_file" accept=".pdf,.doc,.docx,image/*" className="mt-1 w-full text-xs text-slate-600" /></div>
@@ -330,8 +330,8 @@ export default function Create({
                         description="Define project budget, initial payment, and currency."
                     >
                         <div className="grid gap-4 md:grid-cols-4">
-                            <div><label className="text-xs text-slate-500">Total budget</label><input name="total_budget" type="number" step="0.01" defaultValue={form.total_budget || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
-                            <div><label className="text-xs text-slate-500">Initial payment</label><input name="initial_payment_amount" type="number" step="0.01" defaultValue={form.initial_payment_amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
+                            <div><label className="text-xs text-slate-500">Total budget</label><input name="total_budget" type="number" step="0.01" defaultValue={form.total_budget || ''} className="ui-input mt-1" required /></div>
+                            <div><label className="text-xs text-slate-500">Initial payment</label><input name="initial_payment_amount" type="number" step="0.01" defaultValue={form.initial_payment_amount || ''} className="ui-input mt-1" required /></div>
                             <div>
                                 <label className="text-xs text-slate-500">Currency</label>
                                 <SearchableSelect
@@ -343,7 +343,7 @@ export default function Create({
                                     required
                                 />
                             </div>
-                            <div><label className="text-xs text-slate-500">Budget (legacy)</label><input name="budget_amount" type="number" step="0.01" defaultValue={form.budget_amount || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
+                            <div><label className="text-xs text-slate-500">Budget (legacy)</label><input name="budget_amount" type="number" step="0.01" defaultValue={form.budget_amount || ''} className="ui-input mt-1" /></div>
                         </div>
                     </StepSection>
 
@@ -360,7 +360,7 @@ export default function Create({
                             {taskRows.map((task, index) => (
                                 <div key={task.id} className="rounded-xl border border-slate-100 bg-white p-3">
                                     <div className="grid gap-3 md:grid-cols-5 mb-3">
-                                        <div className="md:col-span-2"><label className="text-xs text-slate-500">Title</label><input name={`tasks[${index}][title]`} defaultValue={task.title || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
+                                        <div className="md:col-span-2"><label className="text-xs text-slate-500">Title</label><input name={`tasks[${index}][title]`} defaultValue={task.title || ''} className="ui-input mt-1" required /></div>
                                         <div>
                                             <label className="text-xs text-slate-500">Task type</label>
                                             <SearchableSelect
@@ -382,8 +382,8 @@ export default function Create({
                                                 placeholder="Select priority"
                                             />
                                         </div>
-                                        <div><label className="text-xs text-slate-500">Start date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name={`tasks[${index}][start_date]`} defaultValue={task.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
-                                        <div><label className="text-xs text-slate-500">Due date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name={`tasks[${index}][due_date]`} defaultValue={task.due_date || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" required /></div>
+                                        <div><label className="text-xs text-slate-500">Start date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name={`tasks[${index}][start_date]`} defaultValue={task.start_date || ''} className="ui-input mt-1" required /></div>
+                                        <div><label className="text-xs text-slate-500">Due date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name={`tasks[${index}][due_date]`} defaultValue={task.due_date || ''} className="ui-input mt-1" required /></div>
                                         <div className="md:col-span-2">
                                             <label className="text-xs text-slate-500">Assign to</label>
                                             <SearchableSelect
@@ -402,7 +402,7 @@ export default function Create({
                                         {(asArray(task.descriptions).length ? asArray(task.descriptions) : ['']).map((description, descriptionIndex) => (
                                             <div key={`${task.id}-desc-${descriptionIndex}`} className="md:col-span-4">
                                                 <label className="text-xs text-slate-500">{descriptionIndex === 0 ? 'Description' : `Description ${descriptionIndex + 1}`}</label>
-                                                <input type="text" name={`tasks[${index}][descriptions][]`} defaultValue={description || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                                <input type="text" name={`tasks[${index}][descriptions][]`} defaultValue={description || ''} className="ui-input mt-1" />
                                             </div>
                                         ))}
                                     </div>

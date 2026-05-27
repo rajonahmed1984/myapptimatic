@@ -57,12 +57,12 @@ export default function Index({
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search invoices..."
-                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input"
                             />
                         </div>
                     </form>
                 </div>
-                <a href={routes?.create} data-native="true" className={BTN.primary}>
+                <a href={routes?.create} data-native="true" className="ui-btn-primary">
                     Create Invoice
                 </a>
             </div>

@@ -456,7 +456,7 @@ export default function Show({
                                     value={paymentModal.amount}
                                     readOnly={paymentModal.paymentType === 'full'}
                                     onChange={(event) => setPaymentModal((prev) => ({ ...prev, amount: event.target.value }))}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     required
                                 />
                                 <div className="mt-1 text-[11px] text-slate-500">
@@ -472,7 +472,7 @@ export default function Show({
                                     type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                     name="paid_at"
                                     defaultValue={formatDate(new Date())}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     required
                                 />
                             </div>
@@ -486,7 +486,7 @@ export default function Show({
                                     type="text"
                                     maxLength={120}
                                     placeholder="Txn / note"
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                 />
                             </div>
                             <div>
@@ -498,7 +498,7 @@ export default function Show({
                                     name="note"
                                     rows={1}
                                     maxLength={500}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     placeholder="Optional note"
                                 />
                             </div>
@@ -558,7 +558,7 @@ export default function Show({
                                     maxLength={100}
                                     value={editModal.invoiceNo}
                                     onChange={(event) => setEditModal((prev) => ({ ...prev, invoiceNo: event.target.value }))}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     required
                                 />
                             </div>
@@ -574,7 +574,7 @@ export default function Show({
                                     min="0.01"
                                     value={editModal.amount}
                                     onChange={(event) => setEditModal((prev) => ({ ...prev, amount: event.target.value }))}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     required
                                 />
                             </div>
@@ -588,7 +588,7 @@ export default function Show({
                                     type="date"
                                     value={editModal.invoiceDate}
                                     onChange={(event) => setEditModal((prev) => ({ ...prev, invoiceDate: event.target.value }))}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     required
                                 />
                             </div>
@@ -602,7 +602,7 @@ export default function Show({
                                     type="date"
                                     value={editModal.dueDate}
                                     onChange={(event) => setEditModal((prev) => ({ ...prev, dueDate: event.target.value }))}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                 />
                             </div>
                             <div className="md:col-span-2">
@@ -616,7 +616,7 @@ export default function Show({
                                     maxLength={1000}
                                     value={editModal.notes}
                                     onChange={(event) => setEditModal((prev) => ({ ...prev, notes: event.target.value }))}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     placeholder="Optional notes"
                                 />
                             </div>

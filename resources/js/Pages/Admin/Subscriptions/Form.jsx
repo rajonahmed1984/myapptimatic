@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
-import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Form({
     pageTitle = 'Subscription',
@@ -57,6 +56,8 @@ export default function Form({
         ],
         [],
     );
+    const inputTokenClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
+    const selectTokenClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600';
     const planById = useMemo(() => {
         const map = {};
         plans.forEach((plan) => {
@@ -121,31 +122,31 @@ export default function Form({
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
-                            <SearchableSelect
+                            <select
                                 name="customer_id"
                                 defaultValue={String(fields?.customer_id || '')}
-                                options={customerOptions}
-                                className="mt-2"
-                                error={errors?.customer_id}
-                                placeholder="Select customer"
-                            />
+                                className={`${selectTokenClass} mt-2`}
+                            >
+                                {customerOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                            {errors?.customer_id ? <p className="mt-1 text-xs text-rose-600">{errors.customer_id}</p> : null}
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Plan</label>
-                            <SearchableSelect
+                            <select
                                 name="plan_id"
                                 value={selectedPlanId}
-                                onChange={(nextValue) => {
-                                    const planId = String(nextValue || '');
+                                onChange={(event) => {
+                                    const planId = String(event.target.value || '');
                                     setSelectedPlanId(planId);
                                     const plan = planById[planId];
                                     setSubscriptionAmount(plan ? formatAmount(plan.price) : '');
                                 }}
-                                options={planOptions}
-                                className="mt-2"
-                                error={errors?.plan_id}
-                                placeholder="Select plan"
-                            />
+                                className={`${selectTokenClass} mt-2`}
+                            >
+                                {planOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                            {errors?.plan_id ? <p className="mt-1 text-xs text-rose-600">{errors.plan_id}</p> : null}
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Subscription Amount</label>
@@ -156,7 +157,7 @@ export default function Form({
                                 name="subscription_amount"
                                 value={subscriptionAmount}
                                 onChange={(event) => setSubscriptionAmount(event.target.value)}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                className={inputTokenClass}
                                 placeholder="0.00"
                             />
                             <p className="mt-1 text-xs text-slate-500">
@@ -170,7 +171,7 @@ export default function Form({
                     <div className="grid gap-4 md:grid-cols-4">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Start Date</label>
-                            <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={fields?.start_date || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={fields?.start_date || ''} className={inputTokenClass} />
                             {errors?.start_date ? <p className="mt-1 text-xs text-rose-600">{errors.start_date}</p> : null}
                         </div>
                         <div>
@@ -179,7 +180,7 @@ export default function Form({
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="current_period_start"
                                 defaultValue={fields?.current_period_start || ''}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                className={inputTokenClass}
                             />
                             {errors?.current_period_start ? <p className="mt-1 text-xs text-rose-600">{errors.current_period_start}</p> : null}
                         </div>
@@ -189,7 +190,7 @@ export default function Form({
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="current_period_end"
                                 defaultValue={fields?.current_period_end || ''}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                className={inputTokenClass}
                             />
                             {errors?.current_period_end ? <p className="mt-1 text-xs text-rose-600">{errors.current_period_end}</p> : null}
                         </div>
@@ -199,7 +200,7 @@ export default function Form({
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="next_invoice_at"
                                 defaultValue={fields?.next_invoice_at || ''}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                className={inputTokenClass}
                             />
                             {errors?.next_invoice_at ? <p className="mt-1 text-xs text-rose-600">{errors.next_invoice_at}</p> : null}
                         </div>
@@ -212,21 +213,21 @@ export default function Form({
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="access_override_until"
                                 defaultValue={fields?.access_override_until || ''}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                className={inputTokenClass}
                             />
                             {errors?.access_override_until ? <p className="mt-1 text-xs text-rose-600">{errors.access_override_until}</p> : null}
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep</label>
-                            <SearchableSelect
+                            <select
                                 name="sales_rep_id"
                                 value={selectedSalesRepId}
-                                onChange={(nextValue) => setSelectedSalesRepId(String(nextValue || ''))}
-                                options={salesRepOptions}
-                                className="mt-2"
-                                error={errors?.sales_rep_id}
-                                placeholder="None"
-                            />
+                                onChange={(event) => setSelectedSalesRepId(String(event.target.value || ''))}
+                                className={`${selectTokenClass} mt-2`}
+                            >
+                                {salesRepOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                            {errors?.sales_rep_id ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_id}</p> : null}
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep Commission (%)</label>
@@ -238,7 +239,7 @@ export default function Form({
                                 name="sales_rep_commission_percent"
                                 value={commissionPercent}
                                 onChange={(event) => setCommissionPercent(event.target.value)}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-400"
+                                className={`${inputTokenClass} disabled:bg-slate-100 disabled:text-slate-400`}
                                 placeholder="0.00"
                                 disabled={!hasSelectedSalesRep}
                             />
@@ -253,20 +254,20 @@ export default function Form({
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
-                            <SearchableSelect
+                            <select
                                 name="status"
                                 defaultValue={String(fields?.status || 'active')}
-                                options={statusOptions}
-                                className="mt-2"
-                                error={errors?.status}
-                                placeholder="Select status"
-                            />
+                                className={`${selectTokenClass} mt-2`}
+                            >
+                                {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                            {errors?.status ? <p className="mt-1 text-xs text-rose-600">{errors.status}</p> : null}
                         </div>
                     </div>
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
-                        <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="w-full rounded-full border border-slate-300 px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                     </div>
 
                     <div className="flex flex-wrap items-center gap-5">
@@ -283,10 +284,10 @@ export default function Form({
                     </div>
 
                     <div className="flex items-center gap-3 pt-2">
-                        <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                        <button type="submit" className="bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500">
                             {is_edit ? 'Update Subscription' : 'Create Subscription'}
                         </button>
-                        <a href={routes?.index} data-native="true" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
+                        <a href={routes?.index} data-native="true" className="border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
                             Cancel
                         </a>
                     </div>

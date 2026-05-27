@@ -62,7 +62,7 @@ export default function Create({
                                 name="title"
                                 required
                                 defaultValue={fields?.title ?? ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="ui-input mt-1"
                             />
                             {errors?.title ? <div className="mt-1 text-xs text-rose-600">{errors.title}</div> : null}
                         </div>
@@ -77,7 +77,7 @@ export default function Create({
                                 name="amount"
                                 required
                                 defaultValue={fields?.amount ?? ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="ui-input mt-1"
                             />
                             {errors?.amount ? <div className="mt-1 text-xs text-rose-600">{errors.amount}</div> : null}
                         </div>
@@ -88,7 +88,7 @@ export default function Create({
                                 name="income_date"
                                 required
                                 defaultValue={fields?.income_date ?? ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="ui-input mt-1"
                             />
                             {errors?.income_date ? (
                                 <div className="mt-1 text-xs text-rose-600">{errors.income_date}</div>
@@ -101,7 +101,7 @@ export default function Create({
                             name="notes"
                             rows={1}
                             defaultValue={fields?.notes ?? ''}
-                            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            className="ui-input mt-1"
                         />
                         {errors?.notes ? <div className="mt-1 text-xs text-rose-600">{errors.notes}</div> : null}
                     </div>

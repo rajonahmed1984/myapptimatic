@@ -65,7 +65,7 @@ export default function Edit({ user = {}, form = {}, routes = {} }) {
                                 name="name"
                                 defaultValue={form?.name || ''}
                                 required
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                         </div>
                         <div>
@@ -75,7 +75,7 @@ export default function Edit({ user = {}, form = {}, routes = {} }) {
                                 type="email"
                                 defaultValue={form?.email || ''}
                                 required
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                         </div>
                     </div>
@@ -83,18 +83,18 @@ export default function Edit({ user = {}, form = {}, routes = {} }) {
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="text-sm text-slate-600">Current password</label>
-                            <input name="current_password" type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="current_password" type="password" className="ui-input mt-2" />
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">New password</label>
-                            <input name="password" type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="password" type="password" className="ui-input mt-2" />
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Confirm new password</label>
                             <input
                                 name="password_confirmation"
                                 type="password"
-                                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                         </div>
                     </div>

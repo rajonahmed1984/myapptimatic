@@ -70,7 +70,7 @@ export default function Show({ ticket = {}, replies = [], form = {}, routes = {}
                             rows="5"
                             defaultValue={form.message || ''}
                             required
-                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
+                            className="ui-input text-slate-700"
                         />
                         <div>
                             <label className="text-sm text-slate-600">Attachment (image/PDF)</label>
@@ -80,7 +80,7 @@ export default function Show({ ticket = {}, replies = [], form = {}, routes = {}
                             <a href={routes.index} data-native="true" className="text-sm text-slate-500 hover:text-teal-600">
                                 Back to tickets
                             </a>
-                            <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">
+                            <button type="submit" className="ui-btn-primary">
                                 Send reply
                             </button>
                         </div>

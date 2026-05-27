@@ -256,7 +256,7 @@ export default function Index({
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search licenses..."
-                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input"
                             />
                         </div>
                     </form>
@@ -268,13 +268,13 @@ export default function Index({
 
             <div id="licensesTable">
                 <div className="card overflow-x-auto">
-                    <table className="w-full min-w-[1150px] text-left text-sm">
-                        <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
+                    <table className="w-full min-w-[760px] table-fixed text-left text-xs md:min-w-[980px] md:text-sm lg:min-w-[1120px]">
+                        <thead className="border-b border-slate-300 text-[11px] uppercase tracking-[0.14em] text-slate-500 md:text-xs md:tracking-[0.25em]">
                             <tr>
-                                <th className="px-4 py-3">ID</th>
-                                <th className="px-4 py-3">Customer &amp; Product</th>
-                                <th className="px-4 py-3">License &amp; URL</th>
-                                <th className="px-4 py-3">True verification</th>
+                                <th className="w-[56px] px-2 py-2.5 md:w-[72px] md:px-4 md:py-3">ID</th>
+                                <th className="w-[180px] px-2 py-2.5 md:w-[240px] md:px-4 md:py-3 lg:w-[280px]">Customer &amp; Product</th>
+                                <th className="w-[260px] px-2 py-2.5 md:w-[360px] md:px-4 md:py-3 lg:w-[430px]">License &amp; URL</th>
+                                <th className="px-2 py-2.5 md:px-4 md:py-3">True verification</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -284,22 +284,22 @@ export default function Index({
                                     const domainIndicator = urlIndicator(license);
 
                                     return (
-                                        <tr key={license.id} className="border-b border-slate-100">
-                                            <td className="px-4 py-3 text-slate-500">{license.id}</td>
-                                            <td className="px-4 py-3">
+                                        <tr key={license.id} className="border-b border-slate-100 align-top">
+                                            <td className="px-2 py-2.5 text-slate-500 md:px-4 md:py-3">{license.id}</td>
+                                            <td className="px-2 py-2.5 md:px-4 md:py-3">
                                                 {license.customer_url ? (
-                                                    <a href={license.customer_url} data-native="true" className="text-teal-600 hover:text-teal-500">
+                                                    <a href={license.customer_url} data-native="true" className="block max-w-[160px] truncate text-teal-600 hover:text-teal-500 md:max-w-[220px] lg:max-w-[260px]">
                                                         {license.customer_name}
                                                     </a>
                                                 ) : (
                                                     <span className="text-slate-500">--</span>
                                                 )}
                                                 {license.is_blocked ? <div className="mt-1 text-xs text-rose-600">Access blocked</div> : null}
-                                                <div className="mt-1 text-xs text-slate-500">
+                                                <div className="mt-1 max-w-[170px] truncate text-xs text-slate-500 md:max-w-[230px] lg:max-w-[270px]">
                                                     {license.product_name} - {license.plan_name}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 font-mono text-xs text-teal-700">
+                                            <td className="px-2 py-2.5 font-mono text-xs text-teal-700 md:px-4 md:py-3">
                                                 <div className="space-y-2">
                                                     <div className="flex items-center gap-2">
                                                         <span
@@ -309,7 +309,7 @@ export default function Index({
                                                         >
                                                             {renderStatusIcon(keyIndicator.type)}
                                                         </span>
-                                                        <span>{license.license_key}</span>
+                                                        <span className="inline-block max-w-[170px] truncate align-middle sm:max-w-[220px] lg:max-w-[300px]">{license.license_key}</span>
                                                         <button
                                                             type="button"
                                                             onClick={() => {
@@ -336,7 +336,7 @@ export default function Index({
                                                         >
                                                             {renderStatusIcon(domainIndicator.type)}
                                                         </span>
-                                                        <span>{license.domain}</span>
+                                                        <span className="inline-block max-w-[170px] truncate align-middle sm:max-w-[220px] lg:max-w-[300px]">{license.domain}</span>
                                                         {license.can_sync ? (
                                                             <button
                                                                 type="button"
@@ -369,19 +369,19 @@ export default function Index({
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3">
-                                                <div className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${license.verification_class}`}>
+                                            <td className="license-verification-cell px-2 py-2.5 md:px-4 md:py-3">
+                                                <div className={`license-verification-badges inline-flex flex-wrap items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold md:px-3 md:text-xs ${license.verification_class}`}>
                                                     {license.verification_label}
-                                                    <span className={`ml-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${licenseStatusClass(license.license_status)}`}>
+                                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold md:px-2.5 md:py-1 md:text-xs ${licenseStatusClass(license.license_status)}`}>
                                                         {license.license_status}
                                                     </span>
-                                                    <span className={`ml-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${license.sync_class}`}>
+                                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold md:px-2.5 md:py-1 md:text-xs ${license.sync_class}`}>
                                                         {license.sync_label}
                                                     </span>
                                                 </div>
-                                                <div className="mt-1 text-xs text-slate-500">
+                                                <div className="license-verification-info mt-1 text-xs text-slate-500">
                                                     {license.verification_hint}
-                                                    <span className="ml-2">{license.sync_time_display}</span>
+                                                    <span className="block md:ml-2 md:inline">{license.sync_time_display}</span>
                                                 </div>
                                             </td>
                                         </tr>

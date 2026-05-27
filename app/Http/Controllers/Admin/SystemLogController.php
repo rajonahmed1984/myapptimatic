@@ -30,7 +30,7 @@ class SystemLogController extends Controller
             ->forCategory($config['category'])
             ->search($search)
             ->latest()
-            ->paginate((int) config('admin.pagination.per_page', 15))
+            ->paginate(15)
             ->withQueryString();
 
         return Inertia::render(
@@ -56,6 +56,7 @@ class SystemLogController extends Controller
             systemLogId: (int) $systemLog->id,
             requestedBy: $userId,
             requestIp: (string) $request->ip(),
+            idempotencyWindow: $window,
         )->onQueue('default');
 
         return back()->with('status', 'Email resend queued.');

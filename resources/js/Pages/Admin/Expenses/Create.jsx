@@ -339,7 +339,7 @@ export default function Create({
                                     name="title"
                                     defaultValue={form?.title ?? ''}
                                     required
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 ui-input"
                                 />
                                 {errors.title ? <div className="mt-1 text-xs text-rose-600">{errors.title}</div> : null}
                             </div>
@@ -355,7 +355,7 @@ export default function Create({
                                     name="amount"
                                     defaultValue={form?.amount ?? ''}
                                     required
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 ui-input"
                                 />
                                 {errors.amount ? <div className="mt-1 text-xs text-rose-600">{errors.amount}</div> : null}
                             </div>
@@ -366,7 +366,7 @@ export default function Create({
                                     name="expense_date"
                                     defaultValue={form?.expense_date ?? ''}
                                     required
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 ui-input"
                                 />
                                 {errors.expense_date ? <div className="mt-1 text-xs text-rose-600">{errors.expense_date}</div> : null}
                             </div>
@@ -378,7 +378,7 @@ export default function Create({
                                 name="notes"
                                 rows={1}
                                 defaultValue={form?.notes ?? ''}
-                                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                className="mt-1 ui-input"
                             />
                             {errors.notes ? <div className="mt-1 text-xs text-rose-600">{errors.notes}</div> : null}
                         </div>
@@ -467,7 +467,7 @@ export default function Create({
                                 value={paymentAmount}
                                 onChange={onPaymentAmountChange}
                                 readOnly={paymentModal.type === 'full'}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                 required
                             />
                             <div className="mt-1 text-[11px] text-slate-500">
@@ -480,7 +480,7 @@ export default function Create({
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="paid_at"
                                 defaultValue={formatDate(new Date())}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                 required
                             />
                         </div>
@@ -491,7 +491,7 @@ export default function Create({
                                 type="text"
                                 maxLength={120}
                                 placeholder="Txn / note"
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                             />
                         </div>
                         <div>
@@ -500,7 +500,7 @@ export default function Create({
                                 name="note"
                                 rows={1}
                                 maxLength={500}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                 placeholder="Optional note"
                             />
                         </div>

@@ -48,7 +48,7 @@ export default function Create({ pageTitle = 'Create Support Ticket', customers 
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Subject</label>
-                            <input name="subject" className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input name="subject" className="ui-input" />
                             {errors?.subject ? <p className="mt-1 text-xs text-rose-600">{errors.subject}</p> : null}
                         </div>
                         <div>
@@ -66,17 +66,17 @@ export default function Create({ pageTitle = 'Create Support Ticket', customers 
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Message</label>
-                        <textarea name="message" rows={7} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        <textarea name="message" rows={7} className="ui-textarea" />
                         {errors?.message ? <p className="mt-1 text-xs text-rose-600">{errors.message}</p> : null}
                     </div>
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Attachment</label>
-                        <input type="file" name="attachment" className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        <input type="file" name="attachment" className="ui-input" />
                         {errors?.attachment ? <p className="mt-1 text-xs text-rose-600">{errors.attachment}</p> : null}
                     </div>
 
-                    <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    <button type="submit" className="ui-btn-primary">
                         Create Ticket
                     </button>
                 </form>

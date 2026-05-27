@@ -37,7 +37,7 @@ export default function Index({
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search income..."
-                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input"
                             />
                         </div>
                     </form>
@@ -46,14 +46,14 @@ export default function Index({
                     <a
                         href={routes?.categories}
                         data-native="true"
-                        className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                        className="ui-btn-secondary"
                     >
                         Categories
                     </a>
                     <a
                         href={routes?.create}
                         data-native="true"
-                        className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                        className="ui-btn-primary"
                     >
                         Add Income
                     </a>

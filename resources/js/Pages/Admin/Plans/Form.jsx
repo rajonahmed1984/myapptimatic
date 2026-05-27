@@ -70,13 +70,13 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Name</label>
-                        <input name="name" defaultValue={fields?.name || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        <input name="name" defaultValue={fields?.name || ''} className="ui-input" />
                         {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
                     </div>
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Slug</label>
-                        <input name="slug" defaultValue={fields?.slug || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        <input name="slug" defaultValue={fields?.slug || ''} className="ui-input" />
                         {errors?.slug ? <p className="mt-1 text-xs text-rose-600">{errors.slug}</p> : null}
                     </div>
 
@@ -86,7 +86,7 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
                             <button
                                 type="button"
                                 onClick={addPricingRow}
-                                className="rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-teal-50"
+                                className="ui-btn-secondary"
                             >
                                 Add Interval & Price
                             </button>
@@ -119,7 +119,7 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
                                         name={`pricing_rows[${index}][price]`}
                                         value={row.price}
                                         onChange={(event) => updatePricingRow(index, 'price', event.target.value)}
-                                        className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                        className="ui-input"
                                     />
                                     {errors?.[`pricing_rows.${index}.price`] ? (
                                         <p className="mt-1 text-xs text-rose-600">{errors[`pricing_rows.${index}.price`]}</p>
@@ -130,7 +130,7 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
                                     <button
                                         type="button"
                                         onClick={() => removePricingRow(index)}
-                                        className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                        className="ui-btn-danger disabled:cursor-not-allowed disabled:opacity-40"
                                         disabled={pricingRows.length <= 1}
                                     >
                                         Remove
@@ -153,10 +153,10 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
                     </div>
 
                     <div className="flex items-center gap-3 pt-2">
-                        <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                        <button type="submit" className="ui-btn-primary">
                             {is_edit ? 'Update Plan' : 'Create Plan'}
                         </button>
-                        <a href={routes?.index} data-native="true" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
+                        <a href={routes?.index} data-native="true" className="ui-btn-secondary">
                             Cancel
                         </a>
                     </div>

@@ -77,7 +77,7 @@ export default function Edit({ pageTitle = 'Edit Payment Gateway', gateway = {},
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Name</label>
-                            <input name="name" defaultValue={gateway?.name || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                            <input name="name" defaultValue={gateway?.name || ''} className="ui-input" />
                             {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
                         </div>
                         <div>
@@ -87,7 +87,7 @@ export default function Edit({ pageTitle = 'Edit Payment Gateway', gateway = {},
                                 min="0"
                                 name="sort_order"
                                 defaultValue={gateway?.sort_order ?? 0}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                className="ui-input"
                             />
                         </div>
                         <div className="flex items-center gap-4 pt-7">
@@ -108,7 +108,7 @@ export default function Edit({ pageTitle = 'Edit Payment Gateway', gateway = {},
                         {textFields.map((field) => (
                             <div key={field}>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">{formatLabel(field)}</label>
-                                <input name={field} defaultValue={fields?.[field] || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                                <input name={field} defaultValue={fields?.[field] || ''} className="ui-input" />
                                 {errors?.[field] ? <p className="mt-1 text-xs text-rose-600">{errors[field]}</p> : null}
                             </div>
                         ))}
@@ -141,10 +141,10 @@ export default function Edit({ pageTitle = 'Edit Payment Gateway', gateway = {},
                     ) : null}
 
                     <div className="flex items-center gap-3 pt-2">
-                        <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                        <button type="submit" className="ui-btn-primary">
                             Save Changes
                         </button>
-                        <a href={routes?.index} data-native="true" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
+                        <a href={routes?.index} data-native="true" className="ui-btn-secondary">
                             Cancel
                         </a>
                     </div>

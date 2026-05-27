@@ -35,7 +35,7 @@ class SupportTicketController extends Controller
             ->orderByDesc('created_at');
 
         $tickets = $ticketsQuery
-            ->paginate((int) config('admin.pagination.per_page', 15))
+            ->paginate(15)
             ->withQueryString();
 
         $statusCounts = [

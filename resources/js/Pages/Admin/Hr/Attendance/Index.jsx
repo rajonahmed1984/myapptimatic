@@ -91,7 +91,7 @@ export default function Index({
                             submitFormat="iso"
                             hideLabel
                             containerClassName="w-52"
-                            inputClassName="w-52 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            inputClassName="w-52 rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                         />
                         <a
                             href={`${routes?.index}?date=${encodeURIComponent(nextDay)}`}
@@ -164,7 +164,7 @@ export default function Index({
                                             />
                                         </td>
                                         <td className="py-2 px-3">
-                                            <input type="text" name={`records[${index}][note]`} defaultValue={employee.note || ''} placeholder="Optional note" className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs" />
+                                            <input type="text" name={`records[${index}][note]`} defaultValue={employee.note || ''} placeholder="Optional note" className="w-full rounded-full border border-slate-300 bg-white px-3 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                                         </td>
                                         <td className="py-2 px-3 text-xs text-slate-500">
                                             {employee.recorder_name ? employee.recorder_name : isPaidHoliday && employee.status === 'present' ? 'Paid holiday (System)' : '--'}

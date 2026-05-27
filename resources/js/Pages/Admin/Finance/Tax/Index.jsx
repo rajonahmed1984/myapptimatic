@@ -554,7 +554,7 @@ export default function Index({
                                 name="invoice_tax_note_template"
                                 rows={1}
                                 defaultValue={settings_form?.invoice_tax_note_template || ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                             />
                             <div className="mt-1 text-xs text-slate-500">Use {'{rate}'} to display the applied percentage.</div>
                             {errors.invoice_tax_note_template ? <div className="mt-1 text-xs text-rose-600">{errors.invoice_tax_note_template}</div> : null}
@@ -576,7 +576,7 @@ export default function Index({
                             name="name"
                             defaultValue={rate_form?.name || ''}
                             placeholder="Rate name"
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                         />
                         {errors.name ? <div className="mt-1 text-xs text-rose-600">{errors.name}</div> : null}
                         <input
@@ -587,21 +587,21 @@ export default function Index({
                             name="rate_percent"
                             defaultValue={rate_form?.rate_percent || ''}
                             placeholder="Rate %"
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                         />
                         {errors.rate_percent ? <div className="mt-1 text-xs text-rose-600">{errors.rate_percent}</div> : null}
                         <input
                             type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                             name="effective_from"
                             defaultValue={rate_form?.effective_from || ''}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                         />
                         {errors.effective_from ? <div className="mt-1 text-xs text-rose-600">{errors.effective_from}</div> : null}
                         <input
                             type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                             name="effective_to"
                             defaultValue={rate_form?.effective_to || ''}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                         />
                         {errors.effective_to ? <div className="mt-1 text-xs text-rose-600">{errors.effective_to}</div> : null}
                         <div className="flex items-center gap-2">

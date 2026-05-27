@@ -31,13 +31,13 @@ export default function Form({ pageTitle = 'Product', is_edit = false, form = {}
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Name</label>
-                        <input name="name" defaultValue={fields?.name || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        <input name="name" defaultValue={fields?.name || ''} className="ui-input" />
                         {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
                     </div>
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Slug</label>
-                        <input name="slug" defaultValue={fields?.slug || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        <input name="slug" defaultValue={fields?.slug || ''} className="ui-input" />
                         {errors?.slug ? <p className="mt-1 text-xs text-rose-600">{errors.slug}</p> : null}
                     </div>
 
@@ -58,16 +58,16 @@ export default function Form({ pageTitle = 'Product', is_edit = false, form = {}
                             name="description"
                             defaultValue={fields?.description || ''}
                             rows={5}
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                            className="ui-textarea"
                         />
                         {errors?.description ? <p className="mt-1 text-xs text-rose-600">{errors.description}</p> : null}
                     </div>
 
                     <div className="flex items-center gap-3 pt-2">
-                        <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                        <button type="submit" className="ui-btn-primary">
                             {is_edit ? 'Update Product' : 'Create Product'}
                         </button>
-                        <a href={routes?.index} data-native="true" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
+                        <a href={routes?.index} data-native="true" className="ui-btn-secondary">
                             Cancel
                         </a>
                     </div>

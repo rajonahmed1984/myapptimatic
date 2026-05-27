@@ -30,17 +30,17 @@ export default function Index({ leave_requests = [], leave_types = [], paginatio
                     </div>
                     <div>
                         <label className="text-xs text-slate-500">Start date</label>
-                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" required className="ui-input mt-1" />
                         {errors?.start_date ? <div className="mt-1 text-xs text-rose-600">{errors.start_date}</div> : null}
                     </div>
                     <div>
                         <label className="text-xs text-slate-500">End date</label>
-                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="end_date" required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                        <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="end_date" required className="ui-input mt-1" />
                         {errors?.end_date ? <div className="mt-1 text-xs text-rose-600">{errors.end_date}</div> : null}
                     </div>
                     <div>
                         <label className="text-xs text-slate-500">Reason</label>
-                        <input name="reason" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Optional" />
+                        <input name="reason" className="ui-input mt-1" placeholder="Optional" />
                     </div>
                     <div className="md:col-span-4">
                         <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Submit</button>

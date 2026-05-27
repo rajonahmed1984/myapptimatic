@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { formatDate } from '@/utils/datetime';
 import SearchableSelect from '../../../../Components/SearchableSelect';
@@ -323,7 +323,7 @@ export default function Index({
                                     type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                     name="paid_at"
                                     defaultValue={formatDate(new Date())}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     required
                                 />
                             </div>
@@ -337,7 +337,7 @@ export default function Index({
                                     type="number"
                                     step="0.01"
                                     min="0.01"
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     required
                                 />
                             </div>
@@ -351,7 +351,7 @@ export default function Index({
                                     type="text"
                                     maxLength={120}
                                     placeholder="Txn / note"
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                 />
                             </div>
                             <div className="md:col-span-2">
@@ -363,7 +363,7 @@ export default function Index({
                                     name="note"
                                     rows={1}
                                     maxLength={500}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     placeholder="Optional note"
                                 />
                             </div>

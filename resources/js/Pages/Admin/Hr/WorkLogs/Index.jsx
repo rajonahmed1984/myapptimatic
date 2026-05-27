@@ -73,7 +73,7 @@ export default function Index({
                 <form method="GET" action={routes?.index} data-native="true" className="grid gap-3 md:grid-cols-4">
                     <div>
                         <label htmlFor="workLogMonth" className="text-xs uppercase tracking-[0.2em] text-slate-500">Month</label>
-                        <input id="workLogMonth" type="month" name="month" defaultValue={selectedMonth} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input id="workLogMonth" type="month" name="month" defaultValue={selectedMonth} className="ui-input mt-1" />
                     </div>
                     <div>
                         <label htmlFor="workLogEmployee" className="text-xs uppercase tracking-[0.2em] text-slate-500">Employee</label>

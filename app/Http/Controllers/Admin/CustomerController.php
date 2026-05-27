@@ -639,7 +639,7 @@ class CustomerController extends Controller
                     'id' => $log->id,
                     'created_at_display' => $log->created_at?->format($dateTimeFormat) ?? '--',
                     'subject' => (string) ($log->context['subject'] ?? $log->message ?? '--'),
-                    'resend_url' => route('admin.logs.email.resend', ['systemLog' => $log, 'customer' => $customer], false),
+                    'resend_url' => route('admin.logs.email.resend', ['systemLog' => $log], false),
                 ];
             })->values()->all(),
             'activity_logs' => $activityLogs->map(function (SystemLog $log) use ($dateTimeFormat) {

@@ -50,7 +50,7 @@ export default function Index({
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search maintenance..."
-                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input"
                             />
                         </div>
                     </form>
@@ -58,7 +58,7 @@ export default function Index({
                 <a
                     href={routes?.create}
                     data-native="true"
-                    className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+                    className="ui-btn-primary"
                 >
                     Add maintenance
                 </a>

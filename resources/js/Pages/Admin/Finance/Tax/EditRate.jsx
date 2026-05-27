@@ -23,7 +23,7 @@ export default function EditRate({ pageTitle = 'Edit Tax Rate', rate = {}, route
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Name</label>
-                        <input name="name" defaultValue={rate?.name || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        <input name="name" defaultValue={rate?.name || ''} className="ui-input" />
                         {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
                     </div>
 
@@ -36,7 +36,7 @@ export default function EditRate({ pageTitle = 'Edit Tax Rate', rate = {}, route
                             max="100"
                             name="rate_percent"
                             defaultValue={rate?.rate_percent || ''}
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                            className="ui-input"
                         />
                         {errors?.rate_percent ? <p className="mt-1 text-xs text-rose-600">{errors.rate_percent}</p> : null}
                     </div>
@@ -48,7 +48,7 @@ export default function EditRate({ pageTitle = 'Edit Tax Rate', rate = {}, route
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="effective_from"
                                 defaultValue={rate?.effective_from || ''}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                className="ui-input"
                             />
                             {errors?.effective_from ? <p className="mt-1 text-xs text-rose-600">{errors.effective_from}</p> : null}
                         </div>
@@ -58,7 +58,7 @@ export default function EditRate({ pageTitle = 'Edit Tax Rate', rate = {}, route
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="effective_to"
                                 defaultValue={rate?.effective_to || ''}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                className="ui-input"
                             />
                             {errors?.effective_to ? <p className="mt-1 text-xs text-rose-600">{errors.effective_to}</p> : null}
                         </div>
@@ -71,7 +71,7 @@ export default function EditRate({ pageTitle = 'Edit Tax Rate', rate = {}, route
                     </label>
 
                     <div>
-                        <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                        <button type="submit" className="ui-btn-primary">
                             Update Rate
                         </button>
                     </div>

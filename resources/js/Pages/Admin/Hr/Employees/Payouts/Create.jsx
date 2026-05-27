@@ -121,11 +121,11 @@ export default function Create({
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Reference</label>
-                            <input name="reference" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Optional reference" />
+                            <input name="reference" className="ui-input mt-1" placeholder="Optional reference" />
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Note</label>
-                            <input name="note" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Optional note" />
+                            <input name="note" className="ui-input mt-1" placeholder="Optional note" />
                         </div>
                     </div>
 

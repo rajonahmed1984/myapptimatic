@@ -30,7 +30,7 @@ export default function Apply({ routes = {} }) {
                         <textarea name="notes" rows={1} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" />
                     </div>
                     <div className="flex justify-end">
-                        <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white hover:bg-teal-400">
+                        <button type="submit" className="ui-btn-primary hover:bg-teal-400">
                             Submit application
                         </button>
                     </div>

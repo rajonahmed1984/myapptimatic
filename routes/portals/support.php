@@ -99,7 +99,7 @@ Route::middleware([
         Route::patch('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'update'])->name('support-tickets.update');
         Route::delete('/support-tickets/{ticket}', [SupportSupportTicketController::class, 'destroy'])->name('support-tickets.destroy');
 
-        Route::prefix('portal/api')->name('portal.api.')->group(function () {
+        Route::prefix('portal/api')->middleware('throttle:60,1')->name('portal.api.')->group(function () {
             Route::get('/tasks', [PortalTaskController::class, 'index'])->name('tasks.index');
             Route::post('/tasks', [PortalTaskController::class, 'store'])->name('tasks.store');
             Route::patch('/tasks/{task}', [PortalTaskController::class, 'update'])->name('tasks.update');

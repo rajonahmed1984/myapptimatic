@@ -22,7 +22,7 @@ const Num = ({ name, value, min = 0, max = 3650, step = 1, errors }) => (
             max={max}
             step={step}
             defaultValue={value ?? 0}
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+            className="ui-input mt-2"
         />
         <InputError errors={errors} name={name} />
     </div>
@@ -148,16 +148,16 @@ export default function Edit({
                                 <div className="section-label">Brand & Contact</div>
                                 <div className="mt-4 grid gap-4">
                                     <Field label="Company name" name="company_name" errors={errors}>
-                                        <input name="company_name" defaultValue={settings.company_name || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                        <input name="company_name" defaultValue={settings.company_name || ''} className="ui-input mt-2" />
                                     </Field>
                                     <Field label="Pay to text" name="pay_to_text" errors={errors}>
-                                        <input name="pay_to_text" defaultValue={settings.pay_to_text || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                        <input name="pay_to_text" defaultValue={settings.pay_to_text || ''} className="ui-input mt-2" />
                                     </Field>
                                     <Field label="Email" name="company_email" errors={errors}>
-                                        <input name="company_email" type="email" defaultValue={settings.company_email || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                        <input name="company_email" type="email" defaultValue={settings.company_email || ''} className="ui-input mt-2" />
                                     </Field>
                                     <Field label="App URL" name="app_url" errors={errors}>
-                                        <input name="app_url" type="url" defaultValue={settings.app_url || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                        <input name="app_url" type="url" defaultValue={settings.app_url || ''} className="ui-input mt-2" />
                                     </Field>
                                     <Field label="Country" name="company_country" errors={errors}>
                                         <SearchableSelect
@@ -196,7 +196,7 @@ export default function Edit({
                                         />
                                     </Field>
                                     <Field label="Automation time" name="automation_time_of_day" errors={errors}>
-                                        <input name="automation_time_of_day" type="time" defaultValue={settings.automation_time_of_day || '00:00'} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                        <input name="automation_time_of_day" type="time" defaultValue={settings.automation_time_of_day || '00:00'} className="ui-input mt-2" />
                                     </Field>
                                 </div>
                             </div>
@@ -207,7 +207,7 @@ export default function Edit({
                                 <div className="section-label">Brand Assets</div>
                                 <div className="mt-4 grid gap-4">
                                     <Field label="Company logo" name="company_logo" errors={errors}>
-                                        <input name="company_logo" type="file" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                        <input name="company_logo" type="file" className="ui-input mt-2" />
                                     </Field>
                                     {settings.company_logo_url ? (
                                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -216,7 +216,7 @@ export default function Edit({
                                         </div>
                                     ) : null}
                                     <Field label="Favicon" name="company_favicon" errors={errors}>
-                                        <input name="company_favicon" type="file" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                        <input name="company_favicon" type="file" className="ui-input mt-2" />
                                     </Field>
                                     {settings.company_favicon_url ? (
                                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -233,19 +233,19 @@ export default function Edit({
                                     <Check name="enable_recaptcha" checked={settings.recaptcha_enabled} label="Enable reCAPTCHA validation" />
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <Field label="Site key" name="recaptcha_site_key" errors={errors}>
-                                            <input name="recaptcha_site_key" defaultValue={settings.recaptcha_site_key || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                            <input name="recaptcha_site_key" defaultValue={settings.recaptcha_site_key || ''} className="ui-input mt-2" />
                                         </Field>
                                         <Field label="Secret key" name="recaptcha_secret_key" errors={errors}>
-                                            <input name="recaptcha_secret_key" type="password" defaultValue={settings.recaptcha_secret_key || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                            <input name="recaptcha_secret_key" type="password" defaultValue={settings.recaptcha_secret_key || ''} className="ui-input mt-2" />
                                         </Field>
                                         <Field label="Project ID" name="recaptcha_project_id" errors={errors}>
-                                            <input name="recaptcha_project_id" defaultValue={settings.recaptcha_project_id || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                            <input name="recaptcha_project_id" defaultValue={settings.recaptcha_project_id || ''} className="ui-input mt-2" />
                                         </Field>
                                         <Field label="API key" name="recaptcha_api_key" errors={errors}>
-                                            <input name="recaptcha_api_key" type="password" defaultValue={settings.recaptcha_api_key || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                            <input name="recaptcha_api_key" type="password" defaultValue={settings.recaptcha_api_key || ''} className="ui-input mt-2" />
                                         </Field>
                                         <Field label="Score threshold" name="recaptcha_score_threshold" errors={errors}>
-                                            <input name="recaptcha_score_threshold" type="number" step="0.01" min="0" max="1" defaultValue={settings.recaptcha_score_threshold || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                            <input name="recaptcha_score_threshold" type="number" step="0.01" min="0" max="1" defaultValue={settings.recaptcha_score_threshold || ''} className="ui-input mt-2" />
                                         </Field>
                                     </div>
                                 </div>
@@ -273,7 +273,7 @@ export default function Edit({
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="text-sm text-slate-600">Payment instructions</label>
-                                    <textarea name="payment_instructions" rows={1} defaultValue={settings.payment_instructions || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                    <textarea name="payment_instructions" rows={1} defaultValue={settings.payment_instructions || ''} className="ui-input mt-2" />
                                     <InputError errors={errors} name="payment_instructions" />
                                 </div>
                             </div>
@@ -366,7 +366,7 @@ export default function Edit({
                                     <InputError errors={errors} name="task_types_enabled" />
                                 </div>
                                 <Field label="Custom task label" name="task_custom_type_label" errors={errors}>
-                                    <input name="task_custom_type_label" defaultValue={settings.task_custom_type_label || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                    <input name="task_custom_type_label" defaultValue={settings.task_custom_type_label || ''} className="ui-input mt-2" />
                                 </Field>
                                 <div><label className="text-sm text-slate-600">Upload size limit (MB)</label><Num name="task_upload_max_mb" value={settings.task_upload_max_mb} errors={errors} min={1} max={100} /></div>
                                 <Check name="task_customer_visible_default" checked={settings.task_customer_visible_default} label="Default new tasks as customer visible" />
@@ -392,13 +392,13 @@ export default function Edit({
                                                     </summary>
                                                     <div className="mt-5 grid gap-4">
                                                         <Field label="From email" name={`templates.${template.id}.from_email`} errors={errors}>
-                                                            <input name={`templates[${template.id}][from_email]`} defaultValue={template.from_email || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                                            <input name={`templates[${template.id}][from_email]`} defaultValue={template.from_email || ''} className="ui-input mt-2" />
                                                         </Field>
                                                         <Field label="Subject" name={`templates.${template.id}.subject`} errors={errors}>
-                                                            <input name={`templates[${template.id}][subject]`} defaultValue={template.subject || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                                            <input name={`templates[${template.id}][subject]`} defaultValue={template.subject || ''} className="ui-input mt-2" />
                                                         </Field>
                                                         <Field label="Body" name={`templates.${template.id}.body`} errors={errors}>
-                                                            <textarea name={`templates[${template.id}][body]`} rows={6} defaultValue={template.body || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                                                            <textarea name={`templates[${template.id}][body]`} rows={6} defaultValue={template.body || ''} className="ui-input mt-2" />
                                                         </Field>
                                                     </div>
                                                 </details>

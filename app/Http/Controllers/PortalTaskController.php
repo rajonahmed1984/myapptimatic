@@ -10,7 +10,9 @@ class PortalTaskController extends Controller
 {
     private function authUserId(Request $request): int
     {
-        return (int) (auth()->id() ?? $request->user()?->id ?? 0);
+        $user = $request->user();
+
+        return $user ? (int) $user->getAuthIdentifier() : 0;
     }
 
     public function index(Request $request): JsonResponse
@@ -19,6 +21,11 @@ class PortalTaskController extends Controller
         if ($userId <= 0) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
+
+        $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+        ]);
 
         $startDate = $request->query('start_date');
         $endDate = $request->query('end_date');
@@ -61,7 +68,13 @@ class PortalTaskController extends Controller
 
     public function update(Request $request, Task $task): JsonResponse
     {
-        if ($task->user_id !== $this->authUserId($request)) {
+        $userId = $this->authUserId($request);
+        if ($userId <= 0) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $task = Task::query()->where('user_id', $userId)->find($task->id);
+        if (! $task) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -79,7 +92,13 @@ class PortalTaskController extends Controller
 
     public function destroy(Request $request, Task $task): JsonResponse
     {
-        if ($task->user_id !== $this->authUserId($request)) {
+        $userId = $this->authUserId($request);
+        if ($userId <= 0) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $task = Task::query()->where('user_id', $userId)->find($task->id);
+        if (! $task) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

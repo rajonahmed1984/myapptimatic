@@ -49,6 +49,8 @@ export default function SearchableSelect({
     debounceMs = DEFAULT_DEBOUNCE_MS,
     closeOnSelect = true,
     multiple = false,
+    searchable,
+    searchableThreshold = 12,
 }) {
     const isControlled = value !== undefined;
     const [internalValue, setInternalValue] = useState(String(defaultValue ?? ''));
@@ -73,6 +75,18 @@ export default function SearchableSelect({
     const normalizedOptions = useMemo(() => {
         return (Array.isArray(options) ? options : []).map((option) => normalizeOption(option, labelKey, valueKey));
     }, [options, labelKey, valueKey]);
+
+    const isSearchEnabled = useMemo(() => {
+        if (typeof searchable === 'boolean') {
+            return searchable;
+        }
+
+        if (typeof loadOptions === 'function') {
+            return true;
+        }
+
+        return normalizedOptions.length > Number(searchableThreshold || 12);
+    }, [searchable, loadOptions, normalizedOptions.length, searchableThreshold]);
 
     useEffect(() => {
         if (!isControlled) {
@@ -187,11 +201,20 @@ export default function SearchableSelect({
             return;
         }
 
+        if (!isSearchEnabled) {
+            return;
+        }
+
         searchInputRef.current?.focus();
-    }, [isOpen]);
+    }, [isOpen, isSearchEnabled]);
 
     const filteredOptions = useMemo(() => {
         const sourceOptions = typeof loadOptions === 'function' ? remoteOptions : normalizedOptions;
+
+        if (!isSearchEnabled) {
+            return sourceOptions;
+        }
+
         const query = debouncedSearchTerm.toLowerCase();
 
         if (!query) {
@@ -199,7 +222,7 @@ export default function SearchableSelect({
         }
 
         return sourceOptions.filter((option) => option.label.toLowerCase().includes(query));
-    }, [normalizedOptions, remoteOptions, debouncedSearchTerm, loadOptions]);
+    }, [normalizedOptions, remoteOptions, debouncedSearchTerm, loadOptions, isSearchEnabled]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -334,9 +357,9 @@ export default function SearchableSelect({
                 aria-expanded={isOpen}
                 disabled={disabled}
                 className={[
-                    'flex h-8 w-full items-center justify-between rounded-full border border-slate-300 bg-white px-3 text-xs text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-teal-200',
+                    'flex h-8 w-full items-center justify-between rounded-full border border-slate-300 bg-white px-4 py-1.5 text-left text-xs text-slate-700 transition focus:outline-none focus:ring-1 focus:ring-teal-600',
                     disabled ? 'cursor-not-allowed bg-slate-100 text-slate-400' : 'hover:border-teal-300',
-                    error ? 'border-rose-300 focus:ring-rose-200' : '',
+                    error ? 'border-rose-500 focus:ring-rose-500' : '',
                     triggerClassName,
                 ]
                     .filter(Boolean)
@@ -349,7 +372,7 @@ export default function SearchableSelect({
                 onKeyDown={handleTriggerKeyDown}
                 onBlur={onBlur}
             >
-                <span className="truncate">
+                <span className="block flex-1 truncate text-left">
                     {multiple
                         ? (selectedOptions.length > 0
                             ? (selectedOptions.length <= 2
@@ -378,22 +401,24 @@ export default function SearchableSelect({
                         .filter(Boolean)
                         .join(' ')}
                 >
-                    <div className="border-b border-slate-100 p-2">
-                        <input
-                            ref={searchInputRef}
-                            type="text"
-                            value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value)}
-                            onKeyDown={handleSearchKeyDown}
-                            placeholder={searchPlaceholder}
-                            className={[
-                                'h-8 w-full rounded-full border border-slate-300 px-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-200',
-                                inputClassName,
-                            ]
-                                .filter(Boolean)
-                                .join(' ')}
-                        />
-                    </div>
+                    {isSearchEnabled ? (
+                        <div className="border-b border-slate-100 p-2">
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                onKeyDown={handleSearchKeyDown}
+                                placeholder={searchPlaceholder}
+                                className={[
+                                    'h-8 w-full rounded-full border border-slate-300 px-4 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-600',
+                                    inputClassName,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' ')}
+                            />
+                        </div>
+                    ) : null}
 
                     <ul role="listbox" className="max-h-56 overflow-y-auto py-1">
                         {isLoading ? (
@@ -411,9 +436,10 @@ export default function SearchableSelect({
                                             type="button"
                                             className={[
                                                 'w-full px-3 py-1.5 text-left text-xs text-slate-700 transition',
-                                                isActive ? 'text-teal-700' : '',
-                                                isSelected ? 'font-semibold text-teal-700' : '',
-                                                'hover:text-teal-700',
+                                                isActive && !isSelected ? 'bg-slate-100 text-slate-900' : '',
+                                                isSelected
+                                                    ? 'bg-teal-50 font-semibold text-teal-800 hover:bg-teal-50 hover:text-teal-800'
+                                                    : 'hover:bg-slate-100 hover:text-slate-900',
                                                 optionClassName,
                                             ]
                                                 .filter(Boolean)

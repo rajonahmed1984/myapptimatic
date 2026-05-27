@@ -66,7 +66,7 @@ export default function Form({
                             name="title"
                             defaultValue={form.title ?? ''}
                             required
-                            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            className="mt-1 ui-input"
                         />
                         {errors.title ? <div className="mt-1 text-xs text-rose-600">{errors.title}</div> : null}
                     </div>
@@ -81,7 +81,7 @@ export default function Form({
                                 name="amount"
                                 defaultValue={form.amount ?? ''}
                                 required
-                                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                className="mt-1 ui-input"
                             />
                             {errors.amount ? <div className="mt-1 text-xs text-rose-600">{errors.amount}</div> : null}
                         </div>
@@ -120,7 +120,7 @@ export default function Form({
                                 name="start_date"
                                 defaultValue={form.start_date ?? ''}
                                 required
-                                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                className="mt-1 ui-input"
                             />
                             {errors.start_date ? <div className="mt-1 text-xs text-rose-600">{errors.start_date}</div> : null}
                         </div>
@@ -131,7 +131,7 @@ export default function Form({
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 name="end_date"
                                 defaultValue={form.end_date ?? ''}
-                                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                className="mt-1 ui-input"
                             />
                             {errors.end_date ? <div className="mt-1 text-xs text-rose-600">{errors.end_date}</div> : null}
                         </div>
@@ -143,7 +143,7 @@ export default function Form({
                             name="notes"
                             rows={1}
                             defaultValue={form.notes ?? ''}
-                            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            className="mt-1 ui-input"
                         />
                         {errors.notes ? <div className="mt-1 text-xs text-rose-600">{errors.notes}</div> : null}
                     </div>

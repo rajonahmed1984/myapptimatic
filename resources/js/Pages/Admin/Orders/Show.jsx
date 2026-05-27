@@ -23,13 +23,6 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
     const [invoiceTotal, setInvoiceTotal] = useState(String(order?.invoice_total_value || ''));
     const [recurringAmount, setRecurringAmount] = useState(String(order?.recurring_amount_value || ''));
     const [hasPlanChanged, setHasPlanChanged] = useState(false);
-    const planOptions = [
-        { value: '', label: 'Select plan' },
-        ...plan_options.map((plan) => ({
-            value: String(plan.id),
-            label: `${plan.name} (${formatIntervalLabel(plan.interval)}) - ${formatPlanPriceLabel(plan.price, plan.currency)}`,
-        })),
-    ];
 
     const formatIntervalLabel = (interval) => {
         const normalized = String(interval || '').trim().toLowerCase();
@@ -43,6 +36,14 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
         const currencyCode = String(currency || '').trim();
         return currencyCode ? `${currencyCode} ${formattedPrice}` : formattedPrice;
     };
+
+    const planOptions = [
+        { value: '', label: 'Select plan' },
+        ...plan_options.map((plan) => ({
+            value: String(plan.id),
+            label: `${plan.name} (${formatIntervalLabel(plan.interval)}) - ${formatPlanPriceLabel(plan.price, plan.currency)}`,
+        })),
+    ];
     const toFixedMoney = (value) => {
         const numeric = Number(value);
         return Number.isFinite(numeric) ? numeric.toFixed(2) : '';
@@ -108,7 +109,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                     <a
                                         href={order.invoice_url}
                                         data-native="true"
-                                        className="rounded-full border border-teal-200 bg-white px-4 py-2 text-sm font-semibold text-teal-700 transition hover:border-teal-300 hover:bg-teal-50"
+                                        className="rounded-full border border-teal-200 bg-white px-3 py-1.5 text-xs font-semibold text-teal-700 transition hover:border-teal-300 hover:bg-teal-50"
                                     >
                                         Open Invoice
                                     </a>
@@ -116,7 +117,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                 <a
                                     href={routes?.index}
                                     data-native="true"
-                                    className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
+                                    className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400"
                                 >
                                     Back to Orders
                                 </a>
@@ -205,7 +206,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                                 step="0.01"
                                                 value={invoiceTotal}
                                                 onChange={(event) => setInvoiceTotal(event.target.value)}
-                                                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-slate-900 focus:border-teal-400 focus:outline-none"
+                                                className="w-full !h-8 !rounded-full border border-slate-300 bg-white !px-4 !py-1.5 !text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-teal-600"
                                             />
                                             {errors?.invoice_total ? <p className="mt-1 text-xs text-rose-600">{errors.invoice_total}</p> : null}
                                         </div>
@@ -218,14 +219,14 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                                 step="0.01"
                                                 value={recurringAmount}
                                                 onChange={(event) => setRecurringAmount(event.target.value)}
-                                                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-slate-900 focus:border-teal-400 focus:outline-none"
+                                                className="w-full !h-8 !rounded-full border border-slate-300 bg-white !px-4 !py-1.5 !text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-teal-600"
                                             />
                                             {errors?.recurring_amount ? <p className="mt-1 text-xs text-rose-600">{errors.recurring_amount}</p> : null}
                                         </div>
                                         <div className="md:col-span-2">
                                             <button
                                                 type="submit"
-                                                className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                                                className="ui-btn-primary"
                                             >
                                                 Save Amounts
                                             </button>
@@ -252,7 +253,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                             <input
                                                 name="license_key"
                                                 defaultValue={order?.license_key || ''}
-                                                className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-slate-900 focus:border-emerald-400 focus:outline-none"
+                                                className="w-full !h-8 !rounded-full border border-emerald-200 bg-white !px-4 !py-1.5 !text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                             />
                                             {errors?.license_key ? <p className="mt-1 text-xs text-rose-600">{errors.license_key}</p> : null}
                                         </div>
@@ -261,7 +262,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                             <input
                                                 name="license_url"
                                                 defaultValue={order?.license_url || ''}
-                                                className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-slate-900 focus:border-emerald-400 focus:outline-none"
+                                                className="w-full !h-8 !rounded-full border border-emerald-200 bg-white !px-4 !py-1.5 !text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                             />
                                             {errors?.license_url ? <p className="mt-1 text-xs text-rose-600">{errors.license_url}</p> : null}
                                         </div>
@@ -271,7 +272,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                     <button
                                         type="submit"
                                         form="approve-order-form"
-                                        className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                                        className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500"
                                     >
                                         Approve Order
                                     </button>
@@ -279,7 +280,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                         <input type="hidden" name="_token" value={csrf} />
                                         <button
                                             type="submit"
-                                            className="rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                                            className="rounded-full border border-rose-300 bg-white px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
                                         >
                                             Cancel Order
                                         </button>
@@ -289,7 +290,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                         <input type="hidden" name="_method" value="DELETE" />
                                         <button
                                             type="submit"
-                                            className="rounded-xl border border-rose-300 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+                                            className="rounded-full border border-rose-300 bg-white px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
                                         >
                                             Delete Order
                                         </button>

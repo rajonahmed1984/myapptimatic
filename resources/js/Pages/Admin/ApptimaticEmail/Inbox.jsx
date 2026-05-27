@@ -862,7 +862,7 @@ export default function Inbox({
                                                             type="text"
                                                             value={composeForm.to}
                                                             onChange={(e) => setComposeForm((prev) => ({ ...prev, to: e.target.value }))}
-                                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-teal-400 focus:outline-none"
+                                                            className="mt-1 w-full rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600 text-slate-700 focus:border-teal-400 focus:outline-none"
                                                             placeholder="recipient@example.com"
                                                             required
                                                         />
@@ -873,7 +873,7 @@ export default function Inbox({
                                                             type="text"
                                                             value={composeForm.cc}
                                                             onChange={(e) => setComposeForm((prev) => ({ ...prev, cc: e.target.value }))}
-                                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-teal-400 focus:outline-none"
+                                                            className="mt-1 w-full rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600 text-slate-700 focus:border-teal-400 focus:outline-none"
                                                             placeholder="cc1@example.com, cc2@example.com"
                                                         />
                                                     </label>
@@ -883,7 +883,7 @@ export default function Inbox({
                                                             type="text"
                                                             value={composeForm.bcc}
                                                             onChange={(e) => setComposeForm((prev) => ({ ...prev, bcc: e.target.value }))}
-                                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-teal-400 focus:outline-none"
+                                                            className="mt-1 w-full rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600 text-slate-700 focus:border-teal-400 focus:outline-none"
                                                             placeholder="bcc@example.com"
                                                         />
                                                     </label>
@@ -895,7 +895,7 @@ export default function Inbox({
                                                         type="text"
                                                         value={composeForm.subject}
                                                         onChange={(e) => setComposeForm((prev) => ({ ...prev, subject: e.target.value }))}
-                                                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-teal-400 focus:outline-none"
+                                                        className="mt-1 w-full rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600 text-slate-700 focus:border-teal-400 focus:outline-none"
                                                         required
                                                     />
                                                 </label>
@@ -905,7 +905,7 @@ export default function Inbox({
                                                     <textarea
                                                         value={composeForm.body}
                                                         onChange={(e) => setComposeForm((prev) => ({ ...prev, body: e.target.value }))}
-                                                        className="mt-1 h-36 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 text-slate-700 focus:border-teal-400 focus:outline-none"
+                                                        className="mt-1 h-36 w-full rounded-full border border-slate-300 px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600 leading-6 text-slate-700 focus:border-teal-400 focus:outline-none"
                                                         placeholder={
                                                             composeMode === 'forward'
                                                                 ? 'Write your forward note...'

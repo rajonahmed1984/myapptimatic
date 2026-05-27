@@ -70,7 +70,7 @@ export default function Edit({
                                     name="name"
                                     defaultValue={form.name || ''}
                                     required
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                                 {errors.name ? <div className="mt-1 text-xs text-rose-600">{errors.name}</div> : null}
                             </div>
@@ -114,7 +114,7 @@ export default function Edit({
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="text-xs text-slate-500">Start date</label>
-                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={form.start_date || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" defaultValue={form.start_date || ''} className="ui-input mt-1" />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Expected end date</label>
@@ -122,7 +122,7 @@ export default function Edit({
                                     type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                     name="expected_end_date"
                                     defaultValue={form.expected_end_date || ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                             </div>
                         </div>
@@ -130,13 +130,13 @@ export default function Edit({
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="text-xs text-slate-500">Due date (internal)</label>
-                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="due_date" defaultValue={form.due_date || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="due_date" defaultValue={form.due_date || ''} className="ui-input mt-1" />
                             </div>
                         </div>
 
                         <div>
                             <label className="text-xs text-slate-500">Notes</label>
-                            <textarea name="notes" rows={1} defaultValue={form.notes || ''} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                            <textarea name="notes" rows={1} defaultValue={form.notes || ''} className="ui-input mt-1" />
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
@@ -257,7 +257,7 @@ export default function Edit({
                                     type="number"
                                     step="0.01"
                                     defaultValue={form.total_budget ?? ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                     required
                                 />
                             </div>
@@ -268,7 +268,7 @@ export default function Edit({
                                     type="number"
                                     step="0.01"
                                     defaultValue={form.initial_payment_amount ?? ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                     required
                                 />
                             </div>
@@ -290,7 +290,7 @@ export default function Edit({
                                     type="number"
                                     step="0.01"
                                     defaultValue={form.budget_amount ?? ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                             </div>
                         </div>
@@ -304,7 +304,7 @@ export default function Edit({
                                     step="0.01"
                                     min="0"
                                     defaultValue={form.software_overhead ?? ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                             </div>
                             <div>
@@ -315,7 +315,7 @@ export default function Edit({
                                     step="0.01"
                                     min="0"
                                     defaultValue={form.website_overhead ?? ''}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                             </div>
                         </div>

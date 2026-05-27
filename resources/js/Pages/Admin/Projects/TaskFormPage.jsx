@@ -73,7 +73,7 @@ export default function TaskFormPage({
                                         name="title"
                                         defaultValue={form.title || ''}
                                         required
-                                        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        className="ui-input mt-1"
                                     />
                                 </div>
                                 <div>
@@ -83,7 +83,7 @@ export default function TaskFormPage({
                                         name="start_date"
                                         defaultValue={form.start_date || ''}
                                         required
-                                        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        className="ui-input mt-1"
                                     />
                                 </div>
                                 <div>
@@ -93,7 +93,7 @@ export default function TaskFormPage({
                                         name="due_date"
                                         defaultValue={form.due_date || ''}
                                         required
-                                        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        className="ui-input mt-1"
                                     />
                                 </div>
                             </>
@@ -146,7 +146,7 @@ export default function TaskFormPage({
                                         max="100"
                                         name="progress"
                                         defaultValue={form.progress ?? task?.progress ?? 0}
-                                        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        className="ui-input mt-1"
                                     />
                                 </div>
                                 <div>
@@ -156,7 +156,7 @@ export default function TaskFormPage({
                                         min="0"
                                         name="time_estimate_minutes"
                                         defaultValue={form.time_estimate_minutes ?? task?.time_estimate_minutes ?? ''}
-                                        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        className="ui-input mt-1"
                                     />
                                 </div>
                             </>
@@ -191,7 +191,7 @@ export default function TaskFormPage({
                                 name="description"
                                 rows={1}
                                 defaultValue={form.description ?? task?.description ?? ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="ui-input mt-1"
                             />
                         </div>
 
@@ -202,7 +202,7 @@ export default function TaskFormPage({
                                     <input
                                         name="tags"
                                         defaultValue={form.tags ?? task?.tags ?? ''}
-                                        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        className="ui-input mt-1"
                                     />
                                 </div>
                                 <div>
@@ -210,7 +210,7 @@ export default function TaskFormPage({
                                     <input
                                         name="relationship_ids"
                                         defaultValue={form.relationship_ids ?? task?.relationship_ids ?? ''}
-                                        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        className="ui-input mt-1"
                                     />
                                 </div>
                                 <div className="md:col-span-2">
@@ -219,7 +219,7 @@ export default function TaskFormPage({
                                         name="notes"
                                         rows={1}
                                         defaultValue={form.notes ?? task?.notes ?? ''}
-                                        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        className="ui-input mt-1"
                                     />
                                 </div>
                             </>

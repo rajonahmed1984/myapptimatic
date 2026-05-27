@@ -173,7 +173,7 @@ export default function FormPage({
                         </div>
                         <div>
                             <label className="text-xs text-slate-500">Basic pay</label>
-                            <input name="basic_pay" type="number" min="0" step="0.01" defaultValue={values.basic_pay ?? 0} required={!basicPayOptional} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                            <input name="basic_pay" type="number" min="0" step="0.01" defaultValue={values.basic_pay ?? 0} required={!basicPayOptional} className="mt-1 ui-input" />
                             <p className="mt-1 text-xs text-slate-400">{basicPayOptional ? 'Optional for contract employees on project-base salary.' : 'Required unless contract + project base.'}</p>
                         </div>
                         <Input label="Hourly rate (optional)" name="hourly_rate" type="number" min="0" step="0.01" defaultValue={values.hourly_rate || ''} />
@@ -217,7 +217,7 @@ function Input({ label, ...props }) {
     return (
         <div>
             <label className="text-xs text-slate-500">{label}</label>
-            <input {...props} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+            <input {...props} className="mt-1 ui-input" />
         </div>
     );
 }

@@ -91,7 +91,7 @@
             <nav class="mt-10 space-y-4 text-sm">
                 @if($isAdminNav)
                     <div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.dashboard')"
                             routes="admin.dashboard"
                         >
@@ -102,28 +102,28 @@
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Sales & Customers</div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.customers.index')"
                             routes="admin.customers.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Customers
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.orders.index')"
                             routes="admin.orders.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Orders
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.sales-reps.index')"
                             routes="admin.sales-reps.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Sales Representatives
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.affiliates.index')"
                             routes="admin.affiliates.*"
                         >
@@ -251,7 +251,7 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Refunded
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.payment-proofs.index')"
                             routes="admin.payment-proofs.*"
                             :badge="($adminHeaderStats['pending_manual_payments'] ?? 0) > 0 ? $adminHeaderStats['pending_manual_payments'] : null"
@@ -294,7 +294,7 @@
                                 Tax Settings
                             </x-nav-link>
                         @endif
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.payment-gateways.index')"
                             routes="admin.payment-gateways.*"
                         >
@@ -302,7 +302,7 @@
                             Payment Gateways
                         </x-nav-link>
                         @if(auth()->user()?->isMasterAdmin())
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('admin.finance.reports.index')"
                                 routes="admin.finance.reports.*"
                             >
@@ -310,7 +310,7 @@
                                 Finance Reports
                             </x-nav-link>
                         @endif
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.commission-payouts.index')"
                             routes="admin.commission-payouts.*"
                         >
@@ -321,42 +321,42 @@
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">People (HR)</div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.hr.dashboard')"
                             routes="admin.hr.dashboard"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             HR Dashboard
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.hr.employees.index')"
                             routes="admin.hr.employees.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Employees
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.users.activity-summary')"
                             routes="admin.users.activity-summary"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Activity Summary
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.hr.timesheets.index')"
                             routes="admin.hr.timesheets.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Work Logs
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.hr.leave-types.index')"
                             routes="admin.hr.leave-types.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Leave Types
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.hr.leave-requests.index')"
                             routes="admin.hr.leave-requests.*"
                             :badge="$adminHeaderStats['pending_leave_requests'] ?? 0"
@@ -364,7 +364,7 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Leave Requests
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.hr.attendance.index')"
                             routes="admin.hr.attendance.*"
                         >
@@ -378,7 +378,7 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Paid Holidays
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.hr.payroll.index')"
                             routes="admin.hr.payroll.*"
                         >
@@ -389,7 +389,7 @@
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Support & Chat</div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.support-tickets.index')"
                             routes="admin.support-tickets.*"
                             :badge="$adminHeaderStats['open_support_tickets'] ?? 0"
@@ -474,7 +474,7 @@
                         @endphp
                         @if(auth()->user()?->isMasterAdmin())
                             <div class="space-y-1">
-                                <x-nav-link 
+                                <x-nav-link
                                     :href="route('admin.users.index', 'master_admin')"
                                     :inactiveClass="$isUsersRoute && $usersNavRole === 'master_admin' ? 'nav-link nav-link-active' : 'nav-link'"
                                     :activeClass="$isUsersRoute && $usersNavRole === 'master_admin' ? 'nav-link nav-link-active' : 'nav-link'"
@@ -482,7 +482,7 @@
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
                                     Master Admins
                                 </x-nav-link>
-                                <x-nav-link 
+                                <x-nav-link
                                     :href="route('admin.users.index', 'sub_admin')"
                                     :inactiveClass="$isUsersRoute && $usersNavRole === 'sub_admin' ? 'nav-link nav-link-active' : 'nav-link'"
                                     :activeClass="$isUsersRoute && $usersNavRole === 'sub_admin' ? 'nav-link nav-link-active' : 'nav-link'"
@@ -490,7 +490,7 @@
                                     <span class="h-2 w-2 rounded-full bg-current"></span>
                                     Sub Admins
                                 </x-nav-link>
-                                <x-nav-link 
+                                <x-nav-link
                                     :href="route('admin.users.index', 'support')"
                                     :inactiveClass="$isUsersRoute && $usersNavRole === 'support' ? 'nav-link nav-link-active' : 'nav-link'"
                                     :activeClass="$isUsersRoute && $usersNavRole === 'support' ? 'nav-link nav-link-active' : 'nav-link'"
@@ -500,7 +500,7 @@
                                 </x-nav-link>
                             </div>
                         @endif
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.profile.edit')"
                             routes="admin.profile.*"
                         >
@@ -511,14 +511,14 @@
 
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">System & Monitoring</div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('admin.automation-status')"
                             routes="admin.automation-status"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Automation Status
                         </x-nav-link>
-                        
+
                         <x-nav-link
                             :href="route('admin.logs.activity')"
                             routes="admin.logs.*"
@@ -526,8 +526,8 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Logs
                         </x-nav-link>
-                        
-                        <x-nav-link 
+
+                        <x-nav-link
                             :href="route('admin.settings.edit')"
                             routes="admin.settings.*"
                         >
@@ -537,7 +537,7 @@
                     </div>
                 @elseif($isEmployeeNav)
                     <div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('employee.dashboard')"
                             routes="employee.dashboard"
                         >
@@ -547,7 +547,7 @@
                     </div>
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">My Work</div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('employee.projects.index')"
                             routes="employee.projects.*"
                         >
@@ -627,7 +627,7 @@
                             </div>
                         </div>
                         @if($isEmployeeWorkSessionEligible)
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('employee.timesheets.index')"
                                 routes="employee.timesheets.*"
                             >
@@ -635,7 +635,7 @@
                                 Work Logs
                             </x-nav-link>
                         @endif
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('employee.leave-requests.index')"
                             routes="employee.leave-requests.*"
                         >
@@ -654,7 +654,7 @@
                     </div>
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payroll</div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('employee.payroll.index')"
                             routes="employee.payroll.*"
                         >
@@ -664,7 +664,7 @@
                     </div>
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Account</div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('employee.profile.edit')"
                             routes="employee.profile.*"
                         >
@@ -674,7 +674,7 @@
                     </div>
                 @elseif($isSalesRepNav)
                     <div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('rep.dashboard')"
                             routes="rep.dashboard"
                         >
@@ -684,14 +684,14 @@
                     </div>
                     <div class="space-y-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('rep.earnings.index')"
                             routes="rep.earnings.*"
                         >
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Earnings
                         </x-nav-link>
-                        <x-nav-link 
+                        <x-nav-link
                             :href="route('rep.payouts.index')"
                             routes="rep.payouts.*"
                         >
@@ -701,7 +701,7 @@
                         </div>
                     @elseif($isEmployeeNav)
                         <div>
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('employee.dashboard')"
                                 routes="employee.dashboard"
                             >
@@ -711,7 +711,7 @@
                         </div>
                         <div class="space-y-2">
                             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">My Work</div>
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('employee.projects.index')"
                                 routes="employee.projects.*"
                             >
@@ -791,7 +791,7 @@
                                 </div>
                             </div>
                             @if($isEmployeeWorkSessionEligible)
-                                <x-nav-link 
+                                <x-nav-link
                                     :href="route('employee.timesheets.index')"
                                     routes="employee.timesheets.*"
                                 >
@@ -799,7 +799,7 @@
                                     Work Logs
                                 </x-nav-link>
                             @endif
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('employee.leave-requests.index')"
                                 routes="employee.leave-requests.*"
                             >
@@ -818,7 +818,7 @@
                         </div>
                         <div class="space-y-2">
                             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payroll</div>
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('employee.payroll.index')"
                                 routes="employee.payroll.*"
                             >
@@ -828,7 +828,7 @@
                         </div>
                         <div class="space-y-2">
                             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Account</div>
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('employee.profile.edit')"
                                 routes="employee.profile.*"
                             >
@@ -838,7 +838,7 @@
                         </div>
                     @elseif($isSalesRepNav)
                         <div>
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('rep.dashboard')"
                                 routes="rep.dashboard"
                             >
@@ -848,14 +848,14 @@
                         </div>
                         <div class="space-y-2">
                             <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('rep.earnings.index')"
                                 routes="rep.earnings.*"
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
                                 Earnings
                             </x-nav-link>
-                            <x-nav-link 
+                            <x-nav-link
                                 :href="route('rep.payouts.index')"
                                 routes="rep.payouts.*"
                             >
@@ -922,7 +922,7 @@
             <header class="sticky top-0 z-20 border-b border-slate-300/70 bg-white/80 backdrop-blur">
                 <div class="flex w-full items-center justify-between gap-6 px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <button type="button" id="sidebarToggle" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-teal-300 hover:text-teal-600 md:hidden" aria-label="Open menu">
+                        <button type="button" id="sidebarToggle" class="sidebar-toggle-mobile inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-teal-300 hover:text-teal-600 md:hidden" aria-label="Open menu">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                             </svg>

@@ -67,7 +67,7 @@ export default function Index({
                 <a
                     href={routes?.create}
                     data-native="true"
-                    className="rounded-full bg-teal-500 px-6 py-2 text-sm font-semibold text-white transition hover:bg-teal-400"
+                    className="ui-btn-primary"
                 >
                     Add affiliate
                 </a>
@@ -81,7 +81,7 @@ export default function Index({
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
                         placeholder="Search by name, email, or code..."
-                        className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                        className="ui-input flex-1"
                     />
                     <SearchableSelect
                         name="status"
@@ -91,14 +91,14 @@ export default function Index({
                         className="min-w-[180px]"
                         placeholder="All statuses"
                     />
-                    <button type="submit" className="rounded-full bg-slate-900 px-6 py-2 text-sm font-semibold text-white">
+                    <button type="submit" className="ui-btn-primary">
                         Filter
                     </button>
                     {hasFilters ? (
                         <a
                             href={routes?.index}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-6 py-2 text-sm font-semibold text-slate-600"
+                            className="ui-btn-secondary"
                         >
                             Clear
                         </a>

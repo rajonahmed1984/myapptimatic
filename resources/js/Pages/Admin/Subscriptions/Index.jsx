@@ -54,7 +54,7 @@ export default function Index({
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search subscriptions..."
-                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input"
                             />
                         </div>
                     </form>
@@ -62,7 +62,7 @@ export default function Index({
                 <a
                     href={routes?.create}
                     data-native="true"
-                    className="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white"
+                    className="ui-btn-primary"
                 >
                     New Subscription
                 </a>

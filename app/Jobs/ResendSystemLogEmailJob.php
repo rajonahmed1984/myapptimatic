@@ -22,14 +22,15 @@ class ResendSystemLogEmailJob implements ShouldQueue
     public function __construct(
         public int $systemLogId,
         public int $requestedBy,
-        public string $requestIp
+        public string $requestIp,
+        public int $idempotencyWindow
     ) {
     }
 
     public function middleware(): array
     {
         return [
-            (new WithoutOverlapping('email_resend_job_'.$this->systemLogId.'_'.$this->requestedBy))
+            (new WithoutOverlapping('email_resend_job_'.$this->systemLogId.'_'.$this->requestedBy.'_'.$this->idempotencyWindow))
                 ->expireAfter(60)
                 ->dontRelease(),
         ];

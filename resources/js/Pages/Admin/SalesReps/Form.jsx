@@ -125,7 +125,7 @@ export default function Form({
                                 name="name"
                                 defaultValue={fields?.name || ''}
                                 required
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="ui-input mt-1"
                             />
                             {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
                         </div>
@@ -135,7 +135,7 @@ export default function Form({
                                 name="email"
                                 type="email"
                                 defaultValue={fields?.email || ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="ui-input mt-1"
                             />
                             {errors?.email ? <p className="mt-1 text-xs text-rose-600">{errors.email}</p> : null}
                         </div>
@@ -144,7 +144,7 @@ export default function Form({
                             <input
                                 name="phone"
                                 defaultValue={fields?.phone || ''}
-                                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="ui-input mt-1"
                             />
                             {errors?.phone ? <p className="mt-1 text-xs text-rose-600">{errors.phone}</p> : null}
                         </div>
@@ -152,7 +152,7 @@ export default function Form({
                             <>
                                 <div>
                                     <label className="text-xs text-slate-500">Password</label>
-                                    <input name="user_password" type="password" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                    <input name="user_password" type="password" className="ui-input mt-1" />
                                     {errors?.user_password ? <p className="mt-1 text-xs text-rose-600">{errors.user_password}</p> : null}
                                     <p className="mt-1 text-xs text-slate-500">Set a password to create sales portal login.</p>
                                 </div>
@@ -181,7 +181,7 @@ export default function Form({
                                     type="file"
                                     accept=".jpg,.jpeg,.png,.webp"
                                     onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                                 {avatarUrl ? (
                                     <img src={avatarUrl} alt="Avatar" className="mt-2 h-16 w-16 rounded-full border border-slate-200 object-cover" />
@@ -198,7 +198,7 @@ export default function Form({
                                     name="nid_file"
                                     type="file"
                                     accept=".jpg,.jpeg,.png,.webp"
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                                 {documents?.nid_url ? (
                                     <div className="mt-2 flex items-center gap-3">
@@ -222,7 +222,7 @@ export default function Form({
                                     name="cv_file"
                                     type="file"
                                     accept=".pdf"
-                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="ui-input mt-1"
                                 />
                                 {documents?.cv_url ? (
                                     <div className="mt-2 flex items-center gap-3">

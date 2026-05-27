@@ -15,8 +15,82 @@ const DATETIME_TOKEN_TEST_REGEX = /\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2
 const DATETIME_SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'OPTION', 'SELECT']);
 const COMPONENT_TITLE_MAP = {};
 
+const INERTIA_LINK_SELECTOR = 'a[data-inertia-link="true"]';
+
+const shouldInterceptInertiaLink = (event, anchor) => {
+    if (!anchor || event.defaultPrevented) {
+        return false;
+    }
+
+    if (event.button !== 0) {
+        return false;
+    }
+
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return false;
+    }
+
+    if (anchor.getAttribute('target') === '_blank' || anchor.hasAttribute('download')) {
+        return false;
+    }
+
+    if (anchor.getAttribute('data-native') === 'true') {
+        return false;
+    }
+
+    const href = anchor.getAttribute('href');
+    if (!href || href.startsWith('#')) {
+        return false;
+    }
+
+    let targetUrl;
+    try {
+        targetUrl = new URL(anchor.href, window.location.origin);
+    } catch (error) {
+        return false;
+    }
+
+    if (targetUrl.origin !== window.location.origin) {
+        return false;
+    }
+
+    return true;
+};
+
+const enableInertiaNavigationBridge = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return;
+    }
+
+    if (window.__inertiaLinkBridgeEnabled) {
+        return;
+    }
+
+    const onDocumentClick = (event) => {
+        const anchor = event.target instanceof Element
+            ? event.target.closest(INERTIA_LINK_SELECTOR)
+            : null;
+
+        if (!shouldInterceptInertiaLink(event, anchor)) {
+            return;
+        }
+
+        const destination = new URL(anchor.href, window.location.origin);
+        const href = `${destination.pathname}${destination.search}${destination.hash}`;
+
+        event.preventDefault();
+        inertiaRouter.visit(href, {
+            preserveScroll: true,
+        });
+    };
+
+    document.addEventListener('click', onDocumentClick);
+    window.__inertiaLinkBridgeEnabled = true;
+};
+
 if (typeof window !== 'undefined') {
     window.__inertiaRouter = inertiaRouter;
+    enableInertiaNavigationBridge();
 }
 
 const normalizeDisplayDateValue = (value) => {

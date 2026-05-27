@@ -392,7 +392,7 @@ export default function TaskChat({
                             onChange={(event) => setBody(event.target.value)}
                             rows={1}
                             placeholder="Write a message"
-                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                            className="ui-input"
                         />
                         <input
                             ref={fileInputRef}

@@ -58,7 +58,7 @@ export default function Create({
                 <a
                     href={routes?.index}
                     data-native="true"
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                    className="ui-btn-secondary"
                 >
                     Back to invoices
                 </a>
@@ -88,7 +88,7 @@ export default function Create({
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 defaultValue={fields?.issue_date || ''}
                                 required
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                             {errors?.issue_date ? <p className="mt-1 text-xs text-rose-600">{errors.issue_date}</p> : null}
                         </div>
@@ -99,7 +99,7 @@ export default function Create({
                                 type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
                                 defaultValue={fields?.due_date || ''}
                                 required
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-input mt-2"
                             />
                             {errors?.due_date ? <p className="mt-1 text-xs text-rose-600">{errors.due_date}</p> : null}
                         </div>
@@ -109,7 +109,7 @@ export default function Create({
                                 name="notes"
                                 rows={1}
                                 defaultValue={fields?.notes || ''}
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                className="ui-textarea mt-2"
                             />
                         </div>
                     </div>
@@ -120,7 +120,7 @@ export default function Create({
                             <button
                                 type="button"
                                 onClick={addItem}
-                                className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                                className="ui-btn-secondary"
                             >
                                 Add item
                             </button>
@@ -137,7 +137,7 @@ export default function Create({
                                             value={item.description}
                                             onChange={(event) => updateItem(index, 'description', event.target.value)}
                                             required
-                                            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                            className="ui-input mt-1"
                                         />
                                     </div>
                                     <div className="md:col-span-2">
@@ -149,7 +149,7 @@ export default function Create({
                                             value={item.quantity}
                                             onChange={(event) => updateItem(index, 'quantity', event.target.value)}
                                             required
-                                            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                            className="ui-input mt-1"
                                         />
                                     </div>
                                     <div className="md:col-span-2">
@@ -162,14 +162,14 @@ export default function Create({
                                             value={item.unit_price}
                                             onChange={(event) => updateItem(index, 'unit_price', event.target.value)}
                                             required
-                                            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                            className="ui-input mt-1"
                                         />
                                     </div>
                                     <div className="md:col-span-1 flex items-end">
                                         <button
                                             type="button"
                                             onClick={() => removeItem(index)}
-                                            className="mt-7 rounded-full border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:border-rose-300"
+                                            className="ui-btn-danger mt-7"
                                         >
                                             Remove
                                         </button>
@@ -180,10 +180,10 @@ export default function Create({
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">
+                        <button type="submit" className="ui-btn-primary">
                             Create invoice
                         </button>
-                        <a href={routes?.index} data-native="true" className="text-sm text-slate-600 hover:text-teal-600">
+                        <a href={routes?.index} data-native="true" className="ui-btn-secondary">
                             Cancel
                         </a>
                     </div>

@@ -286,7 +286,7 @@ export default function Show({
                             <input type="hidden" name="project_id" value={sourceType === 'project' ? sourceId : ''} />
                             <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Amount</label>
-                                <input name="amount" type="number" step="0.01" min="0" required value={amountInput} onChange={(event) => setAmountInput(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                                <input name="amount" type="number" step="0.01" min="0" required value={amountInput} onChange={(event) => setAmountInput(event.target.value)} className="ui-input mt-1" />
                             </div>
                             <div className="md:col-span-2">
                                 <label className="text-xs text-slate-500">Method</label>
@@ -309,8 +309,8 @@ export default function Show({
                             ) : (
                                 <div className="md:col-span-8 text-xs text-amber-700">No source found. Add project or products/services assignment first.</div>
                             )}
-                            <div className="md:col-span-4"><label className="text-xs text-slate-500">Reference</label><input name="reference" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
-                            <div className="md:col-span-4"><label className="text-xs text-slate-500">Note</label><input name="note" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /></div>
+                            <div className="md:col-span-4"><label className="text-xs text-slate-500">Reference</label><input name="reference" className="ui-input mt-1" /></div>
+                            <div className="md:col-span-4"><label className="text-xs text-slate-500">Note</label><input name="note" className="ui-input mt-1" /></div>
                             <div className="md:col-span-8"><button type="submit" disabled={!selectedSource} className="rounded-full bg-sky-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400">Save company advance</button></div>
                         </form>
                     </div>

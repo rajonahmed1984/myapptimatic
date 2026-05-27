@@ -43,25 +43,25 @@ export default function Edit({ user = {}, sales_rep = {}, form = {} }) {
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Full name</label>
-                            <input name="name" defaultValue={user?.name || ''} required className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="name" defaultValue={user?.name || ''} required className="ui-input mt-2" />
                             {errors?.name ? <div className="mt-1 text-xs text-rose-600">{errors.name}</div> : null}
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Email</label>
-                            <input name="email" type="email" defaultValue={user?.email || ''} required className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="email" type="email" defaultValue={user?.email || ''} required className="ui-input mt-2" />
                             {errors?.email ? <div className="mt-1 text-xs text-rose-600">{errors.email}</div> : null}
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Phone</label>
-                            <input name="phone" type="text" defaultValue={sales_rep?.phone || ''} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" />
+                            <input name="phone" type="text" defaultValue={sales_rep?.phone || ''} className="ui-input mt-2" />
                             {errors?.phone ? <div className="mt-1 text-xs text-rose-600">{errors.phone}</div> : null}
                         </div>
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-3">
-                        <div><label className="text-sm text-slate-600">Current password</label><input name="current_password" type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" /></div>
-                        <div><label className="text-sm text-slate-600">New password</label><input name="password" type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" /></div>
-                        <div><label className="text-sm text-slate-600">Confirm new password</label><input name="password_confirmation" type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm" /></div>
+                        <div><label className="text-sm text-slate-600">Current password</label><input name="current_password" type="password" className="ui-input mt-2" /></div>
+                        <div><label className="text-sm text-slate-600">New password</label><input name="password" type="password" className="ui-input mt-2" /></div>
+                        <div><label className="text-sm text-slate-600">Confirm new password</label><input name="password_confirmation" type="password" className="ui-input mt-2" /></div>
                     </div>
 
                     <div className="flex justify-end">

@@ -442,11 +442,11 @@ export default function Show({
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Amount</div>
-                                <input type="number" name="amount" step="0.01" min="0.01" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="0.00" required />
+                                <input type="number" name="amount" step="0.01" min="0.01" className="ui-input" placeholder="0.00" required />
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Currency</div>
-                                <input type="text" name="currency" defaultValue={summary?.currency || 'BDT'} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                                <input type="text" name="currency" defaultValue={summary?.currency || 'BDT'} className="ui-input" />
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Method</div>
@@ -464,20 +464,20 @@ export default function Show({
                                     submitFormat="iso"
                                     label="Payment Date"
                                     labelClassName="mb-1 text-sm text-slate-600"
-                                    inputClassName="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    inputClassName="ui-input"
                                 />
                             </div>
                             <div>
                                 <div className="mb-1 text-sm text-slate-600">Reference</div>
-                                <input type="text" name="reference" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Txn / Note" />
+                                <input type="text" name="reference" className="ui-input" placeholder="Txn / Note" />
                             </div>
                             <div className="md:col-span-2">
                                 <div className="mb-1 text-sm text-slate-600">Payment Proof</div>
-                                <input type="file" name="payment_proof" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5" />
+                                <input type="file" name="payment_proof" className="ui-input file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5" />
                             </div>
                             <div className="md:col-span-2">
                                 <div className="mb-1 text-sm text-slate-600">Note</div>
-                                <input type="text" name="note" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Optional note" />
+                                <input type="text" name="note" className="ui-input" placeholder="Optional note" />
                             </div>
                         </div>
 
@@ -632,7 +632,7 @@ export default function Show({
                                     min="0.01"
                                     value={salaryAdvanceForm.amount}
                                     onChange={(event) => updateSalaryAdvanceField('amount', event.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input"
                                     placeholder="0.00"
                                     required
                                 />
@@ -644,7 +644,7 @@ export default function Show({
                                     name="currency"
                                     value={salaryAdvanceForm.currency}
                                     onChange={(event) => updateSalaryAdvanceField('currency', event.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input"
                                 />
                             </div>
                             <div>
@@ -675,7 +675,7 @@ export default function Show({
                                     name="reference"
                                     value={salaryAdvanceForm.reference}
                                     onChange={(event) => updateSalaryAdvanceField('reference', event.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input"
                                     placeholder="Txn / Note"
                                 />
                             </div>
@@ -687,12 +687,12 @@ export default function Show({
                                     submitFormat="iso"
                                     label="Payment Date"
                                     labelClassName="mb-1 text-sm text-slate-600"
-                                    inputClassName="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    inputClassName="ui-input"
                                 />
                             </div>
                             <div className="md:col-span-2">
                                 <div className="mb-1 text-sm text-slate-600">Payment Proof</div>
-                                <input type="file" name="payment_proof" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5" />
+                                <input type="file" name="payment_proof" className="ui-input file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5" />
                             </div>
                             <div className="md:col-span-2">
                                 <div className="mb-1 text-sm text-slate-600">Note</div>
@@ -701,7 +701,7 @@ export default function Show({
                                     name="note"
                                     value={salaryAdvanceForm.note}
                                     onChange={(event) => updateSalaryAdvanceField('note', event.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                                    className="ui-input"
                                     placeholder="Optional note"
                                 />
                             </div>

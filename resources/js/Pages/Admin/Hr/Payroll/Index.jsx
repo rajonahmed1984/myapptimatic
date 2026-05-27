@@ -59,7 +59,7 @@ export default function Index({
                 <form method="GET" action={routes?.index} data-native="true" className="mb-5 grid gap-3 md:grid-cols-4">
                     <div>
                         <label htmlFor="periodKeyFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Period</label>
-                        <input id="periodKeyFilter" type="month" name="period_key" defaultValue={selectedPeriodKey || ''} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input id="periodKeyFilter" type="month" name="period_key" defaultValue={selectedPeriodKey || ''} className="ui-input mt-1" />
                     </div>
                     <div>
                         <label htmlFor="periodStatusFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>

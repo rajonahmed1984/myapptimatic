@@ -79,7 +79,7 @@ export default function Index({ metrics = {}, filters = {}, aiReady = false, rou
                                 endLabel="End date"
                                 className="md:col-span-2"
                                 gridClassName="grid gap-4 md:grid-cols-2"
-                                inputClassName="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                inputClassName="mt-2 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                             />
                             <div>
                                 <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Projection days</label>
@@ -89,7 +89,7 @@ export default function Index({ metrics = {}, filters = {}, aiReady = false, rou
                                     max="120"
                                     name="projection_days"
                                     defaultValue={filters?.projection_days || 30}
-                                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    className="mt-2 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                                 />
                                 <div className="mt-1 text-xs text-slate-400">Future due window for income/expense projection.</div>
                             </div>

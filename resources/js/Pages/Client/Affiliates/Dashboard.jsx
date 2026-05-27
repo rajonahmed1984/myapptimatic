@@ -60,7 +60,7 @@ export default function Dashboard({ affiliate = {}, stats = {}, routes = {} }) {
             <div className="card mt-6 p-6">
                 <h2 className="text-lg font-semibold text-slate-900">Your Referral Link</h2>
                 <div className="mt-4 flex gap-3">
-                    <input id="referral-link" type="text" readOnly value={affiliate.referral_link || ''} className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm" />
+                    <input id="referral-link" type="text" readOnly value={affiliate.referral_link || ''} className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 h-8 text-xs" />
                     <button onClick={copyLink} type="button" className="rounded-full bg-teal-500 px-6 py-2 text-sm font-semibold text-white hover:bg-teal-400">
                         Copy Link
                     </button>

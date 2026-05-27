@@ -285,22 +285,22 @@ export default function Show({
                             <div className="md:col-span-3 text-xs uppercase tracking-[0.25em] text-slate-500">Identity</div>
                             <div>
                                 <label className="text-sm text-slate-600">Full Name</label>
-                                <input name="name" defaultValue={profileDefaults?.name || ''} required className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                <input name="name" defaultValue={profileDefaults?.name || ''} required className="ui-input mt-2" />
                                 {errors?.name ? <p className="mt-1 text-xs text-rose-500">{errors.name}</p> : null}
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Company Name</label>
-                                <input name="company_name" defaultValue={profileDefaults?.company_name || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                <input name="company_name" defaultValue={profileDefaults?.company_name || ''} className="ui-input mt-2" />
                                 {errors?.company_name ? <p className="mt-1 text-xs text-rose-500">{errors.company_name}</p> : null}
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Email Address</label>
-                                <input name="email" type="email" defaultValue={profileDefaults?.email || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                <input name="email" type="email" defaultValue={profileDefaults?.email || ''} className="ui-input mt-2" />
                                 {errors?.email ? <p className="mt-1 text-xs text-rose-500">{errors.email}</p> : null}
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Phone Number</label>
-                                <input name="phone" defaultValue={profileDefaults?.phone || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                <input name="phone" defaultValue={profileDefaults?.phone || ''} className="ui-input mt-2" />
                                 {errors?.phone ? <p className="mt-1 text-xs text-rose-500">{errors.phone}</p> : null}
                             </div>
                             <div>
@@ -350,12 +350,12 @@ export default function Show({
                             </div>
                             <div className="md:col-span-2">
                                 <label className="text-sm text-slate-600">Address</label>
-                                <textarea name="address" rows={1} defaultValue={profileDefaults?.address || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                <textarea name="address" rows={1} defaultValue={profileDefaults?.address || ''} className="ui-textarea mt-2" />
                                 {errors?.address ? <p className="mt-1 text-xs text-rose-500">{errors.address}</p> : null}
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Notes</label>
-                                <textarea name="notes" rows={1} defaultValue={profileDefaults?.notes || ''} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm" />
+                                <textarea name="notes" rows={1} defaultValue={profileDefaults?.notes || ''} className="ui-textarea mt-2" />
                                 {errors?.notes ? <p className="mt-1 text-xs text-rose-500">{errors.notes}</p> : null}
                             </div>
                             <div>
@@ -364,7 +364,7 @@ export default function Show({
                                     name="client_password"
                                     type="password"
                                     autoComplete="new-password"
-                                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                    className="ui-input mt-2"
                                 />
                                 <p className="mt-1 text-xs text-slate-500">Leave blank if you do not want to change password.</p>
                                 {errors?.client_password ? <p className="mt-1 text-xs text-rose-500">{errors.client_password}</p> : null}
@@ -375,7 +375,7 @@ export default function Show({
                                     name="client_password_confirmation"
                                     type="password"
                                     autoComplete="new-password"
-                                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                                    className="ui-input mt-2"
                                 />
                             </div>
                             <div>
@@ -392,10 +392,10 @@ export default function Show({
                             </div>
 
                             <div className="md:col-span-3 flex items-center justify-end gap-3">
-                                <a href={routes?.edit} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">
+                                <a href={routes?.edit} data-native="true" className="ui-btn-secondary">
                                     Open full edit page
                                 </a>
-                                <button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">
+                                <button type="submit" className="ui-btn-primary">
                                     Update customer
                                 </button>
                             </div>
@@ -475,11 +475,11 @@ export default function Show({
                                     placeholder="Select a project"
                                 />
                             </div>
-                            <div><label className="text-slate-600">Name</label><input name="name" defaultValue={projectUserDefaults?.name || ''} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2" /></div>
-                            <div><label className="text-slate-600">Email</label><input name="email" type="email" defaultValue={projectUserDefaults?.email || ''} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2" /></div>
-                            <div><label className="text-slate-600">Password</label><input name="password" type="password" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2" /></div>
-                            <div className="md:col-span-2"><label className="text-slate-600">Confirm Password</label><input name="password_confirmation" type="password" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2" /></div>
-                            <div className="md:col-span-2 flex justify-end"><button type="submit" className="rounded-full bg-teal-500 px-5 py-2 text-sm font-semibold text-white">Create project login</button></div>
+                            <div><label className="text-slate-600">Name</label><input name="name" defaultValue={projectUserDefaults?.name || ''} className="ui-input mt-2" /></div>
+                            <div><label className="text-slate-600">Email</label><input name="email" type="email" defaultValue={projectUserDefaults?.email || ''} className="ui-input mt-2" /></div>
+                            <div><label className="text-slate-600">Password</label><input name="password" type="password" className="ui-input mt-2" /></div>
+                            <div className="md:col-span-2"><label className="text-slate-600">Confirm Password</label><input name="password_confirmation" type="password" className="ui-input mt-2" /></div>
+                            <div className="md:col-span-2 flex justify-end"><button type="submit" className="ui-btn-primary">Create project login</button></div>
                         </form>
                     </div>
                 ) : null}
@@ -488,7 +488,7 @@ export default function Show({
                     <>
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="text-sm text-slate-500">Add a product/service for this customer with prorated checkout preview.</p>
-                            <button type="button" onClick={() => setShowServiceForm((prev) => !prev)} className="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">Add product/service for customer</button>
+                            <button type="button" onClick={() => setShowServiceForm((prev) => !prev)} className="ui-btn-primary">Add product/service for customer</button>
                         </div>
 
                         {showServiceForm ? (
@@ -513,7 +513,7 @@ export default function Show({
                                         submitFormat="iso"
                                         label="Start Date"
                                         labelClassName="mb-1 block text-sm font-medium text-slate-700"
-                                        inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2"
+                                        inputClassName="ui-input"
                                     />
                                 </div>
                                 <div>
@@ -530,7 +530,7 @@ export default function Show({
                                 {salesRepId ? (
                                     <div>
                                         <label className="mb-1 block text-sm font-medium text-slate-700">Sales Rep Commission</label>
-                                        <input name="sales_rep_commission_amount" type="number" min="0" step="0.01" defaultValue={serviceDefaults?.sales_rep_commission_amount || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                                        <input name="sales_rep_commission_amount" type="number" min="0" step="0.01" defaultValue={serviceDefaults?.sales_rep_commission_amount || ''} className="ui-input" />
                                     </div>
                                 ) : null}
                                 <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
@@ -545,8 +545,8 @@ export default function Show({
                                     </div>
                                 </div>
                                 <div className="md:col-span-2 flex items-center justify-end gap-3">
-                                    <button type="button" onClick={() => setShowServiceForm(false)} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">Cancel</button>
-                                    <button type="submit" className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white">Add Product/Service</button>
+                                    <button type="button" onClick={() => setShowServiceForm(false)} className="ui-btn-secondary">Cancel</button>
+                                    <button type="submit" className="ui-btn-primary">Add Product/Service</button>
                                 </div>
                             </form>
                         ) : null}
@@ -753,7 +753,12 @@ export default function Show({
                                                     action={log.resend_url}
                                                     data-native="true"
                                                     className="inline mr-2"
-                                                    onSubmit={() => {
+                                                    onSubmit={(event) => {
+                                                        if (resendingById[log.id]) {
+                                                            event.preventDefault();
+                                                            return;
+                                                        }
+
                                                         setResendingById((current) => ({
                                                             ...current,
                                                             [log.id]: true,
