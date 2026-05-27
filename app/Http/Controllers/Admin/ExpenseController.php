@@ -54,7 +54,7 @@ class ExpenseController extends Controller
 
         $entries = $entries->sortByDesc(fn ($entry) => $entry['expense_date'] ?? now());
 
-        $expenses = $this->paginateEntries($entries, 20, $request);
+        $expenses = $this->paginateEntries($entries, 30, $request);
 
         $totalAmount = (float) $entries->sum('amount');
 
@@ -146,8 +146,18 @@ class ExpenseController extends Controller
             ->where('type', 'one_time')
             ->latest('expense_date')
             ->latest('id')
-            ->limit(15)
-            ->get();
+            ->paginate(30)
+            ->withQueryString();
+
+        $paginationLinks = $oneTimeExpenses->linkCollection()
+            ->map(function ($link) {
+                return [
+                    'url' => $link['url'],
+                    'label' => (string) $link['label'],
+                    'active' => (bool) $link['active'],
+                ];
+            })
+            ->all();
 
         $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
         if (! Currency::isAllowed($currencyCode)) {
@@ -156,7 +166,7 @@ class ExpenseController extends Controller
 
         $paymentMethods = PaymentMethod::dropdownOptions();
 
-        $oneTimeItems = $oneTimeExpenses->map(function (Expense $expense) use ($currencyCode) {
+        $oneTimeItems = collect($oneTimeExpenses->items())->map(function (Expense $expense) use ($currencyCode) {
             $invoice = $expense->invoice;
             $invoiceAmount = round((float) ($invoice->amount ?? 0), 2, PHP_ROUND_HALF_UP);
             $paidAmount = round((float) ($invoice->payments_sum_amount ?? 0), 2, PHP_ROUND_HALF_UP);
@@ -207,6 +217,17 @@ class ExpenseController extends Controller
                 'name' => $category->name,
             ])->values(),
             'oneTimeExpenses' => $oneTimeItems,
+            'pagination' => [
+                'has_pages' => $oneTimeExpenses->hasPages(),
+                'current_page' => $oneTimeExpenses->currentPage(),
+                'last_page' => $oneTimeExpenses->lastPage(),
+                'from' => $oneTimeExpenses->firstItem(),
+                'to' => $oneTimeExpenses->lastItem(),
+                'total' => $oneTimeExpenses->total(),
+                'prev_page_url' => $oneTimeExpenses->previousPageUrl(),
+                'next_page_url' => $oneTimeExpenses->nextPageUrl(),
+            ],
+            'pagination_links' => $paginationLinks,
             'paymentMethods' => $paymentMethods->map(fn ($method) => [
                 'code' => $method->code,
                 'name' => $method->name,
@@ -221,6 +242,7 @@ class ExpenseController extends Controller
             ],
             'routes' => [
                 'index' => route('admin.expenses.index'),
+                'index_one_time' => route('admin.expenses.index', ['type' => 'one_time', 'sources' => ['manual']]),
                 'store' => route('admin.expenses.store'),
                 'invoice_store' => route('admin.expenses.invoices.store'),
             ],

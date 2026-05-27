@@ -17,6 +17,8 @@ export default function Create({
     paymentMethods = [],
     form = {},
     routes = {},
+    pagination = {},
+    pagination_links = [],
 }) {
     const { props } = usePage();
     const errors = props?.errors || {};
@@ -123,7 +125,7 @@ export default function Create({
                         <div className="text-sm text-slate-500">Latest {oneTimeExpenses.length} entries</div>
                     </div>
                     <a
-                        href={routes?.index}
+                        href={routes?.index_one_time || routes?.index}
                         data-native="true"
                         className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
                     >
@@ -253,6 +255,32 @@ export default function Create({
                         </tbody>
                     </table>
                 </div>
+
+                {pagination_links.length > 0 ? (
+                    <div className="mt-6 flex flex-wrap items-center justify-end gap-2 text-sm">
+                        {pagination_links.map((link, index) =>
+                            link.url ? (
+                                <a
+                                    key={`${index}-${link.label}`}
+                                    href={link.url}
+                                    data-native="true"
+                                    className={`rounded-full border px-3 py-1 text-xs ${
+                                        link.active
+                                            ? 'border-slate-900 bg-slate-900 text-white font-semibold'
+                                            : 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600'
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ) : (
+                                <span
+                                    key={`${index}-${link.label}`}
+                                    className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-300"
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ),
+                        )}
+                    </div>
+                ) : null}
             </div>
 
             <div className={`fixed inset-0 z-50 ${showAddModal ? '' : 'hidden'}`}>

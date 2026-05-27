@@ -1074,6 +1074,7 @@ class EmployeeController extends Controller
             if ($recipientEmails->isNotEmpty()) {
                 $emailLogs = SystemLog::query()
                     ->where('category', 'email')
+                    ->where('message', '!=', 'Email sending.')
                     ->where(function ($query) use ($recipientEmails) {
                         foreach ($recipientEmails as $email) {
                             $query->orWhereJsonContains('context->to', $email);

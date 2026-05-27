@@ -8,7 +8,6 @@ use App\Http\Controllers\SalesRep\ChatController as SalesRepChatController;
 use App\Http\Controllers\SalesRep\PayoutController as SalesRepPayoutController;
 use App\Http\Controllers\SalesRep\ProfileController as SalesRepProfileController;
 use App\Http\Controllers\SalesRep\TasksController as SalesRepTasksController;
-use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskViewController;
@@ -113,8 +112,6 @@ Route::middleware([
             });
         Route::get('/profile', [SalesRepProfileController::class, 'edit'])->middleware(HandleInertiaRequests::class)->name('profile.edit');
         Route::put('/profile', [SalesRepProfileController::class, 'update'])->name('profile.update');
-        Route::post('/system/cache/clear', SystemCacheController::class)
-            ->name('system.cache.clear');
         Route::get('/earnings', [SalesRepEarningController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('earnings.index');
         Route::get('/payouts', [SalesRepPayoutController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('payouts.index');
         Route::get('/projects', [\App\Http\Controllers\SalesRep\ProjectController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('projects.index');

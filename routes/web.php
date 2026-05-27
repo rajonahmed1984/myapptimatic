@@ -8,7 +8,6 @@ use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\AiBusinessStatusController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
-use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerProjectUserController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -374,7 +373,6 @@ Route::middleware([
             ->middleware(HandleInertiaRequests::class)
             ->name('chats.index');
         Route::redirect('/chat', '/client/chats');
-        Route::post('/system/cache/clear', SystemCacheController::class)->name('system.cache.clear');
         Route::get('/orders', [ClientOrderController::class, 'index'])
             ->middleware('project.financial')
             ->middleware(HandleInertiaRequests::class)

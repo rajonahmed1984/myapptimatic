@@ -9,7 +9,6 @@ use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\AiBusinessStatusController;
 use App\Http\Controllers\Admin\MailAccountController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
-use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerProjectUserController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -318,8 +317,6 @@ Route::middleware([
     Route::get('/automation-status', [AutomationStatusController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('automation-status');
-    Route::post('/system/cache/clear', SystemCacheController::class)
-        ->name('system.cache.clear');
     Route::get('/profile', [AdminProfileController::class, 'edit'])
         ->middleware(HandleInertiaRequests::class)
         ->name('profile.edit');

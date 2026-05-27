@@ -61,7 +61,7 @@ class LicenseController extends Controller
                 });
             })
             ->latest()
-            ->paginate(25)
+            ->paginate(30)
             ->withQueryString();
 
         $accessBlockedCustomers = [];

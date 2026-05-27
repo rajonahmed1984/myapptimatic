@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import DailyCalendarWidget from '@/Components/DailyCalendarWidget';
 
 const CHART_FRAME = {
     width: 1120,
@@ -911,6 +912,10 @@ export default function Dashboard({
                 </div>
             </div>
 
+            <div className="mt-8">
+                <DailyCalendarWidget />
+            </div>
+
             {showTasksWidget ? (
                 <div className="mt-8 card p-6">
                     <div>
@@ -946,6 +951,10 @@ export default function Dashboard({
                             labelClassName="text-emerald-700"
                             tone="text-emerald-700"
                         />
+                    </div>
+
+                    <div className="mt-6">
+                        <DailyCalendarWidget />
                     </div>
 
                     <div className="mt-4 grid gap-4 lg:grid-cols-2">

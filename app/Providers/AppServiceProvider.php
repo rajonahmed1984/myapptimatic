@@ -414,7 +414,7 @@ class AppServiceProvider extends ServiceProvider
             $mailer = property_exists($event, 'mailer') ? $event->mailer : null;
             $category = $this->resolveCategoryForMessage($event->message);
             $this->applyFromRoutingForCategory($event->message, $category);
-            $this->logEmailEvent('Email sending.', $event->message, $mailer, $category, 'info');
+            // $this->logEmailEvent('Email sending.', $event->message, $mailer, $category, 'info');
         });
 
         Event::listen(MessageSent::class, function (MessageSent $event) {

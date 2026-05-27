@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DailyCalendarWidget from '@/Components/DailyCalendarWidget';
 
 function TaskWidget({ showTasksWidget, taskSummary = {}, openTasks = [], inProgressTasks = [] }) {
     const { csrf_token: csrfToken } = usePage().props;
@@ -192,6 +193,10 @@ export default function Index({
                 </div>
 
                 <TaskWidget showTasksWidget={showTasksWidget} taskSummary={taskSummary || {}} openTasks={openTasks} inProgressTasks={inProgressTasks} />
+
+                <div>
+                    <DailyCalendarWidget />
+                </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
                     <div className={`card p-4 ${maintenanceRenewal ? 'md:col-span-2' : 'md:col-span-3'}`}>

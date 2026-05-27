@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DailyCalendarWidget from '@/Components/DailyCalendarWidget';
 
 const formatSeconds = (seconds) => {
     const total = Math.max(0, Number(seconds || 0));
@@ -256,6 +257,10 @@ export default function Index({
                         </div>
                     </div>
                 ) : null}
+
+                <div>
+                    <DailyCalendarWidget />
+                </div>
 
                 {tasks_widget?.show ? (
                     <div className="card p-6">

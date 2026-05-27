@@ -148,13 +148,20 @@ export default function Index({
                                         </a>
                                     </td>
                                     <td className="px-4 py-3 text-slate-500">
-                                        {invoice.customer_route ? (
-                                            <a href={invoice.customer_route} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                                {invoice.customer_name}
-                                            </a>
-                                        ) : (
-                                            invoice.customer_name
-                                        )}
+                                        <div className="font-semibold text-slate-900">
+                                            {invoice.customer_route ? (
+                                                <a href={invoice.customer_route} data-native="true" className="text-teal-600 hover:text-teal-500">
+                                                    {invoice.customer_name}
+                                                </a>
+                                            ) : (
+                                                invoice.customer_name
+                                            )}
+                                        </div>
+                                        {invoice.customer_company_name ? (
+                                            <div className="text-xs text-slate-400 mt-0.5 font-normal">
+                                                {invoice.customer_company_name}
+                                            </div>
+                                        ) : null}
                                     </td>
                                     <td className="px-4 py-3 text-slate-700">
                                         {invoice.total_display}

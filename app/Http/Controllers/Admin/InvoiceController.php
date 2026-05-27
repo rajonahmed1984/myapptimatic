@@ -1290,7 +1290,7 @@ class InvoiceController extends Controller
         $invoiceInsights = $this->invoiceInsights((clone $query)->get());
 
         $payload = [
-            'invoices' => $query->paginate(25)->withQueryString(),
+            'invoices' => $query->paginate(30)->withQueryString(),
             'title' => $title,
             'statusFilter' => $status,
             'search' => $search,
@@ -1462,6 +1462,7 @@ class InvoiceController extends Controller
             'id' => $invoice->id,
             'number_display' => is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id,
             'customer_name' => $invoice->customer?->name,
+            'customer_company_name' => $invoice->customer?->company_name,
             'customer_route' => $invoice->customer ? route('admin.customers.show', $invoice->customer) : null,
             'total_display' => sprintf('%s %s', (string) $invoice->currency, number_format((float) $invoice->total, 2)),
             'paid_at_display' => $invoice->paid_at?->format((string) config('app.date_format', 'd-m-Y')) ?? '--',

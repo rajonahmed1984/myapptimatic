@@ -443,6 +443,7 @@ class SalesRepresentativeController extends Controller
             if ($targetEmail !== '') {
                 $emailLogs = SystemLog::query()
                     ->where('category', 'email')
+                    ->where('message', '!=', 'Email sending.')
                     ->latest()
                     ->limit(500)
                     ->get(['id', 'level', 'message', 'context', 'created_at'])

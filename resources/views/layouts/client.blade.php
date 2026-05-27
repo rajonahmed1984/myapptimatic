@@ -185,18 +185,7 @@
                             <div class="text-lg font-semibold text-slate-900" data-current-page-title>@yield('page-title', 'Overview')</div>
                         </div>
                     </div>
-                    <div class="flex flex-wrap items-center gap-3 md:gap-4">
-                        <form method="POST" action="{{ route('client.system.cache.clear') }}" data-native="true">
-                            @csrf
-                            <button
-                                type="submit"
-                                class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
-                                title="Clears Laravel system caches and purges browser storage helpers"
-                            >
-                                Clear caches
-                            </button>
-                        </form>
-                    </div>
+
                 </div>
 
                 @if(session()->has('impersonator_id'))
@@ -316,33 +305,7 @@
         'chatRoute' => route('client.chats.index'),
         'scope' => 'client',
     ])
-    @if(session('cache_cleared'))
-        <script>
-            (async function () {
-                const safeRun = async (fn) => {
-                    try {
-                        await fn();
-                    } catch (error) {
-                        console.warn('Browser purge helper failed', error);
-                    }
-                };
 
-                await safeRun(async () => {
-                    if (window.caches && window.caches.keys) {
-                        const keys = await window.caches.keys();
-                        await Promise.all(keys.map((key) => window.caches.delete(key)));
-                    }
-                });
-
-                try {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                } catch (error) {
-                    console.warn('Storage clear failed', error);
-                }
-            })();
-        </script>
-    @endif
     @include('layouts.partials.delete-confirm-modal')
     @include('layouts.partials.table-responsive')
     <div id="pageScriptStack" hidden aria-hidden="true">

@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
-import LicenseManager from './LicenseManager';
 
 export default function Form({
     pageTitle = 'Subscription',
@@ -266,13 +265,6 @@ export default function Form({
                         </a>
                     </div>
                 </form>
-
-                <LicenseManager
-                    isEdit={is_edit}
-                    licenseManager={license_manager}
-                    errors={errors}
-                    csrfToken={csrf}
-                />
             </div>
         </>
     );

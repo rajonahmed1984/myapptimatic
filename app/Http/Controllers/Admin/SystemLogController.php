@@ -13,6 +13,9 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+
 class SystemLogController extends Controller
 {
     public function index(Request $request, string $type): InertiaResponse
@@ -42,34 +45,48 @@ class SystemLogController extends Controller
             abort(404);
         }
 
-        $context = $systemLog->context ?? [];
-        $recipients = $context['to'] ?? [];
-        $subject = (string) ($context['subject'] ?? '');
-        $html = (string) ($context['html'] ?? '');
-        $text = (string) ($context['text'] ?? '');
+        $lock = Cache::lock('email_resend_lock_' . $systemLog->id, 10);
 
-        if (empty($recipients) || $subject === '' || ($html === '' && $text === '')) {
-            return back()->withErrors(['email' => 'Cannot resend this email log.']);
+        if (!$lock->get()) {
+            return back()->withErrors(['email' => 'An email resend is already in progress. Please wait.']);
         }
 
         try {
-            app(MailSender::class)->sendHtmlText(
-                MailCategory::SYSTEM,
-                $recipients,
-                $subject,
-                $html !== '' ? $html : null,
-                $text !== '' ? $text : null
-            );
+            $context = $systemLog->context ?? [];
+            $recipients = $context['to'] ?? [];
+            $subject = (string) ($context['subject'] ?? '');
+            $html = (string) ($context['html'] ?? '');
+            $text = (string) ($context['text'] ?? '');
+
+            if (empty($recipients) || $subject === '' || ($html === '' && $text === '')) {
+                $lock->release();
+                return back()->withErrors(['email' => 'Cannot resend this email log.']);
+            }
+
+            try {
+                app(MailSender::class)->sendHtmlText(
+                    MailCategory::SYSTEM,
+                    $recipients,
+                    $subject,
+                    $html !== '' ? $html : null,
+                    $text !== '' ? $text : null
+                );
+            } catch (\Throwable $e) {
+                $lock->release();
+                return back()->withErrors(['email' => 'Resend failed: '.$e->getMessage()]);
+            }
+
+            SystemLogger::write('email', 'Email resent.', [
+                'subject' => $subject,
+                'to' => $recipients,
+            ]);
+
+            $lock->release();
+            return back()->with('status', 'Email resent.');
         } catch (\Throwable $e) {
-            return back()->withErrors(['email' => 'Resend failed: '.$e->getMessage()]);
+            $lock->release();
+            throw $e;
         }
-
-        SystemLogger::write('email', 'Email resent.', [
-            'subject' => $subject,
-            'to' => $recipients,
-        ]);
-
-        return back()->with('status', 'Email resent.');
     }
 
     public function destroy(SystemLog $systemLog): RedirectResponse

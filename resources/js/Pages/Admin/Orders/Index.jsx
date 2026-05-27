@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
+import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 const statusClass = (status) => {
     if (status === 'accepted') {
@@ -18,8 +19,15 @@ export default function Index({
     routes = {},
     orders = [],
     pagination = {},
+    search = '',
+    status = '',
 }) {
     const { csrf_token: csrfToken = '' } = usePage().props || {};
+
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: search,
+        url: routes?.index,
+    });
 
     return (
         <>
@@ -29,6 +37,29 @@ export default function Index({
                 <div>
                     <h1 className="text-2xl font-semibold text-slate-900">Orders</h1>
                     <p className="mt-1 text-sm text-slate-500">Review pending orders and manage their status.</p>
+                </div>
+                <div className="w-full max-w-sm">
+                    <form
+                        id="ordersSearchForm"
+                        method="GET"
+                        action={routes?.index}
+                        className="flex items-center gap-3"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitSearch();
+                        }}
+                    >
+                        <div className="relative w-full">
+                            <input
+                                type="text"
+                                name="search"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Search orders..."
+                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm"
+                            />
+                        </div>
+                    </form>
                 </div>
             </div>
 

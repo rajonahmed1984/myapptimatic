@@ -25,21 +25,41 @@ class OrderController extends Controller
     public function index(Request $request): InertiaResponse
     {
         $status = $request->query('status');
+        $search = trim((string) $request->query('search', ''));
         $allowed = ['pending', 'accepted', 'cancelled'];
 
         $ordersQuery = Order::query()
             ->with(['customer', 'plan.product', 'invoice'])
             ->latest();
 
-        if ($status && in_array($status, $allowed, true)) {
+        if ($status === 'pending') {
+            $ordersQuery->pending();
+        } elseif ($status && in_array($status, $allowed, true)) {
             $ordersQuery->where('status', $status);
         }
 
-        $orders = $ordersQuery->paginate(25);
+        if ($search !== '') {
+            $ordersQuery->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function ($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('plan', function ($pq) use ($search) {
+                      $pq->where('name', 'like', "%{$search}%")
+                         ->orWhereHas('product', function ($prodq) use ($search) {
+                             $prodq->where('name', 'like', "%{$search}%");
+                         });
+                  });
+            });
+        }
+
+        $orders = $ordersQuery->paginate(30)->withQueryString();
 
         return Inertia::render(
             'Admin/Orders/Index',
-            $this->indexInertiaProps($orders, $status)
+            $this->indexInertiaProps($orders, $status, $search)
         );
     }
 
@@ -410,13 +430,14 @@ class OrderController extends Controller
         return $value;
     }
 
-    private function indexInertiaProps(LengthAwarePaginator $orders, ?string $status): array
+    private function indexInertiaProps(LengthAwarePaginator $orders, ?string $status, ?string $search = ''): array
     {
         $dateFormat = config('app.date_format', 'd-m-Y');
 
         return [
             'pageTitle' => 'Orders',
             'status' => (string) ($status ?? ''),
+            'search' => (string) ($search ?? ''),
             'routes' => [
                 'index' => route('admin.orders.index'),
             ],

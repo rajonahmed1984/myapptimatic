@@ -88,4 +88,9 @@ class Order extends Model
 
         return $prefix.$next;
     }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
 }

@@ -74,7 +74,7 @@ class CustomerController extends Controller
                 $query->where('status', 'active');
             }])
             ->latest()
-            ->paginate(25)
+            ->paginate(30)
             ->withQueryString();
 
         $loginStatuses = $this->resolveCustomerLoginStatuses($customers);
@@ -288,6 +288,7 @@ class CustomerController extends Controller
         if ($tab === 'emails' && $customer->email) {
             $emailLogs = SystemLog::query()
                 ->where('category', 'email')
+                ->where('message', '!=', 'Email sending.')
                 ->whereJsonContains('context->to', strtolower($customer->email))
                 ->latest()
                 ->take(200)

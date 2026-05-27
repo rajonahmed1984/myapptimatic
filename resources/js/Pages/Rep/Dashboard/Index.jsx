@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DailyCalendarWidget from '@/Components/DailyCalendarWidget';
 
 export default function Index({
     rep = {},
@@ -27,6 +28,10 @@ export default function Index({
                     <div className="rounded-2xl border border-slate-200 bg-white/80 p-4"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Total earned</div><div className="mt-2 text-2xl font-semibold text-slate-900">{Number(balance?.total_earned || 0).toFixed(2)}</div></div>
                     <div className="rounded-2xl border border-slate-200 bg-white/80 p-4"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Earned this month</div><div className="mt-2 text-2xl font-semibold text-slate-900">{Number(earned_this_month || 0).toFixed(2)}</div></div>
                     <div className="rounded-2xl border border-slate-200 bg-white/80 p-4"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Paid this month</div><div className="mt-2 text-2xl font-semibold text-slate-900">{Number(paid_this_month || 0).toFixed(2)}</div></div>
+                </div>
+
+                <div>
+                    <DailyCalendarWidget />
                 </div>
 
                 {tasks_widget?.show ? (
