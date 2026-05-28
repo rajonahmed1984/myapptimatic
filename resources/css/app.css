@@ -482,24 +482,24 @@ a.bg-rose-500:hover, button.bg-rose-500:hover {
 
 /* 2. Data Table "Actions" Column Buttons Exception */
 /* Keep action cells as table-cells, but center all action items in the middle of each row. */
-table td:last-child {
+table td:last-child:has(a, button, form) {
     display: table-cell !important;
     vertical-align: middle !important;
     text-align: center !important;
     white-space: nowrap !important;
 }
 
-table td:last-child div,
-table td:last-child form {
+table td:last-child:has(a, button, form) div,
+table td:last-child:has(a, button, form) form {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 0.75rem !important;
 }
 
-table td:last-child a,
-table td:last-child button,
-table td:last-child form button {
+table td:last-child:has(a, button, form) a,
+table td:last-child:has(a, button, form) button,
+table td:last-child:has(a, button, form) form button {
     display: inline !important;
     border: none !important;
     background: none !important;
@@ -517,8 +517,8 @@ table td:last-child form button {
 }
 
 /* Clean text anchor hover states with minimal underline */
-table td:last-child a:hover,
-table td:last-child button:hover {
+table td:last-child:has(a, button, form) a:hover,
+table td:last-child:has(a, button, form) button:hover {
     background: none !important;
     background-color: transparent !important;
     border: none !important;
@@ -527,27 +527,37 @@ table td:last-child button:hover {
 }
 
 /* Specific standard color hover states for Action links */
-table td:last-child a.text-teal-600,
-table td:last-child button.text-teal-600 {
+table td:last-child:has(a, button, form) a.text-teal-600,
+table td:last-child:has(a, button, form) button.text-teal-600 {
     color: #0d9488 !important;
 }
-table td:last-child a.text-teal-600:hover,
-table td:last-child button.text-teal-600:hover {
+table td:last-child:has(a, button, form) a.text-teal-600:hover,
+table td:last-child:has(a, button, form) button.text-teal-600:hover {
     color: #0f766e !important;
 }
 
-table td:last-child a.text-rose-600,
-table td:last-child button.text-rose-600 {
+table td:last-child:has(a, button, form) a.text-rose-600,
+table td:last-child:has(a, button, form) button.text-rose-600 {
     color: #e11d48 !important;
 }
-table td:last-child a.text-rose-600:hover,
-table td:last-child button.text-rose-600:hover {
+table td:last-child:has(a, button, form) a.text-rose-600:hover,
+table td:last-child:has(a, button, form) button.text-rose-600:hover {
     color: #be123c !important;
 }
 
 .license-verification-cell .license-verification-badges {
     display: inline-flex !important;
     align-items: center !important;
+}
+
+.license-verification-cell {
+    text-align: left !important;
+    white-space: normal !important;
+}
+
+.license-verification-cell > div {
+    display: block !important;
+    justify-content: flex-start !important;
 }
 
 .license-verification-cell .license-verification-info {

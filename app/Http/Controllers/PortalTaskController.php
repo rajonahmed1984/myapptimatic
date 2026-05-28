@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class PortalTaskController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
         $userId = $this->authUserId($request);
         if ($userId <= 0) {
             return response()->json(['error' => 'Unauthenticated'], 401);
@@ -25,12 +27,14 @@ class PortalTaskController extends Controller
         $request->validate([
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'include_clients' => ['nullable', 'boolean'],
         ]);
 
         $startDate = $request->query('start_date');
         $endDate = $request->query('end_date');
 
         $tasks = Task::query()
+            ->with('customer:id,name,company_name')
             ->where('user_id', $userId)
             ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
                 $query->whereBetween('due_date', [$startDate, $endDate]);
@@ -39,7 +43,16 @@ class PortalTaskController extends Controller
             ->orderBy('id')
             ->get();
 
-        return response()->json($tasks);
+        if (! $request->boolean('include_clients')) {
+            return response()->json($tasks);
+        }
+
+        $clients = $this->availableClientsForUser($user);
+
+        return response()->json([
+            'tasks' => $tasks,
+            'clients' => $clients,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -53,10 +66,12 @@ class PortalTaskController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'due_date' => ['required', 'date'],
+            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
         ]);
 
         $task = Task::create([
             'user_id' => $userId,
+            'customer_id' => $data['customer_id'] ?? null,
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
             'due_date' => $data['due_date'],
@@ -83,6 +98,7 @@ class PortalTaskController extends Controller
             'description' => ['nullable', 'string'],
             'due_date' => ['sometimes', 'required', 'date'],
             'is_completed' => ['sometimes', 'required', 'boolean'],
+            'customer_id' => ['sometimes', 'nullable', 'integer', 'exists:customers,id'],
         ]);
 
         $task->update($data);
@@ -105,5 +121,38 @@ class PortalTaskController extends Controller
         $task->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    private function availableClientsForUser($user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        if ($user->isAdmin() || $user->isSupport()) {
+            return Customer::query()
+                ->select(['id', 'name', 'company_name'])
+                ->orderBy('name')
+                ->limit(300)
+                ->get()
+                ->map(fn (Customer $customer) => [
+                    'id' => (int) $customer->id,
+                    'name' => $customer->display_name,
+                ])
+                ->values()
+                ->all();
+        }
+
+        if (! empty($user->customer_id)) {
+            $customer = Customer::query()->find($user->customer_id);
+            if ($customer) {
+                return [[
+                    'id' => (int) $customer->id,
+                    'name' => $customer->display_name,
+                ]];
+            }
+        }
+
+        return [];
     }
 }

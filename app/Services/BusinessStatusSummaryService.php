@@ -250,6 +250,17 @@ PROMPT;
         }
 
         if (! is_array($decoded)) {
+            $recovered = $this->recoverDashboardSummaryFromText($text);
+            if (
+                $recovered['verdict'] !== null
+                || $recovered['score'] !== null
+                || $recovered['confidence'] !== null
+                || $recovered['reason'] !== null
+                || $recovered['action'] !== null
+            ) {
+                return $recovered;
+            }
+
             return [
                 'verdict' => null,
                 'score' => null,
@@ -277,6 +288,47 @@ PROMPT;
             'confidence' => $confidence,
             'reason' => is_string($reason) && trim($reason) !== '' ? trim($reason) : null,
             'action' => is_string($action) && trim($action) !== '' ? trim($action) : null,
+        ];
+    }
+
+    private function recoverDashboardSummaryFromText(string $text): array
+    {
+        $verdict = null;
+        $score = null;
+        $confidence = null;
+        $reason = null;
+        $action = null;
+
+        if (preg_match('/"verdict"\s*:\s*"([^"]+)"/u', $text, $matches)) {
+            $candidate = trim((string) ($matches[1] ?? ''));
+            $verdict = in_array($candidate, ['Healthy', 'Watch', 'Critical'], true) ? $candidate : null;
+        }
+
+        if (preg_match('/"score"\s*:\s*(\d{1,3})/u', $text, $matches)) {
+            $score = max(0, min(100, (int) ($matches[1] ?? 0)));
+        }
+
+        if (preg_match('/"confidence"\s*:\s*"([^"]+)"/u', $text, $matches)) {
+            $candidate = trim((string) ($matches[1] ?? ''));
+            $confidence = in_array($candidate, ['Low', 'Medium', 'High'], true) ? $candidate : null;
+        }
+
+        if (preg_match('/"reason"\s*:\s*"((?:[^"\\]|\\.)*)"/u', $text, $matches)) {
+            $candidate = trim((string) stripcslashes((string) ($matches[1] ?? '')));
+            $reason = $candidate !== '' ? $candidate : null;
+        }
+
+        if (preg_match('/"action"\s*:\s*"((?:[^"\\]|\\.)*)"/u', $text, $matches)) {
+            $candidate = trim((string) stripcslashes((string) ($matches[1] ?? '')));
+            $action = $candidate !== '' ? $candidate : null;
+        }
+
+        return [
+            'verdict' => $verdict,
+            'score' => $score,
+            'confidence' => $confidence,
+            'reason' => $reason,
+            'action' => $action,
         ];
     }
 }

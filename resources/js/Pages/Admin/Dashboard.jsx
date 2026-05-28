@@ -253,7 +253,6 @@ export default function Dashboard({
     systemOverview = {},
     clientActivity = {},
     showTasksWidget = false,
-    taskSummary = null,
     openTasks = [],
     inProgressTasks = [],
     routes = {},
@@ -265,6 +264,25 @@ export default function Dashboard({
     const businessPulseOperationsScore = Number(businessPulse?.operations_score ?? 0);
     const businessPulseMessage = businessPulseAi?.reason || 'AI-verified business pulse with supporting health, cashflow and operational pressure metrics.';
     const businessPulseAction = businessPulseAi?.action || (businessPulseAi?.error ? `AI insight unavailable: ${businessPulseAi.error}` : null);
+    const overdueInvoices = Number(businessPulse?.overdue_invoices || 0);
+    const unpaidInvoices = Number(businessPulse?.unpaid_invoices || 0);
+    const openReceivables = overdueInvoices + unpaidInvoices;
+    const receivableRiskPct = Number(businessPulse?.overdue_share_percent || 0);
+    const payableTotal = Number(businessPulse?.payable_total || 0);
+    const payablePressurePct = Number(businessPulse?.payable_pressure_percent || 0);
+    const expenseRatioPct = Number(businessPulse?.expense_ratio_percent || 0);
+    const incomeGrowthPct = businessPulse?.income_growth_percent;
+    const net30d = Number(businessPulse?.net_30d || 0);
+
+    const aiSummaryDetails = [
+        `Net cash position (30d): ${money(currency, net30d)} (${net30d >= 0 ? 'surplus' : 'deficit'}).`,
+        `Receivables exposure: ${overdueInvoices.toLocaleString()} overdue of ${openReceivables.toLocaleString()} open invoices (${receivableRiskPct.toFixed(1)}% risk).`,
+        `Payables exposure: ${money(currency, payableTotal)} total with ${payablePressurePct.toFixed(1)}% pressure.`,
+        `Expense-to-income ratio: ${expenseRatioPct.toFixed(1)}% in the current review window.`,
+        incomeGrowthPct === null || incomeGrowthPct === undefined
+            ? 'Income growth trend: N/A due to insufficient comparable period data.'
+            : `Income growth trend: ${Number(incomeGrowthPct).toFixed(1)}% versus previous period.`,
+    ];
     const hasAiVerification = Boolean(businessPulseAi?.verdict || businessPulseAi?.reason);
     const scoreBadgeClass = (score) => {
         if (score >= 80) {
@@ -274,6 +292,15 @@ export default function Dashboard({
             return 'bg-amber-50 text-amber-700';
         }
         return 'bg-rose-50 text-rose-700';
+    };
+    const scoreToneClass = (score) => {
+        if (score >= 80) {
+            return 'text-emerald-600';
+        }
+        if (score >= 65) {
+            return 'text-amber-600';
+        }
+        return 'text-rose-600';
     };
     const aiVerdictClass = {
         Healthy: 'bg-emerald-100 text-emerald-700',
@@ -293,8 +320,6 @@ export default function Dashboard({
     const activeMetrics = periodMetrics?.[period] || { new_orders: 0, active_orders: 0, income: 0, expense: 0, hosting_income: 0 };
     const activeSeries = periodSeries?.[period] || { labels: [], new_orders: [], active_orders: [], income: [], expense: [] };
     const recentClients = Array.isArray(clientActivity?.recentClients) ? clientActivity.recentClients : [];
-    const summary = taskSummary || { total: 0, open: 0, in_progress: 0, completed: 0 };
-
     const chartModel = useMemo(() => {
         const labels = Array.isArray(activeSeries?.labels) ? activeSeries.labels : [];
         const seriesLength = labels.length;
@@ -455,127 +480,128 @@ export default function Dashboard({
         <>
             <Head title={pageTitle} />
 
-            <div className="card p-6">
+            <div className="card p-4 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <div className="section-label">
-                            Business Pulse                           
+                            Business Pulse
                             {hasAiVerification ? (
-                                <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-700 ml-2">
+                                <span className="ml-2 rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-700">
                                     AI Verified
                                 </span>
                             ) : null}
                         </div>
+                        <div className="mt-1 text-xs text-slate-500 sm:text-sm">Accounting health summary for last 30 days.</div>
                     </div>
-                    <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
+
+                    <div className="flex flex-wrap items-center gap-2">
                         {routes?.dashboard_refresh_ai ? (
                             <a href={routes.dashboard_refresh_ai} data-native="true" className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:border-violet-300 hover:bg-violet-100">
                                 Refresh AI
                             </a>
                         ) : null}
                         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${aiVerdictClass}`}>
-                            {businessPulseVerdict}
+                            Health: {businessPulseVerdict}
                         </span>
                         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scoreBadgeClass(businessPulseScore)}`}>
-                            Score {businessPulseScore}/100
+                            Overall: {businessPulseScore}/100
                         </span>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scoreBadgeClass(businessPulseIncomeScore)}`}>
-                            Income {businessPulseIncomeScore}/100
-                        </span>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scoreBadgeClass(businessPulseExpenseScore)}`}>
-                            Expense {businessPulseExpenseScore}/100
-                        </span>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scoreBadgeClass(businessPulseOperationsScore)}`}>
-                            Ops {businessPulseOperationsScore}/100
-                        </span>
-                        {businessPulseAi?.confidence ? (
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                                Confidence {businessPulseAi.confidence}
-                            </span>
-                        ) : null}
                     </div>
                 </div>
 
-                {businessPulseAction ? (
-                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                        {businessPulseAction}
-                    </div>
-                ) : null}
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">AI summary</div>
+                    <div className="mt-2 text-sm leading-6 text-slate-700">{businessPulseMessage}</div>
+                    <ul className="mt-3 space-y-1.5 text-xs leading-5 text-slate-600">
+                        {aiSummaryDetails.map((detail, index) => (
+                            <li key={`ai-summary-detail-${index}`} className="flex items-start gap-2">
+                                <span className="mt-[6px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                                <span>{detail}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    {businessPulseAction ? <div className="mt-2 text-xs leading-5 text-slate-500">Action: {businessPulseAction}</div> : null}
+                </div>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <SmallMetric
-                        label="Net (30d)"
+                        label="Net Cash Position (30d)"
                         value={money(currency, businessPulse?.net_30d)}
                         tone={Number(businessPulse?.net_30d || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}
-                        note={`Income trend: ${businessPulse?.income_growth_percent === null || businessPulse?.income_growth_percent === undefined
-                            ? 'N/A'
-                            : `${Number(businessPulse.income_growth_percent) >= 0 ? '+' : ''}${Number(businessPulse.income_growth_percent).toFixed(1)}%`} vs previous 30d`}
+                        note={`Income: ${money(currency, businessPulse?.income_30d)} | Expense: ${money(currency, businessPulse?.expense_30d)}`}
                     />
                     <SmallMetric
-                        label="Receivable Pressure"
+                        label="Expense-to-Income Ratio"
+                        value={`${Number(businessPulse?.expense_ratio_percent || 0).toFixed(1)}%`}
+                        tone={Number(businessPulse?.expense_ratio_percent || 0) > 85 ? 'text-rose-600' : 'text-amber-600'}
+                        note="Operating expense ratio for last 30 days."
+                        href={routes?.expenses_dashboard}
+                        action="Open Accounting Expense Dashboard"
+                    />
+                    <SmallMetric
+                        label="A/R Overdue Ratio"
                         value={`${Number(businessPulse?.overdue_share_percent || 0).toFixed(1)}%`}
                         tone="text-amber-600"
-                        note={`Overdue ${Number(businessPulse?.overdue_invoices || 0)} / Open ${Number(businessPulse?.unpaid_invoices || 0) + Number(businessPulse?.overdue_invoices || 0)}`}
+                        note={`Overdue invoices: ${metricValue(businessPulse?.overdue_invoices)} | Open receivables: ${metricValue(Number(businessPulse?.unpaid_invoices || 0) + Number(businessPulse?.overdue_invoices || 0))}`}
                         href={routes?.invoices_overdue}
-                        action="View overdue invoices"
+                        action="Review A/R Aging"
                     />
                     <SmallMetric
-                        label="Expense Burn"
-                        value={money(currency, businessPulse?.expense_30d)}
-                        tone={Number(businessPulse?.expense_ratio_percent || 0) > 85 ? 'text-rose-600' : 'text-amber-600'}
-                        note={`Expense is ${Number(businessPulse?.expense_ratio_percent || 0).toFixed(1)}% of 30d income.`}
-                        href={routes?.expenses_dashboard}
-                        action="Review expense flow"
-                    />
-                    <SmallMetric
-                        label="Payable Pressure"
+                        label="A/P Exposure"
                         value={money(currency, businessPulse?.payable_total)}
                         tone={Number(businessPulse?.payable_pressure_percent || 0) > 60 ? 'text-rose-600' : 'text-amber-600'}
-                        note={`Next 30d due ${money(currency, businessPulse?.expense_due_30d)} | Payroll ${money(currency, businessPulse?.payroll_payable)} | Commission ${money(currency, businessPulse?.commission_payable)}`}
+                        note={`Due in next 30 days: ${money(currency, businessPulse?.expense_due_30d)}`}
                     />
-                    <SmallMetric
-                        label="Sales Pipeline"
-                        value={metricValue(businessPulse?.pending_orders)}
-                        note="Pending orders awaiting conversion."
-                        href={routes?.orders_index}
-                        action="Review orders"
-                    />
-                    <SmallMetric
-                        label="Support Load"
-                        value={metricValue(businessPulse?.support_load)}
-                        note={`Open: ${metricValue(businessPulse?.open_tickets)}, Customer reply: ${metricValue(businessPulse?.customer_reply_tickets)}`}
-                        href={routes?.support_tickets_index}
-                        action="Open tickets"
-                    />
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                        <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Income score</div>
+                        <div className={`mt-1 text-base font-semibold sm:text-lg ${scoreToneClass(businessPulseIncomeScore)}`}>
+                            {businessPulseIncomeScore}/100
+                        </div>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                        <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Expense score</div>
+                        <div className={`mt-1 text-base font-semibold sm:text-lg ${scoreToneClass(businessPulseExpenseScore)}`}>
+                            {businessPulseExpenseScore}/100
+                        </div>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                        <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Operations score</div>
+                        <div className={`mt-1 text-base font-semibold sm:text-lg ${scoreToneClass(businessPulseOperationsScore)}`}>
+                            {businessPulseOperationsScore}/100
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <MetricLink href={routes?.customers_index} label="Customers" value={metricValue(customerCount)} className="border-slate-200 bg-slate-50 hover:border-slate-300" labelClassName="text-slate-500" />
+                <MetricLink href={routes?.customers_index} label="Customers" value={metricValue(customerCount)} className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-slate-500" />
                 <MetricLink href={routes?.subscriptions_index} label="Subscriptions" value={metricValue(subscriptionCount)} tone="text-sky-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-sky-700" />
-                <MetricLink href={routes?.licenses_index} label="Licenses" value={metricValue(licenseCount)} tone="text-teal-700" className="border-teal-200 bg-teal-50 hover:border-teal-300" labelClassName="text-teal-700" />
-                <MetricLink href={routes?.invoices_unpaid} label="Unpaid invoices" value={metricValue(pendingInvoiceCount)} tone="text-blue-700" className="border-blue-200 bg-blue-50 hover:border-blue-300" labelClassName="text-blue-700" />
+                <MetricLink href={routes?.licenses_index} label="Licenses" value={metricValue(licenseCount)} tone="text-teal-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-teal-700" />
+                <MetricLink href={routes?.invoices_unpaid} label="Unpaid invoices" value={metricValue(pendingInvoiceCount)} tone="text-blue-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-blue-700" />
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <SmallLinkCard href={`${routes?.projects_all}?status=ongoing`} title="Ongoing projects" value={metricValue(projectMaintenance?.projects_active)} tone="text-sky-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-sky-700" />
-                <SmallLinkCard href={routes?.subscriptions_index} title="Blocked services" value={metricValue(projectMaintenance?.subscriptions_blocked)} tone="text-rose-700" className="border-rose-200 bg-rose-50 hover:border-rose-300" labelClassName="text-rose-700" />
-                <SmallLinkCard href={routes?.project_maintenances_index} title="Renewals (30d)" value={metricValue(projectMaintenance?.renewals_30d)} tone="text-emerald-700" className="border-emerald-200 bg-emerald-50 hover:border-emerald-300" labelClassName="text-emerald-700" />
-                <SmallLinkCard href={routes?.projects_all} title="Loss risk projects" value={metricValue(projectMaintenance?.projects_loss)} tone="text-rose-700" className="border-rose-200 bg-rose-50 hover:border-rose-300" labelClassName="text-rose-700" />
+                <SmallLinkCard href={routes?.subscriptions_index} title="Blocked services" value={metricValue(projectMaintenance?.subscriptions_blocked)} tone="text-rose-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-rose-700" />
+                <SmallLinkCard href={routes?.project_maintenances_index} title="Renewals (30d)" value={metricValue(projectMaintenance?.renewals_30d)} tone="text-emerald-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-emerald-700" />
+                <SmallLinkCard href={routes?.projects_all} title="Loss risk projects" value={metricValue(projectMaintenance?.projects_loss)} tone="text-rose-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-rose-700" />
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <SmallLinkCard href={routes?.hr_employees_index} title="Active employees" value={metricValue(hrStats?.active_employees)} tone="text-emerald-700" className="border-emerald-200 bg-emerald-50 hover:border-emerald-300" labelClassName="text-emerald-700" />
-                <SmallLinkCard href={routes?.hr_timesheets_index} title="Work logs (7d)" value={metricValue(hrStats?.pending_timesheets)} tone="text-amber-700" className="border-amber-200 bg-amber-50 hover:border-amber-300" labelClassName="text-amber-700" />
-                <SmallLinkCard href={routes?.hr_payroll_index} title="Draft payroll periods" value={metricValue(hrStats?.draft_payroll_periods)} tone="text-slate-700" className="border-slate-200 bg-slate-50 hover:border-slate-300" labelClassName="text-slate-600" />
-                <SmallLinkCard href={routes?.hr_payroll_index} title="Payroll to pay" value={metricValue(hrStats?.payroll_items_to_pay)} tone="text-rose-700" className="border-rose-200 bg-rose-50 hover:border-rose-300" labelClassName="text-rose-700" />
+                <SmallLinkCard href={routes?.hr_employees_index} title="Active employees" value={metricValue(hrStats?.active_employees)} tone="text-emerald-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-emerald-700" />
+                <SmallLinkCard href={routes?.hr_timesheets_index} title="Work logs (7d)" value={metricValue(hrStats?.pending_timesheets)} tone="text-amber-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-amber-700" />
+                <SmallLinkCard href={routes?.hr_payroll_index} title="Draft payroll periods" value={metricValue(hrStats?.draft_payroll_periods)} tone="text-slate-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-slate-600" />
+                <SmallLinkCard href={routes?.hr_payroll_index} title="Payroll to pay" value={metricValue(hrStats?.payroll_items_to_pay)} tone="text-rose-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-rose-700" />
             </div>
 
-            <div className="mt-8 card p-6">
+            <div className="mt-8 card p-4 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <div className="section-label">System Overview</div>
-                        <div className="mt-1 text-sm text-slate-500">Orders, income and expense snapshot</div>
+                        <div className="mt-1 text-xs text-slate-500 sm:text-sm">Accounting snapshot across orders, revenue, and costs.</div>
                     </div>
 
                     <div className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-1 text-xs font-semibold">
@@ -593,13 +619,13 @@ export default function Dashboard({
                 </div>
 
                 <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-                    <CompactOverviewStat label="New Orders" value={metricValue(activeMetrics?.new_orders)} />
-                    <CompactOverviewStat label="Activated Orders" value={metricValue(activeMetrics?.active_orders)} tone="text-blue-600" />
-                    <CompactOverviewStat label="Total Income" value={money(currency, activeMetrics?.income)} tone="text-emerald-600" />
-                    <CompactOverviewStat label="Total Expense" value={money(currency, activeMetrics?.expense)} tone="text-orange-600" />
-                    <CompactOverviewStat label="Hosting Income" value={money(currency, activeMetrics?.hosting_income)} tone="text-emerald-600" />
+                    <CompactOverviewStat label="Sales Orders (New)" value={metricValue(activeMetrics?.new_orders)} />
+                    <CompactOverviewStat label="Sales Orders (Activated)" value={metricValue(activeMetrics?.active_orders)} tone="text-blue-600" />
+                    <CompactOverviewStat label="Gross Revenue" value={money(currency, activeMetrics?.income)} tone="text-emerald-600" />
+                    <CompactOverviewStat label="Operating Expense" value={money(currency, activeMetrics?.expense)} tone="text-orange-600" />
+                    <CompactOverviewStat label="Hosting Revenue" value={money(currency, activeMetrics?.hosting_income)} tone="text-emerald-600" />
                     <CompactOverviewStat
-                        label="Avg Per Order"
+                        label="Revenue per New Order"
                         value={money(currency, Number(activeMetrics?.new_orders || 0) > 0 ? Number(activeMetrics?.income || 0) / Number(activeMetrics?.new_orders || 1) : 0)}
                         tone="text-emerald-600"
                     />
@@ -818,50 +844,54 @@ export default function Dashboard({
 
             </div>
 
-            <div className="mt-8 card p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <div className="section-label">Client Activity</div>
-                        <div className="mt-1 text-sm text-slate-500">Last 30 clients login (all time)</div>
+            <div className="mt-8 grid gap-6 lg:grid-cols-2 lg:items-stretch">
+                <div className="card flex h-full flex-col p-6 lg:h-[620px]">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div className="section-label">Client Activity</div>
+                            <div className="mt-1 text-sm text-slate-500">Last 30 clients login (all time)</div>
+                        </div>
+                        <a href={routes?.customers_index} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">View customers</a>
                     </div>
-                    <a href={routes?.customers_index} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">View customers</a>
-                </div>
 
-                <div className="mt-4 px-2.5 py-2 max-h-[230px] overflow-auto rounded-xl border border-slate-200">
-                    <table className="min-w-full text-left text-sm">
-                        <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
-                            <tr>
-                                <th className="sticky top-0 bg-white py-2 pr-4">User</th>
-                                <th className="sticky top-0 bg-white py-2 pr-4">Last login</th>
-                                <th className="sticky top-0 bg-white py-2 pr-4">IP</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-700">
-                            {recentClients.length === 0 ? (
+                    <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 px-2.5 py-2">
+                        <table className="min-w-full text-left text-sm">
+                            <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <tr>
-                                    <td colSpan={3} className="py-3 text-slate-500">No login sessions to show.</td>
+                                    <th className="sticky top-0 bg-white py-2 pr-4">User</th>
+                                    <th className="sticky top-0 bg-white py-2 pr-4">Last login</th>
+                                    <th className="sticky top-0 bg-white py-2 pr-4">IP</th>
                                 </tr>
-                            ) : recentClients.map((session, index) => {
-                                const customerUrl = customerRoute(routes?.customers_show_template, session?.customer_id);
-                                const hasCustomer = session?.customer_id && customerUrl !== '#';
-
-                                return (
-                                    <tr key={`${session?.user_id || 'user'}-${index}`}>
-                                        <td className="py-2 pr-4">
-                                            {hasCustomer ? (
-                                                <a href={customerUrl} data-native="true" className="hover:text-teal-600">
-                                                    {session?.name || '--'}
-                                                </a>
-                                            ) : (session?.name || '--')}
-                                        </td>
-                                        <td className="py-2 pr-4">{session?.last_login || '--'}</td>
-                                        <td className="py-2 pr-4">{session?.ip || '--'}</td>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-slate-700">
+                                {recentClients.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={3} className="py-3 text-slate-500">No login sessions to show.</td>
                                     </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                ) : recentClients.map((session, index) => {
+                                    const customerUrl = customerRoute(routes?.customers_show_template, session?.customer_id);
+                                    const hasCustomer = session?.customer_id && customerUrl !== '#';
+
+                                    return (
+                                        <tr key={`${session?.user_id || 'user'}-${index}`}>
+                                            <td className="py-2 pr-4">
+                                                {hasCustomer ? (
+                                                    <a href={customerUrl} data-native="true" className="hover:text-teal-600">
+                                                        {session?.name || '--'}
+                                                    </a>
+                                                ) : (session?.name || '--')}
+                                            </td>
+                                            <td className="py-2 pr-4">{session?.last_login || '--'}</td>
+                                            <td className="py-2 pr-4">{session?.ip || '--'}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
+                <DailyCalendarWidget apiBase="/admin/portal/api/tasks" enableClientSelect className="lg:h-[620px]" />
             </div>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -912,55 +942,10 @@ export default function Dashboard({
                 </div>
             </div>
 
-            <div className="mt-8">
-                <DailyCalendarWidget />
-            </div>
-
             {showTasksWidget ? (
-                <div className="mt-8 card p-6">
-                    <div>
-                        <div className="section-label">Task Snapshot</div>
-                        <div className="mt-1 text-sm text-slate-500">Open pipeline and current execution buckets at a glance.</div>
-                    </div>
-                    <div className="mt-3 grid gap-3 md:grid-cols-4">
-                        <SmallMetricTile
-                            label="Total"
-                            value={metricValue(summary?.total)}
-                            className="border-slate-200 bg-slate-50"
-                            labelClassName="text-slate-500"
-                            tone="text-slate-900"
-                        />
-                        <SmallMetricTile
-                            label="Open"
-                            value={metricValue(summary?.open)}
-                            className="border-amber-200 bg-amber-50"
-                            labelClassName="text-amber-700"
-                            tone="text-amber-700"
-                        />
-                        <SmallMetricTile
-                            label="In progress"
-                            value={metricValue(summary?.in_progress)}
-                            className="border-sky-200 bg-sky-50"
-                            labelClassName="text-sky-700"
-                            tone="text-sky-700"
-                        />
-                        <SmallMetricTile
-                            label="Completed"
-                            value={metricValue(summary?.completed)}
-                            className="border-emerald-200 bg-emerald-50"
-                            labelClassName="text-emerald-700"
-                            tone="text-emerald-700"
-                        />
-                    </div>
-
-                    <div className="mt-6">
-                        <DailyCalendarWidget />
-                    </div>
-
-                    <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                        <TaskList title="Open tasks" tasks={openTasks} routes={routes} variant="open" />
-                        <TaskList title="In progress tasks" tasks={inProgressTasks} routes={routes} variant="in_progress" />
-                    </div>
+                <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                    <TaskList title="Open tasks" tasks={openTasks} routes={routes} variant="open" />
+                    <TaskList title="In progress tasks" tasks={inProgressTasks} routes={routes} variant="in_progress" />
                 </div>
             ) : null}
         </>
@@ -1018,9 +1003,9 @@ function SmallLinkCard({
 
 function CompactOverviewStat({ label, value, tone = 'text-slate-900' }) {
     return (
-        <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+        <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 sm:px-3 sm:py-2.5">
             <div className="text-[9px] uppercase tracking-[0.16em] text-slate-400">{label}</div>
-            <div className={`mt-1 text-xs font-semibold leading-tight sm:text-sm ${tone} break-words`}>{value}</div>
+            <div className={`mt-1 text-[12px] font-semibold leading-tight sm:text-sm ${tone} break-words`}>{value}</div>
         </div>
     );
 }
@@ -1069,34 +1054,34 @@ function TaskList({ title, tasks, routes, variant = 'default' }) {
     const rows = Array.isArray(tasks) ? tasks : [];
     const styles = {
         open: {
-            wrapper: 'border-amber-200 bg-amber-50/50',
+            wrapper: 'border-amber-200 bg-amber-50/40',
             title: 'text-amber-700',
             row: 'border-amber-100 bg-white hover:border-amber-300',
             badge: 'bg-amber-100 text-amber-700',
         },
         in_progress: {
-            wrapper: 'border-sky-200 bg-sky-50/50',
+            wrapper: 'border-sky-200 bg-sky-50/40',
             title: 'text-sky-700',
             row: 'border-sky-100 bg-white hover:border-sky-300',
             badge: 'bg-sky-100 text-sky-700',
         },
         default: {
             wrapper: 'border-slate-200 bg-white',
-            title: 'text-slate-400',
+            title: 'text-slate-500',
             row: 'border-slate-100 bg-white hover:border-teal-200',
-            badge: 'bg-slate-100 text-slate-500',
+            badge: 'bg-slate-100 text-slate-600',
         },
     }[variant] || {
         wrapper: 'border-slate-200 bg-white',
-        title: 'text-slate-400',
+        title: 'text-slate-500',
         row: 'border-slate-100 bg-white hover:border-teal-200',
-        badge: 'bg-slate-100 text-slate-500',
+        badge: 'bg-slate-100 text-slate-600',
     };
 
     return (
-        <div className={`rounded-2xl border p-4 ${styles.wrapper}`}>
-            <div className={`text-xs uppercase tracking-[0.2em] ${styles.title}`}>{title}</div>
-            <div className="mt-3 space-y-2">
+        <div className={`card rounded-2xl border p-3 sm:p-4 ${styles.wrapper}`}>
+            <div className={`text-[11px] uppercase tracking-[0.2em] ${styles.title}`}>{title}</div>
+            <div className="mt-2.5 space-y-1.5 sm:space-y-2">
                 {rows.length === 0 ? (
                     <div className="text-xs text-slate-500">No tasks in this bucket.</div>
                 ) : rows.map((task) => (
@@ -1104,13 +1089,13 @@ function TaskList({ title, tasks, routes, variant = 'default' }) {
                         key={task.id}
                         href={taskRoute(routes?.tasks_show_template, task.project_id, task.id)}
                         data-native="true"
-                        className={`block rounded-lg border px-3 py-2 transition ${styles.row}`}
+                        className={`block rounded-lg border px-2.5 py-2 transition ${styles.row}`}
                     >
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm font-semibold text-slate-900">{task.title}</div>
-                            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${styles.badge}`}>{task.status}</span>
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                            <div className="text-[13px] font-semibold leading-5 text-slate-900 sm:text-sm">{task.title}</div>
+                            <span className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${styles.badge}`}>{task.status}</span>
                         </div>
-                        <div className="mt-1 text-xs text-slate-500">
+                        <div className="mt-1 text-[11px] leading-4 text-slate-500 sm:text-xs sm:leading-5">
                             {task.project_name} | Subtasks: {metricValue(task.subtasks_count)} | Due: {task.due_date || '--'}
                         </div>
                     </a>

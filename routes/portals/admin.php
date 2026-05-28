@@ -89,6 +89,7 @@ use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\PublicProductController;
 use App\Http\Controllers\PublicMediaController;
 use App\Http\Controllers\ProjectChatController;
+use App\Http\Controllers\PortalTaskController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskViewController;
 use App\Http\Controllers\Mail\MailInboxController;
@@ -148,6 +149,12 @@ Route::middleware([
     Route::get('/tasks', [AdminTasksController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('tasks.index');
+    Route::prefix('portal/api')->middleware('throttle:60,1')->name('portal.api.')->group(function () {
+        Route::get('/tasks', [PortalTaskController::class, 'index'])->name('tasks.index');
+        Route::post('/tasks', [PortalTaskController::class, 'store'])->name('tasks.store');
+        Route::patch('/tasks/{task}', [PortalTaskController::class, 'update'])->name('tasks.update');
+        Route::delete('/tasks/{task}', [PortalTaskController::class, 'destroy'])->name('tasks.destroy');
+    });
     Route::get('/chats', [AdminChatController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('chats.index');

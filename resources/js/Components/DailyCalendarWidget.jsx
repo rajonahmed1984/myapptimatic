@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import DatePickerField from '@/Components/DatePickerField';
 
 // Premium styled dynamic Daily Calendar Task Manager Widget
-export default function DailyCalendarWidget() {
-    const apiBase = '/support/portal/api/tasks';
+export default function DailyCalendarWidget({ apiBase = '/support/portal/api/tasks', enableClientSelect = false, className = '' }) {
 
     const [selectedDate, setSelectedDate] = useState(() => {
         const today = new Date();
@@ -14,9 +14,37 @@ export default function DailyCalendarWidget() {
 
     const [weekOffset, setWeekOffset] = useState(0);
     const [tasks, setTasks] = useState([]);
+    const [clients, setClients] = useState([]);
     const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [newTaskDate, setNewTaskDate] = useState(selectedDate);
+    const [newTaskClientId, setNewTaskClientId] = useState('');
+    const [clientSearch, setClientSearch] = useState('');
+    const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+    const [mentionQuery, setMentionQuery] = useState('');
+    const [mentionOpen, setMentionOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    const normalizeApiError = (fallbackMessage, response, payload = null) => {
+        if (response?.status === 401 || response?.status === 403) {
+            return null;
+        }
+
+        const message = payload?.message || payload?.error || fallbackMessage;
+        if (typeof message !== 'string') {
+            return fallbackMessage;
+        }
+
+        return /authentication required|unauthenticated/i.test(message) ? null : message;
+    };
+
+    const readJsonSafely = async (response) => {
+        try {
+            return await response.json();
+        } catch (err) {
+            return null;
+        }
+    };
 
     // Calculate dates of the current visible week based onselectedDate + weekOffset
     const getVisibleWeek = () => {
@@ -58,7 +86,17 @@ export default function DailyCalendarWidget() {
         const start = visibleWeek[0].dateString;
         const end = visibleWeek[6].dateString;
         try {
-            const response = await fetch(`${apiBase}?start_date=${start}&end_date=${end}`, {
+            const query = new URLSearchParams({
+                start_date: start,
+                end_date: end,
+            });
+            if (enableClientSelect) {
+                query.set('include_clients', '1');
+            }
+
+            const response = await fetch(`${apiBase}?${query.toString()}`, {
+                credentials: 'same-origin',
+                cache: 'no-store',
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
@@ -66,9 +104,22 @@ export default function DailyCalendarWidget() {
             });
             if (response.ok) {
                 const data = await response.json();
-                setTasks(data);
+                if (Array.isArray(data)) {
+                    setTasks(data);
+                    return;
+                }
+
+                setTasks(Array.isArray(data?.tasks) ? data.tasks : []);
+                if (enableClientSelect) {
+                    setClients(Array.isArray(data?.clients) ? data.clients : []);
+                }
             } else {
-                setError('Failed to load tasks');
+                const payload = await readJsonSafely(response);
+                setTasks([]);
+                if (enableClientSelect) {
+                    setClients([]);
+                }
+                setError(normalizeApiError('Failed to load tasks', response, payload));
             }
         } catch (err) {
             setError('Could not connect to task service');
@@ -81,6 +132,77 @@ export default function DailyCalendarWidget() {
         fetchTasks();
     }, [weekOffset, selectedDate]);
 
+    useEffect(() => {
+        setNewTaskDate(selectedDate);
+    }, [selectedDate]);
+
+    const mentionCandidates = enableClientSelect
+        ? clients
+            .filter((client) => {
+                if (!mentionQuery.trim()) {
+                    return true;
+                }
+
+                return String(client?.name || '').toLowerCase().includes(mentionQuery.trim().toLowerCase());
+            })
+            .slice(0, 8)
+        : [];
+
+    const filteredClients = enableClientSelect
+        ? clients
+            .filter((client) => String(client?.name || '').toLowerCase().includes(clientSearch.trim().toLowerCase()))
+            .slice(0, 12)
+        : [];
+
+    const selectedClient = clients.find((client) => String(client.id) === String(newTaskClientId)) || null;
+
+    const handleTaskTitleChange = (value) => {
+        setNewTaskTitle(value);
+
+        if (!enableClientSelect) {
+            return;
+        }
+
+        const atIndex = value.lastIndexOf('@');
+        if (atIndex === -1) {
+            setMentionOpen(false);
+            setMentionQuery('');
+            return;
+        }
+
+        const tail = value.slice(atIndex + 1);
+        if (tail.includes(' ') || tail.includes('\n')) {
+            setMentionOpen(false);
+            setMentionQuery('');
+            return;
+        }
+
+        setMentionQuery(tail);
+        setMentionOpen(true);
+    };
+
+    const applyClientMention = (client) => {
+        const atIndex = newTaskTitle.lastIndexOf('@');
+        if (atIndex === -1) {
+            return;
+        }
+
+        const prefix = newTaskTitle.slice(0, atIndex);
+        const nextTitle = `${prefix}@${client.name} `;
+
+        setNewTaskTitle(nextTitle);
+        setNewTaskClientId(String(client.id));
+        setClientSearch(client.name);
+        setMentionOpen(false);
+        setMentionQuery('');
+    };
+
+    const applyClientSelection = (client) => {
+        setNewTaskClientId(String(client.id));
+        setClientSearch(client.name);
+        setClientDropdownOpen(false);
+    };
+
     // Handle adding a task for the currently selected date
     const handleAddTask = async (e) => {
         e.preventDefault();
@@ -91,6 +213,7 @@ export default function DailyCalendarWidget() {
         try {
             const response = await fetch(apiBase, {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
@@ -99,16 +222,23 @@ export default function DailyCalendarWidget() {
                 },
                 body: JSON.stringify({
                     title,
-                    due_date: selectedDate
+                    due_date: newTaskDate,
+                    customer_id: newTaskClientId ? Number(newTaskClientId) : null,
                 })
             });
 
             if (response.ok) {
                 setNewTaskTitle('');
+                setNewTaskDate(selectedDate);
+                setNewTaskClientId('');
+                setClientSearch('');
+                setClientDropdownOpen(false);
+                setMentionOpen(false);
+                setMentionQuery('');
                 fetchTasks();
             } else {
-                const errData = await response.json();
-                setError(errData.message || 'Failed to add task');
+                const payload = await readJsonSafely(response);
+                setError(normalizeApiError('Failed to add task', response, payload));
             }
         } catch (err) {
             setError('Error saving task');
@@ -122,6 +252,7 @@ export default function DailyCalendarWidget() {
         try {
             const response = await fetch(`${apiBase}/${task.id}`, {
                 method: 'PATCH',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
@@ -137,7 +268,8 @@ export default function DailyCalendarWidget() {
                 // update local state instantly for extreme responsiveness
                 setTasks(prev => prev.map(t => t.id === task.id ? { ...t, is_completed: !t.is_completed } : t));
             } else {
-                setError('Failed to update task');
+                const payload = await readJsonSafely(response);
+                setError(normalizeApiError('Failed to update task', response, payload));
             }
         } catch (err) {
             setError('Error updating task');
@@ -149,6 +281,7 @@ export default function DailyCalendarWidget() {
         try {
             const response = await fetch(`${apiBase}/${taskId}`, {
                 method: 'DELETE',
+                credentials: 'same-origin',
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
@@ -159,7 +292,8 @@ export default function DailyCalendarWidget() {
             if (response.ok) {
                 setTasks(prev => prev.filter(t => t.id !== taskId));
             } else {
-                setError('Failed to delete task');
+                const payload = await readJsonSafely(response);
+                setError(normalizeApiError('Failed to delete task', response, payload));
             }
         } catch (err) {
             setError('Error deleting task');
@@ -184,14 +318,14 @@ export default function DailyCalendarWidget() {
     };
 
     return (
-        <div className="card p-6 bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div className={`card flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:p-6 ${className}`}>
             {/* Header section */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
                 <div>
                     <div className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Daily Calendar</div>
-                    <h2 className="text-xl font-bold text-slate-800 mt-0.5">My Tasks</h2>
-                    <p className="text-xs text-slate-400 mt-1">
-                        {activeTasksCount > 0 ? `${activeTasksCount} tasks remaining for today` : 'No active tasks remaining'}
+                    <h2 className="mt-0.5 text-lg font-bold text-slate-800 sm:text-xl">My Tasks</h2>
+                    <p className="mt-1 text-xs text-slate-400">
+                        {activeTasksCount > 0 ? `${activeTasksCount} tasks remaining for selected day` : 'No active tasks remaining'}
                     </p>
                 </div>
                 {/* Navigation week chevrons */}
@@ -234,7 +368,7 @@ export default function DailyCalendarWidget() {
             </div>
 
             {/* Date strip */}
-            <div className="grid grid-cols-7 gap-2 mb-6">
+            <div className="mb-6 grid grid-cols-7 gap-1 sm:gap-2">
                 {visibleWeek.map((day) => {
                     const isSelected = day.dateString === selectedDate;
                     const dayHasTasks = hasTasks(day.dateString);
@@ -245,7 +379,7 @@ export default function DailyCalendarWidget() {
                             onClick={() => {
                                 setSelectedDate(day.dateString);
                             }}
-                            className={`flex flex-col items-center py-2.5 rounded-xl transition ${
+                            className={`flex flex-col items-center rounded-xl py-2 transition sm:py-2.5 ${
                                 isSelected
                                     ? 'bg-teal-600 text-white shadow-md shadow-teal-100 font-bold scale-105'
                                     : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
@@ -254,7 +388,7 @@ export default function DailyCalendarWidget() {
                             <span className={`text-[10px] uppercase tracking-wider ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
                                 {day.dayName}
                             </span>
-                            <span className="text-lg mt-0.5 font-bold leading-none">
+                            <span className="mt-0.5 text-base font-bold leading-none sm:text-lg">
                                 {day.dayOfMonth}
                             </span>
                             {dayHasTasks && (
@@ -274,7 +408,7 @@ export default function DailyCalendarWidget() {
             )}
 
             {/* Tasks list */}
-            <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+            <div className="max-h-[220px] space-y-2.5 overflow-y-auto pr-1 md:max-h-[300px]">
                 {tasksForSelectedDay.length === 0 ? (
                     <div className="text-center py-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
                         <svg className="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
@@ -283,11 +417,16 @@ export default function DailyCalendarWidget() {
                         <p className="text-xs text-slate-500 font-medium">All clear for this day!</p>
                     </div>
                 ) : (
-                    tasksForSelectedDay.map((task) => (
-                        <div
-                            key={task.id}
-                            className="flex items-center justify-between px-3 py-2.5 bg-slate-50/60 rounded-xl border border-slate-100 hover:border-slate-200 transition group"
-                        >
+                    tasksForSelectedDay.map((task) => {
+                        const taskClientLabel = task?.customer
+                            ? [task.customer?.name, task.customer?.company_name].filter(Boolean).join(' - ')
+                            : '';
+
+                        return (
+                            <div
+                                key={task.id}
+                                className="flex items-center justify-between px-3 py-2.5 bg-slate-50/60 rounded-xl border border-slate-100 hover:border-slate-200 transition group"
+                            >
                             <label className="flex items-center gap-3 cursor-pointer select-none min-w-0 flex-1">
                                 <input
                                     type="checkbox"
@@ -301,6 +440,11 @@ export default function DailyCalendarWidget() {
                                     {task.title}
                                 </span>
                             </label>
+                            {taskClientLabel ? (
+                                <span className="mr-2 max-w-[180px] truncate text-xs font-semibold text-rose-700" title={taskClientLabel}>
+                                    @{taskClientLabel}
+                                </span>
+                            ) : null}
                             <button
                                 type="button"
                                 onClick={() => handleDeleteTask(task.id)}
@@ -311,28 +455,141 @@ export default function DailyCalendarWidget() {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
-                        </div>
-                    ))
+                            </div>
+                        );
+                    })
                 )}
             </div>
 
             {/* Inline Add Task Form */}
-            <form onSubmit={handleAddTask} className="mt-5 flex gap-2">
-                <input
-                    type="text"
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Create a task for this day..."
-                    className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-0 transition"
-                    maxLength={255}
-                />
-                <button
-                    type="submit"
-                    disabled={loading || !newTaskTitle.trim()}
-                    className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 focus:outline-none transition disabled:opacity-50"
-                >
-                    Add
-                </button>
+            <form onSubmit={handleAddTask} className="mt-4 space-y-2.5 sm:mt-5">
+                <div className="relative">
+                    <input
+                        type="text"
+                        value={newTaskTitle}
+                        onChange={(e) => handleTaskTitleChange(e.target.value)}
+                        placeholder="Create a task for this day... (type @ to mention client)"
+                        className="flex-1 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-0 transition"
+                        maxLength={255}
+                        autoComplete="off"
+                    />
+
+                    {enableClientSelect && mentionOpen && mentionCandidates.length > 0 ? (
+                        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                            {mentionCandidates.map((client) => (
+                                <button
+                                    key={client.id}
+                                    type="button"
+                                    onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        applyClientMention(client);
+                                    }}
+                                    className="block w-full rounded-lg px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                                >
+                                    @{client.name}
+                                </button>
+                            ))}
+                        </div>
+                    ) : null}
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Task Date</span>
+                        <DatePickerField
+                            name="task-date"
+                            value={newTaskDate}
+                            onChange={(nextValue) => setNewTaskDate(nextValue || '')}
+                            required
+                            hideLabel
+                            placeholder=""
+                            submitFormat="iso"
+                            inputClassName="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-0 transition whitespace-nowrap"
+                            containerClassName="space-y-0"
+                        />
+                    </label>
+
+                    {enableClientSelect ? (
+                        <label className="relative block">
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Client</span>
+                            <input
+                                type="text"
+                                value={clientSearch || (selectedClient?.name || '')}
+                                onChange={(e) => {
+                                    setClientSearch(e.target.value);
+                                    setClientDropdownOpen(true);
+                                    if (!e.target.value.trim()) {
+                                        setNewTaskClientId('');
+                                    }
+                                }}
+                                onFocus={() => setClientDropdownOpen(true)}
+                                placeholder="Search client..."
+                                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 pr-8 text-xs text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-0 transition"
+                                autoComplete="off"
+                            >
+                            </input>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setClientDropdownOpen((previous) => !previous);
+                                    if (!clientSearch && selectedClient?.name) {
+                                        setClientSearch(selectedClient.name);
+                                    }
+                                }}
+                                className="absolute right-2 top-[30px] text-slate-400 hover:text-slate-600"
+                                aria-label="Toggle client search"
+                            >
+                                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 011.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+
+                            {clientDropdownOpen ? (
+                                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                                    <button
+                                        type="button"
+                                        onMouseDown={(event) => {
+                                            event.preventDefault();
+                                            setNewTaskClientId('');
+                                            setClientSearch('');
+                                            setClientDropdownOpen(false);
+                                        }}
+                                        className="block w-full rounded-lg px-3 py-2 text-left text-xs text-slate-500 hover:bg-slate-50"
+                                    >
+                                        No client selected
+                                    </button>
+                                    {filteredClients.map((client) => (
+                                        <button
+                                            key={client.id}
+                                            type="button"
+                                            onMouseDown={(event) => {
+                                                event.preventDefault();
+                                                applyClientSelection(client);
+                                            }}
+                                            className="block w-full rounded-lg px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                                        >
+                                            {client.name}
+                                        </button>
+                                    ))}
+                                    {filteredClients.length === 0 ? (
+                                        <div className="px-3 py-2 text-xs text-slate-400">No matching client found.</div>
+                                    ) : null}
+                                </div>
+                            ) : null}
+                            <span className="mt-1 block text-[11px] text-slate-400">Tip: টাইপ করুন @ তারপর client name লিখুন, quick mention select হবে.</span>
+                        </label>
+                    ) : null}
+                </div>
+
+                <div className="flex justify-end">
+                    <button
+                        type="submit"
+                        disabled={loading || !newTaskTitle.trim() || !newTaskDate}
+                        className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 focus:outline-none transition disabled:opacity-50"
+                    >
+                        Add
+                    </button>
+                </div>
             </form>
         </div>
     );
