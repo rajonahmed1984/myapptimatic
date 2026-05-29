@@ -23,12 +23,44 @@ const statusTextClass = (status) => {
     return 'text-slate-600';
 };
 
-const rowButtonClass = 'rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600';
-const actionPrimaryClass = 'rounded-md bg-[#2e6da4] px-4 py-2 text-sm font-semibold text-white hover:bg-[#245680]';
-const topActionButtonClass = 'inline-flex h-10 min-w-[130px] items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600';
-const summaryActionSizeClass = 'inline-flex h-10 min-w-[170px] items-center justify-center whitespace-nowrap rounded-md px-3 text-sm font-semibold';
-const summaryActionPrimaryClass = `${summaryActionSizeClass} bg-[#2e6da4] text-white hover:bg-[#245680]`;
-const summaryActionSecondaryClass = `${summaryActionSizeClass} border border-slate-300 bg-white text-slate-700 hover:border-teal-300 hover:text-teal-600`;
+const inputClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
+const inputReadonlyClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-200 bg-slate-100 text-slate-500';
+const textareaClass = 'w-full rounded-2xl border border-slate-300 px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600';
+const labelClass = 'mb-1 block text-sm font-medium text-slate-700';
+const btnPrimary = 'rounded-full bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500';
+const btnSecondary = 'rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600';
+const btnDanger = 'rounded-full border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50';
+
+const printStyles = `
+    @media screen { .invoice-print-area { display: none !important; } }
+    @media print {
+        @page { size: auto; margin: 20px; padding: 0; }
+        body * { visibility: hidden !important; }
+        .invoice-print-area, .invoice-print-area * { visibility: visible !important; }
+        .invoice-print-area {
+            position: fixed; top: 0; left: 0; right: 0;
+            padding: 20px; background: #fff;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 14px; line-height: 1.42857143; color: #333;
+        }
+        .inv-grid { display: table; width: 100%; table-layout: fixed; }
+        .inv-col { display: table-cell; width: 50%; vertical-align: top; padding: 0 15px; }
+        .inv-col-right { text-align: right; }
+        .inv-logo { max-width: 300px; height: auto; }
+        .inv-logo-fallback { font-size: 36px; font-weight: 800; color: #211f75; letter-spacing: -1px; }
+        .inv-hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+        address { font-style: normal; line-height: 1.5; margin: 8px 0 0; font-size: 0.92em; }
+        .inv-status { font-size: 24px; font-weight: bold; text-transform: uppercase; }
+        .inv-status-unpaid, .inv-status-overdue { color: #cc0000; }
+        .inv-status-paid { color: #779500; }
+        .inv-status-cancelled, .inv-status-refunded { color: #888888; }
+        .inv-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+        .inv-table td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+        .inv-tr { text-align: right; }
+        .inv-tc { text-align: center; }
+        .inv-footer { margin-top: 50px; text-align: center; font-size: 0.9em; }
+    }
+`;
 
 export default function Show({
     pageTitle = 'Invoice Details',
@@ -102,45 +134,38 @@ export default function Show({
     return (
         <>
             <Head title={pageTitle} />
+            {/* eslint-disable-next-line react/no-danger */}
+            <style dangerouslySetInnerHTML={{ __html: printStyles }} />
 
-            <div className="space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Invoice #{invoice.number_display}</h1>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('options')}
-                            className={topActionButtonClass}
-                        >
-                            Manage Invoice
-                        </button>
-                        <a href={routes?.client_view} data-native="true" className={topActionButtonClass}>
-                            View as Client
-                        </a>
-                        <button type="button" onClick={() => window.print()} className={topActionButtonClass}>
-                            Print
-                        </button>
-                        <a href={routes?.download} data-native="true" className={topActionButtonClass}>
-                            Download PDF
-                        </a>
-                        <a href={routes?.index} data-native="true" className={topActionButtonClass}>
-                            Back
-                        </a>
+            <div className="space-y-6">
+                {/* ── Page header ── */}
+                <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h1 className="text-xl font-semibold text-slate-900">Invoice #{invoice.number_display}</h1>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button type="button" onClick={() => setActiveTab('options')} className={btnSecondary}>Manage Invoice</button>
+                            <a href={routes?.client_view} data-native="true" className={btnSecondary}>View as Client</a>
+                            <button type="button" onClick={() => window.print()} className={btnSecondary}>Print</button>
+                            <a href={routes?.download} data-native="true" className={btnSecondary}>Download PDF</a>
+                            <a href={routes?.index} data-native="true" className="text-sm font-medium text-teal-600 hover:text-teal-500">Back to list</a>
+                        </div>
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
-                    <div className="border-b border-slate-300 bg-slate-50 px-3 py-2">
-                        <div className="flex flex-wrap items-center gap-2">
+                {/* ── Tabs + content ── */}
+                <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white">
+                    {/* Tab bar */}
+                    <div className="border-b border-slate-200 px-6 pt-4">
+                        <div className="flex flex-wrap gap-2 pb-3">
                             {tabs.map((tab) => (
                                 <button
                                     key={tab.key}
                                     type="button"
                                     onClick={() => setActiveTab(tab.key)}
-                                    className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+                                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                                         activeTab === tab.key
-                                            ? 'border-slate-900 bg-white text-slate-900'
-                                            : 'border-slate-300 bg-slate-100 text-slate-700 hover:border-slate-400 hover:text-slate-900'
+                                            ? 'bg-teal-600 text-white'
+                                            : 'border border-slate-300 text-slate-600 hover:border-teal-300 hover:text-teal-600'
                                     }`}
                                 >
                                     {tab.label}
@@ -149,157 +174,119 @@ export default function Show({
                         </div>
                     </div>
 
-                    <div className="p-4">
+                    <div className="p-6">
+                        {/* ── Summary ── */}
                         {activeTab === 'summary' ? (
                             <div className="grid gap-5 lg:grid-cols-2">
-                                <div className="rounded-lg border border-slate-300 bg-slate-50/60 p-3">
-                                    <table className="w-full text-sm">
+                                {/* Info table */}
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+                                    <table className="w-full text-xs">
                                         <tbody>
                                             <tr className="border-b border-slate-200">
-                                                <td className="w-40 px-2 py-1.5 font-semibold text-slate-600">Client Name</td>
-                                                <td className="px-2 py-1.5 text-slate-800">
+                                                <td className="w-40 py-2 pr-3 font-semibold text-slate-500">Client</td>
+                                                <td className="py-2 text-slate-800">
                                                     {invoice.customer?.show_route ? (
-                                                        <a href={invoice.customer.show_route} data-native="true" className="text-teal-700 hover:text-teal-600">
+                                                        <a href={invoice.customer.show_route} data-native="true" className="font-medium text-teal-600 hover:text-teal-500">
                                                             {invoice.customer?.name}
                                                         </a>
-                                                    ) : (
-                                                        invoice.customer?.name
-                                                    )}
+                                                    ) : invoice.customer?.name}
                                                 </td>
                                             </tr>
                                             <tr className="border-b border-slate-200">
-                                                <td className="px-2 py-1.5 font-semibold text-slate-600">Invoice Date</td>
-                                                <td className="px-2 py-1.5 text-slate-800">{invoice.issue_date_display}</td>
+                                                <td className="py-2 pr-3 font-semibold text-slate-500">Invoice Date</td>
+                                                <td className="py-2 text-slate-800">{invoice.issue_date_display}</td>
                                             </tr>
                                             <tr className="border-b border-slate-200">
-                                                <td className="px-2 py-1.5 font-semibold text-slate-600">Due Date</td>
-                                                <td className="px-2 py-1.5 text-slate-800">{invoice.due_date_display}</td>
+                                                <td className="py-2 pr-3 font-semibold text-slate-500">Due Date</td>
+                                                <td className="py-2 text-slate-800">{invoice.due_date_display}</td>
                                             </tr>
                                             <tr className="border-b border-slate-200">
-                                                <td className="px-2 py-1.5 font-semibold text-slate-600">Invoice Amount</td>
-                                                <td className="px-2 py-1.5 text-slate-800">{invoice.totals?.total_display}</td>
+                                                <td className="py-2 pr-3 font-semibold text-slate-500">Invoice Amount</td>
+                                                <td className="py-2 text-slate-800">{invoice.totals?.total_display}</td>
                                             </tr>
                                             <tr className="border-b border-slate-200">
-                                                <td className="px-2 py-1.5 font-semibold text-slate-600">Credit</td>
-                                                <td className="px-2 py-1.5 text-slate-800">{invoice.totals?.credit_display}</td>
+                                                <td className="py-2 pr-3 font-semibold text-slate-500">Credit</td>
+                                                <td className="py-2 text-slate-800">{invoice.totals?.credit_display}</td>
                                             </tr>
                                             <tr>
-                                                <td className="px-2 py-1.5 font-semibold text-slate-700">Balance</td>
-                                                <td className="px-2 py-1.5 font-semibold text-rose-700">{invoice.totals?.outstanding_display}</td>
+                                                <td className="py-2 pr-3 font-semibold text-slate-700">Balance</td>
+                                                <td className="py-2 font-semibold text-rose-600">{invoice.totals?.outstanding_display}</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
 
-                                <div className="rounded-lg border border-slate-300 bg-slate-50/60 p-4 text-center">
-                                    <div className={`text-4xl font-bold uppercase tracking-wide ${statusTextClass(invoice.status)}`}>
+                                {/* Status + actions */}
+                                <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-6 text-center">
+                                    <div className={`text-3xl font-bold uppercase tracking-wider ${statusTextClass(invoice.status)}`}>
                                         {invoice.status_label}
                                     </div>
-                                    <div className="mt-2 text-lg text-slate-700">
-                                        Payment Method: <span className="font-semibold">{invoice.payment_method_display || '--'}</span>
+                                    <div className="text-xs text-slate-500">
+                                        Payment Method: <span className="font-semibold text-slate-700">{invoice.payment_method_display || '--'}</span>
                                     </div>
-
-                                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                    <div className="flex flex-wrap justify-center gap-2">
                                         {invoice.can_record_payment ? (
                                             <form method="POST" action={routes?.mark_paid} data-native="true">
                                                 <input type="hidden" name="_token" value={csrf} />
-                                                <button type="submit" className={summaryActionPrimaryClass}>Mark Paid</button>
+                                                <button type="submit" className={btnPrimary}>Mark Paid</button>
                                             </form>
                                         ) : null}
-
                                         {invoice.status !== 'cancelled' ? (
                                             <form method="POST" action={routes?.update} data-native="true">
                                                 <input type="hidden" name="_token" value={csrf} />
                                                 <input type="hidden" name="_method" value="PUT" />
                                                 {hiddenInvoiceStateFields('cancelled')}
-                                                <button type="submit" className={summaryActionSecondaryClass}>Mark Cancelled</button>
+                                                <button type="submit" className={btnDanger}>Mark Cancelled</button>
                                             </form>
                                         ) : null}
-
                                         {invoice.status !== 'unpaid' ? (
                                             <form method="POST" action={routes?.update} data-native="true">
                                                 <input type="hidden" name="_token" value={csrf} />
                                                 <input type="hidden" name="_method" value="PUT" />
                                                 {hiddenInvoiceStateFields('unpaid')}
-                                                <button type="submit" className={summaryActionSecondaryClass}>Mark Unpaid</button>
+                                                <button type="submit" className={btnSecondary}>Mark Unpaid</button>
                                             </form>
                                         ) : null}
-
                                         {canCollection ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => setCollectionOpen((current) => !current)}
-                                                className={summaryActionSecondaryClass}
-                                            >
+                                            <button type="button" onClick={() => setCollectionOpen((c) => !c)} className={btnSecondary}>
                                                 {collectionOpen ? 'Hide Sales Rep Collection' : 'Collected by Sales Rep'}
                                             </button>
                                         ) : null}
                                     </div>
                                 </div>
 
+                                {/* Sales rep collection form */}
                                 {collectionOpen ? (
-                                    <div className="lg:col-span-2 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
-                                        <div className="mb-2 text-sm font-semibold text-slate-800">Mark paid via sales representative</div>
+                                    <div className="lg:col-span-2 rounded-2xl border border-teal-200 bg-teal-50/30 p-5">
+                                        <div className="mb-3 text-sm font-semibold text-slate-800">Mark paid via sales representative</div>
                                         <form method="POST" action={routes?.collect_by_sales_rep} data-native="true" className="grid gap-4 md:grid-cols-2">
                                             <input type="hidden" name="_token" value={csrf} />
                                             <div>
-                                                <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Sales Representative</label>
-                                                <SearchableSelect
-                                                    name="sales_rep_id"
-                                                    required
-                                                    defaultValue={String(sales_rep_collection_options[0]?.id || '')}
-                                                    options={salesRepCollectionOptions}
-                                                    className="mt-1"
-                                                    placeholder="Select sales rep"
-                                                />
+                                                <label className={labelClass}>Sales Representative</label>
+                                                <SearchableSelect name="sales_rep_id" required defaultValue={String(sales_rep_collection_options[0]?.id || '')} options={salesRepCollectionOptions} className="mt-1" placeholder="Select sales rep" />
                                             </div>
                                             <div>
-                                                <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Collected Amount</label>
-                                                <input
-                                                    name="collected_amount"
-                                                    type="number"
-                                                    min="0.01"
-                                                    step="0.01"
-                                                    defaultValue={invoice.totals?.outstanding_value || ''}
-                                                    required
-                                                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                                />
+                                                <label className={labelClass}>Collected Amount</label>
+                                                <input name="collected_amount" type="number" min="0.01" step="0.01" defaultValue={invoice.totals?.outstanding_value || ''} required className={inputClass} />
                                             </div>
                                             <div>
-                                                <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Retained / Taken Amount</label>
-                                                <input
-                                                    name="retained_amount"
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    defaultValue="0.00"
-                                                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                                />
+                                                <label className={labelClass}>Retained / Taken Amount</label>
+                                                <input name="retained_amount" type="number" min="0" step="0.01" defaultValue="0.00" className={inputClass} />
                                             </div>
                                             <div>
-                                                <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Payout Method</label>
-                                                <SearchableSelect
-                                                    name="payout_method"
-                                                    defaultValue=""
-                                                    options={payoutMethodOptions}
-                                                    className="mt-1"
-                                                    placeholder="Select"
-                                                />
+                                                <label className={labelClass}>Payout Method</label>
+                                                <SearchableSelect name="payout_method" defaultValue="" options={payoutMethodOptions} className="mt-1" placeholder="Select" />
                                             </div>
                                             <div>
-                                                <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Reference</label>
-                                                <input name="reference" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                                <label className={labelClass}>Reference</label>
+                                                <input name="reference" className={inputClass} />
                                             </div>
                                             <div>
-                                                <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Note</label>
-                                                <textarea name="note" rows={1} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                                <label className={labelClass}>Note</label>
+                                                <textarea name="note" rows={1} className={textareaClass} />
                                             </div>
                                             <div className="md:col-span-2 flex justify-end">
-                                                <button
-                                                    type="submit"
-                                                    disabled={sales_rep_collection_options.length === 0}
-                                                    className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-                                                >
+                                                <button type="submit" disabled={sales_rep_collection_options.length === 0} className={`${btnPrimary} disabled:cursor-not-allowed disabled:opacity-50`}>
                                                     Save collected payment
                                                 </button>
                                             </div>
@@ -309,75 +296,45 @@ export default function Show({
                             </div>
                         ) : null}
 
+                        {/* ── Add Payment ── */}
                         {activeTab === 'add_payment' ? (
                             <form method="POST" action={routes?.add_payment} data-native="true" className="grid gap-4 md:grid-cols-2">
                                 <input type="hidden" name="_token" value={csrf} />
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Date</label>
-                                    <input
-                                        name="entry_date"
-                                        type="text"
-                                        placeholder="DD-MM-YYYY"
-                                        defaultValue={invoice.issue_date_value || ''}
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                        required
-                                    />
+                                    <label className={labelClass}>Date</label>
+                                    <input name="entry_date" type="text" placeholder="DD-MM-YYYY" defaultValue={invoice.issue_date_value || ''} required className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Amount</label>
-                                    <input
-                                        name="amount"
-                                        type="number"
-                                        min="0.01"
-                                        step="0.01"
-                                        defaultValue={invoice.totals?.outstanding_value || ''}
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                        required
-                                    />
+                                    <label className={labelClass}>Amount</label>
+                                    <input name="amount" type="number" min="0.01" step="0.01" defaultValue={invoice.totals?.outstanding_value || ''} required className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Method</label>
-                                    <SearchableSelect
-                                        name="payment_gateway_id"
-                                        defaultValue=""
-                                        options={paymentGatewayOptions}
-                                        className="mt-1"
-                                        placeholder="Select"
-                                    />
+                                    <label className={labelClass}>Payment Method</label>
+                                    <SearchableSelect name="payment_gateway_id" defaultValue="" options={paymentGatewayOptions} className="mt-1" placeholder="Select" />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Transaction ID</label>
-                                    <input name="reference" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                    <label className={labelClass}>Transaction ID</label>
+                                    <input name="reference" className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Transaction Fees</label>
-                                    <input
-                                        name="transaction_fee"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        defaultValue="0.00"
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                    />
+                                    <label className={labelClass}>Transaction Fees</label>
+                                    <input name="transaction_fee" type="number" min="0" step="0.01" defaultValue="0.00" className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Description</label>
-                                    <input
-                                        name="description"
-                                        defaultValue={`Payment for invoice #${invoice.number_display || invoice.id}`}
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                    />
+                                    <label className={labelClass}>Description</label>
+                                    <input name="description" defaultValue={`Payment for invoice #${invoice.number_display || invoice.id}`} className={inputClass} />
                                 </div>
                                 <div className="md:col-span-2 flex items-center justify-between">
-                                    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                                    <label className="inline-flex items-center gap-2 text-xs text-slate-700">
                                         <input type="checkbox" name="send_email" value="1" defaultChecked />
-                                        Check to send confirmation email
+                                        Send confirmation email
                                     </label>
-                                    <button type="submit" className={actionPrimaryClass}>Add Payment</button>
+                                    <button type="submit" className={btnPrimary}>Add Payment</button>
                                 </div>
                             </form>
                         ) : null}
 
+                        {/* ── Options ── */}
                         {activeTab === 'options' ? (
                             <form method="POST" action={routes?.update} data-native="true" className="grid gap-4">
                                 <input type="hidden" name="_token" value={csrf} />
@@ -385,67 +342,31 @@ export default function Show({
 
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Invoice Date</label>
-                                        <input
-                                            name="issue_date"
-                                            type="text"
-                                            placeholder="DD-MM-YYYY"
-                                            defaultValue={invoice.issue_date_value || ''}
-                                            required
-                                            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                        />
+                                        <label className={labelClass}>Invoice Date</label>
+                                        <input name="issue_date" type="text" placeholder="DD-MM-YYYY" defaultValue={invoice.issue_date_value || ''} required className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Due Date</label>
-                                        <input
-                                            name="due_date"
-                                            type="text"
-                                            placeholder="DD-MM-YYYY"
-                                            defaultValue={invoice.due_date_value || ''}
-                                            required
-                                            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                        />
+                                        <label className={labelClass}>Due Date</label>
+                                        <input name="due_date" type="text" placeholder="DD-MM-YYYY" defaultValue={invoice.due_date_value || ''} required className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Invoice #</label>
-                                        <input
-                                            value={invoice.number_display || ''}
-                                            readOnly
-                                            className="mt-1 w-full rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm"
-                                        />
+                                        <label className={labelClass}>Invoice #</label>
+                                        <input value={invoice.number_display || ''} readOnly className={inputReadonlyClass} />
                                     </div>
                                     <div>
-                                        <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>
-                                        <SearchableSelect
-                                            name="status"
-                                            defaultValue={String(invoice.selected_status || '')}
-                                            options={statusSelectOptions}
-                                            className="mt-1"
-                                            placeholder="Select status"
-                                        />
+                                        <label className={labelClass}>Status</label>
+                                        <SearchableSelect name="status" defaultValue={String(invoice.selected_status || '')} options={statusSelectOptions} className="mt-1" placeholder="Select status" />
                                     </div>
                                 </div>
 
-                                <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+                                {/* Invoice items */}
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
                                     <div className="mb-3 text-sm font-semibold text-slate-800">Invoice Items</div>
-                                    <div className="space-y-3">
+                                    <div className="space-y-2">
                                         {(invoice.items || []).map((item) => (
                                             <div key={item.id} className="grid gap-2 md:grid-cols-[1fr_180px]">
-                                                <input
-                                                    name={`items[${item.id}][description]`}
-                                                    defaultValue={item.description}
-                                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                                    placeholder="Description"
-                                                />
-                                                <input
-                                                    name={`items[${item.id}][amount]`}
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    defaultValue={item.line_total_value}
-                                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                                    placeholder="Amount"
-                                                />
+                                                <input name={`items[${item.id}][description]`} defaultValue={item.description} className={inputClass} placeholder="Description" />
+                                                <input name={`items[${item.id}][amount]`} type="number" min="0" step="0.01" defaultValue={item.line_total_value} className={inputClass} placeholder="Amount" />
                                             </div>
                                         ))}
                                     </div>
@@ -453,24 +374,13 @@ export default function Show({
                                     <div className="mt-4 border-t border-slate-200 pt-4">
                                         <div className="mb-3 flex items-center justify-between gap-3">
                                             <div className="text-sm font-semibold text-slate-800">Add Item</div>
-                                            <button type="button" onClick={addNewItemRow} className={rowButtonClass}>Add Item</button>
+                                            <button type="button" onClick={addNewItemRow} className={btnSecondary}>+ Add Item</button>
                                         </div>
-                                        <div className="space-y-3">
+                                        <div className="space-y-2">
                                             {newItemRows.map((rowKey) => (
                                                 <div key={rowKey} className="grid gap-2 md:grid-cols-[1fr_180px]">
-                                                    <input
-                                                        name={`new_items[${rowKey}][description]`}
-                                                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                                        placeholder="Description"
-                                                    />
-                                                    <input
-                                                        name={`new_items[${rowKey}][amount]`}
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                                        placeholder="Amount"
-                                                    />
+                                                    <input name={`new_items[${rowKey}][description]`} className={inputClass} placeholder="Description" />
+                                                    <input name={`new_items[${rowKey}][amount]`} type="number" min="0" step="0.01" className={inputClass} placeholder="Amount" />
                                                 </div>
                                             ))}
                                         </div>
@@ -478,254 +388,281 @@ export default function Show({
                                 </div>
 
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Notes</label>
-                                    <textarea
-                                        name="notes"
-                                        rows={2}
-                                        defaultValue={invoice.notes_value}
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                    />
+                                    <label className={labelClass}>Notes</label>
+                                    <textarea name="notes" rows={2} defaultValue={invoice.notes_value} className={textareaClass} />
                                 </div>
 
-                                <div className="flex flex-wrap justify-center gap-2">
-                                    <button type="submit" className={actionPrimaryClass}>Save Changes</button>
-                                    <a href={routes?.index} data-native="true" className={rowButtonClass}>Cancel Changes</a>
+                                <div className="flex flex-wrap items-center gap-3 pt-1">
+                                    <button type="submit" className={btnPrimary}>Save Changes</button>
+                                    <a href={routes?.index} data-native="true" className={btnSecondary}>Cancel</a>
                                 </div>
                             </form>
                         ) : null}
 
+                        {/* ── Credit ── */}
                         {activeTab === 'credit' ? (
                             <form method="POST" action={routes?.add_credit} data-native="true" className="grid gap-4 md:grid-cols-2">
                                 <input type="hidden" name="_token" value={csrf} />
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Date</label>
-                                    <input
-                                        name="entry_date"
-                                        type="text"
-                                        placeholder="DD-MM-YYYY"
-                                        defaultValue={invoice.issue_date_value || ''}
-                                        required
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                    />
+                                    <label className={labelClass}>Date</label>
+                                    <input name="entry_date" type="text" placeholder="DD-MM-YYYY" defaultValue={invoice.issue_date_value || ''} required className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Amount</label>
-                                    <input
-                                        name="amount"
-                                        type="number"
-                                        min="0.01"
-                                        step="0.01"
-                                        defaultValue={invoice.totals?.outstanding_value || ''}
-                                        required
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                    />
+                                    <label className={labelClass}>Amount</label>
+                                    <input name="amount" type="number" min="0.01" step="0.01" defaultValue={invoice.totals?.outstanding_value || ''} required className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Reference</label>
-                                    <input name="reference" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                    <label className={labelClass}>Reference</label>
+                                    <input name="reference" className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Description</label>
-                                    <input
-                                        name="description"
-                                        defaultValue={`Credit applied to invoice #${invoice.number_display || invoice.id}`}
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                    />
+                                    <label className={labelClass}>Description</label>
+                                    <input name="description" defaultValue={`Credit applied to invoice #${invoice.number_display || invoice.id}`} className={inputClass} />
                                 </div>
-                                <div className="md:col-span-2 flex justify-center">
-                                    <button type="submit" className={actionPrimaryClass}>Apply Credit</button>
+                                <div className="md:col-span-2 flex justify-end">
+                                    <button type="submit" className={btnPrimary}>Apply Credit</button>
                                 </div>
                             </form>
                         ) : null}
 
+                        {/* ── Refund ── */}
                         {activeTab === 'refund' ? (
                             <form method="POST" action={routes?.add_refund} data-native="true" className="grid gap-4 md:grid-cols-2">
                                 <input type="hidden" name="_token" value={csrf} />
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Date</label>
-                                    <input
-                                        name="entry_date"
-                                        type="text"
-                                        placeholder="DD-MM-YYYY"
-                                        defaultValue={invoice.issue_date_value || ''}
-                                        required
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                    />
+                                    <label className={labelClass}>Date</label>
+                                    <input name="entry_date" type="text" placeholder="DD-MM-YYYY" defaultValue={invoice.issue_date_value || ''} required className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Amount</label>
-                                    <input
-                                        name="amount"
-                                        type="number"
-                                        min="0.01"
-                                        step="0.01"
-                                        defaultValue={invoice.totals?.collected_value || ''}
-                                        required
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                    />
+                                    <label className={labelClass}>Amount</label>
+                                    <input name="amount" type="number" min="0.01" step="0.01" defaultValue={invoice.totals?.collected_value || ''} required className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Refund Type / Gateway</label>
-                                    <SearchableSelect
-                                        name="payment_gateway_id"
-                                        defaultValue=""
-                                        options={paymentGatewayOptions}
-                                        className="mt-1"
-                                        placeholder="Select"
-                                    />
+                                    <label className={labelClass}>Refund Type / Gateway</label>
+                                    <SearchableSelect name="payment_gateway_id" defaultValue="" options={paymentGatewayOptions} className="mt-1" placeholder="Select" />
                                 </div>
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Transaction ID</label>
-                                    <input name="reference" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                    <label className={labelClass}>Transaction ID</label>
+                                    <input name="reference" className={inputClass} />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Description</label>
-                                    <input
-                                        name="description"
-                                        defaultValue={`Refund for invoice #${invoice.number_display || invoice.id}`}
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                    />
+                                    <label className={labelClass}>Description</label>
+                                    <input name="description" defaultValue={`Refund for invoice #${invoice.number_display || invoice.id}`} className={inputClass} />
                                 </div>
                                 <div className="md:col-span-2 flex items-center justify-between">
-                                    {!invoice.can_record_refund ? <div className="text-xs text-amber-700">Refund is usually used after invoice is marked paid.</div> : <div />}
-                                    <button type="submit" className={actionPrimaryClass}>Refund</button>
+                                    {!invoice.can_record_refund ? <p className="text-xs text-amber-600">Refund is usually used after invoice is marked paid.</p> : <span />}
+                                    <button type="submit" className={btnDanger}>Refund</button>
                                 </div>
                             </form>
                         ) : null}
 
+                        {/* ── Notes ── */}
                         {activeTab === 'notes' ? (
                             <form method="POST" action={routes?.update} data-native="true" className="space-y-4">
                                 <input type="hidden" name="_token" value={csrf} />
                                 <input type="hidden" name="_method" value="PUT" />
                                 {hiddenInvoiceStateFields(invoice.selected_status, '', false)}
                                 <div>
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Notes</label>
-                                    <textarea
-                                        name="notes"
-                                        rows={4}
-                                        defaultValue={invoice.notes_value}
-                                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                        placeholder="Internal note for this invoice"
-                                    />
+                                    <label className={labelClass}>Notes</label>
+                                    <textarea name="notes" rows={4} defaultValue={invoice.notes_value} className={textareaClass} placeholder="Internal note for this invoice" />
                                 </div>
-                                <div className="flex justify-center">
-                                    <button type="submit" className={actionPrimaryClass}>Save Notes</button>
+                                <div className="flex justify-end">
+                                    <button type="submit" className={btnPrimary}>Save Notes</button>
                                 </div>
                             </form>
                         ) : null}
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    <div className="text-2xl font-semibold text-slate-700">Invoice Items</div>
-                    <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                                <thead>
-                                    <tr className="bg-[#1f4f82] text-left text-sm font-semibold text-white">
-                                        <th className="px-3 py-2">Description</th>
-                                        <th className="w-48 px-3 py-2 text-right">Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(invoice.items || []).length > 0 ? (
-                                        (invoice.items || []).map((item) => (
-                                            <tr key={item.id} className="border-t border-slate-200">
-                                                <td className="px-3 py-2 text-slate-800">{item.description}</td>
-                                                <td className="px-3 py-2 text-right text-slate-800">{item.line_total_display}</td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={2} className="px-3 py-3 text-center text-slate-500">No invoice items found.</td>
+                {/* ── Invoice Items table ── */}
+                <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-6">
+                    <h2 className="mb-4 text-base font-semibold text-slate-800">Invoice Items</h2>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="min-w-full text-xs">
+                            <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50 text-left font-semibold text-slate-600">
+                                    <th className="px-4 py-2">Description</th>
+                                    <th className="w-48 px-4 py-2 text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(invoice.items || []).length > 0 ? (
+                                    (invoice.items || []).map((item) => (
+                                        <tr key={item.id} className="border-t border-slate-100">
+                                            <td className="px-4 py-2 text-slate-700">{item.description}</td>
+                                            <td className="px-4 py-2 text-right text-slate-700">{item.line_total_display}</td>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div className="border-t border-slate-200 bg-slate-50 px-3 py-3 text-sm">
-                            <div className="ml-auto max-w-sm space-y-1">
-                                <div className="flex items-center justify-between"><span className="font-semibold text-slate-600">Sub Total:</span><span>{invoice.totals?.subtotal_display}</span></div>
-                                <div className="flex items-center justify-between"><span className="font-semibold text-slate-600">Credit:</span><span>{invoice.totals?.credit_display}</span></div>
-                                <div className="flex items-center justify-between rounded bg-[#1f4f82] px-3 py-2 font-bold text-white"><span>Total Due:</span><span>{invoice.totals?.outstanding_display}</span></div>
-                            </div>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={2} className="px-4 py-3 text-center text-slate-400">No invoice items found.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="mt-3 ml-auto max-w-xs space-y-1 text-xs">
+                        <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Sub Total:</span><span className="text-slate-700">{invoice.totals?.subtotal_display}</span></div>
+                        <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Credit:</span><span className="text-slate-700">{invoice.totals?.credit_display}</span></div>
+                        <div className="flex items-center justify-between rounded-full bg-teal-600 px-4 py-1.5 font-bold text-white">
+                            <span>Total Due:</span><span>{invoice.totals?.outstanding_display}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    <div className="text-2xl font-semibold text-slate-700">Transactions</div>
-                    <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                                <thead>
-                                    <tr className="bg-[#1f4f82] text-left text-sm font-semibold text-white">
-                                        <th className="px-3 py-2">Date</th>
-                                        <th className="px-3 py-2">Payment Method</th>
-                                        <th className="px-3 py-2">Transaction ID</th>
-                                        <th className="px-3 py-2 text-right">Amount</th>
-                                        <th className="px-3 py-2 text-right">Transaction Fees</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {paymentTransactions.length > 0 ? (
-                                        paymentTransactions.map((entry) => (
-                                            <tr key={entry.id} className="border-t border-slate-200">
-                                                <td className="px-3 py-2 text-slate-700">{entry.entry_date_display}</td>
-                                                <td className="px-3 py-2 text-slate-700">{entry.gateway_name || '--'}</td>
-                                                <td className="px-3 py-2 font-mono text-xs text-slate-700">{entry.reference || '--'}</td>
-                                                <td className="px-3 py-2 text-right font-semibold text-slate-800">{entry.amount_display}</td>
-                                                <td className="px-3 py-2 text-right text-slate-700">{entry.transaction_fee_display || '--'}</td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={5} className="px-3 py-3 text-slate-500">No Records Found</td>
+                {/* ── Transactions ── */}
+                <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-6">
+                    <h2 className="mb-4 text-base font-semibold text-slate-800">Transactions</h2>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="min-w-full text-xs">
+                            <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50 text-left font-semibold text-slate-600">
+                                    <th className="px-4 py-2">Date</th>
+                                    <th className="px-4 py-2">Payment Method</th>
+                                    <th className="px-4 py-2">Transaction ID</th>
+                                    <th className="px-4 py-2 text-right">Amount</th>
+                                    <th className="px-4 py-2 text-right">Transaction Fees</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paymentTransactions.length > 0 ? (
+                                    paymentTransactions.map((entry) => (
+                                        <tr key={entry.id} className="border-t border-slate-100">
+                                            <td className="px-4 py-2 text-slate-600">{entry.entry_date_display}</td>
+                                            <td className="px-4 py-2 text-slate-600">{entry.gateway_name || '--'}</td>
+                                            <td className="px-4 py-2 font-mono text-slate-600">{entry.reference || '--'}</td>
+                                            <td className="px-4 py-2 text-right font-semibold text-slate-800">{entry.amount_display}</td>
+                                            <td className="px-4 py-2 text-right text-slate-600">{entry.transaction_fee_display || '--'}</td>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={5} className="px-4 py-3 text-center text-slate-400">No Records Found</td></tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    <div className="text-2xl font-semibold text-slate-700">Transaction History</div>
-                    <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                                <thead>
-                                    <tr className="bg-[#1f4f82] text-left text-sm font-semibold text-white">
-                                        <th className="px-3 py-2">Date</th>
-                                        <th className="px-3 py-2">Payment Method</th>
-                                        <th className="px-3 py-2">Transaction ID</th>
-                                        <th className="px-3 py-2">Status</th>
-                                        <th className="px-3 py-2">Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {transactionHistory.length > 0 ? (
-                                        transactionHistory.map((entry) => (
-                                            <tr key={entry.id} className="border-t border-slate-200">
-                                                <td className="px-3 py-2 text-slate-700">{entry.entry_date_display}</td>
-                                                <td className="px-3 py-2 text-slate-700">{entry.gateway_name || '--'}</td>
-                                                <td className="px-3 py-2 font-mono text-xs text-slate-700">{entry.reference || '--'}</td>
-                                                <td className="px-3 py-2 text-slate-700">{entry.status_label || entry.type_label}</td>
-                                                <td className="px-3 py-2 text-slate-700">{entry.description || '--'}</td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={5} className="px-3 py-3 text-slate-500">No Records Found</td>
+                {/* ── Transaction History ── */}
+                <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-6">
+                    <h2 className="mb-4 text-base font-semibold text-slate-800">Transaction History</h2>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="min-w-full text-xs">
+                            <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50 text-left font-semibold text-slate-600">
+                                    <th className="px-4 py-2">Date</th>
+                                    <th className="px-4 py-2">Payment Method</th>
+                                    <th className="px-4 py-2">Transaction ID</th>
+                                    <th className="px-4 py-2">Status</th>
+                                    <th className="px-4 py-2">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {transactionHistory.length > 0 ? (
+                                    transactionHistory.map((entry) => (
+                                        <tr key={entry.id} className="border-t border-slate-100">
+                                            <td className="px-4 py-2 text-slate-600">{entry.entry_date_display}</td>
+                                            <td className="px-4 py-2 text-slate-600">{entry.gateway_name || '--'}</td>
+                                            <td className="px-4 py-2 font-mono text-slate-600">{entry.reference || '--'}</td>
+                                            <td className="px-4 py-2 text-slate-600">{entry.status_label || entry.type_label}</td>
+                                            <td className="px-4 py-2 text-slate-600">{entry.description || '--'}</td>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={5} className="px-4 py-3 text-center text-slate-400">No Records Found</td></tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
+                </div>
+            </div>
+
+            {/* ── Print-only invoice layout (matches PDF) ── */}
+            <div className="invoice-print-area">
+                {/* Header */}
+                <div className="inv-grid">
+                    <div className="inv-col">
+                        {invoice.company?.logo_url
+                            ? <img src={invoice.company.logo_url} alt={invoice.company?.name || ''} className="inv-logo" />
+                            : <div className="inv-logo-fallback">{(invoice.company?.name || '').toLowerCase()}</div>
+                        }
+                    </div>
+                    <div className="inv-col inv-col-right">
+                        <div className={`inv-status inv-status-${invoice.status}`}>{invoice.status_label}</div>
+                        <div style={{ fontSize: 18, fontWeight: 600, marginTop: 4 }}>Invoice: #{invoice.number_display}</div>
+                        <div style={{ fontSize: 12, marginTop: 4 }}>Invoice Date: {invoice.issue_date_display}</div>
+                        <div style={{ fontSize: 12 }}>Invoice Due Date: {invoice.due_date_display}</div>
+                        {invoice.paid_at_display ? <div style={{ fontSize: 12 }}>Paid Date: {invoice.paid_at_display}</div> : null}
+                    </div>
+                </div>
+
+                <hr className="inv-hr" />
+
+                {/* Addresses */}
+                <div className="inv-grid">
+                    <div className="inv-col">
+                        <strong>Invoiced To</strong>
+                        <address>
+                            {invoice.customer?.name}<br />
+                            {invoice.customer?.email}<br />
+                            {invoice.customer?.address}
+                        </address>
+                    </div>
+                    <div className="inv-col inv-col-right">
+                        <strong>Pay To</strong>
+                        <address>
+                            {invoice.company?.name}<br />
+                            {invoice.company?.pay_to_text}<br />
+                            {invoice.company?.email}
+                        </address>
+                    </div>
+                </div>
+
+                {/* Items table */}
+                <table className="inv-table">
+                    <thead>
+                        <tr>
+                            <td><strong>Description</strong></td>
+                            <td width="20%" className="inv-tc"><strong>Amount</strong></td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {(invoice.items || []).map((item) => (
+                            <tr key={item.id}>
+                                <td>{item.description}</td>
+                                <td className="inv-tc">{item.line_total_display}</td>
+                            </tr>
+                        ))}
+                        <tr>
+                            <td className="inv-tr"><strong>Sub Total</strong></td>
+                            <td className="inv-tc">{invoice.totals?.subtotal_display}</td>
+                        </tr>
+                        {invoice.totals?.has_tax ? (
+                            <tr>
+                                <td className="inv-tr">
+                                    <strong>
+                                        {invoice.totals.tax_mode === 'inclusive' ? 'Included Tax' : invoice.totals.tax_label}
+                                        {' '}({invoice.totals.tax_rate_display}%)
+                                    </strong>
+                                </td>
+                                <td className="inv-tc">{invoice.totals.tax_amount_display}</td>
+                            </tr>
+                        ) : null}
+                        <tr>
+                            <td className="inv-tr"><strong>Discount</strong></td>
+                            <td className="inv-tc">{invoice.totals?.discount_display}</td>
+                        </tr>
+                        <tr>
+                            <td className="inv-tr"><strong>Payable Amount</strong></td>
+                            <td className="inv-tc">{invoice.totals?.payable_display}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                {/* Footer */}
+                <div className="inv-footer">
+                    <p>This is system generated invoice no signature required</p>
                 </div>
             </div>
         </>
     );
 }
+

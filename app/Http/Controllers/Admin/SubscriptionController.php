@@ -126,7 +126,10 @@ class SubscriptionController extends Controller
 
         return Inertia::render(
             'Admin/Subscriptions/Form',
-            $this->formInertiaProps($subscription, $customers, $plans, $salesReps)
+            array_merge(
+                $this->formInertiaProps($subscription, $customers, $plans, $salesReps),
+                ['licenseManager' => $this->licenseManagerInertiaProps($subscription, old('license'))]
+            )
         );
     }
 
@@ -563,6 +566,7 @@ class SubscriptionController extends Controller
                         'routes' => [
                             'suspend' => route('admin.licenses.suspend', $license),
                             'unsuspend' => route('admin.licenses.unsuspend', $license),
+                            'terminate' => route('admin.licenses.terminate', $license),
                         ],
                         'domains' => $license->domains->map(function (LicenseDomain $domain) use ($license) {
                             return [

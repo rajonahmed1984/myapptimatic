@@ -1,6 +1,117 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
+function LicenseCard({ license, csrf, statusClass }) {
+    const [editOpen, setEditOpen] = useState(false);
+    const [licenseKey, setLicenseKey] = useState(license.fields.license_key || '');
+    const [domain, setDomain] = useState(license.fields.allowed_domains || '');
+    const inputClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
+
+    return (
+        <div className="rounded-xl border border-slate-200 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium text-slate-700">#{license.id} — {license.product_name}</span>
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusClass(license.fields.status)}`}>
+                        {license.fields.status}
+                    </span>
+                    {license.fields.license_key && (
+                        <span className="font-mono text-xs text-slate-500">{license.fields.license_key}</span>
+                    )}
+                    {license.fields.allowed_domains && (
+                        <span className="text-xs text-slate-500">{license.fields.allowed_domains}</span>
+                    )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setEditOpen((v) => !v)}
+                        className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                    >
+                        {editOpen ? 'Close' : 'Edit Key / Domain'}
+                    </button>
+                    {license.fields.status !== 'suspended' && license.fields.status !== 'revoked' && (
+                        <form action={license.routes.suspend} method="POST" data-native="true">
+                            <input type="hidden" name="_token" value={csrf} />
+                            <input type="hidden" name="return_to_subscription" value="1" />
+                            <button type="submit" className="rounded-full border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-50">
+                                Suspend
+                            </button>
+                        </form>
+                    )}
+                    {license.fields.status === 'suspended' && (
+                        <form action={license.routes.unsuspend} method="POST" data-native="true">
+                            <input type="hidden" name="_token" value={csrf} />
+                            <input type="hidden" name="return_to_subscription" value="1" />
+                            <button type="submit" className="rounded-full border border-teal-300 px-3 py-1.5 text-xs font-semibold text-teal-600 hover:bg-teal-50">
+                                Unsuspend
+                            </button>
+                        </form>
+                    )}
+                    {license.fields.status !== 'revoked' && (
+                        <form
+                            action={license.routes.terminate}
+                            method="POST"
+                            data-native="true"
+                            onSubmit={(e) => { if (!window.confirm('Terminate this license? The status will be set to revoked.')) e.preventDefault(); }}
+                        >
+                            <input type="hidden" name="_token" value={csrf} />
+                            <input type="hidden" name="return_to_subscription" value="1" />
+                            <button type="submit" className="rounded-full border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50">
+                                Terminate
+                            </button>
+                        </form>
+                    )}
+                </div>
+            </div>
+
+            {editOpen && (
+                <form action={license.form.action} method="POST" data-native="true" className="mt-4 border-t border-slate-100 pt-4">
+                    <input type="hidden" name="_token" value={csrf} />
+                    <input type="hidden" name="_method" value={license.form.method} />
+                    <input type="hidden" name="return_to_subscription" value="1" />
+                    <input type="hidden" name="subscription_id" value={license.fields.subscription_id} />
+                    <input type="hidden" name="product_id" value={license.fields.product_id} />
+                    <input type="hidden" name="status" value={license.fields.status} />
+                    <input type="hidden" name="starts_at" value={license.fields.starts_at} />
+                    <input type="hidden" name="expires_at" value={license.fields.expires_at} />
+                    <input type="hidden" name="auto_suspend_override_until" value={license.fields.auto_suspend_override_until} />
+                    <input type="hidden" name="notes" value={license.fields.notes} />
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label className="mb-1 block text-xs font-medium text-slate-700">License Key</label>
+                            <input
+                                type="text"
+                                name="license_key"
+                                value={licenseKey}
+                                onChange={(e) => setLicenseKey(e.target.value)}
+                                className={inputClass}
+                                placeholder="Leave blank to keep existing"
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-xs font-medium text-slate-700">License URL / Domain</label>
+                            <input
+                                type="text"
+                                name="allowed_domains"
+                                value={domain}
+                                onChange={(e) => setDomain(e.target.value)}
+                                className={inputClass}
+                                placeholder="e.g. example.com"
+                            />
+                        </div>
+                    </div>
+                    <div className="mt-3">
+                        <button type="submit" className="rounded-full bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500">
+                            Save License
+                        </button>
+                    </div>
+                </form>
+            )}
+        </div>
+    );
+}
+
 export default function Form({
     pageTitle = 'Subscription',
     is_edit = false,
@@ -9,6 +120,7 @@ export default function Form({
     sales_reps = [],
     form = {},
     routes = {},
+    licenseManager = null,
 }) {
     const { props } = usePage();
     const errors = props?.errors || {};
@@ -58,6 +170,12 @@ export default function Form({
     );
     const inputTokenClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
     const selectTokenClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600';
+    const licenseStatusClass = (status) => {
+        if (status === 'active') return 'bg-emerald-100 text-emerald-700';
+        if (status === 'suspended') return 'bg-amber-100 text-amber-700';
+        if (status === 'revoked') return 'bg-rose-100 text-rose-700';
+        return 'bg-slate-100 text-slate-600';
+    };
     const planById = useMemo(() => {
         const map = {};
         plans.forEach((plan) => {
@@ -293,6 +411,17 @@ export default function Form({
                     </div>
                 </form>
             </div>
+
+            {is_edit && licenseManager?.licenses?.length > 0 && (
+                <div className="mx-auto mt-6 max-w-4xl rounded-2xl border border-slate-200 bg-white p-6">
+                    <h2 className="mb-4 text-base font-semibold text-slate-800">Licenses</h2>
+                    <div className="space-y-3">
+                        {licenseManager.licenses.map((license) => (
+                            <LicenseCard key={license.id} license={license} csrf={csrf} statusClass={licenseStatusClass} />
+                        ))}
+                    </div>
+                </div>
+            )}
         </>
     );
 }

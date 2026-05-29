@@ -61,7 +61,10 @@ class LicenseRealtimeCheckService
             ? (bool) $accessBlockedCustomers[$scopeKey]
             : $this->accessBlockService->isCustomerBlocked($customer, true, $license->subscription_id);
 
-        if ($autoSuspendOverrideActive && $isAccessBlocked) {
+        $customerAccessOverrideActive = $customer->access_override_until
+            && Carbon::now()->lessThanOrEqualTo($customer->access_override_until->copy()->endOfDay());
+
+        if (($autoSuspendOverrideActive || $customerAccessOverrideActive) && $isAccessBlocked) {
             $isAccessBlocked = false;
         }
 

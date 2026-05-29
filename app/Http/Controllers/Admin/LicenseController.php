@@ -237,6 +237,17 @@ class LicenseController extends Controller
         return $this->redirectAfterLicenseAction($request, $license, 'License unsuspended.');
     }
 
+    public function terminate(Request $request, License $license)
+    {
+        $this->authorize('update', $license);
+
+        if ((string) $license->status !== 'revoked') {
+            $license->update(['status' => 'revoked']);
+        }
+
+        return $this->redirectAfterLicenseAction($request, $license, 'License terminated.');
+    }
+
     public function destroy(License $license)
     {
         $license->delete();

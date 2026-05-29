@@ -268,13 +268,13 @@ export default function Index({
 
             <div id="licensesTable">
                 <div className="card overflow-x-auto">
-                    <table className="w-full min-w-[760px] table-fixed text-left text-xs md:min-w-[980px] md:text-sm lg:min-w-[1120px]">
+                    <table className="w-full min-w-[760px] text-left text-xs md:text-sm">
                         <thead className="border-b border-slate-300 text-[11px] uppercase tracking-[0.14em] text-slate-500 md:text-xs md:tracking-[0.25em]">
                             <tr>
-                                <th className="w-[56px] px-2 py-2.5 md:w-[72px] md:px-4 md:py-3">ID</th>
-                                <th className="w-[180px] px-2 py-2.5 md:w-[240px] md:px-4 md:py-3 lg:w-[280px]">Customer &amp; Product</th>
-                                <th className="w-[260px] px-2 py-2.5 md:w-[360px] md:px-4 md:py-3 lg:w-[430px]">License &amp; URL</th>
-                                <th className="px-2 py-2.5 md:px-4 md:py-3">True verification</th>
+                                <th className="w-14 px-2 py-2.5 md:px-4 md:py-3">ID</th>
+                                <th className="w-44 px-2 py-2.5 md:w-56 md:px-4 md:py-3">Customer &amp; Product</th>
+                                <th className="px-2 py-2.5 md:px-4 md:py-3">License &amp; URL</th>
+                                <th className="w-56 px-2 py-2.5 md:w-72 md:px-4 md:py-3">True verification</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -309,7 +309,7 @@ export default function Index({
                                                         >
                                                             {renderStatusIcon(keyIndicator.type)}
                                                         </span>
-                                                        <span className="inline-block max-w-[170px] truncate align-middle sm:max-w-[220px] lg:max-w-[300px]">{license.license_key}</span>
+                                                        <span className="inline-block max-w-[240px] truncate align-middle md:max-w-xs lg:max-w-sm">{license.license_key}</span>
                                                         <button
                                                             type="button"
                                                             onClick={() => {
@@ -336,7 +336,7 @@ export default function Index({
                                                         >
                                                             {renderStatusIcon(domainIndicator.type)}
                                                         </span>
-                                                        <span className="inline-block max-w-[170px] truncate align-middle sm:max-w-[220px] lg:max-w-[300px]">{license.domain}</span>
+                                                        <span className="inline-block max-w-[240px] truncate align-middle md:max-w-xs lg:max-w-sm">{license.domain}</span>
                                                         {license.can_sync ? (
                                                             <button
                                                                 type="button"
