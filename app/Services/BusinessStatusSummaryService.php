@@ -313,12 +313,12 @@ PROMPT;
             $confidence = in_array($candidate, ['Low', 'Medium', 'High'], true) ? $candidate : null;
         }
 
-        if (preg_match('/"reason"\s*:\s*"((?:[^"\\]|\\.)*)"/u', $text, $matches)) {
+        if (preg_match('/"reason"\s*:\s*"((?:[^"\\\\]|\\\\.)*)"/u', $text, $matches)) {
             $candidate = trim((string) stripcslashes((string) ($matches[1] ?? '')));
             $reason = $candidate !== '' ? $candidate : null;
         }
 
-        if (preg_match('/"action"\s*:\s*"((?:[^"\\]|\\.)*)"/u', $text, $matches)) {
+        if (preg_match('/"action"\s*:\s*"((?:[^"\\\\]|\\\\.)*)"/u', $text, $matches)) {
             $candidate = trim((string) stripcslashes((string) ($matches[1] ?? '')));
             $action = $candidate !== '' ? $candidate : null;
         }
