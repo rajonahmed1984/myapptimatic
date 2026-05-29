@@ -215,7 +215,31 @@ export default function Show({
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                         <div className="card p-4">
                             <div className="mb-3 text-sm font-semibold text-slate-800">Profile</div>
-                            <dl className="grid grid-cols-2 gap-3 text-sm text-slate-700">
+                            <dl className="grid grid-cols-3 gap-3 text-sm text-slate-700">
+                                <div>
+                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Employee</dt>
+                                    <dd className="mt-1">{rep?.employee_name || 'Not linked'}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Name</dt>
+                                    <dd className="mt-1 font-semibold">{rep?.name || '--'}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Email</dt>
+                                    <dd className="mt-1">{rep?.email || '--'}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Phone</dt>
+                                    <dd className="mt-1">{rep?.phone || '--'}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Project %</dt>
+                                    <dd className="mt-1">{rep?.project_commission_percentage != null ? `${rep.project_commission_percentage}%` : '--'}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Subscriptions %</dt>
+                                    <dd className="mt-1">{rep?.subscription_commission_percentage != null ? `${rep.subscription_commission_percentage}%` : '--'}</dd>
+                                </div>
                                 <div>
                                     <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</dt>
                                     <dd className="mt-1">{rep?.status_label}</dd>
@@ -223,14 +247,6 @@ export default function Show({
                                 <div>
                                     <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">User</dt>
                                     <dd className="mt-1">{rep?.user_name || '--'} <span className="text-slate-500">{rep?.user_email || ''}</span></dd>
-                                </div>
-                                <div>
-                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Employee</dt>
-                                    <dd className="mt-1">{rep?.employee_name || 'Not linked'}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Phone</dt>
-                                    <dd className="mt-1">{rep?.phone || '--'}</dd>
                                 </div>
                             </dl>
                         </div>

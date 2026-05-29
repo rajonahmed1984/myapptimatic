@@ -29,6 +29,8 @@ class SalesRepresentative extends Model
         'avatar_path',
         'nid_path',
         'cv_path',
+        'project_commission_percentage',
+        'subscription_commission_percentage',
     ];
 
     protected $casts = [

@@ -73,13 +73,17 @@ export default function Form({
                         <input type="hidden" name="_method" value={form?.method} />
                     ) : null}
 
-                    {is_edit ? (
-                        <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 space-y-3">
-                            <div>
+                    <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 space-y-4 lg:col-span-2">
+                        {is_edit ? (
+                            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
                                 <label className="text-xs text-slate-500">User</label>
                                 <div className="mt-1 text-slate-900 font-semibold">{rep?.user_name || '--'}</div>
                                 <div className="text-xs text-slate-500">{rep?.user_email || ''}</div>
                             </div>
+                        ) : null}
+
+                        {/* Row 1: Employee link | Name | Email */}
+                        <div className="grid gap-4 md:grid-cols-3">
                             <div>
                                 <label className="text-xs text-slate-500">Employee link (optional)</label>
                                 <SearchableSelect
@@ -90,6 +94,85 @@ export default function Form({
                                     placeholder="None"
                                     error={errors?.employee_id}
                                 />
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">Name</label>
+                                <input
+                                    name="name"
+                                    defaultValue={fields?.name || ''}
+                                    required
+                                    className="ui-input mt-1"
+                                />
+                                {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">Email</label>
+                                <input
+                                    name="email"
+                                    type="email"
+                                    defaultValue={fields?.email || ''}
+                                    className="ui-input mt-1"
+                                />
+                                {errors?.email ? <p className="mt-1 text-xs text-rose-600">{errors.email}</p> : null}
+                            </div>
+                        </div>
+
+                        {/* Row 2: Phone | Password | Retype-Password (create only) */}
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <div>
+                                <label className="text-xs text-slate-500">Phone</label>
+                                <input
+                                    name="phone"
+                                    defaultValue={fields?.phone || ''}
+                                    className="ui-input mt-1"
+                                />
+                                {errors?.phone ? <p className="mt-1 text-xs text-rose-600">{errors.phone}</p> : null}
+                            </div>
+                            {!is_edit ? (
+                                <>
+                                    <div>
+                                        <label className="text-xs text-slate-500">Password</label>
+                                        <input name="user_password" type="password" className="ui-input mt-1" />
+                                        {errors?.user_password ? <p className="mt-1 text-xs text-rose-600">{errors.user_password}</p> : null}
+                                        <p className="mt-1 text-xs text-slate-500">Set a password to create sales portal login.</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500">Retype Password</label>
+                                        <input name="user_password_confirmation" type="password" className="ui-input mt-1" />
+                                    </div>
+                                </>
+                            ) : null}
+                        </div>
+
+                        {/* Row 3: Project % | Subscriptions % | Status */}
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <div>
+                                <label className="text-xs text-slate-500">Project %</label>
+                                <input
+                                    name="project_commission_percentage"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    defaultValue={fields?.project_commission_percentage || ''}
+                                    placeholder="e.g. 10"
+                                    className="ui-input mt-1"
+                                />
+                                {errors?.project_commission_percentage ? <p className="mt-1 text-xs text-rose-600">{errors.project_commission_percentage}</p> : null}
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">Subscriptions %</label>
+                                <input
+                                    name="subscription_commission_percentage"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    defaultValue={fields?.subscription_commission_percentage || ''}
+                                    placeholder="e.g. 5"
+                                    className="ui-input mt-1"
+                                />
+                                {errors?.subscription_commission_percentage ? <p className="mt-1 text-xs text-rose-600">{errors.subscription_commission_percentage}</p> : null}
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Status</label>
@@ -103,72 +186,6 @@ export default function Form({
                                 />
                             </div>
                         </div>
-                    ) : null}
-
-                    <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 space-y-3">
-                        {!is_edit ? (
-                            <div>
-                                <label className="text-xs text-slate-500">Employee link (optional)</label>
-                                <SearchableSelect
-                                    name="employee_id"
-                                    defaultValue={String(fields?.employee_id || '')}
-                                    options={employeeOptions}
-                                    className="mt-1"
-                                    placeholder="None"
-                                    error={errors?.employee_id}
-                                />
-                            </div>
-                        ) : null}
-                        <div>
-                            <label className="text-xs text-slate-500">Name</label>
-                            <input
-                                name="name"
-                                defaultValue={fields?.name || ''}
-                                required
-                                className="ui-input mt-1"
-                            />
-                            {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-500">Email</label>
-                            <input
-                                name="email"
-                                type="email"
-                                defaultValue={fields?.email || ''}
-                                className="ui-input mt-1"
-                            />
-                            {errors?.email ? <p className="mt-1 text-xs text-rose-600">{errors.email}</p> : null}
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-500">Phone</label>
-                            <input
-                                name="phone"
-                                defaultValue={fields?.phone || ''}
-                                className="ui-input mt-1"
-                            />
-                            {errors?.phone ? <p className="mt-1 text-xs text-rose-600">{errors.phone}</p> : null}
-                        </div>
-                        {!is_edit ? (
-                            <>
-                                <div>
-                                    <label className="text-xs text-slate-500">Password</label>
-                                    <input name="user_password" type="password" className="ui-input mt-1" />
-                                    {errors?.user_password ? <p className="mt-1 text-xs text-rose-600">{errors.user_password}</p> : null}
-                                    <p className="mt-1 text-xs text-slate-500">Set a password to create sales portal login.</p>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-slate-500">Status</label>
-                                    <SearchableSelect
-                                        name="status"
-                                        defaultValue={String(fields?.status || 'active')}
-                                        options={statusOptions}
-                                        className="mt-1"
-                                        placeholder="Select status"
-                                        error={errors?.status}
-                                    />
-                                </div>
-                            </>
-                        ) : null}
                     </div>
 
                     <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 space-y-3 lg:col-span-2">

@@ -132,7 +132,10 @@ class SalesRepresentativeController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'user_password' => ['nullable', 'string', 'min:8'],
+            'user_password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'user_password_confirmation' => ['nullable', 'string'],
+            'project_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'subscription_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
@@ -156,6 +159,8 @@ class SalesRepresentativeController extends Controller
             'email' => $data['email'] ?? $user?->email ?? null,
             'phone' => $data['phone'] ?? null,
             'status' => $data['status'],
+            'project_commission_percentage' => $data['project_commission_percentage'] ?? null,
+            'subscription_commission_percentage' => $data['subscription_commission_percentage'] ?? null,
         ]);
 
         if ($user) {
@@ -237,6 +242,8 @@ class SalesRepresentativeController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'project_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'subscription_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
@@ -636,6 +643,8 @@ class SalesRepresentativeController extends Controller
                 'phone' => $salesRep->phone,
                 'status' => $salesRep->status,
                 'status_label' => ucfirst((string) $salesRep->status),
+                'project_commission_percentage' => $salesRep->project_commission_percentage,
+                'subscription_commission_percentage' => $salesRep->subscription_commission_percentage,
                 'user_name' => $salesRep->user?->name,
                 'user_email' => $salesRep->user?->email,
                 'employee_name' => $salesRep->employee?->name,
@@ -1343,6 +1352,8 @@ class SalesRepresentativeController extends Controller
             'name' => (string) old('name', $salesRep?->name ?? ''),
             'email' => (string) old('email', $salesRep?->email ?? ''),
             'phone' => (string) old('phone', $salesRep?->phone ?? ''),
+            'project_commission_percentage' => (string) old('project_commission_percentage', $salesRep?->project_commission_percentage ?? ''),
+            'subscription_commission_percentage' => (string) old('subscription_commission_percentage', $salesRep?->subscription_commission_percentage ?? ''),
             'status' => (string) old('status', $salesRep?->status ?? 'active'),
         ];
     }
