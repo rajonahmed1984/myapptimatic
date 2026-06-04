@@ -554,17 +554,38 @@ export default function Show({
                         <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-300">
                             <table className="w-full min-w-[800px] text-left text-sm">
                                 <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
-                                    <tr><th className="px-4 py-3">SL</th><th className="px-4 py-3">Product &amp; Plan</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Order number &amp; Date</th><th className="px-4 py-3">Next invoice</th><th className="px-4 py-3">Period end</th><th className="px-4 py-3 text-right">Actions</th></tr>
+                                    <tr>
+                                        <th className="px-4 py-3">SL</th>
+                                        <th className="px-4 py-3">Product &amp; Plan</th>
+                                        <th className="px-4 py-3">Interval &amp; Amount</th>
+                                        <th className="px-4 py-3">Order &amp; Date</th>
+                                        <th className="px-4 py-3">Next invoice &amp; Due</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     {subscriptions.length === 0 ? <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">No services yet.</td></tr> : subscriptions.map((item, idx) => (
                                         <tr key={item.id} className="border-b border-slate-100">
                                             <td className="px-4 py-3 text-slate-500">{idx + 1}</td>
                                             <td className="px-4 py-3 text-slate-900">{item.product_name} &gt; {item.plan_name}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="font-medium text-slate-900">{item.plan_interval}</div>
+                                                <div className="mt-0.5 text-xs text-slate-500">{item.amount_display}</div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="font-medium text-slate-900">{item.order_number}</div>
+                                                <div className="mt-0.5 text-xs text-slate-500">{item.order_date_display}</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-500">
+                                                <div>{item.next_invoice_display}</div>
+                                                {item.open_invoices_total_display ? (
+                                                    <div className="mt-1 text-xs font-semibold text-rose-600">
+                                                        Due: {item.open_invoices_total_display}
+                                                    </div>
+                                                ) : null}
+                                            </td>
                                             <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.status)}`}>{item.status_label || '--'}</span></td>
-                                            <td className="px-4 py-3 text-slate-500">{item.order_number} - {item.order_date_display}</td>
-                                            <td className="px-4 py-3 text-slate-500">{item.next_invoice_display}</td>
-                                            <td className="px-4 py-3 text-slate-500">{item.period_end_display}</td>
                                             <td className="px-4 py-3 text-right"><a href={item.manage_url} data-native="true" className="text-teal-600 hover:text-teal-500">Manage</a></td>
                                         </tr>
                                     ))}

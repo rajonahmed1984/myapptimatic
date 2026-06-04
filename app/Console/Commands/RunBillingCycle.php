@@ -396,6 +396,66 @@ class RunBillingCycle extends Command
 
         $sent = 0;
 
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $dayConditionRaw = $isSqlite ? "strftime('%d', due_date) = '01'" : "DAY(due_date) = 1";
+
+        // Special reminders for invoices due on the 1st of the month
+        Invoice::query()
+            ->whereIn('status', ['unpaid', 'overdue'])
+            ->whereRaw($dayConditionRaw)
+            ->orderBy('id')
+            ->chunk(100, function ($invoices) use ($today, &$sent) {
+                foreach ($invoices as $invoice) {
+                    $dueDate = Carbon::parse($invoice->due_date);
+                    $issueDate = Carbon::parse($invoice->issue_date);
+                    $needsReminder = false;
+                    $sentColumn = null;
+
+                    // 1. Created day reminder (10 days before due date, or the issue date)
+                    if (is_null($invoice->reminder_created_day_sent_at)) {
+                        $targetDate = $dueDate->copy()->subDays(10);
+                        if ($today->isSameDay($targetDate) || $today->isSameDay($issueDate)) {
+                            $needsReminder = true;
+                            $sentColumn = 'reminder_created_day_sent_at';
+                        }
+                    }
+
+                    // 2. 5 days before due date
+                    if (!$needsReminder && is_null($invoice->reminder_5d_before_sent_at)) {
+                        $targetDate = $dueDate->copy()->subDays(5);
+                        if ($today->isSameDay($targetDate)) {
+                            $needsReminder = true;
+                            $sentColumn = 'reminder_5d_before_sent_at';
+                        }
+                    }
+
+                    // 3. 3 days before due date
+                    if (!$needsReminder && is_null($invoice->reminder_3d_before_sent_at)) {
+                        $targetDate = $dueDate->copy()->subDays(3);
+                        if ($today->isSameDay($targetDate)) {
+                            $needsReminder = true;
+                            $sentColumn = 'reminder_3d_before_sent_at';
+                        }
+                    }
+
+                    // 4. 1 day before due date
+                    if (!$needsReminder && is_null($invoice->reminder_1d_before_sent_at)) {
+                        $targetDate = $dueDate->copy()->subDays(1);
+                        if ($today->isSameDay($targetDate)) {
+                            $needsReminder = true;
+                            $sentColumn = 'reminder_1d_before_sent_at';
+                        }
+                    }
+
+                    if ($needsReminder && $sentColumn) {
+                        SendInvoiceReminderNotification::dispatch($invoice->id, 'invoice_payment_reminder');
+                        $invoice->update([$sentColumn => Carbon::now()]);
+                        $sent++;
+                    }
+                }
+            });
+
+        // Standard reminders (excluding 1st of the month invoices)
         $unpaidDays = (int) Setting::getValue('invoice_unpaid_reminder_days');
         if ($unpaidDays > 0) {
             $targetDate = $today->copy()->addDays($unpaidDays);
@@ -654,11 +714,15 @@ class RunBillingCycle extends Command
         $count = 0;
         $now = Carbon::now();
 
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $notDayConditionRaw = $isSqlite ? "strftime('%d', due_date) != '01'" : "DAY(due_date) != 1";
+
         Invoice::query()
             ->select('id')
             ->whereIn('status', $statuses)
             ->whereDate('due_date', $targetDate->toDateString())
             ->whereNull($sentColumn)
+            ->whereRaw($notDayConditionRaw)
             ->orderBy('id')
             ->chunkById(200, function ($invoices) use (&$count, $templateKey, $sentColumn, $now) {
                 $ids = $invoices->pluck('id')->all();

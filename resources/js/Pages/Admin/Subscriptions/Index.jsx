@@ -74,11 +74,10 @@ export default function Index({
                         <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                             <tr>
                                 <th className="px-4 py-3">ID</th>
-                                <th className="px-4 py-3">Customer</th>
-                                <th className="px-4 py-3">Product & Plan</th>
+                                <th className="px-4 py-3">Customer & Product/Plan</th>
                                 <th className="px-4 py-3">Interval & Amount</th>
-                                <th className="px-4 py-3">Status</th>
                                 <th className="px-4 py-3">Next invoice</th>
+                                <th className="px-4 py-3">Status</th>
                                 <th className="px-4 py-3">Actions</th>
                             </tr>
                         </thead>
@@ -88,22 +87,26 @@ export default function Index({
                                     <tr key={subscription.id} className="border-b border-slate-100">
                                         <td className="px-4 py-3 text-slate-500">{subscription.id}</td>
                                         <td className="px-4 py-3">
-                                            {subscription.customer_url ? (
-                                                <a href={subscription.customer_url} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                                    {subscription.customer_name}
-                                                </a>
-                                            ) : (
-                                                <span className="text-slate-500">--</span>
-                                            )}
+                                            <div className="font-medium text-slate-900">
+                                                {subscription.customer_url ? (
+                                                    <a href={subscription.customer_url} data-native="true" className="text-teal-600 hover:text-teal-500">
+                                                        {subscription.customer_name}
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-slate-500">--</span>
+                                                )}
+                                            </div>
+                                            <div className="mt-0.5 text-xs text-slate-500">
+                                                {subscription.product_plan}
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-600">{subscription.product_plan}</td>
                                         <td className="px-4 py-3 text-slate-600">
-                                            {subscription.interval_label} - {subscription.amount_display}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(subscription.status)}`}>
-                                                {subscription.status_label}
-                                            </span>
+                                            <div>{subscription.interval_label} - {subscription.amount_display}</div>
+                                            {subscription.open_invoices_total_display ? (
+                                                <div className="mt-1 text-xs font-semibold text-rose-600">
+                                                    Due: {subscription.open_invoices_total_display}
+                                                </div>
+                                            ) : null}
                                         </td>
                                         <td className="px-4 py-3 text-slate-500">
                                             <div>{subscription.next_invoice_display}</div>
@@ -115,6 +118,11 @@ export default function Index({
                                                         : ''}
                                                 </div>
                                             ) : null}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(subscription.status)}`}>
+                                                {subscription.status_label}
+                                            </span>
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
@@ -154,7 +162,7 @@ export default function Index({
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                                    <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                                         No subscriptions yet.
                                     </td>
                                 </tr>

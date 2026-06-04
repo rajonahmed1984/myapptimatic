@@ -20,8 +20,10 @@ class SendInvoiceReminderNotification implements ShouldQueue
     ) {
     }
 
-    public function handle(AdminNotificationService $adminNotifications): void
-    {
+    public function handle(
+        AdminNotificationService $adminNotifications,
+        \App\Services\ClientNotificationService $clientNotifications
+    ): void {
         $invoice = Invoice::find($this->invoiceId);
 
         if (! $invoice) {
@@ -29,5 +31,6 @@ class SendInvoiceReminderNotification implements ShouldQueue
         }
 
         $adminNotifications->sendInvoiceReminder($invoice, $this->templateKey);
+        $clientNotifications->sendInvoiceReminder($invoice, $this->templateKey);
     }
 }

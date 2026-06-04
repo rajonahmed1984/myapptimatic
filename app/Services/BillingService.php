@@ -59,7 +59,11 @@ class BillingService
         $subtotal = $this->calculateSubtotal($plan->interval, $basePrice, $periodStart, $periodEnd);
         $dueDays = (int) Setting::getValue('invoice_due_days');
         $currency = (string) Setting::getValue('currency');
-        $dueDate = $this->resolveDueDate($subscription, $issueDate, $plan->interval, $dueDays);
+        if ($periodStart->day === 1) {
+            $dueDate = $periodStart->copy();
+        } else {
+            $dueDate = $this->resolveDueDate($subscription, $issueDate, $plan->interval, $dueDays);
+        }
 
         $taxData = $this->taxService->calculateTotals($subtotal, 0.0, $issueDate);
 
@@ -241,6 +245,10 @@ class BillingService
 
     private function nextInvoiceAt(Carbon $periodStart, Carbon $periodEnd, Carbon $today, string $interval): Carbon
     {
+        if ($periodStart->day === 1) {
+            return $periodStart->copy()->subDays(10);
+        }
+
         if ($interval === 'monthly') {
             return $periodStart->copy();
         }

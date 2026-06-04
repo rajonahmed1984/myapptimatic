@@ -28,6 +28,7 @@ class RecurringExpenseController extends Controller
     ): InertiaResponse {
         $invoiceService->syncOverdueStatuses();
         $today = Carbon::today()->toDateString();
+        $dueThreshold = Carbon::today()->addDays(7)->toDateString();
 
         $recurringExpenses = RecurringExpense::query()
             ->select('recurring_expenses.*')
@@ -39,9 +40,25 @@ class RecurringExpenseController extends Controller
                     ->where('expense_invoices.source_type', 'expense')
                     ->where('expense_invoices.status', '!=', 'paid')
                     ->whereNotNull('expense_invoices.due_date')
-                    ->whereDate('expense_invoices.due_date', '>=', $today)
                     ->orderBy('expense_invoices.due_date')
                     ->limit(1),
+                'unpaid_invoices_amount_sum' => ExpenseInvoice::query()
+                    ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
+                    ->whereColumn('expenses.recurring_expense_id', 'recurring_expenses.id')
+                    ->where('expense_invoices.source_type', 'expense')
+                    ->where('expense_invoices.status', '!=', 'paid')
+                    ->whereNotNull('expense_invoices.due_date')
+                    ->whereDate('expense_invoices.due_date', '<=', $dueThreshold)
+                    ->selectRaw('COALESCE(SUM(expense_invoices.amount), 0)'),
+                'unpaid_invoices_payments_sum' => ExpenseInvoicePayment::query()
+                    ->join('expense_invoices', 'expense_invoices.id', '=', 'expense_invoice_payments.expense_invoice_id')
+                    ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
+                    ->whereColumn('expenses.recurring_expense_id', 'recurring_expenses.id')
+                    ->where('expense_invoices.source_type', 'expense')
+                    ->where('expense_invoices.status', '!=', 'paid')
+                    ->whereNotNull('expense_invoices.due_date')
+                    ->whereDate('expense_invoices.due_date', '<=', $dueThreshold)
+                    ->selectRaw('COALESCE(SUM(expense_invoice_payments.amount), 0)'),
             ])
             ->with('category')
             ->withSum('advances', 'amount')
@@ -65,6 +82,68 @@ class RecurringExpenseController extends Controller
                 ->pluck('used_amount', 'expenses.recurring_expense_id');
         }
 
+        // Calculate totals across all recurring expenses
+        $allRecurring = RecurringExpense::query()
+            ->addSelect([
+                'unpaid_invoices_amount_sum' => ExpenseInvoice::query()
+                    ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
+                    ->whereColumn('expenses.recurring_expense_id', 'recurring_expenses.id')
+                    ->where('expense_invoices.source_type', 'expense')
+                    ->where('expense_invoices.status', '!=', 'paid')
+                    ->whereNotNull('expense_invoices.due_date')
+                    ->whereDate('expense_invoices.due_date', '<=', $dueThreshold)
+                    ->selectRaw('COALESCE(SUM(expense_invoices.amount), 0)'),
+                'unpaid_invoices_payments_sum' => ExpenseInvoicePayment::query()
+                    ->join('expense_invoices', 'expense_invoices.id', '=', 'expense_invoice_payments.expense_invoice_id')
+                    ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
+                    ->whereColumn('expenses.recurring_expense_id', 'recurring_expenses.id')
+                    ->where('expense_invoices.source_type', 'expense')
+                    ->where('expense_invoices.status', '!=', 'paid')
+                    ->whereNotNull('expense_invoices.due_date')
+                    ->whereDate('expense_invoices.due_date', '<=', $dueThreshold)
+                    ->selectRaw('COALESCE(SUM(expense_invoice_payments.amount), 0)'),
+            ])
+            ->withSum('advances', 'amount')
+            ->get();
+
+        $allAdvanceUsed = ExpenseInvoicePayment::query()
+            ->join('expense_invoices', 'expense_invoices.id', '=', 'expense_invoice_payments.expense_invoice_id')
+            ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
+            ->where('expense_invoice_payments.payment_method', 'advance')
+            ->whereNotNull('expenses.recurring_expense_id')
+            ->selectRaw('expenses.recurring_expense_id, SUM(expense_invoice_payments.amount) as used_amount')
+            ->groupBy('expenses.recurring_expense_id')
+            ->pluck('used_amount', 'expenses.recurring_expense_id');
+
+        $totalAdvance = 0.0;
+        $totalDue = 0.0;
+
+        foreach ($allRecurring as $r) {
+            $advTotal = (float) ($r->advances_sum_amount ?? 0);
+            $advUsed = (float) ($allAdvanceUsed->get($r->id) ?? 0);
+            $advBalance = max(0.0, round($advTotal - $advUsed, 2));
+
+            $totalAdvance += $advBalance;
+
+            $unpaidAmount = (float) ($r->unpaid_invoices_amount_sum ?? 0);
+            $unpaidPayments = (float) ($r->unpaid_invoices_payments_sum ?? 0);
+            $dueAmount = max(0.0, round($unpaidAmount - $unpaidPayments - $advBalance, 2));
+
+            $totalDue += $dueAmount;
+        }
+
+        $totalPaid = (float) ExpenseInvoicePayment::query()
+            ->join('expense_invoices', 'expense_invoices.id', '=', 'expense_invoice_payments.expense_invoice_id')
+            ->join('expenses', 'expenses.id', '=', 'expense_invoices.expense_id')
+            ->whereNotNull('expenses.recurring_expense_id')
+            ->sum('expense_invoice_payments.amount');
+
+        $stats = [
+            'total_advance' => $totalAdvance,
+            'total_paid' => $totalPaid,
+            'total_due' => $totalDue,
+        ];
+
         $paymentMethods = PaymentMethod::dropdownOptions();
 
         $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
@@ -75,7 +154,7 @@ class RecurringExpenseController extends Controller
 
         return Inertia::render(
             'Admin/Expenses/Recurring/Index',
-            $this->indexInertiaProps($recurringExpenses, $paymentMethods, $currencyCode, $currencySymbol, $advanceUsedByRecurring)
+            $this->indexInertiaProps($recurringExpenses, $paymentMethods, $currencyCode, $currencySymbol, $advanceUsedByRecurring, $stats)
         );
     }
 
@@ -292,6 +371,14 @@ class RecurringExpenseController extends Controller
         return back()->with('status', 'Recurring expense stopped.');
     }
 
+    public function destroy(RecurringExpense $recurringExpense): RedirectResponse
+    {
+        $recurringExpense->delete();
+
+        return redirect()->route('admin.expenses.recurring.index')
+            ->with('status', 'Recurring expense deleted.');
+    }
+
     private function validatePayload(Request $request, ?RecurringExpense $recurringExpense = null): array
     {
         $data = $request->validate([
@@ -382,7 +469,8 @@ class RecurringExpenseController extends Controller
         $paymentMethods,
         string $currencyCode,
         string $currencySymbol,
-        $advanceUsedByRecurring
+        $advanceUsedByRecurring,
+        array $stats = []
     ): array {
         $dateFormat = (string) config('app.date_format', 'd-m-Y');
 
@@ -392,6 +480,7 @@ class RecurringExpenseController extends Controller
                 'code' => $currencyCode,
                 'symbol' => $currencySymbol,
             ],
+            'stats' => $stats,
             'routes' => [
                 'create' => route('admin.expenses.recurring.create'),
                 'back' => route('admin.expenses.index'),
@@ -419,13 +508,9 @@ class RecurringExpenseController extends Controller
                         $nextDueDate = $recurringExpense->next_run_date->copy()->startOfDay();
                     }
 
-                    $dueAmount = 0.0;
-                    if ($nextDueDate instanceof Carbon) {
-                        $dueStartsAt = $nextDueDate->copy()->subDays(7);
-                        if (Carbon::today()->greaterThanOrEqualTo($dueStartsAt)) {
-                            $dueAmount = max(0, round((float) $recurringExpense->amount - $advanceBalance, 2));
-                        }
-                    }
+                    $unpaidInvoicesSum = (float) ($recurringExpense->unpaid_invoices_amount_sum ?? 0);
+                    $unpaidInvoicesPayments = (float) ($recurringExpense->unpaid_invoices_payments_sum ?? 0);
+                    $dueAmount = max(0, round($unpaidInvoicesSum - $unpaidInvoicesPayments - $advanceBalance, 2));
 
                     return [
                         'id' => $recurringExpense->id,
@@ -444,6 +529,7 @@ class RecurringExpenseController extends Controller
                         'routes' => [
                             'show' => route('admin.expenses.recurring.show', $recurringExpense),
                             'edit' => route('admin.expenses.recurring.edit', $recurringExpense),
+                            'destroy' => route('admin.expenses.recurring.destroy', $recurringExpense),
                             'advance_store' => route('admin.expenses.recurring.advance.store', $recurringExpense),
                             'resume' => route('admin.expenses.recurring.resume', $recurringExpense),
                             'stop' => route('admin.expenses.recurring.stop', $recurringExpense),

@@ -539,6 +539,130 @@ class LicenseVerificationTest extends TestCase
         return [$customer, $subscription, $license];
     }
 
+    #[Test]
+    public function customer_access_override_until_keeps_license_verification_active(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup(
+            ['access_override_until' => now()->addDays(5)->toDateString()],
+            [],
+            []
+        );
+
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
+            'number' => 'INV-OVERRIDE-ACCESS-1',
+            'status' => 'overdue',
+            'issue_date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDays(3)->toDateString(),
+            'subtotal' => 120,
+            'late_fee' => 0,
+            'total' => 120,
+            'currency' => 'USD',
+            'type' => 'project_initial_payment',
+        ]);
+
+        $response = $this->postJson(route('api.licenses.verify'), [
+            'license_key' => $license->license_key,
+            'domain' => 'example.com',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'active',
+            'blocked' => false,
+        ]);
+    }
+
+    #[Test]
+    public function local_domain_bypasses_domain_and_billing_blocks(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup(
+            [],
+            [],
+            [],
+            'example.com'
+        );
+
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
+            'number' => 'INV-LOCAL-OVERRIDE-1',
+            'status' => 'overdue',
+            'issue_date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDays(3)->toDateString(),
+            'subtotal' => 120,
+            'late_fee' => 0,
+            'total' => 120,
+            'currency' => 'USD',
+            'type' => 'project_initial_payment',
+        ]);
+
+        $localDomains = ['localhost', '127.0.0.1', 'my-project.test', 'another.localhost'];
+
+        foreach ($localDomains as $localDomain) {
+            $response = $this->postJson(route('api.licenses.verify'), [
+                'license_key' => $license->license_key,
+                'domain' => $localDomain,
+            ]);
+
+            $response->assertOk();
+            $response->assertJson([
+                'status' => 'active',
+                'blocked' => false,
+            ]);
+        }
+    }
+
+    #[Test]
+    public function local_environment_bypasses_domain_and_billing_blocks(): void
+    {
+        Setting::setValue('auto_bind_domains', 1);
+
+        [$customer, $subscription, $license] = $this->createLicenseSetup(
+            [],
+            [],
+            [],
+            'example.com'
+        );
+
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
+            'number' => 'INV-LOCAL-ENV-1',
+            'status' => 'overdue',
+            'issue_date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDays(3)->toDateString(),
+            'subtotal' => 120,
+            'late_fee' => 0,
+            'total' => 120,
+            'currency' => 'USD',
+            'type' => 'project_initial_payment',
+        ]);
+
+        $originalEnv = $this->app->environment();
+        $this->app->detectEnvironment(fn () => 'local');
+
+        try {
+            $response = $this->postJson(route('api.licenses.verify'), [
+                'license_key' => $license->license_key,
+                'domain' => 'non-local-domain.com',
+            ]);
+
+            $response->assertOk();
+            $response->assertJson([
+                'status' => 'active',
+                'blocked' => false,
+            ]);
+        } finally {
+            $this->app->detectEnvironment(fn () => $originalEnv);
+        }
+    }
+
     private function restoreEnv(string $key, $value): void
     {
         if ($value === false || $value === null) {

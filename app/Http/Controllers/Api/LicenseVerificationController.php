@@ -101,11 +101,13 @@ class LicenseVerificationController extends Controller
             return $this->blockedResponse($reason, [], $requestId);
         }
 
+        $isLocal = $this->isLocalDomain($domain) || app()->environment('local');
+
         $licenseUrlInput = trim((string) ($data['license_url'] ?? ''));
         if ($licenseUrlInput !== '') {
             $licenseUrlDomain = $this->normalizeDomain($licenseUrlInput);
 
-            if (! $licenseUrlDomain || $licenseUrlDomain !== $domain) {
+            if (! $isLocal && (! $licenseUrlDomain || $licenseUrlDomain !== $domain)) {
                 $decision = 'block';
                 $reason = 'invalid_domain';
                 $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request, [
@@ -122,41 +124,48 @@ class LicenseVerificationController extends Controller
             ->orderBy('id')
             ->get();
 
-        if ($activeDomains->isEmpty()) {
-            $decision = 'block';
-            $reason = 'domain_not_allowed';
-            $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request, [
-                'domain_not_bound' => true,
+        $matchedDomain = null;
+        if ($isLocal) {
+            $matchedDomain = $activeDomains->first();
+        } else {
+            if ($activeDomains->isEmpty()) {
+                $decision = 'block';
+                $reason = 'domain_not_allowed';
+                $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request, [
+                    'domain_not_bound' => true,
+                ]);
+
+                return $this->blockedResponse($reason, [], $requestId);
+            }
+
+            $matchedDomain = $activeDomains->first(function (LicenseDomain $item) use ($domain) {
+                return strtolower((string) $item->domain) === $domain;
+            });
+
+            if (! $matchedDomain) {
+                $decision = 'block';
+                $reason = 'domain_not_allowed';
+                $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request);
+
+                return $this->blockedResponse($reason, [], $requestId);
+            }
+        }
+
+        if ($matchedDomain) {
+            $extraIds = $activeDomains
+                ->where('id', '!=', $matchedDomain->id)
+                ->pluck('id');
+
+            if ($extraIds->isNotEmpty()) {
+                LicenseDomain::query()
+                    ->whereIn('id', $extraIds)
+                    ->update(['status' => 'revoked']);
+            }
+
+            $matchedDomain->update([
+                'last_seen_at' => Carbon::now(),
             ]);
-
-            return $this->blockedResponse($reason, [], $requestId);
         }
-
-        $matchedDomain = $activeDomains->first(function (LicenseDomain $item) use ($domain) {
-            return strtolower((string) $item->domain) === $domain;
-        });
-
-        if (! $matchedDomain) {
-            $decision = 'block';
-            $reason = 'domain_not_allowed';
-            $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request);
-
-            return $this->blockedResponse($reason, [], $requestId);
-        }
-
-        $extraIds = $activeDomains
-            ->where('id', '!=', $matchedDomain->id)
-            ->pluck('id');
-
-        if ($extraIds->isNotEmpty()) {
-            LicenseDomain::query()
-                ->whereIn('id', $extraIds)
-                ->update(['status' => 'revoked']);
-        }
-
-        $matchedDomain->update([
-            'last_seen_at' => Carbon::now(),
-        ]);
 
         $invoiceBlock = $this->accessBlockService->invoiceBlockStatus(
             $customer,
@@ -167,6 +176,10 @@ class LicenseVerificationController extends Controller
         $invoiceBlock['auto_suspend_override_active'] = $autoSuspendOverrideActive;
 
         if ($autoSuspendOverrideActive && ($invoiceBlock['reason'] ?? null) === 'invoice_overdue') {
+            $invoiceBlock['blocked'] = false;
+        }
+
+        if ($isLocal) {
             $invoiceBlock['blocked'] = false;
         }
 
@@ -274,6 +287,19 @@ class LicenseVerificationController extends Controller
         }
 
         return $value;
+    }
+
+    private function isLocalDomain(?string $domain): bool
+    {
+        if (! $domain) {
+            return false;
+        }
+
+        $domain = strtolower(trim($domain));
+
+        return in_array($domain, ['localhost', '127.0.0.1', '::1'], true)
+            || str_ends_with($domain, '.test')
+            || str_ends_with($domain, '.localhost');
     }
 
     private function isAutoSuspendOverrideActive(License $license): bool

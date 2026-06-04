@@ -204,6 +204,54 @@ class ClientNotificationService
         );
     }
 
+    public function sendInvoiceReminder(Invoice $invoice, string $templateKey): void
+    {
+        $invoice->loadMissing(['customer']);
+
+        $recipient = $invoice->customer?->email;
+        if (! $recipient) {
+            return;
+        }
+
+        $template = EmailTemplate::query()
+            ->where('key', $templateKey)
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $invoiceNumber = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
+        $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
+        $dueDate = $invoice->due_date?->format($dateFormat) ?? '--';
+        $paymentUrl = route('client.invoices.pay', $invoice);
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $subject = $template?->subject ?: "Reminder: invoice {$invoiceNumber}";
+        $body = $template?->body ?: "Hi {{client_name}},\n\nThis is a reminder that invoice {{invoice_number}} is due on {{invoice_due_date}}.\nTotal: {{invoice_total}}\n\nPay here: {{payment_url}}";
+
+        $replacements = [
+            '{{client_name}}' => $invoice->customer?->name ?? '--',
+            '{{client_email}}' => $invoice->customer?->email ?? '--',
+            '{{company_name}}' => $companyName,
+            '{{invoice_number}}' => $invoiceNumber,
+            '{{invoice_total}}' => $invoice->currency.' '.$invoice->total,
+            '{{invoice_due_date}}' => $dueDate,
+            '{{payment_url}}' => $paymentUrl,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $attachment = $this->invoiceAttachment($invoice);
+
+        $this->sendGeneric(
+            $recipient,
+            $subject,
+            $bodyHtml,
+            $fromEmail,
+            $companyName,
+            $attachment ? [$attachment] : [],
+            MailCategory::BILLING
+        );
+    }
+
     public function sendManualPaymentSubmission(PaymentProof $paymentProof): void
     {
         $paymentProof->loadMissing(['customer', 'invoice.paymentAttempts']);

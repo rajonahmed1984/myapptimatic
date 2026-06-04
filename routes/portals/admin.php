@@ -399,6 +399,7 @@ Route::middleware([
             Route::post('/recurring/{recurringExpense}/advance', [AdminRecurringExpenseController::class, 'storeAdvance'])->name('recurring.advance.store');
             Route::post('/recurring/{recurringExpense}/resume', [AdminRecurringExpenseController::class, 'resume'])->name('recurring.resume');
             Route::post('/recurring/{recurringExpense}/stop', [AdminRecurringExpenseController::class, 'stop'])->name('recurring.stop');
+            Route::delete('/recurring/{recurringExpense}', [AdminRecurringExpenseController::class, 'destroy'])->name('recurring.destroy');
         });
 
       Route::middleware('admin.role:master_admin')

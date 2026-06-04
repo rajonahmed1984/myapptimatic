@@ -28,6 +28,7 @@ export default function Index({
     paymentMethods = [],
     currency = { symbol: '', code: '' },
     routes = {},
+    stats = { total_advance: 0, total_paid: 0, total_due: 0 },
 }) {
     const { csrf_token: csrfToken } = usePage().props;
     const [openActionId, setOpenActionId] = useState(null);
@@ -115,6 +116,28 @@ export default function Index({
                 </div>
             </div>
 
+            {/* Stats Cards */}
+            <div className="mb-6 grid gap-4 md:grid-cols-3">
+                <div className="card px-4 py-3 border border-emerald-200 bg-emerald-50/40">
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Total Advance</div>
+                    <div className="mt-2 text-xl font-bold text-emerald-600 tabular-nums">
+                        {formatCurrency(stats?.total_advance ?? 0, currency?.symbol, currency?.code)}
+                    </div>
+                </div>
+                <div className="card px-4 py-3 border border-sky-200 bg-sky-50/40">
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Total Paid</div>
+                    <div className="mt-2 text-xl font-bold text-sky-600 tabular-nums">
+                        {formatCurrency(stats?.total_paid ?? 0, currency?.symbol, currency?.code)}
+                    </div>
+                </div>
+                <div className="card px-4 py-3 border border-rose-200 bg-rose-50/40">
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Total Due</div>
+                    <div className="mt-2 text-xl font-bold text-rose-600 tabular-nums">
+                        {formatCurrency(stats?.total_due ?? 0, currency?.symbol, currency?.code)}
+                    </div>
+                </div>
+            </div>
+
             <div className="overflow-hidden">
                 <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white/80 px-3 py-3">
                     <table className="min-w-full text-sm text-slate-700">
@@ -197,24 +220,23 @@ export default function Index({
                                                         >
                                                             Edit
                                                         </a>
-                                                        {recurring.can_resume ? (
-                                                            <form method="POST" action={recurring.routes?.resume} data-native="true">
-                                                                <input type="hidden" name="_token" value={csrfToken} />
-                                                                <button
-                                                                    type="submit"
-                                                                    className="block w-full px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                                                                >
-                                                                    Resume
-                                                                </button>
-                                                            </form>
-                                                        ) : null}
-                                                        <form method="POST" action={recurring.routes?.stop} data-native="true">
+                                                        <form
+                                                            method="POST"
+                                                            action={recurring.routes?.destroy}
+                                                            data-native="true"
+                                                            onSubmit={(event) => {
+                                                                if (!window.confirm(`Delete recurring expense "${recurring.title}"?`)) {
+                                                                    event.preventDefault();
+                                                                }
+                                                            }}
+                                                        >
                                                             <input type="hidden" name="_token" value={csrfToken} />
+                                                            <input type="hidden" name="_method" value="DELETE" />
                                                             <button
                                                                 type="submit"
                                                                 className="block w-full px-4 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50"
                                                             >
-                                                                Stop
+                                                                Delete
                                                             </button>
                                                         </form>
                                                         <div className="my-1 border-t border-slate-100" />
@@ -233,6 +255,13 @@ export default function Index({
                                                         >
                                                             Advance
                                                         </button>
+                                                        <a
+                                                            href={recurring.routes?.show}
+                                                            data-native="true"
+                                                            className="block px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                                        >
+                                                            Payment
+                                                        </a>
                                                     </div>
                                                 ) : null}
                                             </div>

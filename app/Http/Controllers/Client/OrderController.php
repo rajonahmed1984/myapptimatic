@@ -169,7 +169,7 @@ class OrderController extends Controller
             $issueDate = Carbon::today();
             $subtotal = $this->calculateSubtotal($plan->interval, (float) $plan->price, $startDate, $periodEnd);
             $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
-            $dueDate = $issueDate->copy();
+            $dueDate = $startDate->day === 1 ? $startDate->copy() : $issueDate->copy();
 
             $taxData = $taxService->calculateTotals($subtotal, 0.0, $issueDate);
 
@@ -278,6 +278,11 @@ class OrderController extends Controller
 
     private function nextInvoiceAt(string $interval, Carbon $periodEnd): Carbon
     {
+        $periodStart = $periodEnd->copy()->addDay();
+        if ($periodStart->day === 1) {
+            return $periodStart->copy()->subDays(10);
+        }
+
         if ($interval === 'monthly') {
             return $periodEnd->copy()->addDay();
         }

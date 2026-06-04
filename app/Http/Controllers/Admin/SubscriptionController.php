@@ -320,6 +320,11 @@ class SubscriptionController extends Controller
                     $query->where('status', 'overdue');
                 },
             ])
+            ->withSum([
+                'invoices as open_invoices_total' => function ($query) {
+                    $query->whereIn('status', ['unpaid', 'overdue']);
+                }
+            ], 'total')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('status', 'like', '%'.$search.'%')
@@ -396,6 +401,9 @@ class SubscriptionController extends Controller
                     'next_invoice_display' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
                     'open_invoices_count' => (int) ($subscription->open_invoices_count ?? 0),
                     'overdue_invoices_count' => (int) ($subscription->overdue_invoices_count ?? 0),
+                    'open_invoices_total_display' => $subscription->open_invoices_total !== null && (float)$subscription->open_invoices_total > 0
+                        ? trim((string) (($planCurrency ? $planCurrency.' ' : '').number_format((float) $subscription->open_invoices_total, 2)))
+                        : null,
                     'routes' => [
                         'show' => route('admin.subscriptions.show', $subscription),
                         'edit' => route('admin.subscriptions.edit', $subscription),

@@ -59,7 +59,13 @@ class AccessBlockService
             return $this->emptyStatus();
         }
 
-        return $this->buildStatus($invoice, $graceDays, $strictLicenseOverdue);
+        $status = $this->buildStatus($invoice, $graceDays, $strictLicenseOverdue);
+
+        if ($customer->access_override_until && $customer->access_override_until->isFuture()) {
+            $status['blocked'] = false;
+        }
+
+        return $status;
     }
 
     /**

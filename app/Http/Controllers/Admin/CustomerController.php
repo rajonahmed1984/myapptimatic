@@ -527,16 +527,31 @@ class CustomerController extends Controller
             ],
             'sales_rep_summaries' => $salesRepSummaries->values()->all(),
             'subscriptions' => $customer->subscriptions->map(function (Subscription $subscription) use ($dateFormat) {
+                $baseAmount = $subscription->subscription_amount !== null
+                    ? (float) $subscription->subscription_amount
+                    : (float) ($subscription->plan?->price ?? 0);
+                $amountCurrency = (string) ($subscription->plan?->currency ?? '');
+
+                $openInvoicesTotal = (float) $subscription->invoices()
+                    ->whereIn('status', ['unpaid', 'overdue'])
+                    ->sum('total');
+                $openInvoicesTotalDisplay = $openInvoicesTotal > 0
+                    ? trim((string) (($amountCurrency ? $amountCurrency.' ' : '').number_format($openInvoicesTotal, 2)))
+                    : null;
+
                 return [
                     'id' => $subscription->id,
                     'product_name' => (string) ($subscription->plan?->product?->name ?? '--'),
                     'plan_name' => (string) ($subscription->plan?->name ?? '--'),
+                    'plan_interval' => ucfirst((string) ($subscription->plan?->interval ?? '--')),
+                    'amount_display' => trim((string) (($amountCurrency ? $amountCurrency.' ' : '').number_format($baseAmount, 2))),
                     'status' => (string) ($subscription->status ?? ''),
                     'status_label' => ucfirst((string) ($subscription->status ?? '--')),
                     'order_number' => (string) ($subscription->latestOrder?->order_number ?? '--'),
                     'order_date_display' => $subscription->latestOrder?->created_at?->format($dateFormat) ?? '--',
                     'next_invoice_display' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
                     'period_end_display' => $subscription->current_period_end?->format($dateFormat) ?? '--',
+                    'open_invoices_total_display' => $openInvoicesTotalDisplay,
                     'manage_url' => route('admin.subscriptions.edit', $subscription, false),
                 ];
             })->values()->all(),
@@ -1250,6 +1265,11 @@ class CustomerController extends Controller
 
     private function nextServiceInvoiceAt(string $interval, Carbon $periodEnd, Carbon $startDate): Carbon
     {
+        $periodStart = $periodEnd->copy()->addDay();
+        if ($periodStart->day === 1) {
+            return $periodStart->copy()->subDays(10);
+        }
+
         if ($interval === 'monthly') {
             return $periodEnd->copy()->addDay();
         }

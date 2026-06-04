@@ -173,7 +173,7 @@ class RecurringExpenseActionContractParityTest extends TestCase
             $response = $this->actingAs($admin)
                 ->from(route('admin.expenses.recurring.show', $recurring))
                 ->post(route('admin.expenses.recurring.advance.store', $recurring), [
-                    'payment_method' => 'bank',
+                    'payment_method' => 'manual',
                     'amount' => 30.25,
                     'paid_at' => '2026-06-03',
                     'payment_reference' => 'ADV-123',
@@ -186,7 +186,7 @@ class RecurringExpenseActionContractParityTest extends TestCase
 
             $this->assertDatabaseHas('recurring_expense_advances', [
                 'recurring_expense_id' => $recurring->id,
-                'payment_method' => 'bank',
+                'payment_method' => 'manual',
                 'amount' => 30.25,
             ]);
 

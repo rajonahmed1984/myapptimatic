@@ -212,6 +212,71 @@ class AdminCustomerShowUiParityTest extends TestCase
             ->assertForbidden();
     }
 
+    #[Test]
+    public function customer_services_tab_renders_amount_and_billing_cycle(): void
+    {
+        $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
+        $customer = Customer::create([
+            'name' => 'Services Tab Customer',
+            'email' => 'services-tab-customer@example.test',
+            'status' => 'active',
+        ]);
+
+        $product = \App\Models\Product::create([
+            'name' => 'Hosting',
+            'slug' => 'hosting',
+            'description' => 'Hosting product',
+            'status' => 'active',
+        ]);
+
+        $plan = \App\Models\Plan::create([
+            'product_id' => $product->id,
+            'name' => 'Starter',
+            'slug' => 'starter',
+            'interval' => 'monthly',
+            'price' => 9.99,
+            'currency' => 'USD',
+            'is_active' => true,
+        ]);
+
+        $subscription = \App\Models\Subscription::create([
+            'customer_id' => $customer->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'start_date' => now()->toDateString(),
+            'current_period_start' => now()->toDateString(),
+            'current_period_end' => now()->addMonth()->toDateString(),
+            'next_invoice_at' => now()->addMonth(),
+            'auto_renew' => true,
+        ]);
+
+        \App\Models\Invoice::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
+            'number' => 'INV-TEST-SERVICES',
+            'status' => 'unpaid',
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->toDateString(),
+            'subtotal' => 9.99,
+            'late_fee' => 0,
+            'total' => 9.99,
+            'currency' => 'USD',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.customers.show', ['customer' => $customer, 'tab' => 'services']))
+            ->assertOk();
+
+        $payload = $this->inertiaPayload($response->getContent());
+
+        $this->assertSame('services', data_get($payload, 'props.tab'));
+        $subscriptionsProp = data_get($payload, 'props.subscriptions');
+        $this->assertCount(1, $subscriptionsProp);
+        $this->assertSame('Monthly', $subscriptionsProp[0]['plan_interval']);
+        $this->assertSame('USD 9.99', $subscriptionsProp[0]['amount_display']);
+        $this->assertSame('USD 9.99', $subscriptionsProp[0]['open_invoices_total_display']);
+    }
+
     /**
      * @return array<string, mixed>
      */

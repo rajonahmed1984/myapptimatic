@@ -278,6 +278,144 @@ class RecurringExpenseAdvancePaymentTest extends TestCase
     }
 
     #[Test]
+    public function recurring_index_calculates_correct_due_amount_with_overdue_invoices(): void
+    {
+        $admin = User::factory()->create(['role' => 'master_admin']);
+
+        $category = ExpenseCategory::create([
+            'name' => 'Subscriptions',
+            'status' => 'active',
+        ]);
+
+        $recurring = RecurringExpense::create([
+            'category_id' => $category->id,
+            'title' => 'Overdue Test Hosting',
+            'amount' => 150,
+            'recurrence_type' => 'monthly',
+            'recurrence_interval' => 1,
+            'start_date' => '2026-04-01',
+            'next_run_date' => '2026-05-01',
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        $expense = Expense::create([
+            'category_id' => $category->id,
+            'recurring_expense_id' => $recurring->id,
+            'title' => 'Hosting Apr',
+            'amount' => 150,
+            'expense_date' => '2026-04-01',
+            'type' => 'recurring',
+            'created_by' => $admin->id,
+        ]);
+
+        $invoice = ExpenseInvoice::create([
+            'expense_id' => $expense->id,
+            'source_type' => 'expense',
+            'source_id' => $expense->id,
+            'expense_type' => 'recurring',
+            'invoice_no' => 'EXP-2026-9999',
+            'status' => 'overdue',
+            'invoice_date' => '2026-04-01',
+            'due_date' => now()->subDays(5)->toDateString(),
+            'amount' => 150,
+            'currency' => 'BDT',
+            'created_by' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.index'));
+
+        $response->assertOk();
+        $page = $response->original->getData()['page'];
+        $data = $page['props']['recurringExpenses']['data'];
+        $matched = collect($data)->firstWhere('id', $recurring->id);
+        $this->assertNotNull($matched);
+        $this->assertEquals(150.00, $matched['due_amount']);
+
+        $stats = $page['props']['stats'];
+        $this->assertEquals(0.00, $stats['total_advance']);
+        $this->assertEquals(0.00, $stats['total_paid']);
+        $this->assertEquals(150.00, $stats['total_due']);
+    }
+
+    #[Test]
+    public function recurring_index_calculates_correct_global_stats(): void
+    {
+        $admin = User::factory()->create(['role' => 'master_admin']);
+
+        $category = ExpenseCategory::create([
+            'name' => 'Subscriptions',
+            'status' => 'active',
+        ]);
+
+        $recurring = RecurringExpense::create([
+            'category_id' => $category->id,
+            'title' => 'Global Stats Host',
+            'amount' => 200,
+            'recurrence_type' => 'monthly',
+            'recurrence_interval' => 1,
+            'start_date' => '2026-04-01',
+            'next_run_date' => '2026-05-01',
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        // Add advance of 500
+        RecurringExpenseAdvance::create([
+            'recurring_expense_id' => $recurring->id,
+            'payment_method' => 'manual',
+            'amount' => 500,
+            'paid_at' => '2026-03-25',
+            'created_by' => $admin->id,
+        ]);
+
+        $expense = Expense::create([
+            'category_id' => $category->id,
+            'recurring_expense_id' => $recurring->id,
+            'title' => 'Hosting Apr',
+            'amount' => 200,
+            'expense_date' => '2026-04-01',
+            'type' => 'recurring',
+            'created_by' => $admin->id,
+        ]);
+
+        $invoice = ExpenseInvoice::create([
+            'expense_id' => $expense->id,
+            'source_type' => 'expense',
+            'source_id' => $expense->id,
+            'expense_type' => 'recurring',
+            'invoice_no' => 'EXP-2026-8888',
+            'status' => 'unpaid',
+            'invoice_date' => '2026-04-01',
+            'due_date' => '2026-04-01',
+            'amount' => 200,
+            'currency' => 'BDT',
+            'created_by' => $admin->id,
+        ]);
+
+        // Make an advance payment of 200 to the invoice
+        ExpenseInvoicePayment::create([
+            'expense_invoice_id' => $invoice->id,
+            'payment_method' => 'advance',
+            'payment_type' => 'full',
+            'amount' => 200,
+            'paid_at' => '2026-04-01',
+            'created_by' => $admin->id,
+        ]);
+        $invoice->update(['status' => 'paid', 'paid_at' => '2026-04-01']);
+
+        $response = $this->actingAs($admin)->get(route('admin.expenses.recurring.index'));
+
+        $response->assertOk();
+        $page = $response->original->getData()['page'];
+        $stats = $page['props']['stats'];
+
+        $this->assertEquals(300.00, $stats['total_advance']);
+        $this->assertEquals(200.00, $stats['total_paid']);
+        $this->assertEquals(0.00, $stats['total_due']);
+    }
+
+    #[Test]
     public function recurring_paid_or_partially_paid_invoice_cannot_be_deleted(): void
     {
         $admin = User::factory()->create(['role' => 'master_admin']);
