@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
     @include('layouts.partials.head')
+    @push('styles')
+    <style>
+        @media (min-width: 768px) {
+            #clientSidebarToggle {
+                display: none !important;
+            }
+        }
+    </style>
+    @endpush
 </head>
 <body class="bg-dashboard">
     <div class="min-h-screen flex flex-col md:flex-row">
@@ -213,7 +222,7 @@
                     data-page-heading="@yield('page-title', 'Overview')"
                     data-page-key="{{ request()->route()?->getName() ?? '' }}"
                 >
-                    @if(!empty($clientInvoiceNotice) && $clientInvoiceNotice['has_due'] && !auth()->user()->isClientProject())
+                    @if(!empty($clientInvoiceNotice) && $clientInvoiceNotice['has_due'] && !auth()->user()->isClientProject() && !request()->routeIs('client.invoices.pay') && !request()->routeIs('client.invoices.show'))
                         @include('partials.overdue-banner', ['notice' => $clientInvoiceNotice])
                     @endif
 
@@ -261,7 +270,7 @@
                         </div>
                     @endif
 
-                    @if (session('status'))
+                    @if (session('status') && !request()->routeIs('client.invoices.pay') && !request()->routeIs('client.invoices.show'))
                         <div data-flash-message data-flash-type="success" class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
                             {{ session('status') }}
                         </div>

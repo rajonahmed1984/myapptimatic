@@ -273,70 +273,68 @@ class PaymentGatewayController extends Controller
 
         switch ($paymentGateway->driver) {
             case 'manual':
-                $settings = array_merge($settings, [
-                    'instructions' => $data['instructions'] ?? '',
-                    'payment_url' => $data['payment_url'] ?? '',
-                    'account_name' => $data['account_name'] ?? '',
-                    'account_number' => $data['account_number'] ?? '',
-                    'bank_name' => $data['bank_name'] ?? '',
-                    'branch' => $data['branch'] ?? '',
-                    'routing_number' => $data['routing_number'] ?? '',
-                    'button_label' => $data['button_label'] ?? '',
-                ]);
+                $keys = ['instructions', 'payment_url', 'account_name', 'account_number', 'bank_name', 'branch', 'routing_number', 'button_label'];
+                $updatedSettings = [];
+                foreach ($keys as $key) {
+                    if (array_key_exists($key, $data)) {
+                        $updatedSettings[$key] = $data[$key] ?? '';
+                    }
+                }
+                $settings = array_merge($settings, $updatedSettings);
                 break;
             case 'bkash':
-                $settings = array_merge($settings, [
-                    'merchant_number' => $data['merchant_number'] ?? '',
-                    'instructions' => $data['instructions'] ?? '',
-                    'payment_url' => $data['payment_url'] ?? '',
-                    'account_name' => $data['account_name'] ?? '',
-                    'account_number' => $data['account_number'] ?? '',
-                    'button_label' => $data['button_label'] ?? '',
-                ]);
+                $keys = ['merchant_number', 'instructions', 'payment_url', 'account_name', 'account_number', 'button_label'];
+                $updatedSettings = [];
+                foreach ($keys as $key) {
+                    if (array_key_exists($key, $data)) {
+                        $updatedSettings[$key] = $data[$key] ?? '';
+                    }
+                }
+                $settings = array_merge($settings, $updatedSettings);
                 break;
             case 'bkash_api':
-                $settings = array_merge($settings, [
-                    'username' => $data['username'] ?? '',
-                    'password' => $data['password'] ?? '',
-                    'app_key' => $data['app_key'] ?? '',
-                    'app_secret' => $data['app_secret'] ?? '',
-                    'instructions' => $data['instructions'] ?? '',
-                    'button_label' => $data['button_label'] ?? '',
-                    'sandbox' => $request->boolean('sandbox'),
-                ]);
+                $keys = ['username', 'password', 'app_key', 'app_secret', 'instructions', 'button_label'];
+                $updatedSettings = [];
+                foreach ($keys as $key) {
+                    if (array_key_exists($key, $data)) {
+                        $updatedSettings[$key] = $data[$key] ?? '';
+                    }
+                }
+                $updatedSettings['sandbox'] = $request->boolean('sandbox');
+                $settings = array_merge($settings, $updatedSettings);
                 break;
             case 'sslcommerz':
-                $settings = array_merge($settings, [
-                    'instructions' => $data['instructions'] ?? '',
-                    'payment_url' => $data['payment_url'] ?? '',
-                    'store_id' => $data['store_id'] ?? '',
-                    'store_password' => $data['store_password'] ?? '',
-                    'button_label' => $data['button_label'] ?? '',
-                    'easy_checkout' => $request->boolean('easy_checkout'),
-                    'processing_currency' => isset($data['processing_currency'])
+                $keys = ['instructions', 'payment_url', 'store_id', 'store_password', 'button_label'];
+                $updatedSettings = [];
+                foreach ($keys as $key) {
+                    if (array_key_exists($key, $data)) {
+                        $updatedSettings[$key] = $data[$key] ?? '';
+                    }
+                }
+                $updatedSettings['easy_checkout'] = $request->boolean('easy_checkout');
+                if (array_key_exists('processing_currency', $data)) {
+                    $updatedSettings['processing_currency'] = isset($data['processing_currency'])
                         ? strtoupper($data['processing_currency'])
-                        : '',
-                    'sandbox' => $request->boolean('sandbox'),
-                ]);
+                        : '';
+                }
+                $updatedSettings['sandbox'] = $request->boolean('sandbox');
+                $settings = array_merge($settings, $updatedSettings);
                 break;
             case 'paypal':
-                $settings = array_merge($settings, [
-                    'instructions' => $data['instructions'] ?? '',
-                    'payment_url' => $data['payment_url'] ?? '',
-                    'paypal_email' => $data['paypal_email'] ?? '',
-                    'api_username' => $data['api_username'] ?? '',
-                    'api_password' => $data['api_password'] ?? '',
-                    'api_signature' => $data['api_signature'] ?? '',
-                    'force_one_time' => $request->boolean('force_one_time'),
-                    'force_subscriptions' => $request->boolean('force_subscriptions'),
-                    'require_shipping' => $request->boolean('require_shipping'),
-                    'client_address_matching' => $request->boolean('client_address_matching'),
-                    'client_id' => $data['client_id'] ?? '',
-                    'client_secret' => $data['client_secret'] ?? '',
-                    'button_label' => $data['button_label'] ?? '',
-                    'processing_currency' => 'USD',
-                    'sandbox' => $request->boolean('sandbox'),
-                ]);
+                $keys = ['instructions', 'payment_url', 'paypal_email', 'api_username', 'api_password', 'api_signature', 'client_id', 'client_secret', 'button_label'];
+                $updatedSettings = [];
+                foreach ($keys as $key) {
+                    if (array_key_exists($key, $data)) {
+                        $updatedSettings[$key] = $data[$key] ?? '';
+                    }
+                }
+                $updatedSettings['force_one_time'] = $request->boolean('force_one_time');
+                $updatedSettings['force_subscriptions'] = $request->boolean('force_subscriptions');
+                $updatedSettings['require_shipping'] = $request->boolean('require_shipping');
+                $updatedSettings['client_address_matching'] = $request->boolean('client_address_matching');
+                $updatedSettings['processing_currency'] = 'USD';
+                $updatedSettings['sandbox'] = $request->boolean('sandbox');
+                $settings = array_merge($settings, $updatedSettings);
                 break;
         }
 

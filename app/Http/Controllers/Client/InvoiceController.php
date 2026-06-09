@@ -70,9 +70,21 @@ class InvoiceController extends Controller
         $isPayable = in_array($effectiveStatus, ['unpaid', 'overdue'], true) && $payableAmount > 0.009;
         $displayNumber = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
         $dateFormat = config('app.date_format', 'd-m-Y');
-        $portalBranding = (array) $request->attributes->get('portalBranding', []);
+        $portalBranding = (array) (view()->shared('portalBranding') ?? []);
         $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
         $rejectedProof = $invoice->paymentProofs->firstWhere('status', 'rejected');
+
+        $payments = $invoice->accountingEntries
+            ->filter(fn ($entry) => in_array($entry->type, ['payment', 'credit'], true))
+            ->map(function ($entry) use ($dateFormat) {
+                return [
+                    'id' => $entry->id,
+                    'date_display' => $entry->entry_date?->format($dateFormat) ?? '--',
+                    'method' => $entry->paymentGateway?->name ?? ($entry->type === 'credit' ? 'Credit/Adjustment' : 'Manual'),
+                    'reference' => $entry->reference ?: '--',
+                    'amount_display' => $entry->currency.' '.number_format((float) $entry->amount, 2),
+                ];
+            })->values()->all();
 
         $gateways = PaymentGateway::query()
             ->where('is_active', true)
@@ -115,13 +127,14 @@ class InvoiceController extends Controller
                 'pending_proof' => (bool) $pendingProof,
                 'rejected_proof' => (bool) $rejectedProof,
             ],
+            'payments' => $payments,
             'tax' => [
                 'label' => $taxSetting->invoice_tax_label ?: 'Tax',
                 'note' => $taxSetting->renderNote($invoice->tax_rate_percent),
             ],
             'company' => [
                 'name' => $portalBranding['company_name'] ?? config('app.name', 'Apptimatic'),
-                'logo_url' => $portalBranding['logo_url'] ?? null,
+                'logo_url' => $portalBranding['logo_url'] ?? \App\Support\Branding::url(Setting::getValue('company_logo_path')),
                 'email' => Setting::getValue('company_email') ?: 'support@example.com',
                 'pay_to' => Setting::getValue('pay_to_text') ?: 'Billing Department',
             ],

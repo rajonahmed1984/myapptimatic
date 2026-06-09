@@ -181,8 +181,48 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
         </div>
+
+        @php
+            $payments = $invoice->accountingEntries->filter(function ($entry) {
+                return in_array($entry->type, ['payment', 'credit'], true);
+            });
+        @endphp
+
+        @if($payments->isNotEmpty())
+            <div class="panel panel-default" style="margin-top: 20px;">
+                <div class="panel-heading" style="padding-bottom: 6px;">
+                    <strong class="panel-title" style="font-size: 15px; color: #1e293b;">Payment Records</strong>
+                </div>
+                <div class="panel-body">
+                    <div class="table-responsive">
+                        <table class="table table-condensed">
+                            <thead style="background: #f8fafc;">
+                                <tr>
+                                    <td><strong>Date</strong></td>
+                                    <td><strong>Payment Method</strong></td>
+                                    <td><strong>Reference</strong></td>
+                                    <td class="text-center"><strong>Amount</strong></td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($payments as $payment)
+                                    @php
+                                        $methodName = $payment->paymentGateway?->name ?? ($payment->type === 'credit' ? 'Credit/Adjustment' : 'Manual');
+                                    @endphp
+                                    <tr>
+                                        <td>{{ $payment->entry_date?->format($globalDateFormat) ?? '--' }}</td>
+                                        <td>{{ $methodName }}</td>
+                                        <td>{{ $payment->reference ?: '--' }}</td>
+                                        <td class="text-center" style="font-weight: bold; color: #15803d;">{{ $payment->currency }} {{ number_format((float) $payment->amount, 2) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <div class="row mt-5">
             <div class="invoice-col full text-center">

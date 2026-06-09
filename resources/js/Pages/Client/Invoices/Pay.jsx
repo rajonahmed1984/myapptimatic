@@ -11,6 +11,7 @@ export default function Pay({
     gateways = [],
     payment_instructions = '',
     routes = {},
+    payments = [],
 }) {
     const initialGatewayId = gateways.length > 0 ? String(gateways[0].id) : '';
     const [gatewayId, setGatewayId] = useState(initialGatewayId);
@@ -126,7 +127,7 @@ export default function Pay({
                 <hr />
 
                 <div className="invoice-grid invoice-addresses">
-                    <div className="invoice-col">
+                    <div className="invoice-col" style={{ width: showPaymentPanel ? '33.33%' : '50%' }}>
                         <strong>Invoiced To</strong>
                         <address className="small-text">
                             {invoice?.customer?.name || '--'}
@@ -136,7 +137,57 @@ export default function Pay({
                             {invoice?.customer?.address || '--'}
                         </address>
                     </div>
-                    <div className="invoice-col right">
+                    {showPaymentPanel ? (
+                        <div className="invoice-col no-print" style={{ width: '33.33%', borderLeft: '1px solid #eee', borderRight: '1px solid #eee', paddingLeft: '20px', paddingRight: '20px' }}>
+                            <div className="payment-heading" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b', marginBottom: '8px', fontWeight: '700' }}>
+                                Payment Method
+                            </div>
+                            {invoice.pending_proof ? <div className="alert amber" style={{ fontSize: '11px', padding: '6px', margin: '0 0 8px 0' }}>Pending review.</div> : null}
+                            {!invoice.pending_proof && invoice.rejected_proof ? (
+                                <div className="alert rose" style={{ fontSize: '11px', padding: '6px', margin: '0 0 8px 0' }}>Payment rejected.</div>
+                            ) : null}
+
+                            {gateways.length === 0 ? (
+                                <div className="small-text text-muted" style={{ fontSize: '11px' }}>No active gateways.</div>
+                            ) : (
+                                <form method="POST" action={routes.checkout} id="gateway-form" className="gateway-form" target={gatewayTarget} data-native="true" style={{ margin: 0 }}>
+                                    <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                                    <SearchableSelect
+                                        name="payment_gateway_id"
+                                        value={gatewayId}
+                                        onChange={(nextValue) => setGatewayId(String(nextValue || ''))}
+                                        options={gatewayOptions}
+                                        placeholder="Select gateway"
+                                    />
+                                    {selectedGateway?.instructions ? (
+                                        <div
+                                            id="gateway-instructions"
+                                            className="small-text text-muted"
+                                            style={{ marginTop: 6, marginBottom: 8, fontSize: '11px', lineHeight: '1.3' }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: toHtmlWithLineBreaks(selectedGateway.instructions),
+                                            }}
+                                        />
+                                    ) : null}
+                                    <button 
+                                        type="submit" 
+                                        id="gateway-submit" 
+                                        className="rounded bg-teal-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-600 transition-colors"
+                                        style={{ width: '100%', display: 'block', marginTop: '8px' }}
+                                    >
+                                        {gatewayButtonLabel}
+                                    </button>
+                                </form>
+                            )}
+
+                            {payment_instructions ? (
+                                <div className="small-text text-muted whitespace-pre-line" style={{ marginTop: 8, fontSize: '11px', lineHeight: '1.3' }}>
+                                    {payment_instructions}
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : null}
+                    <div className="invoice-col right" style={{ width: showPaymentPanel ? '33.33%' : '50%' }}>
                         <strong>Pay To</strong>
                         <address className="small-text">
                             {company.name}
@@ -203,53 +254,41 @@ export default function Pay({
                     </div>
                 </div>
 
-                {showPaymentPanel ? (
-                    <div className="payment-panel no-print">
-                        <div className="payment-heading">Payment Method</div>
-                        {invoice.pending_proof ? <div className="alert amber">Manual payment submitted and pending review.</div> : null}
-                        {!invoice.pending_proof && invoice.rejected_proof ? (
-                            <div className="alert rose">Manual payment was rejected. Please submit a new transfer.</div>
-                        ) : null}
-
-                        {gateways.length === 0 ? (
-                            <div className="small-text text-muted">No active payment gateways configured.</div>
-                        ) : (
-                            <form method="POST" action={routes.checkout} id="gateway-form" className="gateway-form" target={gatewayTarget} data-native="true">
-                                <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                                <label htmlFor="gateway-select" className="small-text">
-                                    <strong>Select gateway</strong>
-                                </label>
-                                <SearchableSelect
-                                    name="payment_gateway_id"
-                                    value={gatewayId}
-                                    onChange={(nextValue) => setGatewayId(String(nextValue || ''))}
-                                    options={gatewayOptions}
-                                    className="mt-2"
-                                    placeholder="Select gateway"
-                                />
-                                <div
-                                    id="gateway-instructions"
-                                    className="small-text text-muted"
-                                    style={{ marginTop: 10 }}
-                                    dangerouslySetInnerHTML={{
-                                        __html: selectedGateway?.instructions
-                                            ? toHtmlWithLineBreaks(selectedGateway.instructions)
-                                            : 'No additional instructions for this gateway.',
-                                    }}
-                                />
-                                <button type="submit" id="gateway-submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
-                                    {gatewayButtonLabel}
-                                </button>
-                            </form>
-                        )}
-
-                        {payment_instructions ? (
-                            <div className="small-text text-muted whitespace-pre-line" style={{ marginTop: 12 }}>
-                                {payment_instructions}
+                {payments && payments.length > 0 && (
+                    <div className="panel panel-default" style={{ marginTop: '20px' }}>
+                        <div className="panel-body">
+                            <div className="payment-heading" style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', color: '#1e293b' }}>
+                                Payment Records
                             </div>
-                        ) : null}
+                            <div className="table-responsive">
+                                <table className="table table-condensed" style={{ marginBottom: 0 }}>
+                                    <thead style={{ background: '#f8fafc' }}>
+                                        <tr>
+                                            <td style={{ padding: '8px' }}><strong>Date</strong></td>
+                                            <td style={{ padding: '8px' }}><strong>Payment Method</strong></td>
+                                            <td style={{ padding: '8px' }}><strong>Reference</strong></td>
+                                            <td className="text-center" style={{ padding: '8px' }}><strong>Amount</strong></td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {payments.map((payment) => (
+                                            <tr key={payment.id}>
+                                                <td style={{ padding: '8px' }}>{payment.date_display}</td>
+                                                <td style={{ padding: '8px' }}>{payment.method}</td>
+                                                <td style={{ padding: '8px' }}>{payment.reference}</td>
+                                                <td className="text-center font-semibold text-emerald-700" style={{ padding: '8px' }}>
+                                                    {payment.amount_display}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                ) : null}
+                )}
+
+
 
                 <div className="container-fluid invoice-container">
                     <div className="row mt-5" style={{ display: 'flex', justifyContent: 'center' }}>

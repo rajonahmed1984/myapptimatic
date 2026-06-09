@@ -9,7 +9,6 @@ use App\Models\Customer;
 use App\Models\License;
 use App\Models\Order;
 use App\Models\PaymentGateway;
-use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\Product;
 use App\Models\SalesRepresentative;
@@ -109,12 +108,6 @@ class AdminFormShowUiParityTest extends TestCase
             'last_reply_at' => now(),
         ]);
 
-        $paymentMethod = PaymentMethod::create([
-            'name' => 'Parity Method',
-            'code' => 'parity',
-            'sort_order' => 1,
-            'is_active' => true,
-        ]);
 
         $taxRate = TaxRate::create([
             'name' => 'Parity VAT',
@@ -174,13 +167,11 @@ class AdminFormShowUiParityTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.licenses.create'))
-            ->assertOk()
-            ->assertSee('Admin\\/Licenses\\/Form', false);
+            ->assertRedirect(route('admin.subscriptions.index'));
 
         $this->actingAs($admin)
             ->get(route('admin.licenses.edit', $license))
-            ->assertOk()
-            ->assertSee('Admin\\/Licenses\\/Form', false);
+            ->assertRedirect(route('admin.subscriptions.edit', $subscription->id).'#license-'.$license->id);
 
         $this->actingAs($admin)
             ->get(route('admin.payment-gateways.edit', $paymentGateway))
@@ -207,10 +198,6 @@ class AdminFormShowUiParityTest extends TestCase
             ->assertOk()
             ->assertSee('Admin\\/SupportTickets\\/Show', false);
 
-        $this->actingAs($admin)
-            ->get(route('admin.finance.payment-methods.show', $paymentMethod))
-            ->assertOk()
-            ->assertSee('Admin\\/Finance\\/PaymentMethods\\/Show', false);
 
         $this->actingAs($admin)
             ->get(route('admin.finance.tax.rates.edit', $taxRate))

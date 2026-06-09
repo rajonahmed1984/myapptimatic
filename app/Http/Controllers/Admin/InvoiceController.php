@@ -1678,7 +1678,7 @@ class InvoiceController extends Controller
         $effectiveStatus = $this->effectiveInvoiceStatus((string) $invoice->status, $payableAmount);
         $displayNumber = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
         $dateFormat = config('app.date_format', 'd-m-Y');
-        $portalBranding = (array) $request->attributes->get('portalBranding', []);
+        $portalBranding = (array) (view()->shared('portalBranding') ?? []);
         $companyName = (string) ($portalBranding['company_name'] ?? Setting::getValue('company_name', config('app.name', 'Apptimatic')));
         $companyLogoUrl = $portalBranding['logo_url'] ?? Branding::url(Setting::getValue('company_logo_path'));
         $pendingProof = $invoice->paymentProofs->firstWhere('status', 'pending');
