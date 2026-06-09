@@ -4,9 +4,12 @@
     @include('layouts.partials.head')
     @push('styles')
     <style>
-        @media (min-width: 768px) {
+        #clientSidebarToggle {
+            display: none !important;
+        }
+        @media (max-width: 767px) {
             #clientSidebarToggle {
-                display: none !important;
+                display: inline-flex !important;
             }
         }
     </style>
