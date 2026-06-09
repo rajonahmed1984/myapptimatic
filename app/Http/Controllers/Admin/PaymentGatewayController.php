@@ -210,6 +210,7 @@ class PaymentGatewayController extends Controller
             'routes' => [
                 'index' => route('admin.payment-gateways.index'),
                 'edit' => route('admin.payment-gateways.edit', $paymentGateway),
+                'debug_log' => route('admin.logs.module', ['search' => $paymentGateway->name]),
             ],
         ]);
     }
@@ -374,6 +375,9 @@ class PaymentGatewayController extends Controller
 
         return [
             'pageTitle' => 'Payment Gateways',
+            'routes' => [
+                'debug_log' => route('admin.logs.module'),
+            ],
             'gateways' => collect($gateways)->map(function (PaymentGateway $gateway) use ($methods, $methodLedgerMap, $accountingByGateway, $dateFormat) {
                 $isGatewayActive = (bool) $gateway->is_active;
                 $matchedMethods = $isGatewayActive
