@@ -40,7 +40,7 @@
                     </x-nav-link>
                 </div>
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Work & Delivery</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Work & Delivery</div>
                     <x-nav-link 
                         :href="route('rep.projects.index')"
                         routes="rep.projects.*"
@@ -122,7 +122,7 @@
                     </div>
                 </div>
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Earnings</div>
                     <x-nav-link 
                         :href="route('rep.earnings.index')"
                         routes="rep.earnings.*"
@@ -139,7 +139,7 @@
                     </x-nav-link>
                 </div>
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Account</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Account</div>
                     <x-nav-link 
                         :href="route('rep.profile.edit')"
                         routes="rep.profile.*"

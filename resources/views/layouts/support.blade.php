@@ -38,7 +38,7 @@
                     </x-nav-link>
                 </div>
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Tickets</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Tickets</div>
                     <x-nav-link 
                         :href="route('support.support-tickets.index')"
                         routes="support.support-tickets.*"

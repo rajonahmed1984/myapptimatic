@@ -46,7 +46,7 @@
                 
                 @if(!$isProjectSpecificUser)
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Projects & Services</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Projects & Services</div>
                     <a class="{{ request()->routeIs('client.projects.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.projects.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Projects
@@ -78,7 +78,7 @@
                 </div>
 
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Orders & Requests</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Orders & Requests</div>
                     <a class="{{ request()->routeIs('client.orders.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.orders.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         My Orders
@@ -86,7 +86,7 @@
                 </div>
 
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Billing & Payments</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Billing & Payments</div>
                     <a class="{{ request()->routeIs('client.invoices.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.invoices.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         <span>Invoices</span>
@@ -97,7 +97,7 @@
                 </div>
 
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Support & Growth</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Support & Growth</div>
                     <a class="{{ request()->routeIs('client.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.support-tickets.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Support
@@ -112,7 +112,7 @@
                 </div>
                 @else
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">My Project</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">My Project</div>
                     <a class="{{ request()->routeIs('client.projects.show') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ auth()->user()->project_id ? route('client.projects.show', auth()->user()->project_id) : '#' }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Project Details
@@ -132,7 +132,7 @@
                 </div>
 
                 <div class="space-y-2">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Support</div>
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Support</div>
                     <a class="{{ request()->routeIs('client.support-tickets.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.support-tickets.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Support Tickets

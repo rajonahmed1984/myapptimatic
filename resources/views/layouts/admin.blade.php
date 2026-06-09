@@ -101,7 +101,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Sales & Customers</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Sales & Customers</div>
                         <x-nav-link
                             :href="route('admin.customers.index')"
                             routes="admin.customers.*"
@@ -133,7 +133,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Projects</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Projects</div>
                         <x-nav-link
                             :href="route('admin.projects.index')"
                             routes="admin.projects.index"
@@ -175,7 +175,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Products</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Products</div>
                         <x-nav-link
                             :href="route('admin.products.index')"
                             routes="admin.products.*"
@@ -208,7 +208,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Billing</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Billing</div>
                         <x-nav-link
                             :href="route('admin.invoices.index')"
                             routes="admin.invoices.index"
@@ -262,7 +262,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Finance</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Finance</div>
                         @if(auth()->user()?->isMasterAdmin())
                             <x-nav-menu
                                 :href="route('admin.income.dashboard')"
@@ -320,7 +320,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">People (HR)</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">People (HR)</div>
                         <x-nav-link
                             :href="route('admin.hr.dashboard')"
                             routes="admin.hr.dashboard"
@@ -388,7 +388,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Support & Chat</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Support & Chat</div>
                         <x-nav-link
                             :href="route('admin.support-tickets.index')"
                             routes="admin.support-tickets.*"
@@ -467,7 +467,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Administration</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Administration</div>
                         @php
                             $usersNavRole = request()->route('role') ?? optional(request()->route('user'))->role;
                             $isUsersRoute = isActive(['admin.users.*', 'admin.admins.*']);
@@ -510,7 +510,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">System & Monitoring</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">System & Monitoring</div>
                         <x-nav-link
                             :href="route('admin.automation-status')"
                             routes="admin.automation-status"
@@ -546,7 +546,7 @@
                         </x-nav-link>
                     </div>
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">My Work</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">My Work</div>
                         <x-nav-link
                             :href="route('employee.projects.index')"
                             routes="employee.projects.*"
@@ -653,7 +653,7 @@
                         @endunless
                     </div>
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payroll</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Payroll</div>
                         <x-nav-link
                             :href="route('employee.payroll.index')"
                             routes="employee.payroll.*"
@@ -663,7 +663,7 @@
                         </x-nav-link>
                     </div>
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Account</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Account</div>
                         <x-nav-link
                             :href="route('employee.profile.edit')"
                             routes="employee.profile.*"
@@ -683,7 +683,7 @@
                         </x-nav-link>
                     </div>
                     <div class="space-y-2">
-                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
+                        <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Earnings</div>
                         <x-nav-link
                             :href="route('rep.earnings.index')"
                             routes="rep.earnings.*"
@@ -710,7 +710,7 @@
                             </x-nav-link>
                         </div>
                         <div class="space-y-2">
-                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">My Work</div>
+                            <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">My Work</div>
                             <x-nav-link
                                 :href="route('employee.projects.index')"
                                 routes="employee.projects.*"
@@ -817,7 +817,7 @@
                             @endunless
                         </div>
                         <div class="space-y-2">
-                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Payroll</div>
+                            <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Payroll</div>
                             <x-nav-link
                                 :href="route('employee.payroll.index')"
                                 routes="employee.payroll.*"
@@ -827,7 +827,7 @@
                             </x-nav-link>
                         </div>
                         <div class="space-y-2">
-                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Account</div>
+                            <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Account</div>
                             <x-nav-link
                                 :href="route('employee.profile.edit')"
                                 routes="employee.profile.*"
@@ -847,7 +847,7 @@
                             </x-nav-link>
                         </div>
                         <div class="space-y-2">
-                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Earnings</div>
+                            <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400 border-b border-cyan-500/20 pb-1 mb-2">Earnings</div>
                             <x-nav-link
                                 :href="route('rep.earnings.index')"
                                 routes="rep.earnings.*"
