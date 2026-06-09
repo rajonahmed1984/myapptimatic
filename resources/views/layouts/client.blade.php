@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     @include('layouts.partials.head')
-    @push('styles')
     <style>
         #clientSidebarToggle {
             display: none !important;
@@ -13,7 +12,6 @@
             }
         }
     </style>
-    @endpush
 </head>
 <body class="bg-dashboard">
     <div class="min-h-screen flex flex-col md:flex-row">
@@ -78,10 +76,6 @@
                     <a class="{{ request()->routeIs('client.services.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.services.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>
                         Services
-                    </a>
-                    <a class="{{ request()->routeIs('client.domains.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.domains.index') }}">
-                        <span class="h-2 w-2 rounded-full bg-current"></span>
-                        Domains
                     </a>
                     <a class="{{ request()->routeIs('client.licenses.*') ? 'nav-link nav-link-active' : 'nav-link' }}" href="{{ route('client.licenses.index') }}">
                         <span class="h-2 w-2 rounded-full bg-current"></span>

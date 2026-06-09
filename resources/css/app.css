@@ -565,14 +565,19 @@ table td:last-child:has(a, button, form):not(.has-dropdown) button.text-rose-600
     white-space: normal !important;
 }
 
+#clientSidebarToggle,
+#supportSidebarToggle,
+#repSidebarToggle,
 #sidebarToggle.sidebar-toggle-mobile {
-    display: inline-flex;
+    display: none !important;
 }
 
-@media (min-width: 768px) {
+@media (max-width: 767px) {
+    #clientSidebarToggle,
+    #supportSidebarToggle,
+    #repSidebarToggle,
     #sidebarToggle.sidebar-toggle-mobile {
-        display: none !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
+        display: inline-flex !important;
     }
 }
+
