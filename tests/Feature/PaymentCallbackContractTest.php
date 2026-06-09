@@ -188,4 +188,176 @@ class PaymentCallbackContractTest extends TestCase
 
         return $gateway->fresh();
     }
+
+    #[Test]
+    public function bkash_api_callback_with_cancel_status_marks_attempt_cancelled(): void
+    {
+        $attempt = $this->createAttempt('bkash_api', [
+            'username' => 'test-user',
+            'password' => 'test-pass',
+            'app_key' => 'test-key',
+            'app_secret' => 'test-secret',
+            'sandbox' => true,
+        ]);
+
+        $response = $this->post(route('payments.bkash.callback', $attempt), [
+            'status' => 'cancel',
+            'paymentId' => 'PAY-100',
+        ]);
+
+        $response->assertRedirect(route('client.invoices.pay', $attempt->invoice));
+        $response->assertSessionHas('status', 'Payment cancelled.');
+
+        $attempt->refresh();
+        $this->assertSame('cancelled', $attempt->status);
+    }
+
+    #[Test]
+    public function bkash_api_callback_success_executes_successfully(): void
+    {
+        $attempt = $this->createAttempt('bkash_api', [
+            'username' => 'test-user',
+            'password' => 'test-pass',
+            'app_key' => 'test-key',
+            'app_secret' => 'test-secret',
+            'sandbox' => true,
+        ]);
+
+        \Illuminate\Support\Facades\Http::fake([
+            'https://tokenized.sandbox.bka.sh/v2/tokenized-checkout/auth/grant-token' => \Illuminate\Support\Facades\Http::response([
+                'id_token' => 'mocked-token',
+                'expires_in' => 3600,
+            ]),
+            'https://tokenized.sandbox.bka.sh/v2/tokenized-checkout/payment/execute' => \Illuminate\Support\Facades\Http::response([
+                'transactionStatus' => 'Completed',
+                'statusCode' => '0000',
+                'trxId' => 'TXN-MOCK-100',
+            ]),
+        ]);
+
+        $response = $this->post(route('payments.bkash.callback', $attempt), [
+            'status' => 'success',
+            'paymentId' => 'PAY-100',
+        ]);
+
+        $response->assertRedirect(route('client.invoices.pay', $attempt->invoice));
+        $response->assertSessionHas('status', 'Payment confirmed. Thank you!');
+
+        $attempt->refresh();
+        $this->assertSame('paid', $attempt->status);
+        $this->assertSame('TXN-MOCK-100', $attempt->response['response']['trxId'] ?? null);
+    }
+
+    #[Test]
+    public function bkash_api_callback_execute_timeout_falls_back_to_query_and_succeeds(): void
+    {
+        $attempt = $this->createAttempt('bkash_api', [
+            'username' => 'test-user',
+            'password' => 'test-pass',
+            'app_key' => 'test-key',
+            'app_secret' => 'test-secret',
+            'sandbox' => true,
+        ]);
+
+        \Illuminate\Support\Facades\Http::fake([
+            'https://tokenized.sandbox.bka.sh/v2/tokenized-checkout/auth/grant-token' => \Illuminate\Support\Facades\Http::response([
+                'id_token' => 'mocked-token',
+                'expires_in' => 3600,
+            ]),
+            'https://tokenized.sandbox.bka.sh/v2/tokenized-checkout/payment/execute' => function () {
+                throw new \Illuminate\Http\Client\ConnectionException('Connection timed out');
+            },
+            'https://tokenized.sandbox.bka.sh/v2/tokenized-checkout/query/payment' => \Illuminate\Support\Facades\Http::response([
+                'transactionStatus' => 'Completed',
+                'statusCode' => '0000',
+                'trxId' => 'TXN-FALLBACK-100',
+            ]),
+        ]);
+
+        $response = $this->post(route('payments.bkash.callback', $attempt), [
+            'status' => 'success',
+            'paymentId' => 'PAY-100',
+        ]);
+
+        $response->assertRedirect(route('client.invoices.pay', $attempt->invoice));
+        $response->assertSessionHas('status', 'Payment confirmed. Thank you!');
+
+        $attempt->refresh();
+        $this->assertSame('paid', $attempt->status);
+        $this->assertSame('TXN-FALLBACK-100', $attempt->response['response']['trxId'] ?? null);
+    }
+
+    #[Test]
+    public function bkash_api_live_refund_succeeds_and_records_refund_entry(): void
+    {
+        $attempt = $this->createAttempt('bkash_api', [
+            'username' => 'test-user',
+            'password' => 'test-pass',
+            'app_key' => 'test-key',
+            'app_secret' => 'test-secret',
+            'sandbox' => true,
+        ], [
+            'status' => 'paid',
+            'external_id' => 'PAY-MOCK-ID',
+            'response' => [
+                'response' => [
+                    'trxId' => 'TXN-MOCK-PAID',
+                ]
+            ]
+        ]);
+
+        $invoice = $attempt->invoice;
+        // Make sure invoice has paid entries so it has a refundable balance
+        \App\Models\AccountingEntry::query()->create([
+            'entry_date' => now()->toDateString(),
+            'type' => 'payment',
+            'amount' => 150,
+            'currency' => 'USD',
+            'description' => 'Payment via bKash API',
+            'reference' => 'TXN-MOCK-PAID',
+            'customer_id' => $attempt->customer_id,
+            'invoice_id' => $invoice->id,
+            'payment_gateway_id' => $attempt->payment_gateway_id,
+        ]);
+        $invoice->update(['status' => 'paid']);
+
+        // Mock the token call and refund API call
+        \Illuminate\Support\Facades\Http::fake([
+            'https://tokenized.sandbox.bka.sh/v2/tokenized-checkout/auth/grant-token' => \Illuminate\Support\Facades\Http::response([
+                'id_token' => 'mocked-token',
+                'expires_in' => 3600,
+            ]),
+            'https://tokenized.sandbox.bka.sh/v2/tokenized-checkout/refund/payment/transaction' => \Illuminate\Support\Facades\Http::response([
+                'refundTransactionStatus' => 'Completed',
+                'statusCode' => '0000',
+                'refundTrxId' => 'TXN-REFUND-123',
+            ]),
+        ]);
+
+        $adminUser = \App\Models\User::query()->create([
+            'name' => 'Admin User',
+            'email' => 'admin-refund@example.com',
+            'password' => bcrypt('password'),
+            'role' => \App\Enums\Role::MASTER_ADMIN,
+        ]);
+
+        $response = $this->actingAs($adminUser)->post(route('admin.invoices.add-refund', $invoice), [
+            'entry_date' => now()->toDateString(),
+            'amount' => 50,
+            'payment_gateway_id' => $attempt->payment_gateway_id,
+            'description' => 'Partial Refund',
+        ]);
+
+        $response->assertRedirect(route('admin.invoices.show', $invoice));
+        $response->assertSessionHas('status', 'Refund recorded successfully.');
+
+        // Verify entry in DB
+        $refundEntry = \App\Models\AccountingEntry::where('invoice_id', $invoice->id)
+            ->where('type', 'refund')
+            ->first();
+
+        $this->assertNotNull($refundEntry);
+        $this->assertEquals(50.00, $refundEntry->amount);
+        $this->assertEquals('TXN-REFUND-123', $refundEntry->reference);
+    }
 }

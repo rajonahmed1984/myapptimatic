@@ -14,7 +14,7 @@ const driverFieldConfig = {
         showProcessingCurrency: false,
     },
     bkash_api: {
-        textFields: ['api_key', 'merchant_short_code', 'service_id'],
+        textFields: ['username', 'password', 'app_key', 'app_secret', 'instructions', 'button_label'],
         toggleFields: ['sandbox'],
         showProcessingCurrency: false,
     },

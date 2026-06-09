@@ -104,9 +104,16 @@ class PaymentCallbackController extends Controller
             'payload' => $request->all(),
         ], level: $success ? 'info' : 'error');
 
-        return $success
-            ? $this->redirectWithStatus('Payment confirmed. Thank you!', $attempt)
-            : $this->redirectWithStatus('Payment could not be verified.', $attempt);
+        if ($success) {
+            return $this->redirectWithStatus('Payment confirmed. Thank you!', $attempt);
+        }
+
+        $attempt->refresh();
+        if ($attempt->status === 'cancelled') {
+            return $this->redirectWithStatus('Payment cancelled.', $attempt);
+        }
+
+        return $this->redirectWithStatus('Payment could not be verified.', $attempt);
     }
 
     private function redirectWithStatus(string $message, ?PaymentAttempt $attempt = null)

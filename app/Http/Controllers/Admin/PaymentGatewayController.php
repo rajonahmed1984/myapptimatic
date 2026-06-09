@@ -295,9 +295,12 @@ class PaymentGatewayController extends Controller
                 break;
             case 'bkash_api':
                 $settings = array_merge($settings, [
-                    'api_key' => $data['api_key'] ?? '',
-                    'merchant_short_code' => $data['merchant_short_code'] ?? '',
-                    'service_id' => $data['service_id'] ?? '',
+                    'username' => $data['username'] ?? '',
+                    'password' => $data['password'] ?? '',
+                    'app_key' => $data['app_key'] ?? '',
+                    'app_secret' => $data['app_secret'] ?? '',
+                    'instructions' => $data['instructions'] ?? '',
+                    'button_label' => $data['button_label'] ?? '',
                     'sandbox' => $request->boolean('sandbox'),
                 ]);
                 break;

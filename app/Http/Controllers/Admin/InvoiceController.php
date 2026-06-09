@@ -639,6 +639,34 @@ class InvoiceController extends Controller
             ? (int) $data['payment_gateway_id']
             : null;
 
+        if ($gatewayId) {
+            $gateway = PaymentGateway::find($gatewayId);
+            if ($gateway && $gateway->driver === 'bkash_api') {
+                $attempt = \App\Models\PaymentAttempt::where('invoice_id', $invoice->id)
+                    ->where('payment_gateway_id', $gatewayId)
+                    ->where('status', 'paid')
+                    ->latest()
+                    ->first();
+
+                if (! $attempt) {
+                    return back()
+                        ->withErrors(['payment_gateway_id' => 'No paid bKash API payment record found for this invoice.'])
+                        ->withInput();
+                }
+
+                $refundResult = app(\App\Services\PaymentService::class)->refundBkash($attempt, $refundAmount, $description ?: 'Refund');
+                if ($refundResult['status'] === 'error') {
+                    return back()
+                        ->withErrors(['amount' => 'bKash live refund failed: ' . $refundResult['message']])
+                        ->withInput();
+                }
+
+                if (! empty($refundResult['refund_trx_id'])) {
+                    $reference = $refundResult['refund_trx_id'];
+                }
+            }
+        }
+
         AccountingEntry::create([
             'entry_date' => Carbon::parse((string) $data['entry_date'])->toDateString(),
             'type' => 'refund',
