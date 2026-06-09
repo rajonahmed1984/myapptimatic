@@ -128,6 +128,8 @@ class ProjectMaintenanceController extends Controller
         $project = Project::query()->findOrFail($data['project_id']);
         $currency = $project->currency ?: strtoupper((string) Setting::getValue('currency'));
 
+        $startDate = \App\Support\DateTimeFormat::parseDate($data['start_date'])?->toDateString();
+
         $maintenance = ProjectMaintenance::create([
             'project_id' => $project->id,
             'customer_id' => $project->customer_id,
@@ -135,8 +137,8 @@ class ProjectMaintenanceController extends Controller
             'amount' => $data['amount'],
             'currency' => $currency,
             'billing_cycle' => $data['billing_cycle'],
-            'start_date' => $data['start_date'],
-            'next_billing_date' => $data['start_date'],
+            'start_date' => $startDate,
+            'next_billing_date' => $startDate,
             'status' => $data['status'] ?? 'active',
             'auto_invoice' => (bool) ($data['auto_invoice'] ?? true),
             'sales_rep_visible' => (bool) ($data['sales_rep_visible'] ?? false),
@@ -236,6 +238,8 @@ class ProjectMaintenanceController extends Controller
             'amount' => ['required', 'numeric', 'min:0.01'],
             'billing_cycle' => ['required', 'in:monthly,yearly'],
             'start_date' => ['required', 'date'],
+            'next_billing_date' => ['required', 'date'],
+            'access_override_until' => ['nullable', 'date'],
             'auto_invoice' => ['nullable', 'boolean'],
             'sales_rep_visible' => ['nullable', 'boolean'],
             'status' => ['required', 'in:active,paused,cancelled'],
@@ -251,25 +255,26 @@ class ProjectMaintenanceController extends Controller
                 ->withInput();
         }
 
-        $nextBillingDate = $projectMaintenance->next_billing_date;
-        if (
-            $projectMaintenance->last_billed_at === null &&
-            ($data['start_date'] !== $projectMaintenance->start_date?->toDateString()
-                || $data['billing_cycle'] !== $projectMaintenance->billing_cycle)
-        ) {
-            $nextBillingDate = $data['start_date'];
-        }
+        $startDate = \App\Support\DateTimeFormat::parseDate($data['start_date'])?->toDateString();
+        $nextBillingDate = \App\Support\DateTimeFormat::parseDate($data['next_billing_date'])?->toDateString();
 
         $projectMaintenance->update([
             'title' => $data['title'],
             'amount' => $data['amount'],
             'billing_cycle' => $data['billing_cycle'],
-            'start_date' => $data['start_date'],
+            'start_date' => $startDate,
             'next_billing_date' => $nextBillingDate,
             'status' => $data['status'],
             'auto_invoice' => (bool) ($data['auto_invoice'] ?? false),
             'sales_rep_visible' => (bool) ($data['sales_rep_visible'] ?? false),
         ]);
+
+        if (array_key_exists('access_override_until', $data)) {
+            $overrideDate = \App\Support\DateTimeFormat::parseDate($data['access_override_until']);
+            $projectMaintenance->customer()->update([
+                'access_override_until' => $overrideDate ? $overrideDate->endOfDay() : null
+            ]);
+        }
 
         $salesRepSync = [];
         foreach ($data['sales_rep_ids'] ?? [] as $repId) {
@@ -465,6 +470,14 @@ class ProjectMaintenanceController extends Controller
                 $maintenance?->start_date?->format(config('app.date_format', 'd-m-Y')) ?? ''
             ),
             'status' => (string) old('status', $maintenance?->status ?? 'active'),
+            'next_billing_date' => (string) old(
+                'next_billing_date',
+                $maintenance?->next_billing_date?->format(config('app.date_format', 'd-m-Y')) ?? ''
+            ),
+            'access_override_until' => (string) old(
+                'access_override_until',
+                $maintenance?->customer?->access_override_until?->format(config('app.date_format', 'd-m-Y')) ?? ''
+            ),
             'auto_invoice' => (string) old(
                 'auto_invoice',
                 $maintenance ? ($maintenance->auto_invoice ? '1' : '0') : '1'

@@ -236,6 +236,7 @@ class SubscriptionController extends Controller
             'customer_id' => ['required', 'exists:customers,id'],
             'plan_id' => ['required', 'exists:plans,id'],
             'status' => ['required', Rule::in(['active', 'cancelled', 'suspended'])],
+            'start_date' => ['required', 'date'],
             'current_period_start' => ['required', 'date'],
             'current_period_end' => ['required', 'date', 'after:current_period_start'],
             'next_invoice_at' => ['required', 'date'],
@@ -268,18 +269,20 @@ class SubscriptionController extends Controller
                 'subscription_amount' => $data['subscription_amount'] ?? null,
                 'sales_rep_commission_amount' => $commissionAmount,
                 'status' => $data['status'],
-                'current_period_start' => $data['current_period_start'],
-                'current_period_end' => $data['current_period_end'],
-                'next_invoice_at' => $data['next_invoice_at'],
+                'start_date' => \App\Support\DateTimeFormat::parseDate($data['start_date'])?->toDateString(),
+                'current_period_start' => \App\Support\DateTimeFormat::parseDate($data['current_period_start'])?->toDateString(),
+                'current_period_end' => \App\Support\DateTimeFormat::parseDate($data['current_period_end'])?->toDateString(),
+                'next_invoice_at' => \App\Support\DateTimeFormat::parseDate($data['next_invoice_at'])?->toDateString(),
                 'auto_renew' => $request->boolean('auto_renew'),
                 'cancel_at_period_end' => $request->boolean('cancel_at_period_end'),
                 'notes' => $data['notes'] ?? null,
             ]);
 
             if (array_key_exists('access_override_until', $data)) {
+                $overrideDate = \App\Support\DateTimeFormat::parseDate($data['access_override_until']);
                 Customer::query()
                     ->whereKey($data['customer_id'])
-                    ->update(['access_override_until' => $data['access_override_until'] ?? null]);
+                    ->update(['access_override_until' => $overrideDate ? $overrideDate->endOfDay() : null]);
             }
         });
 
@@ -470,11 +473,11 @@ class SubscriptionController extends Controller
                     'subscription_amount' => (string) old('subscription_amount', (string) ($subscription?->subscription_amount ?? '')),
                     'sales_rep_commission_percent' => (string) old('sales_rep_commission_percent', (string) ($commissionPercent ?? '')),
                     'status' => (string) old('status', (string) ($subscription?->status ?? 'active')),
-                    'start_date' => (string) old('start_date', (string) ($subscription?->start_date?->toDateString() ?? now()->toDateString())),
-                    'current_period_start' => (string) old('current_period_start', (string) ($subscription?->current_period_start?->toDateString() ?? '')),
-                    'current_period_end' => (string) old('current_period_end', (string) ($subscription?->current_period_end?->toDateString() ?? '')),
-                    'next_invoice_at' => (string) old('next_invoice_at', (string) ($subscription?->next_invoice_at?->toDateString() ?? '')),
-                    'access_override_until' => (string) old('access_override_until', (string) ($subscription?->customer?->access_override_until?->toDateString() ?? '')),
+                    'start_date' => (string) old('start_date', (string) ($subscription?->start_date?->format('d-m-Y') ?? now()->format('d-m-Y'))),
+                    'current_period_start' => (string) old('current_period_start', (string) ($subscription?->current_period_start?->format('d-m-Y') ?? '')),
+                    'current_period_end' => (string) old('current_period_end', (string) ($subscription?->current_period_end?->format('d-m-Y') ?? '')),
+                    'next_invoice_at' => (string) old('next_invoice_at', (string) ($subscription?->next_invoice_at?->format('d-m-Y') ?? '')),
+                    'access_override_until' => (string) old('access_override_until', (string) ($subscription?->customer?->access_override_until?->format('d-m-Y') ?? '')),
                     'auto_renew' => (bool) old('auto_renew', (bool) ($subscription?->auto_renew ?? false)),
                     'cancel_at_period_end' => (bool) old('cancel_at_period_end', (bool) ($subscription?->cancel_at_period_end ?? false)),
                     'notes' => (string) old('notes', (string) ($subscription?->notes ?? '')),

@@ -191,7 +191,7 @@ export default function Index({
                                                 {String(recurring.status || '').charAt(0).toUpperCase() + String(recurring.status || '').slice(1)}
                                             </span>
                                         </td>
-                                        <td className="px-3 py-2 text-right">
+                                        <td className="px-3 py-2 text-right has-dropdown">
                                             <div className="relative inline-flex justify-end text-left" onClick={(event) => event.stopPropagation()}>
                                                 <button
                                                     type="button"
@@ -239,7 +239,7 @@ export default function Index({
                                                                 Delete
                                                             </button>
                                                         </form>
-                                                        <div className="my-1 border-t border-slate-100" />
+                                                        <div className="my-1 border-t border-dashed border-slate-300" />
                                                         <button
                                                             type="button"
                                                             className="block w-full px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"

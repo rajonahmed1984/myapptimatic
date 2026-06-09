@@ -11,6 +11,7 @@ use App\Models\ProjectTaskSubtask;
 use App\Models\User;
 use App\Notifications\TaskStatusCompletedNotification;
 use App\Notifications\TaskStatusOpenedNotification;
+use App\Services\TaskStatusNotificationService;
 use App\Support\TaskAssignmentManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
@@ -260,6 +261,39 @@ class TaskStatusNotificationTest extends TestCase
         ]);
 
         Notification::assertSentOnDemandTimes(TaskStatusOpenedNotification::class, 2);
+    }
+
+    public function test_task_created_sends_open_notification_to_customer_without_client_user(): void
+    {
+        Notification::fake();
+
+        $customer = Customer::create([
+            'name' => 'Customer Only',
+            'email' => 'customer_only@example.com',
+        ]);
+
+        $project = Project::create([
+            'name' => 'Test Project',
+            'customer_id' => $customer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'total_budget' => 1000,
+            'initial_payment_amount' => 100,
+            'currency' => 'USD',
+        ]);
+
+        $task = ProjectTask::create([
+            'project_id' => $project->id,
+            'title' => 'Customer Visible Task',
+            'status' => 'pending',
+            'customer_visible' => true,
+        ]);
+
+        app(TaskStatusNotificationService::class)->notifyTaskOpened($task);
+
+        Notification::assertSentOnDemand(TaskStatusOpenedNotification::class, function ($notification, $channels, $notifiable) use ($customer) {
+            return ($notifiable->routes['mail'] ?? null) === $customer->email;
+        });
     }
 
     private function createProjectWithMembers(): array

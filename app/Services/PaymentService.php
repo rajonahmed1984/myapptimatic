@@ -137,6 +137,14 @@ class PaymentService
                 'paid',
                 'payment_received'
             );
+
+            if ($invoice->subscription_id) {
+                $sub = $invoice->subscription ?: \App\Models\Subscription::find($invoice->subscription_id);
+                if ($sub) {
+                    app(\App\Services\StatusUpdateService::class)->unsuspendSubscriptionIfEligible($sub);
+                }
+            }
+
             try {
                 app(\App\Services\AdminNotificationService::class)->sendInvoicePaid($invoice);
             } catch (\Throwable) {

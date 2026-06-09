@@ -9,6 +9,7 @@ use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Subscription;
+use App\Models\User;
 use App\Services\StatusUpdateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -68,6 +69,49 @@ class LicenseAutoSuspendOverrideAutomationTest extends TestCase
         $this->assertSame('active', (string) $overrideLicense->fresh()->status);
         $this->assertSame('suspended', (string) $normalLicense->fresh()->status);
         $this->assertSame('suspended', (string) $subscription->fresh()->status);
+    }
+
+    #[Test]
+    public function invoice_payment_triggers_immediate_unsuspension(): void
+    {
+        Setting::setValue('enable_unsuspension', 1);
+
+        [$customer, $subscription] = $this->createSubscriptionSetup();
+
+        $license = License::create([
+            'subscription_id' => $subscription->id,
+            'product_id' => $subscription->plan->product_id,
+            'license_key' => strtoupper(Str::random(24)),
+            'status' => 'suspended',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'expires_at' => now()->addYear()->toDateString(),
+            'max_domains' => 1,
+        ]);
+
+        $subscription->update(['status' => 'suspended']);
+
+        $invoice = Invoice::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
+            'number' => 'INV-SUSPEND-TEST-1',
+            'status' => 'unpaid',
+            'issue_date' => now()->subDays(5)->toDateString(),
+            'due_date' => now()->subDays(1)->toDateString(),
+            'subtotal' => 120,
+            'late_fee' => 0,
+            'total' => 120,
+            'currency' => 'USD',
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => \App\Enums\Role::MASTER_ADMIN,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.invoices.mark-paid', $invoice));
+        $response->assertRedirect();
+
+        $this->assertSame('active', (string) $subscription->fresh()->status);
+        $this->assertSame('active', (string) $license->fresh()->status);
     }
 
     private function createSubscriptionSetup(): array

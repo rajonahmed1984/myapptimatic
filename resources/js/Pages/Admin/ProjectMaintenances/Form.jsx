@@ -209,7 +209,7 @@ export default function Form({
                             </div>
                         </div>
 
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className={`grid gap-4 ${is_edit ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
                             <div>
                                 <label className="text-xs text-slate-500">Start date</label>
                                 <input
@@ -221,18 +221,44 @@ export default function Form({
                                 />
                                 {errors?.start_date ? <p className="mt-1 text-xs text-rose-600">{errors.start_date}</p> : null}
                             </div>
-                            <div className="flex items-end gap-6">
-                                <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
-                                    <input type="hidden" name="auto_invoice" value="0" />
-                                    <input type="checkbox" name="auto_invoice" value="1" defaultChecked={Boolean(fields?.auto_invoice)} />
-                                    <span>Auto-generate invoice</span>
-                                </label>
-                                <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
-                                    <input type="hidden" name="sales_rep_visible" value="0" />
-                                    <input type="checkbox" name="sales_rep_visible" value="1" defaultChecked={Boolean(fields?.sales_rep_visible)} />
-                                    <span>Visible to sales reps</span>
-                                </label>
-                            </div>
+                            {is_edit ? (
+                                <>
+                                    <div>
+                                        <label className="text-xs text-slate-500">Next billing date</label>
+                                        <input
+                                            name="next_billing_date"
+                                            type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
+                                            defaultValue={fields?.next_billing_date || ''}
+                                            required
+                                            className="ui-input mt-1"
+                                        />
+                                        {errors?.next_billing_date ? <p className="mt-1 text-xs text-rose-600">{errors.next_billing_date}</p> : null}
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500">Access override until</label>
+                                        <input
+                                            name="access_override_until"
+                                            type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
+                                            defaultValue={fields?.access_override_until || ''}
+                                            className="ui-input mt-1"
+                                        />
+                                        {errors?.access_override_until ? <p className="mt-1 text-xs text-rose-600">{errors.access_override_until}</p> : null}
+                                    </div>
+                                </>
+                            ) : null}
+                        </div>
+
+                        <div className="flex items-center gap-6 pt-2">
+                            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+                                <input type="hidden" name="auto_invoice" value="0" />
+                                <input type="checkbox" name="auto_invoice" value="1" defaultChecked={Boolean(fields?.auto_invoice)} />
+                                <span>Auto-generate invoice</span>
+                            </label>
+                            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+                                <input type="hidden" name="sales_rep_visible" value="0" />
+                                <input type="checkbox" name="sales_rep_visible" value="1" defaultChecked={Boolean(fields?.sales_rep_visible)} />
+                                <span>Visible to sales reps</span>
+                            </label>
                         </div>
 
                         <div className="flex justify-end gap-3 pt-2">

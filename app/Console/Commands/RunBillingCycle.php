@@ -162,7 +162,6 @@ class RunBillingCycle extends Command
                     $invoice = $this->billingService->generateInvoiceForSubscription($subscription, $today);
                     if ($invoice) {
                         $count++;
-                        SendInvoiceCreatedNotifications::dispatch($invoice->id);
                     }
                 }
             });

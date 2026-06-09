@@ -656,6 +656,7 @@ Route::middleware([
     Route::get('invoices', [AdminInvoiceController::class, 'index'])->name('invoices.index');
     Route::get('invoices/create', [AdminInvoiceController::class, 'create'])->name('invoices.create');
     Route::post('invoices', [AdminInvoiceController::class, 'store'])->name('invoices.store');
+    Route::post('invoices/bulk-remind', [AdminInvoiceController::class, 'bulkRemind'])->name('invoices.bulk-remind');
     Route::get('invoices/paid', [AdminInvoiceController::class, 'paid'])->name('invoices.paid');
     Route::get('invoices/unpaid', [AdminInvoiceController::class, 'unpaid'])->name('invoices.unpaid');
     Route::get('invoices/overdue', [AdminInvoiceController::class, 'overdue'])->name('invoices.overdue');

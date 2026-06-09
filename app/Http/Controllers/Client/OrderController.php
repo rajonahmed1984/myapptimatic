@@ -245,10 +245,7 @@ class OrderController extends Controller
             ], $request->user()?->id, $request->ip());
         }
 
-        if ($invoice) {
-            $adminNotifications->sendInvoiceCreated($invoice);
-            $clientNotifications->sendInvoiceCreated($invoice);
-        }
+
 
         if ($invoice) {
             return redirect()->route('client.invoices.pay', $invoice)

@@ -207,6 +207,59 @@ class StatusUpdateService
     }
 
     /**
+     * Unsuspend a specific subscription if all its invoices are paid
+     */
+    public function unsuspendSubscriptionIfEligible(Subscription $subscription): bool
+    {
+        if (!Setting::getValue('enable_unsuspension')) {
+            return false;
+        }
+
+        if ($subscription->status !== 'suspended') {
+            return false;
+        }
+
+        $latestInvoice = Invoice::query()
+            ->where('subscription_id', $subscription->id)
+            ->orderByDesc('due_date')
+            ->first();
+
+        if ($latestInvoice && $latestInvoice->status !== 'paid') {
+            return false;
+        }
+
+        $openInvoices = Invoice::query()
+            ->where('subscription_id', $subscription->id)
+            ->whereIn('status', ['unpaid', 'overdue'])
+            ->exists();
+
+        if ($openInvoices) {
+            return false;
+        }
+
+        $subscription->update(['status' => 'active']);
+
+        SystemLogger::write('activity', 'Subscription unsuspended - all invoices are paid.', [
+            'subscription_id' => $subscription->id,
+        ]);
+
+        StatusAuditLog::logChange(
+            Subscription::class,
+            $subscription->id,
+            'suspended',
+            'active',
+            'auto_unsuspend'
+        );
+
+        // Also unsuspend associated licenses
+        $subscription->licenses()
+            ->where('status', 'suspended')
+            ->update(['status' => 'active']);
+
+        return true;
+    }
+
+    /**
      * Update subscription status based on termination rules
      * Terminates subscriptions with old overdue invoices
      */

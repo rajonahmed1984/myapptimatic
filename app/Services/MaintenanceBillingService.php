@@ -37,7 +37,6 @@ class MaintenanceBillingService
                     $invoice = $this->billMaintenance((int) $maintenance->id, $today);
                     if ($invoice) {
                         $generated++;
-                        SendInvoiceCreatedNotifications::dispatch($invoice->id);
                     } else {
                         $skipped++;
                     }
@@ -54,10 +53,6 @@ class MaintenanceBillingService
     {
         $today = $today ?? Carbon::today();
         $invoice = $this->billMaintenance((int) $maintenance->id, $today);
-
-        if ($invoice) {
-            SendInvoiceCreatedNotifications::dispatch($invoice->id);
-        }
 
         return $invoice;
     }

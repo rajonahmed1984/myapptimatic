@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 import DatePickerField from '../../../Components/DatePickerField';
 import SearchableSelect from '../../../Components/SearchableSelect';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
@@ -101,6 +101,26 @@ export default function Show({
     const [salesRepId, setSalesRepId] = useState(String(serviceDefaults?.sales_rep_id || ''));
     const [avatarFile, setAvatarFile] = useState(null);
     const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+
+    const [selectedInvoiceIds, setSelectedInvoiceIds] = useState([]);
+
+    const handleSendReminders = () => {
+        if (selectedInvoiceIds.length === 0) {
+            alert("Please select at least one invoice.");
+            return;
+        }
+
+        const count = selectedInvoiceIds.length;
+        if (window.confirm(`Are you sure you want to send email reminders for the ${count} selected invoice(s)?`)) {
+            router.post(routes?.bulk_remind_invoices, {
+                invoice_ids: selectedInvoiceIds
+            }, {
+                onSuccess: () => {
+                    setSelectedInvoiceIds([]);
+                }
+            });
+        }
+    };
 
     const plan = useMemo(
         () => service_plans.find((item) => String(item.id) === String(planId)) || null,
@@ -696,65 +716,163 @@ export default function Show({
                 ) : null}
 
                 {tab === 'invoices' ? (
-                    <div className="overflow-x-auto rounded-2xl border border-slate-300">
-                        <table className="w-full min-w-[800px] text-left text-sm">
-                            <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
-                                <tr>
-                                    <th className="px-4 py-3">ID</th>
-                                    <th className="px-4 py-3">Details</th>
-                                    <th className="px-4 py-3">Total</th>
-                                    <th className="px-4 py-3">Paid date</th>
-                                    <th className="px-4 py-3">Due date</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {invoices.length === 0 ? (
-                                    <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">No records found.</td></tr>
-                                ) : invoices.map((row) => (
-                                    <tr key={row.id} className="border-b border-slate-100">
-                                        <td className="px-4 py-3 text-slate-700">
-                                            {row.show_url ? (
-                                                <a href={row.show_url} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                                    {row.id || '--'}
-                                                </a>
-                                            ) : (
-                                                row.id || '--'
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-700">{row.details_display || '--'}</td>
-                                        <td className="px-4 py-3 text-slate-700">{asMoney(row.total, row.currency || currency?.code)}</td>
-                                        <td className="px-4 py-3 text-slate-700">{row.paid_date_display || '--'}</td>
-                                        <td className="px-4 py-3 text-slate-700">{row.due_date_display || '--'}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(row.status)}`}>{row.status_label || '--'}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="inline-flex items-center gap-2">
-                                                <a href={row.edit_url || row.show_url} data-native="true" className="text-teal-600 hover:text-teal-500">Edit</a>
-                                                <span className="text-slate-300">|</span>
-                                                <form
-                                                    method="POST"
-                                                    action={row.destroy_url}
-                                                    data-native="true"
-                                                    onSubmit={(event) => {
-                                                        if (!window.confirm(`Delete invoice #${row.number || row.id}?`)) {
-                                                            event.preventDefault();
+                    <>
+                        <div className="overflow-x-auto rounded-2xl border border-slate-300">
+                            <table className="w-full min-w-[800px] text-left text-sm">
+                                <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
+                                    <tr>
+                                        <th className="px-4 py-3 w-10">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                                                checked={invoices.length > 0 && selectedInvoiceIds.length === invoices.length}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedInvoiceIds(invoices.map(r => r.id));
+                                                    } else {
+                                                        setSelectedInvoiceIds([]);
+                                                    }
+                                                }}
+                                            />
+                                        </th>
+                                        <th className="px-4 py-3">ID</th>
+                                        <th className="px-4 py-3">Details</th>
+                                        <th className="px-4 py-3">Total</th>
+                                        <th className="px-4 py-3">Paid date</th>
+                                        <th className="px-4 py-3">Due date</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {invoices.length === 0 ? (
+                                        <tr><td colSpan={8} className="px-4 py-6 text-center text-slate-500">No records found.</td></tr>
+                                    ) : invoices.map((row) => (
+                                        <tr key={row.id} className="border-b border-slate-100">
+                                            <td className="px-4 py-3 w-10">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                                                    checked={selectedInvoiceIds.includes(row.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedInvoiceIds(prev => [...prev, row.id]);
+                                                        } else {
+                                                            setSelectedInvoiceIds(prev => prev.filter(id => id !== row.id));
                                                         }
                                                     }}
-                                                >
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <input type="hidden" name="_method" value="DELETE" />
-                                                    <button type="submit" className="text-rose-600 hover:text-rose-500">Delete</button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                                />
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-700">
+                                                {row.show_url ? (
+                                                    <a href={row.show_url} data-native="true" className="text-teal-600 hover:text-teal-500">
+                                                        {row.id || '--'}
+                                                    </a>
+                                                ) : (
+                                                    row.id || '--'
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-700">{row.details_display || '--'}</td>
+                                            <td className="px-4 py-3 text-slate-700">{asMoney(row.total, row.currency || currency?.code)}</td>
+                                            <td className="px-4 py-3 text-slate-700">{row.paid_date_display || '--'}</td>
+                                            <td className="px-4 py-3 text-slate-700">{row.due_date_display || '--'}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(row.status)}`}>{row.status_label || '--'}</span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="inline-flex items-center gap-2">
+                                                    <a href={row.edit_url || row.show_url} data-native="true" className="text-teal-600 hover:text-teal-500">Edit</a>
+                                                    <span className="text-slate-300">|</span>
+                                                    <form
+                                                        method="POST"
+                                                        action={row.destroy_url}
+                                                        data-native="true"
+                                                        onSubmit={(event) => {
+                                                            if (!window.confirm(`Delete invoice #${row.number || row.id}?`)) {
+                                                                event.preventDefault();
+                                                            }
+                                                        }}
+                                                    >
+                                                        <input type="hidden" name="_token" value={csrf} />
+                                                        <input type="hidden" name="_method" value="DELETE" />
+                                                        <button type="submit" className="text-rose-600 hover:text-rose-500">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-300 bg-white/70 p-4 text-xs">
+                            <span className="font-semibold text-slate-700 mr-2">With Selected:</span>
+                            <button
+                                type="button"
+                                className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-white font-semibold shadow-sm transition disabled:opacity-50"
+                                disabled={selectedInvoiceIds.length === 0}
+                                onClick={() => alert("Mark Paid is not implemented yet.")}
+                            >
+                                Mark Paid
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
+                                disabled={selectedInvoiceIds.length === 0}
+                                onClick={() => alert("Mark Unpaid is not implemented yet.")}
+                            >
+                                Mark Unpaid
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
+                                disabled={selectedInvoiceIds.length === 0}
+                                onClick={() => alert("Mark Cancelled is not implemented yet.")}
+                            >
+                                Mark Cancelled
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
+                                disabled={selectedInvoiceIds.length === 0}
+                                onClick={() => alert("Duplicate Invoice is not implemented yet.")}
+                            >
+                                Duplicate Invoice
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
+                                disabled={selectedInvoiceIds.length === 0}
+                                onClick={handleSendReminders}
+                            >
+                                Send Reminder
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
+                                disabled={selectedInvoiceIds.length === 0}
+                                onClick={() => alert("Merge is not implemented yet.")}
+                            >
+                                Merge
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
+                                disabled={selectedInvoiceIds.length === 0}
+                                onClick={() => alert("Mass Pay is not implemented yet.")}
+                            >
+                                Mass Pay
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded-lg bg-rose-600 hover:bg-rose-500 px-3 py-1.5 text-white font-semibold shadow-sm transition disabled:opacity-50 ml-auto"
+                                disabled={selectedInvoiceIds.length === 0}
+                                onClick={() => alert("Delete is not implemented yet.")}
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </>
                 ) : null}
                 {tab === 'tickets' ? <ListTable rows={tickets} columns={['subject', 'status_label', 'last_reply_display']} actionKey="show_url" actionText="View" /> : null}
 

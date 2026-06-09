@@ -15,6 +15,7 @@ use App\Models\SalesRepresentative;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Observers\ProjectTaskObserver;
+use App\Observers\InvoiceObserver;
 use App\Services\AuthFresh\LoginService;
 use App\Services\ApptimaticEmailStubRepository;
 use App\Support\Branding;
@@ -68,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
         $this->registerEmailLogListener();
         $this->registerAutomationEventListeners();
         ProjectTask::observe(ProjectTaskObserver::class);
+        Invoice::observe(InvoiceObserver::class);
 
         try {
             $portalUrl = UrlResolver::portalUrl();

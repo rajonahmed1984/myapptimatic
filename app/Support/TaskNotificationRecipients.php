@@ -66,6 +66,11 @@ class TaskNotificationRecipients
         }
 
         if ($task->customer_visible) {
+            $customer = $project->customer;
+            if ($customer && $customer->email) {
+                $this->addRecipient($recipients, $customer, $customer->email, $task, $subtask);
+            }
+
             $customerUsers = $project->customer?->users
                 ? $project->customer->users->where('role', Role::CLIENT)
                 : collect();
@@ -218,6 +223,10 @@ class TaskNotificationRecipients
 
     private function canView(object $actor, ProjectTask $task, ?ProjectTaskSubtask $subtask = null): bool
     {
+        if ($actor instanceof \App\Models\Customer) {
+            return (bool) $task->customer_visible;
+        }
+
         try {
             $gate = Gate::forUser($actor);
             return $subtask
@@ -240,6 +249,10 @@ class TaskNotificationRecipients
 
     private function priorityForActor(object $actor): int
     {
+        if ($actor instanceof \App\Models\Customer) {
+            return 5;
+        }
+
         if ($actor instanceof User && $actor->isMasterAdmin()) {
             return 1;
         }
@@ -271,7 +284,12 @@ class TaskNotificationRecipients
         $taskRoute = null;
         $projectRoute = null;
 
-        if ($actor instanceof Employee) {
+        if ($actor instanceof \App\Models\Customer) {
+            $loginPath = '/login';
+            $loginLabel = 'log in to the client area';
+            $taskRoute = 'client.projects.tasks.show';
+            $projectRoute = 'client.projects.show';
+        } elseif ($actor instanceof Employee) {
             $loginPath = '/employee/login';
             $loginLabel = 'log in to the employee area';
             $taskRoute = 'employee.projects.tasks.show';

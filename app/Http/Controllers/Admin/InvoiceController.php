@@ -308,6 +308,14 @@ class InvoiceController extends Controller
 
         if (! $wasPaid) {
             $freshInvoice = $invoice->fresh('customer');
+
+            if ($invoice->subscription_id) {
+                $sub = $invoice->subscription ?: \App\Models\Subscription::find($invoice->subscription_id);
+                if ($sub) {
+                    app(\App\Services\StatusUpdateService::class)->unsuspendSubscriptionIfEligible($sub);
+                }
+            }
+
             $adminNotifications->sendInvoicePaid($freshInvoice);
             try {
                 $clientNotifications->sendInvoicePaymentStatusNotification($freshInvoice, 'paid', null);
@@ -1765,6 +1773,13 @@ class InvoiceController extends Controller
                 ->update(['access_override_until' => null]);
         }
 
+        if ($invoice->subscription_id) {
+            $sub = $invoice->subscription ?: \App\Models\Subscription::find($invoice->subscription_id);
+            if ($sub) {
+                app(\App\Services\StatusUpdateService::class)->unsuspendSubscriptionIfEligible($sub);
+            }
+        }
+
         try {
             $commissionService->createOrUpdateEarningOnInvoicePaid($freshInvoice->fresh('subscription.customer'));
         } catch (\Throwable $e) {
@@ -1880,6 +1895,50 @@ class InvoiceController extends Controller
             'next_url' => $paginator->nextPageUrl(),
             'has_pages' => $paginator->hasPages(),
         ];
+    }
+
+    public function bulkRemind(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'invoice_ids' => ['required', 'array'],
+            'invoice_ids.*' => ['exists:invoices,id'],
+        ]);
+
+        $invoices = Invoice::whereIn('id', $data['invoice_ids'])->get();
+        $sentCount = 0;
+
+        $clientNotifications = app(ClientNotificationService::class);
+        $adminNotifications = app(AdminNotificationService::class);
+
+        foreach ($invoices as $invoice) {
+            if (! in_array($invoice->status, ['unpaid', 'overdue'], true)) {
+                continue;
+            }
+
+            $templateKey = $invoice->status === 'overdue' ? 'invoice_overdue_first_notice' : 'invoice_payment_reminder';
+
+            $clientNotifications->sendInvoiceReminder($invoice, $templateKey);
+            $adminNotifications->sendInvoiceReminder($invoice, $templateKey);
+
+            $now = Carbon::now();
+            if ($invoice->status === 'overdue') {
+                $invoice->update([
+                    'first_overdue_reminder_sent_at' => $now,
+                ]);
+            } else {
+                $invoice->update([
+                    'reminder_sent_at' => $now,
+                ]);
+            }
+
+            $sentCount++;
+        }
+
+        if ($sentCount === 0) {
+            return redirect()->back()->with('error', 'No unpaid or overdue invoices were selected.');
+        }
+
+        return redirect()->back()->with('status', "Sent {$sentCount} invoice reminder(s) successfully.");
     }
 
     private function statusClass(string $status): string

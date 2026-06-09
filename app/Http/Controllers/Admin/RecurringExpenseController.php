@@ -26,6 +26,7 @@ class RecurringExpenseController extends Controller
         Request $request,
         ExpenseInvoiceService $invoiceService
     ): InertiaResponse {
+        $this->backfillMissingDueDates();
         $invoiceService->syncOverdueStatuses();
         $today = Carbon::today()->toDateString();
         $dueThreshold = Carbon::today()->addDays(7)->toDateString();
@@ -287,17 +288,21 @@ class RecurringExpenseController extends Controller
         );
     }
 
-    private function backfillMissingDueDates(int $recurringExpenseId): void
+    private function backfillMissingDueDates(?int $recurringExpenseId = null): void
     {
-        ExpenseInvoice::query()
+        $query = ExpenseInvoice::query()
             ->where('source_type', 'expense')
             ->whereNull('due_date')
-            ->whereHas('expense', function ($query) use ($recurringExpenseId) {
-                $query->where('recurring_expense_id', $recurringExpenseId);
+            ->whereHas('expense', function ($q) use ($recurringExpenseId) {
+                $q->whereNotNull('recurring_expense_id');
+                if ($recurringExpenseId) {
+                    $q->where('recurring_expense_id', $recurringExpenseId);
+                }
             })
             ->with('expense:id,expense_date,recurring_expense_id')
-            ->orderBy('id')
-            ->chunkById(100, function ($invoices) {
+            ->orderBy('id');
+
+        $query->chunkById(100, function ($invoices) {
                 foreach ($invoices as $invoice) {
                     $dueDate = $invoice->expense?->expense_date?->toDateString()
                         ?? $invoice->invoice_date?->toDateString();

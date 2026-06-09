@@ -720,6 +720,7 @@ class CustomerController extends Controller
                 'service_store' => route('admin.customers.services.store', $customer, false),
                 'create_project' => route('admin.projects.create', ['customer_id' => $customer->id], false),
                 'create_maintenance' => route('admin.project-maintenances.create', ['customer_id' => $customer->id], false),
+                'bulk_remind_invoices' => route('admin.invoices.bulk-remind', [], false),
             ],
         ]);
     }
