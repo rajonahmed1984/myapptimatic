@@ -18,6 +18,8 @@ class LicenseRealtimeCheckService
         $customer = $subscription?->customer;
         $activeDomain = $license->domains->firstWhere('status', 'active');
         $autoSuspendOverrideActive = $this->isAutoSuspendOverrideActive($license);
+        $customerAccessOverrideActive = $customer && $customer->access_override_until
+            && Carbon::now()->lessThanOrEqualTo($customer->access_override_until->copy()->endOfDay());
 
         if (! $customer || (string) $customer->status !== 'active') {
             return $this->blocked('customer_inactive', false);
@@ -25,7 +27,7 @@ class LicenseRealtimeCheckService
 
         if (
             (string) $license->status !== 'active'
-            && ! ($autoSuspendOverrideActive && (string) $license->status === 'suspended')
+            && ! (($autoSuspendOverrideActive || $customerAccessOverrideActive) && (string) $license->status === 'suspended')
         ) {
             return $this->blocked('license_inactive', false);
         }
@@ -38,7 +40,7 @@ class LicenseRealtimeCheckService
             ! $subscription
             || (
                 (string) $subscription->status !== 'active'
-                && ! ($autoSuspendOverrideActive && (string) $subscription->status === 'suspended')
+                && ! (($autoSuspendOverrideActive || $customerAccessOverrideActive) && (string) $subscription->status === 'suspended')
             )
         ) {
             return $this->blocked('subscription_inactive', false);
@@ -60,9 +62,6 @@ class LicenseRealtimeCheckService
         $isAccessBlocked = array_key_exists($scopeKey, $accessBlockedCustomers)
             ? (bool) $accessBlockedCustomers[$scopeKey]
             : $this->accessBlockService->isCustomerBlocked($customer, true, $license->subscription_id);
-
-        $customerAccessOverrideActive = $customer->access_override_until
-            && Carbon::now()->lessThanOrEqualTo($customer->access_override_until->copy()->endOfDay());
 
         if (($autoSuspendOverrideActive || $customerAccessOverrideActive) && $isAccessBlocked) {
             $isAccessBlocked = false;

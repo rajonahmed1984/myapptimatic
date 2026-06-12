@@ -246,7 +246,7 @@ class BillingService
     private function nextInvoiceAt(Carbon $periodStart, Carbon $periodEnd, Carbon $today, string $interval): Carbon
     {
         if ($periodStart->day === 1) {
-            return $periodStart->copy()->subDays(10);
+            return $periodStart->copy();
         }
 
         if ($interval === 'monthly') {

@@ -19,7 +19,7 @@ class FirstOfMonthBillingAndRemindersTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function next_invoice_at_is_set_to_10_days_before_if_due_on_1st_of_month(): void
+    public function next_invoice_at_remains_1st_of_month_on_creation(): void
     {
         $customer = Customer::create([
             'name' => 'Test Customer',
@@ -55,9 +55,8 @@ class FirstOfMonthBillingAndRemindersTest extends TestCase
             'cancel_at_period_end' => false,
         ]);
 
-        // Should automatically subtract 10 days because July 1st is the 1st day of the month
-        // June has 30 days. July 1st - 10 days = June 21st.
-        $this->assertEquals('2026-06-21', $subscription->fresh()->next_invoice_at->toDateString());
+        // next_invoice_at should remain exactly July 1st in the database
+        $this->assertEquals('2026-07-01', $subscription->fresh()->next_invoice_at->toDateString());
     }
 
     #[Test]
@@ -91,7 +90,7 @@ class FirstOfMonthBillingAndRemindersTest extends TestCase
             'start_date' => '2026-07-01',
             'current_period_start' => '2026-07-01',
             'current_period_end' => '2026-07-31',
-            'next_invoice_at' => '2026-07-01', // will resolve to 2026-06-21
+            'next_invoice_at' => '2026-07-01',
             'auto_renew' => true,
             'cancel_at_period_end' => false,
         ]);
@@ -104,9 +103,8 @@ class FirstOfMonthBillingAndRemindersTest extends TestCase
         $this->assertEquals('2026-07-01', $invoice->due_date->toDateString());
 
         // Subscription's next period starts August 1st.
-        // next_invoice_at should be 10 days before August 1st.
-        // August 1st - 10 days = July 22nd. (July has 31 days).
-        $this->assertEquals('2026-07-22', $subscription->fresh()->next_invoice_at->toDateString());
+        // next_invoice_at should be exactly August 1st in the database
+        $this->assertEquals('2026-08-01', $subscription->fresh()->next_invoice_at->toDateString());
         $this->assertEquals('2026-08-01', $subscription->fresh()->current_period_start->toDateString());
         $this->assertEquals('2026-08-31', $subscription->fresh()->current_period_end->toDateString());
     }

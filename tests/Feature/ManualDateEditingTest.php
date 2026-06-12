@@ -65,7 +65,7 @@ class ManualDateEditingTest extends TestCase
             'start_date' => '15-06-2026',
             'current_period_start' => '10-06-2026',
             'current_period_end' => '20-06-2026',
-            'next_invoice_at' => '12-06-2026',
+            'next_invoice_at' => '01-07-2026',
             'access_override_until' => '25-06-2026',
             'auto_renew' => true,
             'cancel_at_period_end' => false,
@@ -77,9 +77,8 @@ class ManualDateEditingTest extends TestCase
         $this->assertEquals('2026-06-15', $subscription->start_date?->toDateString());
         $this->assertEquals('2026-06-10', $subscription->current_period_start?->toDateString());
         $this->assertEquals('2026-06-20', $subscription->current_period_end?->toDateString());
-        // Note: Subscription's static boot hook parses and might subtract 10 days if day is 1st.
-        // Since June 12th is not the 1st day of the month, next_invoice_at should be exactly June 12th.
-        $this->assertEquals('2026-06-12', $subscription->next_invoice_at?->toDateString());
+        // next_invoice_at should be exactly July 1st, 2026 (preserving manual admin edit even if day is 1st)
+        $this->assertEquals('2026-07-01', $subscription->next_invoice_at?->toDateString());
 
         $customer = $customer->fresh();
         $this->assertNotNull($customer->access_override_until);

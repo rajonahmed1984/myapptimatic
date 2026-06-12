@@ -77,7 +77,7 @@ class TaskStatusNotificationService
     private function isOpenTaskStatus(?string $status): bool
     {
         $status = $status ?? 'pending';
-        return in_array($status, ['pending', 'todo', 'blocked', 'open'], true);
+        return in_array($status, ['pending', 'todo', 'in_progress', 'blocked', 'open'], true);
     }
 
     private function isCompletedTaskStatus(?string $status): bool

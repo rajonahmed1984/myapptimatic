@@ -69,6 +69,7 @@ class SubscriptionController extends Controller
         $periodEnd = $plan->interval === 'monthly'
             ? $startDate->copy()->endOfMonth()
             : $startDate->copy()->addYear();
+        $nextInvoiceAt = $startDate->copy();
         $baseAmount = array_key_exists('subscription_amount', $data) && $data['subscription_amount'] !== null
             ? (float) $data['subscription_amount']
             : (float) $plan->price;
@@ -80,7 +81,7 @@ class SubscriptionController extends Controller
             )
             : null;
 
-        $subscription = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $startDate, $periodEnd, $baseAmount, $salesRepId, $commissionAmount, $request) {
+        $subscription = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $startDate, $periodEnd, $nextInvoiceAt, $baseAmount, $salesRepId, $commissionAmount, $request) {
             $subscription = Subscription::create([
                 'customer_id' => $data['customer_id'],
                 'plan_id' => $data['plan_id'],
@@ -91,7 +92,7 @@ class SubscriptionController extends Controller
                 'start_date' => $startDate->toDateString(),
                 'current_period_start' => $startDate->toDateString(),
                 'current_period_end' => $periodEnd->toDateString(),
-                'next_invoice_at' => $startDate->toDateString(),
+                'next_invoice_at' => $nextInvoiceAt->toDateString(),
                 'auto_renew' => $request->boolean('auto_renew'),
                 'cancel_at_period_end' => $request->boolean('cancel_at_period_end'),
                 'notes' => $data['notes'] ?? null,

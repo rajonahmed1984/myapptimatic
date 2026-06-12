@@ -60,6 +60,31 @@ class TaskStatusNotificationTest extends TestCase
         Notification::assertSentOnDemandTimes(TaskStatusOpenedNotification::class, 3);
     }
 
+    public function test_task_created_in_progress_sends_open_notification(): void
+    {
+        Notification::fake();
+
+        [$project, $clientUser, $masterAdmin, $employee] = $this->createProjectWithMembers();
+
+        $task = ProjectTask::create([
+            'project_id' => $project->id,
+            'title' => 'In Progress Task',
+            'status' => 'in_progress',
+            'customer_visible' => true,
+            'assigned_type' => 'employee',
+            'assigned_id' => $employee->id,
+            'created_by' => $masterAdmin->id,
+        ]);
+
+        TaskAssignmentManager::sync($task, [
+            ['type' => 'employee', 'id' => $employee->id],
+        ]);
+
+        Notification::assertSentOnDemand(TaskStatusOpenedNotification::class, function ($notification, $channels, $notifiable) use ($employee) {
+            return ($notifiable->routes['mail'] ?? null) === $employee->email;
+        });
+    }
+
     public function test_task_completed_sends_completed_notification(): void
     {
         Notification::fake();

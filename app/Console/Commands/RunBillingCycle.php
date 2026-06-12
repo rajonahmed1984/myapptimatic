@@ -136,10 +136,23 @@ class RunBillingCycle extends Command
     {
         $count = 0;
         $fixedTermTerminations = 0;
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+
         Subscription::query()
             ->with(['plan', 'customer'])
             ->whereIn('status', ['active', 'suspended'])
-            ->whereDate('next_invoice_at', '<=', $today->toDateString())
+            ->where(function ($query) use ($today, $isSqlite) {
+                $query->whereDate('next_invoice_at', '<=', $today->toDateString())
+                    ->orWhere(function ($q) use ($today, $isSqlite) {
+                        if ($isSqlite) {
+                            $q->whereRaw("strftime('%d', next_invoice_at) = '01'")
+                              ->whereRaw("date(next_invoice_at, '-10 days') <= ?", [$today->toDateString()]);
+                        } else {
+                            $q->whereRaw("DAY(next_invoice_at) = 1")
+                              ->whereRaw("DATE_SUB(next_invoice_at, INTERVAL 10 DAY) <= ?", [$today->toDateString()]);
+                        }
+                    });
+            })
             ->orderBy('id')
             ->chunkById(200, function ($subscriptions) use (&$count, &$fixedTermTerminations, $today) {
                 foreach ($subscriptions as $subscription) {

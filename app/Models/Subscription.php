@@ -73,18 +73,4 @@ class Subscription extends Model
     {
         return $this->hasOne(Order::class)->latestOfMany();
     }
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::saving(function (Subscription $subscription) {
-            if ($subscription->next_invoice_at) {
-                $nextInvoiceAt = \Carbon\Carbon::parse($subscription->next_invoice_at);
-                if ($nextInvoiceAt->day === 1) {
-                    $subscription->next_invoice_at = $nextInvoiceAt->subDays(10)->toDateString();
-                }
-            }
-        });
-    }
 }

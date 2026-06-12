@@ -472,6 +472,10 @@ class StatusUpdateService
             return 0;
         }
 
+        if ($subscription->customer && $subscription->customer->access_override_until && $subscription->customer->access_override_until->isFuture()) {
+            return 0;
+        }
+
         $activeLicenses = $this->activeLicensesEligibleForAutoSuspend($subscription, Carbon::today());
 
         if ($activeLicenses->isEmpty()) {
