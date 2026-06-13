@@ -42,6 +42,9 @@ class SuspendPastDueLicenses extends Command
                 $query->whereNull('auto_suspend_override_until')
                       ->orWhere('auto_suspend_override_until', '<', $today);
             })
+            ->whereDoesntHave('subscription.customer', function ($query) use ($today) {
+                $query->where('access_override_until', '>=', $today);
+            })
             ->get();
 
         $suspendedCount = 0;
@@ -69,6 +72,9 @@ class SuspendPastDueLicenses extends Command
                 $invoiceQuery->whereIn('status', ['unpaid', 'overdue'])
                     ->where('due_date', '<=', $threeDaysAgo)
                     ->whereRaw("(COALESCE(total, 0) - COALESCE((SELECT SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) FROM accounting_entries WHERE accounting_entries.invoice_id = invoices.id), 0)) > 0.009");
+            })
+            ->whereDoesntHave('subscription.customer', function ($query) use ($today) {
+                $query->where('access_override_until', '>=', $today);
             })
             ->get();
 

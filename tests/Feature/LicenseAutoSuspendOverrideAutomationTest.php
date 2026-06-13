@@ -114,6 +114,56 @@ class LicenseAutoSuspendOverrideAutomationTest extends TestCase
         $this->assertSame('active', (string) $license->fresh()->status);
     }
 
+    #[Test]
+    public function command_skips_suspending_licenses_when_customer_has_access_override(): void
+    {
+        [$customer, $subscription] = $this->createSubscriptionSetup();
+
+        // Set customer access override to 3 days in future
+        $customer->update(['access_override_until' => now()->addDays(3)->toDateString()]);
+
+        // License 1: expired license
+        $expiredLicense = License::create([
+            'subscription_id' => $subscription->id,
+            'product_id' => $subscription->plan->product_id,
+            'license_key' => strtoupper(Str::random(24)),
+            'status' => 'active',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'expires_at' => now()->subDays(10)->toDateString(), // expired 10 days ago
+            'max_domains' => 1,
+        ]);
+
+        // License 2: active license with overdue invoice
+        $pastDueLicense = License::create([
+            'subscription_id' => $subscription->id,
+            'product_id' => $subscription->plan->product_id,
+            'license_key' => strtoupper(Str::random(24)),
+            'status' => 'active',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'expires_at' => now()->addYear()->toDateString(),
+            'max_domains' => 1,
+        ]);
+
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
+            'number' => 'INV-COMMAND-TEST-1',
+            'status' => 'unpaid',
+            'issue_date' => now()->subDays(8)->toDateString(),
+            'due_date' => now()->subDays(5)->toDateString(), // due date 5 days ago (which is <= 3 days ago)
+            'subtotal' => 120,
+            'late_fee' => 0,
+            'total' => 120,
+            'currency' => 'USD',
+        ]);
+
+        $this->artisan('licenses:suspend-past-due')
+            ->assertSuccessful();
+
+        $this->assertSame('active', (string) $expiredLicense->fresh()->status);
+        $this->assertSame('active', (string) $pastDueLicense->fresh()->status);
+    }
+
     private function createSubscriptionSetup(): array
     {
         $customer = Customer::create([

@@ -31,58 +31,44 @@ function LicenseCard({ license, csrf, statusClass }) {
                         {editOpen ? 'Close' : 'Edit Key / Domain'}
                     </button>
                     {license.fields.status !== 'suspended' && license.fields.status !== 'revoked' && (
-                        <form action={license.routes.suspend} method="POST" data-native="true">
-                            <input type="hidden" name="_token" value={csrf} />
-                            <input type="hidden" name="return_to_subscription" value="1" />
-                            <button type="submit" className="rounded-full border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-50">
-                                Suspend
-                            </button>
-                        </form>
+                        <button
+                            type="submit"
+                            form={`suspend-form-${license.id}`}
+                            className="rounded-full border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-50"
+                        >
+                            Suspend
+                        </button>
                     )}
                     {license.fields.status === 'suspended' && (
-                        <form action={license.routes.unsuspend} method="POST" data-native="true">
-                            <input type="hidden" name="_token" value={csrf} />
-                            <input type="hidden" name="return_to_subscription" value="1" />
-                            <button type="submit" className="rounded-full border border-teal-300 px-3 py-1.5 text-xs font-semibold text-teal-600 hover:bg-teal-50">
-                                Unsuspend
-                            </button>
-                        </form>
+                        <button
+                            type="submit"
+                            form={`unsuspend-form-${license.id}`}
+                            className="rounded-full border border-teal-300 px-3 py-1.5 text-xs font-semibold text-teal-600 hover:bg-teal-50"
+                        >
+                            Unsuspend
+                        </button>
                     )}
                     {license.fields.status !== 'revoked' && (
-                        <form
-                            action={license.routes.terminate}
-                            method="POST"
-                            data-native="true"
-                            onSubmit={(e) => { if (!window.confirm('Terminate this license? The status will be set to revoked.')) e.preventDefault(); }}
+                        <button
+                            type="submit"
+                            form={`terminate-form-${license.id}`}
+                            className="rounded-full border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
                         >
-                            <input type="hidden" name="_token" value={csrf} />
-                            <input type="hidden" name="return_to_subscription" value="1" />
-                            <button type="submit" className="rounded-full border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50">
-                                Terminate
-                            </button>
-                        </form>
+                            Terminate
+                        </button>
                     )}
                 </div>
             </div>
 
             {editOpen && (
-                <form action={license.form.action} method="POST" data-native="true" className="mt-4 border-t border-slate-100 pt-4">
-                    <input type="hidden" name="_token" value={csrf} />
-                    <input type="hidden" name="_method" value={license.form.method} />
-                    <input type="hidden" name="return_to_subscription" value="1" />
-                    <input type="hidden" name="subscription_id" value={license.fields.subscription_id} />
-                    <input type="hidden" name="product_id" value={license.fields.product_id} />
-                    <input type="hidden" name="status" value={license.fields.status} />
-                    <input type="hidden" name="starts_at" value={license.fields.starts_at} />
-                    <input type="hidden" name="expires_at" value={license.fields.expires_at} />
-                    <input type="hidden" name="auto_suspend_override_until" value={license.fields.auto_suspend_override_until} />
-                    <input type="hidden" name="notes" value={license.fields.notes} />
+                <div className="mt-4 border-t border-slate-100 pt-4">
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-1 block text-xs font-medium text-slate-700">License Key</label>
                             <input
                                 type="text"
                                 name="license_key"
+                                form={`edit-form-${license.id}`}
                                 value={licenseKey}
                                 onChange={(e) => setLicenseKey(e.target.value)}
                                 className={inputClass}
@@ -94,6 +80,7 @@ function LicenseCard({ license, csrf, statusClass }) {
                             <input
                                 type="text"
                                 name="allowed_domains"
+                                form={`edit-form-${license.id}`}
                                 value={domain}
                                 onChange={(e) => setDomain(e.target.value)}
                                 className={inputClass}
@@ -102,11 +89,15 @@ function LicenseCard({ license, csrf, statusClass }) {
                         </div>
                     </div>
                     <div className="mt-3">
-                        <button type="submit" className="rounded-full bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500">
+                        <button
+                            type="submit"
+                            form={`edit-form-${license.id}`}
+                            className="rounded-full bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500"
+                        >
                             Save License
                         </button>
                     </div>
-                </form>
+                </div>
             )}
         </div>
     );
@@ -223,7 +214,7 @@ export default function Form({
     return (
         <>
             <Head title={pageTitle} />
-            <div className="mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-6">
+            <div className="mx-auto max-w-4x2 rounded-2xl border border-slate-200 bg-white p-6">
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="text-xl font-semibold text-slate-900">{pageTitle}</h1>
                     <a href={routes?.index} data-native="true" className="text-sm font-medium text-teal-600 hover:text-teal-500">
@@ -383,6 +374,15 @@ export default function Form({
                         </div>
                     </div>
 
+                    {is_edit && licenseManager?.licenses?.length > 0 && (
+                        <div className="space-y-3">
+                            <label className="block text-sm font-medium text-slate-700">Licenses</label>
+                            {licenseManager.licenses.map((license) => (
+                                <LicenseCard key={license.id} license={license} csrf={csrf} statusClass={licenseStatusClass} />
+                            ))}
+                        </div>
+                    )}
+
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
                         <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="w-full rounded-full border border-slate-300 px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
@@ -413,13 +413,47 @@ export default function Form({
             </div>
 
             {is_edit && licenseManager?.licenses?.length > 0 && (
-                <div className="mx-auto mt-6 max-w-4xl rounded-2xl border border-slate-200 bg-white p-6">
-                    <h2 className="mb-4 text-base font-semibold text-slate-800">Licenses</h2>
-                    <div className="space-y-3">
-                        {licenseManager.licenses.map((license) => (
-                            <LicenseCard key={license.id} license={license} csrf={csrf} statusClass={licenseStatusClass} />
-                        ))}
-                    </div>
+                <div style={{ display: 'none' }}>
+                    {licenseManager.licenses.map((license) => (
+                        <React.Fragment key={license.id}>
+                            {license.fields.status !== 'suspended' && license.fields.status !== 'revoked' && (
+                                <form id={`suspend-form-${license.id}`} action={license.routes.suspend} method="POST" data-native="true">
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <input type="hidden" name="return_to_subscription" value="1" />
+                                </form>
+                            )}
+                            {license.fields.status === 'suspended' && (
+                                <form id={`unsuspend-form-${license.id}`} action={license.routes.unsuspend} method="POST" data-native="true">
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <input type="hidden" name="return_to_subscription" value="1" />
+                                </form>
+                            )}
+                            {license.fields.status !== 'revoked' && (
+                                <form
+                                    id={`terminate-form-${license.id}`}
+                                    action={license.routes.terminate}
+                                    method="POST"
+                                    data-native="true"
+                                    onSubmit={(e) => { if (!window.confirm('Terminate this license? The status will be set to revoked.')) e.preventDefault(); }}
+                                >
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <input type="hidden" name="return_to_subscription" value="1" />
+                                </form>
+                            )}
+                            <form id={`edit-form-${license.id}`} action={license.form.action} method="POST" data-native="true">
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="hidden" name="_method" value={license.form.method} />
+                                <input type="hidden" name="return_to_subscription" value="1" />
+                                <input type="hidden" name="subscription_id" value={license.fields.subscription_id} />
+                                <input type="hidden" name="product_id" value={license.fields.product_id} />
+                                <input type="hidden" name="status" value={license.fields.status} />
+                                <input type="hidden" name="starts_at" value={license.fields.starts_at} />
+                                <input type="hidden" name="expires_at" value={license.fields.expires_at} />
+                                <input type="hidden" name="auto_suspend_override_until" value={license.fields.auto_suspend_override_until} />
+                                <input type="hidden" name="notes" value={license.fields.notes} />
+                            </form>
+                        </React.Fragment>
+                    ))}
                 </div>
             )}
         </>
