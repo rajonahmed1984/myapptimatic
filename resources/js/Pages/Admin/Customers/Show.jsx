@@ -122,6 +122,96 @@ export default function Show({
         }
     };
 
+    const handleBulkMarkPaid = () => {
+        if (selectedInvoiceIds.length === 0) {
+            alert("Please select at least one invoice.");
+            return;
+        }
+
+        const count = selectedInvoiceIds.length;
+        if (window.confirm(`Are you sure you want to mark the ${count} selected invoice(s) as Paid?`)) {
+            router.post(routes?.bulk_mark_paid_invoices, {
+                invoice_ids: selectedInvoiceIds
+            }, {
+                onSuccess: () => {
+                    setSelectedInvoiceIds([]);
+                }
+            });
+        }
+    };
+
+    const handleBulkMarkUnpaid = () => {
+        if (selectedInvoiceIds.length === 0) {
+            alert("Please select at least one invoice.");
+            return;
+        }
+
+        const count = selectedInvoiceIds.length;
+        if (window.confirm(`Are you sure you want to mark the ${count} selected invoice(s) as Unpaid?`)) {
+            router.post(routes?.bulk_mark_unpaid_invoices, {
+                invoice_ids: selectedInvoiceIds
+            }, {
+                onSuccess: () => {
+                    setSelectedInvoiceIds([]);
+                }
+            });
+        }
+    };
+
+    const handleBulkMarkCancelled = () => {
+        if (selectedInvoiceIds.length === 0) {
+            alert("Please select at least one invoice.");
+            return;
+        }
+
+        const count = selectedInvoiceIds.length;
+        if (window.confirm(`Are you sure you want to mark the ${count} selected invoice(s) as Cancelled?`)) {
+            router.post(routes?.bulk_mark_cancelled_invoices, {
+                invoice_ids: selectedInvoiceIds
+            }, {
+                onSuccess: () => {
+                    setSelectedInvoiceIds([]);
+                }
+            });
+        }
+    };
+
+    const handleBulkDuplicate = () => {
+        if (selectedInvoiceIds.length === 0) {
+            alert("Please select at least one invoice.");
+            return;
+        }
+
+        const count = selectedInvoiceIds.length;
+        if (window.confirm(`Are you sure you want to duplicate the ${count} selected invoice(s)?`)) {
+            router.post(routes?.bulk_duplicate_invoices, {
+                invoice_ids: selectedInvoiceIds
+            }, {
+                onSuccess: () => {
+                    setSelectedInvoiceIds([]);
+                }
+            });
+        }
+    };
+
+    const handleBulkMerge = () => {
+        if (selectedInvoiceIds.length < 2) {
+            alert("Please select at least two invoices to merge.");
+            return;
+        }
+
+        const count = selectedInvoiceIds.length;
+        if (window.confirm(`Are you sure you want to merge the ${count} selected invoices? The original invoices will be cancelled.`)) {
+            router.post(routes?.bulk_merge_invoices, {
+                invoice_ids: selectedInvoiceIds
+            }, {
+                onSuccess: () => {
+                    setSelectedInvoiceIds([]);
+                }
+            });
+        }
+    };
+
     const plan = useMemo(
         () => service_plans.find((item) => String(item.id) === String(planId)) || null,
         [service_plans, planId]
@@ -811,7 +901,7 @@ export default function Show({
                                 type="button"
                                 className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-white font-semibold shadow-sm transition disabled:opacity-50"
                                 disabled={selectedInvoiceIds.length === 0}
-                                onClick={() => alert("Mark Paid is not implemented yet.")}
+                                onClick={handleBulkMarkPaid}
                             >
                                 Mark Paid
                             </button>
@@ -819,7 +909,7 @@ export default function Show({
                                 type="button"
                                 className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
                                 disabled={selectedInvoiceIds.length === 0}
-                                onClick={() => alert("Mark Unpaid is not implemented yet.")}
+                                onClick={handleBulkMarkUnpaid}
                             >
                                 Mark Unpaid
                             </button>
@@ -827,7 +917,7 @@ export default function Show({
                                 type="button"
                                 className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
                                 disabled={selectedInvoiceIds.length === 0}
-                                onClick={() => alert("Mark Cancelled is not implemented yet.")}
+                                onClick={handleBulkMarkCancelled}
                             >
                                 Mark Cancelled
                             </button>
@@ -835,7 +925,7 @@ export default function Show({
                                 type="button"
                                 className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
                                 disabled={selectedInvoiceIds.length === 0}
-                                onClick={() => alert("Duplicate Invoice is not implemented yet.")}
+                                onClick={handleBulkDuplicate}
                             >
                                 Duplicate Invoice
                             </button>
@@ -851,17 +941,9 @@ export default function Show({
                                 type="button"
                                 className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
                                 disabled={selectedInvoiceIds.length === 0}
-                                onClick={() => alert("Merge is not implemented yet.")}
+                                onClick={handleBulkMerge}
                             >
                                 Merge
-                            </button>
-                            <button
-                                type="button"
-                                className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 bg-white hover:border-slate-400 hover:bg-slate-50 shadow-sm transition disabled:opacity-50"
-                                disabled={selectedInvoiceIds.length === 0}
-                                onClick={() => alert("Mass Pay is not implemented yet.")}
-                            >
-                                Mass Pay
                             </button>
                             <button
                                 type="button"

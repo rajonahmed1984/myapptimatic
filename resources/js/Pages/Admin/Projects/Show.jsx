@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
 export default function Show({
@@ -9,24 +9,10 @@ export default function Show({
     initialInvoice = null,
     remainingBudgetInvoices = [],
     taskStats = {},
-    aiReady = false,
     routes = {},
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
-
-    const [aiStatus, setAiStatus] = useState('Ready');
-    const [aiHealth, setAiHealth] = useState('--');
-    const [aiSummary, setAiSummary] = useState('Click Generate AI to analyze this project.');
-    const [aiHighlights, setAiHighlights] = useState(['--']);
-    const [aiRisks, setAiRisks] = useState(['--']);
-    const [aiNextSteps, setAiNextSteps] = useState(['--']);
-    const [aiProfitability, setAiProfitability] = useState(['--']);
-    const [aiTimeline, setAiTimeline] = useState(['--']);
-    const [aiTaskFocus, setAiTaskFocus] = useState(['--']);
-    const [aiSubtaskFocus, setAiSubtaskFocus] = useState(['--']);
-    const [aiChatFocus, setAiChatFocus] = useState(['--']);
-    const [aiContext, setAiContext] = useState(null);
 
     const canInvoiceRemaining = useMemo(() => {
         const line = project?.financials?.remaining_budget_invoiceable_display || '';
@@ -34,58 +20,6 @@ export default function Show({
         const amount = Number((parts[1] || '0').replace(/,/g, ''));
         return amount > 0;
     }, [project?.financials?.remaining_budget_invoiceable_display]);
-
-    const generateAi = async () => {
-        if (!routes?.ai_summary) {
-            return;
-        }
-
-        setAiStatus('Generating...');
-        setAiSummary('Working on the AI summary...');
-        setAiHealth('--');
-        setAiHighlights(['--']);
-        setAiRisks(['--']);
-        setAiNextSteps(['--']);
-        setAiProfitability(['--']);
-        setAiTimeline(['--']);
-        setAiTaskFocus(['--']);
-        setAiSubtaskFocus(['--']);
-        setAiChatFocus(['--']);
-        setAiContext(null);
-
-        try {
-            const response = await fetch(routes.ai_summary, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                },
-            });
-
-            const payload = await response.json();
-            if (!response.ok) {
-                throw new Error(payload?.error || 'Failed to generate AI summary.');
-            }
-
-            const data = payload?.data || null;
-            setAiSummary(data?.summary || payload?.raw || '--');
-            setAiHealth(data?.health || '--');
-            setAiHighlights(Array.isArray(data?.highlights) && data.highlights.length > 0 ? data.highlights : ['--']);
-            setAiRisks(Array.isArray(data?.risks) && data.risks.length > 0 ? data.risks : ['--']);
-            setAiNextSteps(Array.isArray(data?.next_steps) && data.next_steps.length > 0 ? data.next_steps : ['--']);
-            setAiProfitability(Array.isArray(data?.profitability) && data.profitability.length > 0 ? data.profitability : ['--']);
-            setAiTimeline(Array.isArray(data?.timeline) && data.timeline.length > 0 ? data.timeline : ['--']);
-            setAiTaskFocus(Array.isArray(data?.task_focus) && data.task_focus.length > 0 ? data.task_focus : ['--']);
-            setAiSubtaskFocus(Array.isArray(data?.subtask_focus) && data.subtask_focus.length > 0 ? data.subtask_focus : ['--']);
-            setAiChatFocus(Array.isArray(data?.chat_focus) && data.chat_focus.length > 0 ? data.chat_focus : ['--']);
-            setAiContext(payload?.context || null);
-            setAiStatus('Updated');
-        } catch (error) {
-            setAiSummary(error?.message || 'AI request failed.');
-            setAiStatus('Error');
-            setAiContext(null);
-        }
-    };
 
     return (
         <>
@@ -140,96 +74,6 @@ export default function Show({
                 <StatCard label="Unread" value={taskStats?.unread ?? 0} />
             </div>
 
-            <div className="card mb-6 space-y-4 p-6" id="project-ai-summary">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <div className="section-label">AI Project Summary</div>
-                        <div className="mt-1 text-sm text-slate-500">Quick project health, profitability, timeline, task/subtask pressure, and chat signals.</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{aiStatus}</span>
-                        <button type="button" disabled={!aiReady} onClick={generateAi} className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60">
-                            Generate AI
-                        </button>
-                    </div>
-                </div>
-
-                {!aiReady ? <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">GOOGLE_AI_API_KEY is missing. Add it to .env to enable AI summaries.</div> : null}
-
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm md:col-span-2">
-                        <div className="flex items-center justify-between">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Summary</div>
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">{aiHealth}</span>
-                        </div>
-                        <div className="mt-2 text-slate-700">{aiSummary}</div>
-                    </div>
-
-                    {aiContext ? (
-                        <>
-                            <SnapshotCard
-                                title="Profitability Snapshot"
-                                lines={[
-                                    `Direction: ${aiContext?.financials?.profitability || '--'}`,
-                                    `Profit: ${aiContext?.financials?.currency || ''} ${aiContext?.financials?.profit ?? '--'}`,
-                                    `Budget: ${aiContext?.financials?.currency || ''} ${aiContext?.financials?.budget_with_overhead ?? '--'}`,
-                                    `Payouts: ${aiContext?.financials?.currency || ''} ${aiContext?.financials?.payouts_total ?? '--'}`,
-                                ]}
-                            />
-                            <SnapshotCard
-                                title="Timeline Snapshot"
-                                lines={[
-                                    `Status: ${aiContext?.timeline?.status || '--'}`,
-                                    aiContext?.timeline?.note || 'No timeline note.',
-                                    `Start: ${aiContext?.project?.start_date || '--'}`,
-                                    `Due: ${aiContext?.project?.due_date || '--'}`,
-                                ]}
-                            />
-                            <SnapshotCard
-                                title="Task Deadlines"
-                                lines={[
-                                    `Total ${aiContext?.tasks?.total ?? 0}, Open ${aiContext?.tasks?.open ?? 0}, Overdue ${aiContext?.tasks?.overdue ?? 0}`,
-                                    `Completion: ${aiContext?.tasks?.completion_rate ?? 0}%`,
-                                    aiContext?.tasks?.next_due
-                                        ? `Next: ${aiContext.tasks.next_due.title} (${aiContext.tasks.next_due.due_date || '--'})`
-                                        : 'Next: no open task deadline',
-                                ]}
-                            />
-                            <SnapshotCard
-                                title="Subtask Deadlines"
-                                lines={[
-                                    `Total ${aiContext?.subtasks?.total ?? 0}, Open ${aiContext?.subtasks?.open ?? 0}, Overdue ${aiContext?.subtasks?.overdue ?? 0}`,
-                                    `Completion: ${aiContext?.subtasks?.completion_rate ?? 0}%`,
-                                    aiContext?.subtasks?.next_due
-                                        ? `Next: ${aiContext.subtasks.next_due.title} (${aiContext.subtasks.next_due.due_date || '--'})`
-                                        : 'Next: no open subtask deadline',
-                                ]}
-                            />
-                            <SnapshotCard
-                                title="Chat Snapshot"
-                                lines={[
-                                    `Project messages: ${aiContext?.project_chat?.messages_count ?? 0}`,
-                                    aiContext?.project_chat?.summary || 'No cached project chat summary.',
-                                    aiContext?.project_chat?.latest_activity || 'No recent project chat activity.',
-                                    ...(Array.isArray(aiContext?.task_chats) ? aiContext.task_chats.slice(0, 2).map((chat) => (
-                                        `${chat?.task_title || 'Task'}: ${chat?.summary || chat?.latest_activity || 'No task chat summary.'}`
-                                    )) : []),
-                                ]}
-                                colSpan
-                            />
-                        </>
-                    ) : null}
-
-                    <ListCard title="Highlights" items={aiHighlights} />
-                    <ListCard title="Risks" items={aiRisks} />
-                    <ListCard title="Profitability" items={aiProfitability} />
-                    <ListCard title="Timeline" items={aiTimeline} />
-                    <ListCard title="Task Focus" items={aiTaskFocus} />
-                    <ListCard title="Subtask Focus" items={aiSubtaskFocus} />
-                    <ListCard title="Chat Focus" items={aiChatFocus} colSpan />
-                    <ListCard title="Next steps" items={aiNextSteps} colSpan />
-                </div>
-            </div>
 
             <div className="card space-y-6 p-6">
                 <InfoBlock title="Project Info">
@@ -490,28 +334,3 @@ function Pane({ title, children }) {
     );
 }
 
-function ListCard({ title, items, colSpan = false }) {
-    return (
-        <div className={`rounded-2xl border border-slate-100 bg-white p-4 text-sm ${colSpan ? 'md:col-span-2' : ''}`}>
-            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</div>
-            <ul className="mt-2 list-disc space-y-1 pl-4 text-slate-700">
-                {items.map((item, index) => (
-                    <li key={`${title}-${index}`}>{item}</li>
-                ))}
-            </ul>
-        </div>
-    );
-}
-
-function SnapshotCard({ title, lines, colSpan = false }) {
-    return (
-        <div className={`rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm ${colSpan ? 'md:col-span-2' : ''}`}>
-            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</div>
-            <div className="mt-2 space-y-1 text-slate-700">
-                {lines.filter(Boolean).map((line, index) => (
-                    <div key={`${title}-${index}`}>{line}</div>
-                ))}
-            </div>
-        </div>
-    );
-}

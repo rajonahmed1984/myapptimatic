@@ -1969,6 +1969,375 @@ class InvoiceController extends Controller
         return redirect()->back()->with('status', "Sent {$sentCount} invoice reminder(s) successfully.");
     }
 
+    public function bulkMarkPaid(
+        Request $request,
+        AdminNotificationService $adminNotifications,
+        ClientNotificationService $clientNotifications,
+        CommissionService $commissionService,
+        SalesRepNotificationService $salesRepNotifications
+    ): RedirectResponse {
+        $data = $request->validate([
+            'invoice_ids' => ['required', 'array'],
+            'invoice_ids.*' => ['exists:invoices,id'],
+        ]);
+
+        $invoices = Invoice::whereIn('id', $data['invoice_ids'])->get();
+        $updatedCount = 0;
+
+        foreach ($invoices as $invoice) {
+            if ($invoice->status === 'paid') {
+                continue;
+            }
+
+            $previousStatus = $invoice->status;
+            $invoice->update([
+                'status' => 'paid',
+                'paid_at' => Carbon::now(),
+            ]);
+
+            \App\Models\StatusAuditLog::logChange(
+                Invoice::class,
+                $invoice->id,
+                $previousStatus,
+                'paid',
+                'manual_mark_paid',
+                $request->user()?->id
+            );
+
+            $this->runInvoicePaidPostProcessing(
+                $request,
+                $invoice,
+                $adminNotifications,
+                $clientNotifications,
+                $commissionService,
+                $salesRepNotifications
+            );
+
+            SystemLogger::write('activity', 'Invoice marked as paid (bulk).', [
+                'invoice_id' => $invoice->id,
+                'customer_id' => $invoice->customer_id,
+            ], $request->user()?->id, $request->ip());
+
+            $updatedCount++;
+        }
+
+        if ($updatedCount === 0) {
+            return redirect()->back()->with('error', 'No unpaid invoices were selected.');
+        }
+
+        return redirect()->back()->with('status', "Marked {$updatedCount} invoice(s) as paid successfully.");
+    }
+
+    public function bulkMarkUnpaid(Request $request, CommissionService $commissionService): RedirectResponse
+    {
+        $data = $request->validate([
+            'invoice_ids' => ['required', 'array'],
+            'invoice_ids.*' => ['exists:invoices,id'],
+        ]);
+
+        $invoices = Invoice::whereIn('id', $data['invoice_ids'])->get();
+        $updatedCount = 0;
+
+        foreach ($invoices as $invoice) {
+            if ($invoice->status === 'unpaid') {
+                continue;
+            }
+
+            $previousStatus = $invoice->status;
+            $invoice->update([
+                'status' => 'unpaid',
+                'paid_at' => null,
+                'overdue_at' => null,
+            ]);
+
+            \App\Models\StatusAuditLog::logChange(
+                Invoice::class,
+                $invoice->id,
+                $previousStatus,
+                'unpaid',
+                'admin_update',
+                $request->user()?->id
+            );
+
+            try {
+                $commissionService->reverseEarningsOnRefund($invoice);
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Commission update failed on invoice bulk unpaid.', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $e->getMessage(),
+                ], level: 'error');
+            }
+
+            SystemLogger::write('activity', 'Invoice marked as unpaid (bulk).', [
+                'invoice_id' => $invoice->id,
+                'customer_id' => $invoice->customer_id,
+            ], $request->user()?->id, $request->ip());
+
+            $updatedCount++;
+        }
+
+        if ($updatedCount === 0) {
+            return redirect()->back()->with('error', 'No invoices were selected or they are already unpaid.');
+        }
+
+        return redirect()->back()->with('status', "Marked {$updatedCount} invoice(s) as unpaid successfully.");
+    }
+
+    public function bulkMarkCancelled(Request $request, CommissionService $commissionService): RedirectResponse
+    {
+        $data = $request->validate([
+            'invoice_ids' => ['required', 'array'],
+            'invoice_ids.*' => ['exists:invoices,id'],
+        ]);
+
+        $invoices = Invoice::whereIn('id', $data['invoice_ids'])->get();
+        $updatedCount = 0;
+
+        foreach ($invoices as $invoice) {
+            if ($invoice->status === 'cancelled') {
+                continue;
+            }
+
+            $previousStatus = $invoice->status;
+            $invoice->update([
+                'status' => 'cancelled',
+                'paid_at' => null,
+                'overdue_at' => null,
+            ]);
+
+            \App\Models\StatusAuditLog::logChange(
+                Invoice::class,
+                $invoice->id,
+                $previousStatus,
+                'cancelled',
+                'admin_update',
+                $request->user()?->id
+            );
+
+            try {
+                $commissionService->reverseEarningsOnRefund($invoice);
+            } catch (\Throwable $e) {
+                SystemLogger::write('module', 'Commission update failed on invoice bulk cancel.', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $e->getMessage(),
+                ], level: 'error');
+            }
+
+            SystemLogger::write('activity', 'Invoice marked as cancelled (bulk).', [
+                'invoice_id' => $invoice->id,
+                'customer_id' => $invoice->customer_id,
+            ], $request->user()?->id, $request->ip());
+
+            $updatedCount++;
+        }
+
+        if ($updatedCount === 0) {
+            return redirect()->back()->with('error', 'No invoices were selected or they are already cancelled.');
+        }
+
+        return redirect()->back()->with('status', "Marked {$updatedCount} invoice(s) as cancelled successfully.");
+    }
+
+    public function bulkDuplicate(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'invoice_ids' => ['required', 'array'],
+            'invoice_ids.*' => ['exists:invoices,id'],
+        ]);
+
+        $invoices = Invoice::with('items')->whereIn('id', $data['invoice_ids'])->get();
+        $duplicatedCount = 0;
+
+        $dueDays = (int) Setting::getValue('invoice_due_days', 0);
+        $issueDate = Carbon::today();
+        $dueDate = $dueDays > 0 ? Carbon::today()->addDays($dueDays) : Carbon::today();
+
+        DB::transaction(function () use ($invoices, $issueDate, $dueDate, &$duplicatedCount, $request) {
+            foreach ($invoices as $originalInvoice) {
+                $newInvoice = Invoice::create([
+                    'customer_id' => $originalInvoice->customer_id,
+                    'subscription_id' => $originalInvoice->subscription_id,
+                    'project_id' => $originalInvoice->project_id,
+                    'maintenance_id' => $originalInvoice->maintenance_id,
+                    'number' => $this->billingService->nextInvoiceNumber(),
+                    'status' => 'unpaid',
+                    'issue_date' => $issueDate,
+                    'due_date' => $dueDate,
+                    'subtotal' => $originalInvoice->subtotal,
+                    'tax_rate_percent' => $originalInvoice->tax_rate_percent,
+                    'tax_mode' => $originalInvoice->tax_mode,
+                    'tax_amount' => $originalInvoice->tax_amount,
+                    'late_fee' => 0,
+                    'total' => $originalInvoice->total,
+                    'currency' => $originalInvoice->currency,
+                    'notes' => $originalInvoice->notes,
+                    'type' => 'manual',
+                ]);
+
+                foreach ($originalInvoice->items as $item) {
+                    InvoiceItem::create([
+                        'invoice_id' => $newInvoice->id,
+                        'description' => $item->description,
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->unit_price,
+                        'line_total' => $item->line_total,
+                    ]);
+                }
+
+                SystemLogger::write('activity', 'Invoice duplicated (bulk).', [
+                    'original_invoice_id' => $originalInvoice->id,
+                    'new_invoice_id' => $newInvoice->id,
+                    'customer_id' => $newInvoice->customer_id,
+                ], $request->user()?->id, $request->ip());
+
+                $duplicatedCount++;
+            }
+        });
+
+        if ($duplicatedCount === 0) {
+            return redirect()->back()->with('error', 'No invoices were selected.');
+        }
+
+        return redirect()->back()->with('status', "Duplicated {$duplicatedCount} invoice(s) successfully.");
+    }
+
+    public function bulkMerge(Request $request, InvoiceTaxService $taxService, CommissionService $commissionService): RedirectResponse
+    {
+        $data = $request->validate([
+            'invoice_ids' => ['required', 'array', 'min:2'],
+            'invoice_ids.*' => ['exists:invoices,id'],
+        ]);
+
+        $invoices = Invoice::with('items')->whereIn('id', $data['invoice_ids'])->get();
+
+        if ($invoices->count() < 2) {
+            return redirect()->back()->with('error', 'Select at least 2 invoices to merge.');
+        }
+
+        $customerId = $invoices->first()->customer_id;
+        $currency = $invoices->first()->currency;
+
+        foreach ($invoices as $invoice) {
+            if ($invoice->customer_id !== $customerId) {
+                return redirect()->back()->with('error', 'All selected invoices must belong to the same customer.');
+            }
+            if ($invoice->currency !== $currency) {
+                return redirect()->back()->with('error', 'All selected invoices must have the same currency.');
+            }
+        }
+
+        $dueDays = (int) Setting::getValue('invoice_due_days', 0);
+        $issueDate = Carbon::today();
+        $dueDate = $dueDays > 0 ? Carbon::today()->addDays($dueDays) : Carbon::today();
+
+        $aggregatedItems = [];
+        $subtotal = 0.0;
+        $originalInvoiceNumbers = [];
+
+        foreach ($invoices as $invoice) {
+            $numberDisplay = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
+            $originalInvoiceNumbers[] = '#' . $numberDisplay;
+
+            foreach ($invoice->items as $item) {
+                $aggregatedItems[] = [
+                    'description' => $item->description . " (From invoice #{$numberDisplay})",
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'line_total' => $item->line_total,
+                ];
+                $subtotal += (float) $item->line_total;
+            }
+        }
+
+        $taxData = $taxService->calculateTotals($subtotal, 0.0, $issueDate);
+
+        $mergedInvoiceNotes = 'Merged from invoices: ' . implode(', ', $originalInvoiceNumbers);
+
+        $newInvoice = DB::transaction(function () use (
+            $customerId,
+            $currency,
+            $issueDate,
+            $dueDate,
+            $subtotal,
+            $taxData,
+            $mergedInvoiceNotes,
+            $aggregatedItems,
+            $invoices,
+            $commissionService,
+            $request
+        ) {
+            $newInvoice = Invoice::create([
+                'customer_id' => $customerId,
+                'number' => $this->billingService->nextInvoiceNumber(),
+                'status' => 'unpaid',
+                'issue_date' => $issueDate,
+                'due_date' => $dueDate,
+                'subtotal' => $subtotal,
+                'tax_rate_percent' => $taxData['tax_rate_percent'],
+                'tax_mode' => $taxData['tax_mode'],
+                'tax_amount' => $taxData['tax_amount'],
+                'late_fee' => 0,
+                'total' => $taxData['total'],
+                'currency' => $currency,
+                'notes' => $mergedInvoiceNotes,
+                'type' => 'manual',
+            ]);
+
+            foreach ($aggregatedItems as $item) {
+                InvoiceItem::create([
+                    'invoice_id' => $newInvoice->id,
+                    'description' => $item['description'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'line_total' => $item['line_total'],
+                ]);
+            }
+
+            $newInvoiceNumber = is_numeric($newInvoice->number) ? (string) $newInvoice->number : (string) $newInvoice->id;
+
+            foreach ($invoices as $originalInvoice) {
+                $previousStatus = $originalInvoice->status;
+                $originalNotes = $originalInvoice->notes ? $originalInvoice->notes . "\n" : '';
+                $cancelNote = "Cancelled and merged into invoice #{$newInvoiceNumber}.";
+
+                $originalInvoice->update([
+                    'status' => 'cancelled',
+                    'paid_at' => null,
+                    'overdue_at' => null,
+                    'notes' => $originalNotes . $cancelNote,
+                ]);
+
+                \App\Models\StatusAuditLog::logChange(
+                    Invoice::class,
+                    $originalInvoice->id,
+                    $previousStatus,
+                    'cancelled',
+                    'admin_update',
+                    $request->user()?->id
+                );
+
+                try {
+                    $commissionService->reverseEarningsOnRefund($originalInvoice);
+                } catch (\Throwable $e) {
+                    SystemLogger::write('module', 'Commission update failed on merge invoice cancellation.', [
+                        'invoice_id' => $originalInvoice->id,
+                        'error' => $e->getMessage(),
+                    ], level: 'error');
+                }
+
+                SystemLogger::write('activity', 'Invoice merged and cancelled (bulk).', [
+                    'original_invoice_id' => $originalInvoice->id,
+                    'new_invoice_id' => $newInvoice->id,
+                    'customer_id' => $customerId,
+                ], $request->user()?->id, $request->ip());
+            }
+
+            return $newInvoice;
+        });
+
+        return redirect()->back()->with('status', "Merged selected invoices into new invoice #{$newInvoice->number} successfully.");
+    }
+
     private function statusClass(string $status): string
     {
         return match ($status) {

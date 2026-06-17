@@ -721,6 +721,11 @@ class CustomerController extends Controller
                 'create_project' => route('admin.projects.create', ['customer_id' => $customer->id], false),
                 'create_maintenance' => route('admin.project-maintenances.create', ['customer_id' => $customer->id], false),
                 'bulk_remind_invoices' => route('admin.invoices.bulk-remind', [], false),
+                'bulk_mark_paid_invoices' => route('admin.invoices.bulk-mark-paid', [], false),
+                'bulk_mark_unpaid_invoices' => route('admin.invoices.bulk-mark-unpaid', [], false),
+                'bulk_mark_cancelled_invoices' => route('admin.invoices.bulk-mark-cancelled', [], false),
+                'bulk_duplicate_invoices' => route('admin.invoices.bulk-duplicate', [], false),
+                'bulk_merge_invoices' => route('admin.invoices.bulk-merge', [], false),
             ],
         ]);
     }

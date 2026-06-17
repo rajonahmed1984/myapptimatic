@@ -657,6 +657,11 @@ Route::middleware([
     Route::get('invoices/create', [AdminInvoiceController::class, 'create'])->name('invoices.create');
     Route::post('invoices', [AdminInvoiceController::class, 'store'])->name('invoices.store');
     Route::post('invoices/bulk-remind', [AdminInvoiceController::class, 'bulkRemind'])->name('invoices.bulk-remind');
+    Route::post('invoices/bulk-mark-paid', [AdminInvoiceController::class, 'bulkMarkPaid'])->name('invoices.bulk-mark-paid');
+    Route::post('invoices/bulk-mark-unpaid', [AdminInvoiceController::class, 'bulkMarkUnpaid'])->name('invoices.bulk-mark-unpaid');
+    Route::post('invoices/bulk-mark-cancelled', [AdminInvoiceController::class, 'bulkMarkCancelled'])->name('invoices.bulk-mark-cancelled');
+    Route::post('invoices/bulk-duplicate', [AdminInvoiceController::class, 'bulkDuplicate'])->name('invoices.bulk-duplicate');
+    Route::post('invoices/bulk-merge', [AdminInvoiceController::class, 'bulkMerge'])->name('invoices.bulk-merge');
     Route::get('invoices/paid', [AdminInvoiceController::class, 'paid'])->name('invoices.paid');
     Route::get('invoices/unpaid', [AdminInvoiceController::class, 'unpaid'])->name('invoices.unpaid');
     Route::get('invoices/overdue', [AdminInvoiceController::class, 'overdue'])->name('invoices.overdue');

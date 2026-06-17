@@ -214,6 +214,8 @@
     </script>
     @include('layouts.partials.delete-confirm-modal')
     @include('layouts.partials.table-responsive')
+    @include('layouts.partials.toast-container')
+    <script src="{{ asset('js/toast.js') }}"></script>
     <div id="pageScriptStack" hidden aria-hidden="true">
         @stack('scripts')
     </div>
