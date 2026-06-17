@@ -104,112 +104,112 @@ export default function Show({
 
     const [selectedInvoiceIds, setSelectedInvoiceIds] = useState([]);
 
-    const handleSendReminders = () => {
+    const handleSendReminders = async () => {
         if (selectedInvoiceIds.length === 0) {
-            alert("Please select at least one invoice.");
+            window.showToast?.('Please select at least one invoice.', 'warning');
             return;
         }
-
         const count = selectedInvoiceIds.length;
-        if (window.confirm(`Are you sure you want to send email reminders for the ${count} selected invoice(s)?`)) {
-            router.post(routes?.bulk_remind_invoices, {
-                invoice_ids: selectedInvoiceIds
-            }, {
-                onSuccess: () => {
-                    setSelectedInvoiceIds([]);
-                }
-            });
-        }
+        const ok = await window.confirmModal?.({
+            message: `Are you sure you want to send email reminders for the ${count} selected invoice(s)?`,
+            title: 'Send Reminders',
+            variant: 'info',
+            confirmText: 'Send',
+        });
+        if (!ok) return;
+        router.post(routes?.bulk_remind_invoices, { invoice_ids: selectedInvoiceIds }, {
+            onSuccess: () => setSelectedInvoiceIds([]),
+        });
     };
 
-    const handleBulkMarkPaid = () => {
+    const handleBulkMarkPaid = async () => {
         if (selectedInvoiceIds.length === 0) {
-            alert("Please select at least one invoice.");
+            window.showToast?.('Please select at least one invoice.', 'warning');
             return;
         }
-
         const count = selectedInvoiceIds.length;
-        if (window.confirm(`Are you sure you want to mark the ${count} selected invoice(s) as Paid?`)) {
-            router.post(routes?.bulk_mark_paid_invoices, {
-                invoice_ids: selectedInvoiceIds
-            }, {
-                onSuccess: () => {
-                    setSelectedInvoiceIds([]);
-                }
-            });
-        }
+        const ok = await window.confirmModal?.({
+            message: `Are you sure you want to mark the ${count} selected invoice(s) as Paid?`,
+            title: 'Mark as Paid',
+            variant: 'success',
+            confirmText: 'Mark Paid',
+        });
+        if (!ok) return;
+        router.post(routes?.bulk_mark_paid_invoices, { invoice_ids: selectedInvoiceIds }, {
+            onSuccess: () => setSelectedInvoiceIds([]),
+        });
     };
 
-    const handleBulkMarkUnpaid = () => {
+    const handleBulkMarkUnpaid = async () => {
         if (selectedInvoiceIds.length === 0) {
-            alert("Please select at least one invoice.");
+            window.showToast?.('Please select at least one invoice.', 'warning');
             return;
         }
-
         const count = selectedInvoiceIds.length;
-        if (window.confirm(`Are you sure you want to mark the ${count} selected invoice(s) as Unpaid?`)) {
-            router.post(routes?.bulk_mark_unpaid_invoices, {
-                invoice_ids: selectedInvoiceIds
-            }, {
-                onSuccess: () => {
-                    setSelectedInvoiceIds([]);
-                }
-            });
-        }
+        const ok = await window.confirmModal?.({
+            message: `Are you sure you want to mark the ${count} selected invoice(s) as Unpaid?`,
+            title: 'Mark as Unpaid',
+            variant: 'warning',
+            confirmText: 'Mark Unpaid',
+        });
+        if (!ok) return;
+        router.post(routes?.bulk_mark_unpaid_invoices, { invoice_ids: selectedInvoiceIds }, {
+            onSuccess: () => setSelectedInvoiceIds([]),
+        });
     };
 
-    const handleBulkMarkCancelled = () => {
+    const handleBulkMarkCancelled = async () => {
         if (selectedInvoiceIds.length === 0) {
-            alert("Please select at least one invoice.");
+            window.showToast?.('Please select at least one invoice.', 'warning');
             return;
         }
-
         const count = selectedInvoiceIds.length;
-        if (window.confirm(`Are you sure you want to mark the ${count} selected invoice(s) as Cancelled?`)) {
-            router.post(routes?.bulk_mark_cancelled_invoices, {
-                invoice_ids: selectedInvoiceIds
-            }, {
-                onSuccess: () => {
-                    setSelectedInvoiceIds([]);
-                }
-            });
-        }
+        const ok = await window.confirmModal?.({
+            message: `Are you sure you want to mark the ${count} selected invoice(s) as Cancelled?`,
+            title: 'Mark as Cancelled',
+            variant: 'danger',
+            confirmText: 'Mark Cancelled',
+        });
+        if (!ok) return;
+        router.post(routes?.bulk_mark_cancelled_invoices, { invoice_ids: selectedInvoiceIds }, {
+            onSuccess: () => setSelectedInvoiceIds([]),
+        });
     };
 
-    const handleBulkDuplicate = () => {
+    const handleBulkDuplicate = async () => {
         if (selectedInvoiceIds.length === 0) {
-            alert("Please select at least one invoice.");
+            window.showToast?.('Please select at least one invoice.', 'warning');
             return;
         }
-
         const count = selectedInvoiceIds.length;
-        if (window.confirm(`Are you sure you want to duplicate the ${count} selected invoice(s)?`)) {
-            router.post(routes?.bulk_duplicate_invoices, {
-                invoice_ids: selectedInvoiceIds
-            }, {
-                onSuccess: () => {
-                    setSelectedInvoiceIds([]);
-                }
-            });
-        }
+        const ok = await window.confirmModal?.({
+            message: `Are you sure you want to duplicate the ${count} selected invoice(s)?`,
+            title: 'Duplicate Invoices',
+            variant: 'info',
+            confirmText: 'Duplicate',
+        });
+        if (!ok) return;
+        router.post(routes?.bulk_duplicate_invoices, { invoice_ids: selectedInvoiceIds }, {
+            onSuccess: () => setSelectedInvoiceIds([]),
+        });
     };
 
-    const handleBulkMerge = () => {
+    const handleBulkMerge = async () => {
         if (selectedInvoiceIds.length < 2) {
-            alert("Please select at least two invoices to merge.");
+            window.showToast?.('Please select at least two invoices to merge.', 'warning');
             return;
         }
-
         const count = selectedInvoiceIds.length;
-        if (window.confirm(`Are you sure you want to merge the ${count} selected invoices? The original invoices will be cancelled.`)) {
-            router.post(routes?.bulk_merge_invoices, {
-                invoice_ids: selectedInvoiceIds
-            }, {
-                onSuccess: () => {
-                    setSelectedInvoiceIds([]);
-                }
-            });
-        }
+        const ok = await window.confirmModal?.({
+            message: `Are you sure you want to merge the ${count} selected invoices? The original invoices will be cancelled.`,
+            title: 'Merge Invoices',
+            variant: 'danger',
+            confirmText: 'Merge',
+        });
+        if (!ok) return;
+        router.post(routes?.bulk_merge_invoices, { invoice_ids: selectedInvoiceIds }, {
+            onSuccess: () => setSelectedInvoiceIds([]),
+        });
     };
 
     const plan = useMemo(
