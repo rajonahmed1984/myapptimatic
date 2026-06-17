@@ -91,7 +91,14 @@ class InvoiceController extends Controller
             ->orderBy('sort_order')
             ->get();
 
+        $latestAttempt = $invoice->paymentAttempts()->latest()->first();
+        $selectedGatewayId = $request->query('gateway_id')
+            ?: $request->query('payment_gateway_id')
+            ?: $request->session()->get('gateway_id')
+            ?: ($latestAttempt ? $latestAttempt->payment_gateway_id : null);
+
         return Inertia::render('Client/Invoices/Pay', [
+            'selected_gateway_id' => $selectedGatewayId ? (int) $selectedGatewayId : null,
             'invoice' => [
                 'id' => $invoice->id,
                 'number_display' => $displayNumber,
@@ -189,6 +196,7 @@ class InvoiceController extends Controller
         try {
             $attempt = $paymentService->createAttempt($invoice, $gateway);
         } catch (\RuntimeException $exception) {
+            session()->flash('gateway_id', $gateway->id);
             return redirect()->route('client.invoices.pay', $invoice)
                 ->with('status', $exception->getMessage());
         }
@@ -204,6 +212,7 @@ class InvoiceController extends Controller
                 ->with('status', 'Submit your transfer details to complete verification.');
         }
 
+        session()->flash('gateway_id', $gateway->id);
         return redirect()->route('client.invoices.pay', $invoice)
             ->withErrors(['payment_gateway_id' => $result['message'] ?? 'Unable to start payment.']);
     }

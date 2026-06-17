@@ -24,6 +24,7 @@ class ManualPaymentController extends Controller
         }
 
         if ($invoice->status === 'paid') {
+            session()->flash('gateway_id', $attempt->payment_gateway_id);
             return redirect()->route('client.invoices.pay', $invoice)
                 ->with('status', 'This invoice is already paid.');
         }
@@ -91,6 +92,7 @@ class ManualPaymentController extends Controller
         }
 
         if ($invoice->status === 'paid') {
+            session()->flash('gateway_id', $attempt->payment_gateway_id);
             return redirect()->route('client.invoices.pay', $invoice)
                 ->with('status', 'This invoice is already paid.');
         }
@@ -143,6 +145,7 @@ class ManualPaymentController extends Controller
 
         $clientNotifications->sendManualPaymentSubmission($paymentProof);
 
+        session()->flash('gateway_id', $attempt->payment_gateway_id);
         return redirect()->route('client.invoices.pay', $invoice)
             ->with('status', 'Payment submitted. Our team will verify it shortly.');
     }

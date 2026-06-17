@@ -6,6 +6,7 @@ use App\Models\PaymentAttempt;
 use App\Services\Payment\Gateways\GatewayDriverInterface;
 use App\Support\SystemLogger;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class BkashGateway implements GatewayDriverInterface
 {
@@ -40,6 +41,14 @@ class BkashGateway implements GatewayDriverInterface
             'Authorization' => $token,
             'X-APP-Key' => $settings['app_key'] ?? null,
         ])->post($baseUrl.'/payment/create', $payload);
+
+        Log::info('bKash V1 Create Payment API', [
+            'action' => 'Create Payment',
+            'request_url' => $baseUrl.'/payment/create',
+            'request_body' => $payload,
+            'response_status' => $response->status(),
+            'response_body' => $response->json(),
+        ]);
 
         if (! $response->successful()) {
             return ['status' => 'error', 'message' => 'bKash payment creation failed.'];
@@ -120,6 +129,16 @@ class BkashGateway implements GatewayDriverInterface
                 'paymentID' => $paymentId,
             ]);
 
+            Log::info('bKash V1 Execute Payment API', [
+                'action' => 'Execute Payment',
+                'request_url' => $baseUrl.'/payment/execute',
+                'request_body' => [
+                    'paymentID' => $paymentId,
+                ],
+                'response_status' => $executeResponse?->status(),
+                'response_body' => $executeResponse?->json(),
+            ]);
+
             if ($executeResponse && $executeResponse->successful()) {
                 $response = $executeResponse->json();
             } else {
@@ -140,6 +159,16 @@ class BkashGateway implements GatewayDriverInterface
                     'X-APP-Key' => $appKey,
                 ])->post($baseUrl.'/payment/status', [
                     'paymentID' => $paymentId,
+                ]);
+
+                Log::info('bKash V1 Query Payment API', [
+                    'action' => 'Query Payment',
+                    'request_url' => $baseUrl.'/payment/status',
+                    'request_body' => [
+                        'paymentID' => $paymentId,
+                    ],
+                    'response_status' => $queryResponse?->status(),
+                    'response_body' => $queryResponse?->json(),
                 ]);
 
                 if ($queryResponse && $queryResponse->successful()) {
@@ -226,6 +255,17 @@ class BkashGateway implements GatewayDriverInterface
                 'app_key' => $appKey,
                 'app_secret' => $appSecret,
             ]);
+
+        Log::info('bKash V1 Grant Token API', [
+            'action' => 'Grant Token',
+            'request_url' => $baseUrl.'/token/grant',
+            'request_body' => [
+                'app_key' => $appKey,
+                'app_secret' => $appSecret,
+            ],
+            'response_status' => $response->status(),
+            'response_body' => $response->json(),
+        ]);
 
         if (! $response->successful()) {
             return null;

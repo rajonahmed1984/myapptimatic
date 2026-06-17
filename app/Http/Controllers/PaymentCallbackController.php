@@ -119,6 +119,9 @@ class PaymentCallbackController extends Controller
     private function redirectWithStatus(string $message, ?PaymentAttempt $attempt = null)
     {
         if ($attempt && $attempt->invoice) {
+            if ($attempt->payment_gateway_id) {
+                session()->flash('gateway_id', $attempt->payment_gateway_id);
+            }
             return redirect()
                 ->route('client.invoices.pay', $attempt->invoice)
                 ->with('status', $message);

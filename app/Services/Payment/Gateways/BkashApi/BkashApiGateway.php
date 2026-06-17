@@ -7,6 +7,7 @@ use App\Services\Payment\Gateways\GatewayDriverInterface;
 use App\Support\SystemLogger;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class BkashApiGateway implements GatewayDriverInterface
 {
@@ -54,6 +55,14 @@ class BkashApiGateway implements GatewayDriverInterface
             'Authorization' => $token,
             'X-APP-Key' => $appKey,
         ])->post($baseUrl.'/tokenized-checkout/payment/create', $payload);
+
+        Log::info('bKash V2 Create Payment API', [
+            'action' => 'Create Payment',
+            'request_url' => $baseUrl.'/tokenized-checkout/payment/create',
+            'request_body' => $payload,
+            'response_status' => $response->status(),
+            'response_body' => $response->json(),
+        ]);
 
         if (! $response->successful()) {
             SystemLogger::write('module', 'bKash V2 payment creation failed.', [
@@ -142,6 +151,16 @@ class BkashApiGateway implements GatewayDriverInterface
                 'paymentId' => $paymentId,
             ]);
 
+            Log::info('bKash V2 Execute Payment API', [
+                'action' => 'Execute Payment',
+                'request_url' => $baseUrl.'/tokenized-checkout/payment/execute',
+                'request_body' => [
+                    'paymentId' => $paymentId,
+                ],
+                'response_status' => $executeResponse?->status(),
+                'response_body' => $executeResponse?->json(),
+            ]);
+
             if ($executeResponse && $executeResponse->successful()) {
                 $response = $executeResponse->json();
             } else {
@@ -163,6 +182,16 @@ class BkashApiGateway implements GatewayDriverInterface
                     'X-APP-Key' => $appKey,
                 ])->post($baseUrl.'/tokenized-checkout/query/payment', [
                     'paymentId' => $paymentId,
+                ]);
+
+                Log::info('bKash V2 Query Payment API', [
+                    'action' => 'Query Payment',
+                    'request_url' => $baseUrl.'/tokenized-checkout/query/payment',
+                    'request_body' => [
+                        'paymentId' => $paymentId,
+                    ],
+                    'response_status' => $queryResponse?->status(),
+                    'response_body' => $queryResponse?->json(),
                 ]);
 
                 if ($queryResponse && $queryResponse->successful()) {
@@ -350,6 +379,17 @@ class BkashApiGateway implements GatewayDriverInterface
                 'app_key' => $appKey,
                 'app_secret' => $appSecret,
             ]);
+
+        Log::info('bKash V2 Grant Token API', [
+            'action' => 'Grant Token',
+            'request_url' => $baseUrl.'/tokenized-checkout/auth/grant-token',
+            'request_body' => [
+                'app_key' => $appKey,
+                'app_secret' => $appSecret,
+            ],
+            'response_status' => $response->status(),
+            'response_body' => $response->json(),
+        ]);
 
         if (! $response->successful()) {
             SystemLogger::write('module', 'bKash V2 grant token failed.', [

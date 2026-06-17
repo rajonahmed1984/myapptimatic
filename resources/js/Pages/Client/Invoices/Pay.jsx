@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
 
 const toHtmlWithLineBreaks = (value) => String(value || '').replace(/\n/g, '<br>');
@@ -12,8 +12,26 @@ export default function Pay({
     payment_instructions = '',
     routes = {},
     payments = [],
+    selected_gateway_id = null,
 }) {
-    const initialGatewayId = gateways.length > 0 ? String(gateways[0].id) : '';
+    const { errors = {}, flash = {} } = usePage().props;
+
+    const errorMessages = Object.values(errors).filter(Boolean);
+    const statusMessage = flash.status || '';
+    const isStatusError = statusMessage && (
+        statusMessage.toLowerCase().includes('fail') ||
+        statusMessage.toLowerCase().includes('cancel') ||
+        statusMessage.toLowerCase().includes('not be verified') ||
+        statusMessage.toLowerCase().includes('unable') ||
+        statusMessage.toLowerCase().includes('error')
+    );
+
+    const finalErrorMessage = flash.error || (isStatusError ? statusMessage : null) || (errorMessages.length > 0 ? errorMessages.join(', ') : null);
+    const finalSuccessMessage = !isStatusError ? statusMessage : null;
+
+    const initialGatewayId = selected_gateway_id
+        ? String(selected_gateway_id)
+        : (gateways.length > 0 ? String(gateways[0].id) : '');
     const [gatewayId, setGatewayId] = useState(initialGatewayId);
     const gatewayOptions = gateways.map((gateway) => ({ value: String(gateway.id), label: gateway.name }));
 
@@ -85,6 +103,37 @@ export default function Pay({
                 .alert { padding: 8px 10px; margin-bottom: 10px; border: 1px solid transparent; }
                 .alert.amber { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
                 .alert.rose { border-color: #fecdd3; background: #fff1f2; color: #9f1239; }
+                .alert-custom {
+                    padding: 15px 20px;
+                    margin-bottom: 20px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    line-height: 1.5;
+                }
+                .alert-custom-error {
+                    background-color: #fdf2f2;
+                    border: 1px solid #fecdd3;
+                    border-left: 4px solid #f87171;
+                    color: #9b1c1c;
+                }
+                .alert-custom-error .alert-title {
+                    font-weight: bold;
+                    margin-bottom: 4px;
+                    font-size: 15px;
+                    color: #7f1d1d;
+                }
+                .alert-custom-success {
+                    background-color: #f0fdf4;
+                    border: 1px solid #bbf7d0;
+                    border-left: 4px solid #4ade80;
+                    color: #166534;
+                }
+                .alert-custom-success .alert-title {
+                    font-weight: bold;
+                    margin-bottom: 4px;
+                    font-size: 15px;
+                    color: #14532d;
+                }
                 @media (max-width: 767px) {
                     .invoice-container .invoice-col { padding: 0 10px; }
                     .invoice-container .invoice-logo-image { max-width: 240px; max-height: 72px; }
@@ -125,6 +174,20 @@ export default function Pay({
                 </div>
 
                 <hr />
+
+                {finalErrorMessage && (
+                    <div className="alert-custom alert-custom-error">
+                        <div className="alert-title">Error</div>
+                        <div>{finalErrorMessage}</div>
+                    </div>
+                )}
+
+                {finalSuccessMessage && (
+                    <div className="alert-custom alert-custom-success">
+                        <div className="alert-title">Success</div>
+                        <div>{finalSuccessMessage}</div>
+                    </div>
+                )}
 
                 <div className="invoice-grid invoice-addresses">
                     <div className="invoice-col" style={{ width: showPaymentPanel ? '33.33%' : '50%' }}>
