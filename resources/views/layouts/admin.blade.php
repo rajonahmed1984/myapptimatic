@@ -405,6 +405,13 @@
                             <span>Chat</span>
                             <span class="ml-auto ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">{{ $adminHeaderStats['unread_chat'] ?? 0 }}</span>
                         </x-nav-link>
+                        <x-nav-link
+                            :href="route('admin.chatbot-leads.index')"
+                            routes="admin.chatbot-leads.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            <span>Chatbot Leads</span>
+                        </x-nav-link>
                         @php
                             $hasApptimaticEmailRoute = \Illuminate\Support\Facades\Route::has('admin.apptimatic-email.inbox');
                             $isApptimaticEmailActive = $hasApptimaticEmailRoute && isActive('admin.apptimatic-email.*');

@@ -43,6 +43,7 @@ use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
 use App\Http\Controllers\Admin\Hr\AttendanceController as HrAttendanceController;
 use App\Http\Controllers\Admin\Hr\PaidHolidayController as HrPaidHolidayController;
 use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
+use App\Http\Controllers\Admin\ChatbotLeadViewController;
 use App\Http\Controllers\Admin\IncomeCategoryController as AdminIncomeCategoryController;
 use App\Http\Controllers\Admin\IncomeController as AdminIncomeController;
 use App\Http\Controllers\AuthFresh\PortalLoginController;
@@ -121,6 +122,8 @@ Route::middleware([
     HandleInertiaRequests::class,
 ])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/chatbot-leads', [ChatbotLeadViewController::class, 'index'])->name('chatbot-leads.index');
+    Route::delete('/chatbot-leads/{id}', [ChatbotLeadViewController::class, 'destroy'])->name('chatbot-leads.destroy');
     Route::get('customers/{customer}', [CustomerController::class, 'show'])
         ->whereNumber('customer')
         ->name('customers.show');
