@@ -152,6 +152,23 @@ export default function Pay({
 
                 <hr />
 
+                {finalSuccessMessage && (
+                    <div className="mb-6 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-3 shadow-sm no-print">
+                        <svg className="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="font-semibold text-sm">{finalSuccessMessage}</span>
+                    </div>
+                )}
+
+                {finalErrorMessage && (
+                    <div className="mb-6 p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-3 shadow-sm no-print">
+                        <svg className="w-5 h-5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="font-semibold text-sm">{finalErrorMessage}</span>
+                    </div>
+                )}
 
                 <div className="invoice-grid invoice-addresses">
                     <div className="invoice-col" style={{ width: showPaymentPanel ? '33.33%' : '50%' }}>
