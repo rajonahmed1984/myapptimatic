@@ -39,7 +39,7 @@ export default function SelectField({
 
     return (
         <div className={className}>
-            {label ? <label className="text-sm text-slate-200/85">{label}</label> : null}
+            {label ? <label className="text-xs font-semibold text-slate-600 ml-1">{label}</label> : null}
             <select
                 name={name}
                 defaultValue={defaultValue}
