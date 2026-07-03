@@ -44,7 +44,15 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
     const hasPrefilledEmail = Boolean(form?.email);
     const isClientPortal = portal === 'web';
     const [showEmailForm, setShowEmailForm] = React.useState(!isClientPortal || hasErrors || hasPrefilledEmail);
-    const [socialNotice, setSocialNotice] = React.useState(null);
+    const [socialNotice, setSocialNotice] = React.useState(flash?.social_error || null);
+
+    React.useEffect(() => {
+        if (flash?.social_error) {
+            setSocialNotice(flash.social_error);
+            const timer = setTimeout(() => setSocialNotice(null), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [flash?.social_error]);
 
     const handleSocialClick = (provider) => {
         window.location.href = `/auth/${provider.toLowerCase()}/redirect?portal=${portal}`;

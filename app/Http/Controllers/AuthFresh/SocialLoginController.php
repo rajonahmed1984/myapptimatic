@@ -32,7 +32,7 @@ class SocialLoginController extends Controller
     {
         $provider = strtolower($provider);
         if (! in_array($provider, ['google', 'microsoft', 'apple'], true)) {
-            return redirect()->route('login')->withErrors(['email' => 'Unsupported login provider.']);
+            return redirect()->route('login')->with('social_error', 'Unsupported login provider.');
         }
 
         $portal = Portal::normalize($request->query('portal', 'web'));
@@ -47,7 +47,7 @@ class SocialLoginController extends Controller
             }
 
             return redirect(Portal::portalLoginUrl($portal))
-                ->withErrors(['email' => ucfirst($provider) . ' login is currently unavailable.']);
+                ->with('social_error', ucfirst($provider) . ' login is currently unavailable.');
         }
 
         $state = Str::random(40);
@@ -107,13 +107,13 @@ class SocialLoginController extends Controller
         $state = $request->input('state');
         if (empty($state) || $state !== $sessionState) {
             return redirect(Portal::portalLoginUrl($portal))
-                ->withErrors(['email' => 'Invalid state parameter. Authentication failed.']);
+                ->with('social_error', 'Invalid state parameter. Authentication failed.');
         }
 
         $code = $request->input('code');
         if (empty($code)) {
             return redirect(Portal::portalLoginUrl($portal))
-                ->withErrors(['email' => 'Authorization code missing.']);
+                ->with('social_error', 'Authorization code missing.');
         }
 
         $config = config("services.{$provider}");
@@ -133,7 +133,7 @@ class SocialLoginController extends Controller
                 ]);
 
                 if (! $response->successful()) {
-                    return redirect(Portal::portalLoginUrl($portal))->withErrors(['email' => 'Token exchange failed.']);
+                    return redirect(Portal::portalLoginUrl($portal))->with('social_error', 'Token exchange failed.');
                 }
 
                 $tokenData = $response->json();
@@ -155,7 +155,7 @@ class SocialLoginController extends Controller
                 ]);
 
                 if (! $response->successful()) {
-                    return redirect(Portal::portalLoginUrl($portal))->withErrors(['email' => 'Token exchange failed.']);
+                    return redirect(Portal::portalLoginUrl($portal))->with('social_error', 'Token exchange failed.');
                 }
 
                 $tokenData = $response->json();
@@ -177,7 +177,7 @@ class SocialLoginController extends Controller
                 ]);
 
                 if (! $response->successful()) {
-                    return redirect(Portal::portalLoginUrl($portal))->withErrors(['email' => 'Token exchange failed.']);
+                    return redirect(Portal::portalLoginUrl($portal))->with('social_error', 'Token exchange failed.');
                 }
 
                 $tokenData = $response->json();
@@ -201,14 +201,14 @@ class SocialLoginController extends Controller
 
             if (empty($email)) {
                 return redirect(Portal::portalLoginUrl($portal))
-                    ->withErrors(['email' => 'Could not retrieve email address from social account.']);
+                    ->with('social_error', 'Could not retrieve email address from social account.');
             }
 
             return $this->authenticateAndRedirect($request, $email, $name ?? explode('@', $email)[0], $portal);
 
         } catch (\Exception $e) {
             return redirect(Portal::portalLoginUrl($portal))
-                ->withErrors(['email' => 'An error occurred during authentication: ' . $e->getMessage()]);
+                ->with('social_error', 'An error occurred during authentication: ' . $e->getMessage());
         }
     }
 

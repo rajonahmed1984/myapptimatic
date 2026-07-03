@@ -30,6 +30,17 @@ class SocialLoginTest extends TestCase
         $response->assertRedirect(route('auth.sandbox', ['provider' => 'google', 'portal' => 'web']));
     }
 
+    public function test_redirect_route_redirects_to_login_with_flash_error_when_credentials_are_missing_in_production(): void
+    {
+        $this->app->detectEnvironment(fn() => 'production');
+        config()->set('services.google.client_id', null);
+
+        $response = $this->get('/auth/google/redirect?portal=web');
+
+        $response->assertRedirect('/login');
+        $response->assertSessionHas('social_error', 'Google login is currently unavailable.');
+    }
+
     public function test_redirect_route_redirects_to_google_when_credentials_exist(): void
     {
         config()->set('services.google.client_id', 'google-client-id');
