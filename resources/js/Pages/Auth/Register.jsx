@@ -155,11 +155,13 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                             onSubmit={(event) => {
                                 const formElement = event.currentTarget;
                                 const checkbox = formElement.querySelector('input[name="accepttos"]');
-                                const isChecked = checkbox instanceof HTMLInputElement ? checkbox.checked : false;
-                                if (!isChecked) {
-                                    event.preventDefault();
-                                    setTosError('Please accept the Terms of Service to continue registration.');
-                                    return;
+                                if (checkbox) {
+                                    const isChecked = checkbox instanceof HTMLInputElement ? checkbox.checked : false;
+                                    if (!isChecked) {
+                                        event.preventDefault();
+                                        setTosError('Please accept the Terms of Service to continue registration.');
+                                        return;
+                                    }
                                 }
                                 setTosError('');
                             }}
@@ -256,27 +258,31 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                                 {passwordMatchMessage ? (
                                     <p className={`${passwordMatchMessage.className.replace('text-emerald-300', 'text-emerald-600').replace('text-rose-300', 'text-rose-600')} md:col-span-2`}>{passwordMatchMessage.text}</p>
                                 ) : null}
-                                <SelectField
-                                    label="Currency"
-                                    name="currency"
-                                    defaultValue={form?.currency || 'BDT'}
-                                    options={[
-                                        { value: 'BDT', label: 'BDT (Tk)' },
-                                        { value: 'USD', label: 'USD ($)' },
-                                    ]}
-                                    error={errors?.currency}
-                                    selectClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full"
-                                />
-
-                                <TextAreaField
-                                    label="Address"
-                                    name="address"
-                                    defaultValue={form?.address || ''}
-                                    className="md:col-span-2"
-                                    rows={1}
-                                    error={errors?.address}
-                                    textAreaClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full py-2.5"
-                                />
+                                <div className="md:col-span-2 flex flex-col md:flex-row gap-4 items-start w-full">
+                                    <div className="w-full md:w-[20%]">
+                                        <SelectField
+                                            label="Currency"
+                                            name="currency"
+                                            defaultValue={form?.currency || 'BDT'}
+                                            options={[
+                                                { value: 'BDT', label: 'BDT (Tk)' },
+                                                { value: 'USD', label: 'USD ($)' },
+                                            ]}
+                                            error={errors?.currency}
+                                            selectClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full"
+                                        />
+                                    </div>
+                                    <div className="w-full md:w-[80%]">
+                                        <TextAreaField
+                                            label="Address"
+                                            name="address"
+                                            defaultValue={form?.address || ''}
+                                            rows={1}
+                                            error={errors?.address}
+                                            textAreaClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full py-2.5"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                             <RecaptchaField
                                 enabled={Boolean(recaptcha?.enabled)}
