@@ -42,7 +42,8 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
 
     const hasErrors = Object.keys(errors).length > 0;
     const hasPrefilledEmail = Boolean(form?.email);
-    const [showEmailForm, setShowEmailForm] = React.useState(hasErrors || hasPrefilledEmail);
+    const isClientPortal = portal === 'web';
+    const [showEmailForm, setShowEmailForm] = React.useState(!isClientPortal || hasErrors || hasPrefilledEmail);
     const [socialNotice, setSocialNotice] = React.useState(null);
 
     const handleSocialClick = (provider) => {
@@ -190,16 +191,18 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
                                             Sign in
                                         </SubmitButton>
                                         
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowEmailForm(false)}
-                                            className="w-full h-10 rounded-full bg-transparent hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]"
-                                        >
-                                            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                                            </svg>
-                                            Other sign-in options
-                                        </button>
+                                        {isClientPortal && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowEmailForm(false)}
+                                                className="w-full h-10 rounded-full bg-transparent hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]"
+                                            >
+                                                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                                </svg>
+                                                Other sign-in options
+                                            </button>
+                                        )}
                                     </div>
                                 </form>
                             </div>
