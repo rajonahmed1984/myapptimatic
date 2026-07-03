@@ -123,43 +123,6 @@ export default function Index({
                     </form>
                 </div>
 
-                <div className="mt-5 grid gap-4 xl:grid-cols-3">
-                    <SummaryCard
-                        title="Overall Progress"
-                        percent={Number(task_insights?.overview?.completion_rate || 0)}
-                        tone="teal"
-                        stats={[
-                            { label: 'Work Items', value: Number(task_insights?.overview?.total_items || 0) },
-                            { label: 'Completed', value: Number(task_insights?.overview?.completed_items || 0) },
-                            { label: 'Overdue', value: Number(task_insights?.overview?.overdue_items || 0), tone: 'rose' },
-                        ]}
-                    />
-                    <SummaryCard
-                        title="Tasks Snapshot"
-                        percent={Number(task_insights?.tasks?.completion_rate || 0)}
-                        tone="amber"
-                        stats={[
-                            { label: 'Total', value: Number(task_insights?.tasks?.total || 0) },
-                            { label: 'Open', value: Number(task_insights?.tasks?.open || 0) },
-                            { label: 'Inprogress', value: Number(task_insights?.tasks?.in_progress || 0), tone: 'amber' },
-                            { label: 'Blocked', value: Number(task_insights?.tasks?.blocked || 0), tone: 'rose' },
-                            { label: 'Completed', value: Number(task_insights?.tasks?.completed || 0), tone: 'emerald' },
-                            { label: 'Overdue', value: Number(task_insights?.tasks?.overdue || 0), tone: 'rose' },
-                        ]}
-                    />
-                    <SummaryCard
-                        title="Subtasks Snapshot"
-                        percent={Number(task_insights?.subtasks?.completion_rate || 0)}
-                        tone="sky"
-                        stats={[
-                            { label: 'Total', value: Number(task_insights?.subtasks?.total || 0) },
-                            { label: 'Open', value: Number(task_insights?.subtasks?.open || 0) },
-                            { label: 'Completed', value: Number(task_insights?.subtasks?.completed || 0), tone: 'emerald' },
-                            { label: 'Overdue', value: Number(task_insights?.subtasks?.overdue || 0), tone: 'rose' },
-                        ]}
-                    />
-                </div>
-
                 <div className="mt-6 overflow-x-auto">
                     <table className="min-w-full text-left text-sm">
                         <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -205,9 +168,19 @@ export default function Index({
                                                     )}
                                                 </div>
                                                 {task.project?.name && task.routes?.project_show ? (
-                                                    <a href={task.routes.project_show} data-native="true" className="mt-1 inline-block text-xs text-slate-500 hover:text-teal-600">
-                                                        {task.project.name}
-                                                    </a>
+                                                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500">
+                                                        <a href={task.routes.project_show} data-native="true" className="hover:text-teal-600">
+                                                            {task.project.name}
+                                                        </a>
+                                                        {task.project.client?.name && task.project.client?.show_route ? (
+                                                            <>
+                                                                <span className="text-slate-300">|</span>
+                                                                <a href={task.project.client.show_route} data-native="true" className="font-semibold text-teal-600 hover:text-teal-500">
+                                                                    {task.project.client.name}
+                                                                </a>
+                                                            </>
+                                                        ) : null}
+                                                    </div>
                                                 ) : null}
                                                 <div className="mt-2 text-xs text-slate-500">
                                                     Created by <span className="font-medium text-slate-700">{task.creator_name || 'System'}</span>

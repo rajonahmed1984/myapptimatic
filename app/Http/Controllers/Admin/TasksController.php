@@ -21,7 +21,7 @@ class TasksController extends Controller
         $search = trim((string) $request->input('search', ''));
 
         $tasksQuery = $taskQueryService->visibleTasksForUser($user)
-            ->with(['project', 'createdBy'])
+            ->with(['project.customer', 'createdBy'])
             ->withCount('subtasks');
 
         if ($statusFilter === '') {
@@ -79,6 +79,11 @@ class TasksController extends Controller
                         'project' => $task->project ? [
                             'id' => $task->project->id,
                             'name' => $task->project->name,
+                            'client' => $task->project->customer ? [
+                                'id' => $task->project->customer->id,
+                                'name' => $task->project->customer->name,
+                                'show_route' => route('admin.customers.show', $task->project->customer),
+                            ] : null,
                         ] : null,
                         'creator_name' => $task->createdBy?->name ?? 'System',
                         'routes' => $task->project ? [
