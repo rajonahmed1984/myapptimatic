@@ -45,6 +45,7 @@ use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
 use App\Http\Controllers\Admin\IncomeCategoryController as AdminIncomeCategoryController;
 use App\Http\Controllers\Admin\IncomeController as AdminIncomeController;
 use App\Http\Controllers\AuthFresh\PortalLoginController;
+use App\Http\Controllers\AuthFresh\SocialLoginController;
 use App\Http\Controllers\AuthFresh\LogoutController;
 use App\Http\Controllers\Auth\RolePasswordResetController;
 use App\Http\Controllers\AuthController;
@@ -230,6 +231,13 @@ Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':web',
         ->name('password.reset');
     Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
 });
+
+Route::get('/auth/{provider}/redirect', [SocialLoginController::class, 'redirect'])->name('auth.redirect');
+Route::get('/auth/{provider}/callback', [SocialLoginController::class, 'callback'])->name('auth.callback');
+Route::get('/auth/sandbox/{provider}', [SocialLoginController::class, 'sandbox'])
+    ->middleware(HandleInertiaRequests::class)
+    ->name('auth.sandbox');
+Route::post('/auth/sandbox/{provider}/login', [SocialLoginController::class, 'sandboxLogin'])->name('auth.sandbox.login');
 
 require __DIR__ . '/portals/employee.php';
 

@@ -47,8 +47,7 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
     const [socialNotice, setSocialNotice] = React.useState(null);
 
     const handleSocialClick = (provider) => {
-        setSocialNotice(`${provider} login is currently unavailable.`);
-        setTimeout(() => setSocialNotice(null), 4000);
+        window.location.href = `/auth/${provider.toLowerCase()}/redirect?portal=${portal}`;
     };
 
     return (
