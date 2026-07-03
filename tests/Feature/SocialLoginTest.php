@@ -33,6 +33,7 @@ class SocialLoginTest extends TestCase
     public function test_redirect_route_redirects_to_login_with_flash_error_when_credentials_are_missing_in_production(): void
     {
         $this->app->detectEnvironment(fn() => 'production');
+        config()->set('app.debug', false);
         config()->set('services.google.client_id', null);
 
         $response = $this->get('/auth/google/redirect?portal=web');

@@ -42,7 +42,7 @@ class SocialLoginController extends Controller
         $config = config("services.{$provider}");
 
         if (empty($config['client_id'])) {
-            if (app()->environment(['local', 'testing'])) {
+            if (app()->environment(['local', 'testing', 'development', 'dev', 'staging']) || config('app.debug')) {
                 return redirect()->route('auth.sandbox', ['provider' => $provider, 'portal' => $portal]);
             }
 
@@ -222,7 +222,7 @@ class SocialLoginController extends Controller
             abort(404);
         }
 
-        if (! app()->environment(['local', 'testing'])) {
+        if (! (app()->environment(['local', 'testing', 'development', 'dev', 'staging']) || config('app.debug'))) {
             abort(403, 'Sandbox mode is only available in local or testing environments.');
         }
 
@@ -252,7 +252,7 @@ class SocialLoginController extends Controller
             abort(404);
         }
 
-        if (! app()->environment(['local', 'testing'])) {
+        if (! (app()->environment(['local', 'testing', 'development', 'dev', 'staging']) || config('app.debug'))) {
             abort(403, 'Sandbox mode is only available in local or testing environments.');
         }
 
