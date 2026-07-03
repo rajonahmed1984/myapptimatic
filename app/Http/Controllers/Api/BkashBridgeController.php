@@ -12,15 +12,22 @@ class BkashBridgeController extends Controller
 {
     public function getToken()
     {
-        $settings = config('services.bkash');
+        $gateway = \App\Models\PaymentGateway::query()
+            ->where('slug', 'bkash_api')
+            ->first();
 
+        if (!$gateway || !$gateway->settings) {
+            return response()->json(['message' => 'bKash API Gateway is not configured in database.'], 500);
+        }
+
+        $settings = $gateway->settings;
         $username = $settings['username'] ?? null;
         $password = $settings['password'] ?? null;
         $appKey = $settings['app_key'] ?? null;
         $appSecret = $settings['app_secret'] ?? null;
 
         if (!$username || !$password || !$appKey || !$appSecret) {
-            return response()->json(['message' => 'bKash credentials are not configured on Token Master.'], 500);
+            return response()->json(['message' => 'bKash credentials are missing from gateway configuration.'], 500);
         }
 
         $cacheKey = 'bkash_token_bridge_master';

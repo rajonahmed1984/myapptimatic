@@ -34,14 +34,23 @@ class BkashBridgeApiTest extends TestCase
     #[Test]
     public function token_bridge_api_returns_bkash_id_token_and_caches_it(): void
     {
-        config([
-            'services.bkash.api_key' => 'secret-bridge-key',
-            'services.bkash.username' => 'test-user',
-            'services.bkash.password' => 'test-pass',
-            'services.bkash.app_key' => 'test-key',
-            'services.bkash.app_secret' => 'test-secret',
-            'services.bkash.sandbox' => true,
-        ]);
+        config(['services.bkash.api_key' => 'secret-bridge-key']);
+
+        PaymentGateway::query()->updateOrCreate(
+            ['slug' => 'bkash_api'],
+            [
+                'name' => 'bKash API',
+                'driver' => 'bkash_api',
+                'settings' => [
+                    'username' => 'test-user',
+                    'password' => 'test-pass',
+                    'app_key' => 'test-key',
+                    'app_secret' => 'test-secret',
+                    'sandbox' => true,
+                ],
+                'status' => 'active',
+            ]
+        );
 
         Cache::forget('bkash_token_bridge_master');
 
