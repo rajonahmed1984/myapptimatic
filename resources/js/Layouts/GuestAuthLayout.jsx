@@ -10,7 +10,7 @@ export default function GuestAuthLayout({ children, wide = false }) {
             </div>
 
             <div className="mt-6 text-center text-xs text-slate-500">
-                By continuing, you agree to Apptimatic&apos;s{' '}
+                By continuing, you agree to <b>Apptimatic&apos;s</b> {' '}
                 <a href="https://apptimatic.com/terms" className="font-semibold text-teal-600 hover:text-teal-500">
                     Terms of Service
                 </a>{' '}

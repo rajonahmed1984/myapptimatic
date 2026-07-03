@@ -16,29 +16,54 @@ export default function ForgotPassword({ pageTitle = 'Forgot Password', form = {
         <>
             <Head title={pageTitle} />
             <GuestAuthLayout>
-                <section className="auth-glass-card relative overflow-hidden rounded-2xl px-8 py-10 text-white sm:px-10">
-                    <div className="auth-glass-overlay absolute inset-0"></div>
-                    <div className="auth-glass-readable relative z-10 text-center">
+                <section className="bg-white border border-slate-200/60 relative overflow-hidden rounded-3xl p-8 text-slate-800 shadow-xl shadow-slate-200/30 sm:p-10">
+                    <div className="relative z-10">
                         <div className="mb-6 flex justify-center">
                             <a href="/" className="flex items-center gap-3" data-native="true">
                                 {branding?.logo_url ? (
                                     <img src={branding.logo_url} alt="Company logo" className="h-12 rounded-xl p-1" />
                                 ) : (
-                                    <div className="text-lg font-semibold text-white">MyApptimatic</div>
+                                    <div className="text-lg font-bold text-slate-900 tracking-tight">MyApptimatic</div>
                                 )}
                             </a>
                         </div>
-                        <p className="text-center text-sm font-semibold uppercase tracking-[0.32em] text-white">Password reset</p>
-                        <p className="mx-auto mt-2 max-w-sm text-center text-sm text-slate-100/95">Enter your email and we will send a reset link.</p>
+
+                        <div className="text-center mb-6">
+                            <p className="text-xs font-semibold uppercase tracking-[0.36em] text-teal-600">Password reset</p>
+                            <h1 className="mt-2 text-2xl font-bold text-slate-900 tracking-tight">Forgot Password</h1>
+                            <p className="mt-2 text-xs text-slate-500">Enter your email and we will send a reset link.</p>
+                        </div>
 
                         {isWarningEmailError ? (
-                            <div className="mt-5 rounded-xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-sm font-medium text-amber-100">{emailError}</div>
+                            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 text-left">{emailError}</div>
                         ) : null}
-                        {!isWarningEmailError ? <AlertStack status={flash?.status || messages?.status} errors={{ email: emailError }} singleError /> : null}
-                        {isWarningEmailError && (flash?.status || messages?.status) ? <AlertStack status={flash?.status || messages?.status} errors={null} singleError /> : null}
-                        <AlertStack status={null} errors={Object.fromEntries(Object.entries(errors).filter(([key]) => key !== 'email'))} singleError />
+                        {!isWarningEmailError ? (
+                            <AlertStack
+                                status={flash?.status || messages?.status}
+                                errors={{ email: emailError }}
+                                singleError
+                                statusClassName="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 text-left"
+                                errorClassName="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 text-left"
+                            />
+                        ) : null}
+                        {isWarningEmailError && (flash?.status || messages?.status) ? (
+                            <AlertStack
+                                status={flash?.status || messages?.status}
+                                errors={null}
+                                singleError
+                                statusClassName="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 text-left"
+                                errorClassName="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 text-left"
+                            />
+                        ) : null}
+                        <AlertStack
+                            status={null}
+                            errors={Object.fromEntries(Object.entries(errors).filter(([key]) => key !== 'email'))}
+                            singleError
+                            statusClassName="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 text-left"
+                            errorClassName="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 text-left"
+                        />
 
-                        <form className="mt-8 space-y-5 text-left" method="POST" action={routes.email} data-native="true">
+                        <form className="mt-6 space-y-5 text-left" method="POST" action={routes.email} data-native="true">
                             <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content || ''} />
                             <InputField
                                 name="email"
@@ -47,20 +72,23 @@ export default function ForgotPassword({ pageTitle = 'Forgot Password', form = {
                                 placeholder="Email"
                                 required
                                 error={isThrottled ? null : emailError}
+                                inputClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full"
                             />
                             <RecaptchaField
                                 enabled={Boolean(recaptcha?.enabled)}
                                 siteKey={recaptcha?.site_key || ''}
                                 action={recaptcha?.action || 'FORGOT_PASSWORD'}
                             />
-                            <div className="flex justify-center">
-                                <SubmitButton className="max-w-xs">Send reset link</SubmitButton>
+                            <div className="pt-2 flex justify-center">
+                                <SubmitButton className="h-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold tracking-wide transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg active:scale-[0.98] max-w-xs">
+                                    Send reset link
+                                </SubmitButton>
                             </div>
                         </form>
 
-                        <p className="mx-auto mt-6 w-full text-center text-xs text-slate-100/95">
+                        <p className="mx-auto mt-6 w-full text-center text-xs text-slate-500">
                             Remember your password?{' '}
-                            <a href={routes.login || '/login'} className="font-semibold text-teal-300 hover:text-teal-200" data-native="true">
+                            <a href={routes.login || '/login'} className="font-semibold text-teal-600 hover:text-teal-500" data-native="true">
                                 Sign in
                             </a>
                             .
