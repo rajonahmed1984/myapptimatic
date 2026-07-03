@@ -26,6 +26,14 @@ const subscriptionStatusBadgeClass = (status) => {
     if (key === 'cancelled' || key === 'canceled' || key === 'terminated' || key === 'expired') return 'border-slate-300 bg-slate-100 text-slate-700';
     return 'border-sky-200 bg-sky-50 text-sky-700';
 };
+const earningStatusBadgeClass = (status) => {
+    const key = String(status || '').toLowerCase();
+    if (key === 'paid') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    if (key === 'payable') return 'border-blue-200 bg-blue-50 text-blue-700';
+    if (key === 'earned') return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+    if (key === 'pending') return 'border-amber-200 bg-amber-50 text-amber-700';
+    return 'border-slate-300 bg-slate-50 text-slate-700';
+};
 
 export default function Show({
     pageTitle = 'Sales Representative',
@@ -438,8 +446,21 @@ function EarningsTable({ rows, summary, route }) {
                                 {rows.map((row) => (
                                     <tr key={row.id} className="border-t border-slate-100">
                                         <td className="px-3 py-2">{row.earned_date || '--'}</td>
-                                        <td className="px-3 py-2">{row.status_label || row.status || '--'}</td>
-                                        <td className="px-3 py-2">{row.source_label || row.source_type || '--'}</td>
+                                        <td className="px-3 py-2">
+                                            <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${earningStatusBadgeClass(row.status)}`}>
+                                                {row.status_label || row.status || '--'}
+                                            </span>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <div>{row.source_label || row.source_type || '--'}</div>
+                                            {row.invoice_number && row.invoice_show_route ? (
+                                                <div className="mt-1">
+                                                    <a href={row.invoice_show_route} data-native="true" className="font-semibold text-teal-600 hover:text-teal-500">
+                                                        {row.invoice_number}
+                                                    </a>
+                                                </div>
+                                            ) : null}
+                                        </td>
                                         <td className="px-3 py-2">{row.details || '--'}</td>
                                         <td className="px-3 py-2 text-right">{`${row.currency || ''} ${money(row.amount)}`.trim()}</td>
                                     </tr>

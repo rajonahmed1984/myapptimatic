@@ -12,6 +12,8 @@ export default function Index({
     tasks_widget = {},
     routes = {},
 }) {
+    const payableBalance = Number(balance?.total_earned || 0) - Number(balance?.total_paid || 0);
+
     return (
         <>
             <Head title="Sales Rep Dashboard" />
@@ -23,11 +25,36 @@ export default function Index({
                     <div className="text-sm text-slate-500">View earnings, payouts, and balances.</div>
                 </div>
 
-                <div className="grid gap-4 text-sm text-slate-700 md:grid-cols-4">
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Payable balance</div><div className="mt-2 text-2xl font-semibold text-slate-900">{Number(balance?.payable_balance || 0).toFixed(2)}</div></div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Total earned</div><div className="mt-2 text-2xl font-semibold text-slate-900">{Number(balance?.total_earned || 0).toFixed(2)}</div></div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Earned this month</div><div className="mt-2 text-2xl font-semibold text-slate-900">{Number(earned_this_month || 0).toFixed(2)}</div></div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4"><div className="text-xs uppercase tracking-[0.2em] text-slate-400">Paid this month</div><div className="mt-2 text-2xl font-semibold text-slate-900">{Number(paid_this_month || 0).toFixed(2)}</div></div>
+                <div className="grid gap-4 text-sm text-slate-700 md:grid-cols-3">
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5">
+                        <div className="text-xs uppercase tracking-[0.2em] text-emerald-800 font-semibold">Total earned</div>
+                        <div className="mt-2 text-3xl font-bold text-emerald-950">{Number(balance?.total_earned || 0).toFixed(2)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-5">
+                        <div className="text-xs uppercase tracking-[0.2em] text-indigo-800 font-semibold">Total Payout</div>
+                        <div className="mt-2 text-3xl font-bold text-indigo-950">{Number(balance?.total_paid || 0).toFixed(2)}</div>
+                    </div>
+                    <div className={`rounded-2xl border p-5 ${payableBalance >= 0 ? 'border-teal-200 bg-teal-50/70 text-teal-950' : 'border-rose-200 bg-rose-50/70 text-rose-950'}`}>
+                        <div className={`text-xs uppercase tracking-[0.2em] font-semibold ${payableBalance >= 0 ? 'text-teal-800' : 'text-rose-800'}`}>Payable balance</div>
+                        <div className={`mt-2 text-3xl font-bold ${payableBalance >= 0 ? 'text-teal-950' : 'text-rose-950'}`}>{payableBalance.toFixed(2)}</div>
+                        <div className="mt-2 text-[11px] leading-tight opacity-75 font-semibold">
+                            {payableBalance >= 0 ? 'Status: Due to Representative' : 'Status: Overpaid Balance'}
+                        </div>
+                        <div className="mt-1.5 text-[9px] leading-relaxed opacity-60">
+                            (A positive balance indicates outstanding earnings due to you, while a negative balance indicates an overpayment or advance to be settled.)
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid gap-4 text-sm text-slate-700 md:grid-cols-2">
+                    <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
+                        <div className="text-xs uppercase tracking-[0.2em] text-violet-800 font-semibold">Earned this month</div>
+                        <div className="mt-2 text-2xl font-bold text-violet-950">{Number(earned_this_month || 0).toFixed(2)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-4">
+                        <div className="text-xs uppercase tracking-[0.2em] text-sky-800 font-semibold">Paid this month</div>
+                        <div className="mt-2 text-2xl font-bold text-sky-950">{Number(paid_this_month || 0).toFixed(2)}</div>
+                    </div>
                 </div>
 
                 <div>

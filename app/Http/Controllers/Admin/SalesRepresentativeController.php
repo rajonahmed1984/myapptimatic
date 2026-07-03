@@ -333,6 +333,7 @@ class SalesRepresentativeController extends Controller
         if ($tab === 'earnings') {
             $recentEarnings = $salesRep->earnings()
                 ->with([
+                    'invoice',
                     'project:id,name',
                     'subscription.plan.product',
                     'invoice.project:id,name',
@@ -712,6 +713,8 @@ class SalesRepresentativeController extends Controller
                     'status_label' => ucfirst((string) $earning->status),
                     'source_label' => $sourceLabel,
                     'details' => $details,
+                    'invoice_number' => $earning->invoice ? '#'.($earning->invoice->number ?? $earning->invoice->id) : null,
+                    'invoice_show_route' => $earning->invoice ? route('admin.invoices.show', $earning->invoice) : null,
                     'earned_date' => $earning->earned_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                     'earned_at' => $earning->earned_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];

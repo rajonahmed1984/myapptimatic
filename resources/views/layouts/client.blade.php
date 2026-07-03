@@ -157,23 +157,6 @@
                         Profile Settings
                     </a>
                 </div>
-                <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
-                    <div class="flex items-center gap-3">
-                        <div class="h-10 w-10 overflow-hidden rounded-full border border-white/20">
-                            <x-avatar :path="auth()->user()->avatar_path" :name="auth()->user()->name" size="h-10 w-10" textSize="text-xs" />
-                        </div>
-                        <div class="min-w-0">
-                            <div class="text-sm font-semibold text-white">{{ auth()->user()->name }}</div>
-                            <div class="text-xs text-slate-300">Client</div>                            
-                        </div>
-                    </div>                    
-                    <form method="POST" action="{{ route('logout') }}" class="mt-3">
-                        @csrf
-                        <button type="submit" class="w-full rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/20">
-                            Sign out
-                        </button>
-                    </form>                    
-                </div>
             </div>
         </aside>
 
@@ -192,6 +175,23 @@
                         </div>
                     </div>
 
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-3 border-r border-slate-200 pr-4">
+                            <div class="h-9 w-9 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                                <x-avatar :path="auth()->user()->avatar_path" :name="auth()->user()->name" size="h-9 w-9" textSize="text-xs" />
+                            </div>
+                            <div class="hidden sm:block text-left">
+                                <div class="text-xs font-semibold text-slate-800">{{ auth()->user()->name }}</div>
+                                <div class="text-[10px] text-slate-500 font-medium">Client</div>
+                            </div>
+                        </div>
+                        <form method="POST" action="{{ route('logout') }}" class="m-0">
+                            @csrf
+                            <button type="submit" class="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-800">
+                                Sign out
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
                 @if(session()->has('impersonator_id'))
