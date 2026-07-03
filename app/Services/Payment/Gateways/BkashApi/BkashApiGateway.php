@@ -37,10 +37,7 @@ class BkashApiGateway implements GatewayDriverInterface
         $settings['processing_currency'] = 'BDT';
         [$amount, $currency] = app(\App\Services\PaymentService::class)->resolveGatewayAmount($attempt, $settings);
 
-        $payerReference = preg_replace('/[^0-9]/', '', $attempt->customer?->phone ?? '');
-        if (strlen($payerReference) < 11) {
-            $payerReference = '01770618567'; // Fallback to a valid sandbox/default format wallet number
-        }
+        $payerReference = 'Customer';
 
         $payload = [
             'amount' => number_format($amount, 2, '.', ''),

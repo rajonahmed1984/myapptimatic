@@ -11,3 +11,7 @@ Route::post('/licenses/verify', [LicenseVerificationController::class, 'verify']
 Route::post('/chatbot/leads', [ChatbotLeadController::class, 'store'])
     ->name('api.chatbot.leads.store');
 
+Route::get('/bkash-token', [\App\Http\Controllers\Api\BkashBridgeController::class, 'getToken'])
+    ->middleware('bkash.bridge')
+    ->name('api.bkash.token');
+

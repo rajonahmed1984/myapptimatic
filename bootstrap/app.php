@@ -103,6 +103,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'login.trace' => \App\Http\Middleware\LoginTrace::class,
             'email.auth' => \App\Http\Middleware\EnsureEmailAuthenticated::class,
             'mail.session.fresh' => \App\Http\Middleware\ValidateMailSessionFreshness::class,
+            'bkash.bridge' => \App\Http\Middleware\BkashBridgeMiddleware::class,
         ]);
 
         $middleware->web(append: [
