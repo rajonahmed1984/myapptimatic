@@ -79,6 +79,14 @@ export default function Show({
     const [newItemRows, setNewItemRows] = useState([0]);
     const [newItemSeed, setNewItemSeed] = useState(1);
 
+    const currentDateStr = useMemo(() => {
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const yyyy = today.getFullYear();
+        return `${dd}-${mm}-${yyyy}`;
+    }, []);
+
     const paymentTransactions = useMemo(
         () => (invoice.accounting_entries || []).filter((entry) => String(entry.type || '').toLowerCase() === 'payment'),
         [invoice.accounting_entries],
@@ -298,11 +306,11 @@ export default function Show({
 
                         {/* ── Add Payment ── */}
                         {activeTab === 'add_payment' ? (
-                            <form method="POST" action={routes?.add_payment} data-native="true" className="grid gap-4 md:grid-cols-2">
+                            <form method="POST" action={routes?.add_payment} data-native="true" className="grid gap-4 md:grid-cols-3">
                                 <input type="hidden" name="_token" value={csrf} />
                                 <div>
                                     <label className={labelClass}>Date</label>
-                                    <input name="entry_date" type="text" placeholder="DD-MM-YYYY" defaultValue={invoice.issue_date_value || ''} required className={inputClass} />
+                                    <input name="entry_date" type="text" placeholder="DD-MM-YYYY" defaultValue={currentDateStr} required className={inputClass} />
                                 </div>
                                 <div>
                                     <label className={labelClass}>Amount</label>
@@ -324,7 +332,7 @@ export default function Show({
                                     <label className={labelClass}>Description</label>
                                     <input name="description" defaultValue={`Payment for invoice #${invoice.number_display || invoice.id}`} className={inputClass} />
                                 </div>
-                                <div className="md:col-span-2 flex items-center justify-between">
+                                <div className="md:col-span-3 flex items-center justify-between">
                                     <label className="inline-flex items-center gap-2 text-xs text-slate-700">
                                         <input type="checkbox" name="send_email" value="1" defaultChecked />
                                         Send confirmation email

@@ -88,37 +88,6 @@ export default function Index({
                 })}
             </div>
 
-            <div className="mb-6 grid gap-4 xl:grid-cols-3">
-                <SummaryCard
-                    title="Invoice Overview"
-                    stats={[
-                        { label: 'Invoices', value: Number(invoiceInsights?.overview?.count || 0) },
-                        { label: 'Billed', value: invoiceInsights?.overview?.billed_display || '--', tone: 'sky' },
-                        { label: 'Collected', value: invoiceInsights?.overview?.collected_display || '--', tone: 'emerald' },
-                        { label: 'Outstanding', value: invoiceInsights?.overview?.outstanding_display || '--', tone: 'amber' },
-                    ]}
-                />
-                <SummaryCard
-                    title="Status Breakdown"
-                    stats={[
-                        { label: 'Paid', value: Number(invoiceInsights?.statuses?.paid || 0), tone: 'emerald' },
-                        { label: 'Unpaid', value: Number(invoiceInsights?.statuses?.unpaid || 0), tone: 'amber' },
-                        { label: 'Overdue', value: Number(invoiceInsights?.statuses?.overdue || 0), tone: 'rose' },
-                        { label: 'Partial', value: Number(invoiceInsights?.statuses?.partial || 0), tone: 'sky' },
-                        { label: 'Cancelled', value: Number(invoiceInsights?.statuses?.cancelled || 0) },
-                        { label: 'Refunded', value: Number(invoiceInsights?.statuses?.refunded || 0) },
-                    ]}
-                />
-                <SummaryCard
-                    title="Watchlist"
-                    stats={[
-                        { label: 'Overdue Invoices', value: Number(invoiceInsights?.watchlist?.overdue_count || 0), tone: 'rose' },
-                        { label: 'Overdue Amount', value: invoiceInsights?.watchlist?.overdue_amount_display || '--', tone: 'rose' },
-                        { label: 'Pending Proof', value: Number(invoiceInsights?.watchlist?.pending_proof_count || 0), tone: 'amber' },
-                        { label: 'Rejected Proof', value: Number(invoiceInsights?.watchlist?.rejected_proof_count || 0) },
-                    ]}
-                />
-            </div>
 
             <div className="card overflow-x-auto">
                 <table className={`w-full text-left text-sm ${hidePaidDate ? 'min-w-[930px]' : 'min-w-[1050px]'}`}>

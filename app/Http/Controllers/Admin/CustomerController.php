@@ -458,13 +458,45 @@ class CustomerController extends Controller
             })->values();
         }
 
-        $effectiveStatus = (string) $customer->status;
+        $salesRepInfo = null;
+        if ($customer->default_sales_rep_id) {
+            $rep = \App\Models\SalesRepresentative::find($customer->default_sales_rep_id);
+            if ($rep) {
+                $projectSum = (float) DB::table('project_sales_representative as psr')
+                    ->join('projects as p', 'p.id', '=', 'psr.project_id')
+                    ->where('psr.sales_representative_id', $rep->id)
+                    ->where('p.customer_id', $customer->id)
+                    ->whereNotIn('p.status', ['cancel', 'cancelled', 'void', 'voided'])
+                    ->whereNull('p.deleted_at')
+                    ->sum('psr.amount');
 
+                $maintenanceSum = (float) DB::table('project_maintenance_sales_representative as pmsr')
+                    ->join('project_maintenances as pm', 'pm.id', '=', 'pmsr.project_maintenance_id')
+                    ->join('projects as p', 'p.id', '=', 'pm.project_id')
+                    ->where('pmsr.sales_representative_id', $rep->id)
+                    ->where('p.customer_id', $customer->id)
+                    ->whereNotIn('pm.status', ['cancel', 'cancelled', 'void', 'voided'])
+                    ->whereNull('pm.deleted_at')
+                    ->sum('pmsr.amount');
+
+                $salesRepInfo = [
+                    'id' => $rep->id,
+                    'name' => $rep->name,
+                    'phone' => $rep->phone,
+                    'email' => $rep->email ?? $rep->user?->email ?? '--',
+                    'earnings_from_customer' => $projectSum + $maintenanceSum,
+                    'show_route' => route('admin.sales-reps.show', $rep->id, false),
+                ];
+            }
+        }
+
+        $effectiveStatus = (string) $customer->status;
         $dateFormat = config('app.date_format', 'd-m-Y');
         $dateTimeFormat = config('app.datetime_format', 'd-m-Y h:i A');
 
         return Inertia::render('Admin/Customers/Show', [
             'pageTitle' => 'Customer Details',
+            'sales_rep_info' => $salesRepInfo,
             'tab' => $tab,
             'tabs' => collect($allowedTabs)->map(function (string $key) use ($customer) {
                 $label = match ($key) {

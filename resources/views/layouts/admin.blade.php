@@ -909,7 +909,7 @@
         <div class="flex-1 flex flex-col w-full min-w-0">
             <header class="sticky top-0 z-20 border-b border-slate-300/70 bg-white/80 backdrop-blur">
                 <div class="flex w-full items-center justify-between gap-6 px-6 py-4">
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 min-w-[240px]">
                         <button type="button" id="sidebarToggle" class="sidebar-toggle-mobile inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-teal-300 hover:text-teal-600 md:hidden" aria-label="Open menu">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -921,50 +921,46 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-6">
-                        @php($adminUser = auth()->user())
-                        @if(!empty($adminHeaderStats) && $adminUser && ! $adminUser->isEmployee())
-                            <div class="stats hidden flex-wrap items-center gap-3 text-xs text-slate-500 lg:flex">
-                                @if($adminUser->isAdmin())
-                                    {{-- Master Admin and Admin see all stats --}}
-                                    <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="flex items-center gap-2">
-                                        <span class="stat">{{ $adminHeaderStats['pending_orders'] ?? 0 }}</span>
-                                        Pending Orders
-                                    </a>
-                                    <span class="text-slate-300">|</span>
-                                    <a href="{{ route('admin.invoices.overdue') }}" class="flex items-center gap-2">
-                                        <span class="stat">{{ $adminHeaderStats['overdue_invoices'] ?? 0 }}</span>
-                                        Overdue Invoices
-                                    </a>
-                                    <span class="text-slate-300">|</span>
-                                @endif
-                                @if($adminUser->isSupport() || $adminUser->isMasterAdmin())
-                                    {{-- Support sees only tickets --}}
-                                    <a href="{{ route('admin.support-tickets.index', ['status' => 'customer_reply']) }}" class="flex items-center gap-2">
-                                        <span class="stat">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>
-                                        Ticket(s) Awaiting Reply
-                                    </a>
-                                @endif
-                            </div>
-                        @endif
-
-                        <div class="flex items-center gap-4">
-                            <div class="flex items-center gap-3 border-r border-slate-200 pr-4">
-                                <div class="h-9 w-9 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
-                                    <x-avatar :path="$sidebarAvatarPath" :name="$sidebarName" size="h-9 w-9" textSize="text-xs" />
-                                </div>
-                                <div class="hidden sm:block text-left">
-                                    <div class="text-xs font-semibold text-slate-800">{{ $sidebarName }}</div>
-                                    <div class="text-[10px] text-slate-500 font-medium">{{ $sidebarRole }}</div>
-                                </div>
-                            </div>
-                            <form method="POST" action="{{ route('logout') }}" class="m-0">
-                                @csrf
-                                <button type="submit" class="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-800">
-                                    Sign out
-                                </button>
-                            </form>
+                    @php($adminUser = auth()->user())
+                    @if(!empty($adminHeaderStats) && $adminUser && ! $adminUser->isEmployee())
+                        <div class="stats hidden flex-wrap items-center justify-center gap-3 text-xs lg:flex flex-1">
+                            @if($adminUser->isAdmin())
+                                {{-- Master Admin and Admin see all stats --}}
+                                <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold text-amber-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-100/80 hover:shadow-md">
+                                    <span class="rounded-full bg-amber-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white leading-none min-w-[20px] text-center">{{ $adminHeaderStats['pending_orders'] ?? 0 }}</span>
+                                    <span>Pending Orders</span>
+                                </a>
+                                <a href="{{ route('admin.invoices.overdue') }}" class="flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50/80 px-3 py-1 text-[11px] font-semibold text-rose-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-rose-100/80 hover:shadow-md">
+                                    <span class="rounded-full bg-rose-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white leading-none min-w-[20px] text-center">{{ $adminHeaderStats['overdue_invoices'] ?? 0 }}</span>
+                                    <span>Overdue Invoices</span>
+                                </a>
+                            @endif
+                            @if($adminUser->isSupport() || $adminUser->isMasterAdmin())
+                                {{-- Support sees only tickets --}}
+                                <a href="{{ route('admin.support-tickets.index', ['status' => 'customer_reply']) }}" class="flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50/80 px-3 py-1 text-[11px] font-semibold text-teal-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-100/80 hover:shadow-md">
+                                    <span class="rounded-full bg-teal-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white leading-none min-w-[20px] text-center">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>
+                                    <span>Ticket(s) Awaiting Reply</span>
+                                </a>
+                            @endif
                         </div>
+                    @endif
+
+                    <div class="flex items-center justify-end gap-4 min-w-[240px]">
+                        <div class="flex items-center gap-3 border-r border-slate-200 pr-4">
+                            <div class="h-9 w-9 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                                <x-avatar :path="$sidebarAvatarPath" :name="$sidebarName" size="h-9 w-9" textSize="text-xs" />
+                            </div>
+                            <div class="hidden sm:block text-left">
+                                <div class="text-xs font-semibold text-slate-800">{{ $sidebarName }}</div>
+                                <div class="text-[10px] text-slate-500 font-medium">{{ $sidebarRole }}</div>
+                            </div>
+                        </div>
+                        <form method="POST" action="{{ route('logout') }}" class="m-0">
+                            @csrf
+                            <button type="submit" class="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-800">
+                                Sign out
+                            </button>
+                        </form>
                     </div>
                 </div>
 

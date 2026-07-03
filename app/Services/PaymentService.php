@@ -157,6 +157,11 @@ class PaymentService
                         'active',
                         'auto_unsuspend_on_payment'
                     );
+
+                    // Also unsuspend associated licenses
+                    $subscription->licenses()
+                        ->where('status', 'suspended')
+                        ->update(['status' => 'active']);
                 }
 
                 $hasOverdue = Invoice::query()

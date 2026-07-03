@@ -67,6 +67,7 @@ export default function Show({
     customer = {},
     currency = {},
     metrics = {},
+    sales_rep_info = null,
     sales_rep_summaries = [],
     subscriptions = [],
     project_clients = [],
@@ -228,10 +229,10 @@ export default function Show({
             { key: 'services', label: 'Products / Services', value: customer?.subscriptions_count || 0, href: `${routes?.show}?tab=services`, tone: 'border-sky-200 bg-sky-50 text-sky-700' },
             { key: 'active-services', label: 'Active Services', value: customer?.active_subscriptions_count || 0, href: `${routes?.show}?tab=services`, tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
             { key: 'projects', label: 'Projects', value: customer?.projects_count || 0, href: `${routes?.show}?tab=projects`, tone: 'border-violet-200 bg-violet-50 text-violet-700' },
-            { key: 'invoices', label: 'Invoices', value: customer?.invoices_count || 0, href: `${routes?.show}?tab=invoices`, tone: 'border-amber-200 bg-amber-50 text-amber-700' },
+            { key: 'invoices', label: 'Due Invoices', value: invoiceStatusSummary.find(item => item.key === 'unpaid_due')?.count || 0, href: `${routes?.show}?tab=invoices`, tone: 'border-amber-200 bg-amber-50 text-amber-700' },
             { key: 'tickets', label: 'Tickets', value: customer?.tickets_count || 0, href: `${routes?.show}?tab=tickets`, tone: 'border-rose-200 bg-rose-50 text-rose-700' },
         ]),
-        [customer?.invoices_count, customer?.projects_count, customer?.subscriptions_count, customer?.active_subscriptions_count, customer?.tickets_count, routes?.show]
+        [customer?.invoices_count, customer?.projects_count, customer?.subscriptions_count, customer?.active_subscriptions_count, customer?.tickets_count, routes?.show, invoiceStatusSummary]
     );
     const financialCards = useMemo(
         () => ([
@@ -348,13 +349,45 @@ export default function Show({
 
                         <div className="grid gap-4 lg:grid-cols-3">
                             <div className="rounded-2xl border border-slate-300 bg-white p-5 text-sm text-slate-600">
-                                <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Customer Snapshot</div>
-                                <div className="mt-3 space-y-2">
-                                    <div className="flex items-start gap-3"><span className="text-slate-500">Company</span><span className="font-medium text-slate-900">{customer?.company_name || '--'}</span></div>
-                                    <div className="flex items-start gap-3"><span className="text-slate-500">Email</span><span className="font-medium text-slate-900">{customer?.email || '--'}</span></div>
-                                    <div className="flex items-start gap-3"><span className="text-slate-500">Phone</span><span className="font-medium text-slate-900">{customer?.phone || '--'}</span></div>
-                                    <div className="flex items-start gap-3"><span className="text-slate-500">Address</span><span className="max-w-[220px] text-right font-medium text-slate-900">{customer?.address || '--'}</span></div>
+                                <div>
+                                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Customer Snapshot</div>
+                                    <div className="mt-3 space-y-2">
+                                        <div className="flex items-start gap-3"><span className="text-slate-500">Company</span><span className="font-medium text-slate-900">{customer?.company_name || '--'}</span></div>
+                                        <div className="flex items-start gap-3"><span className="text-slate-500">Email</span><span className="font-medium text-slate-900">{customer?.email || '--'}</span></div>
+                                        <div className="flex items-start gap-3"><span className="text-slate-500">Phone</span><span className="font-medium text-slate-900">{customer?.phone || '--'}</span></div>
+                                        <div className="flex items-start gap-3"><span className="text-slate-500">Address</span><span className="max-w-[220px] text-right font-medium text-slate-900">{customer?.address || '--'}</span></div>
+                                    </div>
                                 </div>
+
+                                {sales_rep_info ? (
+                                    <div className="mt-5 border-t border-slate-200 pt-5">
+                                        <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Sales Representative</div>
+                                        <div className="mt-3 space-y-2">
+                                            <div className="flex items-start gap-3">
+                                                <span className="text-slate-500">Name</span>
+                                                <span className="font-semibold text-slate-900">
+                                                    <a href={sales_rep_info.show_route} data-native="true" className="text-teal-600 hover:text-teal-500 hover:underline">
+                                                        {sales_rep_info.name}
+                                                    </a>
+                                                </span>
+                                            </div>
+                                            <div className="flex items-start gap-3">
+                                                <span className="text-slate-500">Phone</span>
+                                                <span className="font-medium text-slate-900">{sales_rep_info.phone || '--'}</span>
+                                            </div>
+                                            <div className="flex items-start gap-3">
+                                                <span className="text-slate-500">Email</span>
+                                                <span className="font-medium text-slate-900">{sales_rep_info.email || '--'}</span>
+                                            </div>
+                                            <div className="flex items-start gap-3 pt-2 border-t border-slate-100 mt-2">
+                                                <span className="text-slate-500 font-semibold text-slate-700">Rep Earnings</span>
+                                                <span className="font-bold text-emerald-700">
+                                                    {asMoney(sales_rep_info.earnings_from_customer, currency?.code)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : null}
                             </div>
 
                             <div className="rounded-2xl border border-slate-300 bg-white p-5 lg:col-span-2">

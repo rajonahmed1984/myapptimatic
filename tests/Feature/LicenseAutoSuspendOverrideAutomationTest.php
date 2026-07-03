@@ -164,6 +164,60 @@ class LicenseAutoSuspendOverrideAutomationTest extends TestCase
         $this->assertSame('active', (string) $pastDueLicense->fresh()->status);
     }
 
+    #[Test]
+    public function payment_service_mark_paid_unsuspends_associated_licenses(): void
+    {
+        [$customer, $subscription] = $this->createSubscriptionSetup();
+
+        $license = License::create([
+            'subscription_id' => $subscription->id,
+            'product_id' => $subscription->plan->product_id,
+            'license_key' => strtoupper(Str::random(24)),
+            'status' => 'suspended',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'expires_at' => now()->addYear()->toDateString(),
+            'max_domains' => 1,
+        ]);
+
+        $subscription->update(['status' => 'suspended']);
+
+        $invoice = Invoice::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
+            'number' => 'INV-GATEWAY-TEST-1',
+            'status' => 'unpaid',
+            'issue_date' => now()->subDays(5)->toDateString(),
+            'due_date' => now()->subDays(1)->toDateString(),
+            'subtotal' => 120,
+            'late_fee' => 0,
+            'total' => 120,
+            'currency' => 'USD',
+        ]);
+
+        $gateway = \App\Models\PaymentGateway::create([
+            'name' => 'Test Gateway',
+            'slug' => 'test_gateway',
+            'driver' => 'paypal',
+            'status' => 'active',
+            'settings' => [],
+        ]);
+
+        $attempt = \App\Models\PaymentAttempt::create([
+            'uuid' => (string) Str::uuid(),
+            'invoice_id' => $invoice->id,
+            'customer_id' => $customer->id,
+            'payment_gateway_id' => $gateway->id,
+            'amount' => 120,
+            'currency' => 'USD',
+            'status' => 'pending',
+        ]);
+
+        app(\App\Services\PaymentService::class)->markPaid($attempt, 'PAY-12345');
+
+        $this->assertSame('active', (string) $subscription->fresh()->status);
+        $this->assertSame('active', (string) $license->fresh()->status);
+    }
+
     private function createSubscriptionSetup(): array
     {
         $customer = Customer::create([
