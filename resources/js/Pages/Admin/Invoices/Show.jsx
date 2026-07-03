@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
 
 const tabs = [
@@ -97,6 +97,17 @@ export default function Show({
     const addNewItemRow = () => {
         setNewItemRows((rows) => [...rows, newItemSeed]);
         setNewItemSeed((seed) => seed + 1);
+    };
+
+    const handleDeleteTransaction = (entryId) => {
+        if (confirm('Are you sure you want to remove this payment transaction? This will restore the outstanding balance.')) {
+            router.delete(route('admin.accounting.destroy', entryId), {
+                data: { redirect_back: true },
+                onSuccess: () => {
+                    window.showToast?.('Payment transaction removed successfully.', 'success');
+                }
+            });
+        }
     };
 
     const canCollection = Boolean(invoice.can_record_payment);
@@ -344,9 +355,10 @@ export default function Show({
 
                         {/* ── Options ── */}
                         {activeTab === 'options' ? (
-                            <form method="POST" action={routes?.update} data-native="true" className="grid gap-4">
-                                <input type="hidden" name="_token" value={csrf} />
-                                <input type="hidden" name="_method" value="PUT" />
+                            <>
+                                <form method="POST" action={routes?.update} data-native="true" className="grid gap-4">
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <input type="hidden" name="_method" value="PUT" />
 
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div>
@@ -405,6 +417,57 @@ export default function Show({
                                     <a href={routes?.index} data-native="true" className={btnSecondary}>Cancel</a>
                                 </div>
                             </form>
+
+                            {/* ── Manage Payments / Remove Wrong Payments ── */}
+                            <div className="mt-8 pt-6 border-t border-slate-200">
+                                <div className="mb-3">
+                                    <h3 className="text-sm font-semibold text-slate-800">Manage Payments / Transactions</h3>
+                                    <p className="text-xs text-slate-500">If any payment transaction was added by mistake or has incorrect details, you can remove it. This will automatically update the invoice status and balance.</p>
+                                </div>
+                                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                                     <table className="min-w-full text-xs">
+                                         <thead>
+                                             <tr className="border-b border-slate-200 bg-slate-50 text-left font-semibold text-slate-600">
+                                                 <th className="px-4 py-2">Date</th>
+                                                 <th className="px-4 py-2">Payment Method</th>
+                                                 <th className="px-4 py-2">Transaction ID</th>
+                                                 <th className="px-4 py-2 text-right">Amount</th>
+                                                 <th className="px-4 py-2 text-right">Fees</th>
+                                                 <th className="px-4 py-2 text-center">Action</th>
+                                             </tr>
+                                         </thead>
+                                         <tbody>
+                                             {paymentTransactions.length > 0 ? (
+                                                 paymentTransactions.map((entry) => (
+                                                     <tr key={entry.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                                                         <td className="px-4 py-2 text-slate-600">{entry.entry_date_display}</td>
+                                                         <td className="px-4 py-2 text-slate-600">{entry.gateway_name || '--'}</td>
+                                                         <td className="px-4 py-2 font-mono text-slate-600">{entry.reference || '--'}</td>
+                                                         <td className="px-4 py-2 text-right font-semibold text-slate-800">{entry.amount_display}</td>
+                                                         <td className="px-4 py-2 text-right text-slate-600">{entry.transaction_fee_display || '--'}</td>
+                                                         <td className="px-4 py-2 text-center">
+                                                             <button
+                                                                 type="button"
+                                                                 onClick={() => handleDeleteTransaction(entry.id)}
+                                                                 className="rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100/70 transition"
+                                                             >
+                                                                 Remove
+                                                             </button>
+                                                         </td>
+                                                     </tr>
+                                                 ))
+                                             ) : (
+                                                 <tr>
+                                                     <td colSpan={6} className="px-4 py-4 text-center text-slate-400">
+                                                         No payment transactions recorded for this invoice.
+                                                     </td>
+                                                 </tr>
+                                             )}
+                                         </tbody>
+                                     </table>
+                                </div>
+                            </div>
+                         </>
                         ) : null}
 
                         {/* ── Credit ── */}

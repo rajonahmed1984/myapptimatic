@@ -655,6 +655,16 @@ class CustomerController extends Controller
                     $details = trim($productName.' > '.$planName);
                 }
 
+                $paidAmount = (float) \App\Models\AccountingEntry::where('invoice_id', $invoice->id)
+                    ->where('type', 'payment')
+                    ->sum('amount');
+                $creditAmount = (float) \App\Models\AccountingEntry::where('invoice_id', $invoice->id)
+                    ->where('type', 'credit')
+                    ->sum('amount');
+                
+                $totalPaidEffective = $paidAmount + $creditAmount;
+                $isPartiallyPaid = ($invoice->status !== 'paid' && $totalPaidEffective > 0.009 && $totalPaidEffective < $invoice->total);
+
                 return [
                     'id' => $invoice->id,
                     'details_display' => $details,
@@ -666,6 +676,8 @@ class CustomerController extends Controller
                     'due_date_display' => $invoice->due_date?->format($dateFormat) ?? '--',
                     'total' => (float) ($invoice->total ?? 0),
                     'currency' => (string) ($invoice->currency ?? ''),
+                    'is_partially_paid' => $isPartiallyPaid,
+                    'total_paid_effective' => $totalPaidEffective,
                     'show_url' => route('admin.invoices.show', $invoice, false),
                     'edit_url' => route('admin.invoices.show', $invoice, false),
                     'destroy_url' => route('admin.invoices.destroy', $invoice, false),

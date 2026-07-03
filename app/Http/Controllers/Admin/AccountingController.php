@@ -159,7 +159,43 @@ class AccountingController extends Controller
 
     public function destroy(Request $request, AccountingEntry $entry): RedirectResponse|JsonResponse
     {
+        $invoiceId = $entry->invoice_id;
         $entry->delete();
+
+        if ($invoiceId) {
+            $invoice = \App\Models\Invoice::find($invoiceId);
+            if ($invoice) {
+                $paidTotal = (float) \App\Models\AccountingEntry::where('invoice_id', $invoiceId)
+                    ->where('type', 'payment')
+                    ->sum('amount');
+                $creditTotal = (float) \App\Models\AccountingEntry::where('invoice_id', $invoiceId)
+                    ->where('type', 'credit')
+                    ->sum('amount');
+
+                $outstanding = max(0.0, (float) $invoice->total - $creditTotal - $paidTotal);
+
+                if ($outstanding > 0.009) {
+                    $isOverdue = $invoice->due_date && $invoice->due_date->isPast();
+                    $invoice->update([
+                        'status' => $isOverdue ? 'overdue' : 'unpaid',
+                        'paid_at' => null,
+                    ]);
+                } else {
+                    $invoice->update([
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                    ]);
+                }
+            }
+        }
+
+        if ($request->input('redirect_back') || $request->header('referer')) {
+            $targetUrl = $request->header('referer') ?: route($this->scopeRoute($this->normalizeScope($request->input('scope', 'ledger'))));
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxRedirect($targetUrl, 'Accounting entry deleted.');
+            }
+            return redirect()->to($targetUrl)->with('status', 'Accounting entry deleted.');
+        }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
             return AjaxResponse::ajaxRedirect(
