@@ -22,20 +22,6 @@ const GoogleIcon = () => (
     </svg>
 );
 
-const MicrosoftIcon = () => (
-    <svg className="w-5 h-5" viewBox="0 0 23 23">
-        <path fill="#f35022" d="M1 1h10v10H1z" />
-        <path fill="#80bb0a" d="M12 1h10v10H12z" />
-        <path fill="#00a1f1" d="M1 12h10v10H1z" />
-        <path fill="#fca103" d="M12 12h10v10H12z" />
-    </svg>
-);
-
-const AppleIcon = () => (
-    <svg className="w-5 h-5 text-black fill-current" viewBox="0 0 24 24">
-        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.54 9.103 1.51 12.06 1.005 1.45 2.19 3.078 3.766 3.02 1.514-.064 2.09-.975 3.916-.975s2.348.975 3.93.94c1.61-.03 2.65-1.477 3.637-2.91 1.135-1.66 1.603-3.266 1.632-3.347-.03-.015-3.13-1.2-3.163-4.757-.03-2.975 2.435-4.402 2.547-4.472-1.393-2.04-3.53-2.27-4.288-2.322-1.99-.162-3.882 1.212-4.969 1.212zM15.96 3.69c.816-.99 1.36-2.37 1.21-3.69-1.13.045-2.5 0.75-3.31 1.7-0.7 0.81-1.31 2.2-1.14 3.5 1.26.1 2.53-.6 3.24-1.51z" />
-    </svg>
-);
 
 export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', form = {}, routes = {}, hint = null, recaptcha = {} }) {
     const { errors = {}, flash = {}, branding = {}, csrf_token: csrfToken = '' } = usePage().props;
@@ -119,22 +105,6 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
                                     >
                                         <GoogleIcon />
                                         Login with Google
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleSocialClick('Microsoft')}
-                                        className="w-full h-11 rounded-full bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold tracking-wide transition-all duration-200 flex items-center justify-center gap-3 shadow-sm active:scale-[0.98]"
-                                    >
-                                        <MicrosoftIcon />
-                                        Login with Microsoft
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleSocialClick('Apple')}
-                                        className="w-full h-11 rounded-full bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold tracking-wide transition-all duration-200 flex items-center justify-center gap-3 shadow-sm active:scale-[0.98]"
-                                    >
-                                        <AppleIcon />
-                                        Login with Apple
                                     </button>
                                 </div>
                             </div>

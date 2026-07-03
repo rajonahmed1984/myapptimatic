@@ -142,33 +142,4 @@ class SocialLoginTest extends TestCase
         $this->assertNotNull($user);
         $this->assertSame('Google User', $user->name);
     }
-
-    public function test_oauth_callback_microsoft_authenticates_successfully_with_mocked_http(): void
-    {
-        config()->set('services.microsoft.client_id', 'ms-client-id');
-        config()->set('services.microsoft.client_secret', 'ms-client-secret');
-
-        // Seed session state
-        session(['oauth_state_microsoft' => 'state-123']);
-        session(['social_auth_portal' => 'web']);
-
-        Http::fake([
-            'https://login.microsoftonline.com/common/oauth2/v2.0/token' => Http::response([
-                'access_token' => 'mock-access-token',
-            ], 200),
-            'https://graph.microsoft.com/v1.0/me' => Http::response([
-                'mail' => 'msuser@example.com',
-                'displayName' => 'MS User',
-            ], 200),
-        ]);
-
-        $response = $this->get('/auth/microsoft/callback?state=state-123&code=auth-code');
-
-        $response->assertRedirect(route('client.dashboard'));
-        $this->assertAuthenticated('web');
-
-        $user = User::where('email', 'msuser@example.com')->first();
-        $this->assertNotNull($user);
-        $this->assertSame('MS User', $user->name);
-    }
 }

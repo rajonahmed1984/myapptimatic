@@ -31,7 +31,7 @@ class SocialLoginController extends Controller
     public function redirect(Request $request, string $provider): RedirectResponse
     {
         $provider = strtolower($provider);
-        if (! in_array($provider, ['google', 'microsoft', 'apple'], true)) {
+        if (! in_array($provider, ['google'], true)) {
             return redirect()->route('login')->with('social_error', 'Unsupported login provider.');
         }
 
@@ -63,28 +63,6 @@ class SocialLoginController extends Controller
                     'response_type' => 'code',
                     'scope' => 'openid profile email',
                     'state' => $state,
-                ]);
-                break;
-
-            case 'microsoft':
-                $url = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?' . http_build_query([
-                    'client_id' => $config['client_id'],
-                    'redirect_uri' => $redirectUri,
-                    'response_type' => 'code',
-                    'scope' => 'openid profile email User.Read',
-                    'state' => $state,
-                    'response_mode' => 'query',
-                ]);
-                break;
-
-            case 'apple':
-                $url = 'https://appleid.apple.com/auth/authorize?' . http_build_query([
-                    'client_id' => $config['client_id'],
-                    'redirect_uri' => $redirectUri,
-                    'response_type' => 'code id_token',
-                    'scope' => 'name email',
-                    'state' => $state,
-                    'response_mode' => 'form_post',
                 ]);
                 break;
 
@@ -145,58 +123,6 @@ class SocialLoginController extends Controller
                     $email = $userData['email'] ?? null;
                     $name = $userData['name'] ?? null;
                 }
-            } elseif ($provider === 'microsoft') {
-                $response = Http::asForm()->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
-                    'code' => $code,
-                    'client_id' => $config['client_id'],
-                    'client_secret' => $config['client_secret'],
-                    'redirect_uri' => $redirectUri,
-                    'grant_type' => 'authorization_code',
-                ]);
-
-                if (! $response->successful()) {
-                    return redirect(Portal::portalLoginUrl($portal))->with('social_error', 'Token exchange failed.');
-                }
-
-                $tokenData = $response->json();
-                $accessToken = $tokenData['access_token'] ?? null;
-
-                $userResponse = Http::withToken($accessToken)->get('https://graph.microsoft.com/v1.0/me');
-                if ($userResponse->successful()) {
-                    $userData = $userResponse->json();
-                    $email = $userData['mail'] ?? $userData['userPrincipalName'] ?? null;
-                    $name = $userData['displayName'] ?? null;
-                }
-            } elseif ($provider === 'apple') {
-                $response = Http::asForm()->post('https://appleid.apple.com/auth/token', [
-                    'code' => $code,
-                    'client_id' => $config['client_id'],
-                    'client_secret' => $config['client_secret'],
-                    'redirect_uri' => $redirectUri,
-                    'grant_type' => 'authorization_code',
-                ]);
-
-                if (! $response->successful()) {
-                    return redirect(Portal::portalLoginUrl($portal))->with('social_error', 'Token exchange failed.');
-                }
-
-                $tokenData = $response->json();
-                $idToken = $tokenData['id_token'] ?? null;
-
-                if ($idToken) {
-                    $parts = explode('.', $idToken);
-                    if (count($parts) === 3) {
-                        $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $parts[1])), true);
-                        $email = $payload['email'] ?? null;
-                    }
-                }
-
-                if ($request->has('user')) {
-                    $appleUser = json_decode($request->input('user'), true);
-                    if ($appleUser && isset($appleUser['name'])) {
-                        $name = trim(($appleUser['name']['firstName'] ?? '') . ' ' . ($appleUser['name']['lastName'] ?? ''));
-                    }
-                }
             }
 
             if (empty($email)) {
@@ -218,7 +144,7 @@ class SocialLoginController extends Controller
     public function sandbox(Request $request, string $provider): InertiaResponse|RedirectResponse
     {
         $provider = strtolower($provider);
-        if (! in_array($provider, ['google', 'microsoft', 'apple'], true)) {
+        if (! in_array($provider, ['google'], true)) {
             abort(404);
         }
 
@@ -248,7 +174,7 @@ class SocialLoginController extends Controller
     public function sandboxLogin(Request $request, string $provider): RedirectResponse
     {
         $provider = strtolower($provider);
-        if (! in_array($provider, ['google', 'microsoft', 'apple'], true)) {
+        if (! in_array($provider, ['google'], true)) {
             abort(404);
         }
 
