@@ -8,6 +8,7 @@ const statusClass = (status) => {
     const key = String(status || '').toLowerCase();
     if (['active', 'paid', 'accepted', 'open'].includes(key)) return 'bg-emerald-100 text-emerald-700';
     if (['pending', 'draft', 'unpaid', 'overdue'].includes(key)) return 'bg-amber-100 text-amber-700';
+    if (['partially_paid', 'partial', 'partially paid'].includes(key)) return 'bg-blue-100 text-blue-700';
     if (['cancelled', 'inactive', 'closed', 'reversed', 'refunded'].includes(key)) return 'bg-rose-100 text-rose-700';
     return 'bg-slate-100 text-slate-600';
 };
@@ -896,17 +897,20 @@ export default function Show({
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-slate-700">{row.details_display || '--'}</td>
-                                            <td className="px-4 py-3 text-slate-700">{asMoney(row.total, row.currency || currency?.code)}</td>
+                                            <td className="px-4 py-3 text-slate-700">
+                                                <div>{asMoney(row.total, row.currency || currency?.code)}</div>
+                                                {row.is_partially_paid && (
+                                                    <div className="mt-1 text-xs text-slate-500 font-normal">
+                                                        <div>Paid: {asMoney(row.total_paid_effective, row.currency || currency?.code)}</div>
+                                                        <div>Due: {asMoney(row.total - row.total_paid_effective, row.currency || currency?.code)}</div>
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3 text-slate-700">{row.paid_date_display || '--'}</td>
                                             <td className="px-4 py-3 text-slate-700">{row.due_date_display || '--'}</td>
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-col gap-1 items-start">
                                                     <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(row.status)}`}>{row.status_label || '--'}</span>
-                                                    {row.is_partially_paid && (
-                                                        <span className="rounded bg-sky-50 border border-sky-200 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">
-                                                            Partially Paid ({asMoney(row.total_paid_effective, row.currency || currency?.code)})
-                                                        </span>
-                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 text-right">
