@@ -9,12 +9,19 @@ export default function GuestAuthLayout({ children, wide = false }) {
                 </div>
             </div>
 
-            <div className="mt-6 text-center text-xs text-slate-700">
-                Copyright &copy; {new Date().getFullYear()}{' '}
-                <a href="https://apptimatic.com" className="font-semibold text-teal-600 hover:text-teal-500">
-                    Apptimatic
+            <div className="mt-6 text-center text-xs text-slate-500">
+                By continuing, you agree to{' '}
+                <a href="https://apptimatic.com/" className="font-semibold text-teal-600 hover:text-teal-500">
+                    Apptimatic&apos;s
+                </a>{' '}
+                <a href="https://apptimatic.com/terms" className="font-semibold text-teal-600 hover:text-teal-500">
+                    Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="https://apptimatic.com/privacy" className="font-semibold text-teal-600 hover:text-teal-500">
+                    Privacy Policy
                 </a>
-                . All Rights Reserved.
+                .
             </div>
         </div>
     );

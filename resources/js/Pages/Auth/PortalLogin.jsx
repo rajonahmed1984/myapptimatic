@@ -214,10 +214,6 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
                                 {portal === 'web' ? '.' : null}
                             </p>
                         ) : null}
-
-                        <div className="mt-8 pt-6 border-t border-slate-100 text-center text-[10px] text-slate-400">
-                            By continuing, you agree to Apptimatic's <a href="#" className="underline hover:text-slate-600">Terms of Service</a> and <a href="#" className="underline hover:text-slate-600">Privacy Policy</a>.
-                        </div>
                     </div>
                 </section>
             </GuestAuthLayout>
