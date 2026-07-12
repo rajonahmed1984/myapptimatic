@@ -171,7 +171,8 @@ class ProjectTaskController extends Controller
         }
 
         $payload = [
-            'description' => $data['description'] ?? $task->description,
+            'title' => $data['title'],
+            'description' => array_key_exists('description', $data) ? $data['description'] : $task->description,
             'task_type' => $taskType,
             'status' => $data['status'],
             'priority' => $data['priority'] ?? $task->priority ?? 'medium',
@@ -180,7 +181,7 @@ class ProjectTaskController extends Controller
             'relationship_ids' => $this->parseRelationships($data['relationship_ids'] ?? null, $task->relationship_ids ?? []),
             'progress' => $data['progress'] ?? $task->progress,
             'customer_visible' => (bool) ($data['customer_visible'] ?? $task->customer_visible),
-            'notes' => $data['notes'] ?? $task->notes,
+            'notes' => array_key_exists('notes', $data) ? $data['notes'] : $task->notes,
         ];
 
         $previousStatus = $task->status;

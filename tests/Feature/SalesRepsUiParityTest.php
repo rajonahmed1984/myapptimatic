@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -79,6 +80,38 @@ class SalesRepsUiParityTest extends TestCase
             ])
             ->assertRedirect(route('admin.sales-reps.edit', $salesRep))
             ->assertSessionHas('status', 'Sales representative updated.');
+    }
+
+    #[Test]
+    public function admin_can_change_sales_rep_login_email_and_password(): void
+    {
+        $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
+        $user = User::factory()->create([
+            'role' => Role::SALES,
+            'email' => 'old-login@example.test',
+            'password' => Hash::make('old-password'),
+        ]);
+        $salesRep = SalesRepresentative::create([
+            'user_id' => $user->id,
+            'name' => 'Login Rep',
+            'email' => 'old-login@example.test',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.sales-reps.update', $salesRep), [
+                'name' => 'Updated Login Rep',
+                'email' => 'new-login@example.test',
+                'status' => 'active',
+                'user_password' => 'new-password-123',
+                'user_password_confirmation' => 'new-password-123',
+            ])
+            ->assertRedirect(route('admin.sales-reps.edit', $salesRep));
+
+        $user->refresh();
+        $this->assertSame('new-login@example.test', $user->email);
+        $this->assertTrue(Hash::check('new-password-123', $user->password));
+        $this->assertSame('new-login@example.test', $salesRep->fresh()->email);
     }
 
     #[Test]

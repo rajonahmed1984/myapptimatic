@@ -10,11 +10,13 @@ use App\Models\PaymentGateway;
 use App\Models\Setting;
 use App\Support\AjaxResponse;
 use App\Support\Currency;
+use App\Services\CommissionService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -157,18 +159,23 @@ class AccountingController extends Controller
             ->with('status', 'Accounting entry updated.');
     }
 
-    public function destroy(Request $request, AccountingEntry $entry): RedirectResponse|JsonResponse
+    public function destroy(
+        Request $request,
+        AccountingEntry $entry,
+        CommissionService $commissionService
+    ): RedirectResponse|JsonResponse
     {
         $invoiceId = $entry->invoice_id;
-        $entry->delete();
+        DB::transaction(function () use ($entry, $invoiceId, $commissionService): void {
+            $entry->delete();
 
-        if ($invoiceId) {
-            $invoice = \App\Models\Invoice::find($invoiceId);
+            if ($invoiceId) {
+                $invoice = Invoice::query()->lockForUpdate()->find($invoiceId);
             if ($invoice) {
-                $paidTotal = (float) \App\Models\AccountingEntry::where('invoice_id', $invoiceId)
+                $paidTotal = (float) AccountingEntry::where('invoice_id', $invoiceId)
                     ->where('type', 'payment')
                     ->sum('amount');
-                $creditTotal = (float) \App\Models\AccountingEntry::where('invoice_id', $invoiceId)
+                $creditTotal = (float) AccountingEntry::where('invoice_id', $invoiceId)
                     ->where('type', 'credit')
                     ->sum('amount');
 
@@ -180,6 +187,7 @@ class AccountingController extends Controller
                         'status' => $isOverdue ? 'overdue' : 'unpaid',
                         'paid_at' => null,
                     ]);
+                    $commissionService->reverseEarningsOnRefund($invoice);
                 } else {
                     $invoice->update([
                         'status' => 'paid',
@@ -187,7 +195,8 @@ class AccountingController extends Controller
                     ]);
                 }
             }
-        }
+            }
+        });
 
         if ($request->input('redirect_back') || $request->header('referer')) {
             $targetUrl = $request->header('referer') ?: route($this->scopeRoute($this->normalizeScope($request->input('scope', 'ledger'))));

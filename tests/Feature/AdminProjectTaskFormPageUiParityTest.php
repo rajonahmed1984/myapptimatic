@@ -80,4 +80,47 @@ class AdminProjectTaskFormPageUiParityTest extends TestCase
             ->get(route('admin.projects.tasks.edit', [$project, $task]))
             ->assertForbidden();
     }
+
+    #[Test]
+    public function master_admin_can_update_task_title_and_description_from_edit_page(): void
+    {
+        $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
+        $customer = Customer::query()->create(['name' => 'Task Update Customer']);
+        $project = Project::query()->create([
+            'name' => 'Task Update Project',
+            'customer_id' => $customer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'total_budget' => 1000,
+            'initial_payment_amount' => 100,
+            'currency' => 'USD',
+        ]);
+        $task = ProjectTask::query()->create([
+            'project_id' => $project->id,
+            'title' => 'Old task title',
+            'description' => 'Old task details',
+            'status' => 'pending',
+            'task_type' => 'feature',
+            'priority' => 'medium',
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'title' => 'Updated task title',
+                'description' => 'Updated task details',
+                'status' => 'pending',
+                'task_type' => 'feature',
+                'priority' => 'high',
+                'progress' => 25,
+                'customer_visible' => 1,
+            ])
+            ->assertRedirect();
+
+        $task->refresh();
+        $this->assertSame('Updated task title', $task->title);
+        $this->assertSame('Updated task details', $task->description);
+        $this->assertSame('high', $task->priority);
+        $this->assertSame(25, $task->progress);
+    }
 }

@@ -66,6 +66,27 @@ class AdminLicenseSuspendOverrideTest extends TestCase
         ]);
     }
 
+    #[Test]
+    public function admin_can_reactivate_a_revoked_license(): void
+    {
+        $license = $this->makeLicense([
+            'status' => 'revoked',
+        ]);
+        $admin = User::factory()->create([
+            'role' => 'master_admin',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->post(route('admin.licenses.reactivate', $license));
+
+        $response->assertRedirect(route('admin.licenses.edit', $license));
+
+        $this->assertDatabaseHas('licenses', [
+            'id' => $license->id,
+            'status' => 'active',
+        ]);
+    }
+
     private function makeLicense(array $overrides = []): License
     {
         $customer = Customer::create([

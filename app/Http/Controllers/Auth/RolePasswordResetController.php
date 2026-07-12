@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
+use App\Models\SalesRepresentative;
+use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Inertia\Inertia;
@@ -176,10 +179,33 @@ class RolePasswordResetController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $status = Password::broker($config['broker'])->sendResetLink([
-            'email' => $data['email'],
-            'role' => $config['role'],
-        ]);
+        $email = $data['email'];
+        if ($role === 'sales' && ! User::query()->where('email', $email)->where('role', Role::SALES)->exists()) {
+            $linkedUserEmail = SalesRepresentative::query()
+                ->where('email', $email)
+                ->whereNotNull('user_id')
+                ->with('user:id,email,role')
+                ->first()?->user;
+
+            if ($linkedUserEmail && $linkedUserEmail->role === Role::SALES) {
+                $email = $linkedUserEmail->email;
+            }
+        }
+
+        try {
+            $status = Password::broker($config['broker'])->sendResetLink([
+                'email' => $email,
+                'role' => $config['role'],
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('Failed to send role password reset link', [
+                'role' => $role,
+                'email' => $email,
+                'exception' => $exception->getMessage(),
+            ]);
+
+            return back()->withErrors(['email' => 'Unable to send the reset link right now. Please try again later.']);
+        }
 
         if ($status === Password::RESET_THROTTLED) {
             return back()->withErrors(['email' => __($status)]);

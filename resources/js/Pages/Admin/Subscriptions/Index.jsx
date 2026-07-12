@@ -96,6 +96,11 @@ export default function Index({
                                                     <span className="text-slate-500">--</span>
                                                 )}
                                             </div>
+                                            {subscription.customer_company_name ? (
+                                                <div className="mt-0.5 text-xs font-medium text-slate-600">
+                                                    {subscription.customer_company_name}
+                                                </div>
+                                            ) : null}
                                             <div className="mt-0.5 text-xs text-slate-500">
                                                 {subscription.product_plan}
                                             </div>

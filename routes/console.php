@@ -79,11 +79,17 @@ $licenseSyncLog = Schedule::command('licenses:sync-log')
     ->withoutOverlapping();
 CronActivityLogger::track($licenseSyncLog, 'licenses:sync-log');
 
-$licenseSuspend = Schedule::command('licenses:suspend-past-due')
+$licenseExpirySuspend = Schedule::command('licenses:suspend-past-due --expiry-only')
     ->dailyAt($automationTime)
     ->timezone($automationTimezone)
     ->withoutOverlapping();
-CronActivityLogger::track($licenseSuspend, 'licenses:suspend-past-due');
+CronActivityLogger::track($licenseExpirySuspend, 'licenses:suspend-past-due --expiry-only');
+
+$licenseInvoiceSuspend = Schedule::command('licenses:suspend-past-due --invoice-only')
+    ->monthlyOn(3, '23:59')
+    ->timezone($automationTimezone)
+    ->withoutOverlapping();
+CronActivityLogger::track($licenseInvoiceSuspend, 'licenses:suspend-past-due --invoice-only');
 
 $dailyReports = Schedule::command('reports:daily')
     ->dailyAt($automationTime)

@@ -13,6 +13,7 @@ use App\Enums\Role;
 use App\Models\Employee;
 use App\Models\Project;
 use App\Models\Concerns\HasActivityTracking;
+use App\Notifications\ResetPasswordNotification;
 
 class User extends Authenticatable
 {
@@ -123,5 +124,10 @@ class User extends Authenticatable
     public function isEmployee(): bool
     {
         return $this->employee()->exists();
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }

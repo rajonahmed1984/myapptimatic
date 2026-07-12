@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\License;
 use App\Models\Invoice;
 use App\Support\SystemLogger;
+use App\Support\LicenseInvoiceGrace;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -15,7 +16,9 @@ class SuspendPastDueLicenses extends Command
      *
      * @var string
      */
-    protected $signature = 'licenses:suspend-past-due';
+    protected $signature = 'licenses:suspend-past-due
+                            {--expiry-only : Only suspend licenses whose own expiry grace has elapsed}
+                            {--invoice-only : Only suspend licenses with outstanding due invoices}';
 
     /**
      * The console command description.
@@ -35,7 +38,7 @@ class SuspendPastDueLicenses extends Command
         $this->info("Running license auto-suspension check...");
 
         // Condition 1: License itself expires_at <= 3 days ago
-        $licensesByExpiry = License::query()
+        $licensesByExpiry = $this->option('invoice-only') ? collect() : License::query()
             ->where('status', 'active')
             ->where('expires_at', '<=', $threeDaysAgo)
             ->where(function ($query) use ($today) {
@@ -60,17 +63,17 @@ class SuspendPastDueLicenses extends Command
             $suspendedCount++;
         }
 
-        // Condition 2: Subscription has unpaid/overdue invoice due_date <= 3 days ago
-        // Let's get active licenses whose subscription has overdue invoices
-        $licensesByInvoices = License::query()
+        // Condition 2: At 11:59 PM on the third day of the month, suspend
+        // active licenses that still have an outstanding invoice due by today.
+        $licensesByInvoices = ($this->option('expiry-only') || ! LicenseInvoiceGrace::hasEnded()) ? collect() : License::query()
             ->where('status', 'active')
             ->where(function ($query) use ($today) {
                 $query->whereNull('auto_suspend_override_until')
                       ->orWhere('auto_suspend_override_until', '<', $today);
             })
-            ->whereHas('subscription.invoices', function ($invoiceQuery) use ($threeDaysAgo) {
+            ->whereHas('subscription.invoices', function ($invoiceQuery) use ($today) {
                 $invoiceQuery->whereIn('status', ['unpaid', 'overdue'])
-                    ->where('due_date', '<=', $threeDaysAgo)
+                    ->whereDate('due_date', '<=', $today)
                     ->whereRaw("(COALESCE(total, 0) - COALESCE((SELECT SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) FROM accounting_entries WHERE accounting_entries.invoice_id = invoices.id), 0)) > 0.009");
             })
             ->whereDoesntHave('subscription.customer', function ($query) use ($today) {

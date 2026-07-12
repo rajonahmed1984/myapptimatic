@@ -333,7 +333,10 @@ class SubscriptionController extends Controller
                 $query->where(function ($inner) use ($search) {
                     $inner->where('status', 'like', '%'.$search.'%')
                         ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                            $customerQuery->where('name', 'like', '%'.$search.'%');
+                            $customerQuery->where(function ($customerSearch) use ($search) {
+                                $customerSearch->where('name', 'like', '%'.$search.'%')
+                                    ->orWhere('company_name', 'like', '%'.$search.'%');
+                            });
                         })
                         ->orWhereHas('plan', function ($planQuery) use ($search) {
                             $planQuery->where('name', 'like', '%'.$search.'%')
@@ -394,6 +397,7 @@ class SubscriptionController extends Controller
                 return [
                     'id' => $subscription->id,
                     'customer_name' => (string) ($customer?->name ?? '--'),
+                    'customer_company_name' => (string) ($customer?->company_name ?? ''),
                     'customer_url' => $customer ? route('admin.customers.show', $customer) : null,
                     'product_plan' => (string) (($plan?->product?->name ?? '--').' - '.($plan?->name ?? '--')),
                     'amount_display' => $planPrice !== null
@@ -578,6 +582,7 @@ class SubscriptionController extends Controller
                         'routes' => [
                             'suspend' => route('admin.licenses.suspend', $license),
                             'unsuspend' => route('admin.licenses.unsuspend', $license),
+                            'reactivate' => route('admin.licenses.reactivate', $license),
                             'terminate' => route('admin.licenses.terminate', $license),
                         ],
                         'domains' => $license->domains->map(function (LicenseDomain $domain) use ($license) {

@@ -527,6 +527,7 @@ Route::middleware([
     Route::resource('licenses', LicenseController::class)->except(['show', 'index', 'create', 'edit']);
     Route::post('licenses/{license}/suspend', [LicenseController::class, 'suspend'])->name('licenses.suspend');
     Route::post('licenses/{license}/unsuspend', [LicenseController::class, 'unsuspend'])->name('licenses.unsuspend');
+    Route::post('licenses/{license}/reactivate', [LicenseController::class, 'reactivate'])->name('licenses.reactivate');
     Route::post('licenses/{license}/terminate', [LicenseController::class, 'terminate'])->name('licenses.terminate');
     Route::post('licenses/{license}/domains/{domain}/revoke', [LicenseController::class, 'revokeDomain'])->name('licenses.domains.revoke');
     Route::post('licenses/{license}/sync', [LicenseController::class, 'sync'])->name('licenses.sync');

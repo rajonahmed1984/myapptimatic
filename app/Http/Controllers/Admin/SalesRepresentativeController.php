@@ -236,7 +236,8 @@ class SalesRepresentativeController extends Controller
 
     public function update(Request $request, SalesRepresentative $salesRep)
     {
-        $data = $request->validate([
+        $salesRep->loadMissing('user');
+        $rules = [
             'employee_id' => ['nullable', 'exists:employees,id'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
@@ -244,12 +245,50 @@ class SalesRepresentativeController extends Controller
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'project_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'subscription_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'user_password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'user_password_confirmation' => ['nullable', 'string'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
-        ]);
+        ];
 
-        $salesRep->update(collect($data)->except(['avatar', 'nid_file', 'cv_file'])->all());
+        if ($salesRep->user || $request->filled('user_password')) {
+            $rules['email'][] = 'required';
+            $rules['email'][] = Rule::unique('users', 'email')->ignore($salesRep->user_id);
+        }
+
+        $data = $request->validate($rules);
+
+        DB::transaction(function () use ($salesRep, $data): void {
+            $salesRep->update(collect($data)->except([
+                'user_password',
+                'user_password_confirmation',
+                'avatar',
+                'nid_file',
+                'cv_file',
+            ])->all());
+
+            $user = $salesRep->user;
+            if (! $user && ! empty($data['user_password'])) {
+                $user = User::create([
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'password' => Hash::make($data['user_password']),
+                    'role' => Role::SALES,
+                ]);
+                $salesRep->update(['user_id' => $user->id]);
+            } elseif ($user) {
+                $userData = [
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'role' => Role::SALES,
+                ];
+                if (! empty($data['user_password'])) {
+                    $userData['password'] = Hash::make($data['user_password']);
+                }
+                $user->update($userData);
+            }
+        });
 
         $uploadPaths = $this->handleUploads($request, $salesRep);
         if (! empty($uploadPaths)) {
@@ -1353,7 +1392,7 @@ class SalesRepresentativeController extends Controller
         return [
             'employee_id' => (string) old('employee_id', (string) ($salesRep?->employee_id ?? '')),
             'name' => (string) old('name', $salesRep?->name ?? ''),
-            'email' => (string) old('email', $salesRep?->email ?? ''),
+            'email' => (string) old('email', $salesRep?->user?->email ?? $salesRep?->email ?? ''),
             'phone' => (string) old('phone', $salesRep?->phone ?? ''),
             'project_commission_percentage' => (string) old('project_commission_percentage', $salesRep?->project_commission_percentage ?? ''),
             'subscription_commission_percentage' => (string) old('subscription_commission_percentage', $salesRep?->subscription_commission_percentage ?? ''),

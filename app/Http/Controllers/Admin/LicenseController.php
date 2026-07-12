@@ -51,7 +51,10 @@ class LicenseController extends Controller
                                     });
                             })
                                 ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                                    $customerQuery->where('name', 'like', '%'.$search.'%');
+                                    $customerQuery->where(function ($customerSearch) use ($search) {
+                                        $customerSearch->where('name', 'like', '%'.$search.'%')
+                                            ->orWhere('company_name', 'like', '%'.$search.'%');
+                                    });
                                 });
                         });
 
@@ -237,6 +240,17 @@ class LicenseController extends Controller
         return $this->redirectAfterLicenseAction($request, $license, 'License unsuspended.');
     }
 
+    public function reactivate(Request $request, License $license)
+    {
+        $this->authorize('update', $license);
+
+        if ((string) $license->status === 'revoked') {
+            $license->update(['status' => 'active']);
+        }
+
+        return $this->redirectAfterLicenseAction($request, $license, 'License reactivated.');
+    }
+
     public function terminate(Request $request, License $license)
     {
         $this->authorize('update', $license);
@@ -387,6 +401,7 @@ class LicenseController extends Controller
                 return [
                     'id' => $license->id,
                     'customer_name' => (string) ($customer?->name ?? '--'),
+                    'customer_company_name' => (string) ($customer?->company_name ?? ''),
                     'customer_url' => $customer ? route('admin.customers.show', $customer) : null,
                     'is_blocked' => (bool) $isBlocked,
                     'order_number' => $orderNumber ? (string) $orderNumber : '--',

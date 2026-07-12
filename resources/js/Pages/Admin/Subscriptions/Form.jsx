@@ -48,6 +48,15 @@ function LicenseCard({ license, csrf, statusClass }) {
                             Unsuspend
                         </button>
                     )}
+                    {license.fields.status === 'revoked' && (
+                        <button
+                            type="submit"
+                            form={`reactivate-form-${license.id}`}
+                            className="rounded-full border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-50"
+                        >
+                            Reactivate
+                        </button>
+                    )}
                     {license.fields.status !== 'revoked' && (
                         <button
                             type="submit"
@@ -424,6 +433,18 @@ export default function Form({
                             )}
                             {license.fields.status === 'suspended' && (
                                 <form id={`unsuspend-form-${license.id}`} action={license.routes.unsuspend} method="POST" data-native="true">
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <input type="hidden" name="return_to_subscription" value="1" />
+                                </form>
+                            )}
+                            {license.fields.status === 'revoked' && (
+                                <form
+                                    id={`reactivate-form-${license.id}`}
+                                    action={license.routes.reactivate}
+                                    method="POST"
+                                    data-native="true"
+                                    onSubmit={(e) => { if (!window.confirm('Reactivate this license?')) e.preventDefault(); }}
+                                >
                                     <input type="hidden" name="_token" value={csrf} />
                                     <input type="hidden" name="return_to_subscription" value="1" />
                                 </form>

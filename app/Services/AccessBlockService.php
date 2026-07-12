@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Setting;
+use App\Support\LicenseInvoiceGrace;
 use Carbon\Carbon;
 use function route;
 
@@ -98,7 +99,9 @@ class AccessBlockService
 
         $isOverdue = $isMarkedOverdue || $overdueDays > 0;
         $reason = $isOverdue ? 'invoice_overdue' : 'invoice_due';
-        $shouldBlock = $strictLicenseOverdue && ($isMarkedOverdue || $isGraceExpired);
+        $shouldBlock = $strictLicenseOverdue
+            && LicenseInvoiceGrace::hasEnded($now)
+            && ($isMarkedOverdue || $isGraceExpired);
         $amount = $this->resolveInvoiceAmount($invoice);
         $amountDisplay = $this->formatInvoiceAmount($amount, (string) $invoice->currency);
         $dueDateDisplay = $dueDate->format('F j, Y');

@@ -21,6 +21,7 @@ class UpdateTaskRequest extends FormRequest
         $priorityOptions = array_keys(TaskSettings::priorityOptions());
 
         return [
+            'title' => ['required', 'string', 'max:255'],
             'status' => ['required', Rule::in(self::STATUSES)],
             'description' => ['nullable', 'string'],
             'task_type' => ['nullable', Rule::in($taskTypeOptions)],

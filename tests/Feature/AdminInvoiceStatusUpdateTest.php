@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\Role;
 use App\Models\Customer;
+use App\Models\AccountingEntry;
 use App\Models\Invoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,6 +14,44 @@ use Tests\TestCase;
 class AdminInvoiceStatusUpdateTest extends TestCase
 {
     use RefreshDatabase;
+
+    #[Test]
+    public function admin_can_delete_invoice_transaction_and_restore_outstanding_status(): void
+    {
+        $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
+        $customer = Customer::create(['name' => 'Transaction Client']);
+        $invoice = Invoice::create([
+            'customer_id' => $customer->id,
+            'number' => 'INV-DELETE-TXN-1',
+            'status' => 'paid',
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'paid_at' => now(),
+            'subtotal' => 100,
+            'late_fee' => 0,
+            'total' => 100,
+            'currency' => 'USD',
+            'type' => 'project_initial_payment',
+        ]);
+        $entry = AccountingEntry::create([
+            'entry_date' => now()->toDateString(),
+            'type' => 'payment',
+            'amount' => 100,
+            'currency' => 'USD',
+            'customer_id' => $customer->id,
+            'invoice_id' => $invoice->id,
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.invoices.show', $invoice))
+            ->delete(route('admin.accounting.destroy', $entry), ['redirect_back' => true])
+            ->assertRedirect(route('admin.invoices.show', $invoice));
+
+        $this->assertDatabaseMissing('accounting_entries', ['id' => $entry->id]);
+        $this->assertSame('unpaid', $invoice->fresh()->status);
+        $this->assertNull($invoice->fresh()->paid_at);
+    }
 
     #[Test]
     public function admin_can_mark_invoice_paid_and_sets_paid_at(): void

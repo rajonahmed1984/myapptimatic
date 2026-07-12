@@ -13,12 +13,56 @@ use App\Models\User;
 use App\Services\StatusUpdateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class LicenseAutoSuspendOverrideAutomationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
+    #[Test]
+    public function due_invoice_keeps_license_active_until_third_day_at_1159_pm(): void
+    {
+        Setting::setValue('time_zone', 'Asia/Dhaka');
+        Carbon::setTestNow(Carbon::parse('2026-07-03 23:58:00', 'Asia/Dhaka'));
+        [$customer, $subscription] = $this->createSubscriptionSetup();
+        $license = License::create([
+            'subscription_id' => $subscription->id,
+            'product_id' => $subscription->plan->product_id,
+            'license_key' => strtoupper(Str::random(24)),
+            'status' => 'active',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'expires_at' => now()->addYear()->toDateString(),
+            'max_domains' => 1,
+        ]);
+        Invoice::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
+            'number' => 'INV-MONTHLY-GRACE-1',
+            'status' => 'overdue',
+            'issue_date' => now()->subDays(5)->toDateString(),
+            'due_date' => now()->subDays(2)->toDateString(),
+            'subtotal' => 120,
+            'late_fee' => 0,
+            'total' => 120,
+            'currency' => 'USD',
+        ]);
+
+        $this->artisan('licenses:suspend-past-due --invoice-only')->assertSuccessful();
+        $this->assertSame('active', $license->fresh()->status);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-03 23:59:00', 'Asia/Dhaka'));
+        $this->artisan('licenses:suspend-past-due --invoice-only')->assertSuccessful();
+        $this->assertSame('suspended', $license->fresh()->status);
+    }
 
     #[Test]
     public function automation_skips_auto_suspending_licenses_with_active_override_date(): void
@@ -257,4 +301,3 @@ class LicenseAutoSuspendOverrideAutomationTest extends TestCase
         return [$customer, $subscription];
     }
 }
-

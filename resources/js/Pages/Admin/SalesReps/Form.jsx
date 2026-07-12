@@ -117,7 +117,7 @@ export default function Form({
                             </div>
                         </div>
 
-                        {/* Row 2: Phone | Password | Retype-Password (create only) */}
+                        {/* Row 2: Phone | Password | Retype-Password */}
                         <div className="grid gap-4 md:grid-cols-3">
                             <div>
                                 <label className="text-xs text-slate-500">Phone</label>
@@ -128,20 +128,18 @@ export default function Form({
                                 />
                                 {errors?.phone ? <p className="mt-1 text-xs text-rose-600">{errors.phone}</p> : null}
                             </div>
-                            {!is_edit ? (
-                                <>
-                                    <div>
-                                        <label className="text-xs text-slate-500">Password</label>
-                                        <input name="user_password" type="password" className="ui-input mt-1" />
-                                        {errors?.user_password ? <p className="mt-1 text-xs text-rose-600">{errors.user_password}</p> : null}
-                                        <p className="mt-1 text-xs text-slate-500">Set a password to create sales portal login.</p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs text-slate-500">Retype Password</label>
-                                        <input name="user_password_confirmation" type="password" className="ui-input mt-1" />
-                                    </div>
-                                </>
-                            ) : null}
+                            <div>
+                                <label className="text-xs text-slate-500">{is_edit ? 'New Password' : 'Password'}</label>
+                                <input name="user_password" type="password" className="ui-input mt-1" autoComplete="new-password" />
+                                {errors?.user_password ? <p className="mt-1 text-xs text-rose-600">{errors.user_password}</p> : null}
+                                <p className="mt-1 text-xs text-slate-500">
+                                    {is_edit ? 'Leave blank to keep the current password.' : 'Set a password to create sales portal login.'}
+                                </p>
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">Retype Password</label>
+                                <input name="user_password_confirmation" type="password" className="ui-input mt-1" autoComplete="new-password" />
+                            </div>
                         </div>
 
                         {/* Row 3: Project % | Subscriptions % | Status */}

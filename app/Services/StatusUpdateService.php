@@ -71,6 +71,10 @@ class StatusUpdateService
             return 0;
         }
 
+        if (! \App\Support\LicenseInvoiceGrace::hasEnded($today)) {
+            return 0;
+        }
+
         $today = $today ?? Carbon::today();
         $count = 0;
         $suspendDays = (int) Setting::getValue('suspend_days');

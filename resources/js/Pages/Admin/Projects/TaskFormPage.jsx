@@ -65,17 +65,19 @@ export default function TaskFormPage({
                     <input type="hidden" name="return_to" value={form.return_to || routes?.index || ''} />
 
                     <div className="grid gap-4 md:grid-cols-2">
+                        <div className="md:col-span-2">
+                            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Title</label>
+                            <input
+                                name="title"
+                                defaultValue={form.title ?? task?.title ?? ''}
+                                required
+                                className="ui-input mt-1"
+                            />
+                            {errors?.title ? <p className="mt-1 text-xs text-rose-600">{errors.title}</p> : null}
+                        </div>
+
                         {!isEdit ? (
                             <>
-                                <div className="md:col-span-2">
-                                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Title</label>
-                                    <input
-                                        name="title"
-                                        defaultValue={form.title || ''}
-                                        required
-                                        className="ui-input mt-1"
-                                    />
-                                </div>
                                 <div>
                                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Start date</label>
                                     <input

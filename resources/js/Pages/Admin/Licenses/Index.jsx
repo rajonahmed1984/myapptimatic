@@ -294,6 +294,11 @@ export default function Index({
                                                 ) : (
                                                     <span className="text-slate-500">--</span>
                                                 )}
+                                                {license.customer_company_name ? (
+                                                    <div className="mt-0.5 max-w-[170px] truncate text-xs font-medium text-slate-600 md:max-w-[230px] lg:max-w-[270px]">
+                                                        {license.customer_company_name}
+                                                    </div>
+                                                ) : null}
                                                 {license.is_blocked ? <div className="mt-1 text-xs text-rose-600">Access blocked</div> : null}
                                                 <div className="mt-1 max-w-[170px] truncate text-xs text-slate-500 md:max-w-[230px] lg:max-w-[270px]">
                                                     {license.product_name} - {license.plan_name}

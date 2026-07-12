@@ -99,8 +99,8 @@ export default function Show({
         setNewItemSeed((seed) => seed + 1);
     };
 
-    const handleDeleteTransaction = (entryId) => {
-        if (confirm('Are you sure you want to remove this payment transaction? This will restore the outstanding balance.')) {
+    const handleDeleteTransaction = (entryId, entryType = 'transaction') => {
+        if (confirm(`Are you sure you want to permanently delete this ${entryType} transaction? The invoice balance and status will be recalculated.`)) {
             router.delete(route('admin.accounting.destroy', entryId), {
                 data: { redirect_back: true },
                 onSuccess: () => {
@@ -448,7 +448,7 @@ export default function Show({
                                                          <td className="px-4 py-2 text-center">
                                                              <button
                                                                  type="button"
-                                                                 onClick={() => handleDeleteTransaction(entry.id)}
+                                                                 onClick={() => handleDeleteTransaction(entry.id, entry.type)}
                                                                  className="rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100/70 transition"
                                                              >
                                                                  Remove
@@ -553,6 +553,7 @@ export default function Show({
                             <thead>
                                 <tr className="border-b border-slate-200 bg-slate-50 text-left font-semibold text-slate-600">
                                     <th className="px-4 py-2">Description</th>
+                                    <th className="px-4 py-2 text-center">Action</th>
                                     <th className="w-48 px-4 py-2 text-right">Amount</th>
                                 </tr>
                             </thead>
@@ -635,10 +636,19 @@ export default function Show({
                                             <td className="px-4 py-2 font-mono text-slate-600">{entry.reference || '--'}</td>
                                             <td className="px-4 py-2 text-slate-600">{entry.status_label || entry.type_label}</td>
                                             <td className="px-4 py-2 text-slate-600">{entry.description || '--'}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteTransaction(entry.id, entry.type)}
+                                                    className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-100"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan={5} className="px-4 py-3 text-center text-slate-400">No Records Found</td></tr>
+                                    <tr><td colSpan={6} className="px-4 py-3 text-center text-slate-400">No Records Found</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -736,4 +746,3 @@ export default function Show({
         </>
     );
 }
-

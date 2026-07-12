@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Enums\Role;
 use App\Models\User;
+use App\Models\SalesRepresentative;
+use App\Notifications\ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class RolePasswordResetTest extends TestCase
@@ -28,6 +31,7 @@ class RolePasswordResetTest extends TestCase
 
     public function test_sales_forgot_password_creates_sales_token(): void
     {
+        Notification::fake();
         $user = User::factory()->create(['role' => Role::SALES]);
 
         $response = $this->post(route('sales.password.email'), [
@@ -36,6 +40,29 @@ class RolePasswordResetTest extends TestCase
 
         $response->assertSessionHas('status');
         $this->assertTrue(DB::table('password_reset_tokens_sales')->where('email', $user->email)->exists());
+        Notification::assertSentTo($user, ResetPasswordNotification::class);
+    }
+
+    public function test_sales_profile_email_can_resolve_its_linked_login_account(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create([
+            'role' => Role::SALES,
+            'email' => 'sales-login@example.test',
+        ]);
+        SalesRepresentative::create([
+            'user_id' => $user->id,
+            'name' => 'Sales Profile',
+            'email' => 'sales-profile@example.test',
+            'status' => 'active',
+        ]);
+
+        $this->post(route('sales.password.email'), [
+            'email' => 'sales-profile@example.test',
+        ])->assertSessionHas('status');
+
+        $this->assertTrue(DB::table('password_reset_tokens_sales')->where('email', $user->email)->exists());
+        Notification::assertSentTo($user, ResetPasswordNotification::class);
     }
 
     public function test_support_forgot_password_creates_support_token(): void
