@@ -5,6 +5,7 @@ import AdminLayout from '../../../Layouts/AdminLayout';
 export default function Index({
     campaigns = {},
     counts = {},
+    routes = {},
 }) {
     const { csrf_token: csrfToken = '', errors = {}, status = '' } = usePage().props || {};
     const [subject, setSubject] = useState('');
@@ -26,7 +27,7 @@ export default function Index({
     };
 
     return (
-        <AdminLayout>
+        <AdminLayout showHeader={false}>
             <Head title="Mass Mail Campaigns" />
 
             <div className="space-y-6">
@@ -43,7 +44,7 @@ export default function Index({
                         <div className="text-xl font-bold text-slate-900">Compose Mass Notification</div>
                         <p className="text-sm text-slate-500">Send an email message to all or filtered clients instantly. Dispatched safely via the background queue.</p>
 
-                        <form method="POST" action={route('admin.mass-mail.store')} data-native="true" className="space-y-4 pt-2">
+                        <form method="POST" action={routes?.store} data-native="true" className="space-y-4 pt-2">
                             <input type="hidden" name="_token" value={csrfToken} />
 
                             <div>
@@ -85,7 +86,8 @@ export default function Index({
                                     value={body}
                                     onChange={(e) => setBody(e.target.value)}
                                     placeholder="<p>Dear Client,</p><p>We are excited to announce...</p>"
-                                    className="ui-input mt-1.5 w-full font-mono text-sm"
+                                    className="ui-input mt-1.5 w-full font-mono text-sm rounded-[10px]"
+                                    style={{ borderRadius: '10px' }}
                                     required
                                 />
                                 <span className="text-[11px] text-slate-400">You can use standard HTML markup. The message will be wrapped in the system's global branded template automatically.</span>
@@ -132,7 +134,48 @@ export default function Index({
                         <div className="card p-6 space-y-3">
                             <div className="section-label">Pro-Tips</div>
                             <div className="text-sm font-bold text-slate-800">HTML Templates</div>
-                            <p className="text-xs text-slate-500 leading-relaxed">
+                            
+                            <div className="mt-2 space-y-2">
+                                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Load Predefined Template</label>
+                                <select
+                                    onChange={(e) => {
+                                        const templateVal = e.target.value;
+                                        if (templateVal) {
+                                            setBody(templateVal);
+                                        }
+                                    }}
+                                    className="w-full text-xs rounded-lg border border-slate-200 bg-white p-2 text-slate-700 shadow-sm outline-none transition focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    defaultValue=""
+                                >
+                                    <option value="" disabled>-- Select a template --</option>
+                                    <option value={`<h3>Special Offer: Save 20% Today!</h3>
+<p>Dear client,</p>
+<p>We are excited to share a special discount with you. Use coupon code <strong>SPECIAL20</strong> at checkout to get 20% off all services.</p>
+<p><a href="http://127.0.0.1:8000" style="display: inline-block; padding: 10px 20px; background-color: #0d9488; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">Claim Offer Now</a></p>`}>
+                                        Promotional / Discount Offer
+                                    </option>
+                                    <option value={`<h3>Important Announcement</h3>
+<p>Dear client,</p>
+<p>We are pleased to announce the launch of our new client portal features. You can now track your project tasks, submit requests, and pay invoices even faster.</p>
+<p>Log in to your account to explore the updates.</p>`}>
+                                        System Announcement
+                                    </option>
+                                    <option value={`<h3>Scheduled Maintenance Notice</h3>
+<p>Dear client,</p>
+<p>Please be advised that we will be performing scheduled system maintenance on <strong>[Date]</strong> from <strong>[Start Time]</strong> to <strong>[End Time]</strong>.</p>
+<p>During this period, some services may experience temporary interruptions. We apologize for any inconvenience caused.</p>`}>
+                                        Scheduled Maintenance
+                                    </option>
+                                    <option value={`<h3>Welcome to MyApptimatic!</h3>
+<p>Dear client,</p>
+<p>Thank you for choosing us as your service provider. We are committed to delivering the best possible experience for your business.</p>
+<p>If you have any questions, feel free to open a support ticket at any time.</p>`}>
+                                        Welcome / Introduction
+                                    </option>
+                                </select>
+                            </div>
+
+                            <p className="text-xs text-slate-500 leading-relaxed pt-1 border-t border-slate-100">
                                 You can style headings, write bullet points, or construct links inside the editor. The message body is drop-in integrated inside the standard header-footer email wrapper.
                             </p>
                         </div>

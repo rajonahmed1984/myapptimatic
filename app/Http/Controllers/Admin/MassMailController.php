@@ -42,6 +42,9 @@ class MassMailController extends Controller
         return Inertia::render('Admin/MassMail/Index', [
             'campaigns' => $campaigns,
             'counts' => $counts,
+            'routes' => [
+                'store' => route('admin.mass-mail.store'),
+            ],
         ]);
     }
 
