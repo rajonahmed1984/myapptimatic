@@ -731,6 +731,14 @@ Route::middleware([
     Route::delete('accounting/{entry}', [AdminAccountingController::class, 'destroy'])->name('accounting.destroy');
     Route::get('settings', [SettingController::class, 'edit'])->name('settings.edit');
     Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
+
+    Route::middleware('admin.role:master_admin,sub_admin,admin')
+        ->prefix('mass-mail')
+        ->name('mass-mail.')
+        ->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\MassMailController::class, 'index'])->name('index');
+            Route::post('/send', [\App\Http\Controllers\Admin\MassMailController::class, 'store'])->name('store');
+        });
     Route::get('logs/activity', [SystemLogController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('logs.activity')

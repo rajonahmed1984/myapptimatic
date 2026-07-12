@@ -42,6 +42,7 @@ export default function TaskDetailClickup({
 }) {
     const { csrf_token: csrfToken } = usePage().props;
 
+    const [activeTab, setActiveTab] = useState('open');
     const [assigneeRows, setAssigneeRows] = useState(Array.isArray(assignees) ? assignees : []);
     const [employeeIds, setEmployeeIds] = useState(employeeIdsFromAssignees(assignees));
     const [assigneeNotice, setAssigneeNotice] = useState('');
@@ -52,7 +53,7 @@ export default function TaskDetailClickup({
     const canEdit = Boolean(permissions?.canEdit);
     const canAddSubtask = Boolean(permissions?.canAddSubtask);
     const canPost = Boolean(permissions?.canPost);
-    const canShowTaskEdit = (routePrefix === 'admin' || routePrefix === 'client') && canEdit && Boolean(routes?.update);
+    const canShowTaskEdit = canEdit && Boolean(routes?.update);
 
     const subtaskRows = Array.isArray(subtasks) ? subtasks : [];
     const employeeOptions = Array.isArray(employees) ? employees : [];
@@ -66,13 +67,47 @@ export default function TaskDetailClickup({
     const subtaskSectionTitle = /loan\s*repayment/i.test(String(task?.title || ''))
         ? 'Loan Repayment Schedule'
         : 'Subtasks';
+
+    const openSubtaskCount = useMemo(() => subtaskRows.filter(s => ['open', 'todo', 'pending', ''].includes(String(s.status || '').toLowerCase())).length, [subtaskRows]);
+    const inProgressSubtaskCount = useMemo(() => subtaskRows.filter(s => String(s.status || '').toLowerCase() === 'in_progress').length, [subtaskRows]);
     const completedSubtaskCount = useMemo(
-        () => subtaskRows.filter((row) => String(row?.status || '') === 'completed').length,
+        () => subtaskRows.filter((row) => ['completed', 'done'].includes(String(row?.status || '').toLowerCase())).length,
         [subtaskRows]
     );
     const subtaskProgressPercent = subtaskRows.length > 0
         ? Math.round((completedSubtaskCount / subtaskRows.length) * 100)
         : 0;
+
+    const filteredSubtasks = useMemo(() => {
+        return subtaskRows.filter((subtask) => {
+            const subtaskStatus = String(subtask?.status || '').toLowerCase();
+            if (activeTab === 'open') {
+                return ['open', 'todo', 'pending', ''].includes(subtaskStatus);
+            }
+            if (activeTab === 'in_progress') {
+                return subtaskStatus === 'in_progress';
+            }
+            if (activeTab === 'completed') {
+                return ['completed', 'done'].includes(subtaskStatus);
+            }
+            return true;
+        });
+    }, [subtaskRows, activeTab]);
+
+    const getStatusBadgeClass = (status) => {
+        switch (String(status).toLowerCase()) {
+            case 'in_progress':
+                return 'bg-amber-50 text-amber-700 border-amber-200';
+            case 'completed':
+            case 'done':
+                return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'open':
+            case 'todo':
+            case 'pending':
+            default:
+                return 'bg-slate-50 text-slate-600 border-slate-200';
+        }
+    };
 
     const submitAssignees = async (event) => {
         event.preventDefault();
@@ -300,178 +335,222 @@ export default function TaskDetailClickup({
                         </div>
 
                         {subtaskRows.length > 0 ? (
-                            <div className="max-h-[26rem] overflow-y-auto pr-1">
-                                <div className="space-y-3">
-                                    {subtaskRows.map((subtask) => {
-                                        const subtaskStatus = String(subtask?.status || '').toLowerCase();
-                                        const subtaskIsInProgress = subtaskStatus === 'in_progress';
-                                        const subtaskIsCompleted = ['completed', 'done'].includes(subtaskStatus);
-                                        const commentRows = Array.isArray(subtask?.comments) ? subtask.comments : [];
-
-                                        return (
-                                            <div key={subtask.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                                            <div className="flex flex-wrap items-start justify-between gap-2">
-                                                <div>
-                                                    <div className="font-semibold text-slate-900">{subtask.title}</div>
-                                                    <div className="text-xs text-slate-500">
-                                                        Created: {subtask.created_at_display || '-'} | Added by: {subtask.created_by_label || '--'}
-                                                    </div>
-                                                    {subtask.is_completed ? (
-                                                        <div className="text-xs font-semibold text-emerald-600">
-                                                            Completed: {subtask.completed_at_display || '-'} | Completed by: {subtask.completed_by_name || '--'}
-                                                        </div>
-                                                    ) : null}
-                                                </div>
-                                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                                                    {subtask.status_label || 'Open'}
-                                                </span>
-                                            </div>
-                                            {subtask.attachment_url ? (
-                                                isImageAttachment(subtask) ? (
-                                                    <a
-                                                        href={subtask.attachment_url}
-                                                        target="_blank"
-                                                        rel="noopener"
-                                                        className="mt-2 inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 hover:border-teal-200 hover:bg-teal-50/40"
-                                                    >
-                                                        <img
-                                                            src={subtask.attachment_url}
-                                                            alt={subtask.attachment_name || 'Subtask image'}
-                                                            className="h-12 w-12 rounded-md border border-slate-200 object-cover bg-white"
-                                                            loading="lazy"
-                                                        />
-                                                        <span className="truncate text-xs font-semibold text-slate-700">View image</span>
-                                                    </a>
-                                                ) : (
-                                                    <a href={subtask.attachment_url} target="_blank" rel="noopener" className="mt-2 inline-flex text-xs font-semibold text-teal-600">Attachment</a>
-                                                )
-                                            ) : null}
-                                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                                                {subtask.can_edit ? (
-                                                    <details>
-                                                        <summary className="subtask-edit-btn cursor-pointer rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-200 hover:text-teal-700">Edit</summary>
-                                                        <form method="POST" action={subtask?.routes?.update} data-native="true" className="mt-2 flex items-center gap-2">
-                                                            <input type="hidden" name="_token" value={csrfToken} />
-                                                            <HiddenMethod method="PATCH" />
-                                                            <input name="title" defaultValue={subtask.title} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs" />
-                                                            <button type="submit" className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700">Save</button>
-                                                        </form>
-                                                    </details>
-                                                ) : null}
-                                                {subtask.can_change_status ? (
-                                                    <>
-                                                        {!subtaskIsInProgress ? (
-                                                            <form method="POST" action={subtask?.routes?.update} data-native="true">
-                                                                <input type="hidden" name="_token" value={csrfToken} />
-                                                                <HiddenMethod method="PATCH" />
-                                                                <input type="hidden" name="status" value="in_progress" />
-                                                                <button
-                                                                    type="submit"
-                                                                    className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50"
-                                                                >
-                                                                    Inprogress
-                                                                </button>
-                                                            </form>
-                                                        ) : null}
-                                                        {!subtaskIsCompleted ? (
-                                                            <form method="POST" action={subtask?.routes?.update} data-native="true">
-                                                                <input type="hidden" name="_token" value={csrfToken} />
-                                                                <HiddenMethod method="PATCH" />
-                                                                <input type="hidden" name="status" value="completed" />
-                                                                <button
-                                                                    type="submit"
-                                                                    className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                                                                >
-                                                                    Complete
-                                                                </button>
-                                                            </form>
-                                                        ) : null}
-                                                    </>
-                                                ) : null}
-                                            </div>
-
-                                            <div className="mt-4 border-t border-slate-200 pt-3">
-                                                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                                    Subtask Comments
-                                                </div>
-
-                                                {commentRows.length > 0 ? (
-                                                    <div className="mt-2 space-y-2">
-                                                        {commentRows.map((comment) => {
-                                                            const replyRows = Array.isArray(comment?.replies) ? comment.replies : [];
-
-                                                            return (
-                                                                <div key={`comment-${comment.id}`} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                                                    <div className="text-[11px] text-slate-500">
-                                                                        {comment.actor_name} ({comment.actor_type_label}) | {comment.created_at_display}
-                                                                    </div>
-                                                                    <div className="mt-1 whitespace-pre-line text-sm text-slate-800">{comment.message}</div>
-
-                                                                    {replyRows.length > 0 ? (
-                                                                        <div className="mt-2 space-y-2 border-l-2 border-slate-200 pl-3">
-                                                                            {replyRows.map((reply) => (
-                                                                                <div key={`reply-${reply.id}`} className="rounded-md border border-slate-200 bg-white p-2">
-                                                                                    <div className="text-[11px] text-slate-500">
-                                                                                        {reply.actor_name} ({reply.actor_type_label}) | {reply.created_at_display}
-                                                                                    </div>
-                                                                                    <div className="mt-1 whitespace-pre-line text-xs text-slate-700">{reply.message}</div>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    ) : null}
-
-                                                                    {permissions?.canPost && subtask?.routes?.comments_store ? (
-                                                                        <details className="mt-2">
-                                                                            <summary className="cursor-pointer text-xs font-semibold text-teal-700">Reply</summary>
-                                                                            <form method="POST" action={subtask.routes.comments_store} data-native="true" className="mt-2 space-y-2">
-                                                                                <input type="hidden" name="_token" value={csrfToken} />
-                                                                                <input type="hidden" name="parent_id" value={comment.id} />
-                                                                                <textarea
-                                                                                    name="message"
-                                                                                    rows={1}
-                                                                                    placeholder="Write a reply"
-                                                                                    className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                                                                                    required
-                                                                                />
-                                                                                <div className="flex justify-end">
-                                                                                    <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700">
-                                                                                        Reply
-                                                                                    </button>
-                                                                                </div>
-                                                                            </form>
-                                                                        </details>
-                                                                    ) : null}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                ) : (
-                                                    <div className="mt-2 text-xs text-slate-500">No comments yet.</div>
-                                                )}
-
-                                                {permissions?.canPost && subtask?.routes?.comments_store ? (
-                                                    <form method="POST" action={subtask.routes.comments_store} data-native="true" className="mt-3 space-y-2">
-                                                        <input type="hidden" name="_token" value={csrfToken} />
-                                                        <textarea
-                                                            name="message"
-                                                            rows={1}
-                                                            placeholder="Write a comment on this subtask"
-                                                            className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                                                            required
-                                                        />
-                                                        <div className="flex justify-end">
-                                                            <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700">
-                                                                Comment
-                                                            </button>
-                                                        </div>
-                                                    </form>
-                                                ) : null}
-                                            </div>
-                                            </div>
-                                        );
-                                    })}
+                            <>
+                                <div className="mb-4 flex border-b border-slate-200">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('open')}
+                                        className={`border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                                            activeTab === 'open'
+                                                ? 'border-teal-500 text-teal-600 font-semibold'
+                                                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        Open ({openSubtaskCount})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('in_progress')}
+                                        className={`border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                                            activeTab === 'in_progress'
+                                                ? 'border-teal-500 text-teal-600 font-semibold'
+                                                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        Inprogress ({inProgressSubtaskCount})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('completed')}
+                                        className={`border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                                            activeTab === 'completed'
+                                                ? 'border-teal-500 text-teal-600 font-semibold'
+                                                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        Completed ({completedSubtaskCount})
+                                    </button>
                                 </div>
-                            </div>
+
+                                {filteredSubtasks.length > 0 ? (
+                                    <div className="max-h-[26rem] overflow-y-auto pr-1">
+                                        <div className="space-y-3">
+                                            {filteredSubtasks.map((subtask) => {
+                                                const subtaskStatus = String(subtask?.status || '').toLowerCase();
+                                                const subtaskIsInProgress = subtaskStatus === 'in_progress';
+                                                const subtaskIsCompleted = ['completed', 'done'].includes(subtaskStatus);
+                                                const commentRows = Array.isArray(subtask?.comments) ? subtask.comments : [];
+
+                                                return (
+                                                    <div key={subtask.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                                        <div>
+                                                            <div className="font-semibold text-slate-900">{subtask.title}</div>
+                                                            <div className="text-xs text-slate-500">
+                                                                Created: {subtask.created_at_display || '-'} | Added by: {subtask.created_by_label || '--'}
+                                                            </div>
+                                                            {subtask.is_completed ? (
+                                                                <div className="text-xs font-semibold text-emerald-600">
+                                                                    Completed: {subtask.completed_at_display || '-'} | Completed by: {subtask.completed_by_name || '--'}
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                        <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide ${getStatusBadgeClass(subtaskStatus)}`}>
+                                                            {subtask.status_label || 'Open'}
+                                                        </span>
+                                                    </div>
+                                                    {subtask.attachment_url ? (
+                                                        isImageAttachment(subtask) ? (
+                                                            <a
+                                                                href={subtask.attachment_url}
+                                                                target="_blank"
+                                                                rel="noopener"
+                                                                className="mt-2 inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 hover:border-teal-200 hover:bg-teal-50/40"
+                                                            >
+                                                                <img
+                                                                    src={subtask.attachment_url}
+                                                                    alt={subtask.attachment_name || 'Subtask image'}
+                                                                    className="h-12 w-12 rounded-md border border-slate-200 object-cover bg-white"
+                                                                    loading="lazy"
+                                                                />
+                                                                <span className="truncate text-xs font-semibold text-slate-700">View image</span>
+                                                            </a>
+                                                        ) : (
+                                                            <a href={subtask.attachment_url} target="_blank" rel="noopener" className="mt-2 inline-flex text-xs font-semibold text-teal-600">Attachment</a>
+                                                        )
+                                                    ) : null}
+                                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                        {subtask.can_edit ? (
+                                                            <details>
+                                                                <summary className="subtask-edit-btn cursor-pointer rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-200 hover:text-teal-700">Edit</summary>
+                                                                <form method="POST" action={subtask?.routes?.update} data-native="true" className="mt-2 flex items-center gap-2">
+                                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                                    <HiddenMethod method="PATCH" />
+                                                                    <input name="title" defaultValue={subtask.title} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs" />
+                                                                    <button type="submit" className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700">Save</button>
+                                                                </form>
+                                                            </details>
+                                                        ) : null}
+                                                        {subtask.can_change_status ? (
+                                                            <>
+                                                                {!subtaskIsInProgress ? (
+                                                                    <form method="POST" action={subtask?.routes?.update} data-native="true">
+                                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                                        <HiddenMethod method="PATCH" />
+                                                                        <input type="hidden" name="status" value="in_progress" />
+                                                                        <button
+                                                                            type="submit"
+                                                                            className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50"
+                                                                        >
+                                                                            Inprogress
+                                                                        </button>
+                                                                    </form>
+                                                                ) : null}
+                                                                {!subtaskIsCompleted ? (
+                                                                    <form method="POST" action={subtask?.routes?.update} data-native="true">
+                                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                                        <HiddenMethod method="PATCH" />
+                                                                        <input type="hidden" name="status" value="completed" />
+                                                                        <button
+                                                                            type="submit"
+                                                                            className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                                                        >
+                                                                            Complete
+                                                                        </button>
+                                                                    </form>
+                                                                ) : null}
+                                                            </>
+                                                        ) : null}
+                                                    </div>
+
+                                                    <div className="mt-4 border-t border-slate-200 pt-3">
+                                                        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                                            Subtask Comments
+                                                        </div>
+
+                                                        {commentRows.length > 0 ? (
+                                                            <div className="mt-2 space-y-2">
+                                                                {commentRows.map((comment) => {
+                                                                    const replyRows = Array.isArray(comment?.replies) ? comment.replies : [];
+
+                                                                    return (
+                                                                        <div key={`comment-${comment.id}`} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                            <div className="text-[11px] text-slate-500">
+                                                                                {comment.actor_name} ({comment.actor_type_label}) | {comment.created_at_display}
+                                                                            </div>
+                                                                            <div className="mt-1 whitespace-pre-line text-sm text-slate-800">{comment.message}</div>
+
+                                                                            {replyRows.length > 0 ? (
+                                                                                <div className="mt-2 space-y-2 border-l-2 border-slate-200 pl-3">
+                                                                                    {replyRows.map((reply) => (
+                                                                                        <div key={`reply-${reply.id}`} className="rounded-md border border-slate-200 bg-white p-2">
+                                                                                            <div className="text-[11px] text-slate-500">
+                                                                                                {reply.actor_name} ({reply.actor_type_label}) | {reply.created_at_display}
+                                                                                            </div>
+                                                                                            <div className="mt-1 whitespace-pre-line text-xs text-slate-700">{reply.message}</div>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            ) : null}
+
+                                                                            {permissions?.canPost && subtask?.routes?.comments_store ? (
+                                                                                <details className="mt-2">
+                                                                                    <summary className="cursor-pointer text-xs font-semibold text-teal-700">Reply</summary>
+                                                                                    <form method="POST" action={subtask.routes.comments_store} data-native="true" className="mt-2 space-y-2">
+                                                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                                                        <input type="hidden" name="parent_id" value={comment.id} />
+                                                                                        <textarea
+                                                                                            name="message"
+                                                                                            rows={1}
+                                                                                            placeholder="Write a reply"
+                                                                                            className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                                                                                            required
+                                                                                        />
+                                                                                        <div className="flex justify-end">
+                                                                                            <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700">
+                                                                                                Reply
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </form>
+                                                                                </details>
+                                                                            ) : null}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-2 text-xs text-slate-500">No comments yet.</div>
+                                                        )}
+
+                                                        {permissions?.canPost && subtask?.routes?.comments_store ? (
+                                                            <form method="POST" action={subtask.routes.comments_store} data-native="true" className="mt-3 space-y-2">
+                                                                <input type="hidden" name="_token" value={csrfToken} />
+                                                                <textarea
+                                                                    name="message"
+                                                                    rows={1}
+                                                                    placeholder="Write a comment on this subtask"
+                                                                    className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                                                                    required
+                                                                />
+                                                                <div className="flex justify-end">
+                                                                    <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700">
+                                                                        Comment
+                                                                    </button>
+                                                                </div>
+                                                            </form>
+                                                        ) : null}
+                                                    </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="py-6 text-center text-sm text-slate-500">
+                                        No subtasks in this section.
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             <div className="text-sm text-slate-500">No subtasks yet.</div>
                         )}
@@ -506,10 +585,20 @@ export default function TaskDetailClickup({
 
                 </div>
 
-                {routePrefix === 'admin' && canEdit && routes?.update && taskEditOpen ? (
+                {['admin', 'employee', 'rep'].includes(routePrefix) && canEdit && routes?.update && taskEditOpen ? (
                     <form method="POST" action={routes.update} data-native="true" id="task-edit-panel" className="card space-y-3 p-6">
                         <input type="hidden" name="_token" value={csrfToken} />
                         <HiddenMethod method="PATCH" />
+                        <div>
+                            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Title</label>
+                            <input
+                                name="title"
+                                defaultValue={task?.title || ''}
+                                required
+                                placeholder="Task Title"
+                                className="ui-input mt-1"
+                            />
+                        </div>
                         <div className="grid gap-3 md:grid-cols-3">
                             <SearchableSelect
                                 name="status"
@@ -546,13 +635,30 @@ export default function TaskDetailClickup({
                     <form method="POST" action={routes.update} data-native="true" id="task-edit-panel" className="card space-y-3 p-6">
                         <input type="hidden" name="_token" value={csrfToken} />
                         <HiddenMethod method="PATCH" />
-                        <SearchableSelect
-                            name="status"
-                            defaultValue={String(task?.status || 'pending')}
-                            options={statusSelectOptions}
-                            placeholder="Select status"
-                        />
-                        <textarea name="description" defaultValue={task?.description || ''} rows={1} className="ui-input" />
+                        <div>
+                            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Title</label>
+                            <input
+                                name="title"
+                                defaultValue={task?.title || ''}
+                                required
+                                placeholder="Task Title"
+                                className="ui-input mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>
+                            <SearchableSelect
+                                name="status"
+                                defaultValue={String(task?.status || 'pending')}
+                                options={statusSelectOptions}
+                                placeholder="Select status"
+                                className="mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Description</label>
+                            <textarea name="description" defaultValue={task?.description || ''} rows={1} className="ui-input mt-1" />
+                        </div>
                         <div className="flex justify-end"><button type="submit" className="ui-btn-primary">Update Task</button></div>
                     </form>
                 ) : null}

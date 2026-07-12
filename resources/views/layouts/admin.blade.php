@@ -541,6 +541,16 @@
                             <span class="h-2 w-2 rounded-full bg-current"></span>
                             Settings
                         </x-nav-link>
+
+                        @if(auth()->user()?->isMasterAdmin() || auth()->user()?->isSubAdmin() || auth()->user()?->isAdmin())
+                        <x-nav-link
+                            :href="route('admin.mass-mail.index')"
+                            routes="admin.mass-mail.*"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-current"></span>
+                            Mass Mail
+                        </x-nav-link>
+                        @endif
                     </div>
                 @elseif($isEmployeeNav)
                     <div>
@@ -923,26 +933,36 @@
 
                     @php($adminUser = auth()->user())
                     @if(!empty($adminHeaderStats) && $adminUser && ! $adminUser->isEmployee())
-                        <div class="stats hidden flex-wrap items-center justify-center gap-3 text-xs lg:flex flex-1">
-                            @if($adminUser->isAdmin())
-                                {{-- Master Admin and Admin see all stats --}}
-                                <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold text-amber-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-100/80 hover:shadow-md">
-                                    <span class="rounded-full bg-amber-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white leading-none min-w-[20px] text-center">{{ $adminHeaderStats['pending_orders'] ?? 0 }}</span>
-                                    <span>Pending Orders</span>
-                                </a>
-                                <a href="{{ route('admin.invoices.overdue') }}" class="flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50/80 px-3 py-1 text-[11px] font-semibold text-rose-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-rose-100/80 hover:shadow-md">
-                                    <span class="rounded-full bg-rose-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white leading-none min-w-[20px] text-center">{{ $adminHeaderStats['overdue_invoices'] ?? 0 }}</span>
-                                    <span>Overdue Invoices</span>
-                                </a>
-                            @endif
-                            @if($adminUser->isSupport() || $adminUser->isMasterAdmin())
-                                {{-- Support sees only tickets --}}
-                                <a href="{{ route('admin.support-tickets.index', ['status' => 'customer_reply']) }}" class="flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50/80 px-3 py-1 text-[11px] font-semibold text-teal-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-100/80 hover:shadow-md">
-                                    <span class="rounded-full bg-teal-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white leading-none min-w-[20px] text-center">{{ $adminHeaderStats['tickets_waiting'] ?? 0 }}</span>
-                                    <span>Ticket(s) Awaiting Reply</span>
-                                </a>
-                            @endif
-                        </div>
+                        <?php
+                            $headerStatsList = [];
+                            if ($adminUser->isAdmin()) {
+                                $headerStatsList[] = '
+                                    <a href="' . route('admin.orders.index', ['status' => 'pending']) . '" class="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-medium">
+                                        <span class="min-w-[24px] h-6 px-1.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200/80 flex items-center justify-center font-bold text-[11px] leading-none">' . ($adminHeaderStats['pending_orders'] ?? 0) . '</span>
+                                        <span>Pending Orders</span>
+                                    </a>
+                                ';
+                                $headerStatsList[] = '
+                                    <a href="' . route('admin.invoices.overdue') . '" class="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-medium">
+                                        <span class="min-w-[24px] h-6 px-1.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200/80 flex items-center justify-center font-bold text-[11px] leading-none">' . ($adminHeaderStats['overdue_invoices'] ?? 0) . '</span>
+                                        <span>Overdue Invoices</span>
+                                    </a>
+                                ';
+                            }
+                            if ($adminUser->isSupport() || $adminUser->isMasterAdmin()) {
+                                $headerStatsList[] = '
+                                    <a href="' . route('admin.support-tickets.index', ['status' => 'customer_reply']) . '" class="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-medium">
+                                        <span class="min-w-[24px] h-6 px-1.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200/80 flex items-center justify-center font-bold text-[11px] leading-none">' . ($adminHeaderStats['tickets_waiting'] ?? 0) . '</span>
+                                        <span>Ticket(s) Awaiting Reply</span>
+                                    </a>
+                                ';
+                            }
+                        ?>
+                        @if(!empty($headerStatsList))
+                            <div class="stats hidden flex-wrap items-center justify-center gap-4 text-xs lg:flex flex-1">
+                                {!! implode('<span class="h-4 w-px bg-slate-300/80 mx-1"></span>', $headerStatsList) !!}
+                            </div>
+                        @endif
                     @endif
 
                     <div class="flex items-center justify-end gap-4 min-w-[240px]">

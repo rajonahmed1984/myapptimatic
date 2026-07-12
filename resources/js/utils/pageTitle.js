@@ -23,6 +23,7 @@ const ROUTE_PREFIX_TITLE_MAP = {
     'admin.income.': 'Income',
     'admin.expenses.': 'Expenses',
     'admin.accounting.': 'Accounting',
+    'admin.mass-mail.': 'Mass Mail',
     'admin.projects.': 'Projects',
     'admin.project-maintenances.': 'Project Maintenance',
     'admin.subscriptions.': 'Subscriptions',

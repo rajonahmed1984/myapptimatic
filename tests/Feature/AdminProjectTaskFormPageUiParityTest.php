@@ -123,4 +123,203 @@ class AdminProjectTaskFormPageUiParityTest extends TestCase
         $this->assertSame('high', $task->priority);
         $this->assertSame(25, $task->progress);
     }
+
+    #[Test]
+    public function master_admin_can_clear_task_description(): void
+    {
+        $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
+        $customer = Customer::query()->create(['name' => 'Clear Desc Customer']);
+        $project = Project::query()->create([
+            'name' => 'Clear Desc Project',
+            'customer_id' => $customer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'total_budget' => 1000,
+            'initial_payment_amount' => 100,
+            'currency' => 'USD',
+        ]);
+        $task = ProjectTask::query()->create([
+            'project_id' => $project->id,
+            'title' => 'Task Title',
+            'description' => 'Some old description',
+            'status' => 'pending',
+            'task_type' => 'feature',
+            'priority' => 'medium',
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'title' => 'Task Title',
+                'description' => '',
+                'status' => 'pending',
+            ])
+            ->assertRedirect();
+
+        $task->refresh();
+        $this->assertNull($task->description);
+    }
+
+    #[Test]
+    public function client_can_update_task_title_and_description_and_clear_description(): void
+    {
+        $customer = Customer::query()->create(['name' => 'Client Update Customer']);
+        $client = User::factory()->create([
+            'role' => Role::CLIENT,
+            'customer_id' => $customer->id,
+        ]);
+        $project = Project::query()->create([
+            'name' => 'Client Update Project',
+            'customer_id' => $customer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'total_budget' => 1000,
+            'initial_payment_amount' => 100,
+            'currency' => 'USD',
+        ]);
+        $task = ProjectTask::query()->create([
+            'project_id' => $project->id,
+            'title' => 'Old Title',
+            'description' => 'Old Description',
+            'status' => 'pending',
+            'customer_visible' => true,
+            'created_by' => $client->id,
+        ]);
+
+        // 1. Update title and description
+        $this->actingAs($client)
+            ->patch(route('client.projects.tasks.update', [$project, $task]), [
+                'title' => 'Client New Title',
+                'description' => 'Client New Description',
+                'status' => 'pending',
+            ])
+            ->assertRedirect();
+
+        $task->refresh();
+        $this->assertSame('Client New Title', $task->title);
+        $this->assertSame('Client New Description', $task->description);
+
+        // 2. Clear description
+        $this->actingAs($client)
+            ->patch(route('client.projects.tasks.update', [$project, $task]), [
+                'title' => 'Client New Title',
+                'description' => '',
+                'status' => 'pending',
+            ])
+            ->assertRedirect();
+
+        $task->refresh();
+        $this->assertNull($task->description);
+    }
+
+    #[Test]
+    public function employee_creator_can_update_task_title_and_description_and_clear_description(): void
+    {
+        $customer = Customer::query()->create(['name' => 'Employee Update Customer']);
+        $employeeUser = User::factory()->create(['role' => Role::EMPLOYEE]);
+        $employee = \App\Models\Employee::create([
+            'user_id' => $employeeUser->id,
+            'name' => 'Employee Name',
+            'status' => 'active',
+        ]);
+        $project = Project::query()->create([
+            'name' => 'Employee Update Project',
+            'customer_id' => $customer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'total_budget' => 1000,
+            'initial_payment_amount' => 100,
+            'currency' => 'USD',
+        ]);
+        $project->employees()->sync([$employee->id]);
+
+        $task = ProjectTask::query()->create([
+            'project_id' => $project->id,
+            'title' => 'Old Title',
+            'description' => 'Old Description',
+            'status' => 'pending',
+            'created_by' => $employeeUser->id,
+        ]);
+
+        // 1. Update title and description
+        $this->actingAs($employeeUser, 'employee')
+            ->patch(route('employee.projects.tasks.update', [$project, $task]), [
+                'title' => 'Employee New Title',
+                'description' => 'Employee New Description',
+                'status' => 'pending',
+            ])
+            ->assertRedirect();
+
+        $task->refresh();
+        $this->assertSame('Employee New Title', $task->title);
+        $this->assertSame('Employee New Description', $task->description);
+
+        // 2. Clear description
+        $this->actingAs($employeeUser, 'employee')
+            ->patch(route('employee.projects.tasks.update', [$project, $task]), [
+                'title' => 'Employee New Title',
+                'description' => '',
+                'status' => 'pending',
+            ])
+            ->assertRedirect();
+
+        $task->refresh();
+        $this->assertNull($task->description);
+    }
+
+    #[Test]
+    public function sales_rep_creator_can_update_task_title_and_description_and_clear_description(): void
+    {
+        $customer = Customer::query()->create(['name' => 'SalesRep Update Customer']);
+        $salesUser = User::factory()->create(['role' => Role::SALES]);
+        $salesRep = \App\Models\SalesRepresentative::create([
+            'user_id' => $salesUser->id,
+            'name' => 'SalesRep Name',
+            'email' => $salesUser->email,
+            'status' => 'active',
+        ]);
+        $project = Project::query()->create([
+            'name' => 'SalesRep Update Project',
+            'customer_id' => $customer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'total_budget' => 1000,
+            'initial_payment_amount' => 100,
+            'currency' => 'USD',
+        ]);
+        $project->salesRepresentatives()->sync([$salesRep->id]);
+
+        $task = ProjectTask::query()->create([
+            'project_id' => $project->id,
+            'title' => 'Old Title',
+            'description' => 'Old Description',
+            'status' => 'pending',
+            'created_by' => $salesUser->id,
+        ]);
+
+        // 1. Update title and description
+        $this->actingAs($salesUser, 'sales')
+            ->patch(route('rep.projects.tasks.update', [$project, $task]), [
+                'title' => 'Sales New Title',
+                'description' => 'Sales New Description',
+                'status' => 'pending',
+            ])
+            ->assertRedirect();
+
+        $task->refresh();
+        $this->assertSame('Sales New Title', $task->title);
+        $this->assertSame('Sales New Description', $task->description);
+
+        // 2. Clear description
+        $this->actingAs($salesUser, 'sales')
+            ->patch(route('rep.projects.tasks.update', [$project, $task]), [
+                'title' => 'Sales New Title',
+                'description' => '',
+                'status' => 'pending',
+            ])
+            ->assertRedirect();
+
+        $task->refresh();
+        $this->assertNull($task->description);
+    }
 }

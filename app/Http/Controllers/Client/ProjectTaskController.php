@@ -78,20 +78,21 @@ class ProjectTaskController extends Controller
 
         $data = $request->validated();
 
-        if (in_array($data['status'], ['completed', 'done'], true)
+        if (in_array($data['status'] ?? $task->status, ['completed', 'done'], true)
             && TaskCompletionManager::hasSubtasks($task)
             && ! TaskCompletionManager::allSubtasksCompleted($task)) {
             return back()->withErrors(['status' => 'Complete all subtasks before completing this task.']);
         }
 
         $payload = [
-            'status' => $data['status'],
-            'description' => $data['description'] ?? $task->description,
+            'title' => array_key_exists('title', $data) ? $data['title'] : $task->title,
+            'status' => array_key_exists('status', $data) ? $data['status'] : $task->status,
+            'description' => array_key_exists('description', $data) ? $data['description'] : $task->description,
         ];
 
         $previousStatus = $task->status;
 
-        $isCompleted = in_array($data['status'], ['completed', 'done'], true);
+        $isCompleted = in_array($payload['status'], ['completed', 'done'], true);
         if ($task->status !== 'completed' && $isCompleted) {
             $payload['completed_at'] = Carbon::now();
         }
