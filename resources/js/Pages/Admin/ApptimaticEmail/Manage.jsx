@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import axios from '../../../http-client';
 
 const DEFAULT_MAILBOX_FORM = {
     email: 'youremail@apptimatic.com',
@@ -143,7 +144,7 @@ export default function Manage({
             return;
         }
 
-        const response = await window.axios.get(accountsBase);
+        const response = await axios.get(accountsBase);
         const nextAccounts = Array.isArray(response?.data?.data) ? response.data.data : [];
 
         setAccounts(nextAccounts);
@@ -198,9 +199,9 @@ export default function Manage({
             }
 
             if (editingMailboxId) {
-                await window.axios.put(`${accountsBase}/${editingMailboxId}`, mailboxForm);
+                await axios.put(`${accountsBase}/${editingMailboxId}`, mailboxForm);
             } else {
-                await window.axios.post(accountsBase, mailboxForm);
+                await axios.post(accountsBase, mailboxForm);
             }
 
             await loadAccounts();
@@ -224,7 +225,7 @@ export default function Manage({
         setBusy(true);
 
         try {
-            await window.axios.delete(`${accountsBase}/${accountId}`);
+            await axios.delete(`${accountsBase}/${accountId}`);
             await loadAccounts();
 
             if (Number(selectedAccountId) === Number(accountId)) {
@@ -260,7 +261,7 @@ export default function Manage({
         setBusy(true);
 
         try {
-            await window.axios.post(`${accountsBase}/${selectedAccount.id}/assignments`, {
+            await axios.post(`${accountsBase}/${selectedAccount.id}/assignments`, {
                 ...assignmentForm,
                 assignee_id: Number(assignmentForm.assignee_id),
             });
@@ -282,7 +283,7 @@ export default function Manage({
         setBusy(true);
 
         try {
-            await window.axios.put(`${accountsBase}/${selectedAccount.id}/assignments/${assignment.id}`, {
+            await axios.put(`${accountsBase}/${selectedAccount.id}/assignments/${assignment.id}`, {
                 can_read: Boolean(assignment.can_read),
                 can_manage: !Boolean(assignment.can_manage),
             });
@@ -307,7 +308,7 @@ export default function Manage({
         setBusy(true);
 
         try {
-            await window.axios.delete(`${accountsBase}/${selectedAccount.id}/assignments/${assignmentId}`);
+            await axios.delete(`${accountsBase}/${selectedAccount.id}/assignments/${assignmentId}`);
             await loadAccounts();
             setSelectedAssignmentIds((prev) => prev.filter((id) => Number(id) !== Number(assignmentId)));
             setSuccess('Assignment removed successfully.');
@@ -360,7 +361,7 @@ export default function Manage({
         try {
             await Promise.all(
                 selectedAssignmentIds.map((assignmentId) =>
-                    window.axios.delete(`${accountsBase}/${selectedAccount.id}/assignments/${assignmentId}`)
+                    axios.delete(`${accountsBase}/${selectedAccount.id}/assignments/${assignmentId}`)
                 )
             );
 

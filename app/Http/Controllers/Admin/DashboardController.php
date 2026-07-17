@@ -10,8 +10,8 @@ use App\Services\ExpenseEntryService;
 use App\Services\GeminiService;
 use App\Services\IncomeEntryService;
 use App\Services\TaskQueryService;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -20,8 +20,7 @@ class DashboardController extends Controller
     public function __construct(
         private AutomationStatusService $automationStatusService,
         private DashboardMetricsService $dashboardMetricsService
-    ) {
-    }
+    ) {}
 
     public function index(
         Request $request,
@@ -30,8 +29,7 @@ class DashboardController extends Controller
         IncomeEntryService $incomeEntryService,
         ExpenseEntryService $expenseEntryService,
         GeminiService $geminiService
-    ): InertiaResponse
-    {
+    ): InertiaResponse {
         $automationStatusPayload = $this->automationStatusService->getStatusPayload();
         $automationSummary = [
             'lastCompletionText' => $automationStatusPayload['lastCompletionText'] ?? 'Never',
@@ -140,7 +138,7 @@ class DashboardController extends Controller
         $projectionDays = 30;
         $user = $request->user();
 
-        $cacheKey = 'ai:admin-dashboard:business-pulse:' . md5(json_encode([
+        $cacheKey = 'ai:admin-dashboard:business-pulse:'.md5(json_encode([
             'user_id' => $user?->id,
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
@@ -157,26 +155,41 @@ class DashboardController extends Controller
                 $expenseEntryService,
                 $taskQueryService,
                 $businessStatusSummaryService,
-                $geminiService
+                $geminiService,
+                $forceRefresh
             ) {
-                $metrics = $businessStatusSummaryService->buildMetrics(
+                $metrics = $businessStatusSummaryService->buildMetricsCached(
                     $startDate,
                     $endDate,
                     $projectionDays,
                     $user,
                     $incomeEntryService,
                     $expenseEntryService,
-                    $taskQueryService
+                    $taskQueryService,
+                    $forceRefresh
                 );
 
                 return $businessStatusSummaryService->summarizeDashboard($metrics, $geminiService);
             };
 
-            if ($forceRefresh) {
-                $summary = $builder();
-                Cache::put($cacheKey, $summary, now()->addMinutes(10));
-            } else {
-                $summary = Cache::remember($cacheKey, now()->addMinutes(10), $builder);
+            $summary = Cache::get($cacheKey);
+            if ($summary === null || $forceRefresh) {
+                \App\Jobs\GenerateDashboardAiSummaryJob::dispatch('main', $cacheKey, [
+                    'user_id' => $user?->id,
+                    'start_date' => $startDate->toDateString(),
+                    'end_date' => $endDate->toDateString(),
+                    'projection_days' => $projectionDays,
+                ]);
+
+                if ($summary === null) {
+                    $summary = [
+                        'verdict' => 'Generating...',
+                        'score' => 0,
+                        'confidence' => 'Medium',
+                        'reason' => 'AI verdict is being generated in the background. Please reload in a moment.',
+                        'action' => 'Generating...',
+                    ];
+                }
             }
 
             return [$summary, null];

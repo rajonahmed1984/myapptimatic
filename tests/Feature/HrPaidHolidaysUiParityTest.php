@@ -45,7 +45,7 @@ class HrPaidHolidaysUiParityTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('admin.hr.paid-holidays.store'), [
-                'holiday_date' => $date,
+                'start_date' => $date,
                 'name' => 'Festival/Public holidays',
                 'note' => 'UI parity save',
             ])

@@ -39,8 +39,10 @@ use Inertia\Response as InertiaResponse;
 
 class EmployeeController extends Controller
 {
-    public function index(): InertiaResponse
+    public function index(Request $request): InertiaResponse
     {
+        $search = $request->query('search');
+
         $employees = Employee::query()
             ->with([
                 'manager',
@@ -51,6 +53,13 @@ class EmployeeController extends Controller
                     'employee_compensations.salary_type',
                 ]),
             ])
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('designation', 'like', "%{$search}%");
+                });
+            })
             ->orderByDesc('id')
             ->paginate(20);
 
@@ -59,6 +68,7 @@ class EmployeeController extends Controller
 
         return Inertia::render('Admin/Hr/Employees/Index', [
             'pageTitle' => 'Employees',
+            'search' => $search ?? '',
             'employees' => $employees->through(function (Employee $employee) use ($loginStatuses, $lastLoginByEmployee) {
                 $loginStatus = $loginStatuses[$employee->id] ?? 'logout';
                 $showLoginBadge = $loginStatus === 'login';
@@ -98,6 +108,7 @@ class EmployeeController extends Controller
                 'has_pages' => $employees->hasPages(),
             ],
             'routes' => [
+                'index' => route('admin.hr.employees.index'),
                 'create' => route('admin.hr.employees.create'),
             ],
         ]);

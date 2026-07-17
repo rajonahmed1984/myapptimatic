@@ -274,7 +274,7 @@ export default function Pay({
                                         <tr>
                                             <td className="total-row text-right">
                                                 <strong>
-                                                    {invoice.tax_mode === 'inclusive' ? 'Included Tax' : tax.label} ({invoice.tax_rate_percent_display}%)
+                                                    {invoice.tax_mode === 'inclusive' ? 'Included VAT' : tax.label} ({invoice.tax_rate_percent_display}%)
                                                 </strong>
                                             </td>
                                             <td className="total-row text-center">{invoice.tax_amount_display}</td>
@@ -288,7 +288,13 @@ export default function Pay({
                                     </tr>
                                     <tr>
                                         <td className="total-row text-right">
-                                            <strong>Payable Amount</strong>
+                                            <strong>Paid Amount</strong>
+                                        </td>
+                                        <td className="total-row text-center">- {invoice.paid_amount_display}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="total-row text-right">
+                                            <strong>Total Due</strong>
                                         </td>
                                         <td className="total-row text-center">{invoice.payable_amount_display}</td>
                                     </tr>

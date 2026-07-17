@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class BillingService
 {
-    public function __construct(private InvoiceTaxService $taxService)
+    public function __construct(private InvoiceVatService $vatService)
     {
     }
 
@@ -65,7 +65,7 @@ class BillingService
             $dueDate = $this->resolveDueDate($subscription, $issueDate, $plan->interval, $dueDays);
         }
 
-        $taxData = $this->taxService->calculateTotals($subtotal, 0.0, $issueDate);
+        $taxData = $this->vatService->calculateTotals($subtotal, 0.0, $issueDate);
 
         $invoice = Invoice::create([
             'customer_id' => $subscription->customer_id,
@@ -139,7 +139,7 @@ class BillingService
         $subtotal = $this->calculateSubtotal($plan->interval, $basePrice, $periodStart, $periodEnd);
         $currency = (string) Setting::getValue('currency');
 
-        $taxData = $this->taxService->calculateTotals($subtotal, (float) $invoice->late_fee, Carbon::parse($invoice->issue_date), $invoice);
+        $taxData = $this->vatService->calculateTotals($subtotal, (float) $invoice->late_fee, Carbon::parse($invoice->issue_date), $invoice);
 
         $invoice->update([
             'subtotal' => $subtotal,

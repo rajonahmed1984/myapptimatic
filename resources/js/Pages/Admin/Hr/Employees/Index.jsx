@@ -1,27 +1,46 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import useInertiaLiveSearch from '../../../../hooks/useInertiaLiveSearch';
 
 export default function Index({
     pageTitle = 'Employees',
+    search = '',
     employees = [],
     pagination = {},
     routes = {},
 }) {
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
+        initialValue: search,
+        url: routes?.index,
+    });
 
     return (
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">HR</div>
-                    <div className="text-2xl font-semibold text-slate-900">Employees</div>
-                </div>
-                <a href={routes?.create} data-native="true" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Add employee</a>
-            </div>
-
             <div className="card p-6 overflow-hidden">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+                    <form
+                        method="GET"
+                        action={routes?.index}
+                        className="flex-1 max-w-sm"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitSearch();
+                        }}
+                    >
+                        <input
+                            type="text"
+                            name="search"
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
+                            placeholder="Search employees..."
+                            className="w-full h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
+                        />
+                    </form>
+                    <a href={routes?.create} data-native="true" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Add employee</a>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-sm text-slate-700">
                         <thead>

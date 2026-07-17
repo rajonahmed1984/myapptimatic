@@ -7,7 +7,7 @@ use App\Models\TaxRate;
 use App\Models\TaxSetting;
 use Carbon\Carbon;
 
-class InvoiceTaxService
+class InvoiceVatService
 {
     public function calculateTotals(float $subtotal, float $lateFee, Carbon $issueDate, ?Invoice $invoice = null): array
     {

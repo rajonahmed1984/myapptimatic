@@ -164,6 +164,58 @@ class IncomeEntryService
         return $entries;
     }
 
+    public function summary(array $filters = []): array
+    {
+        $sources = $filters['sources'] ?? ['manual', 'system'];
+        $categoryIdFilter = $filters['category_id'] ?? null;
+        $startDate = $this->parseFilterDate($filters['start_date'] ?? null, false);
+        $endDate = $this->parseFilterDate($filters['end_date'] ?? null, true);
+
+        $manual = 0.0;
+        $system = 0.0;
+        $carrotHost = 0.0;
+
+        if (in_array('manual', $sources, true)) {
+            $query = Income::query();
+
+            if ($startDate) {
+                $query->where('income_date', '>=', $startDate->toDateString());
+            }
+            if ($endDate) {
+                $query->where('income_date', '<=', $endDate->toDateString());
+            }
+            if ($categoryIdFilter) {
+                $query->where('income_category_id', $categoryIdFilter);
+            }
+
+            $manual = (float) $query->sum('amount');
+        }
+
+        if (in_array('system', $sources, true)) {
+            $query = AccountingEntry::query()->where('type', 'payment');
+
+            if ($startDate) {
+                $query->where('entry_date', '>=', $startDate->toDateString());
+            }
+            if ($endDate) {
+                $query->where('entry_date', '<=', $endDate->toDateString());
+            }
+
+            $system = (float) $query->sum('amount');
+        }
+
+        if (in_array('carrothost', $sources, true)) {
+            $carrotHost = (float) $this->carrotHostEntries($startDate, $endDate)->sum('amount');
+        }
+
+        return [
+            'total' => $manual + $system + $carrotHost,
+            'manual' => $manual,
+            'system' => $system,
+            'carrothost' => $carrotHost,
+        ];
+    }
+
     private function carrotHostEntries(?Carbon $startDate, ?Carbon $endDate): Collection
     {
         if (! $this->whmcsClient->isConfigured()) {

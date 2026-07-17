@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\AccountingEntry;
 use App\Models\CommissionEarning;
 use App\Models\ExpenseInvoice;
 use App\Models\Invoice;
@@ -11,10 +10,53 @@ use App\Models\Setting;
 use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class BusinessStatusSummaryService
 {
+    public function buildMetricsCached(
+        Carbon $startDate,
+        Carbon $endDate,
+        int $projectionDays,
+        $user,
+        IncomeEntryService $incomeService,
+        ExpenseEntryService $expenseService,
+        TaskQueryService $taskQueryService,
+        bool $fresh = false
+    ): array {
+        $ttlSeconds = max(0, (int) config('performance.business_status_cache_seconds', 60));
+
+        if ($fresh || $ttlSeconds === 0) {
+            return $this->buildMetrics(
+                $startDate,
+                $endDate,
+                $projectionDays,
+                $user,
+                $incomeService,
+                $expenseService,
+                $taskQueryService
+            );
+        }
+
+        $cacheKey = 'business-status:metrics:v1:'.md5(json_encode([
+            'user_id' => $user?->id,
+            'start_date' => $startDate->toDateString(),
+            'end_date' => $endDate->toDateString(),
+            'projection_days' => $projectionDays,
+        ]));
+
+        return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), fn () => $this->buildMetrics(
+            $startDate,
+            $endDate,
+            $projectionDays,
+            $user,
+            $incomeService,
+            $expenseService,
+            $taskQueryService
+        ));
+    }
+
     public function buildMetrics(
         Carbon $startDate,
         Carbon $endDate,
@@ -33,59 +75,58 @@ class BusinessStatusSummaryService
 
         $totalProjects = (int) $projectStatusCounts->sum();
 
-        $incomeEntries = $incomeService->entries([
+        $incomeSummary = $incomeService->summary([
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'sources' => ['manual', 'system', 'carrothost'],
         ]);
-        $expenseEntries = $expenseService->entries([
+        $expenseSummary = $expenseService->summary([
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'sources' => ['manual', 'salary', 'contract_payout', 'sales_payout'],
         ]);
 
-        $totalIncome = (float) $incomeEntries->sum('amount');
-        $totalExpense = (float) $expenseEntries->sum('amount');
+        $totalIncome = (float) ($incomeSummary['total'] ?? 0);
+        $totalExpense = (float) ($expenseSummary['total'] ?? 0);
         $netProfit = $totalIncome - $totalExpense;
 
-        $receivedIncome = (float) AccountingEntry::query()
-            ->where('type', 'payment')
-            ->whereDate('entry_date', '>=', $startDate->toDateString())
-            ->whereDate('entry_date', '<=', $endDate->toDateString())
-            ->sum('amount');
-        $carrotHostIncome = (float) $incomeEntries
-            ->where('source_type', 'carrothost')
-            ->sum('amount');
+        $receivedIncome = (float) ($incomeSummary['system'] ?? 0);
+        $carrotHostIncome = (float) ($incomeSummary['carrothost'] ?? 0);
         $receivedIncome += $carrotHostIncome;
 
-        $payoutExpense = (float) $expenseEntries
-            ->whereIn('expense_type', ['salary', 'contract_payout', 'sales_payout'])
-            ->sum('amount');
+        $payoutExpense = (float) ($expenseSummary['payout'] ?? 0);
 
         $netCashflow = $receivedIncome - $payoutExpense;
 
-        $taxRows = Invoice::query()
+        $taxSummary = Invoice::query()
             ->whereNotNull('tax_amount')
             ->whereDate('issue_date', '>=', $startDate->toDateString())
             ->whereDate('issue_date', '<=', $endDate->toDateString())
-            ->get(['subtotal', 'tax_amount', 'total', 'tax_mode']);
+            ->selectRaw(
+                "COALESCE(SUM(subtotal), 0) as taxable_base,
+                COALESCE(SUM(tax_amount), 0) as tax_amount,
+                COALESCE(SUM(total), 0) as tax_gross,
+                COALESCE(SUM(CASE WHEN tax_mode = 'exclusive' THEN tax_amount ELSE 0 END), 0) as tax_exclusive,
+                COALESCE(SUM(CASE WHEN tax_mode = 'inclusive' THEN tax_amount ELSE 0 END), 0) as tax_inclusive"
+            )
+            ->first();
 
-        $taxableBase = (float) $taxRows->sum('subtotal');
-        $taxAmount = (float) $taxRows->sum('tax_amount');
-        $taxGross = (float) $taxRows->sum('total');
-        $taxExclusive = (float) $taxRows->where('tax_mode', 'exclusive')->sum('tax_amount');
-        $taxInclusive = (float) $taxRows->where('tax_mode', 'inclusive')->sum('tax_amount');
+        $taxableBase = (float) ($taxSummary->taxable_base ?? 0);
+        $taxAmount = (float) ($taxSummary->tax_amount ?? 0);
+        $taxGross = (float) ($taxSummary->tax_gross ?? 0);
+        $taxExclusive = (float) ($taxSummary->tax_exclusive ?? 0);
+        $taxInclusive = (float) ($taxSummary->tax_inclusive ?? 0);
 
-        $commissionBase = CommissionEarning::query();
-        $commissionTotal = (float) (clone $commissionBase)
-            ->whereIn('status', ['pending', 'earned', 'payable', 'paid'])
-            ->sum('commission_amount');
-        $commissionPayable = (float) (clone $commissionBase)
-            ->where('status', 'payable')
-            ->sum('commission_amount');
-        $commissionPaid = (float) (clone $commissionBase)
-            ->where('status', 'paid')
-            ->sum('commission_amount');
+        $commissionSummary = CommissionEarning::query()
+            ->selectRaw(
+                "COALESCE(SUM(CASE WHEN status IN ('pending', 'earned', 'payable', 'paid') THEN commission_amount ELSE 0 END), 0) as commission_total,
+                COALESCE(SUM(CASE WHEN status = 'payable' THEN commission_amount ELSE 0 END), 0) as commission_payable,
+                COALESCE(SUM(CASE WHEN status = 'paid' THEN commission_amount ELSE 0 END), 0) as commission_paid"
+            )
+            ->first();
+        $commissionTotal = (float) ($commissionSummary->commission_total ?? 0);
+        $commissionPayable = (float) ($commissionSummary->commission_payable ?? 0);
+        $commissionPaid = (float) ($commissionSummary->commission_paid ?? 0);
         $commissionOutstanding = max(0, $commissionTotal - $commissionPaid);
 
         $projectionEnd = now()->addDays($projectionDays)->endOfDay();
@@ -97,8 +138,11 @@ class BusinessStatusSummaryService
             ->whereDate('due_date', '>=', $projectionStart->toDateString())
             ->whereDate('due_date', '<=', $projectionEnd->toDateString());
 
-        $incomeDueTotal = (float) $incomeDue->sum('total');
-        $incomeDueCount = (int) $incomeDue->count();
+        $incomeDueSummary = $incomeDue
+            ->selectRaw('COALESCE(SUM(total), 0) as total_amount, COUNT(*) as total_count')
+            ->first();
+        $incomeDueTotal = (float) ($incomeDueSummary->total_amount ?? 0);
+        $incomeDueCount = (int) ($incomeDueSummary->total_count ?? 0);
 
         $expenseDue = ExpenseInvoice::query()
             ->whereNotNull('due_date')
@@ -106,15 +150,18 @@ class BusinessStatusSummaryService
             ->whereDate('due_date', '<=', $projectionEnd->toDateString())
             ->where('status', '!=', 'paid');
 
-        $expenseDueTotal = (float) $expenseDue->sum('amount');
-        $expenseDueCount = (int) $expenseDue->count();
+        $expenseDueSummary = $expenseDue
+            ->selectRaw('COALESCE(SUM(amount), 0) as total_amount, COUNT(*) as total_count')
+            ->first();
+        $expenseDueTotal = (float) ($expenseDueSummary->total_amount ?? 0);
+        $expenseDueCount = (int) ($expenseDueSummary->total_count ?? 0);
 
-        $overdueInvoiceTotal = (float) Invoice::query()
+        $overdueInvoiceSummary = Invoice::query()
             ->where('status', 'overdue')
-            ->sum('total');
-        $overdueInvoiceCount = (int) Invoice::query()
-            ->where('status', 'overdue')
-            ->count();
+            ->selectRaw('COALESCE(SUM(total), 0) as total_amount, COUNT(*) as total_count')
+            ->first();
+        $overdueInvoiceTotal = (float) ($overdueInvoiceSummary->total_amount ?? 0);
+        $overdueInvoiceCount = (int) ($overdueInvoiceSummary->total_count ?? 0);
 
         $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
         if (! Currency::isAllowed($currencyCode)) {
@@ -186,6 +233,7 @@ Rules:
 - Provide 4 sections with headings: "??????", "?????", "?????", "?????".
 - Each section should have 2-4 bullet points.
 - Keep it actionable and executive-friendly.
+- Refer to all tax-related metrics as VAT; do not use the word "Tax" in the report.
 - Mention the reporting period ($start to $end) and the projection window ($window days).
 - Use the currency code when presenting amounts: $currency.
 
@@ -221,6 +269,7 @@ Rules:
 - confidence must be one of: Low, Medium, High.
 - reason must be one short Bengali sentence explaining the current status using the metrics.
 - action must be one short Bengali sentence explaining the most important next action.
+- Refer to all tax-related metrics as VAT; do not use the word "Tax" in reason or action.
 - Consider the reporting period ($start to $end), the projection window ($window days), and amounts using currency code $currency where relevant.
 
 Metrics (JSON):

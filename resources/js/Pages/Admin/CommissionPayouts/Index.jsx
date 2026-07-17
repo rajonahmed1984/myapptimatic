@@ -36,58 +36,51 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Commissions</div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Payouts</h1>
-                    <p className="text-sm text-slate-500">Review payouts and create new ones from payable earnings.</p>
-                </div>
-                <form
-                    method="GET"
-                    action={routes?.index}
-                    className="flex-1"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        submitSearch();
-                    }}
-                >
-                    <input
-                        type="text"
-                        name="search"
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Search payouts..."
-                        className="w-full max-w-sm h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
-                    />
-                </form>
-                <div className="flex flex-wrap items-center gap-3">
-                    <a
-                        href={routes.export_payouts}
-                        data-native="true"
-                        className={BTN.secondary}
-                    >
-                        Export payouts CSV
-                    </a>
-                    <a
-                        href={routes.export_earnings}
-                        data-native="true"
-                        className={BTN.secondary}
-                    >
-                        Export earnings CSV
-                    </a>
-                    <a
-                        href={routes.create}
-                        data-native="true"
-                        className={BTN.primary}
-                    >
-                        New payout
-                    </a>
-                </div>
-            </div>
-
             <div className="card space-y-6 p-6">
                 <div className="rounded-2xl border border-slate-300 bg-white/80 p-4">
-                    <div className="mb-2 text-sm font-semibold text-slate-800">Payable by sales rep</div>
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                        <div className="text-sm font-semibold text-slate-800">Payable by sales rep</div>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <form
+                                method="GET"
+                                action={routes?.index}
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    submitSearch();
+                                }}
+                            >
+                                <input
+                                    type="text"
+                                    name="search"
+                                    value={searchTerm}
+                                    onChange={(event) => setSearchTerm(event.target.value)}
+                                    placeholder="Search payouts..."
+                                    className="w-60 h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
+                                />
+                            </form>
+                            <a
+                                href={routes.export_payouts}
+                                data-native="true"
+                                className={BTN.secondary}
+                            >
+                                Export payouts CSV
+                            </a>
+                            <a
+                                href={routes.export_earnings}
+                                data-native="true"
+                                className={BTN.secondary}
+                            >
+                                Export earnings CSV
+                            </a>
+                            <a
+                                href={routes.create}
+                                data-native="true"
+                                className={BTN.primary}
+                            >
+                                New payout
+                            </a>
+                        </div>
+                    </div>
                     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {payable_by_rep.length > 0 ? (
                             payable_by_rep.map((rep) => (

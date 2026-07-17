@@ -1,9 +1,7 @@
-import './http-client';
 import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp, router as inertiaRouter } from '@inertiajs/react';
 import { formatDate, parseDate } from './utils/datetime';
-import 'flatpickr/dist/flatpickr.min.css';
 import { enhanceEasyDateInputsInDocument } from './utils/easyDateEnhancer';
 import { getBreadcrumb, getPageTitle } from './utils/pageTitle';
 
@@ -16,21 +14,12 @@ const DATETIME_SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', '
 const COMPONENT_TITLE_MAP = {};
 
 const INERTIA_LINK_SELECTOR = 'a[data-inertia-link="true"]';
+const PREFETCH_DELAY_MS = 80;
+const prefetchedAnchors = new WeakSet();
+const prefetchTimers = new WeakMap();
 
-const shouldInterceptInertiaLink = (event, anchor) => {
-    if (!anchor || event.defaultPrevented) {
-        return false;
-    }
-
-    if (event.button !== 0) {
-        return false;
-    }
-
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-        return false;
-    }
-
-    if (anchor.getAttribute('target') === '_blank' || anchor.hasAttribute('download')) {
+const isEligibleInertiaAnchor = (anchor) => {
+    if (!anchor || anchor.getAttribute('target') === '_blank' || anchor.hasAttribute('download')) {
         return false;
     }
 
@@ -43,14 +32,23 @@ const shouldInterceptInertiaLink = (event, anchor) => {
         return false;
     }
 
-    let targetUrl;
     try {
-        targetUrl = new URL(anchor.href, window.location.origin);
+        return new URL(anchor.href, window.location.origin).origin === window.location.origin;
     } catch (error) {
         return false;
     }
+};
 
-    if (targetUrl.origin !== window.location.origin) {
+const shouldInterceptInertiaLink = (event, anchor) => {
+    if (event.defaultPrevented || !isEligibleInertiaAnchor(anchor)) {
+        return false;
+    }
+
+    if (event.button !== 0) {
+        return false;
+    }
+
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return false;
     }
 
@@ -84,7 +82,66 @@ const enableInertiaNavigationBridge = () => {
         });
     };
 
+    const prefetchAnchor = (anchor) => {
+        if (!isEligibleInertiaAnchor(anchor) || prefetchedAnchors.has(anchor)) {
+            return;
+        }
+
+        const destination = new URL(anchor.href, window.location.origin);
+        const href = `${destination.pathname}${destination.search}`;
+
+        prefetchedAnchors.add(anchor);
+        inertiaRouter.prefetch(href, {}, {
+            cacheFor: '30s',
+        });
+    };
+
+    const onPointerOver = (event) => {
+        const anchor = event.target instanceof Element
+            ? event.target.closest(INERTIA_LINK_SELECTOR)
+            : null;
+
+        if (!isEligibleInertiaAnchor(anchor) || prefetchTimers.has(anchor)) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            prefetchTimers.delete(anchor);
+            prefetchAnchor(anchor);
+        }, PREFETCH_DELAY_MS);
+
+        prefetchTimers.set(anchor, timer);
+    };
+
+    const onPointerOut = (event) => {
+        const anchor = event.target instanceof Element
+            ? event.target.closest(INERTIA_LINK_SELECTOR)
+            : null;
+
+        if (anchor && event.relatedTarget instanceof Node && anchor.contains(event.relatedTarget)) {
+            return;
+        }
+
+        const timer = anchor ? prefetchTimers.get(anchor) : null;
+
+        if (timer) {
+            window.clearTimeout(timer);
+            prefetchTimers.delete(anchor);
+        }
+    };
+
+    const onFocusIn = (event) => {
+        const anchor = event.target instanceof Element
+            ? event.target.closest(INERTIA_LINK_SELECTOR)
+            : null;
+
+        prefetchAnchor(anchor);
+    };
+
     document.addEventListener('click', onDocumentClick);
+    document.addEventListener('pointerover', onPointerOver);
+    document.addEventListener('pointerout', onPointerOut);
+    document.addEventListener('focusin', onFocusIn);
     window.__inertiaLinkBridgeEnabled = true;
 };
 

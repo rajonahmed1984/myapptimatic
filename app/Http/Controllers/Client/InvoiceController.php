@@ -129,6 +129,7 @@ class InvoiceController extends Controller
                     ? rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.')
                     : null,
                 'discount_display' => (string) $invoice->currency.' '.number_format($creditTotal, 2),
+                'paid_amount_display' => (string) $invoice->currency.' '.number_format($paymentTotal, 2),
                 'payable_amount_display' => (string) $invoice->currency.' '.number_format($payableAmount, 2),
                 'is_payable' => $isPayable,
                 'pending_proof' => (bool) $pendingProof,
@@ -136,7 +137,7 @@ class InvoiceController extends Controller
             ],
             'payments' => $payments,
             'tax' => [
-                'label' => $taxSetting->invoice_tax_label ?: 'Tax',
+                'label' => 'VAT',
                 'note' => $taxSetting->renderNote($invoice->tax_rate_percent),
             ],
             'company' => [

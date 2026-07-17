@@ -11,7 +11,7 @@ use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\BillingService;
 use App\Services\CommissionService;
-use App\Services\InvoiceTaxService;
+use App\Services\InvoiceVatService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -61,7 +61,7 @@ class SubscriptionAmountAndCommissionOverrideTest extends TestCase
             'cancel_at_period_end' => false,
         ]);
 
-        $billingService = new BillingService(app(InvoiceTaxService::class));
+        $billingService = new BillingService(app(InvoiceVatService::class));
         $invoice = $billingService->generateInvoiceForSubscription($subscription, Carbon::parse('2026-02-01'));
 
         $this->assertNotNull($invoice);

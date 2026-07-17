@@ -534,11 +534,24 @@ PROMPT;
                 return $geminiService->generateText($prompt);
             };
 
-            if ($forceRefresh) {
-                $summary = $builder();
-                Cache::put($cacheKey, $summary, now()->addMinutes(10));
-            } else {
-                $summary = Cache::remember($cacheKey, now()->addMinutes(10), $builder);
+            $summary = Cache::get($cacheKey);
+            if ($summary === null || $forceRefresh) {
+                \App\Jobs\GenerateDashboardAiSummaryJob::dispatch('income', $cacheKey, [
+                    'filters' => $filters,
+                    'count' => $count,
+                    'currencyCode' => $currencyCode,
+                    'totalAmount' => $totalAmount,
+                    'manualTotal' => $manualTotal,
+                    'systemTotal' => $systemTotal,
+                    'creditSettlementTotal' => $creditSettlementTotal,
+                    'carrotHostTotal' => $carrotHostTotal,
+                    'categoryTotals' => $categoryTotals,
+                    'topCustomers' => $topCustomers,
+                ]);
+
+                if ($summary === null) {
+                    $summary = 'AI summary is being generated in the background. Please refresh in a moment.';
+                }
             }
 
             return [$summary, null];

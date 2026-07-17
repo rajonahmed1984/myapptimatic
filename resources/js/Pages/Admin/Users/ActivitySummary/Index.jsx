@@ -33,10 +33,10 @@ export default function Index({
         { value: 'salesrep', label: 'Sales Representatives' },
         { value: 'admin', label: 'Admin/Web Users' },
     ];
-    const specificUserOptions = [
+    const specificUserOptions = useMemo(() => [
         { value: '', label: `All ${String(type).charAt(0).toUpperCase() + String(type).slice(1)}` },
         ...userOptions.map((option) => ({ value: String(option.id), label: option.name })),
-    ];
+    ], [type, userOptions]);
 
     const totals = useMemo(() => {
         const rows = Array.isArray(users) ? users : [];
@@ -68,77 +68,69 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Reporting</div>
-                    <div className="text-2xl font-semibold text-slate-900">User activity summary</div>
-                    <div className="text-sm text-slate-500">Track sessions, active time, and live online status across all user types.</div>
-                </div>
-            </div>
-
-            <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                <KpiCard title="Total users" value={totals.totalUsers} note="Selected scope" />
-                <KpiCard title="Online now" value={totals.onlineUsers} note="Live in last 2 minutes" tone="text-emerald-600" />
-                <KpiCard title="Offline" value={offlineUsers} note="Not active now" />
-                <KpiCard title="Today activity" value={`${totals.todaySessions} sessions`} note={`${formatDuration(totals.todayActiveSeconds)} active`} />
-                <KpiCard title="Month activity" value={`${totals.monthSessions} sessions`} note={`${formatDuration(totals.monthActiveSeconds)} active`} />
-            </div>
-
             <div className="card mb-6 p-6">
-                <form method="GET" action={routes?.index} className="grid gap-4 md:grid-cols-6" data-native="true">
-                    <div>
-                        <label htmlFor="type" className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                            User Type
-                        </label>
-                        <SearchableSelect
-                            name="type"
-                            defaultValue={String(filters?.type || 'all')}
-                            options={typeOptions}
-                            className="mt-2"
-                            placeholder="Select user type"
-                        />
+                <form method="GET" action={routes?.index} data-native="true" className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-3">
+                        {/* Scope selection */}
+                        <div className="grid gap-4 md:grid-cols-2 md:col-span-2">
+                            <div>
+                                <label htmlFor="type" className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                    User Type
+                                </label>
+                                <SearchableSelect
+                                    name="type"
+                                    defaultValue={String(filters?.type || 'all')}
+                                    options={typeOptions}
+                                    className="mt-2"
+                                    placeholder="Select user type"
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="user_id" className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                    Specific User (Optional)
+                                </label>
+                                <SearchableSelect
+                                    name="user_id"
+                                    defaultValue={String(filters?.user_id ?? '')}
+                                    options={specificUserOptions}
+                                    className="mt-2"
+                                    placeholder="Select user"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-end gap-2 md:col-span-1 justify-end">
+                            <button
+                                type="submit"
+                                className="px-6 py-2 rounded-full bg-teal-500 text-sm font-semibold text-white hover:bg-teal-600 h-9"
+                            >
+                                Filter
+                            </button>
+                            <a
+                                href={routes?.index}
+                                data-native="true"
+                                className="px-6 py-2 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600 h-9 flex items-center justify-center"
+                            >
+                                Reset
+                            </a>
+                        </div>
                     </div>
 
-                    <div>
-                        <label htmlFor="user_id" className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                            Specific User (Optional)
-                        </label>
-                        <SearchableSelect
-                            name="user_id"
-                            defaultValue={String(filters?.user_id ?? '')}
-                            options={specificUserOptions}
-                            className="mt-2"
-                            placeholder="Select user"
+                    <div className="border-t border-slate-100 pt-4">
+                        <DateRangePickerField
+                            startName="from"
+                            endName="to"
+                            startValue={filters?.from || ''}
+                            endValue={filters?.to || ''}
+                            submitFormat="iso"
+                            startLabel="From Date (Optional)"
+                            endLabel="To Date (Optional)"
+                            className="max-w-2xl"
+                            gridClassName="grid gap-4 md:grid-cols-2"
+                            inputClassName="ui-input mt-2"
                         />
-                    </div>
-
-                    <DateRangePickerField
-                        startName="from"
-                        endName="to"
-                        startValue={filters?.from || ''}
-                        endValue={filters?.to || ''}
-                        submitFormat="iso"
-                        startLabel="From Date (Optional)"
-                        endLabel="To Date (Optional)"
-                        className="md:col-span-2"
-                        gridClassName="grid gap-4 md:grid-cols-2"
-                        inputClassName="ui-input mt-2"
-                    />
-
-                    <div className="md:col-span-2 flex items-end gap-2">
-                        <button
-                            type="submit"
-                            className="flex-1 rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600"
-                        >
-                            Filter
-                        </button>
-                        <a
-                            href={routes?.index}
-                            data-native="true"
-                            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                        >
-                            Reset
-                        </a>
                     </div>
                 </form>
 

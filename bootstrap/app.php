@@ -106,12 +106,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'bkash.bridge' => \App\Http\Middleware\BkashBridgeMiddleware::class,
         ]);
 
-        $middleware->web(append: [
-            \App\Http\Middleware\SecureHeaders::class,
-            \App\Http\Middleware\NormalizeDisplayDateInput::class,
-            \App\Http\Middleware\HandlePartialResponse::class,
-            \App\Http\Middleware\NormalizeAjaxRedirectResponse::class,
-        ]);
+        $middleware->web(
+            prepend: [
+                \App\Http\Middleware\MeasureRequestPerformance::class,
+            ],
+            append: [
+                \App\Http\Middleware\SecureHeaders::class,
+                \App\Http\Middleware\NormalizeDisplayDateInput::class,
+                \App\Http\Middleware\HandlePartialResponse::class,
+                \App\Http\Middleware\NormalizeAjaxRedirectResponse::class,
+            ]
+        );
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $logCsrfMismatch = function (Request $request, string $type): void {

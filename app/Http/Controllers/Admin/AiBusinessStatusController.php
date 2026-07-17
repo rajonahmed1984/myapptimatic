@@ -25,7 +25,7 @@ class AiBusinessStatusController extends Controller
     ): InertiaResponse {
         [$startDate, $endDate, $projectionDays] = $this->resolvePeriod($request);
 
-        $metrics = $summaryService->buildMetrics(
+        $metrics = $summaryService->buildMetricsCached(
             $startDate,
             $endDate,
             $projectionDays,

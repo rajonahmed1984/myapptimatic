@@ -227,8 +227,67 @@ class SubscriptionController extends Controller
             'routes' => [
                 'index' => route('admin.subscriptions.index'),
                 'edit' => route('admin.subscriptions.edit', $subscription),
+                'move_owner' => route('admin.subscriptions.move-owner', $subscription),
+            ],
+            'customers' => Customer::query()
+                ->where('id', '!=', $subscription->customer_id)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn ($c) => [
+                    'id' => (string) $c->id,
+                    'name' => (string) $c->name,
+                ])
+                ->all(),
+            'related_counts' => [
+                'projects' => (int) \App\Models\Project::where('subscription_id', $subscription->id)->count(),
+                'orders' => (int) \App\Models\Order::where('subscription_id', $subscription->id)->count(),
+                'invoices' => (int) \App\Models\Invoice::where('subscription_id', $subscription->id)->count(),
             ],
         ]);
+    }
+
+    public function moveOwner(Request $request, Subscription $subscription): RedirectResponse
+    {
+        $data = $request->validate([
+            'customer_id' => [
+                'required',
+                'exists:customers,id',
+                Rule::notIn([$subscription->customer_id]),
+            ],
+            'move_projects' => ['nullable', 'boolean'],
+            'move_orders' => ['nullable', 'boolean'],
+            'move_invoices' => ['nullable', 'boolean'],
+        ]);
+
+        $newCustomerId = (int) $data['customer_id'];
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $newCustomerId, $data) {
+            // 1. Move Subscription
+            $subscription->update(['customer_id' => $newCustomerId]);
+
+            // 2. Move Projects if requested
+            if (!empty($data['move_projects'])) {
+                $projectIds = \App\Models\Project::where('subscription_id', $subscription->id)->pluck('id')->all();
+                if (!empty($projectIds)) {
+                    \App\Models\Project::whereIn('id', $projectIds)->update(['customer_id' => $newCustomerId]);
+                    \App\Models\ProjectMaintenance::whereIn('project_id', $projectIds)->update(['customer_id' => $newCustomerId]);
+                    \App\Models\Invoice::whereIn('project_id', $projectIds)->update(['customer_id' => $newCustomerId]);
+                }
+            }
+
+            // 3. Move Orders if requested
+            if (!empty($data['move_orders'])) {
+                \App\Models\Order::where('subscription_id', $subscription->id)->update(['customer_id' => $newCustomerId]);
+            }
+
+            // 4. Move Invoices if requested
+            if (!empty($data['move_invoices'])) {
+                \App\Models\Invoice::where('subscription_id', $subscription->id)->update(['customer_id' => $newCustomerId]);
+            }
+        });
+
+        return redirect()->route('admin.subscriptions.show', $subscription)
+            ->with('status', 'Subscription owner transferred successfully.');
     }
 
     public function update(Request $request, Subscription $subscription): RedirectResponse|JsonResponse

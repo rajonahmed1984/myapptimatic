@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 const subscriptionStatusClass = (status) => {
     if (status === 'active') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -27,6 +28,8 @@ export default function Show({
     subscription = {},
     invoices = [],
     routes = {},
+    customers = [],
+    related_counts = {},
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
@@ -113,6 +116,80 @@ export default function Show({
                     <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Notes</div>
                     <div className="mt-1 text-sm text-slate-700">{subscription?.notes || '--'}</div>
                 </div>
+            </div>
+
+            <div className="mt-6 card p-6">
+                <div className="mb-4 text-sm font-semibold text-slate-800">Transfer Subscription Owner</div>
+                <form action={routes?.move_owner} method="POST" data-native="true" className="space-y-4">
+                    <input type="hidden" name="_token" value={csrf} />
+                    <input type="hidden" name="_method" value="PUT" />
+
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div>
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                Select New Owner
+                            </label>
+                            <SearchableSelect
+                                name="customer_id"
+                                placeholder="Choose a client..."
+                                options={customers.map(c => ({ value: String(c.id), label: c.name }))}
+                                required
+                            />
+                            <p className="mt-2 text-xs text-slate-400">
+                                Select the target client to transfer this subscription and its licenses to.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                Transfer Associated Items
+                            </label>
+                            <div className="space-y-2 mt-2">
+                                {related_counts?.projects > 0 ? (
+                                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                        <input type="hidden" name="move_projects" value="0" />
+                                        <input type="checkbox" name="move_projects" value="1" defaultChecked className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                        <span>Move {related_counts.projects} related Project(s) (including maintenances and project invoices)</span>
+                                    </label>
+                                ) : null}
+
+                                {related_counts?.orders > 0 ? (
+                                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                        <input type="hidden" name="move_orders" value="0" />
+                                        <input type="checkbox" name="move_orders" value="1" defaultChecked className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                        <span>Move {related_counts.orders} related Order(s)</span>
+                                    </label>
+                                ) : null}
+
+                                {related_counts?.invoices > 0 ? (
+                                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                        <input type="hidden" name="move_invoices" value="0" />
+                                        <input type="checkbox" name="move_invoices" value="1" defaultChecked className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                        <span>Move {related_counts.invoices} related Invoice(s)</span>
+                                    </label>
+                                ) : null}
+
+                                {(!related_counts?.projects && !related_counts?.orders && !related_counts?.invoices) ? (
+                                    <p className="text-xs text-slate-400 italic">No other related items associated with this subscription.</p>
+                                ) : null}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex justify-end">
+                        <button
+                            type="submit"
+                            className="rounded-full bg-teal-600 px-5 py-2 text-xs font-semibold text-white hover:bg-teal-500 transition-colors"
+                            onClick={(e) => {
+                                if (!confirm("Are you sure you want to transfer this subscription to the selected client? This action is irreversible.")) {
+                                    e.preventDefault();
+                                }
+                            }}
+                        >
+                            Transfer Owner
+                        </button>
+                    </div>
+                </form>
             </div>
 
             <div className="mt-6 card overflow-x-auto">

@@ -16,13 +16,13 @@ use App\Models\TaxRate;
 use App\Models\TaxSetting;
 use App\Models\User;
 use App\Services\IncomeEntryService;
-use App\Services\InvoiceTaxService;
+use App\Services\InvoiceVatService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
-class FinanceIncomeTaxTest extends TestCase
+class FinanceIncomeVatTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -182,12 +182,12 @@ class FinanceIncomeTaxTest extends TestCase
             'enabled' => true,
             'tax_mode_default' => 'exclusive',
             'default_tax_rate_id' => $rate->id,
-            'invoice_tax_label' => 'Tax',
-            'invoice_tax_note_template' => 'Tax ({rate}%)',
+            'invoice_tax_label' => 'VAT',
+            'invoice_tax_note_template' => 'VAT ({rate}%)',
         ]);
 
         $customer = Customer::create([
-            'name' => 'Tax Client',
+            'name' => 'VAT Client',
         ]);
 
         $invoice = Invoice::create([
@@ -202,13 +202,13 @@ class FinanceIncomeTaxTest extends TestCase
             'currency' => 'BDT',
         ]);
 
-        $invoice = app(InvoiceTaxService::class)->applyToInvoice($invoice);
+        $invoice = app(InvoiceVatService::class)->applyToInvoice($invoice);
 
         $this->assertSame('exclusive', $invoice->tax_mode);
         $this->assertEqualsWithDelta(15.0, (float) $invoice->tax_rate_percent, 0.01);
         $this->assertEqualsWithDelta(15.0, (float) $invoice->tax_amount, 0.01);
         $this->assertEqualsWithDelta(115.0, (float) $invoice->total, 0.01);
-        $this->assertSame('Tax (15%)', $settings->renderNote($invoice->tax_rate_percent));
+        $this->assertSame('VAT (15%)', $settings->renderNote($invoice->tax_rate_percent));
     }
 
     #[Test]
@@ -227,8 +227,8 @@ class FinanceIncomeTaxTest extends TestCase
             'enabled' => true,
             'tax_mode_default' => 'inclusive',
             'default_tax_rate_id' => $rate->id,
-            'invoice_tax_label' => 'Tax',
-            'invoice_tax_note_template' => 'Tax ({rate}%)',
+            'invoice_tax_label' => 'VAT',
+            'invoice_tax_note_template' => 'VAT ({rate}%)',
         ]);
 
         $customer = Customer::create([
@@ -247,7 +247,7 @@ class FinanceIncomeTaxTest extends TestCase
             'currency' => 'BDT',
         ]);
 
-        $invoice = app(InvoiceTaxService::class)->applyToInvoice($invoice);
+        $invoice = app(InvoiceVatService::class)->applyToInvoice($invoice);
         $expectedTax = round(100 * (15 / (100 + 15)), 2);
 
         $this->assertSame('inclusive', $invoice->tax_mode);
@@ -366,7 +366,7 @@ class FinanceIncomeTaxTest extends TestCase
             ->assertStatus(403);
 
         $this->actingAs($user)
-            ->get(route('admin.finance.tax.index'))
+            ->get(route('admin.finance.vat.index'))
             ->assertStatus(403);
 
         $this->actingAs($user)

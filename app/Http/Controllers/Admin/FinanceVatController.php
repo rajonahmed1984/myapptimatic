@@ -16,7 +16,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
-class FinanceTaxController extends Controller
+class FinanceVatController extends Controller
 {
     public function index(
         Request $request,
@@ -28,11 +28,11 @@ class FinanceTaxController extends Controller
             $currencyCode = Currency::DEFAULT;
         }
         $effectiveYear = (int) $request->query('effective_year', (int) now()->year);
-        $taxAnalytics = $this->buildTaxAnalytics($currencyCode, $effectiveYear);
+        $vatAnalytics = $this->buildVatAnalytics($currencyCode, $effectiveYear);
 
         return Inertia::render(
-            'Admin/Finance/Tax/Index',
-            $this->indexInertiaProps($settings, $rates, $taxAnalytics, $currencyCode)
+            'Admin/Finance/Vat/Index',
+            $this->indexInertiaProps($settings, $rates, $vatAnalytics, $currencyCode)
         );
     }
 
@@ -42,7 +42,6 @@ class FinanceTaxController extends Controller
             'enabled' => ['nullable', 'boolean'],
             'tax_mode_default' => ['required', Rule::in(['inclusive', 'exclusive'])],
             'default_tax_rate_id' => ['nullable', 'exists:tax_rates,id'],
-            'invoice_tax_label' => ['required', 'string', 'max:255'],
             'invoice_tax_note_template' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -51,11 +50,11 @@ class FinanceTaxController extends Controller
             'enabled' => (bool) ($data['enabled'] ?? false),
             'tax_mode_default' => $data['tax_mode_default'],
             'default_tax_rate_id' => $data['default_tax_rate_id'] ?? null,
-            'invoice_tax_label' => (string) $data['invoice_tax_label'],
+            'invoice_tax_label' => 'VAT',
             'invoice_tax_note_template' => $data['invoice_tax_note_template'] ?? null,
         ]);
 
-        return back()->with('status', 'Tax settings updated.');
+        return back()->with('status', 'VAT settings updated.');
     }
 
     public function storeRate(Request $request): RedirectResponse
@@ -76,13 +75,13 @@ class FinanceTaxController extends Controller
             'is_active' => (bool) ($data['is_active'] ?? false),
         ]);
 
-        return back()->with('status', 'Tax rate created.');
+        return back()->with('status', 'VAT rate created.');
     }
 
     public function editRate(TaxRate $rate): InertiaResponse
     {
         return Inertia::render(
-            'Admin/Finance/Tax/EditRate',
+            'Admin/Finance/Vat/EditRate',
             $this->editRateInertiaProps($rate)
         );
     }
@@ -105,21 +104,21 @@ class FinanceTaxController extends Controller
             'is_active' => (bool) ($data['is_active'] ?? false),
         ]);
 
-        return redirect()->route('admin.finance.tax.index')
-            ->with('status', 'Tax rate updated.');
+        return redirect()->route('admin.finance.vat.index')
+            ->with('status', 'VAT rate updated.');
     }
 
     public function destroyRate(TaxRate $rate): RedirectResponse
     {
         $rate->delete();
 
-        return back()->with('status', 'Tax rate deleted.');
+        return back()->with('status', 'VAT rate deleted.');
     }
 
     private function indexInertiaProps(
         TaxSetting $settings,
         Collection $rates,
-        array $taxAnalytics,
+        array $vatAnalytics,
         string $currencyCode
     ): array
     {
@@ -128,14 +127,14 @@ class FinanceTaxController extends Controller
         $oldEnabled = old('enabled');
 
         return [
-            'pageTitle' => 'Tax Settings',
-            'heading' => 'Tax settings',
-            'subheading' => 'Configure tax mode, default rates, and invoice notes.',
+            'pageTitle' => 'VAT Settings',
+            'heading' => 'VAT settings',
+            'subheading' => 'Configure VAT mode, default rates, and invoice notes.',
             'routes' => [
-                'index' => route('admin.finance.tax.index'),
+                'index' => route('admin.finance.vat.index'),
                 'reports' => route('admin.finance.reports.index'),
-                'settings_update' => route('admin.finance.tax.update'),
-                'rate_store' => route('admin.finance.tax.rates.store'),
+                'settings_update' => route('admin.finance.vat.update'),
+                'rate_store' => route('admin.finance.vat.rates.store'),
             ],
             'settings_form' => [
                 'enabled' => $oldEnabled !== null
@@ -145,7 +144,7 @@ class FinanceTaxController extends Controller
                 'default_tax_rate_id' => $defaultRateId !== null
                     ? (string) $defaultRateId
                     : '',
-                'invoice_tax_label' => (string) old('invoice_tax_label', (string) ($settings->invoice_tax_label ?? 'Tax')),
+                'invoice_tax_label' => 'VAT',
                 'invoice_tax_note_template' => (string) old('invoice_tax_note_template', (string) ($settings->invoice_tax_note_template ?? '')),
             ],
             'rate_form' => [
@@ -158,10 +157,10 @@ class FinanceTaxController extends Controller
             'quick_reference' => [
                 'mode' => ucfirst((string) $settings->tax_mode_default),
                 'default_rate_name' => (string) ($settings->defaultRate?->name ?? 'None'),
-                'invoice_label' => (string) ($settings->invoice_tax_label ?? 'Tax'),
+                'invoice_label' => 'VAT',
             ],
             'currency_code' => $currencyCode,
-            'tax_analytics' => $taxAnalytics,
+            'vat_analytics' => $vatAnalytics,
             'rate_options' => $rates->values()->map(function (TaxRate $rate) use ($defaultRateId) {
                 $formatted = rtrim(rtrim(number_format((float) $rate->rate_percent, 2, '.', ''), '0'), '.');
                 $selectedId = $defaultRateId !== null ? (string) $defaultRateId : '';
@@ -185,15 +184,15 @@ class FinanceTaxController extends Controller
                     'status_label' => $rate->is_active ? 'Active' : 'Inactive',
                     'confirm_name' => (string) $rate->name,
                     'routes' => [
-                        'edit' => route('admin.finance.tax.rates.edit', $rate),
-                        'destroy' => route('admin.finance.tax.rates.destroy', $rate),
+                        'edit' => route('admin.finance.vat.rates.edit', $rate),
+                        'destroy' => route('admin.finance.vat.rates.destroy', $rate),
                     ],
                 ];
             })->all(),
         ];
     }
 
-    private function buildTaxAnalytics(string $currencyCode, int $effectiveYear): array
+    private function buildVatAnalytics(string $currencyCode, int $effectiveYear): array
     {
         $globalDateFormat = (string) config('app.date_format', 'd-m-Y');
 
@@ -211,12 +210,12 @@ class FinanceTaxController extends Controller
             if (! isset($fiscalYearBuckets[$fiscalYear])) {
                 $fiscalYearBuckets[$fiscalYear] = [
                     'fiscal_year' => $fiscalYear,
-                    'tax_total' => 0.0,
+                    'vat_total' => 0.0,
                     'invoice_count' => 0,
                 ];
             }
 
-            $fiscalYearBuckets[$fiscalYear]['tax_total'] += (float) $invoice->tax_amount;
+            $fiscalYearBuckets[$fiscalYear]['vat_total'] += (float) $invoice->tax_amount;
             $fiscalYearBuckets[$fiscalYear]['invoice_count']++;
         }
 
@@ -243,11 +242,11 @@ class FinanceTaxController extends Controller
             $key = $issueDate->format('Y-m');
             if (! isset($monthlySource[$key])) {
                 $monthlySource[$key] = [
-                    'tax_total' => 0.0,
+                    'vat_total' => 0.0,
                     'invoice_count' => 0,
                 ];
             }
-            $monthlySource[$key]['tax_total'] += (float) $invoice->tax_amount;
+            $monthlySource[$key]['vat_total'] += (float) $invoice->tax_amount;
             $monthlySource[$key]['invoice_count']++;
         }
 
@@ -262,15 +261,15 @@ class FinanceTaxController extends Controller
                     'month_label' => $periodDate->format('M Y'),
                     'month_short' => $periodDate->format('M'),
                     'period_start' => $periodDate->format($globalDateFormat),
-                    'tax_total' => (float) ($row['tax_total'] ?? 0),
+                    'vat_total' => (float) ($row['vat_total'] ?? 0),
                     'invoice_count' => (int) ($row['invoice_count'] ?? 0),
                 ];
             })
             ->values();
 
         $monthlyWithChange = $monthlyRows->map(function (array $row, int $index) use ($monthlyRows) {
-            $previous = $index > 0 ? (float) ($monthlyRows[$index - 1]['tax_total'] ?? 0) : null;
-            $current = (float) $row['tax_total'];
+            $previous = $index > 0 ? (float) ($monthlyRows[$index - 1]['vat_total'] ?? 0) : null;
+            $current = (float) $row['vat_total'];
             $changePercent = null;
 
             if ($previous !== null && $previous > 0) {
@@ -291,15 +290,15 @@ class FinanceTaxController extends Controller
             ->map(function (array $row) {
                 return [
                     'year' => (int) ($row['fiscal_year'] ?? 0),
-                    'tax_total' => (float) ($row['tax_total'] ?? 0),
+                    'vat_total' => (float) ($row['vat_total'] ?? 0),
                     'invoice_count' => (int) ($row['invoice_count'] ?? 0),
                 ];
             })
             ->values();
 
         $yearlyWithChange = $yearlyRows->map(function (array $row, int $index) use ($yearlyRows) {
-            $previous = $index > 0 ? (float) ($yearlyRows[$index - 1]['tax_total'] ?? 0) : null;
-            $current = (float) $row['tax_total'];
+            $previous = $index > 0 ? (float) ($yearlyRows[$index - 1]['vat_total'] ?? 0) : null;
+            $current = (float) $row['vat_total'];
             $changePercent = null;
 
             if ($previous !== null && $previous > 0) {
@@ -315,9 +314,9 @@ class FinanceTaxController extends Controller
         })->values();
 
         $currentMonthKey = now()->format('Y-m');
-        $thisMonthTotal = (float) ($monthlyWithChange->firstWhere('month_key', $currentMonthKey)['tax_total'] ?? 0);
-        $thisYearTotal = (float) ($yearlyWithChange->firstWhere('year', $effectiveYear)['tax_total'] ?? 0);
-        $allTimeTotal = (float) $yearlyWithChange->sum('tax_total');
+        $thisMonthTotal = (float) ($monthlyWithChange->firstWhere('month_key', $currentMonthKey)['vat_total'] ?? 0);
+        $thisYearTotal = (float) ($yearlyWithChange->firstWhere('year', $effectiveYear)['vat_total'] ?? 0);
+        $allTimeTotal = (float) $yearlyWithChange->sum('vat_total');
 
         $yearOptionsSource = $availableYears->isNotEmpty()
             ? $availableYears
@@ -351,7 +350,7 @@ class FinanceTaxController extends Controller
             ],
             'trend' => [
                 'labels' => $monthlyWithChange->pluck('month_short')->values()->all(),
-                'series' => $monthlyWithChange->pluck('tax_total')->values()->all(),
+                'series' => $monthlyWithChange->pluck('vat_total')->values()->all(),
             ],
             'monthly_rows' => $monthlyWithChange->sortByDesc('month_key')->values()->all(),
             'yearly_rows' => $yearlyWithChange->sortByDesc('year')->values()->all(),
@@ -361,7 +360,7 @@ class FinanceTaxController extends Controller
     private function editRateInertiaProps(TaxRate $rate): array
     {
         return [
-            'pageTitle' => 'Edit Tax Rate',
+            'pageTitle' => 'Edit VAT Rate',
             'rate' => [
                 'id' => $rate->id,
                 'name' => (string) old('name', (string) $rate->name),
@@ -371,8 +370,8 @@ class FinanceTaxController extends Controller
                 'is_active' => (bool) old('is_active', (bool) $rate->is_active),
             ],
             'routes' => [
-                'index' => route('admin.finance.tax.index'),
-                'update' => route('admin.finance.tax.rates.update', $rate),
+                'index' => route('admin.finance.vat.index'),
+                'update' => route('admin.finance.vat.rates.update', $rate),
             ],
         ];
     }

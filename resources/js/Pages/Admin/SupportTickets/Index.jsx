@@ -49,54 +49,51 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Support Tickets</h1>
-                    <p className="mt-1 text-sm text-slate-500">Track and reply to client support requests.</p>
-                </div>
-                <form
-                    method="GET"
-                    action={routes?.current || routes?.index}
-                    className="flex-1"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        submitSearch();
-                    }}
-                >
-                    <input
-                        type="text"
-                        name="search"
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Search tickets..."
-                        className="w-full max-w-sm h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
-                    />
-                </form>
-                <a
-                    href={routes?.create}
-                    data-native="true"
-                    className={BTN.primary}
-                >
-                    Open Ticket
-                </a>
-            </div>
-
             <div className="card p-4">
-                <div className="flex flex-wrap gap-2 text-xs">
-                    {filter_links.map((filter) => (
-                        <a
-                            key={filter.key}
-                            href={filter.href}
-                            data-native="true"
-                            className={
-                                filter.active
-                                    ? BTN.primary
-                                    : BTN.secondary
-                            }
+                <div className="flex flex-wrap items-center justify-between gap-4 text-xs">
+                    <div className="flex flex-wrap gap-2">
+                        {filter_links.map((filter) => (
+                            <a
+                                key={filter.key}
+                                href={filter.href}
+                                data-native="true"
+                                className={
+                                    filter.active
+                                        ? BTN.primary
+                                        : BTN.secondary
+                                }
+                            >
+                                {filter.label} ({filter.count})
+                            </a>
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <form
+                            method="GET"
+                            action={routes?.current || routes?.index}
+                            className="flex-1"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
                         >
-                            {filter.label} ({filter.count})
+                            <input
+                                type="text"
+                                name="search"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Search tickets..."
+                                className="w-full max-w-sm h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
+                            />
+                        </form>
+                        <a
+                            href={routes?.create}
+                            data-native="true"
+                            className={BTN.primary}
+                        >
+                            Open Ticket
                         </a>
-                    ))}
+                    </div>
                 </div>
             </div>
 

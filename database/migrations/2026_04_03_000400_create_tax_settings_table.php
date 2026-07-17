@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('tax_mode_default', 20)->default('exclusive');
             $table->foreignId('default_tax_rate_id')->nullable()->constrained('tax_rates')->nullOnDelete();
-            $table->string('invoice_tax_label')->default('VAT/Tax');
+            $table->string('invoice_tax_label')->default('VAT');
             $table->text('invoice_tax_note_template')->nullable();
             $table->boolean('enabled')->default(false);
             $table->timestamps();

@@ -16,7 +16,7 @@ export default function Index({
     routes = {},
 }) {
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const generatePeriodOptions = generatePeriods.map((periodOption) => ({ value: String(periodOption.value), label: periodOption.label }));
+    const generatePeriodOptions = React.useMemo(() => generatePeriods.map((periodOption) => ({ value: String(periodOption.value), label: periodOption.label })), [generatePeriods]);
     const statusFilterOptions = [
         { value: '', label: 'All' },
         { value: 'draft', label: 'Draft' },
@@ -27,24 +27,6 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">HR</div>
-                    <div className="text-2xl font-semibold text-slate-900">Payroll periods</div>
-                    <div className="text-sm text-slate-500">Generate, review, and finalize payroll based on work logs and compensation rules.</div>
-                </div>
-                <form method="POST" action={routes?.generate} data-native="true" className="flex items-center gap-2">
-                    <input type="hidden" name="_token" value={token} />
-                    <SearchableSelect
-                        name="period_key"
-                        defaultValue={String(selectedGeneratePeriod || '')}
-                        options={generatePeriodOptions}
-                        className="w-40"
-                        placeholder="Select period"
-                    />
-                    <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Generate</button>
-                </form>
-            </div>
 
             <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                 <Metric title="Draft Periods" value={summary?.draft_periods || 0} />
@@ -56,26 +38,43 @@ export default function Index({
             </div>
 
             <div className="card p-6">
-                <form method="GET" action={routes?.index} data-native="true" className="mb-5 grid gap-3 md:grid-cols-4">
-                    <div>
-                        <label htmlFor="periodKeyFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Period</label>
-                        <input id="periodKeyFilter" type="month" name="period_key" defaultValue={selectedPeriodKey || ''} className="ui-input mt-1" />
-                    </div>
-                    <div>
-                        <label htmlFor="periodStatusFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>
-                        <SearchableSelect
-                            name="status"
-                            defaultValue={String(selectedStatus || '')}
-                            options={statusFilterOptions}
-                            className="mt-1"
-                            placeholder="All"
-                        />
-                    </div>
-                    <div className="md:col-span-2 flex items-end gap-2">
-                        <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Apply filter</button>
-                        <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Reset</a>
-                    </div>
-                </form>
+                <div className="flex flex-wrap items-end justify-between gap-4 mb-5">
+                    <form method="GET" action={routes?.index} data-native="true" className="flex flex-wrap items-end gap-3">
+                        <div>
+                            <label htmlFor="periodKeyFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Period</label>
+                            <input id="periodKeyFilter" type="month" name="period_key" defaultValue={selectedPeriodKey || ''} className="ui-input mt-1 w-40" />
+                        </div>
+                        <div>
+                            <label htmlFor="periodStatusFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>
+                            <SearchableSelect
+                                name="status"
+                                defaultValue={String(selectedStatus || '')}
+                                options={statusFilterOptions}
+                                className="mt-1 w-40"
+                                placeholder="All"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Apply filter</button>
+                            <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Reset</a>
+                        </div>
+                    </form>
+
+                    <form method="POST" action={routes?.generate} data-native="true" className="flex flex-wrap items-end gap-2">
+                        <input type="hidden" name="_token" value={token} />
+                        <div>
+                            <label className="text-xs uppercase tracking-[0.2em] text-slate-500 block mb-1">Generate Period</label>
+                            <SearchableSelect
+                                name="period_key"
+                                defaultValue={String(selectedGeneratePeriod || '')}
+                                options={generatePeriodOptions}
+                                className="w-40"
+                                placeholder="Select period"
+                            />
+                        </div>
+                        <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Generate</button>
+                    </form>
+                </div>
 
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-sm text-slate-700">

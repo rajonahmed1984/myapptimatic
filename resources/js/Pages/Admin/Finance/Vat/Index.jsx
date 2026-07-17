@@ -20,7 +20,7 @@ const TAX_CHART_FRAME = {
 
 const TAX_CHART_SERIES = {
     total: {
-        label: 'Total Tax',
+        label: 'Total VAT',
         stroke: '#0f766e',
         pointFill: '#99f6e4',
         pointStroke: '#0f766e',
@@ -119,9 +119,9 @@ function xTickIndexes(total, maxTicks = 9) {
 }
 
 export default function Index({
-    pageTitle = 'Tax Settings',
-    heading = 'Tax settings',
-    subheading = 'Configure tax mode, default rates, and invoice notes.',
+    pageTitle = 'VAT Settings',
+    heading = 'VAT settings',
+    subheading = 'Configure VAT mode, default rates, and invoice notes.',
     routes = {},
     settings_form = {},
     rate_form = {},
@@ -129,28 +129,28 @@ export default function Index({
     rate_options = [],
     rates = [],
     currency_code = 'BDT',
-    tax_analytics = {},
+    vat_analytics = {},
 }) {
     const { csrf_token: csrfToken = '', errors = {} } = usePage().props || {};
-    const summary = tax_analytics?.summary || {};
-    const monthRows = tax_analytics?.monthly_rows || [];
-    const yearRows = tax_analytics?.yearly_rows || [];
-    const trendLabels = tax_analytics?.trend?.labels || [];
-    const trendSeries = asNumberList(tax_analytics?.trend?.series || []);
+    const summary = vat_analytics?.summary || {};
+    const monthRows = vat_analytics?.monthly_rows || [];
+    const yearRows = vat_analytics?.yearly_rows || [];
+    const trendLabels = vat_analytics?.trend?.labels || [];
+    const trendSeries = asNumberList(vat_analytics?.trend?.series || []);
     const [hoveredIndex, setHoveredIndex] = React.useState(null);
     const effectiveYearFormRef = React.useRef(null);
-    const effectiveYearOptions = (tax_analytics?.effective_year_options || []).map((year) => ({
+    const effectiveYearOptions = React.useMemo(() => (vat_analytics?.effective_year_options || []).map((year) => ({
         value: String(year.value),
         label: year.label,
-    }));
+    })), [vat_analytics?.effective_year_options]);
     const taxModeOptions = [
-        { value: 'exclusive', label: 'Exclusive (add tax on top)' },
+        { value: 'exclusive', label: 'Exclusive (add VAT on top)' },
         { value: 'inclusive', label: 'Inclusive (included in total)' },
     ];
-    const defaultTaxRateOptions = [
+    const defaultTaxRateOptions = React.useMemo(() => [
         { value: '', label: 'No default' },
         ...rate_options.map((rate) => ({ value: String(rate.id), label: rate.label })),
-    ];
+    ], [rate_options]);
 
     const chartModel = React.useMemo(() => {
         const labels = Array.isArray(trendLabels) ? trendLabels : [];
@@ -239,14 +239,14 @@ export default function Index({
             <div className="card p-6">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <div className="section-label">Effective Year Tax</div>
-                        <div className="text-sm text-slate-500">Month-to-month and year-to-year tax performance.</div>
+                        <div className="section-label">Effective Year VAT</div>
+                        <div className="text-sm text-slate-500">Month-to-month and year-to-year VAT performance.</div>
                     </div>
                     <form ref={effectiveYearFormRef} method="GET" action={routes?.index} data-native="true" className="flex items-center gap-2">
                         <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Effective year</label>
                         <SearchableSelect
                             name="effective_year"
-                            defaultValue={String(tax_analytics?.effective_year || '')}
+                            defaultValue={String(vat_analytics?.effective_year || '')}
                             onChange={() => effectiveYearFormRef.current?.submit()}
                             options={effectiveYearOptions}
                             placeholder="Select year"
@@ -256,26 +256,26 @@ export default function Index({
 
                 <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">This month tax</div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">This month VAT</div>
                         <div className="mt-2 text-xl font-semibold text-slate-900">{money(currency_code, summary.this_month_total)}</div>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">This year tax</div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">This year VAT</div>
                         <div className="mt-2 text-xl font-semibold text-slate-900">{money(currency_code, summary.this_year_total)}</div>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">All time tax</div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">All time VAT</div>
                         <div className="mt-2 text-xl font-semibold text-slate-900">{money(currency_code, summary.all_time_total)}</div>
                     </div>
                 </div>
 
                 <div className="mt-5 rounded-2xl border border-slate-200 bg-white/90 p-4">
                     <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Tax Trend ({tax_analytics?.period_label || '--'})
+                        VAT Trend ({vat_analytics?.period_label || '--'})
                     </div>
                     {!hasChartData ? (
                         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                            No tax trend data available for this effective year.
+                            No VAT trend data available for this effective year.
                         </div>
                     ) : (
                         <div className="relative w-full overflow-x-auto">
@@ -314,7 +314,7 @@ export default function Index({
                                 })}
 
                                 <text x={TAX_CHART_FRAME.padLeft - 42} y={TAX_CHART_FRAME.padTop - 4} textAnchor="start" fontSize="12" fill="#334155">
-                                    Tax
+                                    VAT
                                 </text>
 
                                 {hoverDetails ? (
@@ -378,7 +378,7 @@ export default function Index({
                                     style={{ left: `${hoverDetails.xPct}%`, top: `${hoverDetails.yPct}%` }}
                                 >
                                     <div className="text-[11px] font-semibold text-slate-200">{hoverDetails.label}</div>
-                                    <div className="mt-1">Tax: {money(currency_code, hoverDetails.total)}</div>
+                                    <div className="mt-1">VAT: {money(currency_code, hoverDetails.total)}</div>
                                 </div>
                             ) : null}
                         </div>
@@ -387,13 +387,13 @@ export default function Index({
 
                 <div className="mt-5 grid gap-5 xl:grid-cols-2">
                     <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Month to month tax</div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Month to month VAT</div>
                         <div className="mt-3 overflow-x-auto">
                             <table className="min-w-full text-sm text-slate-700">
                                 <thead>
                                     <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                         <th className="whitespace-nowrap px-2 py-2 text-left">Month</th>
-                                        <th className="whitespace-nowrap px-2 py-2 text-right">Tax</th>
+                                        <th className="whitespace-nowrap px-2 py-2 text-right">VAT</th>
                                         <th className="whitespace-nowrap px-2 py-2 text-right">Invoices</th>
                                         <th className="whitespace-nowrap px-2 py-2 text-right">M/M</th>
                                     </tr>
@@ -425,7 +425,7 @@ export default function Index({
                                     ) : (
                                         <tr>
                                             <td colSpan={4} className="px-2 py-4 text-center text-slate-500">
-                                                No month-wise tax data found.
+                                                No month-wise VAT data found.
                                             </td>
                                         </tr>
                                     )}
@@ -435,13 +435,13 @@ export default function Index({
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Year to year tax</div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Year to year VAT</div>
                         <div className="mt-3 overflow-x-auto">
                             <table className="min-w-full text-sm text-slate-700">
                                 <thead>
                                     <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                         <th className="whitespace-nowrap px-2 py-2 text-left">Year</th>
-                                        <th className="whitespace-nowrap px-2 py-2 text-right">Tax</th>
+                                        <th className="whitespace-nowrap px-2 py-2 text-right">VAT</th>
                                         <th className="whitespace-nowrap px-2 py-2 text-right">Invoices</th>
                                         <th className="whitespace-nowrap px-2 py-2 text-right">Y/Y</th>
                                     </tr>
@@ -473,7 +473,7 @@ export default function Index({
                                     ) : (
                                         <tr>
                                             <td colSpan={4} className="px-2 py-4 text-center text-slate-500">
-                                                No year-wise tax data found.
+                                                No year-wise VAT data found.
                                             </td>
                                         </tr>
                                     )}
@@ -497,7 +497,7 @@ export default function Index({
                                 Default rate: <span className="font-semibold text-slate-900">{quick_reference?.default_rate_name || 'None'}</span>
                             </div>
                             <div>
-                                Invoices label: <span className="font-semibold text-slate-900">Tax</span>
+                                Invoices label: <span className="font-semibold text-slate-900">VAT</span>
                             </div>
                         </div>
                     </div>
@@ -513,23 +513,23 @@ export default function Index({
                                 className="h-4 w-4 rounded border-slate-300 text-emerald-600"
                                 defaultChecked={Boolean(settings_form?.enabled)}
                             />
-                            <span className="text-xs text-slate-600">Enable tax system</span>
+                            <span className="text-xs text-slate-600">Enable VAT system</span>
                         </div>
 
                         <div>
-                            <label className="text-xs text-slate-500">Default tax mode</label>
+                            <label className="text-xs text-slate-500">Default VAT mode</label>
                             <SearchableSelect
                                 name="tax_mode_default"
                                 defaultValue={String(settings_form?.tax_mode_default || 'exclusive')}
                                 options={taxModeOptions}
                                 className="mt-1"
-                                placeholder="Select tax mode"
+                                placeholder="Select VAT mode"
                                 error={errors.tax_mode_default}
                             />
                         </div>
 
                         <div>
-                            <label className="text-xs text-slate-500">Default tax rate</label>
+                            <label className="text-xs text-slate-500">Default VAT rate</label>
                             <SearchableSelect
                                 name="default_tax_rate_id"
                                 defaultValue={String(settings_form?.default_tax_rate_id || '')}
@@ -541,15 +541,15 @@ export default function Index({
                         </div>
 
                         <div>
-                            <label className="text-xs text-slate-500">Invoice tax label</label>
+                            <label className="text-xs text-slate-500">Invoice VAT label</label>
                             <div className="mt-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
-                                Tax
+                                VAT
                             </div>
                             <div className="mt-1 text-xs text-slate-500">This label is fixed system-wide.</div>
                         </div>
 
                         <div>
-                            <label className="text-xs text-slate-500">Invoice tax note template</label>
+                            <label className="text-xs text-slate-500">Invoice VAT note template</label>
                             <textarea
                                 name="invoice_tax_note_template"
                                 rows={1}
@@ -569,7 +569,7 @@ export default function Index({
                 </div>
 
                 <div className="card p-6">
-                    <div className="section-label">Tax rates</div>
+                    <div className="section-label">VAT rates</div>
                     <form method="POST" action={routes?.rate_store} className="mt-4 grid gap-3 text-sm" data-native="true">
                         <input type="hidden" name="_token" value={csrfToken} />
                         <input
@@ -659,8 +659,8 @@ export default function Index({
                                                         data-native="true"
                                                         data-delete-confirm
                                                         data-confirm-name={rate.confirm_name}
-                                                        data-confirm-title={`Delete tax rate ${rate.confirm_name}?`}
-                                                        data-confirm-description="This will permanently delete the tax rate."
+                                                        data-confirm-title={`Delete VAT rate ${rate.confirm_name}?`}
+                                                        data-confirm-description="This will permanently delete the VAT rate."
                                                     >
                                                         <input type="hidden" name="_token" value={csrfToken} />
                                                         <input type="hidden" name="_method" value="DELETE" />
@@ -675,7 +675,7 @@ export default function Index({
                                 ) : (
                                     <tr>
                                         <td colSpan={5} className="py-4 px-3 text-center text-slate-500">
-                                            No tax rates yet.
+                                            No VAT rates yet.
                                         </td>
                                     </tr>
                                 )}

@@ -57,23 +57,7 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <div className="section-label">Automation</div>
-                    <h1 className="mt-2 text-2xl font-semibold text-slate-900">Automation Status</h1>
-                    <p className="mt-2 text-sm text-slate-600">Clean live summary for daily automation and cron execution health.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses}`}>{statusLabel}</span>
-                    <a
-                        href={routes?.cron_settings}
-                        data-native="true"
-                        className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
-                    >
-                        Automation settings
-                    </a>
-                </div>
-            </div>
+
 
             <div className="grid gap-4 md:grid-cols-3">
                 <SummaryCard title="Last Completion" primary={lastCompletionText} secondary={lastCompletionAt} />
@@ -90,7 +74,19 @@ export default function Index({
 
             <div className="mt-6 grid gap-6 xl:grid-cols-3">
                 <div className="card p-6 xl:col-span-2">
-                    <div className="section-label">Cron Health</div>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="section-label">Cron Health</div>
+                        <div className="flex items-center gap-3">
+                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses}`}>{statusLabel}</span>
+                            <a
+                                href={routes?.cron_settings}
+                                data-native="true"
+                                className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600"
+                            >
+                                Automation settings
+                            </a>
+                        </div>
+                    </div>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                         <HealthRow
                             title="Cron token setup"

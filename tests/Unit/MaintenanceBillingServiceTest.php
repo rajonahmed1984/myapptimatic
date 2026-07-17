@@ -8,7 +8,7 @@ use App\Models\Project;
 use App\Models\ProjectMaintenance;
 use App\Models\Setting;
 use App\Services\BillingService;
-use App\Services\InvoiceTaxService;
+use App\Services\InvoiceVatService;
 use App\Services\MaintenanceBillingService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -116,9 +116,9 @@ class MaintenanceBillingServiceTest extends TestCase
 
     private function makeService(): MaintenanceBillingService
     {
-        $taxService = app(InvoiceTaxService::class);
+        $vatService = app(InvoiceVatService::class);
 
-        return new MaintenanceBillingService(new BillingService($taxService), $taxService);
+        return new MaintenanceBillingService(new BillingService($vatService), $vatService);
     }
 
     private function createMaintenance(array $overrides = []): ProjectMaintenance

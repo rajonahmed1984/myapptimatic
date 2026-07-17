@@ -97,20 +97,17 @@ export default function Dashboard({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <a href={routes?.employeesCreate} data-native="true" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Add employee</a>
-                    <a href={routes?.employeesIndex} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Employees</a>
-                    <a href={routes?.attendanceIndex} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Attendance</a>
-                    <a href={routes?.leaveRequestsIndex} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Leave</a>
-                    <a href={routes?.payrollIndex} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Payroll</a>
-                </div>
-            </div>
-
             <div className="card bg-gradient-to-br from-[#eef8fb] via-white to-[#f4f8ff] p-5">
-                <div className="section-label">Control Snapshot</div>
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                    <div className="section-label">Control Snapshot</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <a href={routes?.employeesCreate} data-native="true" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Add employee</a>
+                        <a href={routes?.employeesIndex} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Employees</a>
+                        <a href={routes?.attendanceIndex} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Attendance</a>
+                        <a href={routes?.leaveRequestsIndex} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Leave</a>
+                        <a href={routes?.payrollIndex} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Payroll</a>
+                    </div>
+                </div>
                 <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <InsightCard title="Attendance Coverage Today" value={pct(attendanceCoverageToday)} note={`${attendanceMarkedToday}/${Math.max(activeFullTimeEmployees, 0)} full-time marked`} tone={n(attendanceCoverageToday) >= 90 ? 'text-emerald-600' : 'text-amber-600'} />
                     <InsightCard title="On-Target Workdays (Month)" value={pct(onTargetRateThisMonth)} note={`${onTargetDaysThisMonth} of ${workLogDaysThisMonth} logged days`} tone={n(onTargetRateThisMonth) >= 70 ? 'text-emerald-600' : 'text-rose-600'} />

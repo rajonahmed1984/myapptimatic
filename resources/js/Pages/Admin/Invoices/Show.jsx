@@ -574,6 +574,7 @@ export default function Show({
                     <div className="mt-3 ml-auto max-w-xs space-y-1 text-xs">
                         <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Sub Total:</span><span className="text-slate-700">{invoice.totals?.subtotal_display}</span></div>
                         <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Credit:</span><span className="text-slate-700">{invoice.totals?.credit_display}</span></div>
+                        <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Paid Amount:</span><span className="text-slate-700">{invoice.totals?.paid_display}</span></div>
                         <div className="flex items-center justify-between rounded-full bg-teal-600 px-4 py-1.5 font-bold text-white">
                             <span>Total Due:</span><span>{invoice.totals?.outstanding_display}</span>
                         </div>
@@ -720,7 +721,7 @@ export default function Show({
                             <tr>
                                 <td className="inv-tr">
                                     <strong>
-                                        {invoice.totals.tax_mode === 'inclusive' ? 'Included Tax' : invoice.totals.tax_label}
+                                        {invoice.totals.tax_mode === 'inclusive' ? 'Included VAT' : invoice.totals.tax_label}
                                         {' '}({invoice.totals.tax_rate_display}%)
                                     </strong>
                                 </td>
@@ -732,8 +733,12 @@ export default function Show({
                             <td className="inv-tc">{invoice.totals?.discount_display}</td>
                         </tr>
                         <tr>
-                            <td className="inv-tr"><strong>Payable Amount</strong></td>
-                            <td className="inv-tc">{invoice.totals?.payable_display}</td>
+                            <td className="inv-tr"><strong>Paid Amount</strong></td>
+                            <td className="inv-tc">{invoice.totals?.paid_display}</td>
+                        </tr>
+                        <tr>
+                            <td className="inv-tr"><strong>Total Due</strong></td>
+                            <td className="inv-tc">{invoice.totals?.outstanding_display}</td>
                         </tr>
                     </tbody>
                 </table>

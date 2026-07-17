@@ -19,13 +19,14 @@ use App\Services\AdminNotificationService;
 use App\Services\BillingService;
 use App\Services\ClientNotificationService;
 use App\Services\CommissionService;
-use App\Services\InvoiceTaxService;
+use App\Services\InvoiceVatService;
 use App\Services\SalesRepNotificationService;
 use App\Support\AjaxResponse;
 use App\Support\Branding;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -95,7 +96,7 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function store(Request $request, InvoiceTaxService $taxService): RedirectResponse
+    public function store(Request $request, InvoiceVatService $vatService): RedirectResponse
     {
         $data = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
@@ -128,7 +129,7 @@ class InvoiceController extends Controller
         }
 
         $issueDate = Carbon::parse($data['issue_date']);
-        $taxData = $taxService->calculateTotals($subtotal, 0.0, $issueDate);
+        $taxData = $vatService->calculateTotals($subtotal, 0.0, $issueDate);
         $currency = strtoupper((string) Setting::getValue('currency'));
 
         $invoice = Invoice::create([
@@ -657,7 +658,7 @@ class InvoiceController extends Controller
                 $refundResult = app(\App\Services\PaymentService::class)->refundBkash($attempt, $refundAmount, $description ?: 'Refund');
                 if ($refundResult['status'] === 'error') {
                     return back()
-                        ->withErrors(['amount' => 'bKash live refund failed: ' . $refundResult['message']])
+                        ->withErrors(['amount' => 'bKash live refund failed: '.$refundResult['message']])
                         ->withInput();
                 }
 
@@ -1001,7 +1002,7 @@ class InvoiceController extends Controller
         AdminNotificationService $adminNotifications,
         ClientNotificationService $clientNotifications,
         CommissionService $commissionService,
-        InvoiceTaxService $taxService,
+        InvoiceVatService $vatService,
         SalesRepNotificationService $salesRepNotifications
     ): RedirectResponse|JsonResponse {
         $invoice->loadMissing('items');
@@ -1122,7 +1123,7 @@ class InvoiceController extends Controller
                 throw ValidationException::withMessages($validationErrors);
             }
 
-            $taxData = $taxService->calculateTotals($subtotal, 0.0, Carbon::parse($data['issue_date']));
+            $taxData = $vatService->calculateTotals($subtotal, 0.0, Carbon::parse($data['issue_date']));
             $updates['subtotal'] = $subtotal;
             $updates['tax_rate_percent'] = $taxData['tax_rate_percent'];
             $updates['tax_mode'] = $taxData['tax_mode'];
@@ -1275,7 +1276,17 @@ class InvoiceController extends Controller
         $search = trim((string) request()->query('search', ''));
 
         $query = Invoice::query()
-            ->with(['customer', 'paymentProofs', 'subscription.plan.product', 'maintenance.project', 'accountingEntries'])
+            ->with(['customer', 'subscription.plan.product', 'maintenance.project'])
+            ->withSum([
+                'accountingEntries as list_payment_total' => fn (Builder $entries) => $entries->where('type', 'payment'),
+            ], 'amount')
+            ->withSum([
+                'accountingEntries as list_credit_total' => fn (Builder $entries) => $entries->where('type', 'credit'),
+            ], 'amount')
+            ->withExists([
+                'paymentProofs as list_has_pending_proof' => fn (Builder $proofs) => $proofs->where('status', 'pending'),
+                'paymentProofs as list_has_rejected_proof' => fn (Builder $proofs) => $proofs->where('status', 'rejected'),
+            ])
             ->latest('issue_date');
 
         if ($project) {
@@ -1323,7 +1334,7 @@ class InvoiceController extends Controller
             });
         }
 
-        $invoiceInsights = $this->invoiceInsights((clone $query)->get());
+        $invoiceInsights = $this->invoiceInsights(clone $query);
 
         $payload = [
             'invoices' => $query->paginate(30)->withQueryString(),
@@ -1365,82 +1376,89 @@ class InvoiceController extends Controller
     }
 
     /**
-     * @param  Collection<int, Invoice>  $invoices
      * @return array<string, mixed>
      */
-    private function invoiceInsights(Collection $invoices): array
+    private function invoiceInsights(Builder $query): array
     {
-        $currency = (string) ($invoices->first()?->currency ?: Setting::getValue('currency', 'BDT'));
+        $currency = (string) ((clone $query)
+            ->setEagerLoads([])
+            ->value('currency') ?: Setting::getValue('currency', 'BDT'));
 
-        $overview = [
-            'count' => $invoices->count(),
-            'billed' => 0.0,
-            'collected' => 0.0,
-            'outstanding' => 0.0,
-        ];
+        $filteredInvoices = (clone $query)
+            ->setEagerLoads([])
+            ->reorder()
+            ->select([
+                'invoices.id',
+                'invoices.status',
+                'invoices.total',
+            ]);
 
-        $statusCounts = [
-            'paid' => 0,
-            'unpaid' => 0,
-            'overdue' => 0,
-            'cancelled' => 0,
-            'refunded' => 0,
-            'partial' => 0,
-        ];
+        $accountingTotals = AccountingEntry::query()
+            ->selectRaw(
+                "invoice_id, SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) as collected"
+            )
+            ->whereNotNull('invoice_id')
+            ->groupBy('invoice_id');
 
-        $watchlist = [
-            'overdue_count' => 0,
-            'overdue_amount' => 0.0,
-            'pending_proof_count' => 0,
-            'rejected_proof_count' => 0,
-        ];
+        $proofFlags = DB::table('payment_proofs')
+            ->selectRaw(
+                "invoice_id, MAX(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as has_pending_proof, "
+                ."MAX(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as has_rejected_proof"
+            )
+            ->groupBy('invoice_id');
 
-        foreach ($invoices as $invoice) {
-            $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
-            $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
-            $collected = max(0, $paidTotal + $creditTotal);
-            $outstanding = max(0, (float) $invoice->total - $collected);
-            $status = $this->effectiveInvoiceStatus((string) $invoice->status, $outstanding);
+        $collectedSql = 'COALESCE(accounting_totals.collected, 0)';
+        $outstandingSql = "CASE WHEN COALESCE(filtered_invoices.total, 0) - {$collectedSql} > 0 "
+            ."THEN COALESCE(filtered_invoices.total, 0) - {$collectedSql} ELSE 0 END";
+        $effectivelyPaidSql = "filtered_invoices.status = 'paid' OR "
+            ."(filtered_invoices.status IN ('unpaid', 'overdue') AND {$outstandingSql} <= 0.009)";
+        $effectiveOverdueSql = "filtered_invoices.status = 'overdue' AND {$outstandingSql} > 0.009";
 
-            $overview['billed'] += (float) $invoice->total;
-            $overview['collected'] += $collected;
-            $overview['outstanding'] += $outstanding;
-
-            if (array_key_exists($status, $statusCounts)) {
-                $statusCounts[$status]++;
-            }
-
-            if ($collected > 0 && $outstanding > 0) {
-                $statusCounts['partial']++;
-            }
-
-            if ($status === 'overdue') {
-                $watchlist['overdue_count']++;
-                $watchlist['overdue_amount'] += $outstanding;
-            }
-
-            if ($invoice->paymentProofs->firstWhere('status', 'pending')) {
-                $watchlist['pending_proof_count']++;
-            }
-
-            if ($invoice->paymentProofs->firstWhere('status', 'rejected')) {
-                $watchlist['rejected_proof_count']++;
-            }
-        }
+        $insights = DB::query()
+            ->fromSub($filteredInvoices, 'filtered_invoices')
+            ->leftJoinSub($accountingTotals, 'accounting_totals', function ($join): void {
+                $join->on('accounting_totals.invoice_id', '=', 'filtered_invoices.id');
+            })
+            ->leftJoinSub($proofFlags, 'proof_flags', function ($join): void {
+                $join->on('proof_flags.invoice_id', '=', 'filtered_invoices.id');
+            })
+            ->selectRaw(
+                "COUNT(*) as invoice_count,
+                COALESCE(SUM(filtered_invoices.total), 0) as billed,
+                COALESCE(SUM({$collectedSql}), 0) as collected,
+                COALESCE(SUM({$outstandingSql}), 0) as outstanding,
+                SUM(CASE WHEN {$effectivelyPaidSql} THEN 1 ELSE 0 END) as paid_count,
+                SUM(CASE WHEN filtered_invoices.status = 'unpaid' AND {$outstandingSql} > 0.009 THEN 1 ELSE 0 END) as unpaid_count,
+                SUM(CASE WHEN {$effectiveOverdueSql} THEN 1 ELSE 0 END) as overdue_count,
+                SUM(CASE WHEN filtered_invoices.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
+                SUM(CASE WHEN filtered_invoices.status = 'refunded' THEN 1 ELSE 0 END) as refunded_count,
+                SUM(CASE WHEN {$collectedSql} > 0 AND {$outstandingSql} > 0 THEN 1 ELSE 0 END) as partial_count,
+                COALESCE(SUM(CASE WHEN {$effectiveOverdueSql} THEN {$outstandingSql} ELSE 0 END), 0) as overdue_amount,
+                SUM(CASE WHEN COALESCE(proof_flags.has_pending_proof, 0) = 1 THEN 1 ELSE 0 END) as pending_proof_count,
+                SUM(CASE WHEN COALESCE(proof_flags.has_rejected_proof, 0) = 1 THEN 1 ELSE 0 END) as rejected_proof_count"
+            )
+            ->first();
 
         return [
             'overview' => [
-                'count' => $overview['count'],
-                'billed_display' => $this->formatMoney($currency, $overview['billed']),
-                'collected_display' => $this->formatMoney($currency, $overview['collected']),
-                'outstanding_display' => $this->formatMoney($currency, $overview['outstanding']),
+                'count' => (int) ($insights->invoice_count ?? 0),
+                'billed_display' => $this->formatMoney($currency, (float) ($insights->billed ?? 0)),
+                'collected_display' => $this->formatMoney($currency, (float) ($insights->collected ?? 0)),
+                'outstanding_display' => $this->formatMoney($currency, (float) ($insights->outstanding ?? 0)),
             ],
-            'statuses' => $statusCounts,
+            'statuses' => [
+                'paid' => (int) ($insights->paid_count ?? 0),
+                'unpaid' => (int) ($insights->unpaid_count ?? 0),
+                'overdue' => (int) ($insights->overdue_count ?? 0),
+                'cancelled' => (int) ($insights->cancelled_count ?? 0),
+                'refunded' => (int) ($insights->refunded_count ?? 0),
+                'partial' => (int) ($insights->partial_count ?? 0),
+            ],
             'watchlist' => [
-                'overdue_count' => $watchlist['overdue_count'],
-                'overdue_amount_display' => $this->formatMoney($currency, $watchlist['overdue_amount']),
-                'pending_proof_count' => $watchlist['pending_proof_count'],
-                'rejected_proof_count' => $watchlist['rejected_proof_count'],
+                'overdue_count' => (int) ($insights->overdue_count ?? 0),
+                'overdue_amount_display' => $this->formatMoney($currency, (float) ($insights->overdue_amount ?? 0)),
+                'pending_proof_count' => (int) ($insights->pending_proof_count ?? 0),
+                'rejected_proof_count' => (int) ($insights->rejected_proof_count ?? 0),
             ],
         ];
     }
@@ -1487,8 +1505,8 @@ class InvoiceController extends Controller
      */
     private function serializeInvoiceListItem(Invoice $invoice): array
     {
-        $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
-        $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
+        $creditTotal = (float) ($invoice->list_credit_total ?? 0);
+        $paidTotal = (float) ($invoice->list_payment_total ?? 0);
         $paidAmount = $paidTotal + $creditTotal;
         $outstandingAmount = max(0, (float) $invoice->total - $paidAmount);
         $effectiveStatus = $this->effectiveInvoiceStatus((string) $invoice->status, $outstandingAmount);
@@ -1506,8 +1524,8 @@ class InvoiceController extends Controller
             'status' => $effectiveStatus,
             'status_label' => ucfirst($effectiveStatus),
             'status_class' => $this->statusClass($effectiveStatus),
-            'has_pending_proof' => (bool) $invoice->paymentProofs->firstWhere('status', 'pending'),
-            'has_rejected_proof' => (bool) $invoice->paymentProofs->firstWhere('status', 'rejected'),
+            'has_pending_proof' => (bool) $invoice->list_has_pending_proof,
+            'has_rejected_proof' => (bool) $invoice->list_has_rejected_proof,
             'is_partial' => $isPartial,
             'paid_amount_display' => sprintf('%s %s', (string) $invoice->currency, number_format($paidAmount, 2)),
             'routes' => [
@@ -1525,7 +1543,7 @@ class InvoiceController extends Controller
         $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
         $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
         $taxSetting = \App\Models\TaxSetting::current();
-        $taxLabel = $taxSetting->invoice_tax_label ?: 'Tax';
+        $taxLabel = 'VAT';
         $taxNote = $taxSetting->renderNote($invoice->tax_rate_percent);
         $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
         $discountAmount = $creditTotal;
@@ -1586,6 +1604,7 @@ class InvoiceController extends Controller
                 'tax_note' => $taxNote,
                 'credit_display' => sprintf('%s %s', (string) $invoice->currency, number_format($discountAmount, 2)),
                 'discount_display' => '- '.(string) $invoice->currency.' '.number_format($discountAmount, 2),
+                'paid_display' => '- '.(string) $invoice->currency.' '.number_format($paidTotal, 2),
                 'collected_display' => sprintf('%s %s', (string) $invoice->currency, number_format($paidTotal, 2)),
                 'collected_value' => number_format($paidTotal, 2, '.', ''),
                 'payable_display' => sprintf('%s %s', (string) $invoice->currency, number_format($payableAmount, 2)),
@@ -1720,13 +1739,14 @@ class InvoiceController extends Controller
                     ? rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.')
                     : null,
                 'discount_display' => (string) $invoice->currency.' '.number_format($creditTotal, 2),
+                'paid_amount_display' => (string) $invoice->currency.' '.number_format($paidTotal, 2),
                 'payable_amount_display' => (string) $invoice->currency.' '.number_format($payableAmount, 2),
                 'is_payable' => in_array($effectiveStatus, ['unpaid', 'overdue'], true) && $payableAmount > 0,
                 'pending_proof' => (bool) $pendingProof,
                 'rejected_proof' => (bool) $rejectedProof,
             ],
             'tax' => [
-                'label' => $taxSetting->invoice_tax_label ?: 'Tax',
+                'label' => 'VAT',
                 'note' => $taxSetting->renderNote($invoice->tax_rate_percent),
             ],
             'company' => [
@@ -1935,9 +1955,6 @@ class InvoiceController extends Controller
         $invoices = Invoice::whereIn('id', $data['invoice_ids'])->get();
         $sentCount = 0;
 
-        $clientNotifications = app(ClientNotificationService::class);
-        $adminNotifications = app(AdminNotificationService::class);
-
         foreach ($invoices as $invoice) {
             if (! in_array($invoice->status, ['unpaid', 'overdue'], true)) {
                 continue;
@@ -1945,8 +1962,7 @@ class InvoiceController extends Controller
 
             $templateKey = $invoice->status === 'overdue' ? 'invoice_overdue_first_notice' : 'invoice_payment_reminder';
 
-            $clientNotifications->sendInvoiceReminder($invoice, $templateKey);
-            $adminNotifications->sendInvoiceReminder($invoice, $templateKey);
+            \App\Jobs\SendInvoiceReminderNotification::dispatch($invoice->id, $templateKey);
 
             $now = Carbon::now();
             if ($invoice->status === 'overdue') {
@@ -2201,7 +2217,7 @@ class InvoiceController extends Controller
         return redirect()->back()->with('status', "Duplicated {$duplicatedCount} invoice(s) successfully.");
     }
 
-    public function bulkMerge(Request $request, InvoiceTaxService $taxService, CommissionService $commissionService): RedirectResponse
+    public function bulkMerge(Request $request, InvoiceVatService $vatService, CommissionService $commissionService): RedirectResponse
     {
         $data = $request->validate([
             'invoice_ids' => ['required', 'array', 'min:2'],
@@ -2236,11 +2252,11 @@ class InvoiceController extends Controller
 
         foreach ($invoices as $invoice) {
             $numberDisplay = is_numeric($invoice->number) ? (string) $invoice->number : (string) $invoice->id;
-            $originalInvoiceNumbers[] = '#' . $numberDisplay;
+            $originalInvoiceNumbers[] = '#'.$numberDisplay;
 
             foreach ($invoice->items as $item) {
                 $aggregatedItems[] = [
-                    'description' => $item->description . " (From invoice #{$numberDisplay})",
+                    'description' => $item->description." (From invoice #{$numberDisplay})",
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'line_total' => $item->line_total,
@@ -2249,9 +2265,9 @@ class InvoiceController extends Controller
             }
         }
 
-        $taxData = $taxService->calculateTotals($subtotal, 0.0, $issueDate);
+        $taxData = $vatService->calculateTotals($subtotal, 0.0, $issueDate);
 
-        $mergedInvoiceNotes = 'Merged from invoices: ' . implode(', ', $originalInvoiceNumbers);
+        $mergedInvoiceNotes = 'Merged from invoices: '.implode(', ', $originalInvoiceNumbers);
 
         $newInvoice = DB::transaction(function () use (
             $customerId,
@@ -2297,14 +2313,14 @@ class InvoiceController extends Controller
 
             foreach ($invoices as $originalInvoice) {
                 $previousStatus = $originalInvoice->status;
-                $originalNotes = $originalInvoice->notes ? $originalInvoice->notes . "\n" : '';
+                $originalNotes = $originalInvoice->notes ? $originalInvoice->notes."\n" : '';
                 $cancelNote = "Cancelled and merged into invoice #{$newInvoiceNumber}.";
 
                 $originalInvoice->update([
                     'status' => 'cancelled',
                     'paid_at' => null,
                     'overdue_at' => null,
-                    'notes' => $originalNotes . $cancelNote,
+                    'notes' => $originalNotes.$cancelNote,
                 ]);
 
                 \App\Models\StatusAuditLog::logChange(

@@ -11,8 +11,8 @@ use App\Models\ExpenseInvoice;
 use App\Models\PayrollItem;
 use App\Models\SalesRepresentative;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 class ExpenseEntryService
 {
@@ -104,6 +104,118 @@ class ExpenseEntryService
         }
 
         return $entries;
+    }
+
+    public function summary(array $filters = []): array
+    {
+        $sources = $this->normalizeSources($filters);
+        $categoryIdFilter = Arr::get($filters, 'category_id');
+        $personType = Arr::get($filters, 'person_type');
+        $personId = $this->toNullableInt(Arr::get($filters, 'person_id'));
+        $startDate = $this->parseFilterDate(Arr::get($filters, 'start_date'));
+        $endDate = $this->parseFilterDate(Arr::get($filters, 'end_date'), true);
+
+        $manual = 0.0;
+        $salary = 0.0;
+        $contractPayout = 0.0;
+        $salesPayout = 0.0;
+
+        if (in_array('manual', $sources, true) && ! $personType) {
+            $query = Expense::query();
+
+            if ($startDate) {
+                $query->where('expense_date', '>=', $startDate->toDateString());
+            }
+            if ($endDate) {
+                $query->where('expense_date', '<=', $endDate->toDateString());
+            }
+            if ($categoryIdFilter) {
+                $query->where('category_id', $categoryIdFilter);
+            }
+            if (! empty(Arr::get($filters, 'type'))) {
+                $query->where('type', Arr::get($filters, 'type'));
+            }
+            if (! empty(Arr::get($filters, 'recurring_expense_id'))) {
+                $query->where('recurring_expense_id', Arr::get($filters, 'recurring_expense_id'));
+            }
+
+            $manual = (float) $query->sum('amount');
+        }
+
+        $systemCategories = $categoryIdFilter ? $this->resolveSystemCategories() : [];
+
+        if (
+            in_array('salary', $sources, true)
+            && $this->categoryMatches($categoryIdFilter, $systemCategories, 'salary')
+            && (! $personType || $personType === 'employee')
+        ) {
+            $query = PayrollItem::query()
+                ->where('status', 'paid')
+                ->whereNotNull('paid_at');
+            $this->applyPaidAtRange($query, $startDate, $endDate);
+            if ($personType === 'employee' && $personId) {
+                $query->where('employee_id', $personId);
+            }
+            $salary = (float) $query->sum('net_pay');
+        }
+
+        if (
+            in_array('contract_payout', $sources, true)
+            && $this->categoryMatches($categoryIdFilter, $systemCategories, 'contract_payout')
+            && (! $personType || $personType === 'employee')
+        ) {
+            $query = EmployeePayout::query()->whereNotNull('paid_at');
+            $this->applyPaidAtRange($query, $startDate, $endDate);
+            if ($personType === 'employee' && $personId) {
+                $query->where('employee_id', $personId);
+            }
+            $contractPayout = (float) $query->sum('amount');
+        }
+
+        if (
+            in_array('sales_payout', $sources, true)
+            && $this->categoryMatches($categoryIdFilter, $systemCategories, 'sales_payout')
+            && (! $personType || $personType === 'sales_rep')
+        ) {
+            $query = CommissionPayout::query()
+                ->where('status', 'paid')
+                ->whereNotNull('paid_at');
+            $this->applyPaidAtRange($query, $startDate, $endDate);
+            if ($personType === 'sales_rep' && $personId) {
+                $query->where('sales_representative_id', $personId);
+            }
+            $salesPayout = (float) $query->sum('total_amount');
+        }
+
+        $payout = $salary + $contractPayout + $salesPayout;
+
+        return [
+            'total' => $manual + $payout,
+            'manual' => $manual,
+            'salary' => $salary,
+            'contract_payout' => $contractPayout,
+            'sales_payout' => $salesPayout,
+            'payout' => $payout,
+        ];
+    }
+
+    private function categoryMatches(mixed $categoryIdFilter, array $systemCategories, string $source): bool
+    {
+        if (! $categoryIdFilter) {
+            return true;
+        }
+
+        return (string) $categoryIdFilter === (string) ($systemCategories[$source]['id'] ?? '');
+    }
+
+    private function applyPaidAtRange($query, ?Carbon $startDate, ?Carbon $endDate): void
+    {
+        if ($startDate) {
+            $query->where('paid_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->where('paid_at', '<=', $endDate);
+        }
     }
 
     private function parseFilterDate(mixed $value, bool $endOfDay = false): ?Carbon

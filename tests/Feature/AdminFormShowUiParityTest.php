@@ -200,9 +200,9 @@ class AdminFormShowUiParityTest extends TestCase
 
 
         $this->actingAs($admin)
-            ->get(route('admin.finance.tax.rates.edit', $taxRate))
+            ->get(route('admin.finance.vat.rates.edit', $taxRate))
             ->assertOk()
-            ->assertSee('Admin\\/Finance\\/Tax\\/EditRate', false);
+            ->assertSee('Admin\\/Finance\\/Vat\\/EditRate', false);
 
         $this->actingAs($admin)
             ->get(route('admin.accounting.create'))

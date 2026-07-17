@@ -25,7 +25,7 @@ use App\Models\SystemLog;
 use App\Models\User;
 use App\Models\UserSession;
 use App\Services\BillingService;
-use App\Services\InvoiceTaxService;
+use App\Services\InvoiceVatService;
 use App\Services\Mail\MailSender;
 use App\Support\Branding;
 use App\Support\Currency;
@@ -778,7 +778,7 @@ class CustomerController extends Controller
         Request $request,
         Customer $customer,
         BillingService $billingService,
-        InvoiceTaxService $taxService
+        InvoiceVatService $vatService
     ) {
         $data = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
@@ -800,10 +800,10 @@ class CustomerController extends Controller
             ? $startDate->copy()->endOfMonth()
             : $startDate->copy()->addYear();
 
-        $result = DB::transaction(function () use ($request, $customer, $plan, $startDate, $periodEnd, $data, $billingService, $taxService) {
+        $result = DB::transaction(function () use ($request, $customer, $plan, $startDate, $periodEnd, $data, $billingService, $vatService) {
             $subtotal = $this->calculateServiceSubtotal($plan->interval, (float) $plan->price, $startDate, $periodEnd);
             $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
-            $taxData = $taxService->calculateTotals($subtotal, 0.0, $startDate);
+            $taxData = $vatService->calculateTotals($subtotal, 0.0, $startDate);
             $salesRepId = $data['sales_rep_id'] ?? null;
 
             $subscription = Subscription::create([

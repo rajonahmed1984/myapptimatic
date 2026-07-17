@@ -14,7 +14,7 @@ use App\Models\Subscription;
 use App\Services\AdminNotificationService;
 use App\Services\BillingService;
 use App\Services\ClientNotificationService;
-use App\Services\InvoiceTaxService;
+use App\Services\InvoiceVatService;
 use App\Support\Currency;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
@@ -125,7 +125,7 @@ class OrderController extends Controller
     public function store(
         Request $request,
         BillingService $billingService,
-        InvoiceTaxService $taxService,
+        InvoiceVatService $vatService,
         AdminNotificationService $adminNotifications,
         ClientNotificationService $clientNotifications
     ): RedirectResponse {
@@ -171,7 +171,7 @@ class OrderController extends Controller
             $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
             $dueDate = $startDate->day === 1 ? $startDate->copy() : $issueDate->copy();
 
-            $taxData = $taxService->calculateTotals($subtotal, 0.0, $issueDate);
+            $taxData = $vatService->calculateTotals($subtotal, 0.0, $issueDate);
 
             $invoice = Invoice::create([
                 'customer_id' => $subscription->customer_id,

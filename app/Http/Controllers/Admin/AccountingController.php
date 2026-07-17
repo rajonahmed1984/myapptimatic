@@ -8,10 +8,12 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\PaymentGateway;
 use App\Models\Setting;
+use App\Services\CommissionService;
 use App\Support\AjaxResponse;
 use App\Support\Currency;
-use App\Services\CommissionService;
 use Carbon\Carbon;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,6 +27,10 @@ use Inertia\Response as InertiaResponse;
 class AccountingController extends Controller
 {
     private const TYPES = ['payment', 'refund', 'credit', 'expense'];
+
+    private const PER_PAGE = 30;
+
+    private const LOOKUP_LIMIT = 20;
 
     public function index(Request $request): InertiaResponse
     {
@@ -71,6 +77,60 @@ class AccountingController extends Controller
                 $this->formData($type, $selectedInvoice)
             )
         );
+    }
+
+    public function customerOptions(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->query('q', ''));
+
+        $customers = Customer::query()
+            ->select(['id', 'name'])
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where('name', 'like', '%'.$search.'%');
+            })
+            ->orderBy('name')
+            ->limit(self::LOOKUP_LIMIT)
+            ->get()
+            ->map(fn (Customer $customer) => [
+                'value' => (string) $customer->id,
+                'label' => (string) $customer->name,
+            ])
+            ->values();
+
+        return response()->json(['data' => $customers]);
+    }
+
+    public function invoiceOptions(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->query('q', ''));
+
+        $invoices = Invoice::query()
+            ->select(['id', 'number', 'customer_id', 'status', 'issue_date', 'due_date', 'total'])
+            ->with('customer:id,name')
+            ->withSum([
+                'accountingEntries as paid_amount' => fn (Builder $query) => $query->where('type', 'payment'),
+            ], 'amount')
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $lookup) use ($search): void {
+                    $lookup->where('number', 'like', '%'.$search.'%')
+                        ->orWhereHas('customer', fn (Builder $customer) => $customer->where('name', 'like', '%'.$search.'%'));
+
+                    if (is_numeric($search)) {
+                        $lookup->orWhere('id', (int) $search);
+                    }
+                });
+            })
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id')
+            ->limit(self::LOOKUP_LIMIT)
+            ->get()
+            ->map(fn (Invoice $invoice) => $this->invoiceLookupRow(
+                $invoice,
+                (float) ($invoice->paid_amount ?? 0)
+            ))
+            ->values();
+
+        return response()->json(['data' => $invoices]);
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse
@@ -163,38 +223,37 @@ class AccountingController extends Controller
         Request $request,
         AccountingEntry $entry,
         CommissionService $commissionService
-    ): RedirectResponse|JsonResponse
-    {
+    ): RedirectResponse|JsonResponse {
         $invoiceId = $entry->invoice_id;
         DB::transaction(function () use ($entry, $invoiceId, $commissionService): void {
             $entry->delete();
 
             if ($invoiceId) {
                 $invoice = Invoice::query()->lockForUpdate()->find($invoiceId);
-            if ($invoice) {
-                $paidTotal = (float) AccountingEntry::where('invoice_id', $invoiceId)
-                    ->where('type', 'payment')
-                    ->sum('amount');
-                $creditTotal = (float) AccountingEntry::where('invoice_id', $invoiceId)
-                    ->where('type', 'credit')
-                    ->sum('amount');
+                if ($invoice) {
+                    $paidTotal = (float) AccountingEntry::where('invoice_id', $invoiceId)
+                        ->where('type', 'payment')
+                        ->sum('amount');
+                    $creditTotal = (float) AccountingEntry::where('invoice_id', $invoiceId)
+                        ->where('type', 'credit')
+                        ->sum('amount');
 
-                $outstanding = max(0.0, (float) $invoice->total - $creditTotal - $paidTotal);
+                    $outstanding = max(0.0, (float) $invoice->total - $creditTotal - $paidTotal);
 
-                if ($outstanding > 0.009) {
-                    $isOverdue = $invoice->due_date && $invoice->due_date->isPast();
-                    $invoice->update([
-                        'status' => $isOverdue ? 'overdue' : 'unpaid',
-                        'paid_at' => null,
-                    ]);
-                    $commissionService->reverseEarningsOnRefund($invoice);
-                } else {
-                    $invoice->update([
-                        'status' => 'paid',
-                        'paid_at' => now(),
-                    ]);
+                    if ($outstanding > 0.009) {
+                        $isOverdue = $invoice->due_date && $invoice->due_date->isPast();
+                        $invoice->update([
+                            'status' => $isOverdue ? 'overdue' : 'unpaid',
+                            'paid_at' => null,
+                        ]);
+                        $commissionService->reverseEarningsOnRefund($invoice);
+                    } else {
+                        $invoice->update([
+                            'status' => 'paid',
+                            'paid_at' => now(),
+                        ]);
+                    }
                 }
-            }
             }
         });
 
@@ -203,6 +262,7 @@ class AccountingController extends Controller
             if (AjaxResponse::ajaxFromRequest($request)) {
                 return AjaxResponse::ajaxRedirect($targetUrl, 'Accounting entry deleted.');
             }
+
             return redirect()->to($targetUrl)->with('status', 'Accounting entry deleted.');
         }
 
@@ -227,12 +287,9 @@ class AccountingController extends Controller
         ];
     }
 
-    private function queryEntries(?array $types, string $search, ?string $scope = null)
+    private function baseEntriesQuery(?array $types, string $search): Builder
     {
-        $query = AccountingEntry::query()
-            ->with(['customer', 'invoice', 'paymentGateway'])
-            ->latest('entry_date')
-            ->latest('id');
+        $query = AccountingEntry::query();
 
         if ($types) {
             $query->whereIn('type', $types);
@@ -263,9 +320,19 @@ class AccountingController extends Controller
         return $query;
     }
 
-    private function entriesForScope(string $scope, string $search): Collection
+    private function queryEntries(?array $types, string $search): Builder
     {
-        return $this->queryEntries($this->scopeTypes($scope), $search, $scope)->get();
+        return $this->baseEntriesQuery($types, $search)
+            ->with(['customer', 'invoice', 'paymentGateway'])
+            ->latest('entry_date')
+            ->latest('id');
+    }
+
+    private function entriesForScope(string $scope, string $search): LengthAwarePaginator
+    {
+        return $this->queryEntries($this->scopeTypes($scope), $search)
+            ->paginate(self::PER_PAGE)
+            ->withQueryString();
     }
 
     private function normalizeScope(string $scope): string
@@ -293,23 +360,23 @@ class AccountingController extends Controller
 
     private function formData(string $type, ?Invoice $selectedInvoice = null, ?AccountingEntry $entry = null): array
     {
+        $selectedInvoice?->loadMissing('customer:id,name,email');
+
         $dueAmount = null;
+        $invoicePaidMap = [];
         if ($selectedInvoice) {
             $paidAmount = AccountingEntry::query()
                 ->where('invoice_id', $selectedInvoice->id)
                 ->where('type', 'payment')
                 ->sum('amount');
             $dueAmount = max(0, $selectedInvoice->total - $paidAmount);
+            $invoicePaidMap[$selectedInvoice->id] = (float) $paidAmount;
         }
 
-        $invoicePaidMap = AccountingEntry::query()
-            ->whereNotNull('invoice_id')
-            ->where('type', 'payment')
-            ->selectRaw('invoice_id, SUM(amount) as paid_amount')
-            ->groupBy('invoice_id')
-            ->pluck('paid_amount', 'invoice_id')
-            ->map(fn ($value) => (float) $value)
-            ->all();
+        $selectedCustomerIds = collect([
+            $entry?->customer_id,
+            $selectedInvoice?->customer_id,
+        ])->filter()->unique()->values();
 
         $currency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
         if (! Currency::isAllowed($currency)) {
@@ -322,10 +389,34 @@ class AccountingController extends Controller
             'selectedInvoice' => $selectedInvoice,
             'dueAmount' => $dueAmount,
             'invoicePaidMap' => $invoicePaidMap,
-            'customers' => Customer::query()->orderBy('name')->get(),
-            'invoices' => Invoice::query()->with('customer')->orderByDesc('issue_date')->get(),
-            'gateways' => PaymentGateway::query()->orderBy('sort_order')->get(),
+            'customers' => Customer::query()
+                ->whereIn('id', $selectedCustomerIds)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'invoices' => $selectedInvoice ? collect([$selectedInvoice]) : collect(),
+            'gateways' => PaymentGateway::query()->orderBy('sort_order')->get(['id', 'name']),
             'currency' => $currency,
+        ];
+    }
+
+    private function invoiceLookupRow(Invoice $invoice, float $paidAmount): array
+    {
+        return [
+            'value' => (string) $invoice->id,
+            'label' => sprintf(
+                '%s - %s',
+                (string) ($invoice->number ?? $invoice->id),
+                (string) ($invoice->customer?->name ?? '--')
+            ),
+            'id' => $invoice->id,
+            'invoice_label' => (string) ($invoice->number ?? $invoice->id),
+            'customer_name' => (string) ($invoice->customer?->name ?? '--'),
+            'customer_id' => (string) ($invoice->customer_id ?? ''),
+            'status' => (string) ($invoice->status ?? ''),
+            'issue_date' => $invoice->issue_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+            'due_date' => $invoice->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+            'total_amount' => (float) ($invoice->total ?? 0),
+            'due_amount' => max(0, (float) ($invoice->total ?? 0) - $paidAmount),
         ];
     }
 
@@ -388,47 +479,33 @@ class AccountingController extends Controller
     }
 
     private function indexInertiaProps(
-        Collection $entries,
+        LengthAwarePaginator $paginator,
         string $scope,
         string $search,
         string $pageTitle,
         string $searchAction
     ): array {
         $dateFormat = config('app.date_format', 'd-m-Y');
-        $entries = $entries->values();
+        $entries = collect($paginator->items())->values();
+        $aggregateRows = $this->accountingAggregateRows($scope, $search);
+        $runningBalances = $this->runningBalancesForPage($entries, $scope, $search);
 
-        $runningBalances = [];
-        $balancesByCurrency = [];
-        $entries
-            ->sortBy([
-                ['entry_date', 'asc'],
-                ['id', 'asc'],
-            ])
-            ->each(function (AccountingEntry $entry) use (&$runningBalances, &$balancesByCurrency) {
-                $currency = strtoupper((string) $entry->currency);
-                $amount = (float) $entry->amount;
-                $delta = $entry->isOutflow() ? -$amount : $amount;
-
-                $balancesByCurrency[$currency] = ($balancesByCurrency[$currency] ?? 0) + $delta;
-                $runningBalances[$entry->id] = $balancesByCurrency[$currency];
-            });
-
-        $currencySummary = $entries
-            ->groupBy(function (AccountingEntry $entry) {
-                return strtoupper((string) $entry->currency);
+        $currencySummary = $aggregateRows
+            ->groupBy(function ($row) {
+                return strtoupper((string) $row->currency_code);
             })
             ->map(function (Collection $group, string $currency) {
                 $inflow = (float) $group
-                    ->reject(fn (AccountingEntry $entry) => $entry->isOutflow())
-                    ->sum('amount');
+                    ->reject(fn ($row) => $this->isOutflowType((string) $row->type))
+                    ->sum('total_amount');
                 $outflow = (float) $group
-                    ->filter(fn (AccountingEntry $entry) => $entry->isOutflow())
-                    ->sum('amount');
+                    ->filter(fn ($row) => $this->isOutflowType((string) $row->type))
+                    ->sum('total_amount');
                 $net = $inflow - $outflow;
 
                 return [
                     'currency' => $currency,
-                    'entries_count' => $group->count(),
+                    'entries_count' => (int) $group->sum('entries_count'),
                     'inflow_display' => sprintf('%s %s', $currency, number_format($inflow, 2)),
                     'outflow_display' => sprintf('%s %s', $currency, number_format($outflow, 2)),
                     'net_display' => sprintf('%s %s', $currency, number_format(abs($net), 2)),
@@ -442,14 +519,14 @@ class AccountingController extends Controller
             ? ['payment', 'refund']
             : self::TYPES;
 
-        $typeSummary = collect($summaryTypes)->map(function (string $type) use ($entries) {
-            $group = $entries->where('type', $type)->values();
+        $typeSummary = collect($summaryTypes)->map(function (string $type) use ($aggregateRows) {
+            $group = $aggregateRows->where('type', $type)->values();
             $currencyTotals = $group
-                ->groupBy(function (AccountingEntry $entry) {
-                    return strtoupper((string) $entry->currency);
+                ->groupBy(function ($row) {
+                    return strtoupper((string) $row->currency_code);
                 })
                 ->map(function (Collection $currencyGroup, string $currency) {
-                    return sprintf('%s %s', $currency, number_format((float) $currencyGroup->sum('amount'), 2));
+                    return sprintf('%s %s', $currency, number_format((float) $currencyGroup->sum('total_amount'), 2));
                 })
                 ->values()
                 ->all();
@@ -457,11 +534,19 @@ class AccountingController extends Controller
             return [
                 'type' => $type,
                 'label' => ucfirst(str_replace('_', ' ', $type)),
-                'count' => $group->count(),
-                'is_outflow' => in_array($type, ['refund', 'credit', 'expense'], true),
+                'count' => (int) $group->sum('entries_count'),
+                'is_outflow' => $this->isOutflowType($type),
                 'totals' => $currencyTotals,
             ];
         })->values()->all();
+
+        $inflowEntries = (int) $aggregateRows
+            ->reject(fn ($row) => $this->isOutflowType((string) $row->type))
+            ->sum('entries_count');
+        $outflowEntries = (int) $aggregateRows
+            ->filter(fn ($row) => $this->isOutflowType((string) $row->type))
+            ->sum('entries_count');
+        $latestEntryDate = $aggregateRows->max('latest_entry_date');
 
         return [
             'pageTitle' => $pageTitle,
@@ -479,10 +564,12 @@ class AccountingController extends Controller
                 ],
             ],
             'summary' => [
-                'total_entries' => $entries->count(),
-                'inflow_entries' => $entries->reject(fn (AccountingEntry $entry) => $entry->isOutflow())->count(),
-                'outflow_entries' => $entries->filter(fn (AccountingEntry $entry) => $entry->isOutflow())->count(),
-                'latest_entry_date_display' => optional($entries->first()?->entry_date)->format($dateFormat) ?? '--',
+                'total_entries' => $paginator->total(),
+                'inflow_entries' => $inflowEntries,
+                'outflow_entries' => $outflowEntries,
+                'latest_entry_date_display' => $latestEntryDate
+                    ? Carbon::parse($latestEntryDate)->format($dateFormat)
+                    : '--',
                 'currencies' => $currencySummary,
                 'types' => $typeSummary,
             ],
@@ -520,7 +607,82 @@ class AccountingController extends Controller
                     ],
                 ];
             })->values()->all(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+                'previous_url' => $paginator->previousPageUrl(),
+                'next_url' => $paginator->nextPageUrl(),
+                'has_pages' => $paginator->hasPages(),
+            ],
         ];
+    }
+
+    private function accountingAggregateRows(string $scope, string $search): Collection
+    {
+        return $this->baseEntriesQuery($this->scopeTypes($scope), $search)
+            ->selectRaw(
+                'UPPER(currency) as currency_code, type, COUNT(*) as entries_count, '
+                .'SUM(amount) as total_amount, MAX(entry_date) as latest_entry_date'
+            )
+            ->groupByRaw('UPPER(currency), type')
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, AccountingEntry>  $entries
+     * @return array<int, float>
+     */
+    private function runningBalancesForPage(Collection $entries, string $scope, string $search): array
+    {
+        if ($entries->isEmpty()) {
+            return [];
+        }
+
+        $ascendingEntries = $entries
+            ->sortBy([
+                ['entry_date', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values();
+        $oldestEntry = $ascendingEntries->first();
+
+        $balancesByCurrency = $this->baseEntriesQuery($this->scopeTypes($scope), $search)
+            ->where(function (Builder $query) use ($oldestEntry): void {
+                $query->whereDate('entry_date', '<', $oldestEntry->entry_date->toDateString())
+                    ->orWhere(function (Builder $sameDate) use ($oldestEntry): void {
+                        $sameDate->whereDate('entry_date', $oldestEntry->entry_date->toDateString())
+                            ->where('id', '<', $oldestEntry->id);
+                    });
+            })
+            ->selectRaw(
+                'UPPER(currency) as currency_code, '
+                ."SUM(CASE WHEN type IN ('refund', 'credit', 'expense') THEN -amount ELSE amount END) as balance"
+            )
+            ->groupByRaw('UPPER(currency)')
+            ->pluck('balance', 'currency_code')
+            ->map(fn ($balance) => (float) $balance)
+            ->all();
+
+        $runningBalances = [];
+
+        $ascendingEntries->each(function (AccountingEntry $entry) use (&$runningBalances, &$balancesByCurrency): void {
+            $currency = strtoupper((string) $entry->currency);
+            $delta = $entry->isOutflow() ? -(float) $entry->amount : (float) $entry->amount;
+
+            $balancesByCurrency[$currency] = ($balancesByCurrency[$currency] ?? 0) + $delta;
+            $runningBalances[$entry->id] = $balancesByCurrency[$currency];
+        });
+
+        return $runningBalances;
+    }
+
+    private function isOutflowType(string $type): bool
+    {
+        return in_array($type, ['refund', 'credit', 'expense'], true);
     }
 
     private function formInertiaProps(
@@ -616,6 +778,8 @@ class AccountingController extends Controller
             ],
             'routes' => [
                 'index' => route($this->scopeRoute($scope)),
+                'customer_options' => route('admin.accounting.lookups.customers'),
+                'invoice_options' => route('admin.accounting.lookups.invoices'),
             ],
         ];
     }

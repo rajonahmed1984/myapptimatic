@@ -23,8 +23,8 @@ class TaxSetting extends Model
     {
         return static::query()->first() ?? static::query()->create([
             'tax_mode_default' => 'exclusive',
-            'invoice_tax_label' => 'VAT/Tax',
-            'invoice_tax_note_template' => 'Tax ({rate}%)',
+            'invoice_tax_label' => 'VAT',
+            'invoice_tax_note_template' => 'VAT ({rate}%)',
             'enabled' => false,
         ]);
     }

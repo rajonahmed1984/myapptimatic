@@ -55,11 +55,12 @@
     @php
         $displayNumber = is_numeric($invoice->number) ? $invoice->number : $invoice->id;
         $creditTotal = (float) $invoice->accountingEntries->where('type', 'credit')->sum('amount');
+        $paidTotal = (float) $invoice->accountingEntries->where('type', 'payment')->sum('amount');
         $taxSetting = \App\Models\TaxSetting::current();
-        $taxLabel = $taxSetting->invoice_tax_label ?: 'Tax';
+        $taxLabel = 'VAT';
         $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
         $discountAmount = $creditTotal;
-        $payableAmount = max(0, (float) $invoice->total - $discountAmount);
+        $payableAmount = max(0, (float) $invoice->total - ($paidTotal + $discountAmount));
         $statusClass = strtolower((string) $invoice->status);
 
         $companyName = $portalBranding['company_name'] ?? config('app.name', 'Apptimatic');
@@ -166,7 +167,7 @@
                             </tr>
                             @if($hasTax)
                                 <tr>
-                                    <td class="total-row text-right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included Tax' : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
+                                    <td class="total-row text-right"><strong>{{ $invoice->tax_mode === 'inclusive' ? 'Included VAT' : $taxLabel }} ({{ rtrim(rtrim(number_format((float) $invoice->tax_rate_percent, 2, '.', ''), '0'), '.') }}%)</strong></td>
                                     <td class="total-row text-center">{{ $invoice->currency }} {{ number_format((float) $invoice->tax_amount, 2) }}</td>
                                 </tr>
                             @endif
@@ -175,7 +176,11 @@
                                 <td class="total-row text-center">{{ $discountAmount > 0 ? '- '.$invoice->currency.' '.number_format($discountAmount, 2) : '- '.$invoice->currency.' 0.00' }}</td>
                             </tr>
                             <tr>
-                                <td class="total-row text-right"><strong>Payable Amount</strong></td>
+                                <td class="total-row text-right"><strong>Paid Amount</strong></td>
+                                <td class="total-row text-center">- {{ $invoice->currency }} {{ number_format($paidTotal, 2) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="total-row text-right"><strong>Total Due</strong></td>
                                 <td class="total-row text-center">{{ $invoice->currency }} {{ number_format($payableAmount, 2) }}</td>
                             </tr>
                         </tbody>

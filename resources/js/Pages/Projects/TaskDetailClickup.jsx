@@ -57,10 +57,10 @@ export default function TaskDetailClickup({
 
     const subtaskRows = Array.isArray(subtasks) ? subtasks : [];
     const employeeOptions = Array.isArray(employees) ? employees : [];
-    const assigneeOptions = employeeOptions.map((employee) => ({ value: String(employee.id), label: employee.name }));
-    const statusSelectOptions = Object.entries(statusOptions || {}).map(([value, label]) => ({ value, label: String(label) }));
-    const prioritySelectOptions = Object.entries(priorityOptions || {}).map(([value, label]) => ({ value, label: String(label) }));
-    const taskTypeSelectOptions = Object.entries(taskTypeOptions || {}).map(([value, label]) => ({ value, label: String(label) }));
+    const assigneeOptions = useMemo(() => employeeOptions.map((employee) => ({ value: String(employee.id), label: employee.name })), [employeeOptions]);
+    const statusSelectOptions = useMemo(() => Object.entries(statusOptions || {}).map(([value, label]) => ({ value, label: String(label) })), [statusOptions]);
+    const prioritySelectOptions = useMemo(() => Object.entries(priorityOptions || {}).map(([value, label]) => ({ value, label: String(label) })), [priorityOptions]);
+    const taskTypeSelectOptions = useMemo(() => Object.entries(taskTypeOptions || {}).map(([value, label]) => ({ value, label: String(label) })), [taskTypeOptions]);
     const currentTaskStatus = String(task?.status || '').toLowerCase();
     const taskIsInProgress = currentTaskStatus === 'in_progress';
     const taskIsCompleted = ['completed', 'done'].includes(currentTaskStatus);

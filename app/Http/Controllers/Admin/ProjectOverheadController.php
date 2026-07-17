@@ -9,7 +9,7 @@ use App\Models\Project;
 use App\Models\ProjectOverhead;
 use App\Models\Setting;
 use App\Services\BillingService;
-use App\Services\InvoiceTaxService;
+use App\Services\InvoiceVatService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -96,7 +96,7 @@ class ProjectOverheadController extends Controller
             ->with('success', 'Overhead deleted successfully.');
     }
 
-    public function invoicePending(Request $request, Project $project, BillingService $billingService, InvoiceTaxService $taxService): RedirectResponse
+    public function invoicePending(Request $request, Project $project, BillingService $billingService, InvoiceVatService $vatService): RedirectResponse
     {
         $this->authorize('view', $project);
 
@@ -112,7 +112,7 @@ class ProjectOverheadController extends Controller
         $dueDays = (int) Setting::getValue('invoice_due_days');
         $dueDate = $issueDate->copy()->addDays(max(0, $dueDays));
 
-        $taxData = $taxService->calculateTotals($subtotal, 0.0, $issueDate);
+        $taxData = $vatService->calculateTotals($subtotal, 0.0, $issueDate);
 
         $invoice = Invoice::create([
             'customer_id' => $project->customer_id,

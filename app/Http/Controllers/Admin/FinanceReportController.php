@@ -13,6 +13,7 @@ use App\Services\IncomeEntryService;
 use App\Support\Currency;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -47,39 +48,67 @@ class FinanceReportController extends Controller
 
         $incomeCategoryId = $request->query('income_category_id');
         $expenseCategoryId = $request->query('expense_category_id');
+        $cacheSeconds = max(0, (int) config('performance.finance_report_cache_seconds', 60));
+        $fresh = $request->boolean('fresh');
+        $normalizedIncomeSources = $incomeSources;
+        $normalizedExpenseSources = $expenseSources;
+        sort($normalizedIncomeSources);
+        sort($normalizedExpenseSources);
+
+        $cacheContext = [
+            'start_date' => $startDate->toDateString(),
+            'end_date' => $endDate->toDateString(),
+            'income_sources' => $normalizedIncomeSources,
+            'expense_sources' => $normalizedExpenseSources,
+            'income_basis' => $incomeBasis,
+            'income_category_id' => $incomeCategoryId,
+            'expense_category_id' => $expenseCategoryId,
+        ];
+
+        $rememberRows = function (string $segment, callable $callback) use ($cacheContext, $cacheSeconds, $fresh) {
+            if ($fresh || $cacheSeconds === 0) {
+                return $callback();
+            }
+
+            $key = 'finance-report:rows:v1:'.$segment.':'.md5(json_encode($cacheContext));
+
+            return Cache::remember($key, now()->addSeconds($cacheSeconds), $callback);
+        };
 
         $manualIncomeEntries = collect();
         if (in_array('manual', $incomeSources, true)) {
-            $manualIncomeEntries = $incomeService->entries([
+            $manualIncomeEntries = $rememberRows('manual-income', fn () => $incomeService->entries([
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
                 'category_id' => $incomeCategoryId,
                 'sources' => ['manual'],
-            ]);
+            ]));
         }
 
         $systemIncomeEntries = collect();
         if (in_array('system', $incomeSources, true)) {
-            if ($incomeBasis === 'invoiced') {
-                $systemIncomeEntries = Invoice::query()
-                    ->whereDate('issue_date', '>=', $startDate->toDateString())
-                    ->whereDate('issue_date', '<=', $endDate->toDateString())
-                    ->get()
-                    ->map(fn ($invoice) => [
-                        'key' => 'invoice:'.$invoice->id,
-                        'source_type' => 'system',
-                        'source_label' => 'Invoice',
-                        'amount' => (float) $invoice->total,
-                        'income_date' => $invoice->issue_date,
-                        'category_id' => null,
-                        'category_name' => 'System',
-                    ]);
-            } else {
-                $systemIncomeEntries = AccountingEntry::query()
+            $systemIncomeEntries = $rememberRows('system-income', function () use ($incomeBasis, $startDate, $endDate) {
+                if ($incomeBasis === 'invoiced') {
+                    return Invoice::query()
+                        ->whereDate('issue_date', '>=', $startDate->toDateString())
+                        ->whereDate('issue_date', '<=', $endDate->toDateString())
+                        ->get(['id', 'total', 'issue_date'])
+                        ->map(fn ($invoice) => [
+                            'key' => 'invoice:'.$invoice->id,
+                            'source_type' => 'system',
+                            'source_label' => 'Invoice',
+                            'amount' => (float) $invoice->total,
+                            'income_date' => $invoice->issue_date,
+                            'category_id' => null,
+                            'category_name' => 'System',
+                        ]);
+                }
+
+                return AccountingEntry::query()
                     ->where('type', 'payment')
                     ->whereDate('entry_date', '>=', $startDate->toDateString())
                     ->whereDate('entry_date', '<=', $endDate->toDateString())
-                    ->get()
+                    ->get(['id', 'amount', 'entry_date'])
                     ->map(fn ($entry) => [
                         'key' => 'payment:'.$entry->id,
                         'source_type' => 'system',
@@ -89,16 +118,16 @@ class FinanceReportController extends Controller
                         'category_id' => null,
                         'category_name' => 'System',
                     ]);
-            }
+            });
         }
 
         $carrotHostIncomeEntries = collect();
         if (in_array('carrothost', $incomeSources, true)) {
-            $carrotHostIncomeEntries = $incomeService->entries([
+            $carrotHostIncomeEntries = $rememberRows('carrothost-income', fn () => $incomeService->entries([
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
                 'sources' => ['carrothost'],
-            ]);
+            ]));
         }
 
         $incomeEntries = $manualIncomeEntries
@@ -106,12 +135,12 @@ class FinanceReportController extends Controller
             ->merge($carrotHostIncomeEntries);
         $totalIncome = (float) $incomeEntries->sum('amount');
 
-        $expenseEntries = $expenseService->entries([
+        $expenseEntries = $rememberRows('expenses', fn () => $expenseService->entries([
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'category_id' => $expenseCategoryId,
             'sources' => $expenseSources,
-        ]);
+        ]));
         $totalExpense = (float) $expenseEntries->sum('amount');
 
         $netProfit = $totalIncome - $totalExpense;
@@ -173,17 +202,24 @@ class FinanceReportController extends Controller
 
         [$trendLabels, $trendIncome, $trendExpense] = $this->buildTrends($incomeEntries, $expenseEntries, $startDate, $endDate);
 
-        $taxRows = Invoice::query()
+        $taxSummary = Invoice::query()
             ->whereNotNull('tax_amount')
             ->whereDate('issue_date', '>=', $startDate->toDateString())
             ->whereDate('issue_date', '<=', $endDate->toDateString())
-            ->get(['id', 'subtotal', 'tax_amount', 'total', 'tax_mode']);
+            ->selectRaw(
+                "COALESCE(SUM(subtotal), 0) as taxable_base,
+                COALESCE(SUM(tax_amount), 0) as tax_amount,
+                COALESCE(SUM(total), 0) as tax_gross,
+                COALESCE(SUM(CASE WHEN tax_mode = 'exclusive' THEN tax_amount ELSE 0 END), 0) as tax_exclusive,
+                COALESCE(SUM(CASE WHEN tax_mode = 'inclusive' THEN tax_amount ELSE 0 END), 0) as tax_inclusive"
+            )
+            ->first();
 
-        $taxableBase = (float) $taxRows->sum('subtotal');
-        $taxAmount = (float) $taxRows->sum('tax_amount');
-        $taxGross = (float) $taxRows->sum('total');
-        $taxExclusive = (float) $taxRows->where('tax_mode', 'exclusive')->sum('tax_amount');
-        $taxInclusive = (float) $taxRows->where('tax_mode', 'inclusive')->sum('tax_amount');
+        $taxableBase = (float) ($taxSummary->taxable_base ?? 0);
+        $taxAmount = (float) ($taxSummary->tax_amount ?? 0);
+        $taxGross = (float) ($taxSummary->tax_gross ?? 0);
+        $taxExclusive = (float) ($taxSummary->tax_exclusive ?? 0);
+        $taxInclusive = (float) ($taxSummary->tax_inclusive ?? 0);
 
         $monthTotals = $this->monthTotals($incomeEntries, $expenseEntries, $startDate, $endDate);
 
@@ -242,7 +278,7 @@ class FinanceReportController extends Controller
             'pageTitle' => 'Finance Reports',
             'routes' => [
                 'index' => route('admin.finance.reports.index'),
-                'tax_index' => route('admin.finance.tax.index'),
+                'tax_index' => route('admin.finance.vat.index'),
             ],
             'filters' => [
                 'start_date' => (string) data_get($payload, 'filters.start_date', ''),

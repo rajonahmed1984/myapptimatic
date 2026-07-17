@@ -11,11 +11,12 @@ use App\Support\Branding;
 use App\Support\DateTimeFormat;
 use App\Support\UrlResolver;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 
-class ProjectChatMentionNotification extends Notification
+class ProjectChatMentionNotification extends Notification implements ShouldQueue
 {
     use Queueable;
     use UsesMailCategory;

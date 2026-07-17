@@ -108,17 +108,17 @@ class ProjectTaskChatController extends Controller
             return response()->json(['error' => 'Missing GOOGLE_AI_API_KEY.'], 422);
         }
 
-        try {
-            $result = $aiService->analyzeTaskChat($project, $task, $geminiService);
-            if (is_array($result['data'] ?? null)) {
-                $result['data']['generated_at'] = now()->toDateTimeString();
-                $summaryCache->putTask($task->id, $result['data']);
-            }
-
-            return response()->json($result);
-        } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+        $cached = $summaryCache->getTask($task->id);
+        if ($cached) {
+            return response()->json($cached);
         }
+
+        \App\Jobs\GenerateChatAiSummaryJob::dispatch('task', $task->id);
+
+        return response()->json([
+            'status' => 'processing',
+            'message' => 'AI summary generation is in progress. Please check back in a few seconds.',
+        ], 202);
     }
 
     public function messages(Request $request, Project $project, ProjectTask $task): JsonResponse

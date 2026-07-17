@@ -42,25 +42,7 @@ export default function Index({
             <Head title={pageTitle} />
 
             <div className="card p-6">
-                <form
-                    method="GET"
-                    action={routes?.current}
-                    className="mb-4 flex items-center gap-2"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        submitSearch();
-                    }}
-                >
-                    <input
-                        type="text"
-                        name="search"
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Search logs..."
-                        className="w-full max-w-sm h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
-                    />
-                </form>
-                <div className="flex flex-wrap gap-2 text-sm">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
                     {logTypes.map((type) => (
                         <a
                             key={type.slug}
@@ -75,7 +57,26 @@ export default function Index({
                             {type.label}
                         </a>
                     ))}
+                    <form
+                        method="GET"
+                        action={routes?.current}
+                        className="ml-auto flex items-center gap-2"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitSearch();
+                        }}
+                    >
+                        <input
+                            type="text"
+                            name="search"
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
+                            placeholder="Search logs..."
+                            className="w-full max-w-sm h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
+                        />
+                    </form>
                 </div>
+
             </div>
 
             <div className="mt-6 card overflow-x-auto">

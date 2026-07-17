@@ -21,7 +21,7 @@ use App\Services\BillingService;
 use App\Services\ChatAiSummaryCache;
 use App\Services\CommissionService;
 use App\Services\GeminiService;
-use App\Services\InvoiceTaxService;
+use App\Services\InvoiceVatService;
 use App\Services\ProjectStatusAiService;
 use App\Services\TaskQueryService;
 use App\Services\TaskStatusNotificationService;
@@ -488,7 +488,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function store(Request $request, BillingService $billingService, InvoiceTaxService $taxService, CommissionService $commissionService): RedirectResponse
+    public function store(Request $request, BillingService $billingService, InvoiceVatService $vatService, CommissionService $commissionService): RedirectResponse
     {
         $taskTypeOptions = array_keys(TaskSettings::taskTypeOptions());
         $priorityOptions = array_keys(TaskSettings::priorityOptions());
@@ -611,7 +611,7 @@ class ProjectController extends Controller
             $contractEmployeePayoutStatus = $isComplete ? 'payable' : 'earned';
         }
 
-        $project = DB::transaction(function () use ($data, $request, $billingService, $taxService, $salesRepSync, $commissionService, $contractEmployeeTotal, $contractEmployeePayable, $contractEmployeePayoutStatus) {
+        $project = DB::transaction(function () use ($data, $request, $billingService, $vatService, $salesRepSync, $commissionService, $contractEmployeeTotal, $contractEmployeePayable, $contractEmployeePayoutStatus) {
             $project = Project::create([
                 'name' => $data['name'],
                 'customer_id' => $data['customer_id'],
@@ -697,7 +697,7 @@ class ProjectController extends Controller
             $initialPayment = (float) $project->initial_payment_amount;
             $invoiceSubtotal = $initialPayment;
 
-            $taxData = $taxService->calculateTotals($invoiceSubtotal, 0.0, $issueDate);
+            $taxData = $vatService->calculateTotals($invoiceSubtotal, 0.0, $issueDate);
 
             $invoice = Invoice::create([
                 'customer_id' => $project->customer_id,
@@ -1001,7 +1001,7 @@ class ProjectController extends Controller
         Request $request,
         Project $project,
         BillingService $billingService,
-        InvoiceTaxService $taxService
+        InvoiceVatService $vatService
     ): RedirectResponse {
         $this->authorize('view', $project);
 
@@ -1025,7 +1025,7 @@ class ProjectController extends Controller
         $dueDays = (int) Setting::getValue('invoice_due_days');
         $dueDate = $issueDate->copy()->addDays($dueDays);
 
-        $taxData = $taxService->calculateTotals($amount, 0.0, $issueDate);
+        $taxData = $vatService->calculateTotals($amount, 0.0, $issueDate);
         $remainingAmountNote = $remainingAmountAfterInvoice > 0
             ? sprintf(
                 'Remaining budget after this invoice: %s %s',
@@ -1891,11 +1891,18 @@ PROMPT;
                 return $geminiService->generateText($prompt);
             };
 
-            if ($forceRefresh) {
-                $summary = $builder();
-                Cache::put($cacheKey, $summary, now()->addMinutes(10));
-            } else {
-                $summary = Cache::remember($cacheKey, now()->addMinutes(10), $builder);
+            $summary = Cache::get($cacheKey);
+            if ($summary === null || $forceRefresh) {
+                \App\Jobs\GenerateDashboardAiSummaryJob::dispatch('project', $cacheKey, [
+                    'snapshot' => $snapshot,
+                    'riskProjects' => $riskProjects,
+                    'recentProjects' => $recentProjects,
+                    'focusProjects' => $focusProjects,
+                ]);
+
+                if ($summary === null) {
+                    $summary = 'AI summary is being generated in the background. Please refresh in a moment.';
+                }
             }
 
             return [$summary, null];

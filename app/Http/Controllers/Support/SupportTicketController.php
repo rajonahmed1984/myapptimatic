@@ -127,15 +127,18 @@ class SupportTicketController extends Controller
             return response()->json(['error' => 'Missing GOOGLE_AI_API_KEY.'], 422);
         }
 
-        $ticket->load(['customer', 'replies.user']);
-
-        try {
-            $result = $aiService->analyze($ticket, $geminiService);
-
-            return response()->json($result);
-        } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+        $cacheKey = 'ai:ticket-summary:'.$ticket->id;
+        $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        if ($cached) {
+            return response()->json($cached);
         }
+
+        \App\Jobs\GenerateChatAiSummaryJob::dispatch('ticket', $ticket->id);
+
+        return response()->json([
+            'status' => 'processing',
+            'message' => 'AI summary generation is in progress. Please check back in a few seconds.',
+        ], 202);
     }
 
     public function reply(Request $request, SupportTicket $ticket, ClientNotificationService $clientNotifications): RedirectResponse|JsonResponse

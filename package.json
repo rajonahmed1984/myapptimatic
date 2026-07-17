@@ -7,10 +7,11 @@
         "preview": "vite preview",
         "check:react-standard": "node scripts/check-react-standard.mjs",
         "check:no-native-select": "node scripts/check-no-native-selects.mjs",
-        "ci:local": "composer test && npm run check:react-standard && npm run check:no-native-select && npm run build",
+        "check:frontend-performance": "node scripts/check-frontend-performance.mjs",
+        "ci:local": "composer test && npm run check:react-standard && npm run check:no-native-select && npm run build && npm run check:frontend-performance",
         "lint:php": "php vendor/bin/pint --test --dirty",
         "test:php": "php artisan test",
-        "ci": "npm run check:react-standard && npm run check:no-native-select && npm run build"
+        "ci": "npm run check:react-standard && npm run check:no-native-select && npm run build && npm run check:frontend-performance"
     },
     "dependencies": {
         "@inertiajs/react": "^2.3.15",

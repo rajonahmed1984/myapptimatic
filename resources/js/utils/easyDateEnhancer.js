@@ -1,5 +1,17 @@
-import flatpickr from 'flatpickr';
 import { parseDateValue } from './easyDate';
+
+let flatpickrPromise = null;
+
+const loadFlatpickr = () => {
+    if (!flatpickrPromise) {
+        flatpickrPromise = Promise.all([
+            import('flatpickr'),
+            import('flatpickr/dist/flatpickr.min.css'),
+        ]).then(([flatpickrModule]) => flatpickrModule.default);
+    }
+
+    return flatpickrPromise;
+};
 
 const CANDIDATE_SELECTOR = [
     'input[type="date"]',
@@ -48,7 +60,7 @@ const shouldSkip = (input) => {
 
 const toDateOrNull = (value) => parseDateValue(value) || null;
 
-const applyFlatpickr = (input) => {
+const applyFlatpickr = (flatpickr, input) => {
     const submitFormat = inferSubmitFormat(input);
     const dateFormat = submitFormat === 'iso' ? 'Y-m-d' : 'd-m-Y';
     const defaultDate = toDateOrNull(input.value);
@@ -85,24 +97,27 @@ const applyFlatpickr = (input) => {
     return instance;
 };
 
-export const enhanceEasyDateInputsInDocument = (root = document) => {
+export const enhanceEasyDateInputsInDocument = async (root = document) => {
     if (!root?.querySelectorAll) {
         return [];
     }
 
+    const nodes = Array.from(root.querySelectorAll(CANDIDATE_SELECTOR))
+        .filter((input) => !shouldSkip(input) && !input._flatpickr);
+
+    if (nodes.length === 0) {
+        return [];
+    }
+
+    const flatpickr = await loadFlatpickr();
     const instances = [];
-    const nodes = root.querySelectorAll(CANDIDATE_SELECTOR);
 
     nodes.forEach((input) => {
-        if (shouldSkip(input)) {
+        if (shouldSkip(input) || input._flatpickr) {
             return;
         }
 
-        if (input._flatpickr) {
-            return;
-        }
-
-        const instance = applyFlatpickr(input);
+        const instance = applyFlatpickr(flatpickr, input);
         if (instance) {
             instances.push(instance);
         }

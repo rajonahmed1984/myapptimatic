@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class MilestoneInvoiceService
 {
-    public function __construct(private InvoiceTaxService $taxService)
+    public function __construct(private InvoiceVatService $vatService)
     {
     }
 
@@ -85,7 +85,7 @@ class MilestoneInvoiceService
             $currency = Currency::DEFAULT;
         }
 
-        $taxData = $this->taxService->calculateTotals($amount, 0.0, $today);
+        $taxData = $this->vatService->calculateTotals($amount, 0.0, $today);
 
         $invoice = Invoice::create([
             'customer_id' => $order->customer_id,

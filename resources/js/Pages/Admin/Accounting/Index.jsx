@@ -10,6 +10,7 @@ export default function Index({
     routes = {},
     summary = {},
     entries = [],
+    pagination = {},
 }) {
     const { csrf_token: csrfToken = '' } = usePage().props || {};
     const currencySummary = summary?.currencies || [];
@@ -291,6 +292,46 @@ export default function Index({
                             </tbody>
                         </table>
                     </div>
+
+                    {pagination?.total > 0 ? (
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+                            <span className="text-slate-500">
+                                Showing {pagination.from || 0}-{pagination.to || 0} of {pagination.total || 0}
+                            </span>
+
+                            {pagination?.has_pages ? (
+                                <div className="flex items-center gap-2">
+                                    {pagination.previous_url ? (
+                                        <a
+                                            href={pagination.previous_url}
+                                            data-native="true"
+                                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                        >
+                                            Previous
+                                        </a>
+                                    ) : (
+                                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
+                                    )}
+
+                                    <span className="whitespace-nowrap text-slate-500">
+                                        Page {pagination.current_page || 1} of {pagination.last_page || 1}
+                                    </span>
+
+                                    {pagination.next_url ? (
+                                        <a
+                                            href={pagination.next_url}
+                                            data-native="true"
+                                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                        >
+                                            Next
+                                        </a>
+                                    ) : (
+                                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
+                                    )}
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DatePickerField from '../../../Components/DatePickerField';
 import SearchableSelect from '../../../Components/SearchableSelect';
@@ -23,41 +23,116 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
     const [amountValue, setAmountValue] = useState(String(fields?.amount || ''));
     const [referenceValue, setReferenceValue] = useState(String(fields?.reference || ''));
     const [descriptionValue, setDescriptionValue] = useState(String(fields?.description || ''));
+    const [selectedCustomerOption, setSelectedCustomerOption] = useState(() => {
+        const selected = customers.find((customer) => String(customer.id) === selectedCustomerId);
+        return selected ? { value: String(selected.id), label: selected.name } : null;
+    });
+    const [selectedInvoiceOption, setSelectedInvoiceOption] = useState(
+        selectedInvoiceId ? invoicesById[selectedInvoiceId] || selectedInvoicePrefill : null,
+    );
     const typeOptions = types.map((type) => ({ value: String(type), label: type }));
-    const customerOptions = [
-        { value: '', label: 'Select customer' },
-        ...customers.map((customer) => ({ value: String(customer.id), label: customer.name })),
-    ];
-    const invoiceOptions = [
-        { value: '', label: 'Select invoice' },
-        ...invoices.map((invoice) => ({
+    const customerOptions = useMemo(() => {
+        const initial = customers.map((customer) => ({ value: String(customer.id), label: customer.name }));
+        const selectedExists = selectedCustomerOption
+            && initial.some((option) => option.value === selectedCustomerOption.value);
+
+        return [
+            { value: '', label: 'Select customer' },
+            ...initial,
+            ...(selectedCustomerOption && !selectedExists ? [selectedCustomerOption] : []),
+        ];
+    }, [customers, selectedCustomerOption]);
+    const invoiceOptions = useMemo(() => {
+        const initial = invoices.map((invoice) => ({
+            ...invoice,
             value: String(invoice.id),
             label: `${invoice.label} - ${invoice.customer_name}`,
-        })),
-    ];
+        }));
+        const selected = selectedInvoiceOption
+            ? {
+                ...selectedInvoiceOption,
+                value: String(selectedInvoiceOption.value || selectedInvoiceOption.id || ''),
+                label: String(
+                    selectedInvoiceOption.value
+                        ? selectedInvoiceOption.label
+                        : `${selectedInvoiceOption.label} - ${selectedInvoiceOption.customer_name}`,
+                ),
+            }
+            : null;
+        const selectedExists = selected && initial.some((option) => option.value === selected.value);
+
+        return [
+            { value: '', label: 'Select invoice' },
+            ...initial,
+            ...(selected && !selectedExists ? [selected] : []),
+        ];
+    }, [invoices, selectedInvoiceOption]);
     const gatewayOptions = [
         { value: '', label: 'Select gateway' },
         ...gateways.map((gateway) => ({ value: String(gateway.id), label: gateway.name })),
     ];
 
-    const activeInvoice = selectedInvoiceId ? invoicesById[selectedInvoiceId] || null : null;
-    const invoiceSummary = activeInvoice || selectedInvoicePrefill;
+    const activeInvoice = selectedInvoiceId
+        ? selectedInvoiceOption || invoicesById[selectedInvoiceId] || null
+        : null;
+    const invoiceSummary = selectedInvoiceId ? activeInvoice || selectedInvoicePrefill : null;
 
-    const handleInvoiceChange = (nextValue) => {
+    const loadLookupOptions = useCallback(async (url, search) => {
+        if (!url) {
+            return [];
+        }
+
+        const endpoint = new URL(url, window.location.origin);
+        if (search) {
+            endpoint.searchParams.set('q', search);
+        }
+
+        const response = await fetch(endpoint.toString(), {
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Lookup failed with status ${response.status}`);
+        }
+
+        const payload = await response.json();
+        return Array.isArray(payload?.data) ? payload.data : [];
+    }, []);
+
+    const loadCustomerOptions = useCallback(
+        (search) => loadLookupOptions(routes?.customer_options, search),
+        [loadLookupOptions, routes?.customer_options],
+    );
+    const loadInvoiceOptions = useCallback(
+        (search) => loadLookupOptions(routes?.invoice_options, search),
+        [loadLookupOptions, routes?.invoice_options],
+    );
+
+    const handleInvoiceChange = (nextValue, option = null) => {
         const nextInvoiceId = String(nextValue || '');
         setSelectedInvoiceId(nextInvoiceId);
 
-        const invoice = invoicesById[nextInvoiceId];
+        const invoice = nextInvoiceId ? option || invoicesById[nextInvoiceId] || null : null;
+        setSelectedInvoiceOption(invoice);
         if (!invoice) {
             return;
         }
 
         setSelectedCustomerId(String(invoice.customer_id || ''));
+        setSelectedCustomerOption({
+            value: String(invoice.customer_id || ''),
+            label: String(invoice.customer_name || invoice.customer_id || ''),
+        });
 
         if (selectedType === 'payment') {
+            const invoiceLabel = String(invoice.invoice_label || invoice.label || invoice.id || '');
             setAmountValue(Number(invoice.due_amount || 0).toFixed(2));
-            setReferenceValue(String(invoice.label || invoice.id || ''));
-            setDescriptionValue(`Payment for Invoice #${String(invoice.label || invoice.id || '')}`);
+            setReferenceValue(invoiceLabel);
+            setDescriptionValue(`Payment for Invoice #${invoiceLabel}`);
         }
     };
 
@@ -71,7 +146,7 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                         <div className="mt-2 grid gap-3 text-sm md:grid-cols-3">
                             <div>
                                 <div className="text-xs text-slate-500">Invoice</div>
-                                <div className="font-semibold text-slate-900">#{invoiceSummary.label || invoiceSummary.id}</div>
+                                <div className="font-semibold text-slate-900">#{invoiceSummary.invoice_label || invoiceSummary.label || invoiceSummary.id}</div>
                             </div>
                             <div>
                                 <div className="text-xs text-slate-500">Customer</div>
@@ -164,8 +239,12 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                                 <SearchableSelect
                                     name="customer_id"
                                     value={selectedCustomerId}
-                                    onChange={(nextValue) => setSelectedCustomerId(String(nextValue || ''))}
+                                    onChange={(nextValue, option) => {
+                                        setSelectedCustomerId(String(nextValue || ''));
+                                        setSelectedCustomerOption(option || null);
+                                    }}
                                     options={customerOptions}
+                                    loadOptions={loadCustomerOptions}
                                     placeholder="Select customer"
                                     error={errors?.customer_id}
                                 />
@@ -177,6 +256,7 @@ export default function Form({ pageTitle = 'Accounting Entry', is_edit = false, 
                                     value={selectedInvoiceId}
                                     onChange={handleInvoiceChange}
                                     options={invoiceOptions}
+                                    loadOptions={loadInvoiceOptions}
                                     placeholder="Select invoice"
                                     error={errors?.invoice_id}
                                 />

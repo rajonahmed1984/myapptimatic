@@ -15,7 +15,7 @@ class MaintenanceBillingService
 {
     public function __construct(
         private BillingService $billingService,
-        private InvoiceTaxService $taxService
+        private InvoiceVatService $vatService
     )
     {
     }
@@ -110,7 +110,7 @@ class MaintenanceBillingService
             $dueDays = (int) Setting::getValue('invoice_due_days');
             $dueDate = $billingDate->copy()->addDays($dueDays);
 
-            $taxData = $this->taxService->calculateTotals($amount, 0.0, $billingDate);
+            $taxData = $this->vatService->calculateTotals($amount, 0.0, $billingDate);
 
             $invoice = Invoice::create([
                 'customer_id' => $maintenance->customer_id,

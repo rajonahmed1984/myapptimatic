@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
-class FinanceTaxActionContractParityTest extends TestCase
+class FinanceVatActionContractParityTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -24,26 +24,25 @@ class FinanceTaxActionContractParityTest extends TestCase
             $this->setUiFlag($enabled);
 
             $validation = $this->actingAs($admin)
-                ->from(route('admin.finance.tax.index'))
-                ->put(route('admin.finance.tax.update'), []);
+                ->from(route('admin.finance.vat.index'))
+                ->put(route('admin.finance.vat.update'), []);
 
-            $validation->assertRedirect(route('admin.finance.tax.index'));
-            $validation->assertSessionHasErrors(['tax_mode_default', 'invoice_tax_label']);
+            $validation->assertRedirect(route('admin.finance.vat.index'));
+            $validation->assertSessionHasErrors(['tax_mode_default']);
             $validationErrorKeys = $this->sessionErrorKeys();
 
             $defaultRate = $this->createRate();
             $success = $this->actingAs($admin)
-                ->from(route('admin.finance.tax.index'))
-                ->put(route('admin.finance.tax.update'), [
+                ->from(route('admin.finance.vat.index'))
+                ->put(route('admin.finance.vat.update'), [
                     'enabled' => '1',
                     'tax_mode_default' => 'inclusive',
                     'default_tax_rate_id' => (string) $defaultRate->id,
-                    'invoice_tax_label' => 'VAT',
-                    'invoice_tax_note_template' => 'Tax ({rate}%)',
+                    'invoice_tax_note_template' => 'VAT ({rate}%)',
                 ]);
 
-            $success->assertRedirect(route('admin.finance.tax.index'));
-            $success->assertSessionHas('status', 'Tax settings updated.');
+            $success->assertRedirect(route('admin.finance.vat.index'));
+            $success->assertSessionHas('status', 'VAT settings updated.');
 
             $settings = TaxSetting::current();
             $this->assertTrue((bool) $settings->enabled);
@@ -73,17 +72,17 @@ class FinanceTaxActionContractParityTest extends TestCase
             $this->setUiFlag($enabled);
 
             $validation = $this->actingAs($admin)
-                ->from(route('admin.finance.tax.index'))
-                ->post(route('admin.finance.tax.rates.store'), []);
+                ->from(route('admin.finance.vat.index'))
+                ->post(route('admin.finance.vat.rates.store'), []);
 
-            $validation->assertRedirect(route('admin.finance.tax.index'));
+            $validation->assertRedirect(route('admin.finance.vat.index'));
             $validation->assertSessionHasErrors(['name', 'rate_percent', 'effective_from']);
             $validationErrorKeys = $this->sessionErrorKeys();
 
-            $name = 'Tax Rate '.uniqid();
+            $name = 'VAT Rate '.uniqid();
             $success = $this->actingAs($admin)
-                ->from(route('admin.finance.tax.index'))
-                ->post(route('admin.finance.tax.rates.store'), [
+                ->from(route('admin.finance.vat.index'))
+                ->post(route('admin.finance.vat.rates.store'), [
                     'name' => $name,
                     'rate_percent' => '15.50',
                     'effective_from' => '2026-06-01',
@@ -91,8 +90,8 @@ class FinanceTaxActionContractParityTest extends TestCase
                     'is_active' => '1',
                 ]);
 
-            $success->assertRedirect(route('admin.finance.tax.index'));
-            $success->assertSessionHas('status', 'Tax rate created.');
+            $success->assertRedirect(route('admin.finance.vat.index'));
+            $success->assertSessionHas('status', 'VAT rate created.');
             $this->assertDatabaseHas('tax_rates', [
                 'name' => $name,
                 'rate_percent' => 15.50,
@@ -121,11 +120,11 @@ class FinanceTaxActionContractParityTest extends TestCase
 
             $rate = $this->createRate();
             $response = $this->actingAs($admin)
-                ->from(route('admin.finance.tax.index'))
-                ->delete(route('admin.finance.tax.rates.destroy', $rate));
+                ->from(route('admin.finance.vat.index'))
+                ->delete(route('admin.finance.vat.rates.destroy', $rate));
 
-            $response->assertRedirect(route('admin.finance.tax.index'));
-            $response->assertSessionHas('status', 'Tax rate deleted.');
+            $response->assertRedirect(route('admin.finance.vat.index'));
+            $response->assertSessionHas('status', 'VAT rate deleted.');
             $this->assertDatabaseMissing('tax_rates', ['id' => $rate->id]);
 
             $contracts[$this->flagKey($enabled)] = $this->responseContract($response);
@@ -154,7 +153,7 @@ class FinanceTaxActionContractParityTest extends TestCase
 
     private function setUiFlag(bool $enabled): void
     {
-        config()->set('features.admin_finance_tax_index', $enabled);
+        config()->set('features.admin_finance_vat_index', $enabled);
     }
 
     /**

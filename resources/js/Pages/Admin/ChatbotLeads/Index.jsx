@@ -83,13 +83,6 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">AI Chatbot</div>
-                    <h1 className="mt-2 text-2xl font-semibold text-slate-900">Chatbot History</h1>
-                    <p className="mt-1 text-sm text-slate-600">Review user requirements, contact info, and complete chat transcripts.</p>
-                </div>
-            </div>
 
             <div className="flex flex-col gap-6 lg:flex-row min-h-[600px] h-[calc(100vh-250px)]">
                 {/* Left Pane - Leads List */}

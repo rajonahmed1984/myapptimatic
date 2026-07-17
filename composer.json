@@ -56,6 +56,9 @@
         "test": [
             "@php artisan test"
         ],
+        "performance:readiness": [
+            "@php artisan performance:readiness --strict"
+        ],
         "phase5:verify": [
             "@php artisan test --filter=UiParityTest",
             "@php artisan test --filter=ActionContractParityTest",

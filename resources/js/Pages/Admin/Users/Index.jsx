@@ -29,38 +29,32 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <div className="section-label">User Management</div>
-                    <div className="text-xl font-semibold text-slate-900">{selected_role_label}</div>
-                </div>
-                <a
-                    href={routes?.create}
-                    data-native="true"
-                    className={BTN.primary}
-                >
-                    New {selected_role_label}
-                </a>
-            </div>
-
-            <div className="mb-4 flex flex-wrap gap-2">
-                {roles.map((role) => (
-                    <a
-                        key={role.value}
-                        href={role.route}
-                        data-native="true"
-                        className={`rounded-full text-xs px-3 py-1.5 font-semibold transition ${
-                            selectedRole === String(role.value)
-                                ? BTN.primary
-                                : BTN.secondary
-                        }`}
-                    >
-                        {role.label}
-                    </a>
-                ))}
-            </div>
 
             <div className="card p-6">
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                    {roles.map((role) => (
+                        <a
+                            key={role.value}
+                            href={role.route}
+                            data-native="true"
+                            className={`rounded-full text-xs px-3 py-1.5 font-semibold transition ${
+                                selectedRole === String(role.value)
+                                    ? BTN.primary
+                                    : BTN.secondary
+                            }`}
+                        >
+                            {role.label}
+                        </a>
+                    ))}
+                    <a
+                        href={routes?.create}
+                        data-native="true"
+                        className={`ml-auto ${BTN.primary}`}
+                    >
+                        New {selected_role_label}
+                    </a>
+                </div>
+
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-200 text-sm">
                         <thead>

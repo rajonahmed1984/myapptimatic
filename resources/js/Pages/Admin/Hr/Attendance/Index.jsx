@@ -60,27 +60,20 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">HR</div>
-                    <div className="text-2xl font-semibold text-slate-900">Daily Manual Attendance</div>
-                    <div className="text-sm text-slate-500">Only active full-time employees are listed.</div>
-                    {isPaidHoliday ? (
-                        <div className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                            Paid holiday: employees default to Present for this date
-                        </div>
-                    ) : null}
-                </div>
-            </div>
 
             <div className="card p-6">
-                <form method="GET" action={routes?.index} data-native="true" className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-                    <label htmlFor="attendanceDate" className="text-xs uppercase tracking-[0.2em] text-slate-500">Attendance Date</label>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                {isPaidHoliday ? (
+                    <div className="mb-4 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                        Paid holiday: employees default to Present for this date
+                    </div>
+                ) : null}
+
+                <form method="GET" action={routes?.index} data-native="true" className="mb-5 flex flex-wrap items-center gap-4 border-b border-slate-200 pb-5">
+                    <div className="flex flex-wrap items-center gap-2">
                         <a
                             href={`${routes?.index}?date=${encodeURIComponent(previousDay)}`}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                            className="rounded-full border border-slate-300 px-3 py-1 h-8 flex items-center text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
                         >
                             Previous day
                         </a>
@@ -90,21 +83,23 @@ export default function Index({
                             defaultValue={datePickerValue}
                             submitFormat="iso"
                             hideLabel
-                            containerClassName="w-52"
-                            inputClassName="w-52 rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
+                            containerClassName="w-48"
+                            inputClassName="w-48 rounded-full border border-slate-300 bg-white px-4 py-1 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
                         />
                         <a
                             href={`${routes?.index}?date=${encodeURIComponent(nextDay)}`}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                            className="rounded-full border border-slate-300 px-3 py-1 h-8 flex items-center text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
                         >
                             Next day
                         </a>
-                        <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Load</button>
-                        <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Today</a>
+                        <button type="submit" className="rounded-full bg-emerald-600 px-4 py-1 h-8 text-xs font-semibold text-white hover:bg-emerald-500">Load</button>
+                        <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-1 h-8 flex items-center text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Today</a>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <div className="h-4 w-px bg-slate-300 hidden md:block"></div>
+
+                    <div className="flex flex-wrap items-center gap-2">
                         {quickDates.map((preset) => {
                             const active = preset.value === datePickerValue;
                             return (
@@ -112,7 +107,7 @@ export default function Index({
                                     key={preset.label}
                                     href={`${routes?.index}?date=${encodeURIComponent(preset.value)}`}
                                     data-native="true"
-                                    className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                    className={`rounded-full px-3 py-1 h-8 flex items-center text-xs font-semibold ${
                                         active
                                             ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
                                             : 'border border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:text-teal-600'

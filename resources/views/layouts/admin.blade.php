@@ -287,11 +287,11 @@
                                 <a href="{{ route('admin.expenses.categories.index') }}" class="block {{ activeIf(request()->routeIs('admin.expenses.categories.*')) }}">Expense Categories</a>
                             </x-nav-menu>
                             <x-nav-link
-                                :href="route('admin.finance.tax.index')"
-                                routes="admin.finance.tax.*"
+                                :href="route('admin.finance.vat.index')"
+                                routes="admin.finance.vat.*"
                             >
                                 <span class="h-2 w-2 rounded-full bg-current"></span>
-                                Tax Settings
+                                VAT Settings
                             </x-nav-link>
                         @endif
                         <x-nav-link

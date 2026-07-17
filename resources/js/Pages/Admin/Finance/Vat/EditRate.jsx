@@ -1,7 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
-export default function EditRate({ pageTitle = 'Edit Tax Rate', rate = {}, routes = {} }) {
+export default function EditRate({ pageTitle = 'Edit VAT Rate', rate = {}, routes = {} }) {
     const { props } = usePage();
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
@@ -13,7 +13,7 @@ export default function EditRate({ pageTitle = 'Edit Tax Rate', rate = {}, route
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="text-xl font-semibold text-slate-900">{pageTitle}</h1>
                     <a href={routes?.index} data-native="true" className="text-sm font-medium text-teal-600 hover:text-teal-500">
-                        Back to tax settings
+                        Back to VAT settings
                     </a>
                 </div>
 

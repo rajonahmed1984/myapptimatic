@@ -61,14 +61,6 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">HR Operations</div>
-                    <div className="text-2xl font-semibold text-slate-900">Work Logs</div>
-                    <div className="text-sm text-slate-500">Daily employee work session summary with coverage and estimated salary impact.</div>
-                </div>
-            </div>
-
             <div className="mb-6 card p-6">
                 <form method="GET" action={routes?.index} data-native="true" className="grid gap-3 md:grid-cols-4">
                     <div>

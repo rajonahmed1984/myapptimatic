@@ -83,6 +83,9 @@ export default function Index({
                         <button type="submit" className="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-500">
                             Apply
                         </button>
+                        <button type="submit" name="fresh" value="1" className="rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-semibold text-teal-700 hover:border-teal-300 hover:bg-teal-100">
+                            Refresh data
+                        </button>
                         <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
                             Reset
                         </a>
@@ -140,7 +143,7 @@ export default function Index({
                     <InsightCard label="Gross Margin" value={percent(grossMargin)} hint="Net profit / total income" tone={grossMargin >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
                     <InsightCard label="Expense Ratio" value={percent(expenseRatio)} hint="Total expense / total income" tone={expenseRatio <= 70 ? 'text-emerald-600' : 'text-rose-600'} />
                     <InsightCard label="Cash Conversion" value={percent(cashConversion)} hint="Received income / total income" tone={cashConversion >= 80 ? 'text-emerald-600' : 'text-amber-600'} />
-                    <InsightCard label="Effective Tax Rate" value={percent(taxRate)} hint="Tax amount / taxable base" tone="text-slate-900" />
+                    <InsightCard label="Effective VAT Rate" value={percent(taxRate)} hint="VAT amount / VAT-applicable base" tone="text-slate-900" />
                 </div>
             </div>
 
@@ -194,13 +197,13 @@ export default function Index({
                 </div>
 
                 <div className="card p-6">
-                    <div className="section-label">Tax Deep Dive</div>
+                    <div className="section-label">VAT Deep Dive</div>
                     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                        <MetricMini label="Taxable Base" value={formatCurrency(tax?.taxable_base, currency)} />
-                        <MetricMini label="Tax Amount" value={formatCurrency(tax?.tax_amount, currency)} />
+                        <MetricMini label="VAT-applicable Base" value={formatCurrency(tax?.taxable_base, currency)} />
+                        <MetricMini label="VAT Amount" value={formatCurrency(tax?.tax_amount, currency)} />
                         <MetricMini label="Gross Total" value={formatCurrency(tax?.tax_gross, currency)} />
-                        <MetricMini label="Exclusive Tax" value={formatCurrency(tax?.tax_exclusive, currency)} />
-                        <MetricMini label="Inclusive Tax" value={formatCurrency(tax?.tax_inclusive, currency)} />
+                        <MetricMini label="Exclusive VAT" value={formatCurrency(tax?.tax_exclusive, currency)} />
+                        <MetricMini label="Inclusive VAT" value={formatCurrency(tax?.tax_inclusive, currency)} />
                     </div>
                 </div>
             </div>

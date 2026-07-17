@@ -9,13 +9,6 @@ export default function Index({ pageTitle = 'Leave Types', types = [], paginatio
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">HR</div>
-                    <div className="text-2xl font-semibold text-slate-900">Leave types</div>
-                </div>
-            </div>
-
             <div className="grid gap-6 lg:grid-cols-5">
                 <div className="card p-6 lg:col-span-2">
                     <div className="section-label">Add leave type</div>

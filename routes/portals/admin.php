@@ -38,7 +38,7 @@ use App\Http\Controllers\Admin\ExpenseDashboardController as AdminExpenseDashboa
 use App\Http\Controllers\Admin\CarrotHostIncomeController as AdminCarrotHostIncomeController;
 use App\Http\Controllers\Admin\ExpenseInvoiceController as AdminExpenseInvoiceController;
 use App\Http\Controllers\Admin\FinanceReportController as AdminFinanceReportController;
-use App\Http\Controllers\Admin\FinanceTaxController as AdminFinanceTaxController;
+use App\Http\Controllers\Admin\FinanceVatController as AdminFinanceVatController;
 use App\Http\Controllers\Admin\Hr\DashboardController as HrDashboardController;
 use App\Http\Controllers\Admin\Hr\AttendanceController as HrAttendanceController;
 use App\Http\Controllers\Admin\Hr\PaidHolidayController as HrPaidHolidayController;
@@ -435,16 +435,16 @@ Route::middleware([
                 ->middleware(HandleInertiaRequests::class)
                 ->name('reports.index');
 
-            Route::get('/tax', [AdminFinanceTaxController::class, 'index'])
-                ->middleware(HandleInertiaRequests::class)
-                ->name('tax.index');
-            Route::put('/tax', [AdminFinanceTaxController::class, 'updateSettings'])->name('tax.update');
-            Route::post('/tax/rates', [AdminFinanceTaxController::class, 'storeRate'])->name('tax.rates.store');
-            Route::get('/tax/rates/{rate}/edit', [AdminFinanceTaxController::class, 'editRate'])
-                ->middleware(HandleInertiaRequests::class)
-                ->name('tax.rates.edit');
-            Route::put('/tax/rates/{rate}', [AdminFinanceTaxController::class, 'updateRate'])->name('tax.rates.update');
-            Route::delete('/tax/rates/{rate}', [AdminFinanceTaxController::class, 'destroyRate'])->name('tax.rates.destroy');
+             Route::get('/vat', [AdminFinanceVatController::class, 'index'])
+                 ->middleware(HandleInertiaRequests::class)
+                 ->name('vat.index');
+             Route::put('/vat', [AdminFinanceVatController::class, 'updateSettings'])->name('vat.update');
+             Route::post('/vat/rates', [AdminFinanceVatController::class, 'storeRate'])->name('vat.rates.store');
+             Route::get('/vat/rates/{rate}/edit', [AdminFinanceVatController::class, 'editRate'])
+                 ->middleware(HandleInertiaRequests::class)
+                 ->name('vat.rates.edit');
+             Route::put('/vat/rates/{rate}', [AdminFinanceVatController::class, 'updateRate'])->name('vat.rates.update');
+             Route::delete('/vat/rates/{rate}', [AdminFinanceVatController::class, 'destroyRate'])->name('vat.rates.destroy');
         });
 
     // Legacy route names for backward compatibility with old /admin/admins URLs.
@@ -514,6 +514,7 @@ Route::middleware([
     Route::get('subscriptions/{subscription}/edit', [SubscriptionController::class, 'edit'])
         ->middleware(HandleInertiaRequests::class)
         ->name('subscriptions.edit');
+    Route::put('subscriptions/{subscription}/move-owner', [SubscriptionController::class, 'moveOwner'])->name('subscriptions.move-owner');
     Route::resource('subscriptions', SubscriptionController::class)->except(['show', 'index', 'create', 'edit']);
     Route::get('licenses', [LicenseController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
@@ -723,6 +724,10 @@ Route::middleware([
     Route::get('accounting/create', [AdminAccountingController::class, 'create'])
         ->middleware(HandleInertiaRequests::class)
         ->name('accounting.create');
+    Route::get('accounting/lookups/customers', [AdminAccountingController::class, 'customerOptions'])
+        ->name('accounting.lookups.customers');
+    Route::get('accounting/lookups/invoices', [AdminAccountingController::class, 'invoiceOptions'])
+        ->name('accounting.lookups.invoices');
     Route::post('accounting', [AdminAccountingController::class, 'store'])->name('accounting.store');
     Route::get('accounting/{entry}/edit', [AdminAccountingController::class, 'edit'])
         ->middleware(HandleInertiaRequests::class)
