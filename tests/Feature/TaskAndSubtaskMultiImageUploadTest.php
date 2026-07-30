@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
+use App\Models\ProjectTaskSubtaskComment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -76,6 +77,34 @@ class TaskAndSubtaskMultiImageUploadTest extends TestCase
         }
     }
 
+    public function test_can_upload_images_when_updating_subtask(): void
+    {
+        $subtask = ProjectTaskSubtask::create([
+            'project_task_id' => $this->task->id,
+            'title' => 'Original Subtask Title',
+            'created_by' => $this->admin->id,
+        ]);
+
+        $file1 = UploadedFile::fake()->image('edit_subtask_1.jpg');
+        $file2 = UploadedFile::fake()->image('edit_subtask_2.png');
+
+        $response = $this->actingAs($this->admin)
+            ->patch(route('admin.projects.tasks.subtasks.update', [$this->project, $this->task, $subtask]), [
+                'title' => 'Updated Subtask Title',
+                'images' => [$file1, $file2],
+            ]);
+
+        $response->assertRedirect();
+
+        $subtask->refresh();
+        $this->assertEquals('Updated Subtask Title', $subtask->title);
+        $this->assertCount(2, $subtask->allAttachmentUrls());
+
+        foreach ($subtask->allAttachmentUrls() as $path) {
+            Storage::disk('public')->assertExists($path);
+        }
+    }
+
     public function test_can_upload_multiple_images_to_task(): void
     {
         $file1 = UploadedFile::fake()->image('task_img1.jpg');
@@ -93,6 +122,69 @@ class TaskAndSubtaskMultiImageUploadTest extends TestCase
         $this->assertCount(2, $this->task->allAttachmentUrls());
 
         foreach ($this->task->allAttachmentUrls() as $path) {
+            Storage::disk('public')->assertExists($path);
+        }
+    }
+
+    public function test_can_upload_images_with_subtask_comment(): void
+    {
+        $subtask = ProjectTaskSubtask::create([
+            'project_task_id' => $this->task->id,
+            'title' => 'Subtask for Comment Test',
+            'created_by' => $this->admin->id,
+        ]);
+
+        $file1 = UploadedFile::fake()->image('comment_img1.jpg');
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('admin.projects.tasks.subtasks.comments.store', [$this->project, $this->task, $subtask]), [
+                'message' => 'Here is a subtask comment with an image',
+                'images' => [$file1],
+            ]);
+
+        $response->assertRedirect();
+
+        $comment = ProjectTaskSubtaskComment::where('project_task_subtask_id', $subtask->id)->first();
+        $this->assertNotNull($comment);
+        $this->assertCount(1, $comment->allAttachmentUrls());
+
+        foreach ($comment->allAttachmentUrls() as $path) {
+            Storage::disk('public')->assertExists($path);
+        }
+    }
+
+    public function test_can_upload_images_with_subtask_comment_reply(): void
+    {
+        $subtask = ProjectTaskSubtask::create([
+            'project_task_id' => $this->task->id,
+            'title' => 'Subtask for Comment Reply Test',
+            'created_by' => $this->admin->id,
+        ]);
+
+        $parentComment = ProjectTaskSubtaskComment::create([
+            'project_task_id' => $this->task->id,
+            'project_task_subtask_id' => $subtask->id,
+            'actor_type' => 'admin',
+            'actor_id' => $this->admin->id,
+            'message' => 'Parent comment text',
+        ]);
+
+        $file1 = UploadedFile::fake()->image('reply_img1.jpg');
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('admin.projects.tasks.subtasks.comments.store', [$this->project, $this->task, $subtask]), [
+                'message' => 'Reply text with attached image',
+                'parent_id' => $parentComment->id,
+                'images' => [$file1],
+            ]);
+
+        $response->assertRedirect();
+
+        $reply = ProjectTaskSubtaskComment::where('parent_id', $parentComment->id)->first();
+        $this->assertNotNull($reply);
+        $this->assertCount(1, $reply->allAttachmentUrls());
+
+        foreach ($reply->allAttachmentUrls() as $path) {
             Storage::disk('public')->assertExists($path);
         }
     }

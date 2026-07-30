@@ -15,7 +15,23 @@ class ProjectTaskSubtaskComment extends Model
         'actor_type',
         'actor_id',
         'message',
+        'attachment_path',
+        'attachment_paths',
     ];
+
+    protected $casts = [
+        'attachment_paths' => 'array',
+    ];
+
+    public function allAttachmentUrls(): array
+    {
+        $paths = (array) ($this->attachment_paths ?? []);
+        if (empty($paths) && $this->attachment_path) {
+            $paths = [$this->attachment_path];
+        }
+
+        return array_values(array_unique($paths));
+    }
 
     public function task(): BelongsTo
     {

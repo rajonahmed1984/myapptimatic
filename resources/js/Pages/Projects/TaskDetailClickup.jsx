@@ -493,13 +493,23 @@ export default function TaskDetailClickup({
                                                     ) : null}
                                                     <div className="mt-2 flex flex-wrap items-center gap-2">
                                                         {subtask.can_edit ? (
-                                                            <details>
-                                                                <summary className="subtask-edit-btn cursor-pointer rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-200 hover:text-teal-700">Edit</summary>
-                                                                <form method="POST" action={subtask?.routes?.update} data-native="true" className="mt-2 flex items-center gap-2">
+                                                            <details className="w-full">
+                                                                <summary className="subtask-edit-btn inline-block cursor-pointer rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:border-teal-200 hover:text-teal-700">Edit</summary>
+                                                                <form method="POST" action={subtask?.routes?.update} data-native="true" encType="multipart/form-data" className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
                                                                     <input type="hidden" name="_token" value={csrfToken} />
                                                                     <HiddenMethod method="PATCH" />
-                                                                    <input name="title" defaultValue={subtask.title} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs" />
-                                                                    <button type="submit" className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700">Save</button>
+                                                                    <div>
+                                                                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">Subtask Title</label>
+                                                                        <input name="title" defaultValue={subtask.title} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs" required />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">Add Image(s)</label>
+                                                                        <input name="images[]" type="file" multiple accept=".png,.jpg,.jpeg,.webp,.gif" className="block w-full text-xs text-slate-600" />
+                                                                        <div className="mt-0.5 text-[10px] text-slate-400">Select one or more images to attach (Max {uploadMaxMb}MB each).</div>
+                                                                    </div>
+                                                                    <div className="flex justify-end gap-2 pt-1">
+                                                                        <button type="submit" className="rounded-md bg-teal-600 px-3 py-1 text-xs font-semibold text-white hover:bg-teal-700">Save Changes</button>
+                                                                    </div>
                                                                 </form>
                                                             </details>
                                                         ) : null}
@@ -551,6 +561,23 @@ export default function TaskDetailClickup({
                                                                                 {comment.actor_name} ({comment.actor_type_label}) | {comment.created_at_display}
                                                                             </div>
                                                                             <div className="mt-1 whitespace-pre-line text-sm text-slate-800">{comment.message}</div>
+                                                                            {Array.isArray(comment?.attachments) && comment.attachments.length > 0 ? (
+                                                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                                                    {comment.attachments.map((att, attIdx) => (
+                                                                                        <div key={`comment-att-${comment.id}-${attIdx}`} className="rounded-lg border border-slate-200 bg-white p-1">
+                                                                                            {att.is_image ? (
+                                                                                                <a href={att.url} target="_blank" rel="noopener" className="block">
+                                                                                                    <img src={att.url} alt={att.name} className="h-12 w-12 rounded-md object-cover border border-slate-100" loading="lazy" />
+                                                                                                </a>
+                                                                                            ) : (
+                                                                                                <a href={att.url} target="_blank" rel="noopener" className="flex h-12 w-12 items-center justify-center text-[10px] font-semibold text-teal-600">
+                                                                                                    Attachment
+                                                                                                </a>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            ) : null}
 
                                                                             {replyRows.length > 0 ? (
                                                                                 <div className="mt-2 space-y-2 border-l-2 border-slate-200 pl-3">
@@ -560,6 +587,23 @@ export default function TaskDetailClickup({
                                                                                                 {reply.actor_name} ({reply.actor_type_label}) | {reply.created_at_display}
                                                                                             </div>
                                                                                             <div className="mt-1 whitespace-pre-line text-xs text-slate-700">{reply.message}</div>
+                                                                                            {Array.isArray(reply?.attachments) && reply.attachments.length > 0 ? (
+                                                                                                <div className="mt-1.5 flex flex-wrap gap-2">
+                                                                                                    {reply.attachments.map((att, attIdx) => (
+                                                                                                        <div key={`reply-att-${reply.id}-${attIdx}`} className="rounded-lg border border-slate-200 bg-slate-50 p-1">
+                                                                                                            {att.is_image ? (
+                                                                                                                <a href={att.url} target="_blank" rel="noopener" className="block">
+                                                                                                                    <img src={att.url} alt={att.name} className="h-10 w-10 rounded-md object-cover border border-slate-100" loading="lazy" />
+                                                                                                                </a>
+                                                                                                            ) : (
+                                                                                                                <a href={att.url} target="_blank" rel="noopener" className="flex h-10 w-10 items-center justify-center text-[9px] font-semibold text-teal-600">
+                                                                                                                    Attachment
+                                                                                                                </a>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                    ))}
+                                                                                                </div>
+                                                                                            ) : null}
                                                                                         </div>
                                                                                     ))}
                                                                                 </div>
@@ -568,7 +612,7 @@ export default function TaskDetailClickup({
                                                                             {permissions?.canPost && subtask?.routes?.comments_store ? (
                                                                                 <details className="mt-2">
                                                                                     <summary className="cursor-pointer text-xs font-semibold text-teal-700">Reply</summary>
-                                                                                    <form method="POST" action={subtask.routes.comments_store} data-native="true" className="mt-2 space-y-2">
+                                                                                    <form method="POST" action={subtask.routes.comments_store} data-native="true" encType="multipart/form-data" className="mt-2 space-y-2">
                                                                                         <input type="hidden" name="_token" value={csrfToken} />
                                                                                         <input type="hidden" name="parent_id" value={comment.id} />
                                                                                         <textarea
@@ -578,8 +622,9 @@ export default function TaskDetailClickup({
                                                                                             className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
                                                                                             required
                                                                                         />
-                                                                                        <div className="flex justify-end">
-                                                                                            <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700">
+                                                                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                                                                            <input name="images[]" type="file" multiple accept=".png,.jpg,.jpeg,.webp,.gif" className="text-xs text-slate-500" />
+                                                                                            <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-50">
                                                                                                 Reply
                                                                                             </button>
                                                                                         </div>
@@ -595,7 +640,7 @@ export default function TaskDetailClickup({
                                                         )}
 
                                                         {permissions?.canPost && subtask?.routes?.comments_store ? (
-                                                            <form method="POST" action={subtask.routes.comments_store} data-native="true" className="mt-3 space-y-2">
+                                                            <form method="POST" action={subtask.routes.comments_store} data-native="true" encType="multipart/form-data" className="mt-3 space-y-2">
                                                                 <input type="hidden" name="_token" value={csrfToken} />
                                                                 <textarea
                                                                     name="message"
@@ -604,8 +649,9 @@ export default function TaskDetailClickup({
                                                                     className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
                                                                     required
                                                                 />
-                                                                <div className="flex justify-end">
-                                                                    <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700">
+                                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                                    <input name="images[]" type="file" multiple accept=".png,.jpg,.jpeg,.webp,.gif" className="text-xs text-slate-500" />
+                                                                    <button type="submit" className="rounded-md border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-50">
                                                                         Comment
                                                                     </button>
                                                                 </div>

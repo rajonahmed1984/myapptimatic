@@ -135,7 +135,7 @@ class ProjectTaskSubtaskController extends Controller
         }
 
         if (! $this->isMasterAdmin($user) && $isAssigned && ! $isCreator) {
-            $extraFields = array_diff(array_keys($data), ['is_completed', 'status']);
+            $extraFields = array_diff(array_keys($data), ['is_completed', 'status', 'attachment_paths', 'attachment_path']);
             if (! empty($extraFields)) {
                 return $this->forbiddenResponse($request, 'Only subtask status changes are allowed.');
             }

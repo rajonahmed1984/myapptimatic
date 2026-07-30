@@ -92,6 +92,21 @@ class ProjectTaskViewController extends Controller
         $subtasks = $task->subtasks->map(function (ProjectTaskSubtask $subtask) use ($project, $task, $routePrefix, $editableSubtaskIds, $statusSubtaskIds): array {
             $status = (string) ($subtask->status ?: ($subtask->is_completed ? 'completed' : 'open'));
             $parsedDueTime = DateTimeFormat::parseTime($subtask->due_time);
+            $mapCommentAttachments = function (ProjectTaskSubtaskComment $item): array {
+                return collect($item->allAttachmentUrls())->map(function (string $path) {
+                    $name = pathinfo($path, PATHINFO_BASENAME);
+                    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                    $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+
+                    return [
+                        'path' => $path,
+                        'name' => $name,
+                        'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                        'is_image' => $isImage,
+                    ];
+                })->all();
+            };
+
             $rootComments = $subtask->comments
                 ->whereNull('parent_id')
                 ->values()
@@ -102,6 +117,7 @@ class ProjectTaskViewController extends Controller
                     'actor_name' => $comment->actorName(),
                     'actor_type_label' => $comment->actorTypeLabel(),
                     'created_at_display' => DateTimeFormat::formatDateTime($comment->created_at),
+                    'attachments' => $mapCommentAttachments($comment),
                     'replies' => $comment->replies
                         ->values()
                         ->map(fn (ProjectTaskSubtaskComment $reply) => [
@@ -111,6 +127,7 @@ class ProjectTaskViewController extends Controller
                             'actor_name' => $reply->actorName(),
                             'actor_type_label' => $reply->actorTypeLabel(),
                             'created_at_display' => DateTimeFormat::formatDateTime($reply->created_at),
+                            'attachments' => $mapCommentAttachments($reply),
                         ])
                         ->all(),
                 ])
