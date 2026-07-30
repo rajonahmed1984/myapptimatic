@@ -9,6 +9,7 @@ use App\Models\ProjectTaskSubtask;
 use App\Models\ProjectTaskSubtaskComment;
 use App\Services\SubtaskCommentNotificationService;
 use App\Support\DateTimeFormat;
+use App\Support\PublicStorageUrl;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskSettings;
 use Illuminate\Http\JsonResponse;
@@ -159,7 +160,7 @@ class ProjectTaskSubtaskCommentController extends Controller
                 return [
                     'path' => $path,
                     'name' => $name,
-                    'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                    'url' => PublicStorageUrl::fromPath($path),
                     'is_image' => $isImage,
                 ];
             })->all(),

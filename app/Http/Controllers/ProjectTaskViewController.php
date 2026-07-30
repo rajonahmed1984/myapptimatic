@@ -10,6 +10,7 @@ use App\Models\ProjectTaskSubtaskComment;
 use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Support\DateTimeFormat;
+use App\Support\PublicStorageUrl;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -101,7 +102,7 @@ class ProjectTaskViewController extends Controller
                     return [
                         'path' => $path,
                         'name' => $name,
-                        'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                        'url' => PublicStorageUrl::fromPath($path),
                         'is_image' => $isImage,
                     ];
                 })->all();
@@ -160,7 +161,7 @@ class ProjectTaskViewController extends Controller
                     return [
                         'path' => $path,
                         'name' => $name,
-                        'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                        'url' => PublicStorageUrl::fromPath($path),
                         'is_image' => $isImage,
                     ];
                 })->all(),
@@ -233,7 +234,7 @@ class ProjectTaskViewController extends Controller
                     return [
                         'path' => $path,
                         'name' => $name,
-                        'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                        'url' => PublicStorageUrl::fromPath($path),
                         'is_image' => $isImage,
                     ];
                 })->all(),
