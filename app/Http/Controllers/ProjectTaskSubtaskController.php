@@ -233,20 +233,37 @@ class ProjectTaskSubtaskController extends Controller
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('view', $subtask);
 
-        if (! $subtask->attachment_path) {
+        $path = $request->query('path');
+        if (! $path || ! is_string($path)) {
+            $path = $subtask->attachment_path;
+        }
+
+        if (! $path) {
             abort(404, 'This subtask does not have an image attachment.');
         }
 
         $disk = Storage::disk('public');
-        if (! $disk->exists($subtask->attachment_path)) {
-            abort(404, 'The image attachment is no longer available.');
+        if (! $disk->exists($path)) {
+            $cleanPath = ltrim(str_replace('\\', '/', $path), '/');
+            if (str_starts_with($cleanPath, 'storage/')) {
+                $cleanPath = substr($cleanPath, strlen('storage/'));
+            }
+
+            if ($disk->exists($cleanPath)) {
+                $path = $cleanPath;
+            } else {
+                abort(404, 'The image attachment is no longer available.');
+            }
         }
 
-        if ($subtask->isImageAttachment()) {
-            return $disk->response($subtask->attachment_path);
+        $ext = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+        $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+
+        if ($isImage) {
+            return $disk->response($path);
         }
 
-        return $disk->download($subtask->attachment_path, $subtask->attachmentName() ?? 'subtask-attachment');
+        return $disk->download($path, pathinfo($path, PATHINFO_BASENAME));
     }
 
     private function ensureTaskBelongsToProject(Project $project, ProjectTask $task): void

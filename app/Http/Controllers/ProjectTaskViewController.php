@@ -93,16 +93,20 @@ class ProjectTaskViewController extends Controller
         $subtasks = $task->subtasks->map(function (ProjectTaskSubtask $subtask) use ($project, $task, $routePrefix, $editableSubtaskIds, $statusSubtaskIds): array {
             $status = (string) ($subtask->status ?: ($subtask->is_completed ? 'completed' : 'open'));
             $parsedDueTime = DateTimeFormat::parseTime($subtask->due_time);
-            $mapCommentAttachments = function (ProjectTaskSubtaskComment $item): array {
-                return collect($item->allAttachmentUrls())->map(function (string $path) {
+            $mapCommentAttachments = function (ProjectTaskSubtaskComment $item) use ($routePrefix, $project, $task, $subtask): array {
+                return collect($item->allAttachmentUrls())->map(function (string $path) use ($routePrefix, $project, $task, $subtask) {
                     $name = pathinfo($path, PATHINFO_BASENAME);
                     $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
                     $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+                    $attachmentRoute = $routePrefix.'.projects.tasks.subtasks.attachment';
+                    $url = Route::has($attachmentRoute)
+                        ? route($attachmentRoute, [$project, $task, $subtask]).'?path='.urlencode($path)
+                        : (PublicStorageUrl::fromPath($path) ?? '');
 
                     return [
                         'path' => $path,
                         'name' => $name,
-                        'url' => PublicStorageUrl::fromPath($path),
+                        'url' => $url,
                         'is_image' => $isImage,
                     ];
                 })->all();
@@ -153,15 +157,19 @@ class ProjectTaskViewController extends Controller
                     : null,
                 'attachment_name' => $subtask->attachmentName(),
                 'attachment_is_image' => $subtask->isImageAttachment(),
-                'attachments' => collect($subtask->allAttachmentUrls())->map(function (string $path) {
+                'attachments' => collect($subtask->allAttachmentUrls())->map(function (string $path) use ($routePrefix, $project, $task, $subtask) {
                     $name = pathinfo($path, PATHINFO_BASENAME);
                     $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
                     $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+                    $attachmentRoute = $routePrefix.'.projects.tasks.subtasks.attachment';
+                    $url = Route::has($attachmentRoute)
+                        ? route($attachmentRoute, [$project, $task, $subtask]).'?path='.urlencode($path)
+                        : (PublicStorageUrl::fromPath($path) ?? '');
 
                     return [
                         'path' => $path,
                         'name' => $name,
-                        'url' => PublicStorageUrl::fromPath($path),
+                        'url' => $url,
                         'is_image' => $isImage,
                     ];
                 })->all(),
