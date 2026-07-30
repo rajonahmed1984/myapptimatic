@@ -135,6 +135,18 @@ class ProjectTaskViewController extends Controller
                     : null,
                 'attachment_name' => $subtask->attachmentName(),
                 'attachment_is_image' => $subtask->isImageAttachment(),
+                'attachments' => collect($subtask->allAttachmentUrls())->map(function (string $path) {
+                    $name = pathinfo($path, PATHINFO_BASENAME);
+                    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                    $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+
+                    return [
+                        'path' => $path,
+                        'name' => $name,
+                        'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                        'is_image' => $isImage,
+                    ];
+                })->all(),
                 'can_edit' => in_array($subtask->id, $editableSubtaskIds, true),
                 'can_change_status' => in_array($subtask->id, $statusSubtaskIds, true),
                 'comments' => $rootComments,
@@ -142,6 +154,9 @@ class ProjectTaskViewController extends Controller
                     'update' => route($routePrefix.'.projects.tasks.subtasks.update', [$project, $task, $subtask]),
                     'destroy' => route($routePrefix.'.projects.tasks.subtasks.destroy', [$project, $task, $subtask]),
                     'comments_store' => route($routePrefix.'.projects.tasks.subtasks.comments.store', [$project, $task, $subtask]),
+                    'attachment_delete' => Route::has($routePrefix.'.projects.tasks.subtasks.attachments.destroy')
+                        ? route($routePrefix.'.projects.tasks.subtasks.attachments.destroy', [$project, $task, $subtask])
+                        : null,
                 ],
             ];
         })->values();
@@ -193,6 +208,18 @@ class ProjectTaskViewController extends Controller
                 'created_at_display' => DateTimeFormat::formatDateTime($task->created_at),
                 'updated_at_display' => DateTimeFormat::formatDateTime($task->updated_at),
                 'creator_name' => (string) ($task->creator?->name ?? '--'),
+                'attachments' => collect($task->allAttachmentUrls())->map(function (string $path) {
+                    $name = pathinfo($path, PATHINFO_BASENAME);
+                    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                    $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+
+                    return [
+                        'path' => $path,
+                        'name' => $name,
+                        'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                        'is_image' => $isImage,
+                    ];
+                })->all(),
             ],
             'assignees' => $assigneeList->all(),
             'employees' => $employees->map(fn ($employee) => [
@@ -233,6 +260,9 @@ class ProjectTaskViewController extends Controller
                     ? route($routePrefix.'.projects.tasks.assignees', [$project, $task])
                     : null,
                 'subtasksStore' => route($routePrefix.'.projects.tasks.subtasks.store', [$project, $task]),
+                'taskAttachmentDelete' => Route::has($routePrefix.'.projects.tasks.attachments.destroy')
+                    ? route($routePrefix.'.projects.tasks.attachments.destroy', [$project, $task])
+                    : null,
             ],
             'uploadMaxMb' => TaskSettings::uploadMaxMb(),
             // Transitional probe markers retained only for existing legacy-oriented feature tests.

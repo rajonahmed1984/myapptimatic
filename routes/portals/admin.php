@@ -577,9 +577,11 @@ Route::middleware([
         ->name('projects.tasks.assignees');
     Route::patch('projects/{project}/tasks/{task}/status', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'changeStatus'])->name('projects.tasks.changeStatus');
     Route::delete('projects/{project}/tasks/{task}', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'destroy'])->name('projects.tasks.destroy');
+    Route::delete('projects/{project}/tasks/{task}/attachments', [\App\Http\Controllers\Admin\ProjectTaskController::class, 'deleteAttachment'])->name('projects.tasks.attachments.destroy');
     Route::post('projects/{project}/tasks/{task}/subtasks', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'store'])->name('projects.tasks.subtasks.store');
     Route::patch('projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'update'])->name('projects.tasks.subtasks.update');
     Route::delete('projects/{project}/tasks/{task}/subtasks/{subtask}', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'destroy'])->name('projects.tasks.subtasks.destroy');
+    Route::delete('projects/{project}/tasks/{task}/subtasks/{subtask}/attachments', [\App\Http\Controllers\ProjectTaskSubtaskController::class, 'deleteAttachment'])->name('projects.tasks.subtasks.attachments.destroy');
     Route::post('projects/{project}/tasks/{task}/subtasks/{subtask}/comments', [\App\Http\Controllers\ProjectTaskSubtaskCommentController::class, 'store'])
         ->middleware('throttle:20,1')
         ->name('projects.tasks.subtasks.comments.store');

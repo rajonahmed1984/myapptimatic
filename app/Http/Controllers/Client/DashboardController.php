@@ -22,8 +22,11 @@ class DashboardController extends Controller
         $user = $request->user();
 
         // Show project-specific dashboard for project users
-        if ($user->isClientProject() && $user->project_id) {
-            return $this->projectSpecificDashboard($request, $user, $taskQueryService);
+        if ($user->isClientProject()) {
+            $assignedProjectIds = $user->assignedProjectIds();
+            if (count($assignedProjectIds) === 1) {
+                return $this->projectSpecificDashboard($request, $user, $taskQueryService);
+            }
         }
 
         $customer = $user->customer;
@@ -94,8 +97,11 @@ class DashboardController extends Controller
                     'tasks as done_tasks_count' => fn ($q) => $q->where('status', 'done'),
                 ]);
 
-            if ($request->user()->isClientProject() && $request->user()->project_id) {
-                $projectQuery->whereKey($request->user()->project_id);
+            if ($request->user()->isClientProject()) {
+                $assignedProjectIds = $request->user()->assignedProjectIds();
+                if (! empty($assignedProjectIds)) {
+                    $projectQuery->whereIn('id', $assignedProjectIds);
+                }
             }
 
             $projectCount = (clone $projectQuery)->count();

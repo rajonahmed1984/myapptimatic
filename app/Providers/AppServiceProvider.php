@@ -212,9 +212,7 @@ class AppServiceProvider extends ServiceProvider
                     $projectIds = collect();
 
                     if ($user->isClientProject()) {
-                        if ($user->project_id) {
-                            $projectIds = collect([$user->project_id]);
-                        }
+                        $projectIds = collect($user->assignedProjectIds());
                     } elseif ($user->isClient()) {
                         $projectIds = Project::where('customer_id', $user->customer_id)->pluck('id');
                     }

@@ -28,6 +28,7 @@ class ProjectTask extends Model
         'time_estimate_minutes',
         'tags',
         'relationship_ids',
+        'attachment_paths',
     ];
 
     protected $casts = [
@@ -37,7 +38,13 @@ class ProjectTask extends Model
         'customer_visible' => 'boolean',
         'tags' => 'array',
         'relationship_ids' => 'array',
+        'attachment_paths' => 'array',
     ];
+
+    public function allAttachmentUrls(): array
+    {
+        return array_values(array_unique((array) ($this->attachment_paths ?? [])));
+    }
 
     protected static function booted(): void
     {

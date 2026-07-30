@@ -133,11 +133,11 @@ class Project extends Model
         return $this->hasMany(\App\Models\Invoice::class);
     }
 
-    public function projectClients(): HasMany
+    public function projectClients(): BelongsToMany
     {
-        return $this->hasMany(User::class)
+        return $this->belongsToMany(User::class, 'project_user')
             ->where('role', Role::CLIENT_PROJECT)
-            ->where('project_id', $this->id);
+            ->withTimestamps();
     }
 
     public function overheads(): HasMany

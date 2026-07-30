@@ -30,9 +30,11 @@ class ProjectTaskSubtaskController extends Controller
             'due_date' => ['sometimes', 'nullable', 'date'],
             'due_time' => ['sometimes', 'nullable', 'date_format:H:i'],
             'image' => ['sometimes', 'nullable', 'image', 'max:' . ($maxMb * 1024)],
+            'images' => ['sometimes', 'nullable', 'array'],
+            'images.*' => ['image', 'max:' . ($maxMb * 1024)],
         ]);
 
-        unset($data['image']);
+        unset($data['image'], $data['images']);
 
         $creatorId = null;
         $user = $request->user();
@@ -45,8 +47,24 @@ class ProjectTaskSubtaskController extends Controller
         }
 
         $data['created_by'] = $creatorId;
+        $paths = [];
+        if ($request->hasFile('images')) {
+            foreach ((array) $request->file('images') as $file) {
+                if ($file && $file->isValid()) {
+                    $paths[] = $this->storeAttachment($file, $task);
+                }
+            }
+        }
         if ($request->hasFile('image')) {
-            $data['attachment_path'] = $this->storeAttachment($request->file('image'), $task);
+            $file = $request->file('image');
+            if ($file && $file->isValid()) {
+                $paths[] = $this->storeAttachment($file, $task);
+            }
+        }
+        $paths = array_values(array_unique($paths));
+        if (! empty($paths)) {
+            $data['attachment_paths'] = $paths;
+            $data['attachment_path'] = $paths[0];
         }
 
         $subtask = $task->subtasks()->create($data);
@@ -74,13 +92,41 @@ class ProjectTaskSubtaskController extends Controller
             return $this->forbiddenResponse($request, 'You can only edit this subtask within 24 hours of creation.');
         }
 
+        $maxMb = TaskSettings::uploadMaxMb();
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
             'due_date' => ['sometimes', 'nullable', 'date'],
             'due_time' => ['sometimes', 'nullable', 'date_format:H:i'],
             'is_completed' => ['sometimes', 'boolean'],
             'status' => ['sometimes', 'string', 'in:open,in_progress,completed'],
+            'image' => ['sometimes', 'nullable', 'image', 'max:' . ($maxMb * 1024)],
+            'images' => ['sometimes', 'nullable', 'array'],
+            'images.*' => ['image', 'max:' . ($maxMb * 1024)],
         ]);
+
+        $newPaths = [];
+        if ($request->hasFile('images')) {
+            foreach ((array) $request->file('images') as $file) {
+                if ($file && $file->isValid()) {
+                    $newPaths[] = $this->storeAttachment($file, $task);
+                }
+            }
+        }
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            if ($file && $file->isValid()) {
+                $newPaths[] = $this->storeAttachment($file, $task);
+            }
+        }
+        unset($data['image'], $data['images']);
+
+        if (! empty($newPaths)) {
+            $existingPaths = $subtask->allAttachmentUrls();
+            $mergedPaths = array_values(array_unique(array_merge($existingPaths, $newPaths)));
+            $data['attachment_paths'] = $mergedPaths;
+            $data['attachment_path'] = $mergedPaths[0] ?? null;
+        }
+
         $completerId = null;
         if ($user instanceof User) {
             $completerId = $user->id;
@@ -136,14 +182,47 @@ class ProjectTaskSubtaskController extends Controller
         $actor = $this->resolveActor($request);
         Gate::forUser($actor)->authorize('delete', $subtask);
 
-        if ($subtask->attachment_path) {
-            Storage::disk('public')->delete($subtask->attachment_path);
+        foreach ($subtask->allAttachmentUrls() as $path) {
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
         }
 
         $subtask->delete();
         TaskCompletionManager::syncFromSubtasks($task);
 
         return back()->with('status', 'Subtask deleted.');
+    }
+
+    public function deleteAttachment(Request $request, Project $project, ProjectTask $task, ProjectTaskSubtask $subtask)
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $this->ensureSubtaskBelongsToTask($task, $subtask);
+        $actor = $this->resolveActor($request);
+        Gate::forUser($actor)->authorize('update', $subtask);
+
+        $pathToDelete = $request->input('path');
+        if (! $pathToDelete) {
+            return back()->withErrors(['subtask' => 'Attachment path is required.']);
+        }
+
+        $allPaths = $subtask->allAttachmentUrls();
+        $updatedPaths = array_values(array_filter($allPaths, fn ($p) => $p !== $pathToDelete));
+
+        if (Storage::disk('public')->exists($pathToDelete)) {
+            Storage::disk('public')->delete($pathToDelete);
+        }
+
+        $subtask->update([
+            'attachment_paths' => $updatedPaths,
+            'attachment_path' => $updatedPaths[0] ?? null,
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Attachment deleted.', 'attachment_paths' => $updatedPaths]);
+        }
+
+        return back()->with('status', 'Attachment deleted.');
     }
 
     public function attachment(Request $request, Project $project, ProjectTask $task, ProjectTaskSubtask $subtask)

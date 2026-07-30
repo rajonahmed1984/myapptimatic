@@ -36,12 +36,13 @@ class TaskQueryService
         }
 
         if ($user->isClientProject()) {
-            if (! $user->project_id) {
+            $assignedProjectIds = $user->assignedProjectIds();
+            if (empty($assignedProjectIds)) {
                 return $query->whereRaw('0 = 1');
             }
 
             return $query
-                ->where('project_id', $user->project_id)
+                ->whereIn('project_id', $assignedProjectIds)
                 ->whereHas('project', fn (Builder $q) => $q->where('customer_id', $user->customer_id));
         }
 

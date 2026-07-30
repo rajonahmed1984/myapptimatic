@@ -30,7 +30,7 @@ class ProjectTaskPolicy
                 }
                 
                 // Project-specific users can view all tasks in their assigned project
-                if ($actor->isClientProject() && $actor->project_id === $project->id) {
+                if ($actor->isClientProject() && in_array((int) $project->id, $actor->assignedProjectIds(), true)) {
                     return true;
                 }
                 

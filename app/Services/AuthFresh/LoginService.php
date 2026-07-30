@@ -115,8 +115,12 @@ class LoginService
         }
 
         if ($portal === 'web') {
-            if ($user->isClientProject() && $user->project_id) {
-                return route('client.projects.show', $user->project_id, false);
+            if ($user->isClientProject()) {
+                $assignedProjectIds = $user->assignedProjectIds();
+                if (count($assignedProjectIds) === 1) {
+                    return route('client.projects.show', $assignedProjectIds[0], false);
+                }
+                return route('client.projects.index', [], false);
             }
         }
 

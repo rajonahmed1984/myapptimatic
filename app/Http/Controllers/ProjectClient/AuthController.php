@@ -73,7 +73,9 @@ class AuthController extends Controller
                 ->withInput($request->only('email'));
         }
 
-        if (! $user || ! $user->isClientProject() || ! $user->project_id) {
+        $assignedProjectIds = $user ? $user->assignedProjectIds() : [];
+
+        if (! $user || ! $user->isClientProject() || empty($assignedProjectIds)) {
             SystemLogger::write('admin', 'Project client login denied.', [
                 'login_type' => 'project_client',
                 'email' => $user?->email,
@@ -95,9 +97,13 @@ class AuthController extends Controller
         SystemLogger::write('admin', 'Project client login.', [
             'email' => $user->email,
             'user_id' => $user->id,
-            'project_id' => $user->project_id,
+            'project_ids' => $assignedProjectIds,
         ], $user->id, $request->ip());
 
-        return redirect()->route('client.projects.show', $user->project_id);
+        if (count($assignedProjectIds) === 1) {
+            return redirect()->route('client.projects.show', $assignedProjectIds[0]);
+        }
+
+        return redirect()->route('client.projects.index');
     }
 }

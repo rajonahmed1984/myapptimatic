@@ -170,6 +170,13 @@ class ProjectTaskController extends Controller
             return $this->validationError($request, ['task_type' => 'Upload tasks require at least one file.']);
         }
 
+        $maxMb = TaskSettings::uploadMaxMb();
+        $request->validate([
+            'images' => ['sometimes', 'nullable', 'array'],
+            'images.*' => ['image', 'max:' . ($maxMb * 1024)],
+            'image' => ['sometimes', 'nullable', 'image', 'max:' . ($maxMb * 1024)],
+        ]);
+
         $payload = [
             'title' => array_key_exists('title', $data) ? $data['title'] : $task->title,
             'description' => array_key_exists('description', $data) ? $data['description'] : $task->description,
@@ -183,6 +190,24 @@ class ProjectTaskController extends Controller
             'customer_visible' => (bool) ($data['customer_visible'] ?? $task->customer_visible),
             'notes' => array_key_exists('notes', $data) ? $data['notes'] : $task->notes,
         ];
+
+        if ($request->hasFile('images') || $request->hasFile('image')) {
+            $newPaths = [];
+            $files = $request->hasFile('images') ? (array) $request->file('images') : [$request->file('image')];
+            foreach ($files as $file) {
+                if ($file && $file->isValid()) {
+                    $name = pathinfo((string) $file->getClientOriginalName(), PATHINFO_FILENAME);
+                    $name = $name !== '' ? Str::slug($name) : 'task-image';
+                    $extension = $file->getClientOriginalExtension();
+                    $fileName = $name . '-' . Str::random(8) . '.' . $extension;
+                    $newPaths[] = $file->storeAs('project-tasks/' . $task->id, $fileName, 'public');
+                }
+            }
+            if (! empty($newPaths)) {
+                $existing = $task->allAttachmentUrls();
+                $payload['attachment_paths'] = array_values(array_unique(array_merge($existing, $newPaths)));
+            }
+        }
 
         $previousStatus = $task->status;
 
@@ -601,5 +626,31 @@ class ProjectTaskController extends Controller
         }
 
         return ! empty($files);
+    }
+
+    public function deleteAttachment(Request $request, Project $project, ProjectTask $task)
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $this->authorize('update', $task);
+
+        $pathToDelete = $request->input('path');
+        if (! $pathToDelete) {
+            return back()->withErrors(['task' => 'Attachment path is required.']);
+        }
+
+        $allPaths = $task->allAttachmentUrls();
+        $updatedPaths = array_values(array_filter($allPaths, fn ($p) => $p !== $pathToDelete));
+
+        if (Storage::disk('public')->exists($pathToDelete)) {
+            Storage::disk('public')->delete($pathToDelete);
+        }
+
+        $task->update(['attachment_paths' => $updatedPaths]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Task attachment deleted.', 'attachment_paths' => $updatedPaths]);
+        }
+
+        return back()->with('status', 'Task attachment deleted.');
     }
 }

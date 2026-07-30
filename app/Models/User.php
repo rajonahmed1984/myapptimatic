@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Enums\Role;
@@ -69,6 +70,31 @@ class User extends Authenticatable
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_user')->withTimestamps();
+    }
+
+    public function assignedProjectIds(): array
+    {
+        if (! $this->isClientProject()) {
+            return [];
+        }
+
+        $ids = [];
+        if ($this->relationLoaded('projects')) {
+            $ids = $this->projects->pluck('id')->all();
+        } else {
+            $ids = $this->projects()->pluck('projects.id')->all();
+        }
+
+        if (empty($ids) && $this->project_id) {
+            $ids = [(int) $this->project_id];
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
     }
 
     public function supportTickets(): HasMany

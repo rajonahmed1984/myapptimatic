@@ -21,13 +21,25 @@ class ProjectTaskSubtask extends Model
         'completed_by',
         'created_by',
         'attachment_path',
+        'attachment_paths',
     ];
 
     protected $casts = [
         'due_date' => 'date',
         'is_completed' => 'boolean',
         'completed_at' => 'datetime',
+        'attachment_paths' => 'array',
     ];
+
+    public function allAttachmentUrls(): array
+    {
+        $paths = (array) ($this->attachment_paths ?? []);
+        if (empty($paths) && $this->attachment_path) {
+            $paths = [$this->attachment_path];
+        }
+
+        return array_values(array_unique($paths));
+    }
 
     public function task(): BelongsTo
     {

@@ -28,7 +28,9 @@ class StoreProjectClientUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'project_id' => ['required', $projectRule],
+            'project_id' => ['required_without:project_ids', 'nullable', $projectRule],
+            'project_ids' => ['required_without:project_id', 'array', 'min:1'],
+            'project_ids.*' => ['integer', $projectRule],
         ];
     }
 }

@@ -20,9 +20,17 @@ class CustomerProjectUserController extends Controller
     public function store(StoreProjectClientUserRequest $request, Customer $customer)
     {
         $data = $request->validated();
-        $project = Project::findOrFail($data['project_id']);
+        $projectIds = array_values(array_filter(array_map('intval', (array) ($data['project_ids'] ?? (isset($data['project_id']) ? [$data['project_id']] : [])))));
 
-        if ($project->customer_id !== $customer->id) {
+        if (empty($projectIds)) {
+            abort(404);
+        }
+
+        $projects = Project::where('customer_id', $customer->id)
+            ->whereIn('id', $projectIds)
+            ->get();
+
+        if ($projects->count() !== count($projectIds)) {
             abort(404);
         }
 
@@ -33,12 +41,14 @@ class CustomerProjectUserController extends Controller
             'role' => Role::CLIENT_PROJECT,
             'status' => 'active',
             'customer_id' => $customer->id,
-            'project_id' => $project->id,
+            'project_id' => $projectIds[0] ?? null,
         ]);
+
+        $user->projects()->sync($projectIds);
 
         SystemLogger::write('activity', 'Project client login created.', [
             'customer_id' => $customer->id,
-            'project_id' => $project->id,
+            'project_ids' => $projectIds,
             'user_id' => $user->id,
         ], $request->user()?->id, $request->ip());
 
@@ -52,7 +62,7 @@ class CustomerProjectUserController extends Controller
             abort(404);
         }
 
-        $user->load('project');
+        $user->load('projects', 'project');
 
         return response()->json([
             'ok' => true,
@@ -65,34 +75,44 @@ class CustomerProjectUserController extends Controller
         $this->ensureProjectClientBelongsToCustomer($customer, $user);
 
         $data = $request->validated();
-        $project = Project::findOrFail($data['project_id']);
+        $projectIds = array_values(array_filter(array_map('intval', (array) ($data['project_ids'] ?? (isset($data['project_id']) ? [$data['project_id']] : [])))));
 
-        if ($project->customer_id !== $customer->id) {
+        if (empty($projectIds)) {
+            abort(404);
+        }
+
+        $projects = Project::where('customer_id', $customer->id)
+            ->whereIn('id', $projectIds)
+            ->get();
+
+        if ($projects->count() !== count($projectIds)) {
             abort(404);
         }
 
         $updateData = [
             'name' => $data['name'],
             'email' => $data['email'],
-            'project_id' => $project->id,
+            'project_id' => $projectIds[0] ?? null,
             'status' => $data['status'],
         ];
 
         // Only update password if provided
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $updateData['password'] = Hash::make($data['password']);
         }
 
         $user->update($updateData);
+        $user->projects()->sync($projectIds);
 
         SystemLogger::write('activity', 'Project client login updated.', [
             'customer_id' => $customer->id,
-            'project_id' => $project->id,
+            'project_ids' => $projectIds,
             'user_id' => $user->id,
         ], $request->user()?->id, $request->ip());
 
         if ($request->expectsJson()) {
-            $user->load('project');
+            $user->load('projects', 'project');
+
             return response()->json([
                 'ok' => true,
                 'message' => 'Project client user updated.',
@@ -124,7 +144,7 @@ class CustomerProjectUserController extends Controller
         ], $request->user()?->id, $request->ip());
 
         if ($request->expectsJson()) {
-            $user->load('project');
+            $user->load('projects', 'project');
 
             return response()->json([
                 'ok' => true,
@@ -156,8 +176,16 @@ class CustomerProjectUserController extends Controller
 
     private function formatPayload(User $user): array
     {
+        $user->loadMissing('projects', 'project');
         $dateFormat = config('app.date_format', 'd-m-Y');
         $status = $user->status ?: 'active';
+
+        $projectIds = $user->assignedProjectIds();
+        $projectNames = $user->projects->pluck('name')->all();
+        $projectName = $user->projects->pluck('name')->implode(', ');
+        if (empty($projectName) && $user->project) {
+            $projectName = $user->project->name;
+        }
 
         return [
             'id' => $user->id,
@@ -167,7 +195,9 @@ class CustomerProjectUserController extends Controller
             'status_label' => ucfirst($status),
             'status_classes' => StatusColorHelper::getBadgeClasses($status),
             'project_id' => $user->project_id,
-            'project_name' => $user->project?->name,
+            'project_ids' => $projectIds,
+            'project_name' => $projectName ?: '--',
+            'project_names' => $projectNames,
             'created_at' => $user->created_at?->format($dateFormat),
             'updated_at' => $user->updated_at?->format($dateFormat),
         ];

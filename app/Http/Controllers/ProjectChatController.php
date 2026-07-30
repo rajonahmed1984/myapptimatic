@@ -1249,7 +1249,10 @@ class ProjectChatController extends Controller
             ->where(function ($query) use ($project, $customerId) {
                 $query->where(function ($scope) use ($project) {
                     $scope->where('role', Role::CLIENT_PROJECT)
-                        ->where('project_id', $project->id);
+                        ->where(function ($sub) use ($project) {
+                            $sub->where('project_id', $project->id)
+                                ->orWhereHas('projects', fn ($q) => $q->where('projects.id', $project->id));
+                        });
                 });
 
                 if ($customerId > 0) {

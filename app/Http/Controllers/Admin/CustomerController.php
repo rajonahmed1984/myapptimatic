@@ -295,7 +295,7 @@ class CustomerController extends Controller
                 ->get();
         }
         if ($tab === 'project-specific') {
-            $projectClients = $customer->projectUsers()->with('project')->get();
+            $projectClients = $customer->projectUsers()->with(['projects', 'project'])->get();
             $projects = $customer->projects()->orderBy('name')->get(['id', 'name']);
         }
         if ($tab === 'projects') {
@@ -588,15 +588,25 @@ class CustomerController extends Controller
                 ];
             })->values()->all(),
             'project_clients' => $projectClients->map(function (User $projectUser) use ($dateFormat, $customer) {
+                $projectIds = $projectUser->assignedProjectIds();
+                $projectNames = $projectUser->projects->pluck('name')->all();
+                $projectName = $projectUser->projects->pluck('name')->implode(', ');
+                if (empty($projectName) && $projectUser->project) {
+                    $projectName = $projectUser->project->name;
+                }
+
                 return [
                     'id' => $projectUser->id,
                     'name' => (string) ($projectUser->name ?? '--'),
                     'email' => (string) ($projectUser->email ?? '--'),
                     'status' => (string) ($projectUser->status ?? 'active'),
                     'project_id' => $projectUser->project_id,
-                    'project_name' => (string) ($projectUser->project?->name ?? '--'),
+                    'project_ids' => $projectIds,
+                    'project_name' => (string) ($projectName ?: '--'),
+                    'project_names' => $projectNames,
                     'created_at_display' => $projectUser->created_at?->format($dateFormat) ?? '--',
                     'routes' => [
+                        'show' => route('admin.customers.project-users.show', ['customer' => $customer, 'user' => $projectUser], false),
                         'update' => route('admin.customers.project-users.update', ['customer' => $customer, 'user' => $projectUser], false),
                         'status' => route('admin.customers.project-users.status', ['customer' => $customer, 'user' => $projectUser], false),
                         'destroy' => route('admin.customers.project-users.destroy', ['customer' => $customer, 'user' => $projectUser], false),

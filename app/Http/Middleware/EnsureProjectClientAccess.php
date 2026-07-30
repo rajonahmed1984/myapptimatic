@@ -25,7 +25,7 @@ class EnsureProjectClientAccess
 
         $projectId = $project instanceof Project ? $project->id : (int) $project;
 
-        if (! $projectId || $projectId !== $user->project_id) {
+        if (! $projectId || ! in_array((int) $projectId, $user->assignedProjectIds(), true)) {
             abort(403);
         }
 

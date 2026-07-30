@@ -228,6 +228,54 @@ export default function TaskDetailClickup({
                         <div className="mt-2 text-sm text-slate-700">Tags: {Array.isArray(task?.tags) && task.tags.length > 0 ? task.tags.join(', ') : '-'}</div>
                         <div className="mt-1 text-xs text-slate-500">Created {task?.created_at_display || '-'} by {task?.creator_name || '--'}</div>
 
+                        {/* Task Attachments / Images Section */}
+                        <div className="mt-4 border-t border-slate-200 pt-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 mb-2">
+                                Task Images &amp; Attachments ({Array.isArray(task?.attachments) ? task.attachments.length : 0})
+                            </div>
+
+                            {Array.isArray(task?.attachments) && task.attachments.length > 0 ? (
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {task.attachments.map((att, attIdx) => (
+                                        <div key={`task-att-${attIdx}`} className="group relative rounded-xl border border-slate-200 bg-slate-50 p-1.5 transition hover:border-teal-300 hover:shadow-xs">
+                                            {att.is_image ? (
+                                                <a href={att.url} target="_blank" rel="noopener" className="block">
+                                                    <img src={att.url} alt={att.name} className="h-16 w-16 rounded-lg object-cover bg-white border border-slate-200" loading="lazy" />
+                                                </a>
+                                            ) : (
+                                                <a href={att.url} target="_blank" rel="noopener" className="flex h-16 w-16 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-1 text-[10px] font-semibold text-slate-600">
+                                                    📁 <span className="truncate w-full text-center">{att.name}</span>
+                                                </a>
+                                            )}
+                                            {canEdit && routes?.taskAttachmentDelete ? (
+                                                <form method="POST" action={routes.taskAttachmentDelete} data-native="true" className="mt-1 flex justify-center">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <HiddenMethod method="DELETE" />
+                                                    <input type="hidden" name="path" value={att.path} />
+                                                    <button type="submit" className="text-[10px] font-medium text-rose-600 hover:underline" title="Delete image">Delete</button>
+                                                </form>
+                                            ) : null}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-xs text-slate-400 mb-3">No images attached to task.</div>
+                            )}
+
+                            {canEdit && routes?.update ? (
+                                <form method="POST" action={routes.update} data-native="true" encType="multipart/form-data" className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <input type="hidden" name="_token" value={csrfToken} />
+                                    <HiddenMethod method="PATCH" />
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <label className="text-xs font-semibold text-slate-700">Add Images to Task</label>
+                                        <button type="submit" className="rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-50">Upload Images</button>
+                                    </div>
+                                    <input name="images[]" type="file" multiple accept=".png,.jpg,.jpeg,.webp,.gif" className="mt-1.5 block w-full text-xs text-slate-600" />
+                                    <div className="mt-1 text-[11px] text-slate-500">Select single or multiple images (max {uploadMaxMb}MB each).</div>
+                                </form>
+                            ) : null}
+                        </div>
+
                         <div className="mt-4 border-t border-slate-200 pt-4">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -399,7 +447,31 @@ export default function TaskDetailClickup({
                                                             {subtask.status_label || 'Open'}
                                                         </span>
                                                     </div>
-                                                    {subtask.attachment_url ? (
+                                                    {Array.isArray(subtask?.attachments) && subtask.attachments.length > 0 ? (
+                                                        <div className="mt-2 flex flex-wrap gap-2">
+                                                            {subtask.attachments.map((att, attIdx) => (
+                                                                <div key={`subtask-att-${subtask.id}-${attIdx}`} className="group relative rounded-lg border border-slate-200 bg-slate-50 p-1">
+                                                                    {att.is_image ? (
+                                                                        <a href={att.url} target="_blank" rel="noopener" className="block">
+                                                                            <img src={att.url} alt={att.name} className="h-12 w-12 rounded-md object-cover bg-white border border-slate-200" loading="lazy" />
+                                                                        </a>
+                                                                    ) : (
+                                                                        <a href={att.url} target="_blank" rel="noopener" className="flex h-12 w-12 items-center justify-center text-xs font-semibold text-teal-600">
+                                                                            Attachment
+                                                                        </a>
+                                                                    )}
+                                                                    {subtask.can_edit && subtask.routes?.attachment_delete ? (
+                                                                        <form method="POST" action={subtask.routes.attachment_delete} data-native="true" className="mt-0.5 flex justify-center">
+                                                                            <input type="hidden" name="_token" value={csrfToken} />
+                                                                            <HiddenMethod method="DELETE" />
+                                                                            <input type="hidden" name="path" value={att.path} />
+                                                                            <button type="submit" className="text-[10px] font-medium text-rose-600 hover:underline">Remove</button>
+                                                                        </form>
+                                                                    ) : null}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : subtask.attachment_url ? (
                                                         isImageAttachment(subtask) ? (
                                                             <a
                                                                 href={subtask.attachment_url}
@@ -566,9 +638,9 @@ export default function TaskDetailClickup({
                                         className="ui-input focus:border-teal-300 focus:outline-none"
                                     />
                                     <div>
-                                        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Image (optional)</div>
-                                        <input name="image" type="file" accept=".png,.jpg,.jpeg,.webp" className="mt-1 w-full text-xs text-slate-600" />
-                                        <div className="mt-1 text-xs text-slate-500">Max {uploadMaxMb}MB.</div>
+                                        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Images / Attachments (multiple allowed)</div>
+                                        <input name="images[]" type="file" multiple accept=".png,.jpg,.jpeg,.webp,.gif" className="mt-1 w-full text-xs text-slate-600" />
+                                        <div className="mt-1 text-xs text-slate-500">Select one or more images (Max {uploadMaxMb}MB each).</div>
                                     </div>
                                     <div className="flex justify-end gap-2">
                                         <button type="button" onClick={() => setSubtaskFormOpen(false)} className="ui-btn-secondary">

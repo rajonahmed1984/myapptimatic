@@ -105,6 +105,7 @@ export default function Show({
     const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
     const [selectedInvoiceIds, setSelectedInvoiceIds] = useState([]);
+    const [editingProjectUser, setEditingProjectUser] = useState(null);
 
     const handleSendReminders = async () => {
         if (selectedInvoiceIds.length === 0) {
@@ -266,6 +267,10 @@ export default function Show({
             { value: '', label: 'Select a project' },
             ...project_options.map((project) => ({ value: String(project.id), label: project.name })),
         ],
+        [project_options],
+    );
+    const projectSelectOptions = useMemo(
+        () => project_options.map((project) => ({ value: String(project.id), label: project.name })),
         [project_options],
     );
     const servicePlanOptions = useMemo(
@@ -551,17 +556,36 @@ export default function Show({
                         <div className="overflow-x-auto rounded-2xl border border-slate-300">
                             <table className="w-full min-w-[800px] text-left text-sm">
                                 <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.2em] text-slate-500">
-                                    <tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Project</th><th className="px-4 py-3 text-right">Actions</th></tr>
+                                    <tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Assigned Projects</th><th className="px-4 py-3 text-right">Actions</th></tr>
                                 </thead>
                                 <tbody>
                                     {project_clients.length === 0 ? <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No project-specific logins yet.</td></tr> : project_clients.map((row) => (
                                         <tr key={row.id} className="border-b border-slate-100">
-                                            <td className="px-4 py-3">{row.name}</td>
+                                            <td className="px-4 py-3 font-medium text-slate-900">{row.name}</td>
                                             <td className="px-4 py-3">{row.email}</td>
                                             <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(row.status)}`}>{row.status}</span></td>
-                                            <td className="px-4 py-3">{row.project_name || '--'}</td>
+                                            <td className="px-4 py-3">
+                                                {row.project_names && row.project_names.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {row.project_names.map((pName, pIdx) => (
+                                                            <span key={pIdx} className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700 border border-violet-200">
+                                                                {pName}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-500">{row.project_name || '--'}</span>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="inline-flex items-center gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingProjectUser(row)}
+                                                        className="font-medium text-sky-600 hover:text-sky-500"
+                                                    >
+                                                        Edit
+                                                    </button>
                                                     <form
                                                         method="POST"
                                                         action={row.routes?.status}
@@ -579,7 +603,7 @@ export default function Show({
                                                         <input type="hidden" name="status" value={row.status === 'active' ? 'inactive' : 'active'} />
                                                         <button
                                                             type="submit"
-                                                            className={row.status === 'active' ? 'text-amber-600 hover:text-amber-500' : 'text-emerald-600 hover:text-emerald-500'}
+                                                            className={row.status === 'active' ? 'font-medium text-amber-600 hover:text-amber-500' : 'font-medium text-emerald-600 hover:text-emerald-500'}
                                                         >
                                                             {row.status === 'active' ? 'Make Inactive' : 'Make Active'}
                                                         </button>
@@ -597,7 +621,7 @@ export default function Show({
                                                     >
                                                         <input type="hidden" name="_token" value={csrf} />
                                                         <input type="hidden" name="_method" value="DELETE" />
-                                                        <button type="submit" className="text-rose-600 hover:text-rose-500">Delete</button>
+                                                        <button type="submit" className="font-medium text-rose-600 hover:text-rose-500">Delete</button>
                                                     </form>
                                                 </div>
                                             </td>
@@ -609,22 +633,76 @@ export default function Show({
 
                         <form method="POST" action={routes?.project_user_store} data-native="true" className="grid gap-4 rounded-2xl border border-slate-300 bg-white p-4 md:grid-cols-2 text-sm">
                             <input type="hidden" name="_token" value={csrf} />
-                            <div>
-                                <label className="text-slate-600">Project</label>
+                            <div className="md:col-span-2">
+                                <label className="font-medium text-slate-600">Assigned Projects (Select one or multiple)</label>
                                 <SearchableSelect
-                                    name="project_id"
-                                    defaultValue={String(projectUserDefaults?.project_id || '')}
-                                    options={projectOptions}
+                                    name="project_ids[]"
+                                    multiple={true}
+                                    defaultValue={projectUserDefaults?.project_ids || (projectUserDefaults?.project_id ? [String(projectUserDefaults?.project_id)] : [])}
+                                    options={projectSelectOptions}
                                     className="mt-2"
-                                    placeholder="Select a project"
+                                    placeholder="Select assigned projects"
                                 />
                             </div>
-                            <div><label className="text-slate-600">Name</label><input name="name" defaultValue={projectUserDefaults?.name || ''} className="ui-input mt-2" /></div>
-                            <div><label className="text-slate-600">Email</label><input name="email" type="email" defaultValue={projectUserDefaults?.email || ''} className="ui-input mt-2" /></div>
-                            <div><label className="text-slate-600">Password</label><input name="password" type="password" className="ui-input mt-2" /></div>
-                            <div className="md:col-span-2"><label className="text-slate-600">Confirm Password</label><input name="password_confirmation" type="password" className="ui-input mt-2" /></div>
+                            <div><label className="text-slate-600">Name</label><input name="name" defaultValue={projectUserDefaults?.name || ''} className="ui-input mt-2" required /></div>
+                            <div><label className="text-slate-600">Email</label><input name="email" type="email" defaultValue={projectUserDefaults?.email || ''} className="ui-input mt-2" required /></div>
+                            <div><label className="text-slate-600">Password</label><input name="password" type="password" className="ui-input mt-2" required /></div>
+                            <div><label className="text-slate-600">Confirm Password</label><input name="password_confirmation" type="password" className="ui-input mt-2" required /></div>
                             <div className="md:col-span-2 flex justify-end"><button type="submit" className="ui-btn-primary">Create project login</button></div>
                         </form>
+
+                        {editingProjectUser ? (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+                                <div className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                                        <h3 className="text-base font-semibold text-slate-800">Edit Project Login</h3>
+                                        <button type="button" onClick={() => setEditingProjectUser(null)} className="text-lg text-slate-400 hover:text-slate-600">✕</button>
+                                    </div>
+                                    <form method="POST" action={editingProjectUser.routes?.update} data-native="true" className="space-y-4 text-sm">
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <input type="hidden" name="_method" value="PUT" />
+                                        <div>
+                                            <label className="font-medium text-slate-700">Assigned Projects</label>
+                                            <SearchableSelect
+                                                name="project_ids[]"
+                                                multiple={true}
+                                                defaultValue={(editingProjectUser.project_ids || (editingProjectUser.project_id ? [editingProjectUser.project_id] : [])).map(String)}
+                                                options={projectSelectOptions}
+                                                className="mt-1"
+                                                placeholder="Select assigned projects"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="font-medium text-slate-700">Name</label>
+                                            <input name="name" defaultValue={editingProjectUser.name} className="ui-input mt-1" required />
+                                        </div>
+                                        <div>
+                                            <label className="font-medium text-slate-700">Email</label>
+                                            <input name="email" type="email" defaultValue={editingProjectUser.email} className="ui-input mt-1" required />
+                                        </div>
+                                        <div>
+                                            <label className="font-medium text-slate-700">Status</label>
+                                            <select name="status" defaultValue={editingProjectUser.status} className="ui-input mt-1">
+                                                <option value="active">Active</option>
+                                                <option value="inactive">Inactive</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="font-medium text-slate-700">New Password (optional)</label>
+                                            <input name="password" type="password" className="ui-input mt-1" placeholder="Leave blank to keep current password" />
+                                        </div>
+                                        <div>
+                                            <label className="font-medium text-slate-700">Confirm New Password</label>
+                                            <input name="password_confirmation" type="password" className="ui-input mt-1" />
+                                        </div>
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <button type="button" onClick={() => setEditingProjectUser(null)} className="ui-btn-secondary">Cancel</button>
+                                            <button type="submit" className="ui-btn-primary">Update project login</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
                 ) : null}
 

@@ -54,8 +54,7 @@ class Customer extends Model
     public function projectUsers(): HasMany
     {
         return $this->hasMany(User::class)
-            ->where('role', Role::CLIENT_PROJECT)
-            ->whereNotNull('project_id');
+            ->where('role', Role::CLIENT_PROJECT);
     }
 
     public function subscriptions(): HasMany
