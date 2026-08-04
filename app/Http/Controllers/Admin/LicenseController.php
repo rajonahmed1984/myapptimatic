@@ -105,6 +105,8 @@ class LicenseController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', License::class);
+
         $data = $this->validatedLicenseData($request, false);
 
         $licenseKey = $data['license_key'] ?: License::generateKey();
@@ -157,6 +159,8 @@ class LicenseController extends Controller
 
     public function update(Request $request, License $license)
     {
+        $this->authorize('update', $license);
+
         $data = $this->validatedLicenseData($request, true, $license);
 
         $data['max_domains'] = 1;
@@ -199,6 +203,8 @@ class LicenseController extends Controller
 
     public function revokeDomain(Request $request, License $license, LicenseDomain $domain)
     {
+        $this->authorize('update', $license);
+
         if ($domain->license_id !== $license->id) {
             abort(404);
         }
@@ -264,6 +270,8 @@ class LicenseController extends Controller
 
     public function destroy(License $license)
     {
+        $this->authorize('delete', $license);
+
         $license->delete();
 
         return redirect()->route('admin.licenses.index')
@@ -293,6 +301,74 @@ class LicenseController extends Controller
 
         return redirect()->route('admin.licenses.index')
             ->with('status', $message);
+    }
+
+    public function reissueKey(Request $request, License $license)
+    {
+        $this->authorize('update', $license);
+
+        $data = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $oldKey = $license->license_key;
+        do {
+            $newKey = License::generateKey();
+        } while (License::where('license_key', $newKey)->exists());
+
+        $license->update(['license_key' => $newKey]);
+
+        \App\Models\StatusAuditLog::logChange(
+            License::class,
+            $license->id,
+            '****'.substr((string) $oldKey, -4),
+            '****'.substr($newKey, -4),
+            'key_reissued',
+            $request->user()?->id,
+            ['reason' => $data['reason'] ?? null]
+        );
+
+        return $this->redirectAfterLicenseAction($request, $license, 'License key reissued. The previous key no longer works.');
+    }
+
+    public function issueCertificate(Request $request, License $license, \App\Services\LicenseCertificateService $certificateService)
+    {
+        $this->authorize('update', $license);
+
+        $cert = $certificateService->issue($license, $request->user()?->id);
+
+        return $this->redirectAfterLicenseAction($request, $license, 'Signed license certificate issued (cert '.$cert->cert_uuid.').');
+    }
+
+    public function revokeCertificate(
+        Request $request,
+        License $license,
+        \App\Models\LicenseCertificate $certificate,
+        \App\Services\LicenseCertificateService $certificateService
+    ) {
+        $this->authorize('update', $license);
+        abort_unless($certificate->license_id === $license->id, 404);
+
+        $certificateService->revoke($certificate, $request->user()?->id, (string) $request->input('reason', 'manual_revoke'));
+
+        return $this->redirectAfterLicenseAction($request, $license, 'License certificate revoked.');
+    }
+
+    public function downloadCertificate(License $license)
+    {
+        $this->authorize('view', $license);
+
+        $cert = $license->certificates()->where('status', 'active')->latest()->first();
+
+        if (! $cert) {
+            return response()->json(['error' => 'No active certificate for this license.'], 404);
+        }
+
+        return response()->json([
+            'payload' => $cert->payload,
+            'signature' => $cert->signature,
+            'key_id' => $cert->key_id,
+        ]);
     }
 
     public function syncStatus(License $license)

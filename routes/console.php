@@ -25,6 +25,9 @@ try {
 $billing = Schedule::command('billing:run')->daily();
 CronActivityLogger::track($billing, 'billing:run');
 
+$ownershipTransfers = Schedule::command('ownership-transfers:run')->hourly();
+CronActivityLogger::track($ownershipTransfers, 'ownership-transfers:run');
+
 // Frequent tasks (every 5 minutes via cron-frequent.php)
 $defaultQueue = Schedule::command('queue:work --queue=default --stop-when-empty --tries=3 --max-time=50')
     ->everyMinute()

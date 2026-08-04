@@ -132,32 +132,36 @@ class InvoiceController extends Controller
         $taxData = $vatService->calculateTotals($subtotal, 0.0, $issueDate);
         $currency = strtoupper((string) Setting::getValue('currency'));
 
-        $invoice = Invoice::create([
-            'customer_id' => $data['customer_id'],
-            'number' => $this->billingService->nextInvoiceNumber(),
-            'status' => 'unpaid',
-            'issue_date' => $data['issue_date'],
-            'due_date' => $data['due_date'],
-            'subtotal' => $subtotal,
-            'tax_rate_percent' => $taxData['tax_rate_percent'],
-            'tax_mode' => $taxData['tax_mode'],
-            'tax_amount' => $taxData['tax_amount'],
-            'late_fee' => 0,
-            'total' => $taxData['total'],
-            'currency' => $currency,
-            'notes' => $data['notes'] ?? null,
-            'type' => 'manual',
-        ]);
-
-        foreach ($items as $item) {
-            InvoiceItem::create([
-                'invoice_id' => $invoice->id,
-                'description' => $item['description'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'line_total' => $item['line_total'],
+        $invoice = DB::transaction(function () use ($data, $items, $subtotal, $taxData, $currency) {
+            $invoice = Invoice::create([
+                'customer_id' => $data['customer_id'],
+                'number' => $this->billingService->nextInvoiceNumber(),
+                'status' => 'unpaid',
+                'issue_date' => $data['issue_date'],
+                'due_date' => $data['due_date'],
+                'subtotal' => $subtotal,
+                'tax_rate_percent' => $taxData['tax_rate_percent'],
+                'tax_mode' => $taxData['tax_mode'],
+                'tax_amount' => $taxData['tax_amount'],
+                'late_fee' => 0,
+                'total' => $taxData['total'],
+                'currency' => $currency,
+                'notes' => $data['notes'] ?? null,
+                'type' => 'manual',
             ]);
-        }
+
+            foreach ($items as $item) {
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'description' => $item['description'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'line_total' => $item['line_total'],
+                ]);
+            }
+
+            return $invoice;
+        });
 
         SystemLogger::write('activity', 'Manual invoice created.', [
             'invoice_id' => $invoice->id,
@@ -293,29 +297,51 @@ class InvoiceController extends Controller
     ): RedirectResponse|JsonResponse {
         $wasPaid = $invoice->status === 'paid';
         $previousStatus = $invoice->status;
-        $invoice->update([
-            'status' => 'paid',
-            'paid_at' => Carbon::now(),
-        ]);
 
-        \App\Models\StatusAuditLog::logChange(
-            Invoice::class,
-            $invoice->id,
-            $previousStatus,
-            'paid',
-            'manual_mark_paid',
-            $request->user()?->id
-        );
+        DB::transaction(function () use ($invoice, $previousStatus, $wasPaid, $request) {
+            $invoice->update([
+                'status' => 'paid',
+                'paid_at' => Carbon::now(),
+            ]);
+
+            \App\Models\StatusAuditLog::logChange(
+                Invoice::class,
+                $invoice->id,
+                $previousStatus,
+                'paid',
+                'manual_mark_paid',
+                $request->user()?->id
+            );
+
+            if (! $wasPaid) {
+                if ($invoice->subscription_id) {
+                    $sub = $invoice->subscription ?: \App\Models\Subscription::find($invoice->subscription_id);
+                    if ($sub) {
+                        app(\App\Services\StatusUpdateService::class)->unsuspendSubscriptionIfEligible($sub);
+                    }
+                }
+
+                // Check if customer has any remaining unpaid/overdue invoices
+                // If not, clear the billing block
+                $hasUnpaidInvoices = Invoice::query()
+                    ->where('customer_id', $invoice->customer_id)
+                    ->whereIn('status', ['unpaid', 'overdue'])
+                    ->whereRaw(
+                        "(COALESCE(total, 0) - COALESCE((SELECT SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) FROM accounting_entries WHERE accounting_entries.invoice_id = invoices.id), 0)) > 0.009"
+                    )
+                    ->exists();
+
+                if (! $hasUnpaidInvoices) {
+                    // Customer has no more unpaid invoices, restore access immediately
+                    \App\Models\Customer::query()
+                        ->where('id', $invoice->customer_id)
+                        ->update(['access_override_until' => null]);
+                }
+            }
+        });
 
         if (! $wasPaid) {
             $freshInvoice = $invoice->fresh('customer');
-
-            if ($invoice->subscription_id) {
-                $sub = $invoice->subscription ?: \App\Models\Subscription::find($invoice->subscription_id);
-                if ($sub) {
-                    app(\App\Services\StatusUpdateService::class)->unsuspendSubscriptionIfEligible($sub);
-                }
-            }
 
             $adminNotifications->sendInvoicePaid($freshInvoice);
             try {
@@ -334,23 +360,6 @@ class InvoiceController extends Controller
                     'invoice_id' => $invoice->id,
                     'error' => $e->getMessage(),
                 ], level: 'error');
-            }
-
-            // Check if customer has any remaining unpaid/overdue invoices
-            // If not, clear the billing block
-            $hasUnpaidInvoices = Invoice::query()
-                ->where('customer_id', $invoice->customer_id)
-                ->whereIn('status', ['unpaid', 'overdue'])
-                ->whereRaw(
-                    "(COALESCE(total, 0) - COALESCE((SELECT SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) FROM accounting_entries WHERE accounting_entries.invoice_id = invoices.id), 0)) > 0.009"
-                )
-                ->exists();
-
-            if (! $hasUnpaidInvoices) {
-                // Customer has no more unpaid invoices, restore access immediately
-                \App\Models\Customer::query()
-                    ->where('id', $invoice->customer_id)
-                    ->update(['access_override_until' => null]);
             }
         }
 

@@ -66,6 +66,7 @@ use App\Http\Controllers\Client\DomainController as ClientDomainController;
 use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;
 use App\Http\Controllers\Client\ManualPaymentController;
 use App\Http\Controllers\Client\LicenseController as ClientLicenseController;
+use App\Http\Controllers\Client\TransferController as ClientTransferController;
 use App\Http\Controllers\Client\OrderController as ClientOrderController;
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\Client\ServiceController as ClientServiceController;
@@ -426,6 +427,14 @@ Route::middleware([
             ->middleware('project.financial')
             ->middleware(HandleInertiaRequests::class)
             ->name('licenses.index');
+        Route::get('/transfers', [ClientTransferController::class, 'index'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('transfers.index');
+        Route::get('/transfers/{transfer}/confirm', [ClientTransferController::class, 'confirm'])
+            ->middleware(HandleInertiaRequests::class)
+            ->name('transfers.confirm');
+        Route::post('/transfers/{transfer}/accept', [ClientTransferController::class, 'accept'])->name('transfers.accept');
+        Route::post('/transfers/{transfer}/reject', [ClientTransferController::class, 'reject'])->name('transfers.reject');
         Route::get('/projects', [\App\Http\Controllers\Client\ProjectController::class, 'index'])
             ->middleware(HandleInertiaRequests::class)
             ->name('projects.index');

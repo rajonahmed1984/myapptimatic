@@ -18,6 +18,8 @@ class License extends Model
         'expires_at',
         'auto_suspend_override_until',
         'max_domains',
+        'seat_limit',
+        'last_seats_reported',
         'last_check_at',
         'last_check_ip',
         'last_verified_at',
@@ -32,6 +34,8 @@ class License extends Model
         'expires_at' => 'date',
         'auto_suspend_override_until' => 'date',
         'max_domains' => 'integer',
+        'seat_limit' => 'integer',
+        'last_seats_reported' => 'integer',
         'last_check_at' => 'datetime',
         'last_verified_at' => 'datetime',
         'expiry_first_notice_sent_at' => 'datetime',
@@ -57,5 +61,10 @@ class License extends Model
     public function domains(): HasMany
     {
         return $this->hasMany(LicenseDomain::class);
+    }
+
+    public function certificates(): HasMany
+    {
+        return $this->hasMany(LicenseCertificate::class);
     }
 }

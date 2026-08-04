@@ -65,6 +65,31 @@ function metricValue(value) {
     return Number(value || 0).toLocaleString();
 }
 
+const TASK_STATUS_LABELS = {
+    pending: 'Pending',
+    todo: 'To Do',
+    blocked: 'Blocked',
+    in_progress: 'In Progress',
+    completed: 'Completed',
+    done: 'Done',
+};
+
+function taskStatusLabel(status) {
+    if (!status) {
+        return '--';
+    }
+
+    if (TASK_STATUS_LABELS[status]) {
+        return TASK_STATUS_LABELS[status];
+    }
+
+    return String(status)
+        .split('_')
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
 function taskRoute(template, projectId, taskId) {
     if (!template) {
         return '#';
@@ -262,27 +287,6 @@ export default function Dashboard({
     const businessPulseIncomeScore = Number(businessPulse?.income_score ?? 0);
     const businessPulseExpenseScore = Number(businessPulse?.expense_score ?? 0);
     const businessPulseOperationsScore = Number(businessPulse?.operations_score ?? 0);
-    const businessPulseMessage = businessPulseAi?.reason || 'AI-verified business pulse with supporting health, cashflow and operational pressure metrics.';
-    const businessPulseAction = businessPulseAi?.action || (businessPulseAi?.error ? `AI insight unavailable: ${businessPulseAi.error}` : null);
-    const overdueInvoices = Number(businessPulse?.overdue_invoices || 0);
-    const unpaidInvoices = Number(businessPulse?.unpaid_invoices || 0);
-    const openReceivables = overdueInvoices + unpaidInvoices;
-    const receivableRiskPct = Number(businessPulse?.overdue_share_percent || 0);
-    const payableTotal = Number(businessPulse?.payable_total || 0);
-    const payablePressurePct = Number(businessPulse?.payable_pressure_percent || 0);
-    const expenseRatioPct = Number(businessPulse?.expense_ratio_percent || 0);
-    const incomeGrowthPct = businessPulse?.income_growth_percent;
-    const net30d = Number(businessPulse?.net_30d || 0);
-
-    const aiSummaryDetails = [
-        `Net cash position (30d): ${money(currency, net30d)} (${net30d >= 0 ? 'surplus' : 'deficit'}).`,
-        `Receivables exposure: ${overdueInvoices.toLocaleString()} overdue of ${openReceivables.toLocaleString()} open invoices (${receivableRiskPct.toFixed(1)}% risk).`,
-        `Payables exposure: ${money(currency, payableTotal)} total with ${payablePressurePct.toFixed(1)}% pressure.`,
-        `Expense-to-income ratio: ${expenseRatioPct.toFixed(1)}% in the current review window.`,
-        incomeGrowthPct === null || incomeGrowthPct === undefined
-            ? 'Income growth trend: N/A due to insufficient comparable period data.'
-            : `Income growth trend: ${Number(incomeGrowthPct).toFixed(1)}% versus previous period.`,
-    ];
     const hasAiVerification = Boolean(businessPulseAi?.verdict || businessPulseAi?.reason);
     const scoreBadgeClass = (score) => {
         if (score >= 80) {
@@ -507,20 +511,6 @@ export default function Dashboard({
                             Overall: {businessPulseScore}/100
                         </span>
                     </div>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">AI summary</div>
-                    <div className="mt-2 text-sm leading-6 text-slate-700">{businessPulseMessage}</div>
-                    <ul className="mt-3 space-y-1.5 text-xs leading-5 text-slate-600">
-                        {aiSummaryDetails.map((detail, index) => (
-                            <li key={`ai-summary-detail-${index}`} className="flex items-start gap-2">
-                                <span className="mt-[6px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
-                                <span>{detail}</span>
-                            </li>
-                        ))}
-                    </ul>
-                    {businessPulseAction ? <div className="mt-2 text-xs leading-5 text-slate-500">Action: {businessPulseAction}</div> : null}
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -1093,7 +1083,7 @@ function TaskList({ title, tasks, routes, variant = 'default' }) {
                     >
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                             <div className="text-[13px] font-semibold leading-5 text-slate-900 sm:text-sm">{task.title}</div>
-                            <span className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${styles.badge}`}>{task.status}</span>
+                            <span className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${styles.badge}`}>{taskStatusLabel(task.status)}</span>
                         </div>
                         <div className="mt-1 text-[11px] leading-4 text-slate-500 sm:text-xs sm:leading-5">
                             {task.project_name} | Subtasks: {metricValue(task.subtasks_count)} | Due: {task.due_date || '--'}

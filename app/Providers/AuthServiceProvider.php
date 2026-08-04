@@ -11,6 +11,8 @@ use App\Models\ProjectTask;
 use App\Models\ProjectTaskSubtask;
 use App\Models\License;
 use App\Models\MailAccount;
+use App\Models\OwnershipTransfer;
+use App\Policies\OwnershipTransferPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\LeaveRequestPolicy;
 use App\Policies\PayrollItemPolicy;
@@ -38,6 +40,7 @@ class AuthServiceProvider extends ServiceProvider
         ProjectTaskSubtask::class => ProjectTaskSubtaskPolicy::class,
         License::class => LicensePolicy::class,
         MailAccount::class => MailAccountPolicy::class,
+        OwnershipTransfer::class => OwnershipTransferPolicy::class,
     ];
 
     public function boot(): void

@@ -1081,6 +1081,16 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
+        $hasHistory = $customer->invoices()->exists()
+            || $customer->subscriptions()->exists()
+            || $customer->projects()->exists()
+            || $customer->orders()->exists();
+
+        if ($hasHistory) {
+            return redirect()->route('admin.customers.index')
+                ->with('error', 'This customer has invoices, subscriptions, projects, or orders on record and cannot be deleted. Remove or reassign that history first.');
+        }
+
         SystemLogger::write('activity', 'Customer deleted.', [
             'customer_id' => $customer->id,
             'name' => $customer->name,

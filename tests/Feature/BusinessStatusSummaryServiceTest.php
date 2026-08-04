@@ -8,6 +8,7 @@ use App\Models\CommissionEarning;
 use App\Models\Customer;
 use App\Models\ExpenseInvoice;
 use App\Models\Invoice;
+use App\Models\SalesRepresentative;
 use App\Models\User;
 use App\Services\BusinessStatusSummaryService;
 use App\Services\ExpenseEntryService;
@@ -82,9 +83,11 @@ class BusinessStatusSummaryServiceTest extends TestCase
             'created_by' => $admin->id,
         ]);
 
-        $this->createCommission('payable', 30, 'phase5-payable');
-        $this->createCommission('paid', 20, 'phase5-paid');
-        $this->createCommission('reversed', 99, 'phase5-reversed');
+        $salesRep = SalesRepresentative::create(['name' => 'Phase5 Rep', 'status' => 'active']);
+
+        $this->createCommission($salesRep->id, 'payable', 30, 'phase5-payable');
+        $this->createCommission($salesRep->id, 'paid', 20, 'phase5-paid');
+        $this->createCommission($salesRep->id, 'reversed', 99, 'phase5-reversed');
 
         $incomeSummary = [
             'total' => 165.0,
@@ -191,10 +194,10 @@ class BusinessStatusSummaryServiceTest extends TestCase
         ], $overrides));
     }
 
-    private function createCommission(string $status, float $amount, string $key): void
+    private function createCommission(int $salesRepId, string $status, float $amount, string $key): void
     {
         CommissionEarning::create([
-            'sales_representative_id' => 1,
+            'sales_representative_id' => $salesRepId,
             'source_type' => 'project',
             'source_id' => 1,
             'currency' => 'BDT',

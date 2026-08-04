@@ -228,7 +228,15 @@ class SubscriptionController extends Controller
                 'index' => route('admin.subscriptions.index'),
                 'edit' => route('admin.subscriptions.edit', $subscription),
                 'move_owner' => route('admin.subscriptions.move-owner', $subscription),
+                'renew_now' => route('admin.subscriptions.renew-now', $subscription),
+                'change_plan' => route('admin.subscriptions.change-plan', $subscription),
             ],
+            'plans' => Plan::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Plan $plan) => ['id' => (string) $plan->id, 'name' => (string) $plan->name])
+                ->all(),
             'customers' => Customer::query()
                 ->where('id', '!=', $subscription->customer_id)
                 ->orderBy('name')
@@ -288,6 +296,67 @@ class SubscriptionController extends Controller
 
         return redirect()->route('admin.subscriptions.show', $subscription)
             ->with('status', 'Subscription owner transferred successfully.');
+    }
+
+    public function renewNow(Request $request, Subscription $subscription, BillingService $billingService): RedirectResponse
+    {
+        if (! in_array((string) $subscription->status, ['active', 'suspended'], true)) {
+            return redirect()->route('admin.subscriptions.show', $subscription)
+                ->with('error', 'Only active or suspended subscriptions can be renewed.');
+        }
+
+        $invoice = $billingService->generateInvoiceForSubscription($subscription, Carbon::today());
+
+        if (! $invoice) {
+            return redirect()->route('admin.subscriptions.show', $subscription)
+                ->with('status', 'No new invoice was needed — the current period is already billed.');
+        }
+
+        \App\Support\SystemLogger::write('activity', 'Subscription manually renewed.', [
+            'subscription_id' => $subscription->id,
+            'invoice_id' => $invoice->id,
+        ], $request->user()?->id, $request->ip());
+
+        return redirect()->route('admin.subscriptions.show', $subscription)
+            ->with('status', 'Invoice #'.($invoice->number ?: $invoice->id).' generated.');
+    }
+
+    public function changePlan(Request $request, Subscription $subscription): RedirectResponse
+    {
+        $data = $request->validate([
+            'plan_id' => ['required', 'exists:plans,id', Rule::notIn([$subscription->plan_id])],
+            'subscription_amount' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $oldPlan = $subscription->plan;
+        $newPlan = Plan::findOrFail($data['plan_id']);
+        $newAmount = array_key_exists('subscription_amount', $data) && $data['subscription_amount'] !== null
+            ? (float) $data['subscription_amount']
+            : (float) $newPlan->price;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $newPlan, $newAmount) {
+            $subscription->update([
+                'plan_id' => $newPlan->id,
+                'subscription_amount' => $newAmount,
+            ]);
+        });
+
+        \App\Models\StatusAuditLog::logChange(
+            Subscription::class,
+            $subscription->id,
+            (string) ($oldPlan?->name ?? 'unknown'),
+            (string) $newPlan->name,
+            'plan_change',
+            $request->user()?->id,
+            [
+                'old_plan_id' => $oldPlan?->id,
+                'new_plan_id' => $newPlan->id,
+                'new_amount' => $newAmount,
+            ]
+        );
+
+        return redirect()->route('admin.subscriptions.show', $subscription)
+            ->with('status', 'Plan changed to '.$newPlan->name.'.');
     }
 
     public function update(Request $request, Subscription $subscription): RedirectResponse|JsonResponse
@@ -643,7 +712,16 @@ class SubscriptionController extends Controller
                             'unsuspend' => route('admin.licenses.unsuspend', $license),
                             'reactivate' => route('admin.licenses.reactivate', $license),
                             'terminate' => route('admin.licenses.terminate', $license),
+                            'reissue_key' => route('admin.licenses.reissue-key', $license),
+                            'certificate_issue' => route('admin.licenses.certificate.issue', $license),
+                            'certificate_revoke' => $license->certificates->firstWhere('status', 'active')
+                                ? route('admin.licenses.certificate.revoke', [$license, $license->certificates->firstWhere('status', 'active')])
+                                : null,
                         ],
+                        'certificate' => optional($license->certificates->firstWhere('status', 'active'), fn ($cert) => [
+                            'cert_uuid' => $cert->cert_uuid,
+                            'issued_at' => $cert->issued_at?->format('d-m-Y H:i'),
+                        ]),
                         'domains' => $license->domains->map(function (LicenseDomain $domain) use ($license) {
                             return [
                                 'id' => $domain->id,

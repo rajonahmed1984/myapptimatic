@@ -71,7 +71,6 @@ class BkashBridgeController extends Controller
 
             return response()->json([
                 'message' => 'Failed to retrieve bKash token.',
-                'error' => $e->getMessage()
             ], 502);
         }
     }

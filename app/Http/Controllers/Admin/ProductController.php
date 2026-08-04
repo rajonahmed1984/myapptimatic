@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\Product;
+use App\Models\Subscription;
 use App\Support\AjaxResponse;
 use App\Support\SystemLogger;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -112,6 +114,22 @@ class ProductController extends Controller
 
     public function destroy(Request $request, Product $product): RedirectResponse|JsonResponse
     {
+        $planIds = $product->plans()->pluck('id');
+
+        $hasHistory = $product->licenses()->exists()
+            || Order::where('product_id', $product->id)->orWhereIn('plan_id', $planIds)->exists()
+            || ($planIds->isNotEmpty() && Subscription::whereIn('plan_id', $planIds)->exists());
+
+        if ($hasHistory) {
+            $message = 'This product has orders, subscriptions, or licenses on record and cannot be deleted.';
+
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError($message);
+            }
+
+            return redirect()->route('admin.products.index')->with('error', $message);
+        }
+
         SystemLogger::write('activity', 'Product deleted.', [
             'product_id' => $product->id,
             'name' => $product->name,

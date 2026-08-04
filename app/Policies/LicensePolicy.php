@@ -23,7 +23,17 @@ class LicensePolicy
         return false;
     }
 
+    public function create($actor): bool
+    {
+        return $actor instanceof User && $actor->isAdmin();
+    }
+
     public function update($actor, License $license): bool
+    {
+        return $actor instanceof User && $actor->isAdmin();
+    }
+
+    public function delete($actor, License $license): bool
     {
         return $actor instanceof User && $actor->isAdmin();
     }

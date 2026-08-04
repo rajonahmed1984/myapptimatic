@@ -29,6 +29,7 @@ export default function Show({
     invoices = [],
     routes = {},
     customers = [],
+    plans = [],
     related_counts = {},
 }) {
     const { props } = usePage();
@@ -115,6 +116,71 @@ export default function Show({
                 <div className="mt-4">
                     <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Notes</div>
                     <div className="mt-1 text-sm text-slate-700">{subscription?.notes || '--'}</div>
+                </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <div className="card p-6">
+                    <div className="mb-2 text-sm font-semibold text-slate-800">Renew Now</div>
+                    <p className="mb-4 text-xs text-slate-500">
+                        Manually generate an invoice for this subscription's current period, outside the normal billing cycle.
+                    </p>
+                    <form action={routes?.renew_now} method="POST" data-native="true">
+                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="_method" value="PUT" />
+                        <button
+                            type="submit"
+                            className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition-colors"
+                            onClick={(e) => {
+                                if (!confirm('Generate a new invoice for this subscription now?')) {
+                                    e.preventDefault();
+                                }
+                            }}
+                        >
+                            Renew Now
+                        </button>
+                    </form>
+                </div>
+
+                <div className="card p-6">
+                    <div className="mb-2 text-sm font-semibold text-slate-800">Change Plan</div>
+                    <p className="mb-4 text-xs text-slate-500">
+                        Switch this subscription to a different plan. The subscription amount updates to the new plan's price unless overridden below.
+                    </p>
+                    <form action={routes?.change_plan} method="POST" data-native="true" className="space-y-3">
+                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="_method" value="PUT" />
+                        <select
+                            name="plan_id"
+                            required
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            defaultValue=""
+                        >
+                            <option value="" disabled>Select new plan...</option>
+                            {plans.map((plan) => (
+                                <option key={plan.id} value={plan.id}>{plan.name}</option>
+                            ))}
+                        </select>
+                        <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            name="subscription_amount"
+                            placeholder="Override amount (optional)"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        />
+                        <button
+                            type="submit"
+                            className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition-colors"
+                            onClick={(e) => {
+                                if (!confirm('Change this subscription to the selected plan?')) {
+                                    e.preventDefault();
+                                }
+                            }}
+                        >
+                            Change Plan
+                        </button>
+                    </form>
                 </div>
             </div>
 

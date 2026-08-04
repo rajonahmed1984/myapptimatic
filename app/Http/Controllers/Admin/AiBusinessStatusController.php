@@ -89,8 +89,10 @@ class AiBusinessStatusController extends Controller
                 'metrics' => $metrics,
             ]);
         } catch (\Throwable $e) {
+            report($e);
+
             return response()->json([
-                'error' => $e->getMessage(),
+                'error' => 'Unable to generate AI summary right now.',
             ], 422);
         }
     }

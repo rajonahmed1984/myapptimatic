@@ -50,7 +50,7 @@ class ClientNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
 
         $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SYSTEM);
     }
@@ -89,7 +89,7 @@ class ClientNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
         $attachment = $this->invoiceAttachment($order->invoice);
 
         $this->sendGeneric(
@@ -151,9 +151,115 @@ class ClientNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
 
         $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
+    }
+
+    public function sendTransferInvite(\App\Models\OwnershipTransfer $transfer, string $plainToken): void
+    {
+        $transfer->loadMissing(['project', 'fromCustomer', 'toCustomer.users']);
+
+        $recipients = $transfer->toCustomer?->users
+            ?->where('role', \App\Enums\Role::CLIENT)
+            ->pluck('email')
+            ->filter();
+
+        if (! $recipients || $recipients->isEmpty()) {
+            return;
+        }
+
+        $template = EmailTemplate::query()->where('key', 'ownership_transfer_invite')->first();
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
+        $confirmUrl = route('client.transfers.confirm', ['transfer' => $transfer->id, 'token' => $plainToken]);
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $subject = $template?->subject ?: "You've been invited to receive a project transfer - {$companyName}";
+        $body = $template?->body ?: "Hi,\n\n{{from_customer_name}} wants to transfer project \"{{project_name}}\" to your account.\n\nReview and respond: {{confirm_url}}\n\nThis invite expires on {{expires_at}}.\n\n{{company_name}}";
+
+        $replacements = [
+            '{{from_customer_name}}' => $transfer->fromCustomer?->name ?? '--',
+            '{{project_name}}' => $transfer->project?->name ?? '--',
+            '{{confirm_url}}' => $confirmUrl,
+            '{{expires_at}}' => $transfer->token_expires_at?->format($dateFormat) ?? '--',
+            '{{company_name}}' => $companyName,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
+
+        foreach ($recipients as $email) {
+            $this->sendGeneric($email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SYSTEM);
+        }
+    }
+
+    public function sendTransferAccepted(\App\Models\OwnershipTransfer $transfer): void
+    {
+        $transfer->loadMissing(['project', 'toCustomer', 'fromCustomer.users']);
+
+        $recipients = $transfer->fromCustomer?->users
+            ?->where('role', \App\Enums\Role::CLIENT)
+            ->pluck('email')
+            ->filter();
+
+        if (! $recipients || $recipients->isEmpty()) {
+            return;
+        }
+
+        $template = EmailTemplate::query()->where('key', 'ownership_transfer_accepted')->first();
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $subject = $template?->subject ?: "Your transfer request was accepted - {$companyName}";
+        $body = $template?->body ?: "Hi,\n\n{{to_customer_name}} accepted your transfer of project \"{{project_name}}\".\n\n{{company_name}}";
+
+        $replacements = [
+            '{{to_customer_name}}' => $transfer->toCustomer?->name ?? '--',
+            '{{project_name}}' => $transfer->project?->name ?? '--',
+            '{{company_name}}' => $companyName,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
+
+        foreach ($recipients as $email) {
+            $this->sendGeneric($email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SYSTEM);
+        }
+    }
+
+    public function sendTransferRejected(\App\Models\OwnershipTransfer $transfer): void
+    {
+        $transfer->loadMissing(['project', 'toCustomer', 'fromCustomer.users']);
+
+        $recipients = $transfer->fromCustomer?->users
+            ?->where('role', \App\Enums\Role::CLIENT)
+            ->pluck('email')
+            ->filter();
+
+        if (! $recipients || $recipients->isEmpty()) {
+            return;
+        }
+
+        $template = EmailTemplate::query()->where('key', 'ownership_transfer_rejected')->first();
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $subject = $template?->subject ?: "Your transfer request was declined - {$companyName}";
+        $body = $template?->body ?: "Hi,\n\n{{to_customer_name}} declined your transfer of project \"{{project_name}}\".\n\n{{company_name}}";
+
+        $replacements = [
+            '{{to_customer_name}}' => $transfer->toCustomer?->name ?? '--',
+            '{{project_name}}' => $transfer->project?->name ?? '--',
+            '{{company_name}}' => $companyName,
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
+
+        foreach ($recipients as $email) {
+            $this->sendGeneric($email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SYSTEM);
+        }
     }
 
     public function sendInvoiceCreated(Invoice $invoice): void
@@ -190,7 +296,7 @@ class ClientNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
         $attachment = $this->invoiceAttachment($invoice);
 
         $this->sendGeneric(
@@ -238,7 +344,7 @@ class ClientNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
         $attachment = $this->invoiceAttachment($invoice);
 
         $this->sendGeneric(
@@ -288,7 +394,7 @@ class ClientNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
 
         $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
@@ -360,7 +466,7 @@ class ClientNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
         $attachments = [];
 
         if ($this->shouldAttachInvoiceForStatus($invoiceStatus)) {
@@ -435,7 +541,7 @@ class ClientNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
         $fromEmail = $this->resolveFromEmail($template);
 
         $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
@@ -469,7 +575,7 @@ class ClientNotificationService
         ], $extraReplacements);
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
         $fromEmail = $this->resolveFromEmail($template);
 
         $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SUPPORT);
@@ -527,20 +633,26 @@ class ClientNotificationService
         return str_replace(array_keys($replacements), array_values($replacements), $text);
     }
 
-    private function formatEmailBody(string $body): string
+    private function formatEmailBody(string $body, array $replacements = []): string
     {
         $trimmed = trim($body);
         if ($trimmed === '') {
             return '';
         }
 
+        // Detect HTML-ness on the raw template (before substitution), so a
+        // replacement value can't itself flip this into the unescaped branch.
         $looksLikeHtml = Str::contains($trimmed, ['<p', '<br', '<div', '<table', '<a ', '<strong', '<em', '<ul', '<ol', '<li']);
 
         if ($looksLikeHtml) {
-            return $trimmed;
+            // Escape each replacement value individually — the template markup stays
+            // trusted/unescaped, but substituted data (names, notes, etc.) can't inject HTML.
+            $escaped = array_map(static fn ($value) => e((string) $value), $replacements);
+
+            return $this->applyReplacements($trimmed, $escaped);
         }
 
-        return nl2br(e($trimmed));
+        return nl2br(e($this->applyReplacements($trimmed, $replacements)));
     }
 
     private function invoiceAttachment(Invoice $invoice): ?array

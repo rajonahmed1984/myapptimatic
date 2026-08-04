@@ -97,45 +97,43 @@ class ProjectController extends Controller
             ->whereNotIn('status', ['completed', 'done'])
             ->count();
 
-        $dashboardProjectQuery = function () use ($today, $dueSoonThreshold) {
-            return Project::query()
-                ->with('customer:id,name')
-                ->withCount([
-                    'tasks as total_tasks_count',
-                    'tasks as open_tasks_count' => fn ($query) => $query->whereIn('status', ['pending', 'in_progress', 'blocked', 'todo']),
-                    'tasks as completed_tasks_count' => fn ($query) => $query->whereIn('status', ['completed', 'done']),
-                    'tasks as overdue_tasks_count' => fn ($query) => $query
-                        ->whereNotNull('due_date')
-                        ->whereDate('due_date', '<', $today)
-                        ->whereNotIn('status', ['completed', 'done']),
-                    'tasks as due_soon_tasks_count' => fn ($query) => $query
-                        ->whereNotNull('due_date')
-                        ->whereDate('due_date', '>=', $today)
-                        ->whereDate('due_date', '<=', $dueSoonThreshold)
-                        ->whereNotIn('status', ['completed', 'done']),
-                    'maintenances as active_maintenances_count' => fn ($query) => $query->where('status', 'active'),
-                ])
-                ->get([
-                    'id',
-                    'name',
-                    'customer_id',
-                    'status',
-                    'type',
-                    'currency',
-                    'total_budget',
-                    'due_date',
-                    'created_at',
-                ]);
-        };
+        $dashboardProjects = Project::query()
+            ->with('customer:id,name')
+            ->withCount([
+                'tasks as total_tasks_count',
+                'tasks as open_tasks_count' => fn ($query) => $query->whereIn('status', ['pending', 'in_progress', 'blocked', 'todo']),
+                'tasks as completed_tasks_count' => fn ($query) => $query->whereIn('status', ['completed', 'done']),
+                'tasks as overdue_tasks_count' => fn ($query) => $query
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '<', $today)
+                    ->whereNotIn('status', ['completed', 'done']),
+                'tasks as due_soon_tasks_count' => fn ($query) => $query
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '>=', $today)
+                    ->whereDate('due_date', '<=', $dueSoonThreshold)
+                    ->whereNotIn('status', ['completed', 'done']),
+                'maintenances as active_maintenances_count' => fn ($query) => $query->where('status', 'active'),
+            ])
+            ->get([
+                'id',
+                'name',
+                'customer_id',
+                'status',
+                'type',
+                'currency',
+                'total_budget',
+                'due_date',
+                'created_at',
+            ]);
 
-        $recentProjects = $dashboardProjectQuery()
+        $recentProjects = $dashboardProjects
             ->sortByDesc(fn (Project $project) => $project->created_at?->getTimestamp() ?? 0)
             ->take(6)
             ->map(fn (Project $project) => $this->serializeProjectDashboardRow($project))
             ->values()
             ->all();
 
-        $riskProjects = $dashboardProjectQuery()
+        $riskProjects = $dashboardProjects
             ->filter(function (Project $project) {
                 return (string) $project->status === 'hold'
                     || (int) ($project->overdue_tasks_count ?? 0) > 0
@@ -803,9 +801,24 @@ class ProjectController extends Controller
 
         $financials = $this->financials($project);
 
+        $transferService = app(\App\Services\ProjectTransferService::class);
+        $transferIneligibleReason = $transferService->eligibilityError($project);
+
         return Inertia::render('Admin/Projects/Show', [
             'pageTitle' => 'Project #'.$project->id,
-            'project' => $this->serializeProjectShow($project, $financials, (int) $projectChatUnreadCount),
+            'project' => array_merge(
+                $this->serializeProjectShow($project, $financials, (int) $projectChatUnreadCount),
+                [
+                    'transfer_eligible' => $transferIneligibleReason === null,
+                    'transfer_ineligible_reason' => $transferIneligibleReason,
+                ]
+            ),
+            'transferCustomers' => \App\Models\Customer::query()
+                ->where('id', '!=', $project->customer_id)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn ($c) => ['id' => (string) $c->id, 'name' => (string) $c->name])
+                ->all(),
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
             'taskStatuses' => self::TASK_STATUSES,
@@ -838,6 +851,7 @@ class ProjectController extends Controller
                 'overheads_index' => route('admin.projects.overheads.index', $project),
                 'overheads_store' => route('admin.projects.overheads.store', $project),
                 'maintenance_create' => route('admin.project-maintenances.create', ['project_id' => $project->id]),
+                'transfer_store' => route('admin.projects.transfers.store', $project),
             ],
         ]);
     }
@@ -860,7 +874,9 @@ class ProjectController extends Controller
 
             return response()->json($result);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            report($e);
+
+            return response()->json(['error' => 'Unable to generate AI summary right now.'], 422);
         }
     }
 
@@ -1097,6 +1113,8 @@ class ProjectController extends Controller
 
     public function update(Request $request, Project $project, CommissionService $commissionService): RedirectResponse
     {
+        $this->authorize('update', $project);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:190'],
             'customer_id' => ['required', 'exists:customers,id'],
@@ -1328,6 +1346,8 @@ class ProjectController extends Controller
 
     public function destroy(Project $project): RedirectResponse
     {
+        $this->authorize('delete', $project);
+
         $project->delete();
 
         SystemLogger::write('activity', 'Project deleted.', [

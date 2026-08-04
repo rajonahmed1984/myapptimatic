@@ -22,7 +22,7 @@ class BkashBridgeMiddleware
         }
 
         $headerToken = $request->bearerToken();
-        if (!$headerToken || $headerToken !== $token) {
+        if (!$headerToken || !hash_equals($token, $headerToken)) {
             return response()->json(['message' => 'Unauthorized.'], 401);
         }
 

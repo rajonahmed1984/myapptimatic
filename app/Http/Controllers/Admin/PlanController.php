@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Models\Subscription;
 use App\Support\AjaxResponse;
 use App\Support\SystemLogger;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -220,6 +222,19 @@ class PlanController extends Controller
 
     public function destroy(Request $request, Plan $plan): RedirectResponse|JsonResponse
     {
+        $hasHistory = Order::where('plan_id', $plan->id)->exists()
+            || Subscription::where('plan_id', $plan->id)->exists();
+
+        if ($hasHistory) {
+            $message = 'This plan has orders or subscriptions on record and cannot be deleted.';
+
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError($message);
+            }
+
+            return redirect()->route('admin.plans.index')->with('error', $message);
+        }
+
         SystemLogger::write('activity', 'Plan deleted.', [
             'plan_id' => $plan->id,
             'product_id' => $plan->product_id,

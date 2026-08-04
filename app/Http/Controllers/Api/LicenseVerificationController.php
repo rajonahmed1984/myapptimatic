@@ -31,6 +31,7 @@ class LicenseVerificationController extends Controller
             'license_key' => ['required', 'string'],
             'domain' => ['required', 'string'],
             'license_url' => ['nullable', 'string'],
+            'seats_in_use' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $decision = 'allow';
@@ -38,7 +39,7 @@ class LicenseVerificationController extends Controller
         $domainInput = (string) ($data['domain'] ?? '');
 
         $license = License::query()
-            ->with(['subscription.customer', 'domains'])
+            ->with(['subscription.customer', 'subscription.plan', 'domains'])
             ->where('license_key', $data['license_key'])
             ->first();
 
@@ -50,6 +51,7 @@ class LicenseVerificationController extends Controller
             return $this->blockedResponse($reason, [], $requestId);
         }
 
+        $previousIp = $license->last_check_ip;
         $customer = $license->subscription->customer;
         $autoSuspendOverrideActive = $this->isAutoSuspendOverrideActive($license);
         $autoSuspendOverrideUntil = $license->auto_suspend_override_until?->toDateString();
@@ -101,7 +103,10 @@ class LicenseVerificationController extends Controller
             return $this->blockedResponse($reason, [], $requestId);
         }
 
-        $isLocal = $this->isLocalDomain($domain) || app()->environment('local');
+        // NOTE: intentionally NOT gated on app()->environment('local') — that would bypass
+        // domain-lock and billing-block for every request whenever this server's own APP_ENV
+        // happens to be "local", regardless of the domain actually submitted by the caller.
+        $isLocal = $this->isLocalDomain($domain);
 
         $licenseUrlInput = trim((string) ($data['license_url'] ?? ''));
         if ($licenseUrlInput !== '') {
@@ -167,6 +172,27 @@ class LicenseVerificationController extends Controller
             ]);
         }
 
+        $effectiveSeatLimit = $license->seat_limit ?? $license->subscription->plan?->seat_limit;
+        $seatsInUse = $request->has('seats_in_use') ? (int) $data['seats_in_use'] : null;
+
+        if ($seatsInUse !== null) {
+            $license->update(['last_seats_reported' => $seatsInUse]);
+        }
+
+        if ($effectiveSeatLimit !== null && $seatsInUse !== null && $seatsInUse > $effectiveSeatLimit) {
+            $decision = 'block';
+            $reason = 'seat_limit_exceeded';
+            $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request, [
+                'seat_limit' => $effectiveSeatLimit,
+                'seats_in_use' => $seatsInUse,
+            ]);
+
+            return $this->blockedResponse($reason, [
+                'seat_limit' => $effectiveSeatLimit,
+                'seats_in_use' => $seatsInUse,
+            ], $requestId);
+        }
+
         $invoiceBlock = $this->accessBlockService->invoiceBlockStatus(
             $customer,
             true,
@@ -188,6 +214,10 @@ class LicenseVerificationController extends Controller
             'last_verified_at' => Carbon::now(),
             'last_check_ip' => $request->ip(),
         ]);
+
+        // Audit/anomaly logging only — a changed IP never blocks verification (dynamic IPs,
+        // CDNs, and load balancers make hard IP-locking impractical for legitimate installs).
+        $ipAnomaly = $previousIp && $previousIp !== $request->ip();
 
         if ($invoiceBlock['blocked']) {
             $blockPayload = $invoiceBlock;
@@ -212,6 +242,8 @@ class LicenseVerificationController extends Controller
             $reason = $invoiceBlock['reason'];
             $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request, [
                 'invoice_status' => $invoiceBlock['invoice_status'] ?? null,
+                'ip_anomaly' => $ipAnomaly,
+                'previous_ip' => $ipAnomaly ? $previousIp : null,
             ]);
 
             LicenseBlocked::dispatch($license, $reason, ['request_id' => $requestId]);
@@ -227,6 +259,8 @@ class LicenseVerificationController extends Controller
 
         $usageLogId = $this->logUsage($requestId, $decision, $reason, $license, $license->subscription, $customer, $domain, $request, [
             'notice' => $invoiceBlock['reason'],
+            'ip_anomaly' => $ipAnomaly,
+            'previous_ip' => $ipAnomaly ? $previousIp : null,
         ]);
 
         LicenseVerified::dispatch($license, [
@@ -262,6 +296,8 @@ class LicenseVerificationController extends Controller
             'invoice_overdue_days' => $includeSensitive ? (int) ($invoiceBlock['invoice_overdue_days'] ?? 0) : 0,
             'auto_suspend_override_until' => $includeSensitive ? ($invoiceBlock['auto_suspend_override_until'] ?? null) : null,
             'auto_suspend_override_active' => $includeSensitive ? (bool) ($invoiceBlock['auto_suspend_override_active'] ?? false) : false,
+            'seat_limit' => $effectiveSeatLimit,
+            'seats_in_use' => $seatsInUse,
             'request_id' => $requestId,
         ]);
 

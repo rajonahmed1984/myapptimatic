@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ProjectController;
+use App\Http\Controllers\Admin\OwnershipTransferController;
 use App\Http\Controllers\Admin\CommissionPayoutController;
 use App\Http\Controllers\Admin\CommissionExportController;
 use App\Http\Controllers\Admin\UserDocumentController;
@@ -515,6 +516,8 @@ Route::middleware([
         ->middleware(HandleInertiaRequests::class)
         ->name('subscriptions.edit');
     Route::put('subscriptions/{subscription}/move-owner', [SubscriptionController::class, 'moveOwner'])->name('subscriptions.move-owner');
+    Route::put('subscriptions/{subscription}/renew-now', [SubscriptionController::class, 'renewNow'])->name('subscriptions.renew-now');
+    Route::put('subscriptions/{subscription}/change-plan', [SubscriptionController::class, 'changePlan'])->name('subscriptions.change-plan');
     Route::resource('subscriptions', SubscriptionController::class)->except(['show', 'index', 'create', 'edit']);
     Route::get('licenses', [LicenseController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
@@ -533,6 +536,10 @@ Route::middleware([
     Route::post('licenses/{license}/domains/{domain}/revoke', [LicenseController::class, 'revokeDomain'])->name('licenses.domains.revoke');
     Route::post('licenses/{license}/sync', [LicenseController::class, 'sync'])->name('licenses.sync');
     Route::get('licenses/{license}/sync-status', [LicenseController::class, 'syncStatus'])->name('licenses.sync-status');
+    Route::post('licenses/{license}/reissue-key', [LicenseController::class, 'reissueKey'])->name('licenses.reissue-key');
+    Route::post('licenses/{license}/certificate/issue', [LicenseController::class, 'issueCertificate'])->name('licenses.certificate.issue');
+    Route::post('licenses/{license}/certificate/{certificate}/revoke', [LicenseController::class, 'revokeCertificate'])->name('licenses.certificate.revoke');
+    Route::get('licenses/{license}/certificate/download', [LicenseController::class, 'downloadCertificate'])->name('licenses.certificate.download');
     Route::get('orders', [AdminOrderController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('orders.index');
@@ -547,7 +554,12 @@ Route::middleware([
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
     Route::get('projects/all', [ProjectController::class, 'all'])->name('projects.all');
+    Route::get('projects/transfers', [OwnershipTransferController::class, 'index'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('projects.transfers.index');
     Route::resource('projects', ProjectController::class)->except(['index']);
+    Route::post('projects/{project}/transfers', [OwnershipTransferController::class, 'store'])->name('projects.transfers.store');
+    Route::post('projects/transfers/{transfer}/cancel', [OwnershipTransferController::class, 'cancel'])->name('projects.transfers.cancel');
     Route::post('projects/{project}/complete', [ProjectController::class, 'markComplete'])->name('projects.complete');
     Route::post('projects/{project}/ai-summary', [ProjectController::class, 'aiSummary'])->name('projects.ai');
     Route::get('projects/{project}/invoices', [AdminInvoiceController::class, 'projectInvoices'])->name('projects.invoices');

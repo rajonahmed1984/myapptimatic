@@ -16,11 +16,13 @@ class Plan extends Model
         'price',
         'currency',
         'is_active',
+        'seat_limit',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'is_active' => 'boolean',
+        'seat_limit' => 'integer',
     ];
 
     public function product(): BelongsTo

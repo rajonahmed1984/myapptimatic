@@ -83,7 +83,7 @@ class EmployeePaymentNotificationService
 
         $subject = $this->applyReplacements((string) ($template?->subject ?: $subjectFallback), $replacements);
         $bodyRaw = (string) ($template?->body ?: $this->defaultBody($descriptionFallback));
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($bodyRaw, $replacements));
+        $bodyHtml = $this->formatEmailBody($bodyRaw, $replacements);
 
         $attachments = [];
         if (! $isAdvance && $isFinal) {
@@ -175,7 +175,7 @@ class EmployeePaymentNotificationService
 
         $subject = $this->applyReplacements((string) ($template?->subject ?: $subjectFallback), $replacements);
         $bodyRaw = (string) ($template?->body ?: $this->defaultBody($descriptionFallback));
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($bodyRaw, $replacements));
+        $bodyHtml = $this->formatEmailBody($bodyRaw, $replacements);
 
         $attachments = [];
         if ($isFinal) {
@@ -365,19 +365,25 @@ class EmployeePaymentNotificationService
         return str_replace(array_keys($replacements), array_values($replacements), $text);
     }
 
-    private function formatEmailBody(string $body): string
+    private function formatEmailBody(string $body, array $replacements = []): string
     {
         $trimmed = trim($body);
         if ($trimmed === '') {
             return '';
         }
 
+        // Detect HTML-ness on the raw template (before substitution), so a
+        // replacement value can't itself flip this into the unescaped branch.
         $looksLikeHtml = Str::contains($trimmed, ['<p', '<br', '<div', '<table', '<a ', '<strong', '<em', '<ul', '<ol', '<li']);
         if ($looksLikeHtml) {
-            return $trimmed;
+            // Escape each replacement value individually — the template markup stays
+            // trusted/unescaped, but substituted data (names, notes, etc.) can't inject HTML.
+            $escaped = array_map(static fn ($value) => e((string) $value), $replacements);
+
+            return $this->applyReplacements($trimmed, $escaped);
         }
 
-        return nl2br(e($trimmed));
+        return nl2br(e($this->applyReplacements($trimmed, $replacements)));
     }
 
     private function phpDateFormat(string $format): string

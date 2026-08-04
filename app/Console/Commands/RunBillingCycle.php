@@ -156,7 +156,12 @@ class RunBillingCycle extends Command
             ->orderBy('id')
             ->chunkById(200, function ($subscriptions) use (&$count, &$fixedTermTerminations, $today) {
                 foreach ($subscriptions as $subscription) {
-                    if ($subscription->cancel_at_period_end && $subscription->current_period_end->lessThanOrEqualTo($today)) {
+                    // auto_renew=false must stop billing the same way cancel_at_period_end does —
+                    // previously only cancel_at_period_end was honored here, so a subscription with
+                    // auto_renew turned off kept being invoiced forever.
+                    $stopsAtPeriodEnd = (bool) $subscription->cancel_at_period_end || ! $subscription->auto_renew;
+
+                    if ($stopsAtPeriodEnd && $subscription->current_period_end->lessThanOrEqualTo($today)) {
                         $subscription->update([
                             'status' => 'cancelled',
                             'auto_renew' => false,
@@ -165,7 +170,7 @@ class RunBillingCycle extends Command
                         continue;
                     }
 
-                    if ($subscription->cancel_at_period_end && $subscription->current_period_end->greaterThan($today)) {
+                    if ($stopsAtPeriodEnd && $subscription->current_period_end->greaterThan($today)) {
                         $subscription->update([
                             'next_invoice_at' => $subscription->current_period_end->toDateString(),
                         ]);

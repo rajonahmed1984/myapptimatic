@@ -65,7 +65,7 @@ class AdminNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
 
         $logoUrl = Branding::url(Setting::getValue('company_logo_path'));
         $portalUrl = UrlResolver::portalUrl();
@@ -142,7 +142,7 @@ class AdminNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
 
         $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
@@ -230,7 +230,7 @@ class AdminNotificationService
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
 
         $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
@@ -275,7 +275,7 @@ class AdminNotificationService
         ], $extraReplacements);
 
         $subject = $this->applyReplacements($subject, $replacements);
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
 
         $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SUPPORT);
     }
@@ -311,7 +311,7 @@ class AdminNotificationService
 
         $subject = $this->applyReplacements($template?->subject ?: $fallbackSubject, $replacements);
         $body = $template?->body ?: '';
-        $bodyHtml = $this->formatEmailBody($this->applyReplacements($body, $replacements));
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
         $fromEmail = $this->resolveFromEmail($template);
         $attachment = $this->invoiceAttachment($invoice);
 
@@ -492,20 +492,26 @@ class AdminNotificationService
         return str_replace(array_keys($replacements), array_values($replacements), $text);
     }
 
-    private function formatEmailBody(string $body): string
+    private function formatEmailBody(string $body, array $replacements = []): string
     {
         $trimmed = trim($body);
         if ($trimmed === '') {
             return '';
         }
 
+        // Detect HTML-ness on the raw template (before substitution), so a
+        // replacement value can't itself flip this into the unescaped branch.
         $looksLikeHtml = Str::contains($trimmed, ['<p', '<br', '<div', '<table', '<a ', '<strong', '<em', '<ul', '<ol', '<li']);
 
         if ($looksLikeHtml) {
-            return $trimmed;
+            // Escape each replacement value individually — the template markup stays
+            // trusted/unescaped, but substituted data (names, notes, etc.) can't inject HTML.
+            $escaped = array_map(static fn ($value) => e((string) $value), $replacements);
+
+            return $this->applyReplacements($trimmed, $escaped);
         }
 
-        return nl2br(e($trimmed));
+        return nl2br(e($this->applyReplacements($trimmed, $replacements)));
     }
 
     private function buildChatDigestHtml(array $items, ?string $note = null): string

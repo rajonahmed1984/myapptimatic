@@ -619,8 +619,12 @@ class LicenseVerificationTest extends TestCase
     }
 
     #[Test]
-    public function local_environment_bypasses_domain_and_billing_blocks(): void
+    public function local_app_environment_does_not_bypass_domain_or_billing_blocks(): void
     {
+        // Regression test for a fixed security bug: this server's own APP_ENV must never
+        // gate domain-lock/billing-block enforcement for a request submitting an arbitrary
+        // (non-local) domain. Only the submitted domain's own shape (localhost/*.test/etc.)
+        // may qualify for local-dev leniency — see isLocalDomain().
         Setting::setValue('auto_bind_domains', 1);
 
         [$customer, $subscription, $license] = $this->createLicenseSetup(
@@ -655,8 +659,9 @@ class LicenseVerificationTest extends TestCase
 
             $response->assertOk();
             $response->assertJson([
-                'status' => 'active',
-                'blocked' => false,
+                'status' => 'blocked',
+                'blocked' => true,
+                'reason' => 'domain_not_allowed',
             ]);
         } finally {
             $this->app->detectEnvironment(fn () => $originalEnv);

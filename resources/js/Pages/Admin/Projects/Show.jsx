@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Show({
     pageTitle = 'Project',
@@ -10,6 +11,7 @@ export default function Show({
     remainingBudgetInvoices = [],
     taskStats = {},
     routes = {},
+    transferCustomers = [],
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
@@ -299,6 +301,56 @@ export default function Show({
                         <div className="mt-2 whitespace-pre-wrap">{project.notes}</div>
                     </div>
                 ) : null}
+
+                <div className="rounded-2xl border border-slate-300 bg-white/80 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Transfer Ownership</div>
+                    {project?.transfer_eligible ? (
+                        <form action={routes?.transfer_store} method="POST" data-native="true" className="mt-3 space-y-3">
+                            <input type="hidden" name="_token" value={csrf} />
+                            <div>
+                                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                    Receiving Customer
+                                </label>
+                                <SearchableSelect
+                                    name="to_customer_id"
+                                    placeholder="Choose a client..."
+                                    options={transferCustomers.map((c) => ({ value: String(c.id), label: c.name }))}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                    Schedule For (optional)
+                                </label>
+                                <input
+                                    type="datetime-local"
+                                    name="scheduled_for"
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                />
+                                <p className="mt-1 text-xs text-slate-400">Leave blank to execute as soon as the receiver accepts.</p>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                    Reason (optional)
+                                </label>
+                                <textarea name="reason" rows={2} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                            </div>
+                            <button
+                                type="submit"
+                                className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                                onClick={(e) => {
+                                    if (!confirm('Send this project ownership transfer invite? The receiving customer will need to accept it.')) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                            >
+                                Send Transfer Invite
+                            </button>
+                        </form>
+                    ) : (
+                        <p className="mt-2 text-sm text-slate-500">{project?.transfer_ineligible_reason || 'This project is not eligible for transfer.'}</p>
+                    )}
+                </div>
             </div>
         </>
     );

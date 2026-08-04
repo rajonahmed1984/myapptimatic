@@ -41,4 +41,16 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'license_cert' => [
+        // RSA keypair (PEM, base64-encoded to stay single-line env-safe), generated once
+        // offline — never in the DB. Signs the offline license certificate payload so a
+        // licensed product can verify it without calling home. Generate with:
+        //   openssl genrsa -out private.pem 2048
+        //   openssl rsa -in private.pem -pubout -out public.pem
+        //   base64 -w0 private.pem   (and public.pem)
+        'private_key' => env('LICENSE_CERT_PRIVATE_KEY'),
+        'public_key' => env('LICENSE_CERT_PUBLIC_KEY'),
+        'key_id' => env('LICENSE_CERT_KEY_ID', 'v1'),
+    ],
+
 ];

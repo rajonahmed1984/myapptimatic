@@ -66,6 +66,41 @@ function LicenseCard({ license, csrf, statusClass }) {
                             Terminate
                         </button>
                     )}
+                    <button
+                        type="submit"
+                        form={`reissue-key-form-${license.id}`}
+                        onClick={(e) => {
+                            if (!window.confirm('Reissue this license key? The previous key will stop working immediately.')) {
+                                e.preventDefault();
+                            }
+                        }}
+                        className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                    >
+                        Reissue Key
+                    </button>
+                    {license.certificate ? (
+                        <button
+                            type="submit"
+                            form={`certificate-revoke-form-${license.id}`}
+                            onClick={(e) => {
+                                if (!window.confirm('Revoke the active offline license certificate?')) {
+                                    e.preventDefault();
+                                }
+                            }}
+                            className="rounded-full border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                            title={`Issued ${license.certificate.issued_at}`}
+                        >
+                            Revoke Certificate
+                        </button>
+                    ) : (
+                        <button
+                            type="submit"
+                            form={`certificate-issue-form-${license.id}`}
+                            className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                        >
+                            Issue Certificate
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -461,6 +496,35 @@ export default function Form({
                                     <input type="hidden" name="return_to_subscription" value="1" />
                                 </form>
                             )}
+                            <form
+                                id={`reissue-key-form-${license.id}`}
+                                action={license.routes.reissue_key}
+                                method="POST"
+                                data-native="true"
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="hidden" name="return_to_subscription" value="1" />
+                            </form>
+                            <form
+                                id={`certificate-issue-form-${license.id}`}
+                                action={license.routes.certificate_issue}
+                                method="POST"
+                                data-native="true"
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="hidden" name="return_to_subscription" value="1" />
+                            </form>
+                            {license.routes.certificate_revoke ? (
+                                <form
+                                    id={`certificate-revoke-form-${license.id}`}
+                                    action={license.routes.certificate_revoke}
+                                    method="POST"
+                                    data-native="true"
+                                >
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <input type="hidden" name="return_to_subscription" value="1" />
+                                </form>
+                            ) : null}
                             <form id={`edit-form-${license.id}`} action={license.form.action} method="POST" data-native="true">
                                 <input type="hidden" name="_token" value={csrf} />
                                 <input type="hidden" name="_method" value={license.form.method} />
