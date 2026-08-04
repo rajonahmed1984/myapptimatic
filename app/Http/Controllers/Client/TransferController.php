@@ -20,7 +20,7 @@ class TransferController extends Controller
 
         $transfers = OwnershipTransfer::query()
             ->where('to_customer_id', $customerId)
-            ->with(['project:id,name', 'fromCustomer:id,name'])
+            ->with(['project:id,name', 'subscription.plan.product', 'fromCustomer:id,name'])
             ->latest()
             ->get();
 
@@ -29,7 +29,7 @@ class TransferController extends Controller
             'transfers' => $transfers->map(function (OwnershipTransfer $transfer) use ($dateFormat) {
                 return [
                     'id' => $transfer->id,
-                    'project_name' => (string) ($transfer->project?->name ?? '--'),
+                    'project_name' => $this->subjectLabel($transfer),
                     'from_customer_name' => (string) ($transfer->fromCustomer?->name ?? '--'),
                     'status' => (string) $transfer->status,
                     'status_label' => ucfirst((string) $transfer->status),
@@ -44,7 +44,7 @@ class TransferController extends Controller
         $token = (string) $request->query('token', '');
         $tokenValid = $transfer->token_hash && $token !== '' && hash_equals($transfer->token_hash, hash('sha256', $token));
 
-        $transfer->loadMissing(['project', 'fromCustomer']);
+        $transfer->loadMissing(['project', 'subscription.plan.product', 'fromCustomer']);
 
         return Inertia::render('Client/Transfers/Confirm', [
             'pageTitle' => 'Ownership Transfer',
@@ -53,7 +53,7 @@ class TransferController extends Controller
             'canReview' => $tokenValid && $transfer->isAcceptable() && auth()->user()->customer_id === $transfer->to_customer_id,
             'transfer' => [
                 'id' => $transfer->id,
-                'project_name' => (string) ($transfer->project?->name ?? '--'),
+                'project_name' => $this->subjectLabel($transfer),
                 'from_customer_name' => (string) ($transfer->fromCustomer?->name ?? '--'),
                 'status' => (string) $transfer->status,
                 'status_label' => ucfirst((string) $transfer->status),
@@ -100,6 +100,13 @@ class TransferController extends Controller
 
         return redirect()->route('client.transfers.index')
             ->with('status', 'Transfer rejected.');
+    }
+
+    private function subjectLabel(OwnershipTransfer $transfer): string
+    {
+        return (string) ($transfer->project?->name
+            ?? $transfer->subscription?->plan?->product?->name
+            ?? ('Subscription #'.$transfer->subscription_id));
     }
 
     private function verifyTokenOrAbort(Request $request, OwnershipTransfer $transfer): void

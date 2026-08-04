@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\OwnershipTransfer;
 use App\Models\Project;
 use App\Models\StatusAuditLog;
+use App\Models\Subscription;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,21 @@ class ProjectTransferService
         return null;
     }
 
+    /**
+     * Eligibility for the subscription-anchored flow (product/subscription/license,
+     * with no project required). If exactly one project happens to be linked to this
+     * subscription it will move along automatically; more than one is ambiguous and blocked,
+     * same reasoning as the project-anchored flow.
+     */
+    public function eligibilityErrorForSubscription(Subscription $subscription): ?string
+    {
+        if (Project::where('subscription_id', $subscription->id)->count() > 1) {
+            return 'This subscription is linked to multiple projects and cannot be transferred as a unit.';
+        }
+
+        return null;
+    }
+
     public function initiate(
         Project $project,
         Customer $toCustomer,
@@ -34,14 +50,42 @@ class ProjectTransferService
         ?Carbon $scheduledFor,
         string $ip
     ): OwnershipTransfer {
+        return $this->createTransfer([
+            'project_id' => $project->id,
+            'subscription_id' => $project->subscription_id,
+            'from_customer_id' => $project->customer_id,
+            'to_customer_id' => $toCustomer->id,
+        ], $initiator, $reason, $scheduledFor, $ip);
+    }
+
+    /**
+     * Subscription-anchored initiation — moves the subscription + its licenses (+ a
+     * linked project, if exactly one exists) without requiring a project up front.
+     */
+    public function initiateForSubscription(
+        Subscription $subscription,
+        Customer $toCustomer,
+        User $initiator,
+        ?string $reason,
+        ?Carbon $scheduledFor,
+        string $ip
+    ): OwnershipTransfer {
+        $linkedProject = Project::where('subscription_id', $subscription->id)->first();
+
+        return $this->createTransfer([
+            'project_id' => $linkedProject?->id,
+            'subscription_id' => $subscription->id,
+            'from_customer_id' => $subscription->customer_id,
+            'to_customer_id' => $toCustomer->id,
+        ], $initiator, $reason, $scheduledFor, $ip);
+    }
+
+    private function createTransfer(array $attributes, User $initiator, ?string $reason, ?Carbon $scheduledFor, string $ip): OwnershipTransfer
+    {
         $plainToken = Str::random(64);
 
-        $transfer = DB::transaction(function () use ($project, $toCustomer, $initiator, $reason, $scheduledFor, $ip, $plainToken) {
-            $transfer = OwnershipTransfer::create([
-                'project_id' => $project->id,
-                'subscription_id' => $project->subscription_id,
-                'from_customer_id' => $project->customer_id,
-                'to_customer_id' => $toCustomer->id,
+        $transfer = DB::transaction(function () use ($attributes, $initiator, $reason, $scheduledFor, $ip, $plainToken) {
+            $transfer = OwnershipTransfer::create(array_merge($attributes, [
                 'initiated_by' => $initiator->id,
                 'initiated_by_ip' => $ip,
                 'status' => 'pending',
@@ -49,7 +93,7 @@ class ProjectTransferService
                 'token_expires_at' => now()->addDays(7),
                 'scheduled_for' => $scheduledFor,
                 'reason' => $reason,
-            ]);
+            ]));
 
             $transfer->logs()->create([
                 'action' => 'created',
@@ -134,7 +178,9 @@ class ProjectTransferService
             // reassigning the subscription's owner "moves" every license under it too.
             // Mirrors the core reassignment SubscriptionController::moveOwner() already does.
             $subscription->update(['customer_id' => $transfer->to_customer_id]);
-            $project->update(['customer_id' => $transfer->to_customer_id]);
+            // project_id is optional — the subscription-anchored flow (product/subscription/
+            // license only) has no project at all.
+            $project?->update(['customer_id' => $transfer->to_customer_id]);
 
             $transfer->update([
                 'status' => 'executed',
@@ -150,8 +196,8 @@ class ProjectTransferService
             ]);
 
             StatusAuditLog::logChange(
-                Project::class,
-                $project->id,
+                $project ? Project::class : Subscription::class,
+                $project?->id ?? $subscription->id,
                 'pending_transfer',
                 'transferred',
                 'ownership_transfer',

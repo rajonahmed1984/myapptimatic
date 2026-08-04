@@ -518,6 +518,7 @@ Route::middleware([
     Route::put('subscriptions/{subscription}/move-owner', [SubscriptionController::class, 'moveOwner'])->name('subscriptions.move-owner');
     Route::put('subscriptions/{subscription}/renew-now', [SubscriptionController::class, 'renewNow'])->name('subscriptions.renew-now');
     Route::put('subscriptions/{subscription}/change-plan', [SubscriptionController::class, 'changePlan'])->name('subscriptions.change-plan');
+    Route::post('subscriptions/{subscription}/transfers', [OwnershipTransferController::class, 'storeForSubscription'])->name('subscriptions.transfers.store');
     Route::resource('subscriptions', SubscriptionController::class)->except(['show', 'index', 'create', 'edit']);
     Route::get('licenses', [LicenseController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)

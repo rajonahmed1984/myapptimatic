@@ -30,7 +30,7 @@ export default function Index({ pageTitle = 'Ownership Transfers', transfers = [
                 <table className="w-full min-w-[900px] text-left text-sm">
                     <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
-                            <th className="px-4 py-3">Project</th>
+                            <th className="px-4 py-3">Item</th>
                             <th className="px-4 py-3">From</th>
                             <th className="px-4 py-3">To</th>
                             <th className="px-4 py-3">Status</th>

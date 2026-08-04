@@ -31,6 +31,7 @@ export default function Show({
     customers = [],
     plans = [],
     related_counts = {},
+    transfer_ineligible_reason = null,
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
@@ -256,6 +257,61 @@ export default function Show({
                         </button>
                     </div>
                 </form>
+            </div>
+
+            <div className="mt-6 card p-6">
+                <div className="mb-1 text-sm font-semibold text-slate-800">Request Ownership Transfer</div>
+                <p className="mb-4 text-xs text-slate-500">
+                    Sends an invite the receiving customer must accept before anything moves — unlike Transfer Owner above,
+                    which moves it immediately. Moves this subscription and its licenses (and a linked project, if there's
+                    exactly one) once accepted.
+                </p>
+                {transfer_ineligible_reason ? (
+                    <p className="text-sm text-slate-500">{transfer_ineligible_reason}</p>
+                ) : (
+                    <form action={routes?.transfer_store} method="POST" data-native="true" className="space-y-3">
+                        <input type="hidden" name="_token" value={csrf} />
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                Receiving Customer
+                            </label>
+                            <SearchableSelect
+                                name="to_customer_id"
+                                placeholder="Choose a client..."
+                                options={customers.map((c) => ({ value: String(c.id), label: c.name }))}
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                Schedule For (optional)
+                            </label>
+                            <input
+                                type="datetime-local"
+                                name="scheduled_for"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            />
+                            <p className="mt-1 text-xs text-slate-400">Leave blank to execute as soon as the receiver accepts.</p>
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                Reason (optional)
+                            </label>
+                            <textarea name="reason" rows={2} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                        </div>
+                        <button
+                            type="submit"
+                            className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                            onClick={(e) => {
+                                if (!confirm('Send this ownership transfer invite? The receiving customer will need to accept it.')) {
+                                    e.preventDefault();
+                                }
+                            }}
+                        >
+                            Send Transfer Invite
+                        </button>
+                    </form>
+                )}
             </div>
 
             <div className="mt-6 card overflow-x-auto">

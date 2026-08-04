@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\OwnershipTransfer;
 use App\Models\Project;
+use App\Models\Subscription;
 use App\Policies\OwnershipTransferPolicy;
 use App\Services\ClientNotificationService;
 use App\Services\ProjectTransferService;
@@ -22,7 +23,12 @@ class OwnershipTransferController extends Controller
         $dateFormat = (string) config('app.date_format', 'd-m-Y');
 
         $transfers = OwnershipTransfer::query()
-            ->with(['project:id,name', 'fromCustomer:id,name', 'toCustomer:id,name'])
+            ->with([
+                'project:id,name',
+                'subscription.plan.product',
+                'fromCustomer:id,name',
+                'toCustomer:id,name',
+            ])
             ->latest()
             ->paginate(30)
             ->withQueryString();
@@ -33,9 +39,13 @@ class OwnershipTransferController extends Controller
                 'index' => route('admin.projects.transfers.index'),
             ],
             'transfers' => collect($transfers->items())->map(function (OwnershipTransfer $transfer) use ($dateFormat) {
+                $subject = $transfer->project?->name
+                    ?? $transfer->subscription?->plan?->product?->name
+                    ?? ('Subscription #'.$transfer->subscription_id);
+
                 return [
                     'id' => $transfer->id,
-                    'project_name' => (string) ($transfer->project?->name ?? '--'),
+                    'project_name' => (string) $subject,
                     'from_customer_name' => (string) ($transfer->fromCustomer?->name ?? '--'),
                     'to_customer_name' => (string) ($transfer->toCustomer?->name ?? '--'),
                     'status' => (string) $transfer->status,
@@ -94,6 +104,47 @@ class OwnershipTransferController extends Controller
         $clientNotifications->sendTransferInvite($transfer, $transfer->plainToken);
 
         return redirect()->route('admin.projects.show', $project)
+            ->with('status', 'Transfer invite sent to '.$toCustomer->name.'.');
+    }
+
+    public function storeForSubscription(
+        Request $request,
+        Subscription $subscription,
+        ProjectTransferService $service,
+        ClientNotificationService $clientNotifications
+    ): RedirectResponse {
+        abort_unless(app(OwnershipTransferPolicy::class)->initiateForSubscription($request->user(), $subscription), 403);
+
+        $data = $request->validate([
+            'to_customer_id' => [
+                'required',
+                'exists:customers,id',
+                Rule::notIn([$subscription->customer_id]),
+            ],
+            'reason' => ['nullable', 'string', 'max:1000'],
+            'scheduled_for' => ['nullable', 'date', 'after:now'],
+        ]);
+
+        $eligibilityError = $service->eligibilityErrorForSubscription($subscription);
+        if ($eligibilityError) {
+            return redirect()->route('admin.subscriptions.show', $subscription)->with('error', $eligibilityError);
+        }
+
+        $toCustomer = Customer::findOrFail($data['to_customer_id']);
+        $scheduledFor = ! empty($data['scheduled_for']) ? \Carbon\Carbon::parse($data['scheduled_for']) : null;
+
+        $transfer = $service->initiateForSubscription(
+            $subscription,
+            $toCustomer,
+            $request->user(),
+            $data['reason'] ?? null,
+            $scheduledFor,
+            (string) $request->ip()
+        );
+
+        $clientNotifications->sendTransferInvite($transfer, $transfer->plainToken);
+
+        return redirect()->route('admin.subscriptions.show', $subscription)
             ->with('status', 'Transfer invite sent to '.$toCustomer->name.'.');
     }
 

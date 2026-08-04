@@ -230,7 +230,9 @@ class SubscriptionController extends Controller
                 'move_owner' => route('admin.subscriptions.move-owner', $subscription),
                 'renew_now' => route('admin.subscriptions.renew-now', $subscription),
                 'change_plan' => route('admin.subscriptions.change-plan', $subscription),
+                'transfer_store' => route('admin.subscriptions.transfers.store', $subscription),
             ],
+            'transfer_ineligible_reason' => app(\App\Services\ProjectTransferService::class)->eligibilityErrorForSubscription($subscription),
             'plans' => Plan::query()
                 ->where('is_active', true)
                 ->orderBy('name')

@@ -158,7 +158,7 @@ class ClientNotificationService
 
     public function sendTransferInvite(\App\Models\OwnershipTransfer $transfer, string $plainToken): void
     {
-        $transfer->loadMissing(['project', 'fromCustomer', 'toCustomer.users']);
+        $transfer->loadMissing(['project', 'subscription.plan.product', 'fromCustomer', 'toCustomer.users']);
 
         $recipients = $transfer->toCustomer?->users
             ?->where('role', \App\Enums\Role::CLIENT)
@@ -175,12 +175,12 @@ class ClientNotificationService
         $confirmUrl = route('client.transfers.confirm', ['transfer' => $transfer->id, 'token' => $plainToken]);
         $fromEmail = $this->resolveFromEmail($template);
 
-        $subject = $template?->subject ?: "You've been invited to receive a project transfer - {$companyName}";
-        $body = $template?->body ?: "Hi,\n\n{{from_customer_name}} wants to transfer project \"{{project_name}}\" to your account.\n\nReview and respond: {{confirm_url}}\n\nThis invite expires on {{expires_at}}.\n\n{{company_name}}";
+        $subject = $template?->subject ?: "You've been invited to receive a transfer - {$companyName}";
+        $body = $template?->body ?: "Hi,\n\n{{from_customer_name}} wants to transfer \"{{project_name}}\" to your account.\n\nReview and respond: {{confirm_url}}\n\nThis invite expires on {{expires_at}}.\n\n{{company_name}}";
 
         $replacements = [
             '{{from_customer_name}}' => $transfer->fromCustomer?->name ?? '--',
-            '{{project_name}}' => $transfer->project?->name ?? '--',
+            '{{project_name}}' => $this->transferSubjectLabel($transfer),
             '{{confirm_url}}' => $confirmUrl,
             '{{expires_at}}' => $transfer->token_expires_at?->format($dateFormat) ?? '--',
             '{{company_name}}' => $companyName,
@@ -196,7 +196,7 @@ class ClientNotificationService
 
     public function sendTransferAccepted(\App\Models\OwnershipTransfer $transfer): void
     {
-        $transfer->loadMissing(['project', 'toCustomer', 'fromCustomer.users']);
+        $transfer->loadMissing(['project', 'subscription.plan.product', 'toCustomer', 'fromCustomer.users']);
 
         $recipients = $transfer->fromCustomer?->users
             ?->where('role', \App\Enums\Role::CLIENT)
@@ -212,11 +212,11 @@ class ClientNotificationService
         $fromEmail = $this->resolveFromEmail($template);
 
         $subject = $template?->subject ?: "Your transfer request was accepted - {$companyName}";
-        $body = $template?->body ?: "Hi,\n\n{{to_customer_name}} accepted your transfer of project \"{{project_name}}\".\n\n{{company_name}}";
+        $body = $template?->body ?: "Hi,\n\n{{to_customer_name}} accepted your transfer of \"{{project_name}}\".\n\n{{company_name}}";
 
         $replacements = [
             '{{to_customer_name}}' => $transfer->toCustomer?->name ?? '--',
-            '{{project_name}}' => $transfer->project?->name ?? '--',
+            '{{project_name}}' => $this->transferSubjectLabel($transfer),
             '{{company_name}}' => $companyName,
         ];
 
@@ -230,7 +230,7 @@ class ClientNotificationService
 
     public function sendTransferRejected(\App\Models\OwnershipTransfer $transfer): void
     {
-        $transfer->loadMissing(['project', 'toCustomer', 'fromCustomer.users']);
+        $transfer->loadMissing(['project', 'subscription.plan.product', 'toCustomer', 'fromCustomer.users']);
 
         $recipients = $transfer->fromCustomer?->users
             ?->where('role', \App\Enums\Role::CLIENT)
@@ -246,11 +246,11 @@ class ClientNotificationService
         $fromEmail = $this->resolveFromEmail($template);
 
         $subject = $template?->subject ?: "Your transfer request was declined - {$companyName}";
-        $body = $template?->body ?: "Hi,\n\n{{to_customer_name}} declined your transfer of project \"{{project_name}}\".\n\n{{company_name}}";
+        $body = $template?->body ?: "Hi,\n\n{{to_customer_name}} declined your transfer of \"{{project_name}}\".\n\n{{company_name}}";
 
         $replacements = [
             '{{to_customer_name}}' => $transfer->toCustomer?->name ?? '--',
-            '{{project_name}}' => $transfer->project?->name ?? '--',
+            '{{project_name}}' => $this->transferSubjectLabel($transfer),
             '{{company_name}}' => $companyName,
         ];
 
@@ -626,6 +626,13 @@ class ClientNotificationService
         }
 
         return $fromEmail ?: null;
+    }
+
+    private function transferSubjectLabel(\App\Models\OwnershipTransfer $transfer): string
+    {
+        return $transfer->project?->name
+            ?? $transfer->subscription?->plan?->product?->name
+            ?? ('Subscription #'.$transfer->subscription_id);
     }
 
     private function applyReplacements(string $text, array $replacements): string

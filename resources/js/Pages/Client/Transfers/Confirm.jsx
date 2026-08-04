@@ -28,7 +28,7 @@ export default function Confirm({
                         <>
                             <div className="mt-4 space-y-2 text-sm text-slate-700">
                                 <div>
-                                    <span className="font-semibold text-slate-900">Project:</span> {transfer?.project_name}
+                                    <span className="font-semibold text-slate-900">Item:</span> {transfer?.project_name}
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">From:</span> {transfer?.from_customer_name}

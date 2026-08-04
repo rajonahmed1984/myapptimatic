@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\Role;
 use App\Models\OwnershipTransfer;
 use App\Models\Project;
+use App\Models\Subscription;
 use App\Models\User;
 
 class OwnershipTransferPolicy
@@ -20,6 +21,19 @@ class OwnershipTransferPolicy
         }
 
         return $actor->isClient() && $actor->customer_id === $project->customer_id;
+    }
+
+    public function initiateForSubscription($actor, Subscription $subscription): bool
+    {
+        if (! $actor instanceof User) {
+            return false;
+        }
+
+        if (in_array($actor->role, [Role::ADMIN, Role::MASTER_ADMIN, Role::SUB_ADMIN], true)) {
+            return true;
+        }
+
+        return $actor->isClient() && $actor->customer_id === $subscription->customer_id;
     }
 
     public function view($actor, OwnershipTransfer $transfer): bool
