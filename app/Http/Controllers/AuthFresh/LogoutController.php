@@ -12,12 +12,7 @@ class LogoutController extends Controller
 {
     public function logout(Request $request): RedirectResponse
     {
-        // Detect the active authenticated guard BEFORE logging out / invalidating
-        // the session, so we can redirect to the correct portal login page.
-        // We cannot rely on the session-stored portal because it may be stale
-        // (e.g. 'support' stored from a previous admin visit while the user is
-        // actually a client on the 'web' guard), which caused the wrong redirect.
-        $portal = $this->resolvePortalFromActiveGuard() ?? Portal::fromRequest($request);
+        $portal = $this->resolvePortal($request);
 
         foreach (Portal::guards() as $guard) {
             Auth::guard($guard)->logout();
@@ -29,20 +24,40 @@ class LogoutController extends Controller
         return redirect(Portal::portalLoginUrl($portal));
     }
 
-    /**
-     * Walk every known portal definition and return the first portal whose
-     * guard has an authenticated user.  Returns null if nobody is logged in
-     * (e.g. already-expired session), in which case the caller falls back to
-     * detecting from the request path / referer.
-     */
-    private function resolvePortalFromActiveGuard(): ?string
+    private function resolvePortal(Request $request): string
     {
-        foreach (Portal::map() as $portal => $definition) {
-            if (Auth::guard($definition['guard'])->check()) {
-                return $portal;
+        $sessionPortal = Portal::sessionPortal($request);
+        if ($sessionPortal !== null) {
+            $guard = Portal::guard($sessionPortal);
+            if (Auth::guard($guard)->check()) {
+                $user = Auth::guard($guard)->user();
+                if ($sessionPortal === 'admin') {
+                    if (\App\Support\AuthFresh\AdminAccess::canAccess($user)) {
+                        return 'admin';
+                    }
+                } else {
+                    return $sessionPortal;
+                }
             }
         }
 
-        return null;
+        if (Auth::guard('employee')->check()) {
+            return 'employee';
+        }
+        if (Auth::guard('sales')->check()) {
+            return 'sales';
+        }
+        if (Auth::guard('support')->check()) {
+            return 'support';
+        }
+        if (Auth::guard('web')->check()) {
+            $webUser = Auth::guard('web')->user();
+            if (\App\Support\AuthFresh\AdminAccess::canAccess($webUser)) {
+                return 'admin';
+            }
+            return 'web';
+        }
+
+        return Portal::fromRequest($request);
     }
 }
