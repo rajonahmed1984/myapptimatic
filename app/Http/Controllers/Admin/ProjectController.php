@@ -54,205 +54,7 @@ class ProjectController extends Controller
 
     private const TASK_STATUSES = ['pending', 'in_progress', 'blocked', 'completed'];
 
-    public function index(
-        Request $request,
-        GeminiService $geminiService,
-        ChatAiSummaryCache $summaryCache
-    ): InertiaResponse
-    {
-        $today = now()->toDateString();
-        $dueSoonThreshold = now()->addDays(7)->toDateString();
-        $defaultCurrency = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
-        if (! Currency::isAllowed($defaultCurrency)) {
-            $defaultCurrency = Currency::DEFAULT;
-        }
-
-        $statusCounts = Project::query()
-            ->selectRaw('status, COUNT(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        $typeCounts = Project::query()
-            ->selectRaw('type, COUNT(*) as total')
-            ->groupBy('type')
-            ->pluck('total', 'type');
-
-        $taskTotals = ProjectTask::query()
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw("SUM(CASE WHEN status IN ('pending', 'blocked', 'todo') THEN 1 ELSE 0 END) as open_count")
-            ->selectRaw("SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_count")
-            ->selectRaw("SUM(CASE WHEN status IN ('completed', 'done') THEN 1 ELSE 0 END) as completed_count")
-            ->first();
-
-        $overdueTasks = (int) ProjectTask::query()
-            ->whereNotNull('due_date')
-            ->whereDate('due_date', '<', $today)
-            ->whereNotIn('status', ['completed', 'done'])
-            ->count();
-
-        $dueSoonTasks = (int) ProjectTask::query()
-            ->whereNotNull('due_date')
-            ->whereDate('due_date', '>=', $today)
-            ->whereDate('due_date', '<=', $dueSoonThreshold)
-            ->whereNotIn('status', ['completed', 'done'])
-            ->count();
-
-        $dashboardProjects = Project::query()
-            ->with('customer:id,name')
-            ->withCount([
-                'tasks as total_tasks_count',
-                'tasks as open_tasks_count' => fn ($query) => $query->whereIn('status', ['pending', 'in_progress', 'blocked', 'todo']),
-                'tasks as completed_tasks_count' => fn ($query) => $query->whereIn('status', ['completed', 'done']),
-                'tasks as overdue_tasks_count' => fn ($query) => $query
-                    ->whereNotNull('due_date')
-                    ->whereDate('due_date', '<', $today)
-                    ->whereNotIn('status', ['completed', 'done']),
-                'tasks as due_soon_tasks_count' => fn ($query) => $query
-                    ->whereNotNull('due_date')
-                    ->whereDate('due_date', '>=', $today)
-                    ->whereDate('due_date', '<=', $dueSoonThreshold)
-                    ->whereNotIn('status', ['completed', 'done']),
-                'maintenances as active_maintenances_count' => fn ($query) => $query->where('status', 'active'),
-            ])
-            ->get([
-                'id',
-                'name',
-                'customer_id',
-                'status',
-                'type',
-                'currency',
-                'total_budget',
-                'due_date',
-                'created_at',
-            ]);
-
-        $recentProjects = $dashboardProjects
-            ->sortByDesc(fn (Project $project) => $project->created_at?->getTimestamp() ?? 0)
-            ->take(6)
-            ->map(fn (Project $project) => $this->serializeProjectDashboardRow($project))
-            ->values()
-            ->all();
-
-        $riskProjects = $dashboardProjects
-            ->filter(function (Project $project) {
-                return (string) $project->status === 'hold'
-                    || (int) ($project->overdue_tasks_count ?? 0) > 0
-                    || (int) ($project->due_soon_tasks_count ?? 0) > 0;
-            })
-            ->sortByDesc(function (Project $project) {
-                return ((int) ($project->overdue_tasks_count ?? 0) * 1000)
-                    + ((string) $project->status === 'hold' ? 500 : 0)
-                    + ((int) ($project->due_soon_tasks_count ?? 0) * 50)
-                    + (int) ($project->open_tasks_count ?? 0);
-            })
-            ->take(8)
-            ->map(fn (Project $project) => $this->serializeProjectDashboardRow($project))
-            ->values()
-            ->all();
-
-        $budgetTotals = $this->summarizeCurrencyTotals(
-            Project::query()->get(['currency', 'total_budget']),
-            fn ($project) => (float) ($project->total_budget ?? 0),
-            $defaultCurrency
-        );
-
-        $paidTotals = $this->summarizeCurrencyTotals(
-            Invoice::query()
-                ->whereNotNull('project_id')
-                ->whereIn('type', ['project_initial_payment', 'project_remaining_budget'])
-                ->where('status', 'paid')
-                ->get(['currency', 'total']),
-            fn ($invoice) => (float) ($invoice->total ?? 0),
-            $defaultCurrency
-        );
-
-        $totalTasks = (int) ($taskTotals->total ?? 0);
-        $completedTasks = (int) ($taskTotals->completed_count ?? 0);
-        $completionRate = $totalTasks > 0
-            ? (int) round(($completedTasks / $totalTasks) * 100)
-            : 0;
-
-        $statusCards = collect(self::STATUSES)
-            ->map(fn (string $status) => [
-                'key' => $status,
-                'label' => ucfirst(str_replace('_', ' ', $status)),
-                'count' => (int) ($statusCounts[$status] ?? 0),
-                'href' => route('admin.projects.all', ['status' => $status]),
-                'badge_class' => $this->projectStatusClass($status),
-            ])
-            ->values()
-            ->all();
-
-        $typeCards = collect(self::TYPES)
-            ->map(fn (string $type) => [
-                'key' => $type,
-                'label' => ucfirst(str_replace('_', ' ', $type)),
-                'count' => (int) ($typeCounts[$type] ?? 0),
-                'href' => route('admin.projects.all', ['type' => $type]),
-            ])
-            ->values()
-            ->all();
-
-        $portfolioSnapshot = [
-            'total_projects' => (int) $statusCounts->sum(),
-            'ongoing_projects' => (int) ($statusCounts['ongoing'] ?? 0),
-            'hold_projects' => (int) ($statusCounts['hold'] ?? 0),
-            'completed_projects' => (int) ($statusCounts['complete'] ?? 0),
-            'cancelled_projects' => (int) ($statusCounts['cancel'] ?? 0),
-            'total_tasks' => $totalTasks,
-            'open_tasks' => (int) ($taskTotals->open_count ?? 0),
-            'in_progress_tasks' => (int) ($taskTotals->in_progress_count ?? 0),
-            'completed_tasks' => $completedTasks,
-            'completion_rate' => $completionRate,
-            'overdue_tasks' => $overdueTasks,
-            'due_soon_tasks' => $dueSoonTasks,
-            'active_maintenances' => (int) ProjectMaintenance::query()->where('status', 'active')->count(),
-            'budget_totals' => $budgetTotals,
-            'paid_totals' => $paidTotals,
-        ];
-
-        $aiFocusProjects = $this->buildDashboardAiProjects(
-            collect($riskProjects)
-                ->pluck('id')
-                ->merge(collect($recentProjects)->pluck('id'))
-                ->unique()
-                ->take(5)
-                ->values()
-                ->all(),
-            $summaryCache,
-            $defaultCurrency
-        );
-
-        $forceAiRefresh = $request->query('ai') === 'refresh';
-        [$aiSummary, $aiError] = $this->buildPortfolioAiSummary(
-            $geminiService,
-            $portfolioSnapshot,
-            $riskProjects,
-            $recentProjects,
-            $aiFocusProjects,
-            $forceAiRefresh
-        );
-
-        return Inertia::render('Admin/Projects/Dashboard', [
-            'pageTitle' => 'Projects Dashboard',
-            'overview' => $portfolioSnapshot,
-            'statusCards' => $statusCards,
-            'typeCards' => $typeCards,
-            'riskProjects' => $riskProjects,
-            'recentProjects' => $recentProjects,
-            'aiSummary' => $aiSummary,
-            'aiError' => $aiError,
-            'aiFocusProjects' => $aiFocusProjects,
-            'routes' => [
-                'dashboard' => route('admin.projects.index'),
-                'all' => route('admin.projects.all'),
-                'create' => route('admin.projects.create'),
-                'refresh_ai' => route('admin.projects.index', ['ai' => 'refresh']),
-            ],
-        ]);
-    }
-
-    public function all(Request $request): InertiaResponse
+    public function index(Request $request): InertiaResponse
     {
         $statusFilter = $request->query('status');
         $typeFilter = $request->query('type');
@@ -290,11 +92,15 @@ class ProjectController extends Controller
                 'type' => $typeFilter,
             ],
             'routes' => [
-                'index' => route('admin.projects.all'),
-                'dashboard' => route('admin.projects.index'),
+                'index' => route('admin.projects.index'),
                 'create' => route('admin.projects.create'),
             ],
         ]);
+    }
+
+    public function all(Request $request)
+    {
+        return redirect()->route('admin.projects.index', $request->query());
     }
 
     public function create(Request $request): InertiaResponse
@@ -382,7 +188,7 @@ class ProjectController extends Controller
             ],
             'tasks' => $tasks,
             'routes' => [
-                'index' => route('admin.projects.all'),
+                'index' => route('admin.projects.index'),
                 'store' => route('admin.projects.store'),
             ],
         ]);
@@ -693,7 +499,9 @@ class ProjectController extends Controller
             $dueDate = $issueDate->copy()->addDays($dueDays);
 
             $initialPayment = (float) $project->initial_payment_amount;
-            $invoiceSubtotal = $initialPayment;
+            $softwareOverhead = (float) ($project->software_overhead ?? 0);
+            $websiteOverhead = (float) ($project->website_overhead ?? 0);
+            $invoiceSubtotal = $initialPayment + $softwareOverhead + $websiteOverhead;
 
             $taxData = $vatService->calculateTotals($invoiceSubtotal, 0.0, $issueDate);
 
@@ -721,6 +529,26 @@ class ProjectController extends Controller
                 'unit_price' => $project->initial_payment_amount,
                 'line_total' => $project->initial_payment_amount,
             ]);
+
+            if ($softwareOverhead > 0) {
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'description' => sprintf('Software overhead for project %s', $project->name),
+                    'quantity' => 1,
+                    'unit_price' => $softwareOverhead,
+                    'line_total' => $softwareOverhead,
+                ]);
+            }
+
+            if ($websiteOverhead > 0) {
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'description' => sprintf('Website overhead for project %s', $project->name),
+                    'quantity' => 1,
+                    'unit_price' => $websiteOverhead,
+                    'line_total' => $websiteOverhead,
+                ]);
+            }
 
             SystemLogger::write('activity', 'Project created.', [
                 'project_id' => $project->id,
@@ -839,7 +667,7 @@ class ProjectController extends Controller
                 'unread' => (int) $projectChatUnreadCount,
             ],
             'routes' => [
-                'index' => route('admin.projects.all'),
+                'index' => route('admin.projects.index'),
                 'edit' => route('admin.projects.edit', $project),
                 'destroy' => route('admin.projects.destroy', $project),
                 'complete' => route('admin.projects.complete', $project),
@@ -1355,7 +1183,7 @@ class ProjectController extends Controller
             'customer_id' => $project->customer_id,
         ]);
 
-        return redirect()->route('admin.projects.all')->with('status', 'Project deleted.');
+        return redirect()->route('admin.projects.index')->with('status', 'Project deleted.');
     }
 
     public function storeTask(Request $request, Project $project): RedirectResponse
@@ -1471,6 +1299,7 @@ class ProjectController extends Controller
             'status_label' => ucfirst(str_replace('_', ' ', (string) $project->status)),
             'status_class' => $this->projectStatusClass((string) $project->status),
             'customer_name' => (string) ($project->customer?->name ?? '--'),
+            'customer_company' => (string) ($project->customer?->company_name ?? ''),
             'due_date' => $project->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
             'employees' => $project->employees->pluck('name')->filter()->values(),
             'sales_reps' => $project->salesRepresentatives->pluck('name')->filter()->values(),

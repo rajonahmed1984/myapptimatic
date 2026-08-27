@@ -45,7 +45,7 @@ body.bg-dashboard {
 .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 1rem;
     box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
     backdrop-filter: blur(8px);
 }
@@ -53,7 +53,7 @@ body.bg-dashboard {
 .card-muted {
     background: rgba(255, 255, 255, 0.74);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 1rem;
 }
 
 .auth-glass-card {
@@ -409,19 +409,22 @@ th .datetime-nowrap {
    ========================================================================== */
 
 /* 1. Main Buttons Sizing & Styling Standardization */
+/* 1. Main Buttons Sizing & Styling Standardization */
 /* Standardizing buttons with primary themes, secondary themes, and destructive themes to be small, clean, and uniform */
 
 /* Base Small Button Standardization */
 .btn-standardized,
-a.bg-teal-500, button.bg-teal-500,
-a.bg-teal-600, button.bg-teal-600,
-a.bg-slate-900, button.bg-slate-900,
-a.bg-slate-800, button.bg-slate-800,
-a.bg-emerald-500, button.bg-emerald-500,
-a.border-slate-300, button.border-slate-300,
-a.border-slate-200, button.border-slate-200,
-a.border-rose-200, button.border-rose-200,
-a.bg-rose-500, button.bg-rose-500 {
+button.bg-teal-500,
+button.bg-teal-600,
+button.bg-slate-900,
+button.bg-slate-800,
+button.bg-emerald-500,
+button.border-slate-300,
+button.border-slate-200,
+button.border-rose-200,
+button.bg-rose-500,
+a[class*="btn-"],
+a.btn {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -437,43 +440,43 @@ a.bg-rose-500, button.bg-rose-500 {
 }
 
 /* Primary Button Styling Override */
-a.bg-teal-500, button.bg-teal-500,
-a.bg-teal-600, button.bg-teal-600,
-a.bg-emerald-500, button.bg-emerald-500 {
+button.bg-teal-500,
+button.bg-teal-600,
+button.bg-emerald-500 {
     background-color: #0d9488 !important; /* Uniform HSL-tailored Teal Accent Primary */
     color: #ffffff !important;
     border: 1px solid transparent !important;
 }
-a.bg-teal-500:hover, button.bg-teal-500:hover,
-a.bg-teal-600:hover, button.bg-teal-600:hover,
-a.bg-emerald-500:hover, button.bg-emerald-500:hover {
+button.bg-teal-500:hover,
+button.bg-teal-600:hover,
+button.bg-emerald-500:hover {
     background-color: #0f766e !important; /* Slightly darker teal on hover */
     box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.2), 0 2px 4px -1px rgba(13, 148, 136, 0.1) !important;
 }
 
 /* Secondary Button Styling Override */
-a.border-slate-300, button.border-slate-300,
-a.border-slate-200, button.border-slate-200 {
+button.border-slate-300,
+button.border-slate-200 {
     background-color: #f8fafc !important; /* Standard clean slate theme */
     border: 1px solid #cbd5e1 !important;
     color: #475569 !important;
 }
-a.border-slate-300:hover, button.border-slate-300:hover,
-a.border-slate-200:hover, button.border-slate-200:hover {
+button.border-slate-300:hover,
+button.border-slate-200:hover {
     background-color: #f1f5f9 !important;
     border-color: #0d9488 !important; /* Clean primary tint on hover */
     color: #0d9488 !important;
 }
 
 /* Delete / Destructive Button Styling Override */
-a.border-rose-200, button.border-rose-200,
-a.bg-rose-500, button.bg-rose-500 {
+button.border-rose-200,
+button.bg-rose-500 {
     background-color: #fef2f2 !important; /* Standard soft red background */
     border: 1px solid #fee2e2 !important;
     color: #dc2626 !important; /* Soft premium red text */
 }
-a.border-rose-200:hover, button.border-rose-200:hover,
-a.bg-rose-500:hover, button.bg-rose-500:hover {
+button.border-rose-200:hover,
+button.bg-rose-500:hover {
     background-color: #fee2e2 !important;
     border-color: #fca5a5 !important;
     color: #b91c1c !important;
@@ -565,19 +568,79 @@ table td:last-child:has(a, button, form):not(.has-dropdown) button.text-rose-600
     white-space: normal !important;
 }
 
+/* ==========================================================================
+   Thin Sidebar Scrollbar & Desktop Toggle
+   ========================================================================== */
+
+.sidebar,
+#adminSidebar,
+#clientSidebar,
+#repSidebar,
+#supportSidebar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.sidebar::-webkit-scrollbar,
+#adminSidebar::-webkit-scrollbar,
+#clientSidebar::-webkit-scrollbar,
+#repSidebar::-webkit-scrollbar,
+#supportSidebar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+#adminSidebar::-webkit-scrollbar-track,
+#clientSidebar::-webkit-scrollbar-track,
+#repSidebar::-webkit-scrollbar-track,
+#supportSidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+#adminSidebar::-webkit-scrollbar-thumb,
+#clientSidebar::-webkit-scrollbar-thumb,
+#repSidebar::-webkit-scrollbar-thumb,
+#supportSidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb,
+#adminSidebar:hover::-webkit-scrollbar-thumb,
+#clientSidebar:hover::-webkit-scrollbar-thumb,
+#repSidebar:hover::-webkit-scrollbar-thumb,
+#supportSidebar:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+#adminSidebar::-webkit-scrollbar-thumb:hover,
+#clientSidebar::-webkit-scrollbar-thumb:hover,
+#repSidebar::-webkit-scrollbar-thumb:hover,
+#supportSidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+@media (min-width: 768px) {
+    aside.sidebar {
+        transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, width 0.25s ease !important;
+    }
+
+    html.sidebar-collapsed aside.sidebar,
+    body.sidebar-collapsed aside.sidebar {
+        margin-left: -16rem !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        visibility: hidden !important;
+    }
+}
+
 #clientSidebarToggle,
 #supportSidebarToggle,
 #repSidebarToggle,
-#sidebarToggle.sidebar-toggle-mobile {
-    display: none !important;
-}
-
-@media (max-width: 767px) {
-    #clientSidebarToggle,
-    #supportSidebarToggle,
-    #repSidebarToggle,
-    #sidebarToggle.sidebar-toggle-mobile {
-        display: inline-flex !important;
-    }
+#sidebarToggle {
+    display: inline-flex !important;
 }
 

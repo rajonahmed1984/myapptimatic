@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
-import AdminLayout from '../../../Layouts/AdminLayout';
-
 export default function Index({
     campaigns = {},
     counts = {},
@@ -27,7 +25,7 @@ export default function Index({
     };
 
     return (
-        <AdminLayout showHeader={false}>
+        <div className="space-y-6">
             <Head title="Mass Mail Campaigns" />
 
             <div className="space-y-6">
@@ -282,6 +280,6 @@ export default function Index({
                     )}
                 </div>
             </div>
-        </AdminLayout>
+        </div>
     );
 }

@@ -70,7 +70,8 @@ export default function Index({
                         <thead className="bg-slate-50 text-xs uppercase tracking-[0.2em] text-slate-500">
                             <tr>
                                 <th className="px-4 py-3 text-left">ID</th>
-                                <th className="px-4 py-3 text-left">Project &amp; Customer</th>
+                                <th className="px-4 py-3 text-left">Project</th>
+                                <th className="px-4 py-3 text-left">Customer</th>
                                 <th className="px-4 py-3 text-left">Cycle</th>
                                 <th className="px-4 py-3 text-left">Next Billing</th>
                                 <th className="px-4 py-3 text-left">Status</th>
@@ -81,7 +82,7 @@ export default function Index({
                         <tbody className="divide-y divide-slate-100 text-slate-700">
                             {maintenances.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                                    <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
                                         No maintenance plans yet.
                                     </td>
                                 </tr>
@@ -90,31 +91,42 @@ export default function Index({
                                     <tr key={maintenance.id} className="transition hover:bg-slate-50">
                                         <td className="px-4 py-3 font-semibold text-slate-900">#{maintenance.id}</td>
                                         <td className="px-4 py-3">
-                                            <div className="font-semibold text-slate-900">
+                                            <div>
                                                 {maintenance.project_route ? (
                                                     <a
                                                         href={maintenance.project_route}
                                                         data-native="true"
-                                                        className="text-teal-700 hover:text-teal-600"
+                                                        className="font-semibold text-slate-900 hover:text-teal-600 block"
                                                     >
                                                         {maintenance.project_name}
                                                     </a>
                                                 ) : (
-                                                    '--'
+                                                    <div className="font-semibold text-slate-900">{maintenance.project_name || '--'}</div>
                                                 )}
+                                                {maintenance.sales_reps?.length > 0 ? (
+                                                    <div className="mt-0.5 text-xs text-slate-500">
+                                                        <span className="font-medium">Sale rep: </span>
+                                                        <span>{maintenance.sales_reps.join(', ')}</span>
+                                                    </div>
+                                                ) : null}
                                             </div>
-                                            <div className="mt-1">
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div>
                                                 {maintenance.customer_route ? (
                                                     <a
                                                         href={maintenance.customer_route}
                                                         data-native="true"
-                                                        className="text-sm font-medium text-teal-700 hover:text-teal-600"
+                                                        className="font-medium text-slate-900 hover:text-teal-600"
                                                     >
                                                         {maintenance.customer_name}
                                                     </a>
                                                 ) : (
-                                                    <span className="text-sm text-slate-500">--</span>
+                                                    <div className="font-medium text-slate-800">{maintenance.customer_name || '--'}</div>
                                                 )}
+                                                {maintenance.customer_company ? (
+                                                    <div className="text-xs text-slate-500">{maintenance.customer_company}</div>
+                                                ) : null}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3">{maintenance.billing_cycle_label}</td>

@@ -298,7 +298,7 @@ export default function Show({
         <>
             <Head title={pageTitle} />
 
-            <div className="relative mb-6 overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-teal-800 p-6 text-white shadow-sm">
+            <div className="relative mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-teal-800 p-6 text-white shadow-sm">
                 <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-white/10" />
                 <div className="pointer-events-none absolute -bottom-24 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-teal-300/20 blur-2xl" />
                 <div className="relative flex flex-wrap items-center justify-between gap-4">
@@ -346,7 +346,7 @@ export default function Show({
                     <div className="space-y-5">
                         <div className="grid gap-3 md:grid-cols-5">
                             {summaryCards.map((item) => (
-                                <a key={item.key} href={item.href} data-native="true" className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-sm ${item.tone}`}>
+                                <a key={item.key} href={item.href} data-native="true" className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-sm block ${item.tone}`}>
                                     <div className="text-[11px] uppercase tracking-[0.2em]">{item.label}</div>
                                     <div className="mt-2 text-3xl font-semibold leading-none">{item.value}</div>
                                 </a>

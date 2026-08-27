@@ -508,6 +508,30 @@ function DateInputRuntimeAdapter({ App, props }) {
     );
 }
 
+import AdminLayout from './Layouts/AdminLayout';
+import ClientLayout from './Layouts/ClientLayout';
+import RepLayout from './Layouts/RepLayout';
+import SupportLayout from './Layouts/SupportLayout';
+import PublicLayout from './Layouts/PublicLayout';
+
+const resolveDefaultLayout = (name) => {
+    if (name.startsWith('Admin/')) return (p) => <AdminLayout>{p}</AdminLayout>;
+    if (name.startsWith('Employee/')) return (p) => <AdminLayout>{p}</AdminLayout>;
+    if (name.startsWith('Client/')) return (p) => <ClientLayout>{p}</ClientLayout>;
+    if (name.startsWith('Rep/')) return (p) => <RepLayout>{p}</RepLayout>;
+    if (name.startsWith('Support/')) return (p) => <SupportLayout>{p}</SupportLayout>;
+    if (name.startsWith('Public/')) return (p) => <PublicLayout>{p}</PublicLayout>;
+    if (name.startsWith('Projects/')) {
+        const path = typeof window !== 'undefined' ? window.location.pathname : '';
+        if (path.startsWith('/client')) return (p) => <ClientLayout>{p}</ClientLayout>;
+        if (path.startsWith('/employee')) return (p) => <AdminLayout>{p}</AdminLayout>;
+        if (path.startsWith('/rep')) return (p) => <RepLayout>{p}</RepLayout>;
+        if (path.startsWith('/support')) return (p) => <SupportLayout>{p}</SupportLayout>;
+        return (p) => <AdminLayout>{p}</AdminLayout>;
+    }
+    return undefined;
+};
+
 createInertiaApp({
     title: (title) => normalizeBrowserTitle(title, INITIAL_APP_NAME),
     resolve: async (name) => {
@@ -524,6 +548,13 @@ createInertiaApp({
         const explicitTitle = moduleDefault?.title || page.pageTitle || moduleDefault?.pageTitle || '';
         if (typeof explicitTitle === 'string' && explicitTitle.trim() !== '') {
             COMPONENT_TITLE_MAP[name] = explicitTitle.trim();
+        }
+
+        if (moduleDefault && moduleDefault.layout === undefined) {
+            const defaultLayout = resolveDefaultLayout(name);
+            if (defaultLayout) {
+                moduleDefault.layout = defaultLayout;
+            }
         }
 
         return moduleDefault;

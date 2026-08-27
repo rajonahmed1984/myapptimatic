@@ -1,11 +1,6 @@
 import React from 'react';
-import PortalPageHeader from '../Components/PortalPageHeader';
+import AdminLayout from './AdminLayout';
 
-export default function EmployeeLayout({ children, showHeader = true }) {
-    return (
-        <div className="space-y-6">
-            {showHeader ? <PortalPageHeader /> : null}
-            {children}
-        </div>
-    );
+export default function EmployeeLayout({ children, ...props }) {
+    return <AdminLayout {...props}>{children}</AdminLayout>;
 }

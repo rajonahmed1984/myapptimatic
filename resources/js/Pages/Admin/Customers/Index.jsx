@@ -84,32 +84,31 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                     <table className="min-w-full text-left text-sm">
                         <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                             <tr>
-                                <th className="px-4 py-3">ID</th>
-                                <th className="px-4 py-3">Photo</th>
-                                <th className="px-4 py-3">Name & Company</th>
-                                <th className="px-4 py-3">Email & mobile</th>
-                                <th className="px-4 py-3">Services</th>
-                                <th className="px-4 py-3">Projects & Maintenance</th>
-                                <th className="px-4 py-3">Login</th>
-                                <th className="px-4 py-3">Status</th>
+                                <th className="px-4 py-3 whitespace-nowrap">ID</th>
+                                <th className="px-4 py-3 whitespace-nowrap">Photo</th>
+                                <th className="px-4 py-3 whitespace-nowrap">Customer Info</th>
+                                <th className="px-4 py-3 whitespace-nowrap">Services</th>
+                                <th className="px-4 py-3 whitespace-nowrap">Projects & Maintenance</th>
+                                <th className="px-4 py-3 whitespace-nowrap">Last Login</th>
+                                <th className="px-4 py-3 whitespace-nowrap">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {customers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
+                                    <td colSpan={7} className="px-4 py-6 text-center text-slate-500 whitespace-nowrap">
                                         No customers yet.
                                     </td>
                                 </tr>
                             ) : (
                                 customers.map((customer) => (
-                                    <tr key={customer.id} className="border-b border-slate-100">
-                                        <td className="px-4 py-3 text-slate-500">
-                                            <a href={customer.routes?.show} data-native="true" className="hover:text-teal-600">
+                                    <tr key={customer.id} className="border-b border-slate-100 transition hover:bg-slate-50/60">
+                                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                                            <a href={customer.routes?.show} data-native="true" className="font-semibold text-slate-700 hover:text-teal-600">
                                                 {customer.id}
                                             </a>
                                         </td>
-                                        <td className="px-4 py-3">
+                                        <td className="px-4 py-3 whitespace-nowrap">
                                             {customer.avatar_url ? (
                                                 <img
                                                     src={customer.avatar_url}
@@ -122,36 +121,42 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div>
-                                                <a
-                                                    href={customer.routes?.show}
-                                                    data-native="true"
-                                                    className="font-medium text-slate-900 hover:text-teal-600"
-                                                >
-                                                    {customer.name}
-                                                </a>
-                                                <div className="text-xs text-slate-500">{customer.company_name || '--'}</div>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <div className="whitespace-nowrap space-y-0.5">
+                                                <div className="whitespace-nowrap">
+                                                    <a
+                                                        href={customer.routes?.show}
+                                                        data-native="true"
+                                                        className="font-semibold text-slate-900 hover:text-teal-600 inline-block"
+                                                    >
+                                                        {customer.name}
+                                                    </a>
+                                                </div>
+                                                <div className="text-xs text-slate-500 whitespace-nowrap">
+                                                    {customer.company_name || '--'}
+                                                </div>
+                                                <div className="text-xs text-slate-600 whitespace-nowrap">
+                                                    {customer.email || '--'}
+                                                </div>
+                                                <div className="text-xs text-slate-400 whitespace-nowrap">
+                                                    {customer.mobile || customer.phone || '--'}
+                                                </div>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500">
-                                            <div>{customer.email || '--'}</div>
-                                            <div className="text-xs text-slate-400">{customer.mobile || customer.phone || '--'}</div>
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-500">
+                                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
                                             {Number(customer.active_subscriptions_count || 0)} ({Number(customer.subscriptions_count || 0)})
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500">
-                                            <div className="text-sm text-slate-700">Projects: {Number(customer.projects_count || 0)}</div>
-                                            <div className="text-xs text-slate-500">Maintenance: {Number(customer.project_maintenances_count || 0)}</div>
+                                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                                            <div className="text-sm text-slate-700 whitespace-nowrap">Projects: {Number(customer.projects_count || 0)}</div>
+                                            <div className="text-xs text-slate-500 whitespace-nowrap">Maintenance: {Number(customer.project_maintenances_count || 0)}</div>
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-[11px] text-slate-400">
-                                                Last login: {customer.login?.last_login_at || '--'}
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <div className="text-xs text-slate-600 whitespace-nowrap">
+                                                {customer.login?.last_login_at || '--'}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${customer.status?.classes || 'bg-slate-200 text-slate-700'}`}>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${customer.status?.classes || 'bg-slate-200 text-slate-700'}`}>
                                                 {customer.status?.label || '--'}
                                             </span>
                                         </td>

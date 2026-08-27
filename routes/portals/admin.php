@@ -489,6 +489,9 @@ Route::middleware([
     Route::get('products/create', [ProductController::class, 'create'])
         ->middleware(HandleInertiaRequests::class)
         ->name('products.create');
+    Route::get('products/{product}', [ProductController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('products.show');
     Route::get('products/{product}/edit', [ProductController::class, 'edit'])
         ->middleware(HandleInertiaRequests::class)
         ->name('products.edit');

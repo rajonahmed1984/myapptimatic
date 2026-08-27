@@ -118,7 +118,7 @@ class AppServiceProvider extends ServiceProvider
             View::share('globalDateTimeFormat', $dateTimeFormat);
             View::share('globalTimeZone', $timeZone);
 
-            View::composer('layouts.admin', function ($view) {
+            View::composer('app', function ($view) {
                 $user = auth()->user();
                 $employeeHeaderStats = [
                     'task_badge' => 0,
@@ -201,7 +201,7 @@ class AppServiceProvider extends ServiceProvider
                 $view->with('employeeHeaderStats', $employeeHeaderStats);
             });
 
-            View::composer('layouts.client', function ($view) {
+            View::composer('app', function ($view) {
                 $user = auth()->user();
                 $customer = $user?->customer;
                 $unreadChatCount = 0;
@@ -272,7 +272,7 @@ class AppServiceProvider extends ServiceProvider
                 ]);
             });
 
-            View::composer('layouts.rep', function ($view) {
+            View::composer('app', function ($view) {
                 $user = auth()->user();
                 $repHeaderStats = [
                     'task_badge' => 0,

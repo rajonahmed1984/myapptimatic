@@ -42,18 +42,25 @@ export default function Index({ pageTitle = 'Products', routes = {}, products = 
                     <tbody>
                         {products.length > 0 ? (
                             products.map((product) => (
-                                <tr key={product.id} className="border-b border-slate-100">
+                                <tr key={product.id} className="border-b border-slate-100 hover:bg-slate-50/70 transition">
                                     <td className="px-4 py-3 text-slate-500">{product.serial}</td>
-                                    <td className="px-4 py-3 font-medium text-slate-900">{product.name}</td>
+                                    <td className="px-4 py-3 font-semibold text-slate-900">
+                                        <a href={product?.routes?.show} data-native="true" className="hover:text-teal-600 transition">
+                                            {product.name}
+                                        </a>
+                                    </td>
                                     <td className="px-4 py-3 text-slate-500">{product.slug}</td>
                                     <td className="px-4 py-3">
                                         <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(product.status)}`}>
                                             {product.status_label}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-600">{Number(product.usage_count || 0)}</td>
+                                    <td className="px-4 py-3 text-slate-600 font-medium">{Number(product.usage_count || 0)}</td>
                                     <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-3">
+                                        <div className="flex items-center justify-end gap-3 font-semibold text-xs">
+                                            <a href={product?.routes?.show} data-native="true" className="text-slate-700 hover:text-teal-600">
+                                                View
+                                            </a>
                                             <a href={product?.routes?.edit} data-native="true" className="text-teal-600 hover:text-teal-500">
                                                 Edit
                                             </a>

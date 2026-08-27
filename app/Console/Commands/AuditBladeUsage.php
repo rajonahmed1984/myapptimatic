@@ -270,9 +270,6 @@ class AuditBladeUsage extends Command
     {
         return collect([
             'app',
-            'inertia.layout',
-            'inertia.guest',
-            'inertia.sandbox',
             'errors.404',
         ]);
     }

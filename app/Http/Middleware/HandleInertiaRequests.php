@@ -28,6 +28,17 @@ class HandleInertiaRequests extends Middleware
             $portalBranding = [];
         }
 
+        $adminHeaderStats = view()->shared('adminHeaderStats') ?? [];
+        $employeeHeaderStats = view()->shared('employeeHeaderStats') ?? [];
+        $clientHeaderStats = view()->shared('clientHeaderStats') ?? [];
+        $repHeaderStats = view()->shared('repHeaderStats') ?? [];
+
+        $avatarUrl = null;
+        if ($user) {
+            $avatarPath = $user->employee?->photo_path ?? $user->avatar_path;
+            $avatarUrl = \App\Support\PublicStorageUrl::fromPath(is_string($avatarPath) ? $avatarPath : null);
+        }
+
         return array_merge(parent::share($request), [
             'app' => [
                 'name' => config('app.name'),
@@ -47,12 +58,31 @@ class HandleInertiaRequests extends Middleware
                 'register' => route('register', [], false),
             ],
             'auth' => [
-                'user' => $user?->only(['id', 'name', 'email', 'role']),
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'avatar_url' => $avatarUrl,
+                    'employee' => $user->employee ? [
+                        'id' => $user->employee->id,
+                        'work_mode' => (string) ($user->employee->work_mode ?? ''),
+                        'employment_type' => (string) ($user->employee->employment_type ?? ''),
+                    ] : null,
+                ] : null,
                 'portal' => $portal,
                 'guard' => Portal::guard($portal),
+                'is_impersonating' => $request->session()->has('impersonator_id'),
+            ],
+            'stats' => [
+                'admin' => $adminHeaderStats,
+                'employee' => $employeeHeaderStats,
+                'client' => $clientHeaderStats,
+                'rep' => $repHeaderStats,
             ],
             'permissions' => [
                 'is_master_admin' => (bool) ($user && method_exists($user, 'isMasterAdmin') ? $user->isMasterAdmin() : false),
+                'can_view_tasks' => (bool) ($user && app(\App\Services\TaskQueryService::class)->canViewTasks($user)),
             ],
             'features' => [
                 ...UiFeature::all(),

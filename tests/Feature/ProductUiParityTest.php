@@ -61,4 +61,73 @@ class ProductUiParityTest extends TestCase
             ->get(route('admin.products.index'))
             ->assertForbidden();
     }
+
+    #[Test]
+    public function product_show_page_renders_inertia_component_with_client_services(): void
+    {
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+        ]);
+
+        $product = \App\Models\Product::create([
+            'name' => 'Carrot Host Cloud',
+            'slug' => 'carrot-host-cloud',
+            'status' => 'active',
+            'description' => 'Managed cloud hosting product',
+        ]);
+
+        $plan = \App\Models\Plan::create([
+            'product_id' => $product->id,
+            'name' => 'Pro Monthly',
+            'slug' => 'pro-monthly',
+            'price' => 49.00,
+            'currency' => 'USD',
+            'interval' => 'monthly',
+            'is_active' => true,
+        ]);
+
+        $customer = \App\Models\Customer::create([
+            'name' => 'John Doe',
+            'company_name' => 'Acme Corp',
+            'email' => 'john@acme.test',
+            'status' => 'active',
+        ]);
+
+        $subscription = \App\Models\Subscription::create([
+            'customer_id' => $customer->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'subscription_amount' => 49.00,
+            'start_date' => now()->toDateString(),
+            'current_period_start' => now()->toDateString(),
+            'current_period_end' => now()->addMonth()->toDateString(),
+            'next_invoice_at' => now()->addMonth()->toDateString(),
+        ]);
+
+        $license = \App\Models\License::create([
+            'subscription_id' => $subscription->id,
+            'product_id' => $product->id,
+            'license_key' => 'TEST-KEY-ABC-1234',
+            'status' => 'active',
+            'starts_at' => now()->toDateString(),
+            'expires_at' => now()->addYear()->toDateString(),
+            'max_domains' => 5,
+        ]);
+
+        \App\Models\LicenseDomain::create([
+            'license_id' => $license->id,
+            'domain' => 'acme.test',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.products.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('data-page=', false);
+        $response->assertSee('Admin\\/Products\\/Show', false);
+        $response->assertSee('Carrot Host Cloud');
+        $response->assertSee('John Doe');
+        $response->assertSee('Acme Corp');
+        $response->assertSee('TEST-KEY-ABC-1234');
+    }
 }

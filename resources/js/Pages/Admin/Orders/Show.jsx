@@ -155,7 +155,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
 
                     <div className="grid items-start gap-6 p-6 xl:grid-cols-3">
                         <div className="grid items-start gap-6 md:grid-cols-2 xl:col-span-3">
-                            <div className="rounded-3xl border border-slate-200 bg-white p-6">
+                            <div className="rounded-2xl border border-slate-200 bg-white p-6">
                                 <div className="mb-4">
                                     <h2 className="text-lg font-semibold text-slate-900">Update Plan & Interval</h2>
                                     <p className="mt-1 text-sm text-slate-500">Select one plan to update both plan and interval.</p>
@@ -189,7 +189,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                 </form>
                             </div>
                             {canUpdateBillingAmounts ? (
-                                <div className="rounded-3xl border border-slate-200 bg-white p-6">
+                                <div className="rounded-2xl border border-slate-200 bg-white p-6">
                                     <div className="mb-4">
                                         <h2 className="text-lg font-semibold text-slate-900">Update Billing Amounts</h2>
                                         <p className="mt-1 text-sm text-slate-500">Update invoice total and recurring amount from this section.</p>
@@ -234,7 +234,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                     </form>
                                 </div>
                             ) : (
-                                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
                                     <h2 className="text-lg font-semibold text-slate-900">Billing Amounts</h2>
                                     <p className="mt-2 text-sm text-slate-600">Billing amounts are locked for this order status.</p>
                                 </div>
@@ -243,7 +243,7 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                         </div>
 
                         {canProcess ? (
-                            <div className="rounded-3xl border border-emerald-200 bg-emerald-50/60 p-6 xl:col-span-3">
+                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 xl:col-span-3">
                                 <h2 className="mb-4 text-lg font-semibold text-emerald-800">Approve Order</h2>
                                 <form id="approve-order-form" action={routes?.approve} method="POST" data-native="true" className="space-y-4">
                                     <input type="hidden" name="_token" value={csrf} />

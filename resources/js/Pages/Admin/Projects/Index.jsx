@@ -39,10 +39,6 @@ export default function Index({
 
             <div className="card space-y-4 p-6">
                 <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b-1">
-                    <div>
-                        <div className="section-label">Projects</div>
-                        <div className="text-sm text-slate-500">All project records moved here from the main projects dashboard.</div>
-                    </div>
                     <form method="GET" action={routes?.index} data-native="true" className="grid gap-3 p-2 md:grid-cols-4">
                         <div>
                             <label className="text-xs text-slate-500">Status</label>
@@ -75,13 +71,6 @@ export default function Index({
                     </form>
 
                     <div className="flex items-center gap-2">
-                        <a
-                            href={routes?.dashboard}
-                            data-native="true"
-                            className={BTN.secondary}
-                        >
-                            Dashboard
-                        </a>
                         <a
                             href={routes?.create}
                             data-native="true"
@@ -119,32 +108,27 @@ export default function Index({
                                         <tr key={project.id} className="border-t border-slate-100 hover:bg-slate-50/80">
                                             <td className="px-4 py-3 font-semibold text-slate-900">#{project.id}</td>
                                             <td className="px-4 py-3">
-                                                <a
-                                                    href={project.routes?.show}
-                                                    data-native="true"
-                                                    className="font-semibold text-slate-900 hover:text-teal-700"
-                                                >
-                                                    {project.name}
-                                                </a>
-                                                {project.employees?.length > 0 || project.sales_reps?.length > 0 ? (
-                                                    <div className="mt-1 text-xs text-slate-500">
-                                                        {project.employees?.length > 0 ? (
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="font-medium">Employees:</span>
-                                                                <span>{project.employees.join(', ')}</span>
-                                                            </div>
-                                                        ) : null}
-                                                        {project.sales_reps?.length > 0 ? (
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="font-medium">Sales:</span>
-                                                                <span>{project.sales_reps.join(', ')}</span>
-                                                            </div>
-                                                        ) : null}
-                                                    </div>
-                                                ) : null}
+                                                <div>
+                                                    <a
+                                                        href={project.routes?.show}
+                                                        data-native="true"
+                                                        className="font-semibold text-slate-900 hover:text-teal-700 block"
+                                                    >
+                                                        {project.name}
+                                                    </a>
+                                                    {project.sales_reps?.length > 0 ? (
+                                                        <div className="mt-0.5 text-xs text-slate-500">
+                                                            <span className="font-medium">Sales: </span>
+                                                            <span>{project.sales_reps.join(', ')}</span>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="font-medium text-slate-800">{project.customer_name}</div>
+                                                {project.customer_company ? (
+                                                    <div className="text-xs text-slate-500">{project.customer_company}</div>
+                                                ) : null}
                                             </td>
                                             <td className="px-4 py-3">{project.type_label}</td>
                                             <td className="px-4 py-3">

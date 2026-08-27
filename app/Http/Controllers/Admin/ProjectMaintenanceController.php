@@ -27,7 +27,7 @@ class ProjectMaintenanceController extends Controller
         $search = trim((string) $request->input('search', ''));
 
         $maintenances = ProjectMaintenance::query()
-            ->with(['project:id,name,currency', 'customer:id,name'])
+            ->with(['project:id,name,currency', 'customer:id,name,company_name', 'salesRepresentatives:id,name'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('title', 'like', '%'.$search.'%')
@@ -295,7 +295,9 @@ class ProjectMaintenanceController extends Controller
             'project_name' => $maintenance->project?->name,
             'project_route' => $maintenance->project ? route('admin.projects.show', $maintenance->project) : null,
             'customer_name' => $maintenance->customer?->name,
+            'customer_company' => (string) ($maintenance->customer?->company_name ?? ''),
             'customer_route' => $maintenance->customer ? route('admin.customers.show', $maintenance->customer) : null,
+            'sales_reps' => $maintenance->salesRepresentatives->pluck('name')->filter()->values(),
             'title' => $maintenance->title,
             'billing_cycle_label' => ucfirst((string) $maintenance->billing_cycle),
             'next_billing_date' => $this->displayDate($maintenance->next_billing_date),
