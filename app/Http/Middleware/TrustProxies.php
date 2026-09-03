@@ -11,6 +11,9 @@ class TrustProxies
      */
     public static function proxies(): array|string|null
     {
+        // env() rather than config() on purpose: bootstrap/app.php calls this
+        // while wiring middleware, which happens before the config repository
+        // is bootstrapped, so config() is not available yet.
         $trustedProxies = env('TRUSTED_PROXIES', '*');
         if (! is_string($trustedProxies)) {
             return $trustedProxies;

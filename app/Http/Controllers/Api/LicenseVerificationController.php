@@ -25,7 +25,7 @@ class LicenseVerificationController extends Controller
     public function verify(Request $request)
     {
         $requestId = (string) Str::uuid();
-        $includeSensitive = (bool) env('COMPAT_LEGACY_LICENSE_RESPONSE', true);
+        $includeSensitive = (bool) config('security.license_verify.legacy_response', true);
 
         $data = $request->validate([
             'license_key' => ['required', 'string'],
@@ -52,7 +52,23 @@ class LicenseVerificationController extends Controller
         }
 
         $previousIp = $license->last_check_ip;
-        $customer = $license->subscription->customer;
+
+        // invoices.subscription_id is nullOnDelete and admin flows can orphan a
+        // license, so this must not assume the relation is there — a public
+        // endpoint should answer "blocked", never throw a 500.
+        $subscription = $license->subscription;
+
+        if (! $subscription) {
+            $decision = 'block';
+            $reason = 'subscription_inactive';
+            $this->logUsage($requestId, $decision, $reason, $license, null, null, $domainInput, $request, [
+                'orphaned_license' => true,
+            ]);
+
+            return $this->blockedResponse($reason, [], $requestId);
+        }
+
+        $customer = $subscription->customer;
         $autoSuspendOverrideActive = $this->isAutoSuspendOverrideActive($license);
         $autoSuspendOverrideUntil = $license->auto_suspend_override_until?->toDateString();
 
@@ -84,8 +100,8 @@ class LicenseVerificationController extends Controller
         }
 
         if (
-            $license->subscription->status !== 'active'
-            && ! ($autoSuspendOverrideActive && (string) $license->subscription->status === 'suspended')
+            $subscription->status !== 'active'
+            && ! ($autoSuspendOverrideActive && (string) $subscription->status === 'suspended')
         ) {
             $decision = 'block';
             $reason = 'subscription_inactive';
@@ -172,7 +188,7 @@ class LicenseVerificationController extends Controller
             ]);
         }
 
-        $effectiveSeatLimit = $license->seat_limit ?? $license->subscription->plan?->seat_limit;
+        $effectiveSeatLimit = $license->seat_limit ?? $subscription->plan?->seat_limit;
         $seatsInUse = $request->has('seats_in_use') ? (int) $data['seats_in_use'] : null;
 
         if ($seatsInUse !== null) {
@@ -268,7 +284,7 @@ class LicenseVerificationController extends Controller
             'notice' => $invoiceBlock['reason'],
         ]);
 
-        if ($usageLogId && env('AI_LICENSE_RISK_ENABLED', false)) {
+        if ($usageLogId && config('security.ai.license_risk_enabled')) {
             dispatch((new EvaluateLicenseRiskJob($usageLogId))->onQueue('ai'));
         }
 

@@ -10,6 +10,7 @@ use App\Services\Currency\CurrencyService;
 use App\Support\SystemLogger;
 use App\Support\Currency;
 use App\Models\StatusAuditLog;
+use App\Services\InvoicePaymentCompletionService;
 use App\Services\Payment\Gateways\GatewayDriverInterface;
 use Carbon\Carbon;
 
@@ -120,61 +121,22 @@ class PaymentService
             'invoice_id' => $attempt->invoice_id,
             'payment_gateway_id' => $attempt->payment_gateway_id,
             'created_by' => null,
+            'metadata' => [
+                'transaction_fee' => $this->resolveGatewayFee($meta),
+                'payment_attempt_id' => $attempt->id,
+            ],
         ]);
 
         $invoice = $attempt->invoice;
-        if ($invoice && $invoice->status !== 'paid') {
-            $previousStatus = $invoice->status;
-            $invoice->update([
-                'status' => 'paid',
-                'paid_at' => $invoice->paid_at ?? Carbon::now(),
+        if ($invoice) {
+            // One shared handler for every payment path: license expiry
+            // extension, license/subscription restoration, access unblock,
+            // commission and notifications all live in there.
+            app(InvoicePaymentCompletionService::class)->complete($invoice, [
+                'reason' => 'payment_received',
+                'reference' => $reference,
+                'notify' => false,
             ]);
-
-            StatusAuditLog::logChange(
-                Invoice::class,
-                $invoice->id,
-                $previousStatus,
-                'paid',
-                'payment_received'
-            );
-
-            // Access restoration check
-            $subscription = $invoice->subscription;
-            if ($subscription) {
-                $customerId = $invoice->customer_id;
-                
-                // Unsuspend subscription if it was suspended
-                if ($subscription->status === 'suspended') {
-                    $subscription->update([
-                        'status' => 'active',
-                        'suspended_at' => null,
-                        'suspension_reason' => null,
-                    ]);
-                    StatusAuditLog::logChange(
-                        \App\Models\Subscription::class,
-                        $subscription->id,
-                        'suspended',
-                        'active',
-                        'auto_unsuspend_on_payment'
-                    );
-
-                    // Also unsuspend associated licenses
-                    $subscription->licenses()
-                        ->where('status', 'suspended')
-                        ->update(['status' => 'active']);
-                }
-
-                $hasOverdue = Invoice::query()
-                    ->where('customer_id', $customerId)
-                    ->where('status', 'overdue')
-                    ->exists();
-
-                if (! $hasOverdue) {
-                    \App\Models\Customer::query()
-                        ->where('id', $customerId)
-                        ->update(['access_override_until' => null]);
-                }
-            }
         }
 
         SystemLogger::write('activity', 'Invoice marked as paid.', [
@@ -270,6 +232,22 @@ class PaymentService
         }
 
         return [$amount, $processingCurrency];
+    }
+
+    /**
+     * Gateways report their cut under a handful of different keys; normalise
+     * whichever one came back so the invoice can show what was actually
+     * received net of fees.
+     */
+    private function resolveGatewayFee(array $meta): float
+    {
+        foreach (['transaction_fee', 'fee', 'fees', 'charge_amount', 'gateway_fee'] as $key) {
+            if (isset($meta[$key]) && is_numeric($meta[$key])) {
+                return round((float) $meta[$key], 2);
+            }
+        }
+
+        return 0.0;
     }
 
     private function mergeMeta(?array $existing, array $meta): array

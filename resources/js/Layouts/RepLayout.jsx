@@ -40,6 +40,8 @@ export default function RepLayout({ children, title, pageHeading }) {
     const page = usePage();
     const { auth, branding, stats, permissions, flash } = page.props;
     const currentUrl = page.url || window.location.pathname;
+    // Matching the bare portal prefix would highlight Dashboard on every page.
+    const portalRootPath = String(currentUrl).split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
 
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -95,7 +97,7 @@ export default function RepLayout({ children, title, pageHeading }) {
 
                 <nav className="mt-8 space-y-4 text-sm flex-1">
                     <div>
-                        <NavLink href="/rep/dashboard" active={isActiveRoute(currentUrl, ['/rep/dashboard', '/rep'])}>
+                        <NavLink href="/rep/dashboard" active={portalRootPath === '/rep' || isActiveRoute(currentUrl, '/rep/dashboard')}>
                             Dashboard
                         </NavLink>
                     </div>

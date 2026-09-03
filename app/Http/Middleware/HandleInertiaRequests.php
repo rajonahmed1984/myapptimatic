@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\HeaderStatsService;
 use App\Support\AuthFresh\Portal;
 use App\Support\UiFeature;
 use Illuminate\Http\Request;
@@ -28,10 +29,12 @@ class HandleInertiaRequests extends Middleware
             $portalBranding = [];
         }
 
-        $adminHeaderStats = view()->shared('adminHeaderStats') ?? [];
-        $employeeHeaderStats = view()->shared('employeeHeaderStats') ?? [];
-        $clientHeaderStats = view()->shared('clientHeaderStats') ?? [];
-        $repHeaderStats = view()->shared('repHeaderStats') ?? [];
+        // These must be resolved here, not read back out of the view bag: the
+        // Blade view composer that fills those only fires when the root view
+        // renders, which is after Inertia has already collected its props (and
+        // never at all on an Inertia XHR visit). Reading view()->shared() gave
+        // an empty array every time, which is why no sidebar badge appeared.
+        $headerStats = app(HeaderStatsService::class);
 
         $avatarUrl = null;
         if ($user) {
@@ -75,10 +78,10 @@ class HandleInertiaRequests extends Middleware
                 'is_impersonating' => $request->session()->has('impersonator_id'),
             ],
             'stats' => [
-                'admin' => $adminHeaderStats,
-                'employee' => $employeeHeaderStats,
-                'client' => $clientHeaderStats,
-                'rep' => $repHeaderStats,
+                'admin' => $headerStats->admin($request),
+                'employee' => $headerStats->employee(),
+                'client' => $headerStats->client(),
+                'rep' => $headerStats->salesRep(),
             ],
             'permissions' => [
                 'is_master_admin' => (bool) ($user && method_exists($user, 'isMasterAdmin') ? $user->isMasterAdmin() : false),

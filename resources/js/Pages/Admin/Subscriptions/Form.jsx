@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
-function LicenseCard({ license, csrf, statusClass }) {
+function LicenseCard({ license, csrf, statusClass, moveTargets = [] }) {
     const [editOpen, setEditOpen] = useState(false);
+    const [moveOpen, setMoveOpen] = useState(false);
     const [licenseKey, setLicenseKey] = useState(license.fields.license_key || '');
     const [domain, setDomain] = useState(license.fields.allowed_domains || '');
     const inputClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
@@ -30,6 +32,15 @@ function LicenseCard({ license, csrf, statusClass }) {
                     >
                         {editOpen ? 'Close' : 'Edit Key / Domain'}
                     </button>
+                    {moveTargets.length > 0 && license.routes?.move ? (
+                        <button
+                            type="button"
+                            onClick={() => setMoveOpen((v) => !v)}
+                            className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
+                        >
+                            {moveOpen ? 'Close' : 'Move'}
+                        </button>
+                    ) : null}
                     {license.fields.status !== 'suspended' && license.fields.status !== 'revoked' && (
                         <button
                             type="submit"
@@ -48,7 +59,7 @@ function LicenseCard({ license, csrf, statusClass }) {
                             Unsuspend
                         </button>
                     )}
-                    {license.fields.status === 'revoked' && (
+                    {(license.fields.status === 'revoked' || license.fields.status === 'expired') && (
                         <button
                             type="submit"
                             form={`reactivate-form-${license.id}`}
@@ -103,6 +114,51 @@ function LicenseCard({ license, csrf, statusClass }) {
                     )}
                 </div>
             </div>
+
+            {moveOpen && (
+                <form
+                    action={license.routes.move}
+                    method="POST"
+                    data-native="true"
+                    className="mt-4 border-t border-slate-100 pt-4"
+                    onSubmit={(e) => {
+                        if (!window.confirm('Move this license to the selected subscription? The new owner will be billed for it from now on.')) {
+                            e.preventDefault();
+                        }
+                    }}
+                >
+                    <input type="hidden" name="_token" value={csrf} />
+                    <input type="hidden" name="_method" value="PUT" />
+                    <input type="hidden" name="return_to_subscription" value="1" />
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label className="mb-1 block text-xs font-medium text-slate-700">Move to subscription</label>
+                            <SearchableSelect
+                                name="subscription_id"
+                                options={moveTargets}
+                                placeholder="Choose the destination subscription..."
+                                required
+                            />
+                            <p className="mt-1 text-xs text-slate-400">
+                                The license leaves this subscription and is billed under the destination client instead.
+                            </p>
+                        </div>
+                        <div className="flex flex-col justify-between gap-3">
+                            <label className="inline-flex items-start gap-2 text-xs text-slate-700">
+                                <input type="hidden" name="keep_domains" value="0" />
+                                <input type="checkbox" name="keep_domains" value="1" className="mt-0.5" />
+                                <span>Keep the current domain bindings. Leave this off when the new owner runs the software somewhere else — the existing domains are then revoked.</span>
+                            </label>
+                            <button
+                                type="submit"
+                                className="self-start rounded-full bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500"
+                            >
+                                Move License
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            )}
 
             {editOpen && (
                 <div className="mt-4 border-t border-slate-100 pt-4">
@@ -208,6 +264,7 @@ export default function Form({
     const licenseStatusClass = (status) => {
         if (status === 'active') return 'bg-emerald-100 text-emerald-700';
         if (status === 'suspended') return 'bg-amber-100 text-amber-700';
+        if (status === 'expired') return 'bg-orange-100 text-orange-700';
         if (status === 'revoked') return 'bg-rose-100 text-rose-700';
         return 'bg-slate-100 text-slate-600';
     };
@@ -422,7 +479,7 @@ export default function Form({
                         <div className="space-y-3">
                             <label className="block text-sm font-medium text-slate-700">Licenses</label>
                             {licenseManager.licenses.map((license) => (
-                                <LicenseCard key={license.id} license={license} csrf={csrf} statusClass={licenseStatusClass} />
+                                <LicenseCard key={license.id} license={license} csrf={csrf} statusClass={licenseStatusClass} moveTargets={licenseManager?.move_targets || []} />
                             ))}
                         </div>
                     )}

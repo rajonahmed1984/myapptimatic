@@ -11,12 +11,30 @@ use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Subscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class LicenseVerificationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // LicenseInvoiceGrace suppresses billing blocks until 23:59 on the 3rd
+        // of each month, so these assertions only hold outside that window.
+        // Pin the clock mid-month rather than letting the calendar decide.
+        Carbon::setTestNow(Carbon::parse('2026-07-15 10:00:00'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     #[Test]
     public function expired_license_is_blocked(): void
@@ -441,13 +459,13 @@ class LicenseVerificationTest extends TestCase
     #[Test]
     public function signature_is_required_when_enabled(): void
     {
-        $previousRequire = getenv('AI_REQUIRE_SIGNED_VERIFY');
-        $previousSecret = getenv('AI_VERIFY_SECRET');
-        $previousTolerance = getenv('API_SIGNATURE_TOLERANCE_SECONDS');
-
-        $this->setEnv('AI_REQUIRE_SIGNED_VERIFY', 'true');
-        $this->setEnv('AI_VERIFY_SECRET', 'test-secret');
-        $this->setEnv('API_SIGNATURE_TOLERANCE_SECONDS', '600');
+        // The middleware reads config, not env, so that `config:cache` cannot
+        // silently disable signature checking in production.
+        config([
+            'security.license_verify.require_signature' => true,
+            'security.license_verify.secret' => 'test-secret',
+            'security.license_verify.signature_tolerance_seconds' => 600,
+        ]);
 
         try {
             Setting::setValue('auto_bind_domains', 1);
@@ -475,9 +493,10 @@ class LicenseVerificationTest extends TestCase
                     'blocked' => false,
                 ]);
         } finally {
-            $this->restoreEnv('AI_REQUIRE_SIGNED_VERIFY', $previousRequire);
-            $this->restoreEnv('AI_VERIFY_SECRET', $previousSecret);
-            $this->restoreEnv('API_SIGNATURE_TOLERANCE_SECONDS', $previousTolerance);
+            config([
+                'security.license_verify.require_signature' => false,
+                'security.license_verify.secret' => null,
+            ]);
         }
     }
 

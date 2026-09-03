@@ -68,6 +68,8 @@ export default function SupportLayout({ children, title, pageHeading }) {
     const page = usePage();
     const { auth, branding, flash } = page.props;
     const currentUrl = page.url || window.location.pathname;
+    // Matching the bare portal prefix would highlight Dashboard on every page.
+    const portalRootPath = String(currentUrl).split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
 
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -120,7 +122,7 @@ export default function SupportLayout({ children, title, pageHeading }) {
 
                 <nav className="mt-8 space-y-4 text-sm flex-1">
                     <div>
-                        <NavLink href="/support/dashboard" active={isActiveRoute(currentUrl, ['/support/dashboard', '/support'])}>
+                        <NavLink href="/support/dashboard" active={portalRootPath === '/support' || isActiveRoute(currentUrl, '/support/dashboard')}>
                             Dashboard
                         </NavLink>
                     </div>

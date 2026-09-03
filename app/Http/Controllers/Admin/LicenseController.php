@@ -239,7 +239,7 @@ class LicenseController extends Controller
             return $this->redirectAfterLicenseAction($request, $license, null, 'Revoked licenses cannot be unsuspended.');
         }
 
-        if ((string) $license->status === 'suspended') {
+        if (in_array((string) $license->status, ['suspended', 'expired'], true)) {
             $license->update(['status' => 'active']);
         }
 
@@ -250,11 +250,57 @@ class LicenseController extends Controller
     {
         $this->authorize('update', $license);
 
-        if ((string) $license->status === 'revoked') {
+        if (in_array((string) $license->status, ['revoked', 'expired'], true)) {
             $license->update(['status' => 'active']);
         }
 
         return $this->redirectAfterLicenseAction($request, $license, 'License reactivated.');
+    }
+
+    /**
+     * Move a license onto a different subscription — which is how a license
+     * changes owner without taking the whole subscription with it.
+     */
+    public function move(
+        Request $request,
+        License $license,
+        \App\Services\OwnershipMoveService $moveService
+    ) {
+        $this->authorize('update', $license);
+
+        $data = $request->validate([
+            'subscription_id' => [
+                'required',
+                'exists:subscriptions,id',
+                Rule::notIn([$license->subscription_id]),
+            ],
+            'keep_domains' => ['nullable', 'boolean'],
+        ]);
+
+        $target = \App\Models\Subscription::with(['plan', 'customer'])
+            ->findOrFail((int) $data['subscription_id']);
+
+        if (in_array((string) $target->status, ['cancelled'], true)) {
+            return $this->redirectAfterLicenseAction(
+                $request,
+                $license,
+                null,
+                'A license cannot be moved onto a cancelled subscription.'
+            );
+        }
+
+        $moveService->moveLicense(
+            $license,
+            $target,
+            (bool) ($data['keep_domains'] ?? false),
+            $request->user()?->id
+        );
+
+        return $this->redirectAfterLicenseAction(
+            $request,
+            $license,
+            sprintf('License moved to %s.', $target->customer?->name ?? 'subscription #'.$target->id)
+        );
     }
 
     public function terminate(Request $request, License $license)
@@ -539,7 +585,7 @@ class LicenseController extends Controller
             $prefix.'subscription_id' => ['required', 'exists:subscriptions,id'],
             $prefix.'product_id' => ['required', 'exists:products,id'],
             $prefix.'license_key' => $licenseKeyRules,
-            $prefix.'status' => ['required', Rule::in(['active', 'suspended', 'revoked'])],
+            $prefix.'status' => ['required', Rule::in(['active', 'suspended', 'expired', 'revoked'])],
             $prefix.'starts_at' => ['required', 'date'],
             $prefix.'expires_at' => ['nullable', 'date', 'after_or_equal:'.$prefix.'starts_at'],
             $prefix.'auto_suspend_override_until' => ['nullable', 'date'],

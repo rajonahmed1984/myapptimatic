@@ -575,6 +575,12 @@ export default function Show({
                         <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Sub Total:</span><span className="text-slate-700">{invoice.totals?.subtotal_display}</span></div>
                         <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Credit:</span><span className="text-slate-700">{invoice.totals?.credit_display}</span></div>
                         <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Paid Amount:</span><span className="text-slate-700">{invoice.totals?.paid_display}</span></div>
+                        {Number(invoice.totals?.transaction_fee_total || 0) > 0 ? (
+                            <>
+                                <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Transaction Fees:</span><span className="text-slate-700">{invoice.totals?.transaction_fee_display}</span></div>
+                                <div className="flex items-center justify-between"><span className="font-semibold text-slate-500">Net Received:</span><span className="text-slate-700">{invoice.totals?.net_received_display}</span></div>
+                            </>
+                        ) : null}
                         <div className="flex items-center justify-between rounded-full bg-teal-600 px-4 py-1.5 font-bold text-white">
                             <span>Total Due:</span><span>{invoice.totals?.outstanding_display}</span>
                         </div>

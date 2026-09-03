@@ -256,8 +256,11 @@ class SubscriptionController extends Controller
         ]);
     }
 
-    public function moveOwner(Request $request, Subscription $subscription): RedirectResponse
-    {
+    public function moveOwner(
+        Request $request,
+        Subscription $subscription,
+        \App\Services\OwnershipMoveService $moveService
+    ): RedirectResponse {
         $data = $request->validate([
             'customer_id' => [
                 'required',
@@ -269,35 +272,28 @@ class SubscriptionController extends Controller
             'move_invoices' => ['nullable', 'boolean'],
         ]);
 
-        $newCustomerId = (int) $data['customer_id'];
+        $target = \App\Models\Customer::findOrFail((int) $data['customer_id']);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $newCustomerId, $data) {
-            // 1. Move Subscription
-            $subscription->update(['customer_id' => $newCustomerId]);
-
-            // 2. Move Projects if requested
-            if (!empty($data['move_projects'])) {
-                $projectIds = \App\Models\Project::where('subscription_id', $subscription->id)->pluck('id')->all();
-                if (!empty($projectIds)) {
-                    \App\Models\Project::whereIn('id', $projectIds)->update(['customer_id' => $newCustomerId]);
-                    \App\Models\ProjectMaintenance::whereIn('project_id', $projectIds)->update(['customer_id' => $newCustomerId]);
-                    \App\Models\Invoice::whereIn('project_id', $projectIds)->update(['customer_id' => $newCustomerId]);
-                }
-            }
-
-            // 3. Move Orders if requested
-            if (!empty($data['move_orders'])) {
-                \App\Models\Order::where('subscription_id', $subscription->id)->update(['customer_id' => $newCustomerId]);
-            }
-
-            // 4. Move Invoices if requested
-            if (!empty($data['move_invoices'])) {
-                \App\Models\Invoice::where('subscription_id', $subscription->id)->update(['customer_id' => $newCustomerId]);
-            }
-        });
+        $moved = $moveService->moveSubscription(
+            $subscription,
+            $target,
+            [
+                'projects' => (bool) ($data['move_projects'] ?? false),
+                'orders' => (bool) ($data['move_orders'] ?? false),
+                'invoices' => (bool) ($data['move_invoices'] ?? false),
+            ],
+            $request->user()?->id
+        );
 
         return redirect()->route('admin.subscriptions.show', $subscription)
-            ->with('status', 'Subscription owner transferred successfully.');
+            ->with('status', sprintf(
+                'Subscription moved to %s (%d license(s), %d project(s), %d invoice(s), %d order(s)).',
+                $target->name,
+                (int) ($moved['licenses'] ?? 0),
+                (int) ($moved['projects'] ?? 0),
+                (int) ($moved['invoices'] ?? 0),
+                (int) ($moved['orders'] ?? 0)
+            ));
     }
 
     public function renewNow(Request $request, Subscription $subscription, BillingService $billingService): RedirectResponse
@@ -649,6 +645,28 @@ class SubscriptionController extends Controller
             $subscription->plan?->name ? ' ('.$subscription->plan->name.')' : ''
         );
 
+        // Candidate destinations for "move license". Any live subscription other
+        // than this one qualifies — that is how a license changes owner without
+        // moving the whole subscription.
+        $moveTargets = Subscription::query()
+            ->with(['customer:id,name', 'plan:id,name'])
+            ->whereKeyNot($subscription->id)
+            ->whereIn('status', ['active', 'suspended'])
+            ->orderByDesc('id')
+            ->limit(500)
+            ->get(['id', 'customer_id', 'plan_id'])
+            ->map(fn (Subscription $option) => [
+                'value' => (string) $option->id,
+                'label' => sprintf(
+                    '#%d - %s%s',
+                    $option->id,
+                    (string) ($option->customer?->name ?? 'Unknown customer'),
+                    $option->plan?->name ? ' ('.$option->plan->name.')' : ''
+                ),
+            ])
+            ->values()
+            ->all();
+
         return [
             'product' => $product ? [
                 'id' => $product->id,
@@ -658,6 +676,7 @@ class SubscriptionController extends Controller
                 'id' => $subscription->id,
                 'label' => $subscriptionLabel,
             ],
+            'move_targets' => $moveTargets,
             'create' => [
                 'enabled' => $product !== null,
                 'error_bag' => 'licenseCreate',
@@ -714,6 +733,7 @@ class SubscriptionController extends Controller
                             'unsuspend' => route('admin.licenses.unsuspend', $license),
                             'reactivate' => route('admin.licenses.reactivate', $license),
                             'terminate' => route('admin.licenses.terminate', $license),
+                            'move' => route('admin.licenses.move', $license),
                             'reissue_key' => route('admin.licenses.reissue-key', $license),
                             'certificate_issue' => route('admin.licenses.certificate.issue', $license),
                             'certificate_revoke' => $license->certificates->firstWhere('status', 'active')

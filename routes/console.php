@@ -21,8 +21,22 @@ try {
     $automationTimezone = config('app.timezone', 'UTC');
 }
 
+// schedule:run is triggered by a 5-minute cron, so it is only ever awake on
+// minutes divisible by 5. An admin who sets 00:07 here would silently switch
+// off every daily automation, so round the configured minute down to the grid.
+$automationTime = (static function (string $time): string {
+    if (! preg_match('/^(\d{1,2}):(\d{2})$/', trim($time), $m)) {
+        return '00:00';
+    }
+
+    $hour = min(23, max(0, (int) $m[1]));
+    $minute = min(59, max(0, (int) $m[2]));
+
+    return sprintf('%02d:%02d', $hour, intdiv($minute, 5) * 5);
+})($automationTime);
+
 // Daily billing cycle (12:00 AM via cron.php)
-$billing = Schedule::command('billing:run')->daily();
+$billing = Schedule::command('billing:run')->daily()->withoutOverlapping();
 CronActivityLogger::track($billing, 'billing:run');
 
 $ownershipTransfers = Schedule::command('ownership-transfers:run')->hourly();
@@ -89,7 +103,7 @@ $licenseExpirySuspend = Schedule::command('licenses:suspend-past-due --expiry-on
 CronActivityLogger::track($licenseExpirySuspend, 'licenses:suspend-past-due --expiry-only');
 
 $licenseInvoiceSuspend = Schedule::command('licenses:suspend-past-due --invoice-only')
-    ->monthlyOn(3, '23:59')
+    ->monthlyOn(3, '23:55')
     ->timezone($automationTimezone)
     ->withoutOverlapping();
 CronActivityLogger::track($licenseInvoiceSuspend, 'licenses:suspend-past-due --invoice-only');

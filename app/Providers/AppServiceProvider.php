@@ -23,6 +23,7 @@ use App\Support\DateTimeFormat;
 use App\Support\MailCategoryContext;
 use App\Support\SystemLogger;
 use App\Support\UrlResolver;
+use App\Services\HeaderStatsService;
 use App\Services\SettingsService;
 use App\Services\TaskQueryService;
 use App\Services\Mail\ImapInboxService;
@@ -57,6 +58,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->loadRouteHelpers();
         $this->app->singleton(\App\Services\CommissionService::class);
+        // Scoped so the Inertia middleware and the Blade composer share one
+        // instance (and therefore one set of badge queries) per request.
+        $this->app->scoped(HeaderStatsService::class);
     }
 
     /**
@@ -118,196 +122,16 @@ class AppServiceProvider extends ServiceProvider
             View::share('globalDateTimeFormat', $dateTimeFormat);
             View::share('globalTimeZone', $timeZone);
 
+            // Badge counts live in HeaderStatsService so the Blade composer and
+            // the Inertia middleware read the same numbers. The service memoises
+            // per request, so asking twice costs one set of queries.
             View::composer('app', function ($view) {
-                $user = auth()->user();
-                $employeeHeaderStats = [
-                    'task_badge' => 0,
-                    'unread_chat' => 0,
-                ];
-                $adminTaskBadge = 0;
-                $adminUnreadChat = 0;
+                $stats = app(HeaderStatsService::class);
 
-                if ($user && $user->isEmployee()) {
-                    $employee = request()->attributes->get('employee');
-                    if (! ($employee instanceof Employee)) {
-                        $employee = $user->employee;
-                    }
-
-                    if ($employee) {
-                        $taskQueryService = app(TaskQueryService::class);
-                        if ($taskQueryService->canViewTasks($user)) {
-                            $taskSummary = $taskQueryService->tasksSummaryForUser($user);
-                            $employeeHeaderStats['task_badge'] = (int) (($taskSummary['open'] ?? 0) + ($taskSummary['in_progress'] ?? 0));
-                        }
-
-                        // Keep sidebar unread count aligned with employee chat listing
-                        // by using the same relation-scoped project set.
-                        $projectIds = $employee->projects()
-                            ->pluck('projects.id');
-
-                        if ($projectIds->isNotEmpty()) {
-                            $employeeUnreadByProject = DB::table('project_messages as pm')
-                                ->select('pm.project_id', DB::raw('COUNT(*) as unread'))
-                                ->whereIn('pm.project_id', $projectIds->all())
-                                ->whereRaw(
-                                    'pm.id > COALESCE((SELECT MAX(pmr.last_read_message_id) FROM project_message_reads as pmr WHERE pmr.project_id = pm.project_id AND pmr.reader_type = ? AND pmr.reader_id = ?), 0)',
-                                    ['employee', $employee->id]
-                                )
-                                ->groupBy('pm.project_id')
-                                ->pluck('unread', 'pm.project_id')
-                                ->map(fn ($count) => (int) $count);
-
-                            $employeeHeaderStats['unread_chat'] = (int) $employeeUnreadByProject->sum();
-                        }
-                    }
-                }
-
-                if ($user && $user->isAdmin()) {
-                    $taskQueryService = app(TaskQueryService::class);
-                    if ($taskQueryService->canViewTasks($user)) {
-                        $taskSummary = $taskQueryService->tasksSummaryForUser($user);
-                        $adminTaskBadge = (int) (($taskSummary['open'] ?? 0) + ($taskSummary['in_progress'] ?? 0));
-                    }
-
-                    $adminUnreadChat = (int) DB::table('project_messages as pm')
-                        ->whereRaw(
-                            'pm.id > COALESCE((SELECT MAX(pmr.last_read_message_id) FROM project_message_reads as pmr WHERE pmr.project_id = pm.project_id AND pmr.reader_type = ? AND pmr.reader_id = ?), 0)',
-                            ['user', $user->id]
-                        )
-                        ->count();
-                }
-
-                $apptimaticEmailUnread = $this->resolveApptimaticEmailUnreadCount(request());
-                $verifiedActiveSyncedLicenses = License::query()
-                    ->where('status', 'active')
-                    ->whereNotNull('last_check_at')
-                    ->whereNotNull('last_verified_at')
-                    ->where('last_check_at', '>=', now()->subHours(48))
-                    ->whereColumn('last_verified_at', '>=', 'last_check_at')
-                    ->count();
-
-                $view->with('adminHeaderStats', [
-                    'pending_orders' => Order::where('status', 'pending')->count(),
-                    'overdue_invoices' => Invoice::where('status', 'overdue')->count(),
-                    'tickets_waiting' => SupportTicket::where('status', 'customer_reply')->count(),
-                    'open_support_tickets' => SupportTicket::where('status', 'open')->count(),
-                    'pending_manual_payments' => PaymentProof::where('status', 'pending')->count(),
-                    'pending_leave_requests' => LeaveRequest::where('status', 'pending')->count(),
-                    'tasks_badge' => $adminTaskBadge,
-                    'unread_chat' => $adminUnreadChat,
-                    'apptimatic_email_unread' => $apptimaticEmailUnread,
-                    'verified_active_synced_licenses' => $verifiedActiveSyncedLicenses,
-                ]);
-                $view->with('employeeHeaderStats', $employeeHeaderStats);
-            });
-
-            View::composer('app', function ($view) {
-                $user = auth()->user();
-                $customer = $user?->customer;
-                $unreadChatCount = 0;
-                $taskBadgeCount = 0;
-                $unpaidInvoiceCount = 0;
-
-                if ($user) {
-                    $projectIds = collect();
-
-                    if ($user->isClientProject()) {
-                        $projectIds = collect($user->assignedProjectIds());
-                    } elseif ($user->isClient()) {
-                        $projectIds = Project::where('customer_id', $user->customer_id)->pluck('id');
-                    }
-
-                    if ($projectIds->isNotEmpty()) {
-                        $unreadChatCount = (int) DB::table('project_messages as pm')
-                            ->leftJoin('project_message_reads as pmr', function ($join) use ($user) {
-                                $join->on('pmr.project_id', '=', 'pm.project_id')
-                                    ->where('pmr.reader_type', 'user')
-                                    ->where('pmr.reader_id', $user->id);
-                            })
-                            ->whereIn('pm.project_id', $projectIds->all())
-                            ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
-                            ->count();
-                    }
-
-                    $taskQueryService = app(TaskQueryService::class);
-                    if ($taskQueryService->canViewTasks($user)) {
-                        $taskSummary = $taskQueryService->tasksSummaryForUser($user);
-                        $taskBadgeCount = (int) (($taskSummary['open'] ?? 0) + ($taskSummary['in_progress'] ?? 0));
-                    }
-                }
-
-                if ($customer) {
-                    $candidateInvoices = Invoice::query()
-                        ->where('customer_id', $customer->id)
-                        ->whereIn('status', ['unpaid', 'overdue'])
-                        ->get(['id', 'total']);
-
-                    if ($candidateInvoices->isNotEmpty()) {
-                        $settledTotals = DB::table('accounting_entries')
-                            ->select('invoice_id', DB::raw("SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) as settled_total"))
-                            ->whereIn('invoice_id', $candidateInvoices->pluck('id')->all())
-                            ->groupBy('invoice_id')
-                            ->pluck('settled_total', 'invoice_id');
-
-                        $unpaidInvoiceCount = $candidateInvoices
-                            ->filter(function (Invoice $invoice) use ($settledTotals) {
-                                $settled = (float) ($settledTotals[$invoice->id] ?? 0);
-                                $outstanding = round(max(0, (float) $invoice->total - $settled), 2);
-
-                                return $outstanding > 0;
-                            })
-                            ->count();
-                    }
-                }
-
-                $view->with('clientHeaderStats', [
-                    'pending_admin_replies' => $customer
-                        ? SupportTicket::where('customer_id', $customer->id)
-                            ->where('status', 'answered')
-                            ->count()
-                        : 0,
-                    'unpaid_invoices' => $unpaidInvoiceCount,
-                    'unread_chat' => $unreadChatCount,
-                    'task_badge' => $taskBadgeCount,
-                ]);
-            });
-
-            View::composer('app', function ($view) {
-                $user = auth()->user();
-                $repHeaderStats = [
-                    'task_badge' => 0,
-                    'unread_chat' => 0,
-                ];
-
-                if ($user && $user->isSales()) {
-                    $salesRep = request()->attributes->get('salesRep');
-                    if (! ($salesRep instanceof SalesRepresentative)) {
-                        $salesRep = SalesRepresentative::where('user_id', $user->id)->first();
-                    }
-
-                    $taskQueryService = app(TaskQueryService::class);
-                    if ($taskQueryService->canViewTasks($user)) {
-                        $taskSummary = $taskQueryService->tasksSummaryForUser($user);
-                        $repHeaderStats['task_badge'] = (int) (($taskSummary['open'] ?? 0) + ($taskSummary['in_progress'] ?? 0));
-                    }
-
-                    if ($salesRep) {
-                        $projectIds = $salesRep->projects()->pluck('projects.id');
-                        if ($projectIds->isNotEmpty()) {
-                            $repHeaderStats['unread_chat'] = (int) DB::table('project_messages as pm')
-                                ->leftJoin('project_message_reads as pmr', function ($join) use ($salesRep) {
-                                    $join->on('pmr.project_id', '=', 'pm.project_id')
-                                        ->where('pmr.reader_type', 'sales_rep')
-                                        ->where('pmr.reader_id', $salesRep->id);
-                                })
-                                ->whereIn('pm.project_id', $projectIds->all())
-                                ->whereRaw('pm.id > COALESCE(pmr.last_read_message_id, 0)')
-                                ->count();
-                        }
-                    }
-                }
-
-                $view->with('repHeaderStats', $repHeaderStats);
+                $view->with('adminHeaderStats', $stats->admin(request()));
+                $view->with('employeeHeaderStats', $stats->employee());
+                $view->with('clientHeaderStats', $stats->client());
+                $view->with('repHeaderStats', $stats->salesRep());
             });
 
             $settingsService = app(SettingsService::class);
@@ -327,23 +151,11 @@ class AppServiceProvider extends ServiceProvider
             View::share('globalDateTimeFormat', 'd-m-Y h:i A');
             View::share('globalTimeZone', config('app.timezone'));
 
-            View::share('adminHeaderStats', [
-                'pending_orders' => 0,
-                'overdue_invoices' => 0,
-                'tickets_waiting' => 0,
-                'open_support_tickets' => 0,
-                'pending_manual_payments' => 0,
-                'pending_leave_requests' => 0,
-                'verified_active_synced_licenses' => 0,
-            ]);
-            View::share('employeeHeaderStats', [
-                'task_badge' => 0,
-                'unread_chat' => 0,
-            ]);
-            View::share('repHeaderStats', [
-                'task_badge' => 0,
-                'unread_chat' => 0,
-            ]);
+            $emptyStats = HeaderStatsService::empty();
+            View::share('adminHeaderStats', $emptyStats['admin']);
+            View::share('employeeHeaderStats', $emptyStats['employee']);
+            View::share('clientHeaderStats', $emptyStats['client']);
+            View::share('repHeaderStats', $emptyStats['rep']);
         }
     }
 
@@ -629,43 +441,6 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 
-    private function resolveApptimaticEmailUnreadCount(Request $request): int
-    {
-        $fallback = app(ApptimaticEmailStubRepository::class)->unreadCount();
-
-        try {
-            if (! $request->hasSession()) {
-                return $fallback;
-            }
-
-            $mailSessionService = app(MailSessionService::class);
-            $imapInboxService = app(ImapInboxService::class);
-
-            if (! $imapInboxService->isAvailable()) {
-                return $fallback;
-            }
-
-            $session = $mailSessionService->validateSession($request);
-            $mailAccount = $session?->mailAccount;
-            if (! $session || ! $mailAccount) {
-                return $fallback;
-            }
-
-            $password = $mailSessionService->decryptPassword($request);
-            if (! is_string($password) || $password === '') {
-                return $fallback;
-            }
-
-            $token = (string) $request->session()->get(MailSessionService::SESSION_TOKEN_KEY, '');
-            $cacheKey = 'apptimatic_email_unread:' . $mailAccount->id . ':' . substr(hash('sha256', $token), 0, 16);
-
-            return (int) Cache::remember($cacheKey, now()->addSeconds(20), function () use ($imapInboxService, $mailAccount, $password): int {
-                return $imapInboxService->unreadCount($mailAccount, $password);
-            });
-        } catch (\Throwable) {
-            return $fallback;
-        }
-    }
 
     private function loadRouteHelpers(): void
     {

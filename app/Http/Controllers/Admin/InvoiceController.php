@@ -19,6 +19,7 @@ use App\Services\AdminNotificationService;
 use App\Services\BillingService;
 use App\Services\ClientNotificationService;
 use App\Services\CommissionService;
+use App\Services\InvoicePaymentCompletionService;
 use App\Services\InvoiceVatService;
 use App\Services\SalesRepNotificationService;
 use App\Support\AjaxResponse;
@@ -295,88 +296,62 @@ class InvoiceController extends Controller
         CommissionService $commissionService,
         SalesRepNotificationService $salesRepNotifications
     ): RedirectResponse|JsonResponse {
-        $wasPaid = $invoice->status === 'paid';
-        $previousStatus = $invoice->status;
+        if (in_array((string) $invoice->status, ['cancelled', 'refunded'], true)) {
+            return redirect()->route('admin.invoices.show', $invoice)
+                ->with('error', 'Cancelled or refunded invoices cannot be marked as paid.');
+        }
 
-        DB::transaction(function () use ($invoice, $previousStatus, $wasPaid, $request) {
-            $invoice->update([
-                'status' => 'paid',
-                'paid_at' => Carbon::now(),
-            ]);
+        $wasPaid = (string) $invoice->status === 'paid';
 
-            \App\Models\StatusAuditLog::logChange(
-                Invoice::class,
-                $invoice->id,
-                $previousStatus,
-                'paid',
-                'manual_mark_paid',
-                $request->user()?->id
-            );
+        // Marking an invoice paid by hand still has to leave a payment behind,
+        // otherwise every outstanding-balance query keeps counting the full
+        // amount as owed on an invoice the UI calls "paid".
+        DB::transaction(function () use ($invoice, $wasPaid, $request) {
+            if ($wasPaid) {
+                return;
+            }
 
-            if (! $wasPaid) {
-                if ($invoice->subscription_id) {
-                    $sub = $invoice->subscription ?: \App\Models\Subscription::find($invoice->subscription_id);
-                    if ($sub) {
-                        app(\App\Services\StatusUpdateService::class)->unsuspendSubscriptionIfEligible($sub);
-                    }
-                }
+            $settled = (float) AccountingEntry::query()
+                ->where('invoice_id', $invoice->id)
+                ->whereIn('type', ['payment', 'credit'])
+                ->sum('amount');
 
-                // Check if customer has any remaining unpaid/overdue invoices
-                // If not, clear the billing block
-                $hasUnpaidInvoices = Invoice::query()
-                    ->where('customer_id', $invoice->customer_id)
-                    ->whereIn('status', ['unpaid', 'overdue'])
-                    ->whereRaw(
-                        "(COALESCE(total, 0) - COALESCE((SELECT SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) FROM accounting_entries WHERE accounting_entries.invoice_id = invoices.id), 0)) > 0.009"
-                    )
-                    ->exists();
+            $outstanding = round(max(0, (float) $invoice->total - $settled), 2);
 
-                if (! $hasUnpaidInvoices) {
-                    // Customer has no more unpaid invoices, restore access immediately
-                    \App\Models\Customer::query()
-                        ->where('id', $invoice->customer_id)
-                        ->update(['access_override_until' => null]);
-                }
+            if ($outstanding > 0.009) {
+                AccountingEntry::create([
+                    'entry_date' => Carbon::today()->toDateString(),
+                    'type' => 'payment',
+                    'amount' => $outstanding,
+                    'currency' => (string) $invoice->currency,
+                    'description' => 'Payment for invoice #'.(string) ($invoice->number ?? $invoice->id),
+                    'reference' => (string) ($invoice->number ?? $invoice->id),
+                    'customer_id' => $invoice->customer_id,
+                    'invoice_id' => $invoice->id,
+                    'payment_gateway_id' => null,
+                    'created_by' => $request->user()?->id,
+                    'metadata' => ['transaction_fee' => 0, 'source' => 'manual_mark_paid'],
+                ]);
             }
         });
 
         if (! $wasPaid) {
-            $freshInvoice = $invoice->fresh('customer');
-
-            $adminNotifications->sendInvoicePaid($freshInvoice);
-            try {
-                $clientNotifications->sendInvoicePaymentStatusNotification($freshInvoice, 'paid', null);
-            } catch (\Throwable $e) {
-                SystemLogger::write('module', 'Client invoice paid notification failed on manual mark paid.', [
-                    'invoice_id' => $invoice->id,
-                    'error' => $e->getMessage(),
-                ], level: 'error');
-            }
-
-            try {
-                $salesRepNotifications->sendInvoicePaymentStatusToRelatedSalesReps($freshInvoice, 'paid', null);
-            } catch (\Throwable $e) {
-                SystemLogger::write('module', 'Sales rep invoice paid notification failed on manual mark paid.', [
-                    'invoice_id' => $invoice->id,
-                    'error' => $e->getMessage(),
-                ], level: 'error');
-            }
+            $this->runInvoicePaidPostProcessing(
+                $request,
+                $invoice,
+                $adminNotifications,
+                $clientNotifications,
+                $commissionService,
+                $salesRepNotifications,
+                null,
+                'manual_mark_paid'
+            );
         }
 
         SystemLogger::write('activity', 'Invoice marked as paid.', [
             'invoice_id' => $invoice->id,
             'customer_id' => $invoice->customer_id,
         ], $request->user()?->id, $request->ip());
-
-        // Commission earning creation (idempotent).
-        try {
-            $commissionService->createOrUpdateEarningOnInvoicePaid($invoice->fresh('subscription.customer'));
-        } catch (\Throwable $e) {
-            SystemLogger::write('module', 'Commission earning failed on manual mark paid.', [
-                'invoice_id' => $invoice->id,
-                'error' => $e->getMessage(),
-            ], level: 'error');
-        }
 
         if (AjaxResponse::ajaxFromRequest($request)) {
             return AjaxResponse::ajaxRedirect(
@@ -407,6 +382,7 @@ class InvoiceController extends Controller
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_gateway_id' => ['nullable', 'exists:payment_gateways,id'],
             'reference' => ['nullable', 'string', 'max:255'],
+            'transaction_fee' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
         ]);
 
@@ -439,6 +415,11 @@ class InvoiceController extends Controller
             : null;
         $previousStatus = (string) $invoice->status;
 
+        // The gateway's cut does not reduce what the customer has settled — the
+        // invoice is credited the full amount — but it has to be recorded so the
+        // invoice can show what actually landed in the account.
+        $transactionFee = round((float) ($data['transaction_fee'] ?? 0), 2);
+
         AccountingEntry::create([
             'entry_date' => Carbon::parse((string) $data['entry_date'])->toDateString(),
             'type' => 'payment',
@@ -450,6 +431,10 @@ class InvoiceController extends Controller
             'invoice_id' => $invoice->id,
             'payment_gateway_id' => $gatewayId,
             'created_by' => $request->user()?->id,
+            'metadata' => [
+                'transaction_fee' => $transactionFee,
+                'net_amount' => round($paymentAmount - $transactionFee, 2),
+            ],
         ]);
 
         $paidTotalAfter = (float) AccountingEntry::query()
@@ -460,21 +445,6 @@ class InvoiceController extends Controller
         $marksPaid = $outstandingAfter <= 0;
 
         if ($marksPaid && $previousStatus !== 'paid') {
-            $invoice->update([
-                'status' => 'paid',
-                'paid_at' => $invoice->paid_at ?? Carbon::now(),
-                'overdue_at' => null,
-            ]);
-
-            \App\Models\StatusAuditLog::logChange(
-                Invoice::class,
-                $invoice->id,
-                $previousStatus,
-                'paid',
-                'invoice_add_payment',
-                $request->user()?->id
-            );
-
             $this->runInvoicePaidPostProcessing(
                 $request,
                 $invoice,
@@ -482,7 +452,8 @@ class InvoiceController extends Controller
                 $clientNotifications,
                 $commissionService,
                 $salesRepNotifications,
-                $reference !== '' ? $reference : null
+                $reference !== '' ? $reference : null,
+                'invoice_add_payment'
             );
         }
 
@@ -494,6 +465,7 @@ class InvoiceController extends Controller
             'outstanding_after' => $outstandingAfter,
             'currency' => $invoice->currency,
             'payment_gateway_id' => $gatewayId,
+            'transaction_fee' => $transactionFee,
         ], $request->user()?->id, $request->ip());
 
         return redirect()->route('admin.invoices.show', $invoice)
@@ -567,21 +539,6 @@ class InvoiceController extends Controller
         $marksPaid = $outstandingAfter <= 0;
 
         if ($marksPaid && $previousStatus !== 'paid') {
-            $invoice->update([
-                'status' => 'paid',
-                'paid_at' => $invoice->paid_at ?? Carbon::now(),
-                'overdue_at' => null,
-            ]);
-
-            \App\Models\StatusAuditLog::logChange(
-                Invoice::class,
-                $invoice->id,
-                $previousStatus,
-                'paid',
-                'invoice_add_credit',
-                $request->user()?->id
-            );
-
             $this->runInvoicePaidPostProcessing(
                 $request,
                 $invoice,
@@ -589,7 +546,8 @@ class InvoiceController extends Controller
                 $clientNotifications,
                 $commissionService,
                 $salesRepNotifications,
-                $reference !== '' ? $reference : null
+                $reference !== '' ? $reference : null,
+                'invoice_add_credit'
             );
         }
 
@@ -1558,6 +1516,10 @@ class InvoiceController extends Controller
         $discountAmount = $creditTotal;
         $payableAmount = max(0, (float) $invoice->total - $discountAmount);
         $outstandingAmount = max(0, (float) $invoice->total - ($paidTotal + $creditTotal));
+        $feeTotal = round((float) $invoice->accountingEntries
+            ->where('type', 'payment')
+            ->sum(fn ($entry) => (float) (is_array($entry->metadata) ? ($entry->metadata['transaction_fee'] ?? 0) : 0)), 2);
+        $netReceived = round($paidTotal - $feeTotal, 2);
         $effectiveStatus = $this->effectiveInvoiceStatus((string) $invoice->status, $outstandingAmount);
         $companyName = (string) Setting::getValue('company_name', config('app.name', 'MyApptimatic'));
         $companyEmail = (string) Setting::getValue('company_email');
@@ -1616,6 +1578,9 @@ class InvoiceController extends Controller
                 'paid_display' => '- '.(string) $invoice->currency.' '.number_format($paidTotal, 2),
                 'collected_display' => sprintf('%s %s', (string) $invoice->currency, number_format($paidTotal, 2)),
                 'collected_value' => number_format($paidTotal, 2, '.', ''),
+                'transaction_fee_total' => $feeTotal,
+                'transaction_fee_display' => sprintf('%s %s', (string) $invoice->currency, number_format($feeTotal, 2)),
+                'net_received_display' => sprintf('%s %s', (string) $invoice->currency, number_format($netReceived, 2)),
                 'payable_display' => sprintf('%s %s', (string) $invoice->currency, number_format($payableAmount, 2)),
                 'outstanding_display' => sprintf('%s %s', (string) $invoice->currency, number_format($outstandingAmount, 2)),
                 'outstanding_value' => number_format($outstandingAmount, 2, '.', ''),
@@ -1782,6 +1747,11 @@ class InvoiceController extends Controller
         ];
     }
 
+    /**
+     * Everything that must happen once an invoice is settled. The real work
+     * lives in InvoicePaymentCompletionService so the admin screens, the
+     * gateway callbacks and the payment-proof approval cannot drift apart.
+     */
     private function runInvoicePaidPostProcessing(
         Request $request,
         Invoice $invoice,
@@ -1789,62 +1759,14 @@ class InvoiceController extends Controller
         ClientNotificationService $clientNotifications,
         CommissionService $commissionService,
         SalesRepNotificationService $salesRepNotifications,
-        ?string $reference = null
+        ?string $reference = null,
+        string $reason = 'invoice_add_payment'
     ): void {
-        $freshInvoice = $invoice->fresh('customer');
-        if (! $freshInvoice) {
-            return;
-        }
-
-        $adminNotifications->sendInvoicePaid($freshInvoice);
-
-        try {
-            $clientNotifications->sendInvoicePaymentStatusNotification($freshInvoice, 'paid', $reference);
-        } catch (\Throwable $e) {
-            SystemLogger::write('module', 'Client invoice paid notification failed.', [
-                'invoice_id' => $invoice->id,
-                'error' => $e->getMessage(),
-            ], level: 'error');
-        }
-
-        try {
-            $salesRepNotifications->sendInvoicePaymentStatusToRelatedSalesReps($freshInvoice, 'paid', $reference);
-        } catch (\Throwable $e) {
-            SystemLogger::write('module', 'Sales rep invoice paid notification failed.', [
-                'invoice_id' => $invoice->id,
-                'error' => $e->getMessage(),
-            ], level: 'error');
-        }
-
-        $hasUnpaidInvoices = Invoice::query()
-            ->where('customer_id', $invoice->customer_id)
-            ->whereIn('status', ['unpaid', 'overdue'])
-            ->whereRaw(
-                "(COALESCE(total, 0) - COALESCE((SELECT SUM(CASE WHEN type IN ('payment', 'credit') THEN amount ELSE 0 END) FROM accounting_entries WHERE accounting_entries.invoice_id = invoices.id), 0)) > 0.009"
-            )
-            ->exists();
-
-        if (! $hasUnpaidInvoices) {
-            \App\Models\Customer::query()
-                ->where('id', $invoice->customer_id)
-                ->update(['access_override_until' => null]);
-        }
-
-        if ($invoice->subscription_id) {
-            $sub = $invoice->subscription ?: \App\Models\Subscription::find($invoice->subscription_id);
-            if ($sub) {
-                app(\App\Services\StatusUpdateService::class)->unsuspendSubscriptionIfEligible($sub);
-            }
-        }
-
-        try {
-            $commissionService->createOrUpdateEarningOnInvoicePaid($freshInvoice->fresh('subscription.customer'));
-        } catch (\Throwable $e) {
-            SystemLogger::write('module', 'Commission earning failed on paid invoice.', [
-                'invoice_id' => $invoice->id,
-                'error' => $e->getMessage(),
-            ], level: 'error');
-        }
+        app(InvoicePaymentCompletionService::class)->complete($invoice, [
+            'reason' => $reason,
+            'reference' => $reference,
+            'actor_id' => $request->user()?->id,
+        ]);
     }
 
     /**
@@ -2014,28 +1936,15 @@ class InvoiceController extends Controller
                 continue;
             }
 
-            $previousStatus = $invoice->status;
-            $invoice->update([
-                'status' => 'paid',
-                'paid_at' => Carbon::now(),
-            ]);
-
-            \App\Models\StatusAuditLog::logChange(
-                Invoice::class,
-                $invoice->id,
-                $previousStatus,
-                'paid',
-                'manual_mark_paid',
-                $request->user()?->id
-            );
-
             $this->runInvoicePaidPostProcessing(
                 $request,
                 $invoice,
                 $adminNotifications,
                 $clientNotifications,
                 $commissionService,
-                $salesRepNotifications
+                $salesRepNotifications,
+                null,
+                'manual_mark_paid'
             );
 
             SystemLogger::write('activity', 'Invoice marked as paid (bulk).', [

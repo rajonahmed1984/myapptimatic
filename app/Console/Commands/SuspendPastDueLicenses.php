@@ -37,9 +37,12 @@ class SuspendPastDueLicenses extends Command
 
         $this->info("Running license auto-suspension check...");
 
-        // Condition 1: License itself expires_at <= 3 days ago
+        // Condition 1: still-active licenses whose own expiry grace has run out.
+        // billing:run marks lapsed licenses `expired` the day after expiry; this
+        // catches anything that slipped past it (e.g. billing:run not running).
         $licensesByExpiry = $this->option('invoice-only') ? collect() : License::query()
             ->where('status', 'active')
+            ->whereNotNull('expires_at')
             ->where('expires_at', '<=', $threeDaysAgo)
             ->where(function ($query) use ($today) {
                 $query->whereNull('auto_suspend_override_until')

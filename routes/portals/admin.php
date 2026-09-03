@@ -537,6 +537,7 @@ Route::middleware([
     Route::post('licenses/{license}/unsuspend', [LicenseController::class, 'unsuspend'])->name('licenses.unsuspend');
     Route::post('licenses/{license}/reactivate', [LicenseController::class, 'reactivate'])->name('licenses.reactivate');
     Route::post('licenses/{license}/terminate', [LicenseController::class, 'terminate'])->name('licenses.terminate');
+    Route::put('licenses/{license}/move', [LicenseController::class, 'move'])->name('licenses.move');
     Route::post('licenses/{license}/domains/{domain}/revoke', [LicenseController::class, 'revokeDomain'])->name('licenses.domains.revoke');
     Route::post('licenses/{license}/sync', [LicenseController::class, 'sync'])->name('licenses.sync');
     Route::get('licenses/{license}/sync-status', [LicenseController::class, 'syncStatus'])->name('licenses.sync-status');
@@ -561,6 +562,7 @@ Route::middleware([
     Route::get('projects/transfers', [OwnershipTransferController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('projects.transfers.index');
+    Route::put('projects/{project}/move-owner', [ProjectController::class, 'moveOwner'])->name('projects.move-owner');
     Route::resource('projects', ProjectController::class)->except(['index']);
     Route::post('projects/{project}/transfers', [OwnershipTransferController::class, 'store'])->name('projects.transfers.store');
     Route::post('projects/transfers/{transfer}/cancel', [OwnershipTransferController::class, 'cancel'])->name('projects.transfers.cancel');

@@ -2,13 +2,11 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\License;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Jobs\SendCronSummaryEmail;
-use App\Jobs\SendInvoiceCreatedNotifications;
 use App\Jobs\SendInvoiceReminderNotification;
 use App\Jobs\SendLicenseExpiryNoticeNotification;
 use App\Jobs\SendTicketAdminReminderNotification;
@@ -39,6 +37,10 @@ class RunBillingCycle extends Command
 
     public function handle(): int
     {
+        // Long-running process: start from whatever the settings table says now,
+        // not from a cache a previous command in this worker filled.
+        Setting::flushCache();
+
         $startedAt = Carbon::now();
         Setting::setValue('billing_last_started_at', $startedAt->toDateTimeString());
         Setting::setValue('billing_last_status', 'running');
@@ -190,25 +192,6 @@ class RunBillingCycle extends Command
         ];
     }
 
-    private function markOverdue(Carbon $today): int
-    {
-        $count = 0;
-        $invoices = Invoice::query()
-            ->where('status', 'unpaid')
-            ->whereDate('due_date', '<', $today)
-            ->get();
-
-        foreach ($invoices as $invoice) {
-            $invoice->update([
-                'status' => 'overdue',
-                'overdue_at' => $invoice->overdue_at ?? Carbon::now(),
-            ]);
-            $count++;
-        }
-
-        return $count;
-    }
-
     private function applyLateFees(Carbon $today): int
     {
         $count = 0;
@@ -257,152 +240,43 @@ class RunBillingCycle extends Command
         }
 
         $days = (int) Setting::getValue('auto_cancellation_days');
-        $targetDate = $today->copy()->subDays($days);
 
-        return (int) Invoice::query()
+        // The shipped default is 0, which would write off every open invoice
+        // due today or earlier the moment the toggle is switched on. Require a
+        // deliberate, positive window.
+        if ($days <= 0) {
+            SystemLogger::write('module', 'Auto-cancellation skipped: auto_cancellation_days must be greater than zero.', [
+                'auto_cancellation_days' => $days,
+            ], level: 'warning');
+
+            return 0;
+        }
+
+        $targetDate = $today->copy()->subDays($days);
+        $count = 0;
+
+        Invoice::query()
             ->whereIn('status', ['unpaid', 'overdue'])
             ->whereDate('due_date', '<=', $targetDate->toDateString())
-            ->update(['status' => 'cancelled']);
-    }
+            ->orderBy('id')
+            ->chunkById(200, function ($invoices) use (&$count) {
+                foreach ($invoices as $invoice) {
+                    $previousStatus = (string) $invoice->status;
+                    $invoice->update(['status' => 'cancelled']);
 
-    private function applySuspensions(Carbon $today): int
-    {
-        if (! Setting::getValue('enable_suspension')) {
-            return 0;
-        }
+                    \App\Models\StatusAuditLog::logChange(
+                        Invoice::class,
+                        $invoice->id,
+                        $previousStatus,
+                        'cancelled',
+                        'auto_cancellation'
+                    );
 
-        $count = 0;
-        $suspendDays = (int) Setting::getValue('suspend_days');
-        $targetDate = $today->copy()->subDays($suspendDays);
-
-        $invoices = Invoice::query()
-            ->with(['subscription.licenses', 'subscription.customer'])
-            ->whereNotNull('subscription_id')
-            ->whereIn('status', ['unpaid', 'overdue'])
-            ->whereDate('due_date', '<=', $targetDate)
-            ->get();
-
-        foreach ($invoices as $invoice) {
-            $subscription = $invoice->subscription;
-
-            if (! $subscription || $subscription->status === 'cancelled') {
-                continue;
-            }
-
-            if ($subscription->customer && $subscription->customer->access_override_until && $subscription->customer->access_override_until->isFuture()) {
-                continue;
-            }
-
-            if ($subscription->status !== 'suspended') {
-                $subscription->update(['status' => 'suspended']);
-                $count++;
-            }
-
-            $subscription->licenses()
-                ->where('status', 'active')
-                ->update(['status' => 'suspended']);
-        }
+                    $count++;
+                }
+            });
 
         return $count;
-    }
-
-    private function applyTerminations(Carbon $today): int
-    {
-        if (! Setting::getValue('enable_termination')) {
-            return 0;
-        }
-
-        $count = 0;
-        $terminationDays = (int) Setting::getValue('termination_days');
-        $targetDate = $today->copy()->subDays($terminationDays);
-
-        $invoices = Invoice::query()
-            ->with(['subscription.licenses'])
-            ->whereNotNull('subscription_id')
-            ->whereIn('status', ['unpaid', 'overdue'])
-            ->whereDate('due_date', '<=', $targetDate)
-            ->get();
-
-        foreach ($invoices as $invoice) {
-            $subscription = $invoice->subscription;
-
-            if (! $subscription || $subscription->status === 'cancelled') {
-                continue;
-            }
-
-            $subscription->update([
-                'status' => 'cancelled',
-                'auto_renew' => false,
-                'cancelled_at' => Carbon::now(),
-            ]);
-            $count++;
-
-            $subscription->licenses()
-                ->whereIn('status', ['active', 'suspended'])
-                ->update(['status' => 'revoked']);
-        }
-
-        return $count;
-    }
-
-    private function applyUnsuspensions(): int
-    {
-        if (! Setting::getValue('enable_unsuspension')) {
-            return 0;
-        }
-
-        $count = 0;
-        $subscriptions = Subscription::query()
-            ->with(['licenses'])
-            ->where('status', 'suspended')
-            ->get();
-
-        foreach ($subscriptions as $subscription) {
-            $latestInvoice = Invoice::query()
-                ->where('subscription_id', $subscription->id)
-                ->orderByDesc('due_date')
-                ->first();
-
-            if ($latestInvoice && $latestInvoice->status !== 'paid') {
-                continue;
-            }
-
-            $openInvoices = Invoice::query()
-                ->where('subscription_id', $subscription->id)
-                ->whereIn('status', ['unpaid', 'overdue'])
-                ->exists();
-
-            if ($openInvoices) {
-                continue;
-            }
-
-            $subscription->update(['status' => 'active']);
-            $subscription->licenses()
-                ->where('status', 'suspended')
-                ->update(['status' => 'active']);
-            $count++;
-        }
-
-        return $count;
-    }
-
-    private function updateClientStatuses(): int
-    {
-        $activated = Customer::query()
-            ->where('status', 'inactive')
-            ->whereHas('subscriptions', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->update(['status' => 'active']);
-
-        $deactivated = Customer::query()
-            ->where('status', 'active')
-            ->whereDoesntHave('subscriptions', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->update(['status' => 'inactive']);
-
-        return $activated + $deactivated;
     }
 
     private function sendInvoiceReminders(Carbon $today): int
@@ -518,45 +392,6 @@ class RunBillingCycle extends Command
         }
 
         return $sent;
-    }
-
-    private function applyTicketAutomation(Carbon $today): int
-    {
-        $days = (int) Setting::getValue('ticket_auto_close_days');
-        if ($days <= 0) {
-            return 0;
-        }
-
-        $threshold = $today->copy()->subDays($days)->endOfDay();
-        $count = 0;
-        $now = Carbon::now();
-
-        SupportTicket::query()
-            ->select('id')
-            ->whereIn('status', ['open', 'answered', 'customer_reply'])
-            ->whereNotNull('last_reply_at')
-            ->where('last_reply_at', '<=', $threshold)
-            ->whereNull('closed_at')
-            ->orderBy('id')
-            ->chunkById(200, function ($tickets) use (&$count, $now) {
-                $ids = $tickets->pluck('id')->all();
-                foreach ($ids as $ticketId) {
-                    SendTicketAutoCloseNotification::dispatch($ticketId);
-                }
-
-                if (! empty($ids)) {
-                    SupportTicket::query()
-                        ->whereIn('id', $ids)
-                        ->update([
-                            'status' => 'closed',
-                            'closed_at' => $now,
-                            'auto_closed_at' => $now,
-                        ]);
-                    $count += count($ids);
-                }
-            });
-
-        return $count;
     }
 
     private function sendTicketAdminReminders(Carbon $today): int

@@ -278,10 +278,16 @@ class ProjectController extends Controller
                 'selected_sales_rep_ids' => $selectedSalesRepIds->all(),
                 'selected_employee_ids' => $selectedEmployeeIds->all(),
             ],
+            'moveRelatedCounts' => [
+                'invoices' => (int) Invoice::where('project_id', $project->id)->count(),
+                'maintenances' => (int) ProjectMaintenance::where('project_id', $project->id)->count(),
+                'client_users' => (int) $project->projectClients()->count(),
+            ],
             'routes' => [
                 'index' => route('admin.projects.all'),
                 'show' => route('admin.projects.show', $project),
                 'update' => route('admin.projects.update', $project),
+                'move_owner' => route('admin.projects.move-owner', $project),
                 'download_contract' => $project->contract_file_path
                     ? route('admin.projects.download', ['project' => $project, 'type' => 'contract'])
                     : null,
@@ -937,6 +943,50 @@ class ProjectController extends Controller
 
         return redirect()->route('admin.projects.show', $project)
             ->with('status', $statusMessage);
+    }
+
+    /**
+     * Move a project to another client. Kept separate from update() because it
+     * has to carry the project's maintenances and invoices across and drop the
+     * previous client's portal users, none of which a field edit should do.
+     */
+    public function moveOwner(
+        Request $request,
+        Project $project,
+        \App\Services\OwnershipMoveService $moveService
+    ): RedirectResponse {
+        $this->authorize('update', $project);
+
+        $data = $request->validate([
+            'customer_id' => [
+                'required',
+                'exists:customers,id',
+                Rule::notIn([$project->customer_id]),
+            ],
+            'move_invoices' => ['nullable', 'boolean'],
+            'move_maintenances' => ['nullable', 'boolean'],
+        ]);
+
+        $target = \App\Models\Customer::findOrFail((int) $data['customer_id']);
+
+        $moved = $moveService->moveProject(
+            $project,
+            $target,
+            [
+                'invoices' => (bool) ($data['move_invoices'] ?? false),
+                'maintenances' => (bool) ($data['move_maintenances'] ?? false),
+            ],
+            $request->user()?->id
+        );
+
+        return redirect()->route('admin.projects.show', $project)
+            ->with('status', sprintf(
+                'Project moved to %s (%d invoice(s), %d maintenance record(s), %d portal user(s) removed).',
+                $target->name,
+                (int) ($moved['invoices'] ?? 0),
+                (int) ($moved['maintenances'] ?? 0),
+                (int) ($moved['client_users_detached'] ?? 0)
+            ));
     }
 
     public function update(Request $request, Project $project, CommissionService $commissionService): RedirectResponse

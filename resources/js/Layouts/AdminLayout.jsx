@@ -70,6 +70,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
     const page = usePage();
     const { auth, branding, stats, permissions, flash } = page.props;
     const currentUrl = page.url || window.location.pathname;
+    const urlPath = String(currentUrl).split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
 
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -143,7 +144,9 @@ export default function AdminLayout({ children, title, pageHeading }) {
                     {!isEmployee ? (
                         <>
                             <div>
-                                <NavLink href="/admin/dashboard" active={isActiveRoute(currentUrl, ['/admin/dashboard', '/admin'])}>
+                                {/* '/admin' as a pattern would prefix-match every admin page and
+                                    leave Dashboard permanently highlighted, so match it exactly. */}
+                                <NavLink href="/admin/dashboard" active={urlPath === '/admin' || isActiveRoute(currentUrl, '/admin/dashboard')}>
                                     Dashboard
                                 </NavLink>
                             </div>

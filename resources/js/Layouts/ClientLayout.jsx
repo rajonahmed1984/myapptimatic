@@ -40,6 +40,8 @@ export default function ClientLayout({ children, title, pageHeading }) {
     const page = usePage();
     const { auth, branding, stats, permissions, flash } = page.props;
     const currentUrl = page.url || window.location.pathname;
+    // Matching the bare portal prefix would highlight Dashboard on every page.
+    const portalRootPath = String(currentUrl).split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
 
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -95,7 +97,7 @@ export default function ClientLayout({ children, title, pageHeading }) {
 
                 <nav className="mt-8 space-y-4 text-sm flex-1">
                     <div>
-                        <NavLink href="/client/dashboard" active={isActiveRoute(currentUrl, ['/client/dashboard', '/client'])}>
+                        <NavLink href="/client/dashboard" active={portalRootPath === '/client' || isActiveRoute(currentUrl, '/client/dashboard')}>
                             Overview
                         </NavLink>
                     </div>

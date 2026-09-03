@@ -9,6 +9,7 @@ Route::post('/licenses/verify', [LicenseVerificationController::class, 'verify']
     ->name('api.licenses.verify');
 
 Route::post('/chatbot/leads', [ChatbotLeadController::class, 'store'])
+    ->middleware('throttle:20,1')
     ->name('api.chatbot.leads.store');
 
 Route::get('/bkash-token', [\App\Http\Controllers\Api\BkashBridgeController::class, 'getToken'])

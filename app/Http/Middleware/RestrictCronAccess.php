@@ -10,7 +10,7 @@ class RestrictCronAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $allowIps = collect(explode(',', (string) env('CRON_IP_ALLOWLIST', '')))
+        $allowIps = collect(explode(',', (string) config('security.cron.ip_allowlist', '')))
             ->filter()
             ->map(fn ($ip) => trim($ip))
             ->filter();
@@ -23,7 +23,7 @@ class RestrictCronAccess
             abort(401, 'Invalid cron signature.');
         }
 
-        $secret = env('CRON_HMAC_SECRET');
+        $secret = config('security.cron.hmac_secret');
         $timestamp = $request->header('X-Timestamp');
         $signature = $request->header('X-Signature');
 
@@ -32,7 +32,7 @@ class RestrictCronAccess
                 abort(401, 'Cron signature required.');
             }
 
-            $maxSkew = (int) env('CRON_SIGNATURE_TOLERANCE_SECONDS', 300);
+            $maxSkew = (int) config('security.cron.signature_tolerance_seconds', 300);
             if ($maxSkew > 0 && abs(time() - (int) $timestamp) > $maxSkew) {
                 abort(401, 'Cron signature expired.');
             }

@@ -16,6 +16,10 @@ const licenseStatusClass = (status) => {
         return 'bg-amber-100 text-amber-700';
     }
 
+    if (status === 'expired') {
+        return 'bg-orange-100 text-orange-700';
+    }
+
     if (status === 'revoked') {
         return 'bg-rose-100 text-rose-700';
     }

@@ -113,7 +113,10 @@ class SubscriptionMoveOwnerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('admin.subscriptions.show', $subscription));
-        $response->assertSessionHas('status', 'Subscription owner transferred successfully.');
+        // The flash now reports what actually travelled, so assert on the
+        // substance rather than pinning the exact sentence.
+        $response->assertSessionHas('status', fn ($status) => is_string($status)
+            && str_contains($status, 'Subscription moved to '.$newCustomer->name));
 
         // Assert updates
         $this->assertEquals($newCustomer->id, $subscription->fresh()->customer_id);

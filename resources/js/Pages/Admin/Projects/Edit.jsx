@@ -13,6 +13,7 @@ export default function Edit({
     currencyOptions = [],
     form = {},
     routes = {},
+    moveRelatedCounts = {},
 }) {
     const { props } = usePage();
     const errors = props?.errors || {};
@@ -335,6 +336,77 @@ export default function Edit({
                     </div>
                 </form>
             </div>
+
+            {routes?.move_owner ? (
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
+                    <div className="text-sm font-semibold text-slate-800">Move Project to Another Client</div>
+                    <p className="mt-1 text-xs text-slate-500">
+                        Changes who owns and is billed for this project. Portal users belonging to the current
+                        client lose access to it. This cannot be undone from here.
+                    </p>
+
+                    <form
+                        action={routes.move_owner}
+                        method="POST"
+                        data-native="true"
+                        className="mt-4 space-y-4"
+                        onSubmit={(e) => {
+                            if (!window.confirm('Move this project to the selected client?')) {
+                                e.preventDefault();
+                            }
+                        }}
+                    >
+                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="_method" value="PUT" />
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div>
+                                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                    New Owner
+                                </label>
+                                <SearchableSelect
+                                    name="customer_id"
+                                    options={customers
+                                        .filter((customer) => String(customer.id) !== String(form.customer_id))
+                                        .map((customer) => ({ value: String(customer.id), label: customer.display_name }))}
+                                    placeholder="Choose a client..."
+                                    className="mt-1"
+                                    required
+                                />
+                                {errors?.customer_id ? <p className="mt-1 text-xs text-rose-600">{errors.customer_id}</p> : null}
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                    Move With It
+                                </label>
+                                <div className="mt-2 space-y-2">
+                                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                                        <input type="hidden" name="move_invoices" value="0" />
+                                        <input type="checkbox" name="move_invoices" value="1" defaultChecked className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                        <span>{Number(moveRelatedCounts?.invoices || 0)} project invoice(s)</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                                        <input type="hidden" name="move_maintenances" value="0" />
+                                        <input type="checkbox" name="move_maintenances" value="1" defaultChecked className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                        <span>{Number(moveRelatedCounts?.maintenances || 0)} maintenance record(s)</span>
+                                    </label>
+                                    <p className="text-xs text-slate-400">
+                                        {Number(moveRelatedCounts?.client_users || 0)} portal user(s) are attached; any that
+                                        do not belong to the new client are removed automatically.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button type="submit" className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                                Move Project
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            ) : null}
         </>
     );
 }

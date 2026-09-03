@@ -10,8 +10,8 @@ class VerifyApiSignature
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $requireSignature = (bool) env('AI_REQUIRE_SIGNED_VERIFY', false);
-        $secret = env('AI_VERIFY_SECRET');
+        $requireSignature = (bool) config('security.license_verify.require_signature');
+        $secret = config('security.license_verify.secret');
 
         // If signature not configured, skip verification but continue.
         if (!$requireSignature || empty($secret)) {
@@ -28,7 +28,7 @@ class VerifyApiSignature
         }
 
         // Reject stale requests (default 5 minutes).
-        $maxSkew = (int) env('API_SIGNATURE_TOLERANCE_SECONDS', 300);
+        $maxSkew = (int) config('security.license_verify.signature_tolerance_seconds', 300);
         if ($maxSkew > 0 && abs(time() - (int) $timestamp) > $maxSkew) {
             abort(401, 'Signature expired');
         }
