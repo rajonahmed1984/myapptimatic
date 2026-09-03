@@ -496,6 +496,19 @@ class PayrollController extends Controller
                 ->when(! empty($paidHolidayDates), fn ($q) => $q->whereNotIn('date', $paidHolidayDates))
                 ->get(['employee_id', 'status']);
 
+            // Any attendance row at all — holidays included, and whatever the
+            // status — counts as "this employee was tracked this period". It is
+            // what separates a genuine zero from no data having been recorded.
+            $attendanceRowCountByEmployee = EmployeeAttendance::query()
+                ->whereIn('employee_id', $employeeIds)
+                ->whereDate('date', '>=', $payrollPeriod->start_date?->toDateString())
+                ->whereDate('date', '<=', $payrollPeriod->end_date?->toDateString())
+                ->selectRaw('employee_id, COUNT(*) as total_rows')
+                ->groupBy('employee_id')
+                ->pluck('total_rows', 'employee_id')
+                ->map(fn ($count) => (int) $count)
+                ->all();
+
             foreach ($employeeIds as $employeeId) {
                 $rows = $attendanceRows->where('employee_id', $employeeId);
                 $presentDays = (float) $rows->where('status', 'present')->count();
@@ -505,6 +518,7 @@ class PayrollController extends Controller
                 $attendanceSummaryByEmployee[$employeeId] = [
                     'worked_days' => $workedDays,
                     'working_days' => $workingDaysInPeriod,
+                    'has_attendance' => (int) ($attendanceRowCountByEmployee[$employeeId] ?? 0) > 0,
                 ];
             }
 
@@ -550,15 +564,17 @@ class PayrollController extends Controller
             $expectedHours = max(0, $totalWorkingDays) * $hoursPerDay;
 
             $basePay = (float) ($item->base_pay ?? 0);
-            $estSubtotal = $basePay;
-            if ($isHoursBased) {
-                $hoursRatio = $expectedHours > 0 ? min(1, max(0, $actualHours / $expectedHours)) : 0;
-                $estSubtotal = $basePay * $hoursRatio;
-            } elseif ($isAttendanceBased) {
-                $attendanceRatio = $totalWorkingDays > 0 ? min(1, max(0, $workedDays / $totalWorkingDays)) : 0;
-                $estSubtotal = $basePay * $attendanceRatio;
-            }
-            $estSubtotal = round($estSubtotal, 2, PHP_ROUND_HALF_UP);
+            $estSubtotal = $this->earnedBaseSubtotal(
+                $basePay,
+                $isHoursBased,
+                $isAttendanceBased,
+                (bool) ($attendance['has_attendance'] ?? false)
+                    || (float) ($workLogHoursByEmployee[$item->employee_id] ?? 0) > 0,
+                $actualHours,
+                (float) $expectedHours,
+                $workedDays,
+                $totalWorkingDays
+            );
 
             $bonus = $this->sumAdjustment($item->bonuses);
             $penalty = $this->sumAdjustment($item->penalties);
@@ -643,24 +659,29 @@ class PayrollController extends Controller
                 $hoursPerDay = (($item->employee?->employment_type ?? null) === 'part_time') ? 4 : 8;
                 $expectedHours = max(0, (int) ($workingDaysInPeriod ?? 0)) * $hoursPerDay;
                 $actualHours = $workLogHours > 0 ? $workLogHours : (float) ($item->timesheet_hours ?? 0);
-                $estSubtotal = (float) ($item->base_pay ?? 0);
-
-                if ($isHoursBased) {
-                    $hoursRatio = $expectedHours > 0 ? min(1, max(0, $actualHours / $expectedHours)) : 0;
-                    $estSubtotal = (float) ($item->base_pay ?? 0) * $hoursRatio;
-                } elseif ($isAttendanceBased && $totalWorkingDays > 0) {
-                    $attendanceRatio = min(1, max(0, $workedDays / $totalWorkingDays));
-                    $estSubtotal = (float) ($item->base_pay ?? 0) * $attendanceRatio;
-                }
-
-                $estSubtotal = round($estSubtotal, 2, PHP_ROUND_HALF_UP);
+                $estSubtotal = $this->earnedBaseSubtotal(
+                    (float) ($item->base_pay ?? 0),
+                    $isHoursBased,
+                    $isAttendanceBased,
+                    (bool) ($attendance['has_attendance'] ?? false) || $workLogHours > 0,
+                    $actualHours,
+                    (float) $expectedHours,
+                    $workedDays,
+                    $totalWorkingDays
+                );
                 $overtimePay = (float) ($item->overtime_hours ?? 0) * (float) ($item->overtime_rate ?? 0);
                 $computedGross = round($estSubtotal + $overtimePay + $bonus, 2, PHP_ROUND_HALF_UP);
                 $computedNet = round($computedGross - $penalty - $advance - $deduction, 2, PHP_ROUND_HALF_UP);
                 $payableNet = round(max(0, $computedNet), 2, PHP_ROUND_HALF_UP);
                 $paidAmount = round((float) ($item->paid_amount ?? 0), 2, PHP_ROUND_HALF_UP);
                 $remainingAmount = round(max(0, $payableNet - $paidAmount), 2, PHP_ROUND_HALF_UP);
-                $displayStatus = $payableNet <= 0 ? 'paid' : $item->status;
+                // "Nothing payable" is not "paid". Reporting a zero-value row as
+                // paid marked every untracked employee as settled and hid the
+                // fact that nobody had actually been paid.
+                $displayStatus = (string) $item->status;
+                if ($displayStatus !== 'paid' && $payableNet <= 0 && $paidAmount <= 0) {
+                    $displayStatus = 'nothing_payable';
+                }
 
                 return [
                     'id' => $item->id,
@@ -791,6 +812,48 @@ class PayrollController extends Controller
         return (float) ($value ?? 0);
     }
 
+
+    /**
+     * What the employee has earned of their base pay for the period.
+     *
+     * Hourly/part-time staff are pro-rated against logged hours, full-timers
+     * against attendance. The `$hasTrackingData` flag is the important part:
+     * with no attendance rows and no work sessions at all there is no evidence
+     * to pro-rate against, and treating that as "worked zero days" silently
+     * wiped out the amount payroll generation had already calculated — every
+     * row came out at 0, which the grid then rendered as "Paid" and refused to
+     * let anyone pay. No data means fall back to the generated base pay; an
+     * actual zero has to be an actual recorded absence.
+     */
+    private function earnedBaseSubtotal(
+        float $basePay,
+        bool $isHoursBased,
+        bool $isAttendanceBased,
+        bool $hasTrackingData,
+        float $actualHours,
+        float $expectedHours,
+        float $workedDays,
+        int $workingDays
+    ): float {
+        if (! $hasTrackingData) {
+            return round($basePay, 2, PHP_ROUND_HALF_UP);
+        }
+
+        if ($isHoursBased) {
+            $ratio = $expectedHours > 0 ? min(1, max(0, $actualHours / $expectedHours)) : 0;
+
+            return round($basePay * $ratio, 2, PHP_ROUND_HALF_UP);
+        }
+
+        if ($isAttendanceBased && $workingDays > 0) {
+            $ratio = min(1, max(0, $workedDays / $workingDays));
+
+            return round($basePay * $ratio, 2, PHP_ROUND_HALF_UP);
+        }
+
+        return round($basePay, 2, PHP_ROUND_HALF_UP);
+    }
+
     private function payableNetAmount(PayrollPeriod $period, PayrollItem $item): float
     {
         $item->loadMissing('employee:id,employment_type');
@@ -852,15 +915,23 @@ class PayrollController extends Controller
             ? $workLogHours
             : round((float) ($item->timesheet_hours ?? 0), 2, PHP_ROUND_HALF_UP);
         $expectedHours = max(0, $workingDaysInPeriod) * $hoursPerDay;
-        $estSubtotal = (float) ($item->base_pay ?? 0);
-        if ($isHoursBased) {
-            $hoursRatio = $expectedHours > 0 ? min(1, max(0, $actualHours / $expectedHours)) : 0;
-            $estSubtotal = (float) ($item->base_pay ?? 0) * $hoursRatio;
-        } elseif ($isAttendanceBased && $workingDaysInPeriod > 0) {
-            $attendanceRatio = min(1, max(0, $workedDays / $workingDaysInPeriod));
-            $estSubtotal = (float) ($item->base_pay ?? 0) * $attendanceRatio;
-        }
-        $estSubtotal = round($estSubtotal, 2, PHP_ROUND_HALF_UP);
+
+        $attendanceRowCount = (int) EmployeeAttendance::query()
+            ->where('employee_id', $item->employee_id)
+            ->whereDate('date', '>=', $startDate)
+            ->whereDate('date', '<=', $endDate)
+            ->count();
+
+        $estSubtotal = $this->earnedBaseSubtotal(
+            (float) ($item->base_pay ?? 0),
+            $isHoursBased,
+            $isAttendanceBased,
+            $attendanceRowCount > 0 || $totalWorkSeconds > 0,
+            $actualHours,
+            (float) $expectedHours,
+            $workedDays,
+            $workingDaysInPeriod
+        );
 
         $bonus = $this->sumAdjustment($item->bonuses);
         $penalty = $this->sumAdjustment($item->penalties);

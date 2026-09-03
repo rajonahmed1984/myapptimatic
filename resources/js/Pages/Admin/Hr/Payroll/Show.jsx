@@ -2,6 +2,19 @@ import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
 
+const STATUS_CLASS = {
+    paid: 'bg-emerald-100 text-emerald-700',
+    partial: 'bg-orange-100 text-orange-700',
+    approved: 'bg-blue-100 text-blue-700',
+    draft: 'bg-amber-100 text-amber-700',
+    // Nothing is owed for this period — distinct from having been paid.
+    nothing_payable: 'bg-slate-100 text-slate-500',
+};
+
+const STATUS_LABEL = {
+    nothing_payable: 'Nothing payable',
+};
+
 export default function Show({
     pageTitle = 'Payroll',
     period = {},
@@ -119,8 +132,8 @@ export default function Show({
                                     </td>
                                     <td className="py-2 px-3">{item.computed_net}</td>
                                     <td className="py-2 px-3">
-                                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${item.display_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : item.display_status === 'partial' ? 'bg-orange-100 text-orange-700' : item.display_status === 'approved' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                                            {item.display_status.charAt(0).toUpperCase() + item.display_status.slice(1)}
+                                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${STATUS_CLASS[item.display_status] || STATUS_CLASS.draft}`}>
+                                            {STATUS_LABEL[item.display_status] || (item.display_status.charAt(0).toUpperCase() + item.display_status.slice(1))}
                                         </span>
                                     </td>
                                     <td className="py-2 px-3">{item.paid_amount}</td>
