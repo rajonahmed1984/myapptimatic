@@ -66,6 +66,29 @@ function NavMenu({ label, active, children, defaultOpen = true }) {
     );
 }
 
+
+function HeaderStat({ href, count, label, tone }) {
+    const value = Number(count || 0);
+    const badgeClass = value > 0
+        ? tone
+        : 'bg-slate-100 text-slate-400 border-slate-200';
+
+    return (
+        <a
+            href={href}
+            data-native="true"
+            className={`flex items-center gap-2 font-medium transition-colors ${
+                value > 0 ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-600'
+            }`}
+        >
+            <span className={`min-w-[24px] h-6 px-1.5 rounded-full border flex items-center justify-center font-bold text-[11px] leading-none tabular-nums ${badgeClass}`}>
+                {value}
+            </span>
+            <span>{label}</span>
+        </a>
+    );
+}
+
 export default function AdminLayout({ children, title, pageHeading }) {
     const page = usePage();
     const { auth, branding, stats, permissions, flash } = page.props;
@@ -81,6 +104,32 @@ export default function AdminLayout({ children, title, pageHeading }) {
 
     const adminStats = stats?.admin || {};
     const employeeStats = stats?.employee || {};
+
+    // The three things an admin is expected to act on. Always rendered, even at
+    // zero — a chip that vanishes on a quiet day reads as a missing feature and
+    // takes the shortcut to the list with it.
+    const headerStats = [
+        {
+            href: '/admin/orders?status=pending',
+            count: adminStats?.pending_orders,
+            label: 'Pending Orders',
+            tone: 'bg-amber-100 text-amber-700 border-amber-200/80',
+        },
+        {
+            href: '/admin/invoices/overdue',
+            count: adminStats?.overdue_invoices,
+            label: 'Overdue Invoices',
+            tone: 'bg-indigo-100 text-indigo-700 border-indigo-200/80',
+        },
+        {
+            // Everything still needing an answer: newly opened plus the ones a
+            // customer has replied to.
+            href: '/admin/support-tickets',
+            count: Number(adminStats?.open_support_tickets || 0) + Number(adminStats?.tickets_waiting || 0),
+            label: 'Support Tickets',
+            tone: 'bg-emerald-100 text-emerald-700 border-emerald-200/80',
+        },
+    ];
 
     const workMode = String(user?.employee?.work_mode || '').toLowerCase();
     const employmentType = String(user?.employee?.employment_type || '').toLowerCase();
@@ -481,30 +530,9 @@ export default function AdminLayout({ children, title, pageHeading }) {
 
                         {!isEmployee && (
                             <div className="stats hidden flex-wrap items-center justify-center gap-4 text-xs lg:flex flex-1">
-                                {Number(adminStats?.pending_orders || 0) > 0 && (
-                                    <a href="/admin/orders?status=pending" data-native="true" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-medium">
-                                        <span className="min-w-[24px] h-6 px-1.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200/80 flex items-center justify-center font-bold text-[11px] leading-none">
-                                            {adminStats.pending_orders}
-                                        </span>
-                                        <span>Pending Orders</span>
-                                    </a>
-                                )}
-                                {Number(adminStats?.overdue_invoices || 0) > 0 && (
-                                    <a href="/admin/invoices/overdue" data-native="true" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-medium">
-                                        <span className="min-w-[24px] h-6 px-1.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200/80 flex items-center justify-center font-bold text-[11px] leading-none">
-                                            {adminStats.overdue_invoices}
-                                        </span>
-                                        <span>Overdue Invoices</span>
-                                    </a>
-                                )}
-                                {Number(adminStats?.tickets_waiting || 0) > 0 && (
-                                    <a href="/admin/support-tickets?status=customer_reply" data-native="true" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-medium">
-                                        <span className="min-w-[24px] h-6 px-1.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200/80 flex items-center justify-center font-bold text-[11px] leading-none">
-                                            {adminStats.tickets_waiting}
-                                        </span>
-                                        <span>Ticket(s) Awaiting Reply</span>
-                                    </a>
-                                )}
+                                {headerStats.map((stat) => (
+                                    <HeaderStat key={stat.label} {...stat} />
+                                ))}
                             </div>
                         )}
 

@@ -74,6 +74,25 @@ class SidebarBadgeAndFeeTest extends TestCase
     }
 
     #[Test]
+    public function the_header_carries_all_three_action_counts_even_at_zero(): void
+    {
+        // The header chips render unconditionally now; they used to be hidden
+        // at zero, which read as the Pending Orders and Support Tickets
+        // facilities having disappeared.
+        $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
+
+        $response = $this->actingAs($admin)->get(route('admin.customers.index'));
+        $response->assertOk();
+
+        $stats = $response->viewData('page')['props']['stats']['admin'] ?? [];
+
+        foreach (['pending_orders', 'overdue_invoices', 'open_support_tickets', 'tickets_waiting'] as $key) {
+            $this->assertArrayHasKey($key, $stats, "The header needs {$key} to render its chip.");
+            $this->assertIsInt($stats[$key]);
+        }
+    }
+
+    #[Test]
     public function the_dashboard_link_is_not_active_on_every_admin_page(): void
     {
         // The layout matched the bare '/admin' prefix, which every admin URL
