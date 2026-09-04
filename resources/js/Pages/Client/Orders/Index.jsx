@@ -35,16 +35,31 @@ export default function Index({ has_customer = false, products = [], currency = 
                                     <div key={plan.id} className="card-muted p-4">
                                         <div className="flex items-start justify-between gap-4">
                                             <div>
-                                                <div className="text-sm text-slate-500">{plan.interval_label} plan</div>
-                                                <div className="mt-1 text-lg font-semibold text-slate-900">{plan.name}</div>
-                                                <div className="mt-2 text-sm text-slate-600">
-                                                    {currency} {Number(plan.price).toFixed(2)}
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-slate-500">{plan.interval_label} plan</span>
+                                                    {plan.is_per_flat || plan.pricing_model === 'per_flat' ? (
+                                                        <span className="inline-block rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800">
+                                                            Per Flat
+                                                        </span>
+                                                    ) : null}
                                                 </div>
+                                                <div className="mt-1 text-lg font-semibold text-slate-900">{plan.name}</div>
+                                                <div className="mt-2 text-sm font-semibold text-slate-700">
+                                                    {currency} {Number(plan.price).toFixed(2)}
+                                                    {plan.is_per_flat || plan.pricing_model === 'per_flat' ? (
+                                                        <span className="text-xs font-normal text-slate-500"> / flat / {plan.interval_label.toLowerCase()}</span>
+                                                    ) : null}
+                                                </div>
+                                                {plan.is_per_flat || plan.pricing_model === 'per_flat' ? (
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        Floor &amp; flat breakdown configured at next step.
+                                                    </p>
+                                                ) : null}
                                             </div>
                                             <form method="GET" action={routes.review} data-native="true">
                                                 <input type="hidden" name="plan_id" value={plan.id} />
-                                                <button type="submit" className="rounded-full bg-teal-500 px-4 py-2 text-xs font-semibold text-white">
-                                                    Review & checkout
+                                                <button type="submit" className="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-500 transition">
+                                                    {plan.is_per_flat || plan.pricing_model === 'per_flat' ? 'Configure & Order' : 'Review & checkout'}
                                                 </button>
                                             </form>
                                         </div>

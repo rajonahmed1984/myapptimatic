@@ -249,9 +249,6 @@ export default function AdminLayout({ children, title, pageHeading }) {
                                 <NavLink href="/admin/products" active={isActiveRoute(currentUrl, '/admin/products*')}>
                                     Products
                                 </NavLink>
-                                <NavLink href="/admin/mybuilding" active={isActiveRoute(currentUrl, '/admin/mybuilding*')}>
-                                    MyBuilding
-                                </NavLink>
                                 <NavLink href="/admin/plans" active={isActiveRoute(currentUrl, '/admin/plans*')}>
                                     Plans
                                 </NavLink>
@@ -394,19 +391,37 @@ export default function AdminLayout({ children, title, pageHeading }) {
                                     Chatbot Leads
                                 </NavLink>
                                 <NavMenu label="Email" active={isActiveRoute(currentUrl, '/admin/apptimatic-email*')}>
-                                    <a href="/admin/apptimatic-email/inbox?compose=new" data-native="true" className="block py-1 text-slate-300 hover:text-white">Compose</a>
-                                    <a href="/admin/apptimatic-email/inbox" data-native="true" className="flex items-center justify-between py-1 text-slate-300 hover:text-white">
-                                        <span>Inbox</span>
+                                    <a href="/admin/apptimatic-email/inbox?compose=new" data-native="true" className="flex items-center gap-2.5 py-1.5 px-2.5 my-1 rounded-lg bg-teal-500/15 text-teal-300 hover:bg-teal-500/25 hover:text-white font-medium transition text-xs">
+                                        <svg className="w-3.5 h-3.5 text-teal-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 4v16m8-8H4" /></svg>
+                                        <span>Compose</span>
+                                    </a>
+                                    <a href="/admin/apptimatic-email/inbox" data-native="true" className="flex items-center justify-between py-1.5 px-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition text-xs">
+                                        <span className="flex items-center gap-2.5">
+                                            <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                                            <span>Inbox</span>
+                                        </span>
                                         {Number(adminStats?.apptimatic_email_unread || 0) > 0 && (
-                                            <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">
+                                            <span className="rounded-full bg-teal-500/20 text-teal-300 px-2 py-0.5 text-[11px] font-bold">
                                                 {adminStats.apptimatic_email_unread}
                                             </span>
                                         )}
                                     </a>
-                                    <a href="/admin/apptimatic-email/inbox?folder=sent" data-native="true" className="block py-1 text-slate-300 hover:text-white">Sent</a>
-                                    <a href="/admin/apptimatic-email/inbox?folder=drafts" data-native="true" className="block py-1 text-slate-300 hover:text-white">Drafts</a>
-                                    <a href="/admin/apptimatic-email/inbox?folder=spam" data-native="true" className="block py-1 text-slate-300 hover:text-white">Spam</a>
-                                    <a href="/admin/apptimatic-email/manage" data-native="true" className="block py-1 text-slate-300 hover:text-white">Manage</a>
+                                    <a href="/admin/apptimatic-email/inbox?folder=sent" data-native="true" className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition text-xs">
+                                        <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                                        <span>Sent</span>
+                                    </a>
+                                    <a href="/admin/apptimatic-email/inbox?folder=drafts" data-native="true" className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition text-xs">
+                                        <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        <span>Drafts</span>
+                                    </a>
+                                    <a href="/admin/apptimatic-email/inbox?folder=spam" data-native="true" className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition text-xs">
+                                        <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                        <span>Spam</span>
+                                    </a>
+                                    <a href="/admin/apptimatic-email/manage" data-native="true" className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition text-xs">
+                                        <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        <span>Manage</span>
+                                    </a>
                                 </NavMenu>
                             </div>
 
@@ -416,13 +431,13 @@ export default function AdminLayout({ children, title, pageHeading }) {
                                 </div>
                                 {isMasterAdmin && (
                                     <>
-                                        <NavLink href="/admin/users/master_admin" active={currentUrl.includes('/admin/users/master_admin')}>
+                                        <NavLink href="/admin/user/master_admin" active={currentUrl.includes('/admin/user/master_admin') || currentUrl.includes('/admin/users/master_admin')}>
                                             Master Admins
                                         </NavLink>
-                                        <NavLink href="/admin/users/sub_admin" active={currentUrl.includes('/admin/users/sub_admin')}>
+                                        <NavLink href="/admin/user/sub_admin" active={currentUrl.includes('/admin/user/sub_admin') || currentUrl.includes('/admin/users/sub_admin')}>
                                             Sub Admins
                                         </NavLink>
-                                        <NavLink href="/admin/users/support" active={currentUrl.includes('/admin/users/support')}>
+                                        <NavLink href="/admin/user/support" active={currentUrl.includes('/admin/user/support') || currentUrl.includes('/admin/users/support')}>
                                             Support Users
                                         </NavLink>
                                     </>

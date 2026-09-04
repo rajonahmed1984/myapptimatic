@@ -15,6 +15,7 @@ class Plan extends Model
         'interval',
         'price',
         'currency',
+        'pricing_model',
         'is_active',
         'seat_limit',
     ];
@@ -24,6 +25,12 @@ class Plan extends Model
         'is_active' => 'boolean',
         'seat_limit' => 'integer',
     ];
+
+    public function isPerFlat(): bool
+    {
+        return $this->pricing_model === 'per_flat'
+            || ($this->relationLoaded('product') && $this->product?->slug === config('mybuilding.product_slug'));
+    }
 
     public function product(): BelongsTo
     {

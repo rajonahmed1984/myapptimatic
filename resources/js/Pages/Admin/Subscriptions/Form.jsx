@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
 
 function LicenseCard({ license, csrf, statusClass, moveTargets = [] }) {
@@ -7,7 +7,7 @@ function LicenseCard({ license, csrf, statusClass, moveTargets = [] }) {
     const [moveOpen, setMoveOpen] = useState(false);
     const [licenseKey, setLicenseKey] = useState(license.fields.license_key || '');
     const [domain, setDomain] = useState(license.fields.allowed_domains || '');
-    const inputClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
+    const inputClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-[10px] border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
 
     return (
         <div className="rounded-xl border border-slate-200 p-4">
@@ -212,6 +212,8 @@ export default function Form({
     form = {},
     routes = {},
     licenseManager = null,
+    provision = null,
+    secret_configured = false,
 }) {
     const { props } = usePage();
     const errors = props?.errors || {};
@@ -227,6 +229,7 @@ export default function Form({
             ...customers.map((customer) => ({
                 value: String(customer.id),
                 label: customer.name,
+                company_name: customer.company_name,
             })),
         ],
         [customers],
@@ -259,8 +262,8 @@ export default function Form({
         ],
         [],
     );
-    const inputTokenClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
-    const selectTokenClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600';
+    const inputTokenClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-[10px] border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
+    const selectTokenClass = 'w-full text-xs pl-4 pr-10 py-1.5 h-8 rounded-[10px] border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600';
     const licenseStatusClass = (status) => {
         if (status === 'active') return 'bg-emerald-100 text-emerald-700';
         if (status === 'suspended') return 'bg-amber-100 text-amber-700';
@@ -286,6 +289,42 @@ export default function Form({
         return numericValue.toFixed(2);
     };
 
+    const selectedPlan = planById[selectedPlanId] || null;
+    const isPerFlat = Boolean(selectedPlan?.is_per_flat || selectedPlan?.pricing_model === 'per_flat');
+
+    const [contractedFlats, setContractedFlats] = useState(() => {
+        if (fields?.contracted_flats !== undefined && fields?.contracted_flats !== null && String(fields.contracted_flats).trim() !== '') {
+            return String(fields.contracted_flats);
+        }
+        if (provision?.contracted_flats) {
+            return String(provision.contracted_flats);
+        }
+        const initialPlan = planById[String(fields?.plan_id || '')];
+        const initialAmount = fields?.subscription_amount;
+        if (initialPlan?.is_per_flat && initialAmount && Number(initialPlan.price) > 0) {
+            return String(Math.round(Number(initialAmount) / Number(initialPlan.price)));
+        }
+        return '40';
+    });
+
+    const [totalFloors, setTotalFloors] = useState(() => {
+        return String(fields?.total_floors || provision?.total_floors || '10');
+    });
+
+    const [buildingName, setBuildingName] = useState(() => {
+        return String(fields?.building_name || provision?.building_name || '');
+    });
+
+    const [buildingAddress, setBuildingAddress] = useState(() => {
+        return String(fields?.building_address || provision?.building_address || '');
+    });
+
+    const [installUrl, setInstallUrl] = useState(() => {
+        return String(fields?.install_url || provision?.install_url || 'https://app.mybuilding.com');
+    });
+
+    const [isProvisioning, setIsProvisioning] = useState(false);
+
     const [subscriptionAmount, setSubscriptionAmount] = useState(() => {
         const fieldValue = fields?.subscription_amount;
         if (fieldValue !== null && fieldValue !== undefined && String(fieldValue).trim() !== '') {
@@ -293,10 +332,39 @@ export default function Form({
         }
 
         const initialPlan = planById[String(fields?.plan_id || '')];
-        return initialPlan ? formatAmount(initialPlan.price) : '';
+        if (!initialPlan) return '';
+        if (initialPlan.is_per_flat || initialPlan.pricing_model === 'per_flat') {
+            const flats = Number(contractedFlats) || 40;
+            return (flats * Number(initialPlan.price)).toFixed(2);
+        }
+        return formatAmount(initialPlan.price);
     });
 
-    const selectedPlan = planById[selectedPlanId] || null;
+    const handleContractedFlatsChange = (val) => {
+        setContractedFlats(val);
+        if (isPerFlat && selectedPlan && Number(selectedPlan.price) > 0) {
+            const flatsNum = Number(val);
+            if (Number.isFinite(flatsNum) && flatsNum >= 0) {
+                setSubscriptionAmount((flatsNum * Number(selectedPlan.price)).toFixed(2));
+            }
+        }
+    };
+
+    const handlePlanChange = (newPlanId) => {
+        setSelectedPlanId(newPlanId);
+        const plan = planById[newPlanId];
+        if (plan) {
+            if (plan.is_per_flat || plan.pricing_model === 'per_flat') {
+                const flats = Number(contractedFlats) || 40;
+                setSubscriptionAmount((flats * Number(plan.price)).toFixed(2));
+            } else {
+                setSubscriptionAmount(formatAmount(plan.price));
+            }
+        } else {
+            setSubscriptionAmount('');
+        }
+    };
+
     const commissionAmountPreview = useMemo(() => {
         if (String(commissionPercent).trim() === '') {
             return '';
@@ -346,12 +414,7 @@ export default function Form({
                             <select
                                 name="plan_id"
                                 value={selectedPlanId}
-                                onChange={(event) => {
-                                    const planId = String(event.target.value || '');
-                                    setSelectedPlanId(planId);
-                                    const plan = planById[planId];
-                                    setSubscriptionAmount(plan ? formatAmount(plan.price) : '');
-                                }}
+                                onChange={(event) => handlePlanChange(String(event.target.value || ''))}
                                 className={`${selectTokenClass} mt-2`}
                             >
                                 {planOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -371,8 +434,16 @@ export default function Form({
                                 placeholder="0.00"
                             />
                             <p className="mt-1 text-xs text-slate-500">
-                                Auto from selected plan, but you can edit manually.
-                                {selectedPlan ? ` (${selectedPlan.currency ? `${selectedPlan.currency} ` : ''}${formatAmount(selectedPlan.price)})` : ''}
+                                {isPerFlat ? (
+                                    <span className="font-medium text-cyan-700">
+                                        Calculated from {contractedFlats || 0} flats &times; {selectedPlan?.currency || 'BDT'} {formatAmount(selectedPlan?.price || 50)} / flat
+                                    </span>
+                                ) : (
+                                    <>
+                                        Auto from selected plan, but you can edit manually.
+                                        {selectedPlan ? ` (${selectedPlan.currency ? `${selectedPlan.currency} ` : ''}${formatAmount(selectedPlan.price)})` : ''}
+                                    </>
+                                )}
                             </p>
                             {errors?.subscription_amount ? <p className="mt-1 text-xs text-rose-600">{errors.subscription_amount}</p> : null}
                         </div>
@@ -475,6 +546,220 @@ export default function Form({
                         </div>
                     </div>
 
+                    {/* Building & Flat-wise Pricing Setup */}
+                    {isPerFlat && (
+                        <div className="rounded-2xl border-2 border-cyan-200 bg-gradient-to-br from-cyan-50/40 via-sky-50/20 to-white p-5 shadow-sm space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-100 pb-3">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-600 text-white shadow-xs">
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-semibold text-slate-900">Building & Flat-wise Pricing Configuration</h2>
+                                        <p className="text-xs text-slate-500">Flat-based subscription: rate is calculated per flat and synchronized with the building deployment.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="inline-flex items-center rounded-full bg-cyan-100 px-3 py-1 text-xs font-semibold text-cyan-800 border border-cyan-200">
+                                        Per Flat Rate: {selectedPlan?.currency || 'BDT'} {formatAmount(selectedPlan?.price || 50)} / Flat / Month
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Live Calculation Pill */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-900 px-4 py-3 text-white shadow-inner">
+                                <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                                    <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-cyan-300 font-mono font-bold">
+                                        {contractedFlats || 0} Flats
+                                    </span>
+                                    <span className="text-slate-400">&times;</span>
+                                    <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-slate-200 font-mono">
+                                        {selectedPlan?.currency || 'BDT'} {formatAmount(selectedPlan?.price || 50)}
+                                    </span>
+                                    <span className="text-slate-400">=</span>
+                                    <span className="rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1 font-bold text-white shadow-sm">
+                                        {selectedPlan?.currency || 'BDT'} {(Number(contractedFlats || 0) * Number(selectedPlan?.price || 50)).toFixed(2)} / month
+                                    </span>
+                                </div>
+                                <span className="text-xs text-slate-400">
+                                    Monthly Subscription Amount is automatically kept in sync
+                                </span>
+                            </div>
+
+                            {/* Building & Flat fields */}
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-700">Contracted Flats *</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="5000"
+                                        name="contracted_flats"
+                                        value={contractedFlats}
+                                        onChange={(e) => handleContractedFlatsChange(e.target.value)}
+                                        className={inputTokenClass}
+                                        required
+                                    />
+                                    <p className="mt-1 text-[11px] text-slate-500">Changing this automatically updates the Subscription Amount above.</p>
+                                    {errors?.contracted_flats && <p className="mt-1 text-xs text-rose-600">{errors.contracted_flats}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-700">Total Floors *</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="200"
+                                        name="total_floors"
+                                        value={totalFloors}
+                                        onChange={(e) => setTotalFloors(e.target.value)}
+                                        className={inputTokenClass}
+                                        required
+                                    />
+                                    <p className="mt-1 text-[11px] text-slate-500">
+                                        Avg ~{Math.ceil((Number(contractedFlats) || 0) / Math.max(1, Number(totalFloors) || 1))} flats per floor
+                                    </p>
+                                    {errors?.total_floors && <p className="mt-1 text-xs text-rose-600">{errors.total_floors}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-700">Building Name *</label>
+                                    <input
+                                        type="text"
+                                        name="building_name"
+                                        value={buildingName}
+                                        onChange={(e) => setBuildingName(e.target.value)}
+                                        className={inputTokenClass}
+                                        placeholder="e.g. Gulshan Tower"
+                                        required
+                                    />
+                                    {errors?.building_name && <p className="mt-1 text-xs text-rose-600">{errors.building_name}</p>}
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-700">Building Address</label>
+                                    <input
+                                        type="text"
+                                        name="building_address"
+                                        value={buildingAddress}
+                                        onChange={(e) => setBuildingAddress(e.target.value)}
+                                        className={inputTokenClass}
+                                        placeholder="e.g. Plot 15, Road 27, Gulshan-1, Dhaka"
+                                    />
+                                    {errors?.building_address && <p className="mt-1 text-xs text-rose-600">{errors.building_address}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-700">Remote Install URL</label>
+                                    <input
+                                        type="text"
+                                        name="install_url"
+                                        value={installUrl}
+                                        onChange={(e) => setInstallUrl(e.target.value)}
+                                        className={inputTokenClass}
+                                        placeholder="https://app.mybuilding.com"
+                                    />
+                                    {errors?.install_url && <p className="mt-1 text-xs text-rose-600">{errors.install_url}</p>}
+                                </div>
+                            </div>
+
+                            {/* Remote Provisioning Status Card */}
+                            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Provisioning Status:</span>
+                                        {provision ? (
+                                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold capitalize ${
+                                                provision.status === 'provisioned'
+                                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                                    : provision.status === 'failed'
+                                                        ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                                        : 'bg-amber-100 text-amber-800 border-amber-300'
+                                            }`}>
+                                                {provision.status}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                                                Will be configured on save
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {provision?.routes?.provision && (
+                                        <button
+                                            type="button"
+                                            disabled={isProvisioning}
+                                            onClick={() => {
+                                                router.post(provision.routes.provision, {}, {
+                                                    preserveScroll: true,
+                                                    onStart: () => setIsProvisioning(true),
+                                                    onFinish: () => setIsProvisioning(false),
+                                                });
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                                        >
+                                            {isProvisioning ? (
+                                                <>
+                                                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                                    </svg>
+                                                    <span>Provisioning…</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                    <span>{provision.status === 'provisioned' ? 'Re-provision Building' : 'Provision Building Now'}</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+
+                                {provision && (
+                                    <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 text-xs sm:grid-cols-3">
+                                        <div>
+                                            <span className="text-slate-400 block">Remote Building ID</span>
+                                            <span className="font-mono font-medium text-slate-800">
+                                                {provision.remote_building_id ? `#${provision.remote_building_id}` : 'Not provisioned yet'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-slate-400 block">Registration Code</span>
+                                            <span className="font-mono font-medium text-slate-800">
+                                                {provision.registration_code || '—'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-slate-400 block">Last Provisioned</span>
+                                            <span className="text-slate-800">
+                                                {provision.provisioned_at || '—'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {provision?.last_error && (
+                                    <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
+                                        <strong>Error:</strong> {provision.last_error}
+                                    </div>
+                                )}
+
+                                {!secret_configured && (
+                                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+                                        <strong>Notice:</strong> <code>MYBUILDING_PROVISION_SECRET</code> is not set in <code>.env</code>. Remote hand-off will be queued until the secret is configured.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {is_edit && licenseManager?.licenses?.length > 0 && (
                         <div className="space-y-3">
                             <label className="block text-sm font-medium text-slate-700">Licenses</label>
@@ -486,7 +771,7 @@ export default function Form({
 
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
-                        <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="w-full rounded-full border border-slate-300 px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
+                        <textarea name="notes" rows={1} defaultValue={fields?.notes || ''} className="w-full rounded-[10px] border border-slate-300 px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
                     </div>
 
                     <div className="flex flex-wrap items-center gap-5">

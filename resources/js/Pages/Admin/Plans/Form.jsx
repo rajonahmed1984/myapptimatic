@@ -2,7 +2,7 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
 
-export default function Form({ pageTitle = 'Plan', is_edit = false, products = [], form = {}, routes = {}, default_currency = '' }) {
+export default function Form({ pageTitle = 'Plan', is_edit = false, products = [], mybuilding_slug = 'mybuilding', form = {}, routes = {}, default_currency = '' }) {
     const { props } = usePage();
     const errors = props?.errors || {};
     const csrf = props?.csrf_token || '';
@@ -17,6 +17,17 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
             price: row?.price ?? '',
         }))
     );
+
+    const [productId, setProductId] = React.useState(String(fields?.product_id || ''));
+    const selectedProduct = products.find((p) => String(p.id) === String(productId));
+    const isMyBuilding = selectedProduct?.slug === mybuilding_slug;
+
+    const [pricingModel, setPricingModel] = React.useState(() => {
+        if (fields?.pricing_model) return fields.pricing_model;
+        if (isMyBuilding) return 'per_flat';
+        return 'fixed';
+    });
+
     const productOptions = [
         { value: '', label: 'Select product' },
         ...products.map((product) => ({ value: String(product.id), label: product.name })),
@@ -25,6 +36,14 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
         { value: 'monthly', label: 'Monthly' },
         { value: 'yearly', label: 'Yearly' },
     ];
+
+    const handleProductChange = (val) => {
+        setProductId(val);
+        const prod = products.find((p) => String(p.id) === String(val));
+        if (prod?.slug === mybuilding_slug) {
+            setPricingModel('per_flat');
+        }
+    };
 
     const addPricingRow = () => {
         setPricingRows((prev) => [...prev, { id: '', interval: 'monthly', price: '' }]);
@@ -61,7 +80,8 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
                         <label className="mb-1 block text-sm font-medium text-slate-700">Product</label>
                         <SearchableSelect
                             name="product_id"
-                            defaultValue={String(fields?.product_id || '')}
+                            value={productId}
+                            onChange={handleProductChange}
                             options={productOptions}
                             placeholder="Select product"
                             error={errors?.product_id}
@@ -80,9 +100,45 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
                         {errors?.slug ? <p className="mt-1 text-xs text-rose-600">{errors.slug}</p> : null}
                     </div>
 
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">Pricing Model</label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <label className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 transition ${pricingModel === 'fixed' ? 'border-teal-500 bg-teal-50/40' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                                <div>
+                                    <div className="text-xs font-semibold text-slate-900">Fixed Subscription</div>
+                                    <div className="text-[11px] text-slate-500">Standard rate per interval (e.g. 2,000 BDT/mo)</div>
+                                </div>
+                                <input
+                                    type="radio"
+                                    name="pricing_model"
+                                    value="fixed"
+                                    checked={pricingModel === 'fixed'}
+                                    onChange={() => setPricingModel('fixed')}
+                                    className="text-teal-600 focus:ring-teal-500"
+                                />
+                            </label>
+                            <label className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 transition ${pricingModel === 'per_flat' ? 'border-teal-500 bg-teal-50/40' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                                <div>
+                                    <div className="text-xs font-semibold text-slate-900">Flat-wise (Per Flat)</div>
+                                    <div className="text-[11px] text-slate-500">Rate per flat/floor (e.g. 50 BDT / flat / mo)</div>
+                                </div>
+                                <input
+                                    type="radio"
+                                    name="pricing_model"
+                                    value="per_flat"
+                                    checked={pricingModel === 'per_flat'}
+                                    onChange={() => setPricingModel('per_flat')}
+                                    className="text-teal-600 focus:ring-teal-500"
+                                />
+                            </label>
+                        </div>
+                    </div>
+
                     <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                            <label className="block text-sm font-medium text-slate-700">Interval & Price</label>
+                            <label className="block text-sm font-medium text-slate-700">
+                                {pricingModel === 'per_flat' ? 'Interval & Flat Rate' : 'Interval & Price'}
+                            </label>
                             <button
                                 type="button"
                                 onClick={addPricingRow}
@@ -111,11 +167,14 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
                                 </div>
 
                                 <div>
-                                    <label className="mb-1 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Price ({default_currency})</label>
+                                    <label className="mb-1 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                        {pricingModel === 'per_flat' ? `Rate per Flat (${default_currency})` : `Price (${default_currency})`}
+                                    </label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         min="0"
+                                        placeholder={pricingModel === 'per_flat' ? 'e.g. 50' : 'e.g. 2000'}
                                         name={`pricing_rows[${index}][price]`}
                                         value={row.price}
                                         onChange={(event) => updatePricingRow(index, 'price', event.target.value)}
@@ -138,6 +197,12 @@ export default function Form({ pageTitle = 'Plan', is_edit = false, products = [
                                 </div>
                             </div>
                         ))}
+
+                        {pricingModel === 'per_flat' && (
+                            <div className="rounded-lg bg-teal-50 p-2.5 text-xs text-teal-800 border border-teal-100">
+                                💡 <strong>Flat-wise Pricing:</strong> Customer will be billed dynamically based on the total number of flats across all floors (e.g. 10 flats × {default_currency} {pricingRows[0]?.price || '50'} = {default_currency} {Number(pricingRows[0]?.price || 50) * 10} / mo).
+                            </div>
+                        )}
 
                         {errors?.pricing_rows ? <p className="text-xs text-rose-600">{errors.pricing_rows}</p> : null}
                         {errors?.interval ? <p className="text-xs text-rose-600">{errors.interval}</p> : null}

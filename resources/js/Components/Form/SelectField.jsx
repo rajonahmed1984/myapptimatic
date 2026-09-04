@@ -48,7 +48,7 @@ export default function SelectField({
                 required={required}
                 disabled={disabled}
                 className={[
-                    'mt-2 w-full h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-left text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-teal-600',
+                    'mt-2 w-full h-8 rounded-[10px] border border-slate-300 bg-white pl-4 pr-10 py-1.5 text-left text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-teal-600',
                     error ? 'border-rose-500 focus:ring-rose-500' : '',
                     selectClassName,
                 ].filter(Boolean).join(' ')}

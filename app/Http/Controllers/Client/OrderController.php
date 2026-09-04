@@ -50,13 +50,16 @@ class OrderController extends Controller
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
+                    'slug' => $product->slug,
                     'description' => $product->description,
-                    'plans' => $product->plans->map(function (Plan $plan) {
+                    'plans' => $product->plans->map(function (Plan $plan) use ($product) {
                         return [
                             'id' => $plan->id,
                             'name' => $plan->name,
                             'interval_label' => ucfirst((string) $plan->interval),
                             'price' => (float) $plan->price,
+                            'pricing_model' => $plan->pricing_model ?? ($product->slug === config('mybuilding.product_slug') ? 'per_flat' : 'fixed'),
+                            'is_per_flat' => $plan->isPerFlat(),
                         ];
                     })->values()->all(),
                 ];
@@ -79,6 +82,7 @@ class OrderController extends Controller
             'building_number' => ['nullable', 'string', 'max:100'],
             'building_address' => ['nullable', 'string', 'max:500'],
             'total_floors' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'has_ground_floor' => ['nullable'],
             'flats_per_floor' => ['nullable', 'integer', 'min:1', 'max:26'],
             'floor_plan' => ['nullable', 'array', 'max:200'],
             'floor_plan.*' => ['integer', 'min:0', 'max:26'],
@@ -101,8 +105,9 @@ class OrderController extends Controller
                 ->withErrors(['plan_id' => 'This plan is not available for ordering.']);
         }
 
-        $isMybuilding = $plan->product?->slug === config('mybuilding.product_slug');
-        $floors = (int) ($data['total_floors'] ?? 1);
+        $isMybuilding = $plan->product?->slug === config('mybuilding.product_slug') || $plan->isPerFlat();
+        $floors = (int) ($data['total_floors'] ?? 10);
+        $hasGroundFloor = $request->has('has_ground_floor') ? $request->boolean('has_ground_floor') : true;
         $flatsPerFloor = (int) ($data['flats_per_floor'] ?? 4);
         $rawFloorPlan = $data['floor_plan'] ?? null;
         $floorPlan = [];
@@ -160,6 +165,7 @@ class OrderController extends Controller
             // Carried through the review step so the order records the size
             // the customer chose.
             'is_mybuilding' => $isMybuilding,
+            'is_per_flat' => $plan->isPerFlat(),
             'locations' => $locations,
             'contracted_flats' => $contractedFlats,
             'unit_price' => $unitPrice,
@@ -168,6 +174,7 @@ class OrderController extends Controller
                 'building_number' => $data['building_number'] ?? '',
                 'building_address' => $data['building_address'] ?? '',
                 'total_floors' => $floors,
+                'has_ground_floor' => $hasGroundFloor,
                 'flats_per_floor' => $flatsPerFloor,
                 'floor_plan' => $floorPlan,
                 'district_id' => isset($data['district_id']) && $data['district_id'] !== '' ? (int) $data['district_id'] : null,
@@ -204,6 +211,7 @@ class OrderController extends Controller
             'building_number' => ['nullable', 'string', 'max:100'],
             'building_address' => ['nullable', 'string', 'max:500'],
             'total_floors' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'has_ground_floor' => ['nullable'],
             'flats_per_floor' => ['nullable', 'integer', 'min:1', 'max:26'],
             'floor_plan' => ['nullable', 'array', 'max:200'],
             'floor_plan.*' => ['integer', 'min:0', 'max:26'],
@@ -226,7 +234,7 @@ class OrderController extends Controller
                 ->withErrors(['plan_id' => 'This plan is not available for ordering.']);
         }
 
-        $isMybuilding = $plan->product?->slug === config('mybuilding.product_slug');
+        $isMybuilding = $plan->product?->slug === config('mybuilding.product_slug') || $plan->isPerFlat();
         $floors = (int) ($request->input('total_floors') ?: 1);
         $perFloor = (int) ($request->input('flats_per_floor') ?: 4);
         $rawFloorPlan = $request->input('floor_plan');

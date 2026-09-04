@@ -46,9 +46,16 @@ export default function Index({ pageTitle = 'Plans', routes = {}, plans = [] }) 
                             plans.map((plan) => (
                                 <tr key={plan.id} className="border-b border-slate-100">
                                     <td className="px-4 py-3 text-slate-500">{plan.serial}</td>
-                                    <td className="px-4 py-3 font-medium text-slate-900">{plan.name}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-900">
+                                        {plan.name}
+                                        {plan.is_per_flat ? (
+                                            <span className="ml-2 inline-block rounded-md bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 border border-teal-200">
+                                                Per Flat
+                                            </span>
+                                        ) : null}
+                                    </td>
                                     <td className="px-4 py-3 text-slate-500">{plan.slug_path}</td>
-                                    <td className="px-4 py-3 text-slate-700">{plan.price_display}</td>
+                                    <td className="px-4 py-3 text-slate-700 font-semibold">{plan.price_display}</td>
                                     <td className="px-4 py-3 text-slate-700">{plan.interval_label}</td>
                                     <td className="px-4 py-3">
                                         <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(plan.status)}`}>

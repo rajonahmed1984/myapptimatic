@@ -360,6 +360,13 @@ Route::middleware([
                 ->name('destroy');
     });
 
+    Route::middleware('admin.role:master_admin')->group(function () {
+        Route::get('users/{role}', fn (string $role) => redirect()->route('admin.users.index', ['role' => $role]))
+            ->whereIn('role', ['master_admin', 'sub_admin', 'support']);
+        Route::get('users/{role}/create', fn (string $role) => redirect()->route('admin.users.create', ['role' => $role]))
+            ->whereIn('role', ['master_admin', 'sub_admin', 'support']);
+    });
+
       Route::middleware('admin.role:master_admin')
           ->prefix('expenses')
           ->name('expenses.')

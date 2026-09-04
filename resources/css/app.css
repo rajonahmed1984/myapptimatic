@@ -184,15 +184,18 @@ body.bg-dashboard {
 
 @layer components {
     .ui-input {
-        @apply w-full text-xs px-4 py-1.5 h-8 rounded-full border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
+        @apply w-full text-xs px-4 py-1.5 h-8 rounded-[10px] border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
+        border-radius: 10px !important;
     }
 
     .ui-select {
-        @apply w-full text-left text-xs px-4 pr-8 py-1.5 h-8 rounded-full border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
+        @apply w-full text-left text-xs pl-4 pr-10 py-1.5 h-8 rounded-[10px] border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
+        border-radius: 10px !important;
     }
 
     .ui-textarea {
-        @apply w-full text-xs px-4 py-1.5 rounded-full border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
+        @apply w-full text-xs px-4 py-1.5 rounded-[10px] border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
+        border-radius: 10px !important;
     }
 
     .ui-btn-primary {
@@ -643,4 +646,46 @@ table td:last-child:has(a, button, form):not(.has-dropdown) button.text-rose-600
 #sidebarToggle {
     display: inline-flex !important;
 }
+
+/* ==========================================================================
+   Global Input Fields - Border Radius: 10px
+   Applies border-radius: 10px to all form input fields across the entire system.
+   ========================================================================== */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]),
+select,
+textarea,
+.ui-input,
+.ui-select,
+.ui-textarea,
+.form-input,
+.form-select,
+.form-textarea,
+.flatpickr-input,
+[data-easy-date-field] input,
+button[aria-haspopup="listbox"] {
+    border-radius: 10px !important;
+}
+
+/* ==========================================================================
+   Global Dropdown (Select) Icon - Shifted Left away from the Border
+   Positions the chevron comfortably inside the select field so it never touches the border.
+   ========================================================================== */
+select:not([multiple]),
+.ui-select,
+.form-select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    background-position: right 14px center !important;
+    background-repeat: no-repeat !important;
+    background-size: 16px 16px !important;
+    padding-right: 38px !important;
+}
+
+select::-ms-expand {
+    display: none !important;
+}
+
+
 

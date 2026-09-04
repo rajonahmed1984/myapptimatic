@@ -118,7 +118,7 @@ export default function DatePickerField({
 
     const wrapperClass = combineClass('space-y-1', containerClassName);
     const baseInputClass = combineClass(
-        'w-full rounded-xl border bg-white px-3 py-2 text-sm whitespace-nowrap',
+        'w-full rounded-[10px] border bg-white px-3 py-2 text-sm whitespace-nowrap',
         error ? 'border-rose-300 text-rose-700' : 'border-slate-300 text-slate-700',
         disabled ? 'cursor-not-allowed bg-slate-100 text-slate-500' : '',
         inputClassName,

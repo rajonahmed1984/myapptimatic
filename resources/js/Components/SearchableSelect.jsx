@@ -357,7 +357,7 @@ export default function SearchableSelect({
                 aria-expanded={isOpen}
                 disabled={disabled}
                 className={[
-                    'flex h-8 w-full items-center justify-between rounded-full border border-slate-300 bg-white px-4 py-1.5 text-left text-xs text-slate-700 transition focus:outline-none focus:ring-1 focus:ring-teal-600',
+                    'flex h-8 w-full items-center justify-between rounded-[10px] border border-slate-300 bg-white px-4 py-1.5 text-left text-xs text-slate-700 transition focus:outline-none focus:ring-1 focus:ring-teal-600',
                     disabled ? 'cursor-not-allowed bg-slate-100 text-slate-400' : 'hover:border-teal-300',
                     error ? 'border-rose-500 focus:ring-rose-500' : '',
                     triggerClassName,
@@ -411,7 +411,7 @@ export default function SearchableSelect({
                                 onKeyDown={handleSearchKeyDown}
                                 placeholder={searchPlaceholder}
                                 className={[
-                                    'h-8 w-full rounded-full border border-slate-300 px-4 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-600',
+                                    'h-8 w-full rounded-[10px] border border-slate-300 px-4 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-600',
                                     inputClassName,
                                 ]
                                     .filter(Boolean)

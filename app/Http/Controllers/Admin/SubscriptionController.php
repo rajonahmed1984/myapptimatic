@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\License;
 use App\Models\LicenseDomain;
+use App\Models\MyBuildingProvision;
 use App\Models\Plan;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
@@ -62,6 +63,14 @@ class SubscriptionController extends Controller
             'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
             'subscription_amount' => ['nullable', 'numeric', 'min:0'],
             'sales_rep_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'building_name' => ['nullable', 'string', 'max:255'],
+            'building_address' => ['nullable', 'string', 'max:500'],
+            'total_floors' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'contracted_flats' => ['nullable', 'integer', 'min:1', 'max:5000'],
+            'install_url' => ['nullable', 'string', 'max:255'],
+            'district_id' => ['nullable', 'integer'],
+            'city_id' => ['nullable', 'integer'],
+            'area_id' => ['nullable', 'integer'],
         ]);
 
         $plan = Plan::findOrFail($data['plan_id']);
@@ -81,7 +90,7 @@ class SubscriptionController extends Controller
             )
             : null;
 
-        $subscription = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $startDate, $periodEnd, $nextInvoiceAt, $baseAmount, $salesRepId, $commissionAmount, $request) {
+        $subscription = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $startDate, $periodEnd, $nextInvoiceAt, $baseAmount, $salesRepId, $commissionAmount, $request, $plan) {
             $subscription = Subscription::create([
                 'customer_id' => $data['customer_id'],
                 'plan_id' => $data['plan_id'],
@@ -97,6 +106,37 @@ class SubscriptionController extends Controller
                 'cancel_at_period_end' => $request->boolean('cancel_at_period_end'),
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            if ($plan->isPerFlat() && $plan->product_id) {
+                $license = $subscription->licenses()->create([
+                    'product_id' => $plan->product_id,
+                    'license_key' => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(32)),
+                    'status' => 'active',
+                    'starts_at' => $startDate->toDateString(),
+                    'expires_at' => $periodEnd->toDateString(),
+                ]);
+                $customer = Customer::find($data['customer_id']);
+                $totalFloors = (int) ($request->input('total_floors') ?: 10);
+                $contractedFlats = (int) ($request->input('contracted_flats') ?: 40);
+                $flatsPerFloor = (int) ceil($contractedFlats / max(1, $totalFloors));
+
+                MyBuildingProvision::create([
+                    'license_id' => $license->id,
+                    'customer_id' => $customer?->id,
+                    'building_name' => $request->input('building_name') ?: ($customer?->company_name ?: $customer?->name),
+                    'building_address' => $request->input('building_address') ?: $customer?->address,
+                    'total_floors' => $totalFloors,
+                    'flats_per_floor' => $flatsPerFloor,
+                    'contracted_flats' => $contractedFlats,
+                    'district_id' => $request->filled('district_id') ? (int) $request->input('district_id') : null,
+                    'city_id' => $request->filled('city_id') ? (int) $request->input('city_id') : null,
+                    'area_id' => $request->filled('area_id') ? (int) $request->input('area_id') : null,
+                    'install_url' => (string) ($request->input('install_url') ?: config('mybuilding.default_install_url') ?: ''),
+                    'owner_name' => $customer?->name ?: 'Owner',
+                    'owner_email' => $customer?->email ?: 'owner@example.com',
+                    'owner_phone' => $customer?->phone ?: '',
+                ]);
+            }
 
             return $subscription;
         });
@@ -374,6 +414,14 @@ class SubscriptionController extends Controller
             'sales_rep_id' => ['nullable', 'exists:sales_representatives,id'],
             'subscription_amount' => ['nullable', 'numeric', 'min:0'],
             'sales_rep_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'building_name' => ['nullable', 'string', 'max:255'],
+            'building_address' => ['nullable', 'string', 'max:500'],
+            'total_floors' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'contracted_flats' => ['nullable', 'integer', 'min:1', 'max:5000'],
+            'install_url' => ['nullable', 'string', 'max:255'],
+            'district_id' => ['nullable', 'integer'],
+            'city_id' => ['nullable', 'integer'],
+            'area_id' => ['nullable', 'integer'],
         ]);
 
         $plan = Plan::findOrFail($data['plan_id']);
@@ -388,7 +436,7 @@ class SubscriptionController extends Controller
             )
             : null;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $data, $commissionAmount, $request) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $data, $commissionAmount, $request, $plan) {
             $subscription->update([
                 'customer_id' => $data['customer_id'],
                 'plan_id' => $data['plan_id'],
@@ -404,6 +452,44 @@ class SubscriptionController extends Controller
                 'cancel_at_period_end' => $request->boolean('cancel_at_period_end'),
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            if ($plan->isPerFlat()) {
+                $license = $subscription->licenses()->first();
+                if (! $license && $subscription->plan?->product_id) {
+                    $license = $subscription->licenses()->create([
+                        'product_id' => $subscription->plan->product_id,
+                        'license_key' => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(32)),
+                        'status' => 'active',
+                        'starts_at' => $subscription->start_date ?? now(),
+                        'expires_at' => $subscription->current_period_end,
+                    ]);
+                }
+                $customer = Customer::find($data['customer_id']);
+                $totalFloors = (int) ($request->input('total_floors') ?: 10);
+                $contractedFlats = (int) ($request->input('contracted_flats') ?: 40);
+                $flatsPerFloor = (int) ceil($contractedFlats / max(1, $totalFloors));
+
+                if ($license) {
+                    MyBuildingProvision::updateOrCreate(
+                        ['license_id' => $license->id],
+                        [
+                            'customer_id' => $customer?->id,
+                            'building_name' => $request->input('building_name') ?: ($customer?->company_name ?: $customer?->name),
+                            'building_address' => $request->input('building_address') ?: $customer?->address,
+                            'total_floors' => $totalFloors,
+                            'flats_per_floor' => $flatsPerFloor,
+                            'contracted_flats' => $contractedFlats,
+                            'district_id' => $request->filled('district_id') ? (int) $request->input('district_id') : null,
+                            'city_id' => $request->filled('city_id') ? (int) $request->input('city_id') : null,
+                            'area_id' => $request->filled('area_id') ? (int) $request->input('area_id') : null,
+                            'install_url' => (string) ($request->input('install_url') ?: config('mybuilding.default_install_url') ?: ''),
+                            'owner_name' => $customer?->name ?: 'Owner',
+                            'owner_email' => $customer?->email ?: 'owner@example.com',
+                            'owner_phone' => $customer?->phone ?: '',
+                        ]
+                    );
+                }
+            }
 
             if (array_key_exists('access_override_until', $data)) {
                 $overrideDate = \App\Support\DateTimeFormat::parseDate($data['access_override_until']);
@@ -572,20 +658,57 @@ class SubscriptionController extends Controller
             $commissionPercent = round((((float) $subscription->sales_rep_commission_amount) / $effectiveSubscriptionAmount) * 100, 2);
         }
 
+        $provision = null;
+        if ($subscription) {
+            $licenseIds = $subscription->licenses->pluck('id');
+            $provisionModel = MyBuildingProvision::query()
+                ->whereIn('license_id', $licenseIds)
+                ->orWhere('customer_id', $subscription->customer_id)
+                ->first();
+
+            if ($provisionModel) {
+                $provision = [
+                    'id' => $provisionModel->id,
+                    'building_name' => $provisionModel->building_name,
+                    'building_address' => $provisionModel->building_address,
+                    'total_floors' => $provisionModel->total_floors,
+                    'flats_per_floor' => $provisionModel->flats_per_floor,
+                    'contracted_flats' => $provisionModel->contracted_flats,
+                    'status' => $provisionModel->status,
+                    'remote_building_id' => $provisionModel->remote_building_id,
+                    'registration_code' => $provisionModel->registration_code,
+                    'last_error' => $provisionModel->last_error,
+                    'install_url' => $provisionModel->install_url,
+                    'district_id' => $provisionModel->district_id,
+                    'city_id' => $provisionModel->city_id,
+                    'area_id' => $provisionModel->area_id,
+                    'routes' => [
+                        'provision' => route('admin.mybuilding.provision', $provisionModel),
+                    ],
+                ];
+            }
+        }
+
         return [
             'pageTitle' => $isEdit ? 'Edit Subscription' : 'Add Subscription',
             'is_edit' => $isEdit,
+            'provision' => $provision,
+            'secret_configured' => !empty(config('mybuilding.provision_secret')),
             'customers' => $customers->map(fn (Customer $customer) => [
                 'id' => $customer->id,
                 'name' => (string) $customer->name,
+                'company_name' => (string) ($customer->company_name ?? ''),
             ])->values()->all(),
             'plans' => $plans->map(fn (Plan $plan) => [
                 'id' => $plan->id,
                 'name' => (string) $plan->name,
                 'product_name' => (string) ($plan->product?->name ?? '--'),
+                'product_slug' => (string) ($plan->product?->slug ?? ''),
                 'interval' => (string) $plan->interval,
                 'price' => (float) $plan->price,
                 'currency' => (string) ($plan->currency ?? ''),
+                'pricing_model' => (string) ($plan->pricing_model ?? 'fixed'),
+                'is_per_flat' => $plan->isPerFlat(),
             ])->values()->all(),
             'sales_reps' => $salesReps->map(fn (SalesRepresentative $rep) => [
                 'id' => $rep->id,
@@ -603,6 +726,11 @@ class SubscriptionController extends Controller
                     'sales_rep_id' => (string) old('sales_rep_id', (string) ($subscription?->sales_rep_id ?? '')),
                     'subscription_amount' => (string) old('subscription_amount', (string) ($subscription?->subscription_amount ?? '')),
                     'sales_rep_commission_percent' => (string) old('sales_rep_commission_percent', (string) ($commissionPercent ?? '')),
+                    'building_name' => (string) old('building_name', (string) ($provision['building_name'] ?? ($subscription?->customer?->company_name ?: ($subscription?->customer?->name ?: '')))),
+                    'building_address' => (string) old('building_address', (string) ($provision['building_address'] ?? ($subscription?->customer?->address ?: ''))),
+                    'total_floors' => (string) old('total_floors', (string) ($provision['total_floors'] ?? 10)),
+                    'contracted_flats' => (string) old('contracted_flats', (string) ($provision['contracted_flats'] ?? ($effectiveSubscriptionAmount > 0 && ($subscription?->plan?->price ?? 0) > 0 ? (int) round($effectiveSubscriptionAmount / (float) $subscription->plan->price) : 40))),
+                    'install_url' => (string) old('install_url', (string) ($provision['install_url'] ?? config('mybuilding.default_install_url') ?? '')),
                     'status' => (string) old('status', (string) ($subscription?->status ?? 'active')),
                     'start_date' => (string) old('start_date', (string) ($subscription?->start_date?->format('d-m-Y') ?? now()->format('d-m-Y'))),
                     'current_period_start' => (string) old('current_period_start', (string) ($subscription?->current_period_start?->format('d-m-Y') ?? '')),

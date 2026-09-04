@@ -64,8 +64,14 @@ class PlanController extends Controller
             'product_id' => ['required', 'exists:products,id'],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('plans', 'slug')],
+            'pricing_model' => ['nullable', 'string', 'in:fixed,per_flat'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        $pricingModel = (string) $request->input('pricing_model', 'fixed');
+        if (! in_array($pricingModel, ['fixed', 'per_flat'], true)) {
+            $pricingModel = 'fixed';
+        }
 
         $data['is_active'] = $request->boolean('is_active');
         $data['currency'] = strtoupper((string) Setting::getValue('currency'));
@@ -86,6 +92,7 @@ class PlanController extends Controller
                 'slug' => $this->resolveSlug($data['name'], $slugSeed),
                 'interval' => $row['interval'],
                 'price' => $row['price'],
+                'pricing_model' => $pricingModel,
                 'is_active' => $data['is_active'],
                 'currency' => $data['currency'],
             ]);
@@ -135,8 +142,14 @@ class PlanController extends Controller
             'product_id' => ['required', 'exists:products,id'],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('plans', 'slug')->ignore($plan->id)],
+            'pricing_model' => ['nullable', 'string', 'in:fixed,per_flat'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        $pricingModel = (string) $request->input('pricing_model', $plan->pricing_model ?? 'fixed');
+        if (! in_array($pricingModel, ['fixed', 'per_flat'], true)) {
+            $pricingModel = 'fixed';
+        }
 
         $data['is_active'] = $request->boolean('is_active');
         $data['currency'] = strtoupper((string) Setting::getValue('currency'));
@@ -187,6 +200,7 @@ class PlanController extends Controller
                 'slug' => $this->resolveSlug($data['name'], $slugSeed, $targetPlan?->id),
                 'interval' => $row['interval'],
                 'price' => $row['price'],
+                'pricing_model' => $pricingModel,
                 'is_active' => $data['is_active'],
                 'currency' => $data['currency'],
             ];
@@ -298,7 +312,11 @@ class PlanController extends Controller
                     'slug_path' => ($plan->slug && $product?->slug)
                         ? (string) ($product->slug.'/plans/'.$plan->slug)
                         : '--',
-                    'price_display' => trim($defaultCurrency.' '.(string) $plan->price),
+                    'pricing_model' => $plan->pricing_model ?? 'fixed',
+                    'is_per_flat' => $plan->isPerFlat(),
+                    'price_display' => $plan->isPerFlat()
+                        ? trim($defaultCurrency.' '.(string) $plan->price).' / flat'
+                        : trim($defaultCurrency.' '.(string) $plan->price),
                     'interval_label' => ucfirst((string) $plan->interval),
                     'status' => $plan->is_active ? 'active' : 'inactive',
                     'status_label' => $plan->is_active ? 'Active' : 'Inactive',
@@ -357,7 +375,9 @@ class PlanController extends Controller
             'products' => $products->map(fn (Product $product) => [
                 'id' => $product->id,
                 'name' => (string) $product->name,
+                'slug' => (string) $product->slug,
             ])->values()->all(),
+            'mybuilding_slug' => config('mybuilding.product_slug'),
             'form' => [
                 'action' => $isEdit
                     ? route('admin.plans.update', $plan)
@@ -367,6 +387,7 @@ class PlanController extends Controller
                     'product_id' => (string) old('product_id', (string) ($plan?->product_id ?? '')),
                     'name' => (string) old('name', (string) ($plan?->name ?? '')),
                     'slug' => (string) old('slug', (string) ($plan?->slug ?? '')),
+                    'pricing_model' => (string) old('pricing_model', (string) ($plan?->pricing_model ?? ($plan?->product?->slug === config('mybuilding.product_slug') ? 'per_flat' : 'fixed'))),
                     'interval' => (string) old('interval', (string) ($plan?->interval ?? 'monthly')),
                     'price' => (string) old('price', (string) ($plan?->price ?? '')),
                     'pricing_rows' => $pricingRows,
