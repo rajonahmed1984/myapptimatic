@@ -11,10 +11,10 @@ class ImapInboxService
 {
     private const FOLDER_ALIASES = [
         'inbox' => ['INBOX'],
-        'sent' => ['Sent', 'Sent Items', 'INBOX.Sent', 'INBOX.Sent Items', '[Gmail]/Sent Mail'],
-        'drafts' => ['Drafts', 'INBOX.Drafts', '[Gmail]/Drafts'],
-        'spam' => ['Spam', 'Junk', 'Junk E-mail', 'INBOX.Spam', 'INBOX.Junk', '[Gmail]/Spam'],
-        'trash' => ['Trash', 'Deleted Items', 'INBOX.Trash', '[Gmail]/Trash'],
+        'sent' => ['INBOX.Sent', 'Sent', 'Sent Items', 'INBOX.Sent Items', '[Gmail]/Sent Mail'],
+        'drafts' => ['INBOX.Drafts', 'Drafts', '[Gmail]/Drafts'],
+        'spam' => ['INBOX.Spam', 'INBOX.Junk', 'Spam', 'Junk', 'Junk E-mail', '[Gmail]/Spam'],
+        'trash' => ['INBOX.Trash', 'Trash', 'Deleted Items', '[Gmail]/Trash'],
     ];
 
     /**
@@ -24,7 +24,7 @@ class ImapInboxService
 
     public function isAvailable(): bool
     {
-        return function_exists('imap_open');
+        return function_exists('imap_open') || function_exists('stream_socket_client');
     }
 
     public function inbox(MailAccount $account, string $password, int $limit = 50): array
@@ -37,7 +37,7 @@ class ImapInboxService
         $folder = $this->normalizeFolderKey($folder);
         $stream = $this->openStream($account, $password, $folder);
         if (! $stream) {
-            return [];
+            return $this->fetchViaSocket($account, $password, $folder, $limit);
         }
 
         try {
@@ -81,7 +81,7 @@ class ImapInboxService
 
             return $messages;
         } catch (Throwable) {
-            return [];
+            return $this->fetchViaSocket($account, $password, $folder, $limit);
         } finally {
             @imap_close($stream);
         }
@@ -114,7 +114,7 @@ class ImapInboxService
     {
         $stream = $this->openStream($account, $password, $folder);
         if (! $stream) {
-            return '';
+            return $this->snapshotHashViaSocket($account, $password, $limit, $folder);
         }
 
         try {
@@ -138,7 +138,7 @@ class ImapInboxService
 
             return hash('sha256', json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
         } catch (Throwable) {
-            return '';
+            return $this->snapshotHashViaSocket($account, $password, $limit, $folder);
         } finally {
             @imap_close($stream);
         }
@@ -148,7 +148,7 @@ class ImapInboxService
     {
         $stream = $this->openStream($account, $password, $folder);
         if (! $stream) {
-            return 0;
+            return $this->unreadCountViaSocket($account, $password, $folder);
         }
 
         try {
@@ -168,7 +168,7 @@ class ImapInboxService
 
             return $count;
         } catch (Throwable) {
-            return 0;
+            return $this->unreadCountViaSocket($account, $password, $folder);
         } finally {
             @imap_close($stream);
         }
@@ -391,7 +391,7 @@ class ImapInboxService
 
     private function openStream(MailAccount $account, string $password, string $folder = 'inbox')
     {
-        if (! $this->isAvailable() || $password === '') {
+        if (! function_exists('imap_open') || $password === '') {
             return false;
         }
 
@@ -400,14 +400,47 @@ class ImapInboxService
             return false;
         }
 
-        $folderName = $this->resolveFolderName($account, $password, $folder);
+        $folderKey = $this->normalizeFolderKey($folder);
+        $folderName = $this->resolveFolderName($account, $password, $folderKey);
         $mailbox = $prefix . $folderName;
-        if ($mailbox === '') {
-            return false;
-        }
 
         try {
-            return @imap_open($mailbox, $account->email, $password, 0, 1);
+            $stream = @imap_open($mailbox, $account->email, $password, 0, 1);
+            if ($stream) {
+                return $stream;
+            }
+
+            // Retry with novalidate-cert if not already present
+            if (! str_contains($prefix, 'novalidate-cert')) {
+                $noCertPrefix = str_replace('}', '/novalidate-cert}', $prefix);
+                $stream = @imap_open($noCertPrefix . $folderName, $account->email, $password, 0, 1);
+                if ($stream) {
+                    return $stream;
+                }
+            }
+
+            // Retry with folder aliases
+            $aliases = self::FOLDER_ALIASES[$folderKey] ?? [];
+            foreach ($aliases as $alias) {
+                if ($alias === $folderName) {
+                    continue;
+                }
+                $stream = @imap_open($prefix . $alias, $account->email, $password, 0, 1);
+                if ($stream) {
+                    $this->folderCache[(int) ($account->id ?? 0) . ':' . $folderKey] = $alias;
+                    return $stream;
+                }
+                if (! str_contains($prefix, 'novalidate-cert')) {
+                    $noCertPrefix = str_replace('}', '/novalidate-cert}', $prefix);
+                    $stream = @imap_open($noCertPrefix . $alias, $account->email, $password, 0, 1);
+                    if ($stream) {
+                        $this->folderCache[(int) ($account->id ?? 0) . ':' . $folderKey] = $alias;
+                        return $stream;
+                    }
+                }
+            }
+
+            return false;
         } catch (Throwable) {
             return false;
         }
@@ -752,20 +785,38 @@ class ImapInboxService
 
     private function decodeMimeHeader(string $value): string
     {
-        $decoded = @imap_mime_header_decode($value);
-        if (! is_array($decoded) || $decoded === []) {
-            return trim($value) !== '' ? trim($value) : '(No subject)';
-        }
+        if (function_exists('imap_mime_header_decode')) {
+            $decoded = @imap_mime_header_decode($value);
+            if (is_array($decoded) && $decoded !== []) {
+                $parts = [];
+                foreach ($decoded as $part) {
+                    if (is_object($part) && isset($part->text)) {
+                        $parts[] = (string) $part->text;
+                    }
+                }
 
-        $parts = [];
-        foreach ($decoded as $part) {
-            if (is_object($part) && isset($part->text)) {
-                $parts[] = (string) $part->text;
+                $output = trim(implode('', $parts));
+                if ($output !== '') {
+                    return $output;
+                }
             }
         }
 
-        $output = trim(implode('', $parts));
-        return $output !== '' ? $output : '(No subject)';
+        if (function_exists('iconv_mime_decode')) {
+            $decoded = @iconv_mime_decode($value, ICONV_MIME_DECODE_CONTINUE_ON_ERROR, 'UTF-8');
+            if (is_string($decoded) && trim($decoded) !== '') {
+                return trim($decoded);
+            }
+        }
+
+        if (function_exists('mb_decode_mimeheader')) {
+            $decoded = @mb_decode_mimeheader($value);
+            if (is_string($decoded) && trim($decoded) !== '') {
+                return trim($decoded);
+            }
+        }
+
+        return trim($value) !== '' ? trim($value) : '(No subject)';
     }
 
     private function parseFrom(string $from): array
@@ -1011,5 +1062,434 @@ class ImapInboxService
         $normalizedBody = str_replace("\n", "\r\n", $normalizedBody);
 
         return implode("\r\n", $headers) . "\r\n\r\n" . $normalizedBody;
+    }
+
+    private function openImapSocket(string $host, int $port, string $encryption, string $email, string $password)
+    {
+        $protocol = ($encryption === 'ssl') ? 'ssl://' : 'tcp://';
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ]);
+
+        $errno = 0;
+        $errstr = '';
+        $socket = @stream_socket_client("{$protocol}{$host}:{$port}", $errno, $errstr, 8, STREAM_CLIENT_CONNECT, $context);
+        if (! $socket) {
+            return false;
+        }
+
+        stream_set_timeout($socket, 8);
+
+        $greeting = fgets($socket, 1024);
+        if ($greeting === false || ! str_contains(strtoupper((string) $greeting), 'OK')) {
+            @fclose($socket);
+            return false;
+        }
+
+        if ($encryption === 'tls' && $port !== 993) {
+            fwrite($socket, "TAG0 STARTTLS\r\n");
+            $tlsResponse = fgets($socket, 1024);
+            if ($tlsResponse !== false && str_starts_with(trim($tlsResponse), 'TAG0 OK')) {
+                stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            }
+        }
+
+        $escapedEmail = addcslashes($email, "\\\"");
+        $escapedPassword = addcslashes($password, "\\\"");
+        fwrite($socket, "TAG_LOGIN LOGIN \"{$escapedEmail}\" \"{$escapedPassword}\"\r\n");
+
+        $authenticated = false;
+        while (! feof($socket)) {
+            $line = fgets($socket, 1024);
+            if ($line === false) {
+                break;
+            }
+            $trimmed = trim($line);
+            if (str_starts_with($trimmed, 'TAG_LOGIN OK')) {
+                $authenticated = true;
+                break;
+            }
+            if (str_starts_with($trimmed, 'TAG_LOGIN NO') || str_starts_with($trimmed, 'TAG_LOGIN BAD')) {
+                break;
+            }
+        }
+
+        if (! $authenticated) {
+            @fclose($socket);
+            return false;
+        }
+
+        return $socket;
+    }
+
+    private function sendSocketCommand($socket, string $command, string $tag = 'TAG'): array
+    {
+        fwrite($socket, "{$tag} {$command}\r\n");
+        $lines = [];
+        $status = '';
+
+        while (! feof($socket)) {
+            $line = fgets($socket, 2048);
+            if ($line === false) {
+                break;
+            }
+            $trimmed = trim($line);
+            $lines[] = $trimmed;
+            if (str_starts_with($trimmed, "{$tag} OK") || str_starts_with($trimmed, "{$tag} NO") || str_starts_with($trimmed, "{$tag} BAD")) {
+                $status = $trimmed;
+                break;
+            }
+        }
+
+        return [
+            'status' => $status,
+            'lines' => $lines,
+        ];
+    }
+
+    private function fetchViaSocket(MailAccount $account, string $password, string $folder = 'inbox', int $limit = 50): array
+    {
+        $globalImapHost = Setting::getValue('mail_server_imap_host') ?: Setting::getValue('mail_server_smtp_host');
+        $host = (string) ($account->imap_host ?: ($globalImapHost ?: config('apptimatic_email.imap.host', '')));
+        $port = (int) ($account->imap_port ?: (Setting::getValue('mail_server_imap_port') ?: config('apptimatic_email.imap.port', 993)));
+        $encryption = strtolower((string) ($account->imap_encryption ?: (Setting::getValue('mail_server_imap_encryption') ?: config('apptimatic_email.imap.encryption', 'ssl'))));
+
+        if ($host === '' || $port <= 0 || $password === '') {
+            return [];
+        }
+
+        $socket = $this->openImapSocket($host, $port, $encryption, (string) $account->email, $password);
+        if (! $socket) {
+            return [];
+        }
+
+        try {
+            $folderKey = $this->normalizeFolderKey($folder);
+            $aliases = self::FOLDER_ALIASES[$folderKey] ?? ['INBOX'];
+            $selectedFolder = null;
+
+            foreach ($aliases as $candidate) {
+                $res = $this->sendSocketCommand($socket, "SELECT \"{$candidate}\"", 'TAG_SEL');
+                if (str_contains($res['status'], 'OK')) {
+                    $selectedFolder = $candidate;
+                    break;
+                }
+            }
+
+            if (! $selectedFolder) {
+                return [];
+            }
+
+            $searchRes = $this->sendSocketCommand($socket, 'UID SEARCH ALL', 'TAG_SRCH');
+            $uids = [];
+            foreach ($searchRes['lines'] as $line) {
+                if (str_starts_with(strtoupper($line), '* SEARCH')) {
+                    $parts = preg_split('/\s+/', trim(substr($line, 8)));
+                    foreach ($parts as $p) {
+                        $val = (int) $p;
+                        if ($val > 0) {
+                            $uids[] = $val;
+                        }
+                    }
+                }
+            }
+
+            if ($uids === []) {
+                return [];
+            }
+
+            rsort($uids);
+            $limit = max(1, min($limit, 100));
+            $uids = array_slice($uids, 0, $limit);
+
+            $messages = [];
+            foreach ($uids as $uid) {
+                $msgData = $this->fetchMessageViaSocket($socket, $uid, $folderKey, (string) ($account->email ?? ''));
+                if ($msgData) {
+                    $messages[] = $msgData;
+                }
+            }
+
+            usort($messages, fn (array $a, array $b) => $b['received_at']->getTimestamp() <=> $a['received_at']->getTimestamp());
+
+            return $messages;
+        } catch (Throwable) {
+            return [];
+        } finally {
+            $this->sendSocketCommand($socket, 'LOGOUT', 'TAG_BYE');
+            @fclose($socket);
+        }
+    }
+
+    private function fetchMessageViaSocket($socket, int $uid, string $folder, string $accountEmail): ?array
+    {
+        $tag = 'FTCH_' . $uid;
+        fwrite($socket, "{$tag} UID FETCH {$uid} (FLAGS BODY.PEEK[])\r\n");
+
+        $seen = false;
+        $rawMessage = '';
+        $literalRemaining = 0;
+
+        while (! feof($socket)) {
+            if ($literalRemaining > 0) {
+                $readSize = min($literalRemaining, 8192);
+                $chunk = fread($socket, $readSize);
+                if ($chunk === false || $chunk === '') {
+                    break;
+                }
+                $rawMessage .= $chunk;
+                $literalRemaining -= strlen($chunk);
+                continue;
+            }
+
+            $line = fgets($socket, 2048);
+            if ($line === false) {
+                break;
+            }
+
+            $trimmed = trim($line);
+            if (str_starts_with($trimmed, "{$tag} OK") || str_starts_with($trimmed, "{$tag} NO") || str_starts_with($trimmed, "{$tag} BAD")) {
+                break;
+            }
+
+            if (str_contains(strtoupper($line), '\\SEEN')) {
+                $seen = true;
+            }
+
+            if (preg_match('/\{(\d+)\}\s*$/', $line, $matches)) {
+                $literalRemaining = (int) $matches[1];
+            }
+        }
+
+        if ($rawMessage === '') {
+            return null;
+        }
+
+        return $this->parseRawMimeMessage($rawMessage, $uid, $folder, $accountEmail, $seen);
+    }
+
+    private function parseRawMimeMessage(string $rawMessage, int $uid, string $folder, string $accountEmail, bool $seen): array
+    {
+        $parts = preg_split("/\r\n\r\n|\n\n/", $rawMessage, 2);
+        $headerText = $parts[0] ?? '';
+        $bodyText = $parts[1] ?? '';
+
+        $unfoldedHeaders = preg_replace("/\r\n[ \t]+|\n[ \t]+/", ' ', $headerText) ?? $headerText;
+        $headerLines = explode("\n", str_replace("\r", '', $unfoldedHeaders));
+
+        $headers = [];
+        foreach ($headerLines as $line) {
+            $colonPos = strpos($line, ':');
+            if ($colonPos !== false) {
+                $name = strtolower(trim(substr($line, 0, $colonPos)));
+                $value = trim(substr($line, $colonPos + 1));
+                $headers[$name] = $value;
+            }
+        }
+
+        $rawSubject = (string) ($headers['subject'] ?? '(No subject)');
+        $subject = $this->decodeMimeHeader($rawSubject);
+        $from = $this->parseFrom((string) ($headers['from'] ?? 'Unknown sender'));
+        $receivedAt = $this->parseDate((string) ($headers['date'] ?? ''));
+        $to = (string) ($headers['to'] ?? $accountEmail);
+
+        $contentType = (string) ($headers['content-type'] ?? 'text/plain');
+        $contentTransferEncoding = strtolower((string) ($headers['content-transfer-encoding'] ?? ''));
+
+        $plainBody = '';
+        $htmlBody = '';
+        $attachments = [];
+
+        if (preg_match('/boundary=["\']?([^"\'\s;]+)["\']?/i', $contentType, $boundaryMatch)) {
+            $boundary = $boundaryMatch[1];
+            $sections = explode('--' . $boundary, $bodyText);
+            foreach ($sections as $section) {
+                $section = trim($section);
+                if ($section === '' || $section === '--') {
+                    continue;
+                }
+
+                $subParts = preg_split("/\r\n\r\n|\n\n/", $section, 2);
+                $subHeadersText = $subParts[0] ?? '';
+                $subBody = $subParts[1] ?? '';
+
+                $subHeaders = [];
+                $subLines = explode("\n", str_replace("\r", '', preg_replace("/\r\n[ \t]+|\n[ \t]+/", ' ', $subHeadersText) ?? $subHeadersText));
+                foreach ($subLines as $sl) {
+                    $cp = strpos($sl, ':');
+                    if ($cp !== false) {
+                        $subHeaders[strtolower(trim(substr($sl, 0, $cp)))] = trim(substr($sl, $cp + 1));
+                    }
+                }
+
+                $subType = (string) ($subHeaders['content-type'] ?? 'text/plain');
+                $subEncoding = strtolower((string) ($subHeaders['content-transfer-encoding'] ?? ''));
+                $subDisposition = strtolower((string) ($subHeaders['content-disposition'] ?? ''));
+
+                $decodedSub = $this->decodeBodyByEncoding($subBody, $subEncoding);
+
+                if (str_contains($subDisposition, 'attachment') || preg_match('/filename=["\']?([^"\'\s;]+)["\']?/i', $subDisposition . ' ' . $subType, $fnMatch)) {
+                    $fn = isset($fnMatch[1]) ? $this->decodeMimeHeader($fnMatch[1]) : 'attachment.bin';
+                    $mime = trim(explode(';', $subType)[0]);
+                    $attachments[] = [
+                        'part' => (string) (count($attachments) + 1),
+                        'filename' => $fn,
+                        'mime' => $mime !== '' ? $mime : 'application/octet-stream',
+                        'size' => strlen($decodedSub),
+                        'is_inline' => str_contains($subDisposition, 'inline'),
+                        'cid' => '',
+                    ];
+                } elseif (stripos($subType, 'text/html') !== false) {
+                    $htmlBody .= ($htmlBody !== '' ? "\n" : '') . $decodedSub;
+                } elseif (stripos($subType, 'text/plain') !== false) {
+                    $plainBody .= ($plainBody !== '' ? "\n" : '') . $decodedSub;
+                }
+            }
+        } else {
+            $decoded = $this->decodeBodyByEncoding($bodyText, $contentTransferEncoding);
+            if (stripos($contentType, 'text/html') !== false) {
+                $htmlBody = $decoded;
+                $plainBody = $this->cleanText($decoded);
+            } else {
+                $plainBody = $decoded;
+            }
+        }
+
+        $plainBody = $this->cleanText($plainBody);
+        $snippet = $this->buildSnippet($plainBody !== '' ? $plainBody : $this->cleanText($htmlBody), $subject);
+
+        return [
+            'id' => (string) $uid,
+            'thread_id' => $this->threadIdFromSubject($subject),
+            'folder' => $folder,
+            'sender_name' => $from['name'],
+            'sender_email' => $from['email'],
+            'to' => $to,
+            'subject' => $subject,
+            'snippet' => $snippet,
+            'body' => $plainBody,
+            'body_html' => $htmlBody,
+            'attachments' => $attachments,
+            'has_attachments' => count($attachments) > 0,
+            'received_at' => $receivedAt,
+            'unread' => ! $seen,
+        ];
+    }
+
+    private function decodeBodyByEncoding(string $body, string $encoding): string
+    {
+        $enc = strtolower(trim($encoding));
+        if ($enc === 'base64') {
+            return (string) (base64_decode(trim($body), true) ?: $body);
+        }
+        if ($enc === 'quoted-printable') {
+            return quoted_printable_decode($body);
+        }
+
+        return $body;
+    }
+
+    private function unreadCountViaSocket(MailAccount $account, string $password, string $folder = 'inbox'): int
+    {
+        $globalImapHost = Setting::getValue('mail_server_imap_host') ?: Setting::getValue('mail_server_smtp_host');
+        $host = (string) ($account->imap_host ?: ($globalImapHost ?: config('apptimatic_email.imap.host', '')));
+        $port = (int) ($account->imap_port ?: (Setting::getValue('mail_server_imap_port') ?: config('apptimatic_email.imap.port', 993)));
+        $encryption = strtolower((string) ($account->imap_encryption ?: (Setting::getValue('mail_server_imap_encryption') ?: config('apptimatic_email.imap.encryption', 'ssl'))));
+
+        if ($host === '' || $port <= 0 || $password === '') {
+            return 0;
+        }
+
+        $socket = $this->openImapSocket($host, $port, $encryption, (string) $account->email, $password);
+        if (! $socket) {
+            return 0;
+        }
+
+        try {
+            $folderKey = $this->normalizeFolderKey($folder);
+            $aliases = self::FOLDER_ALIASES[$folderKey] ?? ['INBOX'];
+            foreach ($aliases as $candidate) {
+                $res = $this->sendSocketCommand($socket, "SELECT \"{$candidate}\"", 'TAG_SEL');
+                if (str_contains($res['status'], 'OK')) {
+                    break;
+                }
+            }
+
+            $searchRes = $this->sendSocketCommand($socket, 'UID SEARCH UNSEEN', 'TAG_UNSEEN');
+            $count = 0;
+            foreach ($searchRes['lines'] as $line) {
+                if (str_starts_with(strtoupper($line), '* SEARCH')) {
+                    $parts = preg_split('/\s+/', trim(substr($line, 8)));
+                    foreach ($parts as $p) {
+                        if ((int) $p > 0) {
+                            $count++;
+                        }
+                    }
+                }
+            }
+
+            return $count;
+        } catch (Throwable) {
+            return 0;
+        } finally {
+            $this->sendSocketCommand($socket, 'LOGOUT', 'TAG_BYE');
+            @fclose($socket);
+        }
+    }
+
+    private function snapshotHashViaSocket(MailAccount $account, string $password, int $limit = 40, string $folder = 'inbox'): string
+    {
+        $globalImapHost = Setting::getValue('mail_server_imap_host') ?: Setting::getValue('mail_server_smtp_host');
+        $host = (string) ($account->imap_host ?: ($globalImapHost ?: config('apptimatic_email.imap.host', '')));
+        $port = (int) ($account->imap_port ?: (Setting::getValue('mail_server_imap_port') ?: config('apptimatic_email.imap.port', 993)));
+        $encryption = strtolower((string) ($account->imap_encryption ?: (Setting::getValue('mail_server_imap_encryption') ?: config('apptimatic_email.imap.encryption', 'ssl'))));
+
+        if ($host === '' || $port <= 0 || $password === '') {
+            return '';
+        }
+
+        $socket = $this->openImapSocket($host, $port, $encryption, (string) $account->email, $password);
+        if (! $socket) {
+            return '';
+        }
+
+        try {
+            $folderKey = $this->normalizeFolderKey($folder);
+            $aliases = self::FOLDER_ALIASES[$folderKey] ?? ['INBOX'];
+            foreach ($aliases as $candidate) {
+                $res = $this->sendSocketCommand($socket, "SELECT \"{$candidate}\"", 'TAG_SEL');
+                if (str_contains($res['status'], 'OK')) {
+                    break;
+                }
+            }
+
+            $searchRes = $this->sendSocketCommand($socket, 'UID SEARCH ALL', 'TAG_SRCH');
+            $uids = [];
+            foreach ($searchRes['lines'] as $line) {
+                if (str_starts_with(strtoupper($line), '* SEARCH')) {
+                    $parts = preg_split('/\s+/', trim(substr($line, 8)));
+                    foreach ($parts as $p) {
+                        $val = (int) $p;
+                        if ($val > 0) {
+                            $uids[] = $val;
+                        }
+                    }
+                }
+            }
+
+            rsort($uids);
+            $limit = max(1, min($limit, 40));
+            $uids = array_slice($uids, 0, $limit);
+
+            return hash('sha256', implode(',', $uids));
+        } catch (Throwable) {
+            return '';
+        } finally {
+            $this->sendSocketCommand($socket, 'LOGOUT', 'TAG_BYE');
+            @fclose($socket);
+        }
     }
 }

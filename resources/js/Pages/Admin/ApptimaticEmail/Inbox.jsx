@@ -636,10 +636,33 @@ export default function Inbox({
                             <span className="font-semibold text-slate-800 text-sm hidden sm:inline">Apptimatic Mail</span>
                         </div>
 
+                        {/* Compose Button */}
+                        <button
+                            type="button"
+                            onClick={() => handleComposeOpen('new')}
+                            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs hover:shadow transition group shrink-0"
+                        >
+                            <svg className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>Compose</span>
+                        </button>
+
+                        {/* Current Active Folder Pill */}
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-white border border-slate-200 text-slate-800 text-xs font-semibold shadow-2xs shrink-0">
+                            <span className="text-teal-600">{renderFolderIcon(selectedFolder)}</span>
+                            <span>{selectedFolderLabel}</span>
+                            {selectedFolder === 'inbox' && unread_count > 0 && (
+                                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-teal-600 text-white text-[10px] font-bold">
+                                    {unread_count}
+                                </span>
+                            )}
+                        </div>
+
                         {activeMailboxEmail && (
-                            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-medium">
+                            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-[10px] bg-teal-50 border border-teal-200 text-teal-800 text-xs font-medium">
                                 <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
-                                <span className="truncate max-w-[200px]">{activeMailboxEmail}</span>
+                                <span className="truncate max-w-[180px]">{activeMailboxEmail}</span>
                             </div>
                         )}
                     </div>
@@ -676,17 +699,38 @@ export default function Inbox({
 
                     {/* Right action controls */}
                     <div className="flex items-center gap-2 shrink-0">
+                        {/* Live Sync Status */}
+                        <span className="hidden xl:inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-[10px] border border-slate-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>{sync_meta?.mode === 'live' ? 'Live IMAP' : 'Synced'}</span>
+                        </span>
+
                         {/* Sync Refresh */}
                         <button
                             type="button"
                             onClick={syncNow}
-                            className="p-2 rounded-full text-slate-600 hover:text-teal-600 hover:bg-teal-50 transition"
+                            className="p-2 rounded-[10px] border border-slate-200 text-slate-600 hover:text-teal-600 hover:bg-teal-50 hover:border-teal-200 transition"
                             title="Refresh emails"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                         </button>
+
+                        {/* Manage mailboxes button */}
+                        {routes?.manage && (
+                            <a
+                                href={routes.manage}
+                                data-native="true"
+                                className="p-2 rounded-[10px] border border-slate-200 text-slate-600 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-200 transition"
+                                title="Manage Mailboxes"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </a>
+                        )}
 
                         {/* Mailbox Switcher for Master Admin */}
                         {mailboxSwitchEnabled && (
@@ -704,7 +748,7 @@ export default function Inbox({
                                     type="button"
                                     onClick={handleMailboxSwitch}
                                     disabled={isCurrentMailboxSelected || mailboxSwitchEmail === ''}
-                                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-teal-400 hover:text-teal-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                                    className="px-2.5 py-1.5 rounded-[10px] border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-teal-400 hover:text-teal-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
                                 >
                                     Switch
                                 </button>
@@ -730,7 +774,7 @@ export default function Inbox({
                                 <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />
                                 <button
                                     type="submit"
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border border-slate-200 text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition"
                                     title="Sign out from this mailbox"
                                 >
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -743,81 +787,8 @@ export default function Inbox({
                     </div>
                 </header>
 
-                {/* 2. Main Body: Left Sidebar + Mail Panels */}
+                {/* 2. Main Body: Full-Width Mail Content */}
                 <div className="flex-1 flex min-h-0 overflow-hidden">
-                    {/* Gmail-style Left Sidebar */}
-                    <aside className="w-56 md:w-64 border-r border-slate-200 bg-white flex flex-col justify-between py-4 px-3 shrink-0 select-none">
-                        <div className="space-y-4">
-                            {/* Big Prominent + Compose Button */}
-                            <button
-                                type="button"
-                                onClick={() => handleComposeOpen('new')}
-                                className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-slate-800 hover:text-teal-700 shadow-sm hover:shadow-md transition-all font-semibold text-sm group"
-                            >
-                                <svg className="w-5 h-5 text-teal-600 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
-                                </svg>
-                                <span>Compose</span>
-                            </button>
-
-                            {/* Folders List */}
-                            <nav className="space-y-1">
-                                {folderOptions.map((folder) => {
-                                    const isActive = selectedFolder === folder.key;
-                                    const isInbox = folder.key === 'inbox';
-                                    const showCount = isInbox && unread_count > 0;
-
-                                    return (
-                                        <button
-                                            key={folder.key}
-                                            type="button"
-                                            onClick={() => handleFolderClick(folder.key)}
-                                            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs md:text-sm font-medium transition ${
-                                                isActive
-                                                    ? 'bg-teal-50 text-teal-800 font-bold shadow-xs'
-                                                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <span className={isActive ? 'text-teal-600' : 'text-slate-500'}>
-                                                    {renderFolderIcon(folder.key)}
-                                                </span>
-                                                <span className="truncate">{folder.label}</span>
-                                            </div>
-
-                                            {showCount && (
-                                                <span className="px-2 py-0.5 rounded-full bg-teal-600 text-white text-xs font-bold shadow-xs">
-                                                    {unread_count}
-                                                </span>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </nav>
-                        </div>
-
-                        {/* Bottom Settings / Manage Link */}
-                        <div className="pt-3 border-t border-slate-100 space-y-1">
-                            {routes?.manage && (
-                                <a
-                                    href={routes.manage}
-                                    data-native="true"
-                                    className="flex items-center gap-3 px-4 py-2 rounded-full text-xs md:text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
-                                >
-                                    <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <span>Manage Mailboxes</span>
-                                </a>
-                            )}
-
-                            <div className="px-4 pt-1 text-[11px] text-slate-400">
-                                {sync_meta?.mode === 'live' ? 'Live IMAP connected' : 'Stub sync mode'}
-                            </div>
-                        </div>
-                    </aside>
-
                     {/* Email List or Email Thread Reading Pane */}
                     <main className="flex-1 flex flex-col min-w-0 bg-white overflow-hidden">
                         {/* Flash / Page Errors */}
