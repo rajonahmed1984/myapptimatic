@@ -25,9 +25,7 @@ class ImapAuthService
         }
 
         if (! function_exists('imap_open')) {
-            $this->lastFailureType = self::FAILURE_SERVER_UNAVAILABLE;
-            $this->lastFailureDetail = $this->imapUnavailableDetail();
-            return false;
+            return $this->verifyCredentialsViaSocket($account, $password);
         }
 
         $mailbox = $this->buildMailboxString($account);
@@ -162,5 +160,89 @@ class ImapAuthService
             $extensionLoaded,
             $imapDisabled
         );
+    }
+
+    private function verifyCredentialsViaSocket(MailAccount $account, string $password): bool
+    {
+        $globalImapHost = Setting::getValue('mail_server_imap_host') ?: Setting::getValue('mail_server_smtp_host');
+        $host = trim((string) ($account->imap_host ?: ($globalImapHost ?: config('apptimatic_email.imap.host', ''))));
+        $port = (int) ($account->imap_port ?: (Setting::getValue('mail_server_imap_port') ?: config('apptimatic_email.imap.port', 993)));
+        $encryption = strtolower((string) ($account->imap_encryption ?: (Setting::getValue('mail_server_imap_encryption') ?: config('apptimatic_email.imap.encryption', 'ssl'))));
+
+        if ($host === '' || $port <= 0) {
+            $this->lastFailureType = self::FAILURE_SERVER_UNAVAILABLE;
+            $this->lastFailureDetail = 'IMAP host or port is not configured.';
+            return false;
+        }
+
+        $protocol = ($encryption === 'ssl') ? 'ssl://' : 'tcp://';
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ]);
+
+        $errno = 0;
+        $errstr = '';
+        $socket = @stream_socket_client("{$protocol}{$host}:{$port}", $errno, $errstr, 6, STREAM_CLIENT_CONNECT, $context);
+
+        if (! $socket) {
+            $this->lastFailureType = self::FAILURE_SERVER_UNAVAILABLE;
+            $this->lastFailureDetail = "Could not connect to {$host}:{$port} ({$errstr})";
+            return false;
+        }
+
+        stream_set_timeout($socket, 6);
+
+        // Read server greeting
+        $greeting = fgets($socket, 1024);
+        if ($greeting === false || ! str_contains(strtoupper((string) $greeting), 'OK')) {
+            @fclose($socket);
+            $this->lastFailureType = self::FAILURE_SERVER_UNAVAILABLE;
+            $this->lastFailureDetail = 'Invalid response from mail server greeting.';
+            return false;
+        }
+
+        if ($encryption === 'tls' && $port !== 993) {
+            fwrite($socket, "TAG0 STARTTLS\r\n");
+            $tlsResponse = fgets($socket, 1024);
+            if ($tlsResponse !== false && str_starts_with(trim($tlsResponse), 'TAG0 OK')) {
+                stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            }
+        }
+
+        // Send LOGIN command
+        $escapedEmail = addcslashes($account->email, "\\\"");
+        $escapedPassword = addcslashes($password, "\\\"");
+        fwrite($socket, "TAG1 LOGIN \"{$escapedEmail}\" \"{$escapedPassword}\"\r\n");
+
+        $authenticated = false;
+        $lastResponse = '';
+        while (! feof($socket)) {
+            $line = fgets($socket, 1024);
+            if ($line === false) {
+                break;
+            }
+            $lastResponse = trim($line);
+            if (str_starts_with($lastResponse, 'TAG1 OK')) {
+                $authenticated = true;
+                break;
+            }
+            if (str_starts_with($lastResponse, 'TAG1 NO') || str_starts_with($lastResponse, 'TAG1 BAD')) {
+                break;
+            }
+        }
+
+        @fwrite($socket, "TAG2 LOGOUT\r\n");
+        @fclose($socket);
+
+        if (! $authenticated) {
+            $this->lastFailureType = self::FAILURE_INVALID_CREDENTIALS;
+            $this->lastFailureDetail = $lastResponse !== '' ? $lastResponse : 'Invalid email or password.';
+            return false;
+        }
+
+        return true;
     }
 }
