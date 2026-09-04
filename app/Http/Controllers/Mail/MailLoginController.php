@@ -177,10 +177,14 @@ class MailLoginController extends Controller
             ])->save();
 
             if ($failureType === 'server_unavailable') {
-                $message = 'Email server unavailable. Check IMAP host/port/encryption/certificate settings.';
-                $formattedDetail = $this->formatImapFailureDetail($failureDetail);
-                if ($formattedDetail !== null) {
-                    $message .= ' Details: ' . $formattedDetail;
+                if (str_contains((string) $failureDetail, 'extension_loaded=no')) {
+                    $message = 'Server requirement missing: PHP "imap" extension is disabled on your server. Please enable the "imap" extension in cPanel > Select PHP Version > Extensions.';
+                } else {
+                    $message = 'Email server unavailable. Check IMAP host/port/encryption/certificate settings.';
+                    $formattedDetail = $this->formatImapFailureDetail($failureDetail);
+                    if ($formattedDetail !== null) {
+                        $message .= ' Details: ' . $formattedDetail;
+                    }
                 }
 
                 return back()->withErrors(['email' => $message])->withInput();

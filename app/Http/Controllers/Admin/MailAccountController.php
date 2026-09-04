@@ -84,6 +84,7 @@ class MailAccountController extends Controller
             'initialAccounts' => $accounts,
             'assignees' => $assignees,
             'serverSettings' => $serverSettings,
+            'phpImapEnabled' => function_exists('imap_open'),
             'routes' => [
                 'accounts_base' => route('admin.apptimatic-email.accounts.index'),
                 'inbox' => route('admin.apptimatic-email.inbox'),

@@ -8,6 +8,7 @@ export default function Manage({
     initialAccounts = [],
     routes = {},
     serverSettings = {},
+    phpImapEnabled = true,
 }) {
     const [accounts, setAccounts] = useState(Array.isArray(initialAccounts) ? initialAccounts : []);
     const [accountQuery, setAccountQuery] = useState('');
@@ -226,6 +227,26 @@ export default function Manage({
                         >
                             &times;
                         </button>
+                    </div>
+                ) : null}
+
+                {/* PHP IMAP Extension Requirement Notice */}
+                {!phpImapEnabled ? (
+                    <div className="rounded-2xl border border-amber-300 bg-amber-50/90 p-5 shadow-sm">
+                        <div className="flex items-start gap-3.5">
+                            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm font-bold text-base">
+                                !
+                            </div>
+                            <div className="text-xs text-amber-950 leading-relaxed">
+                                <strong className="font-bold text-sm block mb-1 text-amber-900">
+                                    PHP "imap" Extension Missing on Server
+                                </strong>
+                                To allow users to authenticate and read their incoming mailboxes, the PHP <code>imap</code> module must be enabled on this hosting/server.
+                                <div className="mt-2.5 rounded-[10px] border border-amber-200 bg-white/90 p-3 text-[11px] text-slate-800 font-medium">
+                                    <span className="font-bold text-teal-800">How to fix in cPanel:</span> Go to <strong>cPanel</strong> &rarr; <strong>Select PHP Version</strong> &rarr; <strong>Extensions</strong> tab &rarr; check <strong>"imap"</strong>.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 ) : null}
 
