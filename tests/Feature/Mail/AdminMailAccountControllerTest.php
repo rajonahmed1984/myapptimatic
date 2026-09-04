@@ -157,4 +157,75 @@ class AdminMailAccountControllerTest extends TestCase
 
         $this->assertSame(0, MailAccountAssignment::query()->count());
     }
+
+    #[Test]
+    public function admin_can_update_and_load_mail_server_settings(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'master_admin',
+        ]);
+        \assert($admin instanceof User);
+
+        $response = $this->actingAs($admin, 'web')
+            ->putJson(route('admin.apptimatic-email.settings.update'), [
+                'smtp_host' => 'mail.example.com',
+                'smtp_port' => 587,
+                'smtp_encryption' => 'tls',
+                'imap_host' => 'mail.example.com',
+                'imap_port' => 993,
+                'imap_encryption' => 'ssl',
+                'domain' => 'example.com',
+                'auto_provision' => true,
+                'validate_cert' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Mail server & SMTP settings saved successfully.')
+            ->assertJsonPath('settings.smtp_host', 'mail.example.com')
+            ->assertJsonPath('settings.domain', 'example.com');
+
+        $this->assertSame('mail.example.com', \App\Models\Setting::getValue('mail_server_smtp_host'));
+        $this->assertSame('example.com', \App\Models\Setting::getValue('mail_server_domain'));
+    }
+
+    #[Test]
+    public function auto_provision_creates_mailbox_and_assignment_when_mail_server_configured(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'master_admin',
+        ]);
+        \assert($admin instanceof User);
+
+        \App\Models\Setting::setValue('mail_server_smtp_host', 'mail.example.com');
+        \App\Models\Setting::setValue('mail_server_imap_host', 'mail.example.com');
+        \App\Models\Setting::setValue('mail_server_domain', 'example.com');
+        \App\Models\Setting::setValue('mail_server_auto_provision', '1');
+
+        $mockImap = $this->createMock(\App\Services\Mail\ImapAuthService::class);
+        $mockImap->method('verifyCredentials')->willReturn(true);
+        $this->app->instance(\App\Services\Mail\ImapAuthService::class, $mockImap);
+
+        $this->actingAs($admin, 'web')
+            ->post(route('admin.apptimatic-email.login.store'), [
+                'email' => 'newuser@example.com',
+                'password' => 'secret123',
+                'remember' => false,
+            ])
+            ->assertRedirect(route('admin.apptimatic-email.inbox'));
+
+        $this->assertDatabaseHas('mail_accounts', [
+            'email' => 'newuser@example.com',
+            'imap_host' => 'mail.example.com',
+        ]);
+
+        $createdAccount = MailAccount::query()->where('email', 'newuser@example.com')->first();
+        $this->assertNotNull($createdAccount);
+
+        $this->assertDatabaseHas('mail_account_assignments', [
+            'mail_account_id' => $createdAccount->id,
+            'assignee_type' => 'user',
+            'assignee_id' => $admin->id,
+            'can_read' => 1,
+            'can_manage' => 1,
+        ]);
+    }
 }

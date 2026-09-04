@@ -3,6 +3,7 @@
 namespace App\Services\Mail;
 
 use App\Models\MailAccount;
+use App\Models\Setting;
 use Illuminate\Support\Carbon;
 use Throwable;
 
@@ -818,10 +819,12 @@ class ImapInboxService
 
     private function buildMailboxPrefix(MailAccount $account): string
     {
-        $host = (string) ($account->imap_host ?: config('apptimatic_email.imap.host', ''));
-        $port = (int) ($account->imap_port ?: config('apptimatic_email.imap.port', 993));
-        $encryption = strtolower((string) ($account->imap_encryption ?: config('apptimatic_email.imap.encryption', 'ssl')));
-        $validateCert = (bool) ($account->imap_validate_cert ?? config('apptimatic_email.imap.validate_cert', true));
+        $globalImapHost = Setting::getValue('mail_server_imap_host') ?: Setting::getValue('mail_server_smtp_host');
+        $host = (string) ($account->imap_host ?: ($globalImapHost ?: config('apptimatic_email.imap.host', '')));
+        $port = (int) ($account->imap_port ?: (Setting::getValue('mail_server_imap_port') ?: config('apptimatic_email.imap.port', 993)));
+        $encryption = strtolower((string) ($account->imap_encryption ?: (Setting::getValue('mail_server_imap_encryption') ?: config('apptimatic_email.imap.encryption', 'ssl'))));
+        $certSetting = Setting::getValue('mail_server_validate_cert');
+        $validateCert = (bool) ($account->imap_validate_cert ?? ($certSetting !== null ? (bool) $certSetting : config('apptimatic_email.imap.validate_cert', true)));
 
         if ($host === '' || $port <= 0) {
             return '';

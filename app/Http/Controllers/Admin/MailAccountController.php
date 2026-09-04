@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\MailAccount;
 use App\Models\MailAccountAssignment;
 use App\Models\SalesRepresentative;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -66,14 +67,29 @@ class MailAccountController extends Controller
                 ->all(),
         ];
 
+        $serverSettings = [
+            'smtp_host' => (string) Setting::getValue('mail_server_smtp_host', config('apptimatic_email.smtp.host', '')),
+            'smtp_port' => (int) Setting::getValue('mail_server_smtp_port', config('apptimatic_email.smtp.port', 587)),
+            'smtp_encryption' => (string) Setting::getValue('mail_server_smtp_encryption', config('apptimatic_email.smtp.encryption', 'tls')),
+            'imap_host' => (string) Setting::getValue('mail_server_imap_host', config('apptimatic_email.imap.host', '')),
+            'imap_port' => (int) Setting::getValue('mail_server_imap_port', config('apptimatic_email.imap.port', 993)),
+            'imap_encryption' => (string) Setting::getValue('mail_server_imap_encryption', config('apptimatic_email.imap.encryption', 'ssl')),
+            'domain' => (string) Setting::getValue('mail_server_domain', ''),
+            'auto_provision' => (bool) Setting::getValue('mail_server_auto_provision', true),
+            'validate_cert' => (bool) Setting::getValue('mail_server_validate_cert', true),
+        ];
+
         return Inertia::render('Admin/ApptimaticEmail/Manage', [
             'pageTitle' => 'Apptimatic Email Settings',
             'initialAccounts' => $accounts,
             'assignees' => $assignees,
+            'serverSettings' => $serverSettings,
             'routes' => [
                 'accounts_base' => route('admin.apptimatic-email.accounts.index'),
                 'inbox' => route('admin.apptimatic-email.inbox'),
                 'manage' => route('admin.apptimatic-email.manage'),
+                'settings_update' => route('admin.apptimatic-email.settings.update'),
+                'settings_test' => route('admin.apptimatic-email.settings.test'),
             ],
         ]);
     }
@@ -220,5 +236,127 @@ class MailAccountController extends Controller
         };
 
         abort_if(! $exists, 422, 'Selected assignee does not exist for the chosen type.');
+    }
+
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'smtp_host' => ['nullable', 'string', 'max:255'],
+            'smtp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'smtp_encryption' => ['nullable', Rule::in(['tls', 'ssl', 'none'])],
+            'imap_host' => ['nullable', 'string', 'max:255'],
+            'imap_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'imap_encryption' => ['nullable', Rule::in(['ssl', 'tls', 'none'])],
+            'domain' => ['nullable', 'string', 'max:255'],
+            'auto_provision' => ['required', 'boolean'],
+            'validate_cert' => ['required', 'boolean'],
+        ]);
+
+        Setting::setValue('mail_server_smtp_host', trim((string) ($data['smtp_host'] ?? '')));
+        Setting::setValue('mail_server_smtp_port', (int) ($data['smtp_port'] ?? 587));
+        Setting::setValue('mail_server_smtp_encryption', (string) ($data['smtp_encryption'] ?? 'tls'));
+        Setting::setValue('mail_server_imap_host', trim((string) ($data['imap_host'] ?? '')));
+        Setting::setValue('mail_server_imap_port', (int) ($data['imap_port'] ?? 993));
+        Setting::setValue('mail_server_imap_encryption', (string) ($data['imap_encryption'] ?? 'ssl'));
+        Setting::setValue('mail_server_domain', strtolower(trim((string) ($data['domain'] ?? ''))));
+        Setting::setValue('mail_server_auto_provision', $data['auto_provision'] ? '1' : '0');
+        Setting::setValue('mail_server_validate_cert', $data['validate_cert'] ? '1' : '0');
+        Setting::flushCache();
+
+        return response()->json([
+            'message' => 'Mail server & SMTP settings saved successfully.',
+            'settings' => [
+                'smtp_host' => Setting::getValue('mail_server_smtp_host'),
+                'smtp_port' => (int) Setting::getValue('mail_server_smtp_port', 587),
+                'smtp_encryption' => Setting::getValue('mail_server_smtp_encryption', 'tls'),
+                'imap_host' => Setting::getValue('mail_server_imap_host'),
+                'imap_port' => (int) Setting::getValue('mail_server_imap_port', 993),
+                'imap_encryption' => Setting::getValue('mail_server_imap_encryption', 'ssl'),
+                'domain' => Setting::getValue('mail_server_domain', ''),
+                'auto_provision' => (bool) Setting::getValue('mail_server_auto_provision', true),
+                'validate_cert' => (bool) Setting::getValue('mail_server_validate_cert', true),
+            ],
+        ]);
+    }
+
+    public function testConnection(Request $request): JsonResponse
+    {
+        $smtpHost = trim((string) $request->input('smtp_host', Setting::getValue('mail_server_smtp_host', '')));
+        $smtpPort = (int) $request->input('smtp_port', Setting::getValue('mail_server_smtp_port', 587));
+        $imapHost = trim((string) $request->input('imap_host', Setting::getValue('mail_server_imap_host', $smtpHost)));
+        $imapPort = (int) $request->input('imap_port', Setting::getValue('mail_server_imap_port', 993));
+        $imapEncryption = (string) $request->input('imap_encryption', Setting::getValue('mail_server_imap_encryption', 'ssl'));
+
+        $results = [
+            'smtp' => ['success' => false, 'message' => ''],
+            'imap' => ['success' => false, 'message' => ''],
+        ];
+
+        if ($smtpHost !== '' && $smtpPort > 0) {
+            $errno = 0;
+            $errstr = '';
+            $conn = @stream_socket_client("tcp://{$smtpHost}:{$smtpPort}", $errno, $errstr, 4);
+            if ($conn) {
+                $banner = fgets($conn, 512);
+                fclose($conn);
+                $bannerText = trim((string) $banner);
+                $results['smtp'] = [
+                    'success' => true,
+                    'message' => 'SMTP server reachable on port ' . $smtpPort . ($bannerText !== '' ? ' (' . substr($bannerText, 0, 80) . ')' : '.'),
+                ];
+            } else {
+                $results['smtp'] = [
+                    'success' => false,
+                    'message' => "Could not reach SMTP ({$smtpHost}:{$smtpPort}): {$errstr} ({$errno})",
+                ];
+            }
+        } else {
+            $results['smtp'] = [
+                'success' => false,
+                'message' => 'SMTP host or port is missing.',
+            ];
+        }
+
+        if ($imapHost !== '' && $imapPort > 0) {
+            $errno = 0;
+            $errstr = '';
+            $prefix = ($imapEncryption === 'ssl') ? 'ssl://' : 'tcp://';
+            $context = stream_context_create([
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                ],
+            ]);
+            $conn = @stream_socket_client("{$prefix}{$imapHost}:{$imapPort}", $errno, $errstr, 4, STREAM_CLIENT_CONNECT, $context);
+            if ($conn) {
+                $banner = fgets($conn, 512);
+                fclose($conn);
+                $bannerText = trim((string) $banner);
+                $results['imap'] = [
+                    'success' => true,
+                    'message' => 'IMAP server reachable on port ' . $imapPort . ($bannerText !== '' ? ' (' . substr($bannerText, 0, 80) . ')' : '.'),
+                ];
+            } else {
+                $results['imap'] = [
+                    'success' => false,
+                    'message' => "Could not reach IMAP ({$imapHost}:{$imapPort}): {$errstr} ({$errno})",
+                ];
+            }
+        } else {
+            $results['imap'] = [
+                'success' => false,
+                'message' => 'IMAP host or port is missing.',
+            ];
+        }
+
+        $allSuccess = $results['smtp']['success'] && $results['imap']['success'];
+
+        return response()->json([
+            'success' => $allSuccess,
+            'results' => $results,
+            'message' => $allSuccess
+                ? 'Connection test successful for both SMTP and IMAP!'
+                : 'Connection test completed with warnings or unreachable services.',
+        ]);
     }
 }

@@ -219,6 +219,9 @@ Route::middleware([
                 Route::put('/accounts/{mailAccount}', [MailAccountController::class, 'update'])->name('accounts.update');
                 Route::delete('/accounts/{mailAccount}', [MailAccountController::class, 'destroy'])->name('accounts.destroy');
 
+                Route::put('/settings', [MailAccountController::class, 'updateSettings'])->name('settings.update');
+                Route::post('/settings/test', [MailAccountController::class, 'testConnection'])->name('settings.test');
+
                 Route::post('/accounts/{mailAccount}/assignments', [MailAccountController::class, 'storeAssignment'])
                     ->name('assignments.store');
                 Route::put('/accounts/{mailAccount}/assignments/{assignment}', [MailAccountController::class, 'updateAssignment'])

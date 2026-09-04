@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MailLoginRequest;
 use App\Models\MailAccount;
 use App\Models\MailAccountAssignment;
+use App\Models\Setting;
 use App\Services\Mail\ImapAuthService;
 use App\Services\Mail\MailSessionService;
 use Illuminate\Http\RedirectResponse;
@@ -81,26 +82,77 @@ class MailLoginController extends Controller
         $password = (string) $request->input('password', '');
         $remember = (bool) $request->boolean('remember', false);
 
+        $globalSmtpHost = trim((string) Setting::getValue('mail_server_smtp_host', config('apptimatic_email.smtp.host', '')));
+        $globalImapHost = trim((string) Setting::getValue('mail_server_imap_host', config('apptimatic_email.imap.host', $globalSmtpHost)));
+        $autoProvision = (bool) Setting::getValue('mail_server_auto_provision', true);
+        $allowedDomain = strtolower(trim((string) Setting::getValue('mail_server_domain', '')));
+
         $mailAccount = MailAccount::query()
             ->whereRaw('LOWER(email) = ?', [$email])
             ->first();
 
         if (! $mailAccount) {
-            return back()->withErrors(['email' => 'Invalid email or password'])->withInput();
+            $isMailServerConfigured = ($globalSmtpHost !== '' || $globalImapHost !== '');
+            $domainMatches = ($allowedDomain === '' || str_ends_with($email, '@' . ltrim($allowedDomain, '@')));
+
+            if ($isMailServerConfigured && $autoProvision) {
+                if (! $domainMatches) {
+                    return back()->withErrors(['email' => "This email domain does not match the configured mail server (@{$allowedDomain})."])->withInput();
+                }
+
+                $username = explode('@', $email)[0];
+                $mailAccount = MailAccount::query()->create([
+                    'email' => $email,
+                    'display_name' => ucwords(str_replace(['.', '_', '-'], ' ', $username)),
+                    'imap_host' => $globalImapHost ?: $globalSmtpHost,
+                    'imap_port' => (int) Setting::getValue('mail_server_imap_port', config('apptimatic_email.imap.port', 993)),
+                    'imap_encryption' => (string) Setting::getValue('mail_server_imap_encryption', config('apptimatic_email.imap.encryption', 'ssl')),
+                    'imap_validate_cert' => (bool) Setting::getValue('mail_server_validate_cert', config('apptimatic_email.imap.validate_cert', true)),
+                    'status' => 'active',
+                ]);
+
+                MailAccountAssignment::query()->firstOrCreate([
+                    'mail_account_id' => $mailAccount->id,
+                    'assignee_type' => $actor['type'],
+                    'assignee_id' => (int) $actor['id'],
+                ], [
+                    'can_read' => true,
+                    'can_manage' => true,
+                ]);
+            } else {
+                return back()->withErrors(['email' => 'Invalid email or password'])->withInput();
+            }
         }
 
         if (! Gate::allows('use', [$mailAccount, $actor['type'], (int) $actor['id']])) {
-            if (config('app.login_trace')) {
-                Log::warning('[MAIL_LOGIN_DENIED]', [
-                    'route' => $routeName,
-                    'actor_type' => $actor['type'] ?? null,
-                    'actor_id' => $actor['id'] ?? null,
-                    'mail_account_id' => $mailAccount->id,
-                    'mail_account_email' => $mailAccount->email,
-                ]);
-            }
+            $isMailServerConfigured = ($globalSmtpHost !== '' || $globalImapHost !== '');
+            $domainMatches = ($allowedDomain === '' || str_ends_with($email, '@' . ltrim($allowedDomain, '@')));
+            $actorUser = $actor['user'] ?? null;
+            $actorEmail = strtolower((string) ($actorUser?->email ?? ''));
+            $isOwnEmail = ($actorEmail !== '' && $actorEmail === $email);
 
-            return back()->withErrors(['email' => 'This mailbox is not assigned to your account.'])->withInput();
+            if ($isMailServerConfigured && $autoProvision && ($domainMatches || $isOwnEmail)) {
+                MailAccountAssignment::query()->firstOrCreate([
+                    'mail_account_id' => $mailAccount->id,
+                    'assignee_type' => $actor['type'],
+                    'assignee_id' => (int) $actor['id'],
+                ], [
+                    'can_read' => true,
+                    'can_manage' => true,
+                ]);
+            } else {
+                if (config('app.login_trace')) {
+                    Log::warning('[MAIL_LOGIN_DENIED]', [
+                        'route' => $routeName,
+                        'actor_type' => $actor['type'] ?? null,
+                        'actor_id' => $actor['id'] ?? null,
+                        'mail_account_id' => $mailAccount->id,
+                        'mail_account_email' => $mailAccount->email,
+                    ]);
+                }
+
+                return back()->withErrors(['email' => 'This mailbox is not assigned to your account.'])->withInput();
+            }
         }
 
         if (! $this->imapAuthService->verifyCredentials($mailAccount, $password)) {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Mail;
 use App\Http\Controllers\Controller;
 use App\Models\MailAccount;
 use App\Models\MailAccountAssignment;
+use App\Models\Setting;
 use App\Services\ApptimaticEmailStubRepository;
 use App\Services\Mail\ImapInboxService;
 use App\Services\Mail\MailSessionService;
@@ -881,14 +882,19 @@ class MailInboxController extends Controller
      */
     private function smtpSettingsForReply(mixed $mailAccount): array
     {
-        $imapHost = trim((string) ($mailAccount?->imap_host ?: config('apptimatic_email.imap.host', '')));
-        $imapEncryption = strtolower((string) ($mailAccount?->imap_encryption ?: config('apptimatic_email.imap.encryption', 'ssl')));
+        $globalSmtpHost = trim((string) Setting::getValue('mail_server_smtp_host', ''));
+        $globalSmtpPort = (int) Setting::getValue('mail_server_smtp_port', 0);
+        $globalSmtpEncryption = (string) Setting::getValue('mail_server_smtp_encryption', '');
+        $globalValidateCert = Setting::getValue('mail_server_validate_cert');
 
-        $derivedHost = $this->derivedSmtpHost($imapHost);
+        $imapHost = trim((string) ($mailAccount?->imap_host ?: Setting::getValue('mail_server_imap_host', config('apptimatic_email.imap.host', ''))));
+        $imapEncryption = strtolower((string) ($mailAccount?->imap_encryption ?: Setting::getValue('mail_server_imap_encryption', config('apptimatic_email.imap.encryption', 'ssl'))));
+
+        $derivedHost = $globalSmtpHost !== '' ? $globalSmtpHost : $this->derivedSmtpHost($imapHost);
         $derivedEncryption = in_array($imapEncryption, ['ssl', 'tls', 'none'], true) ? $imapEncryption : 'tls';
 
-        $host = trim((string) config('apptimatic_email.smtp.host', $derivedHost));
-        $encryption = strtolower((string) config('apptimatic_email.smtp.encryption', $derivedEncryption));
+        $host = $globalSmtpHost !== '' ? $globalSmtpHost : trim((string) config('apptimatic_email.smtp.host', $derivedHost));
+        $encryption = $globalSmtpEncryption !== '' ? strtolower($globalSmtpEncryption) : strtolower((string) config('apptimatic_email.smtp.encryption', $derivedEncryption));
         if (! in_array($encryption, ['ssl', 'tls', 'none'], true)) {
             $encryption = $derivedEncryption;
         }
@@ -899,16 +905,18 @@ class MailInboxController extends Controller
             default => 25,
         };
 
-        $port = (int) config('apptimatic_email.smtp.port', $defaultPort);
+        $port = $globalSmtpPort > 0 ? $globalSmtpPort : (int) config('apptimatic_email.smtp.port', $defaultPort);
         if ($port <= 0) {
             $port = $defaultPort;
         }
+
+        $validateCert = $globalValidateCert !== null ? (bool) $globalValidateCert : (bool) config('apptimatic_email.smtp.validate_cert', true);
 
         return [
             'host' => $host,
             'port' => $port,
             'encryption' => $encryption,
-            'validate_cert' => (bool) config('apptimatic_email.smtp.validate_cert', true),
+            'validate_cert' => $validateCert,
         ];
     }
 

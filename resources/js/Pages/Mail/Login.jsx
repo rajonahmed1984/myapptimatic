@@ -62,7 +62,7 @@ export default function Login({
                             <div className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">{portal}</div>
                             <h1 className="mt-1 text-2xl font-bold text-slate-900">Email Login</h1>
                             <p className="mt-1.5 text-xs text-slate-500">
-                                Login to your assigned mailbox to access Apptimatic Email.
+                                Login with your mail server email address and password to access Apptimatic Email.
                             </p>
                         </div>
 
