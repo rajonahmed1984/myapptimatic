@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
+use App\Http\Controllers\Admin\MyBuildingController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ProjectController;
@@ -496,6 +497,15 @@ Route::middleware([
         ->middleware(HandleInertiaRequests::class)
         ->name('products.edit');
     Route::resource('products', ProductController::class)->except(['show', 'index', 'create', 'edit']);
+
+    // MyBuilding: licences for the building-management product and the
+    // building each one provisions in the customer's installation.
+    Route::get('mybuilding', [MyBuildingController::class, 'index'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('mybuilding.index');
+    Route::post('mybuilding', [MyBuildingController::class, 'store'])->name('mybuilding.store');
+    Route::post('mybuilding/locations', [MyBuildingController::class, 'locations'])->name('mybuilding.locations');
+    Route::post('mybuilding/{provision}/provision', [MyBuildingController::class, 'provision'])->name('mybuilding.provision');
     Route::get('plans', [PlanController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('plans.index');

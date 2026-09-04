@@ -249,6 +249,9 @@ export default function AdminLayout({ children, title, pageHeading }) {
                                 <NavLink href="/admin/products" active={isActiveRoute(currentUrl, '/admin/products*')}>
                                     Products
                                 </NavLink>
+                                <NavLink href="/admin/mybuilding" active={isActiveRoute(currentUrl, '/admin/mybuilding*')}>
+                                    MyBuilding
+                                </NavLink>
                                 <NavLink href="/admin/plans" active={isActiveRoute(currentUrl, '/admin/plans*')}>
                                     Plans
                                 </NavLink>

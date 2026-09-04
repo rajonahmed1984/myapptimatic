@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\License;
+use App\Models\MyBuildingProvision;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Product;
@@ -67,6 +68,12 @@ class OrderController extends Controller
     {
         $data = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
+            // MyBuilding is priced by building size, so the customer states it
+            // when ordering. Ignored for every other product.
+            'building_name' => ['nullable', 'string', 'max:255'],
+            'building_address' => ['nullable', 'string', 'max:500'],
+            'total_floors' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'flats_per_floor' => ['nullable', 'integer', 'min:1', 'max:26'],
         ]);
 
         $customer = $request->user()->customer;
@@ -106,6 +113,16 @@ class OrderController extends Controller
                 'name' => $plan->name,
                 'interval_label' => ucfirst((string) $plan->interval),
                 'product_name' => $plan->product?->name ?? '--',
+                'product_slug' => $plan->product?->slug,
+            ],
+            // Carried through the review step so the order records the size
+            // the customer chose.
+            'is_mybuilding' => $plan->product?->slug === config('mybuilding.product_slug'),
+            'building' => [
+                'building_name' => $data['building_name'] ?? '',
+                'building_address' => $data['building_address'] ?? '',
+                'total_floors' => $data['total_floors'] ?? 1,
+                'flats_per_floor' => $data['flats_per_floor'] ?? 4,
             ],
             'currency' => $currency,
             'start_date_display' => $startDate->format($dateFormat),
@@ -131,6 +148,12 @@ class OrderController extends Controller
     ): RedirectResponse {
         $data = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
+            // MyBuilding is priced by building size, so the customer states it
+            // when ordering. Ignored for every other product.
+            'building_name' => ['nullable', 'string', 'max:255'],
+            'building_address' => ['nullable', 'string', 'max:500'],
+            'total_floors' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'flats_per_floor' => ['nullable', 'integer', 'min:1', 'max:26'],
         ]);
 
         $customer = $request->user()->customer;
@@ -203,7 +226,7 @@ class OrderController extends Controller
                 'line_total' => $subtotal,
             ]);
 
-            License::create([
+            $license = License::create([
                 'subscription_id' => $subscription->id,
                 'product_id' => $plan->product_id,
                 'license_key' => $this->uniqueLicenseKey(),
@@ -222,6 +245,33 @@ class OrderController extends Controller
                 'invoice_id' => $invoice->id,
                 'status' => 'pending',
             ]);
+
+            // Record the ordered building so approval can provision it without
+            // anyone re-keying the details.
+            if ($plan->product?->slug === config('mybuilding.product_slug')) {
+                $floors = (int) ($request->input('total_floors') ?: 1);
+                $perFloor = (int) ($request->input('flats_per_floor') ?: 4);
+
+                MyBuildingProvision::updateOrCreate(
+                    ['license_id' => $license->id],
+                    [
+                        'customer_id' => $customer->id,
+                        'order_id' => $order->id,
+                        'building_name' => $request->input('building_name')
+                            ?: ($customer->company_name ?: $customer->name),
+                        'building_address' => $request->input('building_address') ?: $customer->address,
+                        'total_floors' => $floors,
+                        'flats_per_floor' => $perFloor,
+                        'contracted_flats' => $floors * $perFloor,
+                        // Filled in at approval, from the licensed domain.
+                        'install_url' => '',
+                        'owner_name' => $customer->name,
+                        'owner_email' => $customer->email,
+                        'owner_phone' => $customer->phone ?: '',
+                        'status' => MyBuildingProvision::STATUS_PENDING,
+                    ]
+                );
+            }
 
             return [
                 'invoice' => $invoice,

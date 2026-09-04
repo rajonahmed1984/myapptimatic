@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\License;
 use App\Models\LicenseDomain;
+use App\Jobs\ProvisionMyBuildingJob;
 use App\Models\Order;
+use App\Models\MyBuildingProvision;
 use App\Models\Plan;
 use App\Services\AdminNotificationService;
 use App\Services\BillingService;
 use App\Services\ClientNotificationService;
+use App\Services\MyBuildingProvisioner;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -161,6 +164,11 @@ class OrderController extends Controller
             ->where('domain', '!=', $domain)
             ->update(['status' => 'revoked']);
 
+        // MyBuilding orders create the building inside the customer's
+        // installation. A failure here must never undo an accepted order, so
+        // it is reported and left retryable from the MyBuilding page.
+        $provisionWarning = $this->provisionMyBuilding($order, $license, $data['license_url']);
+
         $clientNotifications->sendOrderAccepted($order);
         $adminNotifications->sendOrderAccepted($order);
 
@@ -171,7 +179,75 @@ class OrderController extends Controller
             'invoice_id' => $order->invoice_id,
         ], $request->user()?->id, $request->ip());
 
+        if ($provisionWarning) {
+            return back()
+                ->with('status', 'Order accepted.')
+                ->withErrors(['provision' => $provisionWarning]);
+        }
+
         return back()->with('status', 'Order accepted.');
+    }
+
+    /**
+     * Hand a MyBuilding order over to the customer's installation.
+     *
+     * @return string|null  a warning to surface, or null when nothing to do
+     */
+    private function provisionMyBuilding(Order $order, License $license, string $licenseUrl): ?string
+    {
+        $slug = $license->product?->slug ?? $order->product?->slug;
+
+        if ($slug !== config('mybuilding.product_slug')) {
+            return null;
+        }
+
+        $provision = MyBuildingProvision::where('license_id', $license->id)
+            ->orWhere('order_id', $order->id)
+            ->first();
+
+        if (!$provision) {
+            return 'This is a MyBuilding order but no building details were captured. '
+                . 'Add them on the MyBuilding page, then provision it.';
+        }
+
+        // The approved domain is where the building has to be created.
+        $installUrl = $provision->install_url ?: $this->installUrlFrom($licenseUrl);
+
+        $provision->forceFill([
+            'license_id' => $license->id,
+            'order_id' => $provision->order_id ?: $order->id,
+            'customer_id' => $provision->customer_id ?: $order->customer_id,
+            'install_url' => $installUrl,
+        ])->save();
+
+        if (!app(MyBuildingProvisioner::class)->configured()) {
+            return 'Order accepted, but MYBUILDING_PROVISION_SECRET is not configured, so the building was not created.';
+        }
+
+        // Queued: accepting an order must not wait on the customer's server,
+        // and a brief outage there retries itself.
+        ProvisionMyBuildingJob::dispatch($provision->id);
+
+        return null;
+    }
+
+    /**
+     * The licensed domain is stored bare; the installation needs a full URL.
+     */
+    private function installUrlFrom(string $licenseUrl): string
+    {
+        $trimmed = trim($licenseUrl);
+
+        if (str_starts_with($trimmed, 'http://') || str_starts_with($trimmed, 'https://')) {
+            return rtrim($trimmed, '/');
+        }
+
+        $host = $this->normalizeDomain($trimmed) ?: $trimmed;
+        $scheme = in_array($host, ['localhost', '127.0.0.1'], true) || str_starts_with($host, '127.0.0.1')
+            ? 'http'
+            : 'https';
+
+        return $scheme . '://' . $host;
     }
 
     public function cancel(Order $order, AdminNotificationService $adminNotifications): RedirectResponse
