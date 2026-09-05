@@ -313,6 +313,7 @@ export default function Dashboard({
     }[businessPulseAi?.verdict] || (businessPulse?.health_classes || 'bg-slate-100 text-slate-700');
 
     const [period, setPeriod] = useState('month');
+    const [isPulseExpanded, setIsPulseExpanded] = useState(false);
     const [seriesVisible, setSeriesVisible] = useState({
         new_orders: true,
         active_orders: true,
@@ -510,77 +511,90 @@ export default function Dashboard({
                         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scoreBadgeClass(businessPulseScore)}`}>
                             Overall: {businessPulseScore}/100
                         </span>
+                        <button
+                            type="button"
+                            onClick={() => setIsPulseExpanded(!isPulseExpanded)}
+                            className="md:hidden inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full cursor-pointer transition-colors"
+                            aria-expanded={isPulseExpanded}
+                        >
+                            <span>{isPulseExpanded ? 'Hide' : 'Details'}</span>
+                            <svg className={`w-3.5 h-3.5 transform transition-transform duration-200 ${isPulseExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <SmallMetric
-                        label="Net Cash Position (30d)"
-                        value={money(currency, businessPulse?.net_30d)}
-                        tone={Number(businessPulse?.net_30d || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}
-                        note={`Income: ${money(currency, businessPulse?.income_30d)} | Expense: ${money(currency, businessPulse?.expense_30d)}`}
-                    />
-                    <SmallMetric
-                        label="Expense-to-Income Ratio"
-                        value={`${Number(businessPulse?.expense_ratio_percent || 0).toFixed(1)}%`}
-                        tone={Number(businessPulse?.expense_ratio_percent || 0) > 85 ? 'text-rose-600' : 'text-amber-600'}
-                        note="Operating expense ratio for last 30 days."
-                        href={routes?.expenses_dashboard}
-                        action="Open Accounting Expense Dashboard"
-                    />
-                    <SmallMetric
-                        label="A/R Overdue Ratio"
-                        value={`${Number(businessPulse?.overdue_share_percent || 0).toFixed(1)}%`}
-                        tone="text-amber-600"
-                        note={`Overdue invoices: ${metricValue(businessPulse?.overdue_invoices)} | Open receivables: ${metricValue(Number(businessPulse?.unpaid_invoices || 0) + Number(businessPulse?.overdue_invoices || 0))}`}
-                        href={routes?.invoices_overdue}
-                        action="Review A/R Aging"
-                    />
-                    <SmallMetric
-                        label="A/P Exposure"
-                        value={money(currency, businessPulse?.payable_total)}
-                        tone={Number(businessPulse?.payable_pressure_percent || 0) > 60 ? 'text-rose-600' : 'text-amber-600'}
-                        note={`Due in next 30 days: ${money(currency, businessPulse?.expense_due_30d)}`}
-                    />
-                </div>
+                <div className={`${isPulseExpanded ? 'block' : 'hidden md:block'} transition-all duration-200`}>
+                    <div className="mt-4 grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <SmallMetric
+                            label="Net Cash Position (30d)"
+                            value={money(currency, businessPulse?.net_30d)}
+                            tone={Number(businessPulse?.net_30d || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}
+                            note={`Income: ${money(currency, businessPulse?.income_30d)} | Expense: ${money(currency, businessPulse?.expense_30d)}`}
+                        />
+                        <SmallMetric
+                            label="Expense-to-Income Ratio"
+                            value={`${Number(businessPulse?.expense_ratio_percent || 0).toFixed(1)}%`}
+                            tone={Number(businessPulse?.expense_ratio_percent || 0) > 85 ? 'text-rose-600' : 'text-amber-600'}
+                            note="Operating expense ratio for last 30 days."
+                            href={routes?.expenses_dashboard}
+                            action="Open Accounting Expense Dashboard"
+                        />
+                        <SmallMetric
+                            label="A/R Overdue Ratio"
+                            value={`${Number(businessPulse?.overdue_share_percent || 0).toFixed(1)}%`}
+                            tone="text-amber-600"
+                            note={`Overdue invoices: ${metricValue(businessPulse?.overdue_invoices)} | Open receivables: ${metricValue(Number(businessPulse?.unpaid_invoices || 0) + Number(businessPulse?.overdue_invoices || 0))}`}
+                            href={routes?.invoices_overdue}
+                            action="Review A/R Aging"
+                        />
+                        <SmallMetric
+                            label="A/P Exposure"
+                            value={money(currency, businessPulse?.payable_total)}
+                            tone={Number(businessPulse?.payable_pressure_percent || 0) > 60 ? 'text-rose-600' : 'text-amber-600'}
+                            note={`Due in next 30 days: ${money(currency, businessPulse?.expense_due_30d)}`}
+                        />
+                    </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">
-                        <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Income score</div>
-                        <div className={`mt-1 text-base font-semibold sm:text-lg ${scoreToneClass(businessPulseIncomeScore)}`}>
-                            {businessPulseIncomeScore}/100
+                    <div className="mt-3 sm:mt-4 grid gap-2.5 sm:gap-3 grid-cols-3">
+                        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3 text-center sm:text-left">
+                            <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.16em] text-slate-500 truncate">Income</div>
+                            <div className={`mt-0.5 sm:mt-1 text-sm sm:text-base font-semibold ${scoreToneClass(businessPulseIncomeScore)}`}>
+                                {businessPulseIncomeScore}/100
+                            </div>
                         </div>
-                    </div>
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">
-                        <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Expense score</div>
-                        <div className={`mt-1 text-base font-semibold sm:text-lg ${scoreToneClass(businessPulseExpenseScore)}`}>
-                            {businessPulseExpenseScore}/100
+                        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3 text-center sm:text-left">
+                            <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.16em] text-slate-500 truncate">Expense</div>
+                            <div className={`mt-0.5 sm:mt-1 text-sm sm:text-base font-semibold ${scoreToneClass(businessPulseExpenseScore)}`}>
+                                {businessPulseExpenseScore}/100
+                            </div>
                         </div>
-                    </div>
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">
-                        <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Operations score</div>
-                        <div className={`mt-1 text-base font-semibold sm:text-lg ${scoreToneClass(businessPulseOperationsScore)}`}>
-                            {businessPulseOperationsScore}/100
+                        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3 text-center sm:text-left">
+                            <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.16em] text-slate-500 truncate">Operations</div>
+                            <div className={`mt-0.5 sm:mt-1 text-sm sm:text-base font-semibold ${scoreToneClass(businessPulseOperationsScore)}`}>
+                                {businessPulseOperationsScore}/100
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <MetricLink href={routes?.customers_index} label="Customers" value={metricValue(customerCount)} className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-slate-500" />
                 <MetricLink href={routes?.subscriptions_index} label="Subscriptions" value={metricValue(subscriptionCount)} tone="text-sky-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-sky-700" />
                 <MetricLink href={routes?.licenses_index} label="Licenses" value={metricValue(licenseCount)} tone="text-teal-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-teal-700" />
                 <MetricLink href={routes?.invoices_unpaid} label="Unpaid invoices" value={metricValue(pendingInvoiceCount)} tone="text-blue-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-blue-700" />
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-3 sm:mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <SmallLinkCard href={`${routes?.projects_all}?status=ongoing`} title="Ongoing projects" value={metricValue(projectMaintenance?.projects_active)} tone="text-sky-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-sky-700" />
                 <SmallLinkCard href={routes?.subscriptions_index} title="Blocked services" value={metricValue(projectMaintenance?.subscriptions_blocked)} tone="text-rose-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-rose-700" />
                 <SmallLinkCard href={routes?.project_maintenances_index} title="Renewals (30d)" value={metricValue(projectMaintenance?.renewals_30d)} tone="text-emerald-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-emerald-700" />
                 <SmallLinkCard href={routes?.projects_all} title="Loss risk projects" value={metricValue(projectMaintenance?.projects_loss)} tone="text-rose-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-rose-700" />
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-3 sm:mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <SmallLinkCard href={routes?.hr_employees_index} title="Active employees" value={metricValue(hrStats?.active_employees)} tone="text-emerald-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-emerald-700" />
                 <SmallLinkCard href={routes?.hr_timesheets_index} title="Work logs (7d)" value={metricValue(hrStats?.pending_timesheets)} tone="text-amber-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-amber-700" />
                 <SmallLinkCard href={routes?.hr_payroll_index} title="Draft payroll periods" value={metricValue(hrStats?.draft_payroll_periods)} tone="text-slate-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-slate-600" />

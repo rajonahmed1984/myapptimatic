@@ -384,13 +384,13 @@ export default function TaskDetailClickup({
 
                         {subtaskRows.length > 0 ? (
                             <>
-                                <div className="mb-4 flex border-b border-slate-200">
+                                <div className="mb-4 flex border-b border-slate-200 overflow-x-auto hide-scrollbar momentum-scroll">
                                     <button
                                         type="button"
                                         onClick={() => setActiveTab('open')}
-                                        className={`border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                                        className={`whitespace-nowrap border-b-2 px-3.5 py-2 text-xs sm:text-sm font-medium transition-all ${
                                             activeTab === 'open'
-                                                ? 'border-teal-500 text-teal-600 font-semibold'
+                                                ? 'border-teal-500 text-teal-600 font-bold'
                                                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                                         }`}
                                     >
@@ -399,20 +399,20 @@ export default function TaskDetailClickup({
                                     <button
                                         type="button"
                                         onClick={() => setActiveTab('in_progress')}
-                                        className={`border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                                        className={`whitespace-nowrap border-b-2 px-3.5 py-2 text-xs sm:text-sm font-medium transition-all ${
                                             activeTab === 'in_progress'
-                                                ? 'border-teal-500 text-teal-600 font-semibold'
+                                                ? 'border-teal-500 text-teal-600 font-bold'
                                                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                                         }`}
                                     >
-                                        Inprogress ({inProgressSubtaskCount})
+                                        In Progress ({inProgressSubtaskCount})
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setActiveTab('completed')}
-                                        className={`border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                                        className={`whitespace-nowrap border-b-2 px-3.5 py-2 text-xs sm:text-sm font-medium transition-all ${
                                             activeTab === 'completed'
-                                                ? 'border-teal-500 text-teal-600 font-semibold'
+                                                ? 'border-teal-500 text-teal-600 font-bold'
                                                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                                         }`}
                                     >

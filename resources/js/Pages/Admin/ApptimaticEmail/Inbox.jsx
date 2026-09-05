@@ -351,11 +351,12 @@ export default function Inbox({
         });
     };
 
-    const handleMailboxSwitch = () => {
-        if (!routes?.login || mailboxSwitchEmail === '') return;
+    const handleMailboxSwitch = (emailOverride) => {
+        const target = typeof emailOverride === 'string' && emailOverride !== '' ? emailOverride : mailboxSwitchEmail;
+        if (!routes?.login || !target) return;
         const query = new URLSearchParams({
             switch: '1',
-            email: mailboxSwitchEmail,
+            email: target,
         });
         window.location.href = `${routes.login}?${query.toString()}`;
     };
@@ -624,32 +625,25 @@ export default function Inbox({
 
             <div className="flex flex-col h-[calc(100vh-5rem)] min-h-[620px] bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden font-sans">
                 {/* 1. Gmail-style Top Header Bar */}
-                <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-slate-200 bg-slate-50/80 backdrop-blur shrink-0">
-                    {/* Brand & Mailbox info */}
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-white flex items-center justify-center shadow-sm">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                            <span className="font-semibold text-slate-800 text-sm hidden sm:inline">Apptimatic Mail</span>
-                        </div>
+                <header className="flex flex-wrap md:flex-nowrap items-center justify-between gap-2 sm:gap-3 lg:gap-4 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-200 bg-slate-50/90 backdrop-blur shrink-0 min-w-0">
+                    {/* Left: Brand & Main Navigation Controls */}
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
 
                         {/* Compose Button */}
                         <button
                             type="button"
                             onClick={() => handleComposeOpen('new')}
-                            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs hover:shadow transition group shrink-0"
+                            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-[10px] bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs hover:shadow transition group shrink-0"
+                            title="Compose new email"
                         >
                             <svg className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
                             </svg>
-                            <span>Compose</span>
+                            <span className="hidden sm:inline">Compose</span>
                         </button>
 
                         {/* Current Active Folder Pill */}
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-white border border-slate-200 text-slate-800 text-xs font-semibold shadow-2xs shrink-0">
+                        <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-[10px] bg-white border border-slate-200 text-slate-800 text-xs font-semibold shadow-2xs shrink-0 whitespace-nowrap">
                             <span className="text-teal-600">{renderFolderIcon(selectedFolder)}</span>
                             <span>{selectedFolderLabel}</span>
                             {selectedFolder === 'inbox' && unread_count > 0 && (
@@ -659,18 +653,19 @@ export default function Inbox({
                             )}
                         </div>
 
-                        {activeMailboxEmail && (
-                            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-[10px] bg-teal-50 border border-teal-200 text-teal-800 text-xs font-medium">
-                                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
-                                <span className="truncate max-w-[180px]">{activeMailboxEmail}</span>
+                        {/* Active mailbox display for non-admin/single-account views */}
+                        {!mailboxSwitchEnabled && activeMailboxEmail && (
+                            <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-[10px] bg-teal-50 border border-teal-200 text-teal-800 text-xs font-medium shrink-0">
+                                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse shrink-0"></span>
+                                <span className="truncate max-w-[160px]">{activeMailboxEmail}</span>
                             </div>
                         )}
                     </div>
 
-                    {/* Gmail search bar */}
-                    <div className="flex-1 max-w-2xl px-2">
+                    {/* Center: Gmail-style Search Bar */}
+                    <div className="order-last md:order-none w-full md:w-auto md:flex-1 min-w-[180px] max-w-xl">
                         <div className="relative flex items-center w-full">
-                            <div className="absolute left-3.5 text-slate-400 pointer-events-none">
+                            <div className="absolute left-3 text-slate-400 pointer-events-none">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
@@ -679,14 +674,14 @@ export default function Inbox({
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search in mail (from, subject, content)..."
-                                className="w-full pl-10 pr-9 py-2 rounded-full bg-white hover:bg-slate-100/70 focus:bg-white text-xs md:text-sm text-slate-800 placeholder-slate-400 border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition shadow-inner focus:shadow-sm"
+                                placeholder="Search in mail..."
+                                className="w-full pl-9 md:pl-10 pr-8 md:pr-9 py-1.5 sm:py-2 rounded-full bg-white hover:bg-slate-100/70 focus:bg-white text-xs md:text-sm text-slate-800 placeholder-slate-400 border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition shadow-inner focus:shadow-xs"
                             />
                             {searchQuery && (
                                 <button
                                     type="button"
                                     onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 p-0.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition"
+                                    className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition"
                                     title="Clear search"
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -697,10 +692,13 @@ export default function Inbox({
                         </div>
                     </div>
 
-                    {/* Right action controls */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* Right: Action controls */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         {/* Live Sync Status */}
-                        <span className="hidden xl:inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-[10px] border border-slate-200">
+                        <span
+                            className="hidden 2xl:inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-[10px] border border-slate-200 shrink-0"
+                            title={`Sync mode: ${sync_meta?.mode === 'live' ? 'Live IMAP' : 'Synced'}`}
+                        >
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             <span>{sync_meta?.mode === 'live' ? 'Live IMAP' : 'Synced'}</span>
                         </span>
@@ -709,7 +707,7 @@ export default function Inbox({
                         <button
                             type="button"
                             onClick={syncNow}
-                            className="p-2 rounded-[10px] border border-slate-200 text-slate-600 hover:text-teal-600 hover:bg-teal-50 hover:border-teal-200 transition"
+                            className="p-1.5 sm:p-2 rounded-[10px] border border-slate-200 text-slate-600 hover:text-teal-600 hover:bg-teal-50 hover:border-teal-200 transition shrink-0"
                             title="Refresh emails"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -722,7 +720,7 @@ export default function Inbox({
                             <a
                                 href={routes.manage}
                                 data-native="true"
-                                className="p-2 rounded-[10px] border border-slate-200 text-slate-600 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-200 transition"
+                                className="p-1.5 sm:p-2 rounded-[10px] border border-slate-200 text-slate-600 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-200 transition shrink-0"
                                 title="Manage Mailboxes"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -734,21 +732,27 @@ export default function Inbox({
 
                         {/* Mailbox Switcher for Master Admin */}
                         {mailboxSwitchEnabled && (
-                            <div className="hidden xl:flex items-center gap-1.5">
-                                <div className="w-48">
+                            <div className="hidden lg:flex items-center gap-1.5 shrink-0">
+                                <div className="w-36 xl:w-44 2xl:w-52">
                                     <SearchableSelect
                                         name="mailbox_switch_email"
                                         value={mailboxSwitchEmail}
-                                        onChange={(nextValue) => setMailboxSwitchEmail(String(nextValue || ''))}
+                                        onChange={(nextValue) => {
+                                            const val = String(nextValue || '');
+                                            setMailboxSwitchEmail(val);
+                                            if (val && val !== activeMailboxEmail) {
+                                                handleMailboxSwitch(val);
+                                            }
+                                        }}
                                         options={mailboxSwitchSelectOptions}
                                         placeholder="Switch mailbox"
                                     />
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={handleMailboxSwitch}
+                                    onClick={() => handleMailboxSwitch()}
                                     disabled={isCurrentMailboxSelected || mailboxSwitchEmail === ''}
-                                    className="px-2.5 py-1.5 rounded-[10px] border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-teal-400 hover:text-teal-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                                    className="hidden 2xl:inline-flex px-2.5 py-1.5 rounded-[10px] border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-teal-400 hover:text-teal-600 disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0"
                                 >
                                     Switch
                                 </button>
@@ -757,7 +761,7 @@ export default function Inbox({
 
                         {/* History filter */}
                         {emailFilterEnabled && (
-                            <div className="hidden 2xl:block w-44">
+                            <div className="hidden 2xl:block w-40 shrink-0">
                                 <SearchableSelect
                                     name="history_email"
                                     value={selectedHistoryEmail}
@@ -770,17 +774,17 @@ export default function Inbox({
 
                         {/* Logout from webmail session */}
                         {routes?.logout && (
-                            <form method="POST" action={routes.logout} className="inline">
+                            <form method="POST" action={routes.logout} className="inline shrink-0">
                                 <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />
                                 <button
                                     type="submit"
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border border-slate-200 text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition"
+                                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-[10px] border border-slate-200 text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition shrink-0"
                                     title="Sign out from this mailbox"
                                 >
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                     </svg>
-                                    <span className="hidden sm:inline">Logout</span>
+                                    <span className="hidden xl:inline">Logout</span>
                                 </button>
                             </form>
                         )}

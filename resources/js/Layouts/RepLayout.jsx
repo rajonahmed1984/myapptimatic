@@ -3,6 +3,8 @@ import { usePage } from '@inertiajs/react';
 import SidebarToggle from '../Components/Layout/SidebarToggle';
 import UserDropdown from '../Components/Layout/UserDropdown';
 import ImpersonationBanner from '../Components/Layout/ImpersonationBanner';
+import MobileTopBar from '../Components/Mobile/MobileTopBar';
+import MobileBottomNav from '../Components/Mobile/MobileBottomNav';
 
 const isActiveRoute = (currentUrl, patterns) => {
     if (!currentUrl) return false;
@@ -51,6 +53,61 @@ export default function RepLayout({ children, title, pageHeading }) {
 
     const companyName = branding?.company_name || 'License Portal';
     const logoUrl = branding?.favicon_url || branding?.logo_url;
+
+    const repNavItems = [
+        {
+            label: 'Dashboard',
+            href: '/rep/dashboard',
+            active: portalRootPath === '/rep' || isActiveRoute(currentUrl, '/rep/dashboard'),
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Earnings',
+            href: '/rep/earnings',
+            active: isActiveRoute(currentUrl, ['/rep/earnings*', '/rep/payouts*']),
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Projects',
+            href: '/rep/projects',
+            active: isActiveRoute(currentUrl, ['/rep/projects*', '/rep/tasks*']),
+            badge: repStats?.task_badge,
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Chat',
+            href: '/rep/chats',
+            active: isActiveRoute(currentUrl, ['/rep/chats*', '/rep/projects/chat*']),
+            badge: repStats?.unread_chat,
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Profile',
+            href: '/rep/profile',
+            active: isActiveRoute(currentUrl, '/rep/profile*'),
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+            ),
+        },
+    ];
 
     return (
         <div className="min-h-screen flex flex-col md:flex-row bg-dashboard">
@@ -152,7 +209,18 @@ export default function RepLayout({ children, title, pageHeading }) {
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col w-full min-w-0">
-                <header className="sticky top-0 z-20 border-b border-slate-300/70 bg-white/80 backdrop-blur">
+                {/* Mobile Top App Bar (<md) */}
+                <MobileTopBar
+                    title={pageHeading || title || 'Overview'}
+                    user={user}
+                    roleLabel="Sales Representative"
+                    profileRoute="/rep/profile"
+                    branding={branding}
+                    onOpenMenu={() => setMobileOpen(true)}
+                />
+
+                {/* Desktop Sticky Header (>=md) */}
+                <header className="hidden md:block sticky top-0 z-20 border-b border-slate-300/70 bg-white/80 backdrop-blur">
                     <div className="flex w-full items-center justify-between gap-6 px-6 py-4">
                         <div className="flex items-center gap-3 min-w-[240px]">
                             <SidebarToggle onToggleMobile={() => setMobileOpen(!mobileOpen)} />
@@ -171,20 +239,23 @@ export default function RepLayout({ children, title, pageHeading }) {
                     <ImpersonationBanner />
                 </header>
 
-                <main id="main-content" className="w-full px-6 py-10 fade-in">
+                <main id="main-content" className="w-full px-3 sm:px-4 md:px-6 py-4 md:py-10 pb-safe-nav md:pb-10 fade-in">
                     {flash?.error && (
-                        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                        <div className="mb-4 md:mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                             {flash.error}
                         </div>
                     )}
                     {flash?.status && (
-                        <div className="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
+                        <div className="mb-4 md:mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
                             {flash.status}
                         </div>
                     )}
                     {children}
                 </main>
             </div>
+
+            {/* Mobile Bottom Navigation Bar (<md) */}
+            <MobileBottomNav items={repNavItems} />
         </div>
     );
 }

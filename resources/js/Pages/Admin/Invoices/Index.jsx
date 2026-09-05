@@ -67,7 +67,7 @@ export default function Index({
                 </a>
             </div>
 
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-4 flex gap-2 overflow-x-auto hide-scrollbar momentum-scroll pb-1">
                 {tabs.map((tab) => {
                     if (!tab.href || project) {
                         return null;
@@ -80,7 +80,11 @@ export default function Index({
                             key={tab.label}
                             href={tab.href}
                             data-native="true"
-                            className={active ? 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500' : BTN.secondary}
+                            className={`whitespace-nowrap shrink-0 rounded-full text-xs px-3.5 py-1.5 font-semibold transition ${
+                                active
+                                    ? 'bg-teal-600 text-white shadow-sm'
+                                    : 'border border-slate-300 bg-white text-slate-600 hover:border-teal-300 hover:text-teal-600'
+                            }`}
                         >
                             {tab.label}
                         </a>
@@ -88,8 +92,101 @@ export default function Index({
                 })}
             </div>
 
+            {/* Mobile Card List (<md) */}
+            <div className="md:hidden space-y-3">
+                {invoices.length === 0 ? (
+                    <div className="card p-6 text-center text-sm text-slate-500">
+                        {statusFilter ? `No ${pageTitle} found.` : 'No invoices yet.'}
+                    </div>
+                ) : (
+                    invoices.map((invoice) => (
+                        <div key={invoice.id} className="card p-4 flex flex-col gap-3 shadow-sm border border-slate-200/80">
+                            <div className="flex items-center justify-between gap-2">
+                                <a
+                                    href={invoice.routes?.show}
+                                    data-native="true"
+                                    className="text-base font-bold text-teal-700 hover:text-teal-800"
+                                >
+                                    {invoice.number_display}
+                                </a>
+                                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${invoice.status_class}`}>
+                                    {invoice.status_label}
+                                </span>
+                            </div>
 
-            <div className="card overflow-x-auto">
+                            <div className="text-xs">
+                                <div className="font-semibold text-slate-900">
+                                    {invoice.customer_route ? (
+                                        <a href={invoice.customer_route} data-native="true" className="text-slate-900 hover:text-teal-600">
+                                            {invoice.customer_name}
+                                        </a>
+                                    ) : (
+                                        invoice.customer_name
+                                    )}
+                                </div>
+                                {invoice.customer_company_name ? (
+                                    <div className="text-[11px] text-slate-400 mt-0.5">
+                                        {invoice.customer_company_name}
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                                <div>
+                                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Total</div>
+                                    <div className="text-base font-extrabold text-slate-900 mt-0.5">{invoice.total_display}</div>
+                                    {invoice.is_partial && (
+                                        <div className="text-[11px] text-amber-700 font-medium mt-0.5">
+                                            {invoice.paid_amount_display} paid
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Due Date</div>
+                                    <div className="text-xs font-semibold text-slate-700 mt-1">
+                                        <DateTimeText value={invoice.due_date_display} mode="date" />
+                                    </div>
+                                    {!hidePaidDate && invoice.paid_at_display && (
+                                        <div className="text-[10px] text-emerald-600 font-medium mt-0.5">
+                                            Paid: <DateTimeText value={invoice.paid_at_display} mode="date" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {invoice.has_pending_proof && (
+                                <div className="rounded-lg bg-amber-50 border border-amber-200 p-2 text-xs text-amber-700 font-medium">
+                                    Manual payment pending review
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                                <a
+                                    href={invoice.routes?.show}
+                                    data-native="true"
+                                    className="flex-1 text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                >
+                                    View Invoice
+                                </a>
+                                <form method="POST" action={invoice.routes?.destroy} data-native="true" className="inline">
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <input type="hidden" name="_method" value="DELETE" />
+                                    <button
+                                        type="submit"
+                                        onClick={(e) => { if (!window.confirm('Delete this invoice?')) e.preventDefault(); }}
+                                        className="py-2 px-3.5 rounded-xl border border-rose-200 bg-rose-50 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition active:scale-95"
+                                    >
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Desktop Table (>=md) */}
+            <div className="hidden md:block card overflow-x-auto">
                 <table className={`w-full text-left text-sm ${hidePaidDate ? 'min-w-[930px]' : 'min-w-[1050px]'}`}>
                     <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>

@@ -2,7 +2,7 @@
 
 return [
     'allow_admin_global_mailboxes' => (bool) env('APPTIMATIC_EMAIL_ADMIN_GLOBAL', false),
-    'validation_interval_minutes' => (int) env('APPTIMATIC_EMAIL_VALIDATION_MINUTES', 1),
+    'validation_interval_minutes' => (int) env('APPTIMATIC_EMAIL_VALIDATION_MINUTES', 1440),
     'remember_days' => (int) env('APPTIMATIC_EMAIL_REMEMBER_DAYS', 30),
     'persistent_login_days' => (int) env('APPTIMATIC_EMAIL_PERSISTENT_LOGIN_DAYS', 3650),
     'inbox_refresh_seconds' => (int) env('APPTIMATIC_EMAIL_INBOX_REFRESH_SECONDS', 60),

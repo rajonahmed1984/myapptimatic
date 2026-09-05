@@ -63,24 +63,24 @@ function StatCard({ href, label, value, color = 'slate' }) {
 function AccountStatus({ openInvoiceCount, openInvoiceBalance, currency, nextOpenInvoice, routes }) {
     if (openInvoiceCount === 0) return null;
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm">
-            <div className="flex items-center gap-2 text-rose-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50/90 p-4 sm:px-5 sm:py-3 text-sm shadow-sm">
+            <div className="flex items-center gap-2.5 text-rose-800">
                 <StatusDot color="rose" />
                 <span>
-                    <span className="font-semibold">{openInvoiceCount} unpaid invoice{openInvoiceCount > 1 ? 's' : ''}</span>
-                    {' '}— balance due: <span className="font-semibold">{currency} {Number(openInvoiceBalance).toFixed(2)}</span>
-                    {nextOpenInvoice ? <span className="text-rose-500"> · Due {nextOpenInvoice.due_date_display}</span> : null}
+                    <span className="font-bold">{openInvoiceCount} unpaid invoice{openInvoiceCount > 1 ? 's' : ''}</span>
+                    {' '}— balance: <span className="font-bold">{currency} {Number(openInvoiceBalance).toFixed(2)}</span>
+                    {nextOpenInvoice ? <span className="text-rose-600 block sm:inline"> · Due {nextOpenInvoice.due_date_display}</span> : null}
                 </span>
             </div>
             {nextOpenInvoice ? (
                 <a href={nextOpenInvoice.route_pay} data-native="true"
-                    className="rounded-full bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700">
-                    Pay now
+                    className="w-full sm:w-auto text-center rounded-xl bg-rose-600 px-5 py-2.5 sm:py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-rose-700 active:scale-95">
+                    Pay Now
                 </a>
             ) : (
                 <a href={routes.invoices_index} data-native="true"
-                    className="rounded-full bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700">
-                    View invoices
+                    className="w-full sm:w-auto text-center rounded-xl bg-rose-600 px-5 py-2.5 sm:py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-rose-700 active:scale-95">
+                    View Invoices
                 </a>
             )}
         </div>
@@ -416,14 +416,14 @@ export default function Index({
                         </div>
                         <div className="mt-0.5 text-sm text-slate-400">{customer?.email || ''}</div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
                         <a href={routes.orders_index} data-native="true"
-                            className="rounded-full bg-teal-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-teal-600">
-                            Place an order
+                            className="flex-1 sm:flex-initial text-center rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-teal-700 active:scale-95">
+                            Order Service
                         </a>
                         <a href={routes.support_create} data-native="true"
-                            className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-600">
-                            Open a ticket
+                            className="flex-1 sm:flex-initial text-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-teal-300 hover:text-teal-600 active:scale-95">
+                            Open Ticket
                         </a>
                     </div>
                 </div>
@@ -441,7 +441,7 @@ export default function Index({
                 <ExpiringLicenses expiringLicenses={expiringLicenses} routes={routes} />
 
                 {/* ── stat cards ────────────────────────────── */}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
                     <StatCard href={routes.licenses_index} label="Services"    value={serviceCount}      color="teal"  />
                     <StatCard href={routes.projects_index} label="Projects"    value={projectCount || 0} color="sky"   />
                     <StatCard href={routes.support_index}  label="Open Tickets" value={ticketOpenCount}  color="amber" />

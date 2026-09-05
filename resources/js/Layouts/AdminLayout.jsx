@@ -4,6 +4,9 @@ import SidebarToggle from '../Components/Layout/SidebarToggle';
 import UserDropdown from '../Components/Layout/UserDropdown';
 import GlobalWorkTimer from '../Components/Layout/GlobalWorkTimer';
 import ImpersonationBanner from '../Components/Layout/ImpersonationBanner';
+import MobileTopBar from '../Components/Mobile/MobileTopBar';
+import MobileBottomNav from '../Components/Mobile/MobileBottomNav';
+import MobileBottomSheet from '../Components/Mobile/MobileBottomSheet';
 
 const isActiveRoute = (currentUrl, patterns) => {
     if (!currentUrl) return false;
@@ -96,6 +99,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
     const urlPath = String(currentUrl).split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
 
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
 
     const user = auth?.user;
     const isEmployee = auth?.portal === 'employee' || currentUrl.startsWith('/employee');
@@ -104,6 +108,118 @@ export default function AdminLayout({ children, title, pageHeading }) {
 
     const adminStats = stats?.admin || {};
     const employeeStats = stats?.employee || {};
+
+    // Bottom Navigation items for Admin
+    const adminNavItems = [
+        {
+            label: 'Dashboard',
+            href: '/admin/dashboard',
+            active: urlPath === '/admin' || isActiveRoute(currentUrl, '/admin/dashboard'),
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Sales',
+            href: '/admin/customers',
+            active: isActiveRoute(currentUrl, ['/admin/customers*', '/admin/orders*', '/admin/subscriptions*', '/admin/licenses*']),
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Projects',
+            href: '/admin/projects',
+            active: isActiveRoute(currentUrl, ['/admin/projects*', '/admin/tasks*']),
+            badge: adminStats?.tasks_badge,
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Chat',
+            href: '/admin/chats',
+            active: isActiveRoute(currentUrl, ['/admin/chats*', '/admin/apptimatic-email*']),
+            badge: Number(adminStats?.unread_chat || 0) + Number(adminStats?.apptimatic_email_unread || 0),
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'More',
+            onClick: () => setIsMoreSheetOpen(true),
+            active: isMoreSheetOpen,
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            ),
+        },
+    ];
+
+    // Bottom Navigation items for Employee
+    const employeeNavItems = [
+        {
+            label: 'Home',
+            href: '/employee/dashboard',
+            active: isActiveRoute(currentUrl, ['/employee/dashboard', '/employee']),
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Tasks',
+            href: '/employee/tasks',
+            active: isActiveRoute(currentUrl, '/employee/tasks*'),
+            badge: employeeStats?.task_badge,
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Projects',
+            href: '/employee/projects',
+            active: isActiveRoute(currentUrl, '/employee/projects*'),
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Chat',
+            href: '/employee/chats',
+            active: isActiveRoute(currentUrl, ['/employee/chats*', '/employee/apptimatic-email*']),
+            badge: employeeStats?.unread_chat,
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'More',
+            onClick: () => setIsMoreSheetOpen(true),
+            active: isMoreSheetOpen,
+            icon: ({ active, className }) => (
+                <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? '2.5' : '2'} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            ),
+        },
+    ];
 
     // The three things an admin is expected to act on. Always rendered, even at
     // zero — a chip that vanishes on a quiet day reads as a missing feature and
@@ -141,6 +257,91 @@ export default function AdminLayout({ children, title, pageHeading }) {
 
     const roleLabel = isEmployee ? 'Employee' : isMasterAdmin ? 'Master Administrator' : (user?.role || 'Administrator');
     const profileRoute = isEmployee ? '/employee/profile' : '/admin/profile';
+
+    const adminMoreSections = [
+        {
+            title: 'Billing & Subscriptions',
+            items: [
+                { label: 'Invoices', href: '/admin/invoices' },
+                { label: 'Orders', href: '/admin/orders', badge: adminStats?.pending_orders },
+                { label: 'Subscriptions', href: '/admin/subscriptions' },
+                { label: 'Licenses', href: '/admin/licenses' },
+                { label: 'Manual Payments', href: '/admin/payment-proofs', badge: adminStats?.pending_manual_payments },
+                { label: 'Payment Gateways', href: '/admin/payment-gateways' },
+            ],
+        },
+        {
+            title: 'Finance & Accounting',
+            items: [
+                { label: 'Income', href: '/admin/income' },
+                { label: 'Expenses', href: '/admin/expenses' },
+                { label: 'VAT Settings', href: '/admin/finance/vat' },
+                { label: 'Finance Reports', href: '/admin/finance/reports' },
+                { label: 'Accounting Ledger', href: '/admin/accounting' },
+                { label: 'CarrotHost Sync', href: '/admin/income/carrothost' },
+            ],
+        },
+        {
+            title: 'People (HR)',
+            items: [
+                { label: 'HR Dashboard', href: '/admin/hr/dashboard' },
+                { label: 'Employees', href: '/admin/hr/employees' },
+                { label: 'Work Logs', href: '/admin/hr/timesheets' },
+                { label: 'Leave Requests', href: '/admin/hr/leave-requests', badge: adminStats?.pending_leave_requests },
+                { label: 'Attendance', href: '/admin/hr/attendance' },
+                { label: 'Payroll', href: '/admin/hr/payroll' },
+            ],
+        },
+        {
+            title: 'Support & Messaging',
+            items: [
+                { label: 'Support Tickets', href: '/admin/support-tickets', badge: adminStats?.open_support_tickets },
+                { label: 'Webmail Inbox', href: '/admin/apptimatic-email/inbox', badge: adminStats?.apptimatic_email_unread },
+                { label: 'Compose Email', href: '/admin/apptimatic-email/inbox?compose=new' },
+                { label: 'Chatbot Leads', href: '/admin/chatbot-leads' },
+                { label: 'Mass Mailer', href: '/admin/mass-mail' },
+            ],
+        },
+        {
+            title: 'System & Preferences',
+            items: [
+                { label: 'Automation Status', href: '/admin/automation-status' },
+                { label: 'Activity Logs', href: '/admin/logs' },
+                { label: 'Settings', href: '/admin/settings' },
+                { label: 'My Profile', href: '/admin/profile' },
+            ],
+        },
+    ];
+
+    const employeeMoreSections = [
+        {
+            title: 'Time & Attendance',
+            items: [
+                { label: 'Work Logs', href: '/employee/timesheets' },
+                { label: 'Leave Requests', href: '/employee/leave-requests' },
+                { label: 'Attendance', href: '/employee/attendance' },
+            ],
+        },
+        {
+            title: 'Payroll & Slips',
+            items: [
+                { label: 'My Payroll', href: '/employee/payroll' },
+            ],
+        },
+        {
+            title: 'Apptimatic Email',
+            items: [
+                { label: 'Email Inbox', href: '/employee/apptimatic-email/inbox' },
+                { label: 'Compose Mail', href: '/employee/apptimatic-email/inbox?compose=new' },
+            ],
+        },
+        {
+            title: 'Account',
+            items: [
+                { label: 'My Profile', href: '/employee/profile' },
+            ],
+        },
+    ];
 
     return (
         <div className="min-h-screen flex flex-col md:flex-row bg-dashboard">
@@ -535,7 +736,18 @@ export default function AdminLayout({ children, title, pageHeading }) {
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col w-full min-w-0">
-                <header className="sticky top-0 z-20 border-b border-slate-300/70 bg-white/80 backdrop-blur">
+                {/* Mobile Top App Bar (<md) */}
+                <MobileTopBar
+                    title={pageHeading || title || 'Overview'}
+                    user={user}
+                    roleLabel={roleLabel}
+                    profileRoute={profileRoute}
+                    branding={branding}
+                    onOpenMenu={() => setMobileOpen(true)}
+                />
+
+                {/* Desktop Sticky Header (>=md) */}
+                <header className="hidden md:block sticky top-0 z-20 border-b border-slate-300/70 bg-white/80 backdrop-blur">
                     <div className="flex w-full items-center justify-between gap-6 px-6 py-4">
                         <div className="flex items-center gap-3 min-w-[240px]">
                             <SidebarToggle onToggleMobile={() => setMobileOpen(!mobileOpen)} />
@@ -562,20 +774,63 @@ export default function AdminLayout({ children, title, pageHeading }) {
                     <ImpersonationBanner />
                 </header>
 
-                <main id="main-content" className="w-full px-6 py-10 fade-in">
+                <main id="main-content" className="w-full px-3 sm:px-4 md:px-6 py-4 md:py-10 pb-safe-nav md:pb-10 fade-in">
                     {flash?.error && (
-                        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                        <div className="mb-4 md:mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                             {flash.error}
                         </div>
                     )}
                     {flash?.status && (
-                        <div className="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
+                        <div className="mb-4 md:mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
                             {flash.status}
                         </div>
                     )}
                     {children}
                 </main>
             </div>
+
+            {/* Mobile Bottom Navigation Bar (<md) */}
+            <MobileBottomNav items={isEmployee ? employeeNavItems : adminNavItems} />
+
+            {/* Mobile "More" Menu Bottom Sheet (<md) */}
+            <MobileBottomSheet
+                isOpen={isMoreSheetOpen}
+                onClose={() => setIsMoreSheetOpen(false)}
+                title={isEmployee ? "Employee Navigation" : "All Features & Tools"}
+                description={`Access all ${isEmployee ? 'work' : 'management'} modules`}
+            >
+                <div className="space-y-5 py-2">
+                    {(isEmployee ? employeeMoreSections : adminMoreSections).map((section, sIdx) => (
+                        <div key={section.title || sIdx} className="space-y-2">
+                            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-teal-600 border-b border-slate-100 pb-1">
+                                {section.title}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                {section.items.map((item, iIdx) => (
+                                    <a
+                                        key={item.label || iIdx}
+                                        href={item.href}
+                                        data-native="true"
+                                        className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 hover:bg-teal-50/50 hover:border-teal-200 transition active:scale-98 text-left"
+                                    >
+                                        <div className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-xs font-semibold text-slate-800 truncate">
+                                                {item.label}
+                                            </div>
+                                            {item.badge && Number(item.badge) > 0 && (
+                                                <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700">
+                                                    {item.badge}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </MobileBottomSheet>
         </div>
     );
 }

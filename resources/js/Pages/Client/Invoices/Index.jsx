@@ -32,7 +32,7 @@ export default function Index({
                 </a>
             </div>
 
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-4 flex gap-2 overflow-x-auto hide-scrollbar momentum-scroll pb-1">
                 {tabs.map((tab) => {
                     if (!tab.href) {
                         return null;
@@ -45,10 +45,10 @@ export default function Index({
                             key={tab.label}
                             href={tab.href}
                             data-native="true"
-                            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                            className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap shrink-0 transition ${
                                 active
                                     ? 'border-slate-900 bg-slate-900 text-white'
-                                    : 'border-slate-300 text-slate-600 hover:border-teal-300 hover:text-teal-600'
+                                    : 'border-slate-300 bg-white text-slate-600 hover:border-teal-300 hover:text-teal-600'
                             }`}
                         >
                             {tab.label}
@@ -58,96 +58,170 @@ export default function Index({
             </div>
 
             {invoices.length === 0 ? (
-                <div className="card p-6 text-sm text-slate-500">
+                <div className="card p-6 text-sm text-slate-500 text-center">
                     {statusFilter ? `No ${title} found.` : 'No invoices found.'}
                 </div>
             ) : (
-                <div className="card overflow-visible">
-                    <table className="w-full min-w-[860px] text-left text-sm">
-                        <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
-                            <tr>
-                                <th className="px-4 py-3">Invoice</th>
-                                <th className="px-4 py-3">Service/Project</th>
-                                <th className="px-4 py-3">Total</th>
-                                <th className="px-4 py-3">Issue</th>
-                                <th className="px-4 py-3">Due</th>
-                                <th className="px-4 py-3">Paid</th>
-                                <th className="px-4 py-3">Status</th>
-                                <th className="px-4 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {invoices.map((invoice) => (
-                                <tr key={invoice.id} className="border-b border-slate-100">
-                                    <td className="px-4 py-3 font-medium text-slate-900">
-                                        <a href={invoice?.routes?.show} data-native="true" className="font-medium text-teal-600 hover:text-teal-500">
-                                            #{invoice.number_display}
+                <>
+                    {/* Mobile Cards List (<md) */}
+                    <div className="md:hidden space-y-3">
+                        {invoices.map((invoice) => (
+                            <div key={invoice.id} className="card p-4 flex flex-col gap-3 shadow-sm border border-slate-200/80">
+                                <div className="flex items-center justify-between gap-2">
+                                    <a
+                                        href={invoice?.routes?.show}
+                                        data-native="true"
+                                        className="text-base font-bold text-teal-700 hover:text-teal-800"
+                                    >
+                                        #{invoice.number_display}
+                                    </a>
+                                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${invoice.status_class}`}>
+                                        {invoice.status_label}
+                                    </span>
+                                </div>
+
+                                {invoice.service_or_project && invoice.service_or_project !== '--' && (
+                                    <div className="text-xs text-slate-500 font-medium">
+                                        {invoice.service_or_project}
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-xs">
+                                    <div>
+                                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Total Amount</div>
+                                        <div className="text-base font-extrabold text-slate-900 mt-0.5">{invoice.total_display}</div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Due Date</div>
+                                        <div className="text-xs font-semibold text-slate-700 mt-1">
+                                            <DateTimeText value={invoice.due_date_display} mode="date" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {invoice.is_partial && (
+                                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-2 text-xs text-amber-800 flex justify-between items-center">
+                                        <span>Partial payment:</span>
+                                        <strong>{invoice.paid_amount_display} paid</strong>
+                                    </div>
+                                )}
+
+                                {invoice.has_pending_proof && (
+                                    <div className="rounded-lg bg-amber-50 p-2 text-xs text-amber-700">
+                                        Manual payment pending review
+                                    </div>
+                                )}
+
+                                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                                    <a
+                                        href={invoice?.routes?.show}
+                                        data-native="true"
+                                        className="flex-1 text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                    >
+                                        View Details
+                                    </a>
+                                    {invoice?.routes?.pay ? (
+                                        <a
+                                            href={invoice.routes.pay}
+                                            data-native="true"
+                                            className="flex-1 text-center py-2 px-3 rounded-xl bg-rose-600 text-xs font-bold text-white shadow-sm hover:bg-rose-700 transition active:scale-95"
+                                        >
+                                            Pay Now
                                         </a>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-600">
-                                        {invoice.service_or_project_url && invoice.service_or_project !== '--' ? (
-                                            <a
-                                                href={invoice.service_or_project_url}
-                                                data-native="true"
-                                                className="font-medium text-teal-600 hover:text-teal-500"
-                                            >
-                                                {invoice.service_or_project}
-                                            </a>
-                                        ) : (
-                                            invoice.service_or_project
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-700">{invoice.total_display}</td>
-                                    <td className="px-4 py-3 text-slate-500">
-                                        <DateTimeText value={invoice.issue_date_display} mode="date" />
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500">
-                                        <DateTimeText value={invoice.due_date_display} mode="date" />
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500">
-                                        <DateTimeText value={invoice.paid_at_display} mode="datetime" />
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-600">
-                                        <div>
-                                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${invoice.status_class}`}>
-                                                {invoice.status_label}
-                                            </span>
-                                        </div>
-                                        {invoice.is_partial ? (
-                                            <div className="mt-2">
-                                                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Partial</span>
-                                                <div className="mt-1 text-xs text-slate-500">{invoice.paid_amount_display} paid</div>
-                                            </div>
-                                        ) : null}
-                                        {invoice.has_pending_proof ? (
-                                            <div className="mt-1 text-xs text-amber-600">Manual payment pending review</div>
-                                        ) : null}
-                                        {!invoice.has_pending_proof && invoice.has_rejected_proof ? (
-                                            <div className="mt-1 text-xs text-rose-600">Manual payment rejected</div>
-                                        ) : null}
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
-                                            <a href={invoice?.routes?.show} data-native="true" className="text-slate-500 hover:text-teal-600">
-                                                View
-                                            </a>
-                                            {invoice?.routes?.pay ? (
-                                                <a href={invoice.routes.pay} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                                    Pay now
-                                                </a>
-                                            ) : null}
-                                            {invoice?.routes?.manual ? (
-                                                <a href={invoice.routes.manual} data-native="true" className="text-slate-500 hover:text-teal-600">
-                                                    View submission
-                                                </a>
-                                            ) : null}
-                                        </div>
-                                    </td>
+                                    ) : null}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop Table (>=md) */}
+                    <div className="hidden md:block card overflow-visible">
+                        <table className="w-full min-w-[860px] text-left text-sm">
+                            <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                                <tr>
+                                    <th className="px-4 py-3">Invoice</th>
+                                    <th className="px-4 py-3">Service/Project</th>
+                                    <th className="px-4 py-3">Total</th>
+                                    <th className="px-4 py-3">Issue</th>
+                                    <th className="px-4 py-3">Due</th>
+                                    <th className="px-4 py-3">Paid</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-right">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {invoices.map((invoice) => (
+                                    <tr key={invoice.id} className="border-b border-slate-100">
+                                        <td className="px-4 py-3 font-medium text-slate-900">
+                                            <a href={invoice?.routes?.show} data-native="true" className="font-medium text-teal-600 hover:text-teal-500">
+                                                #{invoice.number_display}
+                                            </a>
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-600">
+                                            {invoice.service_or_project_url && invoice.service_or_project !== '--' ? (
+                                                <a
+                                                    href={invoice.service_or_project_url}
+                                                    data-native="true"
+                                                    className="font-medium text-teal-600 hover:text-teal-500"
+                                                >
+                                                    {invoice.service_or_project}
+                                                </a>
+                                            ) : (
+                                                invoice.service_or_project
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-700">{invoice.total_display}</td>
+                                        <td className="px-4 py-3 text-slate-500">
+                                            <DateTimeText value={invoice.issue_date_display} mode="date" />
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-500">
+                                            <DateTimeText value={invoice.due_date_display} mode="date" />
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-500">
+                                            <DateTimeText value={invoice.paid_at_display} mode="datetime" />
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-600">
+                                            <div>
+                                                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${invoice.status_class}`}>
+                                                    {invoice.status_label}
+                                                </span>
+                                            </div>
+                                            {invoice.is_partial ? (
+                                                <div className="mt-2">
+                                                    <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Partial</span>
+                                                    <div className="mt-1 text-xs text-slate-500">{invoice.paid_amount_display} paid</div>
+                                                </div>
+                                            ) : null}
+                                            {invoice.has_pending_proof ? (
+                                                <div className="mt-1 text-xs text-amber-600">Manual payment pending review</div>
+                                            ) : null}
+                                            {!invoice.has_pending_proof && invoice.has_rejected_proof ? (
+                                                <div className="mt-1 text-xs text-rose-600">Manual payment rejected</div>
+                                            ) : null}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
+                                                <a href={invoice?.routes?.show} data-native="true" className="text-slate-500 hover:text-teal-600">
+                                                    View
+                                                </a>
+                                                {invoice?.routes?.pay ? (
+                                                    <a href={invoice.routes.pay} data-native="true" className="text-teal-600 hover:text-teal-500">
+                                                        Pay now
+                                                    </a>
+                                                ) : null}
+                                                {invoice?.routes?.manual ? (
+                                                    <a href={invoice.routes.manual} data-native="true" className="text-slate-500 hover:text-teal-600">
+                                                        View submission
+                                                    </a>
+                                                ) : null}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
             )}
         </>
     );

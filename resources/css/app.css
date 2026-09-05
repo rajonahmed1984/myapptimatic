@@ -687,5 +687,50 @@ select::-ms-expand {
     display: none !important;
 }
 
+/* ==========================================================================
+   Mobile App-Like Experience Tokens & Utilities
+   ========================================================================== */
+.safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 
+.safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+}
 
+.pb-safe-nav {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.momentum-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.mobile-app-bar {
+    height: 3.5rem;
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
+.mobile-bottom-nav {
+    height: calc(4rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 767px) {
+    /* Prevent iOS text zoom when focusing inputs */
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}

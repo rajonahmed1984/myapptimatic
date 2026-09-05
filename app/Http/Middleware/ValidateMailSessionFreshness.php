@@ -36,6 +36,13 @@ class ValidateMailSessionFreshness
 
         $mailAccount = $session->mailAccount;
         if (! $mailAccount || ! $this->imapAuthService->verifyCredentials($mailAccount, $password)) {
+            $failureType = $this->imapAuthService->lastFailureType();
+            if ($failureType === 'server_unavailable') {
+                // If the mail server is temporarily unavailable or experiencing network timeout,
+                // do not destroy the session to prevent repeated login kicks.
+                return $next($request);
+            }
+
             if ($mailAccount) {
                 $mailAccount->forceFill([
                     'status' => 'auth_failed',
