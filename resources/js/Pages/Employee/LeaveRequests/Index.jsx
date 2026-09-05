@@ -1,6 +1,15 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
+
+const statusClass = (label) => {
+    const key = String(label || '').toLowerCase();
+    if (key.includes('approved') || key.includes('accepted')) return 'bg-emerald-100 text-emerald-700';
+    if (key.includes('rejected') || key.includes('declined')) return 'bg-rose-100 text-rose-700';
+    return 'bg-amber-100 text-amber-700';
+};
 
 export default function Index({ leave_requests = [], leave_types = [], pagination = {}, routes = {} }) {
     const { csrf_token: csrfToken = '', errors = {} } = usePage().props || {};
@@ -47,31 +56,30 @@ export default function Index({ leave_requests = [], leave_types = [], paginatio
                     </div>
                 </form>
 
-                <div className="mt-4 overflow-x-auto">
-                    <table className="min-w-full text-sm text-slate-700">
-                        <thead>
-                            <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                                <th className="py-2">Type</th>
-                                <th className="py-2">Dates</th>
-                                <th className="py-2">Days</th>
-                                <th className="py-2">Status</th>
-                                <th className="py-2">Approved at</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {leave_requests.length === 0 ? (
-                                <tr><td colSpan={5} className="py-3 text-center text-slate-500">No leave requests yet.</td></tr>
-                            ) : leave_requests.map((leave) => (
-                                <tr key={leave.id} className="border-b border-slate-100">
-                                    <td className="py-2">{leave.type_name}</td>
-                                    <td className="py-2">{leave.start_date_display} - {leave.end_date_display}</td>
-                                    <td className="py-2">{leave.total_days}</td>
-                                    <td className="py-2">{leave.status_label}</td>
-                                    <td className="py-2">{leave.approved_at_display}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="mt-4">
+                    <DataTable
+                        rows={leave_requests}
+                        emptyMessage="No leave requests yet."
+                        columns={[
+                            { key: 'type', header: 'Type', render: (leave) => leave.type_name },
+                            { key: 'dates', header: 'Dates', render: (leave) => `${leave.start_date_display} - ${leave.end_date_display}` },
+                            { key: 'days', header: 'Days', render: (leave) => leave.total_days },
+                            { key: 'status', header: 'Status', render: (leave) => leave.status_label },
+                            { key: 'approved_at', header: 'Approved at', render: (leave) => leave.approved_at_display },
+                        ]}
+                        renderMobileCard={(leave) => (
+                            <MobileCard
+                                title={leave.type_name}
+                                subtitle={`${leave.start_date_display} - ${leave.end_date_display}`}
+                                badge={leave.status_label}
+                                badgeColor={statusClass(leave.status_label)}
+                                metrics={[
+                                    { label: 'Days', value: leave.total_days },
+                                    { label: 'Approved at', value: leave.approved_at_display || '--' },
+                                ]}
+                            />
+                        )}
+                    />
                 </div>
 
                 {pagination?.last_page > 1 ? (

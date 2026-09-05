@@ -1,5 +1,15 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
+
+const statusClass = (label) => {
+    const key = String(label || '').toLowerCase();
+    if (key.includes('paid')) return 'bg-emerald-100 text-emerald-700';
+    if (key.includes('partial')) return 'bg-blue-100 text-blue-700';
+    if (key.includes('unpaid') || key.includes('pending')) return 'bg-amber-100 text-amber-700';
+    return 'bg-slate-100 text-slate-600';
+};
 
 export default function Index({ items = [], pagination = {} }) {
     return (
@@ -7,43 +17,65 @@ export default function Index({ items = [], pagination = {} }) {
             <Head title="Payroll" />
 
             <div className="card p-6">
-                <div className="mt-4 overflow-x-auto">
-                    <table className="min-w-full text-sm text-slate-700">
-                        <thead>
-                            <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                                <th className="px-3 py-2">Period</th>
-                                <th className="px-3 py-2 text-right">Gross</th>
-                                <th className="px-3 py-2 text-right">Bonus</th>
-                                <th className="px-3 py-2 text-right">Penalty</th>
-                                <th className="px-3 py-2 text-right">Advance</th>
-                                <th className="px-3 py-2 text-right">Deduction</th>
-                                <th className="px-3 py-2 text-right">Net Payable</th>
-                                <th className="px-3 py-2 text-right">Paid</th>
-                                <th className="px-3 py-2 text-right">Remaining</th>
-                                <th className="px-3 py-2">Status</th>
-                                <th className="px-3 py-2">Paid at</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {items.length === 0 ? (
-                                <tr><td colSpan={11} className="py-3 text-center text-slate-500">No payroll items yet.</td></tr>
-                            ) : items.map((item) => (
-                                <tr key={item.id} className="border-b border-slate-100">
-                                    <td className="px-3 py-2">{item.period_key}</td>
-                                    <td className="px-3 py-2 text-right">{Number(item.gross_pay || 0).toFixed(2)} {item.currency}</td>
-                                    <td className="px-3 py-2 text-right">{Number(item.bonus || 0).toFixed(2)} {item.currency}</td>
-                                    <td className="px-3 py-2 text-right">{Number(item.penalty || 0).toFixed(2)} {item.currency}</td>
-                                    <td className="px-3 py-2 text-right">{Number(item.advance || 0).toFixed(2)} {item.currency}</td>
-                                    <td className="px-3 py-2 text-right">{Number(item.deduction || 0).toFixed(2)} {item.currency}</td>
-                                    <td className="px-3 py-2 text-right font-semibold text-slate-900">{Number(item.net_payable || 0).toFixed(2)} {item.currency}</td>
-                                    <td className="px-3 py-2 text-right">{Number(item.paid || 0).toFixed(2)} {item.currency}</td>
-                                    <td className={`px-3 py-2 text-right font-semibold ${Number(item.remaining || 0) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{Number(item.remaining || 0).toFixed(2)} {item.currency}</td>
-                                    <td className="px-3 py-2">{item.status_label}</td>
-                                    <td className="px-3 py-2">{item.paid_at_display}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="mt-4">
+                    <DataTable
+                        rows={items}
+                        emptyMessage="No payroll items yet."
+                        columns={[
+                            { key: 'period', header: 'Period', render: (item) => item.period_key },
+                            { key: 'gross', header: 'Gross', headerClassName: 'text-right', cellClassName: 'text-right', render: (item) => `${Number(item.gross_pay || 0).toFixed(2)} ${item.currency}` },
+                            { key: 'bonus', header: 'Bonus', headerClassName: 'text-right', cellClassName: 'text-right', render: (item) => `${Number(item.bonus || 0).toFixed(2)} ${item.currency}` },
+                            { key: 'penalty', header: 'Penalty', headerClassName: 'text-right', cellClassName: 'text-right', render: (item) => `${Number(item.penalty || 0).toFixed(2)} ${item.currency}` },
+                            { key: 'advance', header: 'Advance', headerClassName: 'text-right', cellClassName: 'text-right', render: (item) => `${Number(item.advance || 0).toFixed(2)} ${item.currency}` },
+                            { key: 'deduction', header: 'Deduction', headerClassName: 'text-right', cellClassName: 'text-right', render: (item) => `${Number(item.deduction || 0).toFixed(2)} ${item.currency}` },
+                            {
+                                key: 'net_payable',
+                                header: 'Net Payable',
+                                headerClassName: 'text-right',
+                                cellClassName: 'text-right font-semibold text-slate-900',
+                                render: (item) => `${Number(item.net_payable || 0).toFixed(2)} ${item.currency}`,
+                            },
+                            { key: 'paid', header: 'Paid', headerClassName: 'text-right', cellClassName: 'text-right', render: (item) => `${Number(item.paid || 0).toFixed(2)} ${item.currency}` },
+                            {
+                                key: 'remaining',
+                                header: 'Remaining',
+                                headerClassName: 'text-right',
+                                cellClassName: 'text-right',
+                                render: (item) => (
+                                    <span className={`font-semibold ${Number(item.remaining || 0) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                        {Number(item.remaining || 0).toFixed(2)} {item.currency}
+                                    </span>
+                                ),
+                            },
+                            { key: 'status', header: 'Status', render: (item) => item.status_label },
+                            { key: 'paid_at', header: 'Paid at', render: (item) => item.paid_at_display },
+                        ]}
+                        renderMobileCard={(item) => (
+                            <MobileCard
+                                title={item.period_key}
+                                badge={item.status_label}
+                                badgeColor={statusClass(item.status_label)}
+                                metrics={[
+                                    { label: 'Net Payable', value: `${Number(item.net_payable || 0).toFixed(2)} ${item.currency}` },
+                                    {
+                                        label: 'Remaining',
+                                        value: `${Number(item.remaining || 0).toFixed(2)} ${item.currency}`,
+                                        tone: Number(item.remaining || 0) > 0 ? 'text-amber-600' : 'text-emerald-600',
+                                    },
+                                ]}
+                            >
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-500">
+                                    <div>Gross: {Number(item.gross_pay || 0).toFixed(2)} {item.currency}</div>
+                                    <div>Bonus: {Number(item.bonus || 0).toFixed(2)} {item.currency}</div>
+                                    <div>Penalty: {Number(item.penalty || 0).toFixed(2)} {item.currency}</div>
+                                    <div>Advance: {Number(item.advance || 0).toFixed(2)} {item.currency}</div>
+                                    <div>Deduction: {Number(item.deduction || 0).toFixed(2)} {item.currency}</div>
+                                    <div>Paid: {Number(item.paid || 0).toFixed(2)} {item.currency}</div>
+                                    {item.paid_at_display ? <div className="col-span-2">Paid at: {item.paid_at_display}</div> : null}
+                                </div>
+                            </MobileCard>
+                        )}
+                    />
                 </div>
 
                 {pagination?.last_page > 1 ? (

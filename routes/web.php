@@ -372,6 +372,7 @@ Route::middleware([
     ->prefix('client')
     ->name('client.')
     ->group(function () {
+        Route::get('/', fn () => redirect()->route('client.dashboard'));
         Route::get('/dashboard', [ClientDashboardController::class, 'index'])
             ->middleware(HandleInertiaRequests::class)
             ->name('dashboard');

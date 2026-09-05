@@ -1,6 +1,5 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
-import DailyCalendarWidget from '@/Components/DailyCalendarWidget';
 
 export default function Index({ routes = {} }) {
     return (
@@ -16,10 +15,6 @@ export default function Index({ routes = {} }) {
                         View tickets
                     </a>
                 </div>
-            </div>
-
-            <div className="mt-6">
-                <DailyCalendarWidget />
             </div>
         </>
     );

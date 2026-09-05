@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
-import DailyCalendarWidget from '@/Components/DailyCalendarWidget';
 
 const CHART_FRAME = {
     width: 1120,
@@ -848,8 +847,8 @@ export default function Dashboard({
 
             </div>
 
-            <div className="mt-8 grid gap-6 lg:grid-cols-2 lg:items-stretch">
-                <div className="card flex h-full flex-col p-6 lg:h-[620px]">
+            <div className="mt-8">
+                <div className="card p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <div className="section-label">Client Activity</div>
@@ -858,7 +857,7 @@ export default function Dashboard({
                         <a href={routes?.customers_index} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">View customers</a>
                     </div>
 
-                    <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 px-2.5 py-2">
+                    <div className="mt-4 max-h-[420px] overflow-auto rounded-xl border border-slate-200 px-2.5 py-2">
                         <table className="min-w-full text-left text-sm">
                             <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                                 <tr>
@@ -894,8 +893,6 @@ export default function Dashboard({
                         </table>
                     </div>
                 </div>
-
-                <DailyCalendarWidget apiBase="/admin/portal/api/tasks" enableClientSelect className="lg:h-[620px]" />
             </div>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-2">

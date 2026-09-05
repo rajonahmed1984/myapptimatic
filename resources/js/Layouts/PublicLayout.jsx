@@ -15,7 +15,7 @@ export default function PublicLayout({ children, title, pageHeading }) {
     } else if (user?.role === 'employee') {
         dashboardUrl = '/employee/dashboard';
     } else if (user?.role === 'sales_rep') {
-        dashboardUrl = '/rep/dashboard';
+        dashboardUrl = '/sales/dashboard';
     } else if (user?.role === 'support') {
         dashboardUrl = '/support/dashboard';
     }

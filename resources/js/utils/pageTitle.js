@@ -3,6 +3,7 @@ const PORTAL_LABELS = {
     client: 'Client',
     employee: 'Employee',
     rep: 'Sales Rep',
+    sales: 'Sales Rep',
     support: 'Support',
     public: 'Public',
     guest: 'Guest',

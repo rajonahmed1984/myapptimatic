@@ -422,8 +422,6 @@ button.bg-teal-600,
 button.bg-slate-900,
 button.bg-slate-800,
 button.bg-emerald-500,
-button.border-slate-300,
-button.border-slate-200,
 button.border-rose-200,
 button.bg-rose-500,
 a[class*="btn-"],
@@ -457,15 +455,15 @@ button.bg-emerald-500:hover {
     box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.2), 0 2px 4px -1px rgba(13, 148, 136, 0.1) !important;
 }
 
-/* Secondary Button Styling Override */
-button.border-slate-300,
-button.border-slate-200 {
+/* Secondary Button Styling Override (Only for explicit standardized secondary buttons) */
+.btn-standardized-secondary,
+.btn-secondary {
     background-color: #f8fafc !important; /* Standard clean slate theme */
     border: 1px solid #cbd5e1 !important;
     color: #475569 !important;
 }
-button.border-slate-300:hover,
-button.border-slate-200:hover {
+.btn-standardized-secondary:hover,
+.btn-secondary:hover {
     background-color: #f1f5f9 !important;
     border-color: #0d9488 !important; /* Clean primary tint on hover */
     color: #0d9488 !important;
@@ -640,11 +638,75 @@ table td:last-child:has(a, button, form):not(.has-dropdown) button.text-rose-600
     }
 }
 
+/* Sidebar Toggle & Header Icon Buttons */
+.mobile-sidebar-toggle,
+.mobile-back-btn,
+.mobile-nav-btn,
+.btn-icon,
+#sidebarToggle,
 #clientSidebarToggle,
 #supportSidebarToggle,
 #repSidebarToggle,
-#sidebarToggle {
+header button[aria-label="Open menu"],
+header button[aria-label="Toggle sidebar"],
+header button[aria-label="Go back"],
+header button[aria-label="Go forward"] {
     display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 2.25rem !important; /* 36px (h-9 w-9) */
+    height: 2.25rem !important;
+    min-width: 2.25rem !important;
+    min-height: 2.25rem !important;
+    padding: 0 !important;
+    border-radius: 0.75rem !important; /* rounded-xl (12px) */
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important; /* border-slate-200 */
+    color: #0f172a !important; /* slate-900 - sharp, crisp, high contrast */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    line-height: 1 !important;
+}
+
+#sidebarToggle {
+    width: 2.5rem !important; /* 40px (h-10 w-10) */
+    height: 2.5rem !important;
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+}
+
+.mobile-sidebar-toggle:hover,
+.mobile-back-btn:hover,
+.mobile-nav-btn:hover,
+.btn-icon:hover,
+#sidebarToggle:hover,
+header button[aria-label="Open menu"]:hover,
+header button[aria-label="Toggle sidebar"]:hover,
+header button[aria-label="Go back"]:hover,
+header button[aria-label="Go forward"]:hover {
+    background-color: #f8fafc !important;
+    border-color: #5eead4 !important;
+    color: #0d9488 !important;
+}
+
+.mobile-sidebar-toggle svg,
+.mobile-back-btn svg,
+.mobile-nav-btn svg,
+.btn-icon svg,
+#sidebarToggle svg,
+header button[aria-label="Open menu"] svg,
+header button[aria-label="Toggle sidebar"] svg,
+header button[aria-label="Go back"] svg,
+header button[aria-label="Go forward"] svg {
+    width: 1.25rem !important; /* 20px (h-5 w-5) */
+    height: 1.25rem !important;
+    display: block !important;
+    color: inherit !important;
+    stroke: currentColor !important;
+    stroke-width: 2.2 !important;
+    flex-shrink: 0 !important;
 }
 
 /* ==========================================================================

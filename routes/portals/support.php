@@ -44,6 +44,7 @@ Route::middleware([
     ->prefix('support')
     ->name('support.')
     ->group(function () {
+        Route::get('/', fn () => redirect()->route('support.dashboard'));
         Route::get('/dashboard', SupportDashboardController::class)->middleware(HandleInertiaRequests::class)->name('dashboard');
         Route::get('/tasks', [SupportTasksController::class, 'index'])->name('tasks.index');
         Route::redirect('/mail', '/support/apptimatic-email');

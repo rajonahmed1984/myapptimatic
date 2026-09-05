@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createInertiaApp, router as inertiaRouter } from '@inertiajs/react';
+import { createInertiaApp, router as inertiaRouter, usePage } from '@inertiajs/react';
 import { formatDate, parseDate } from './utils/datetime';
 import { enhanceEasyDateInputsInDocument } from './utils/easyDateEnhancer';
 import { getBreadcrumb, getPageTitle } from './utils/pageTitle';
@@ -514,22 +514,68 @@ import RepLayout from './Layouts/RepLayout';
 import SupportLayout from './Layouts/SupportLayout';
 import PublicLayout from './Layouts/PublicLayout';
 
+function PortalLayoutWrapper({ children }) {
+    const page = usePage();
+    const { auth } = page.props || {};
+    const pathname = (typeof window !== 'undefined' ? window.location.pathname : '') || page.url || '';
+    const userRole = auth?.user?.role;
+    const portal = auth?.portal;
+
+    // 1. Path-based layout resolution
+    if (pathname.startsWith('/client')) {
+        return <ClientLayout>{children}</ClientLayout>;
+    }
+    if (pathname.startsWith('/employee')) {
+        return <AdminLayout>{children}</AdminLayout>;
+    }
+    if (pathname.startsWith('/rep') || pathname.startsWith('/sales')) {
+        return <RepLayout>{children}</RepLayout>;
+    }
+    if (pathname.startsWith('/support')) {
+        return <SupportLayout>{children}</SupportLayout>;
+    }
+    if (pathname.startsWith('/admin')) {
+        return <AdminLayout>{children}</AdminLayout>;
+    }
+
+    // 2. Auth portal / user role resolution
+    if (portal === 'client' || userRole === 'client') {
+        return <ClientLayout>{children}</ClientLayout>;
+    }
+    if (portal === 'sales' || userRole === 'sales_rep') {
+        return <RepLayout>{children}</RepLayout>;
+    }
+    if (portal === 'support' || userRole === 'support') {
+        return <SupportLayout>{children}</SupportLayout>;
+    }
+    if (portal === 'employee' || userRole === 'employee') {
+        return <AdminLayout>{children}</AdminLayout>;
+    }
+    if (portal === 'admin' || ['admin', 'master_admin', 'sub_admin'].includes(userRole)) {
+        return <AdminLayout>{children}</AdminLayout>;
+    }
+
+    // 3. Fallback for authenticated session
+    if (auth?.user) {
+        return <AdminLayout>{children}</AdminLayout>;
+    }
+
+    return children;
+}
+
 const resolveDefaultLayout = (name) => {
+    // Pre-login / auth pages (login, register, forgot/reset password) do not use portal layout
+    if (name.startsWith('Auth/')) return undefined;
+    if (name.startsWith('Public/')) return (p) => <PublicLayout>{p}</PublicLayout>;
+
     if (name.startsWith('Admin/')) return (p) => <AdminLayout>{p}</AdminLayout>;
     if (name.startsWith('Employee/')) return (p) => <AdminLayout>{p}</AdminLayout>;
     if (name.startsWith('Client/')) return (p) => <ClientLayout>{p}</ClientLayout>;
     if (name.startsWith('Rep/')) return (p) => <RepLayout>{p}</RepLayout>;
     if (name.startsWith('Support/')) return (p) => <SupportLayout>{p}</SupportLayout>;
-    if (name.startsWith('Public/')) return (p) => <PublicLayout>{p}</PublicLayout>;
-    if (name.startsWith('Projects/')) {
-        const path = typeof window !== 'undefined' ? window.location.pathname : '';
-        if (path.startsWith('/client')) return (p) => <ClientLayout>{p}</ClientLayout>;
-        if (path.startsWith('/employee')) return (p) => <AdminLayout>{p}</AdminLayout>;
-        if (path.startsWith('/rep')) return (p) => <RepLayout>{p}</RepLayout>;
-        if (path.startsWith('/support')) return (p) => <SupportLayout>{p}</SupportLayout>;
-        return (p) => <AdminLayout>{p}</AdminLayout>;
-    }
-    return undefined;
+
+    // For any other page viewed after login (e.g. Mail/Login, Projects/*, or shared pages)
+    return (p) => <PortalLayoutWrapper>{p}</PortalLayoutWrapper>;
 };
 
 createInertiaApp({

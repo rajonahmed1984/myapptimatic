@@ -1,5 +1,16 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
+
+const statusClass = (label) => {
+    const key = String(label || '').toLowerCase();
+    if (key.includes('present')) return 'bg-emerald-100 text-emerald-700';
+    if (key.includes('absent')) return 'bg-rose-100 text-rose-700';
+    if (key.includes('leave')) return 'bg-blue-100 text-blue-700';
+    if (key.includes('half')) return 'bg-amber-100 text-amber-700';
+    return 'bg-slate-100 text-slate-600';
+};
 
 export default function Index({ attendances = [], selected_month = '', status_summary = {}, pagination = {}, routes = {} }) {
     return (
@@ -29,31 +40,31 @@ export default function Index({ attendances = [], selected_month = '', status_su
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3"><div className="text-xs uppercase tracking-[0.2em] text-slate-500">Half Day</div><div className="mt-1 text-xl font-semibold text-slate-900">{status_summary?.half_day || 0}</div></div>
                 </div>
 
-                <div className="mt-4 overflow-x-auto">
-                    <table className="min-w-full text-sm text-slate-700">
-                        <thead>
-                            <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                                <th className="py-2">Date</th>
-                                <th className="py-2">Status</th>
-                                <th className="py-2">Note</th>
-                                <th className="py-2">Recorded By</th>
-                                <th className="py-2">Updated At</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {attendances.length === 0 ? (
-                                <tr><td colSpan={5} className="py-3 text-center text-slate-500">No attendance records for this month.</td></tr>
-                            ) : attendances.map((attendance, index) => (
-                                <tr key={`${attendance.date_display}-${index}`} className="border-b border-slate-100">
-                                    <td className="py-2">{attendance.date_display}</td>
-                                    <td className="py-2">{attendance.status_label}</td>
-                                    <td className="py-2">{attendance.note}</td>
-                                    <td className="py-2">{attendance.recorder_name}</td>
-                                    <td className="py-2">{attendance.updated_at_display}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="mt-4">
+                    <DataTable
+                        rows={attendances}
+                        rowKey={(attendance, index) => `${attendance.date_display}-${index}`}
+                        emptyMessage="No attendance records for this month."
+                        columns={[
+                            { key: 'date', header: 'Date', render: (attendance) => attendance.date_display },
+                            { key: 'status', header: 'Status', render: (attendance) => attendance.status_label },
+                            { key: 'note', header: 'Note', render: (attendance) => attendance.note },
+                            { key: 'recorded_by', header: 'Recorded By', render: (attendance) => attendance.recorder_name },
+                            { key: 'updated_at', header: 'Updated At', render: (attendance) => attendance.updated_at_display },
+                        ]}
+                        renderMobileCard={(attendance) => (
+                            <MobileCard
+                                title={attendance.date_display}
+                                subtitle={attendance.note}
+                                badge={attendance.status_label}
+                                badgeColor={statusClass(attendance.status_label)}
+                                metrics={[
+                                    { label: 'Recorded By', value: attendance.recorder_name || '--' },
+                                    { label: 'Updated', value: attendance.updated_at_display || '--' },
+                                ]}
+                            />
+                        )}
+                    />
                 </div>
 
                 {pagination?.last_page > 1 ? (

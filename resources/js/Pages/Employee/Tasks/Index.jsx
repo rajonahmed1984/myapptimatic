@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusLabel = (status) => {
     const map = {
@@ -99,47 +101,57 @@ export default function Index({ status_filter = '', search = '', status_counts =
                     </form>
                 </div>
 
-                <div className="mt-6 overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                        <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
-                            <tr>
-                                <th className="px-4 py-3">Task ID</th>
-                                <th className="px-4 py-3">Created</th>
-                                <th className="px-4 py-3">Project Task</th>
-                                <th className="px-4 py-3">Subtasks</th>
-                                <th className="px-4 py-3">Status</th>
-                                <th className="px-4 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {tasks.length === 0 ? (
-                                <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">No tasks found.</td></tr>
-                            ) : tasks.map((task) => {
-                                const currentStatus = String(task?.status || '').toLowerCase();
-                                const isInProgress = currentStatus === 'in_progress';
-                                const isCompleted = ['completed', 'done'].includes(currentStatus);
-
-                                return (
-                                    <tr key={task.id}>
-                                    <td className="px-4 py-3 font-semibold text-slate-600">{task.id ?? '--'}</td>
-                                    <td className="px-4 py-3 text-slate-500">
+                <div className="mt-6">
+                    <DataTable
+                        rows={tasks}
+                        emptyMessage="No tasks found."
+                        columns={[
+                            { key: 'id', header: 'Task ID', cellClassName: 'font-semibold text-slate-600', render: (task) => task.id ?? '--' },
+                            {
+                                key: 'created',
+                                header: 'Created',
+                                cellClassName: 'text-slate-500',
+                                render: (task) => (
+                                    <>
                                         <div>{task.created_at_date || '--'}</div>
                                         <div className="text-xs text-slate-400">{task.created_at_time || '--'}</div>
-                                    </td>
-                                    <td className="px-4 py-3">
+                                    </>
+                                ),
+                            },
+                            {
+                                key: 'task',
+                                header: 'Project Task',
+                                render: (task) => (
+                                    <>
                                         <div className="font-semibold text-slate-900">
                                             <a href={task?.routes?.task_show} data-native="true" className="text-teal-600 hover:text-teal-500">{task.title}</a>
                                         </div>
                                         {task.description ? <div className="mt-1 text-xs text-slate-500">{task.description}</div> : null}
                                         {task.project ? <a href={task?.routes?.project_show} data-native="true" className="text-xs text-slate-500 hover:text-teal-600">{task.project.name}</a> : '--'}
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-600">{task.completed_subtasks_count}/{task.subtasks_count}</td>
-                                    <td className="px-4 py-3">
-                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${statusClass(task.status)}`}>
-                                            {statusLabel(task.status)}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
+                                    </>
+                                ),
+                            },
+                            { key: 'subtasks', header: 'Subtasks', cellClassName: 'text-slate-600', render: (task) => `${task.completed_subtasks_count}/${task.subtasks_count}` },
+                            {
+                                key: 'status',
+                                header: 'Status',
+                                render: (task) => (
+                                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${statusClass(task.status)}`}>
+                                        {statusLabel(task.status)}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'actions',
+                                header: 'Actions',
+                                headerClassName: 'text-right',
+                                cellClassName: 'text-right',
+                                render: (task) => {
+                                    const currentStatus = String(task?.status || '').toLowerCase();
+                                    const isInProgress = currentStatus === 'in_progress';
+                                    const isCompleted = ['completed', 'done'].includes(currentStatus);
+
+                                    return (
                                         <div className="flex flex-col items-end gap-2 text-xs font-semibold">
                                             <a href={task?.routes?.task_show} data-native="true" className="rounded-full border border-emerald-200 px-3 py-1 text-emerald-700">Open Task</a>
                                             {task.can_start && !isInProgress ? (
@@ -158,12 +170,71 @@ export default function Index({ status_filter = '', search = '', status_counts =
                                                 </form>
                                             ) : null}
                                         </div>
-                                    </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                    );
+                                },
+                            },
+                        ]}
+                        renderMobileCard={(task) => {
+                            const currentStatus = String(task?.status || '').toLowerCase();
+                            const isInProgress = currentStatus === 'in_progress';
+                            const isCompleted = ['completed', 'done'].includes(currentStatus);
+
+                            return (
+                                <MobileCard
+                                    title={
+                                        <a href={task?.routes?.task_show} data-native="true" className="hover:text-teal-600">
+                                            {task.title}
+                                        </a>
+                                    }
+                                    subtitle={task.project ? task.project.name : null}
+                                    badge={statusLabel(task.status)}
+                                    badgeColor={statusClass(task.status)}
+                                    metrics={[
+                                        { label: 'Subtasks', value: `${task.completed_subtasks_count}/${task.subtasks_count}` },
+                                        { label: 'Created', value: task.created_at_date || '--' },
+                                    ]}
+                                    actions={
+                                        <div className="flex flex-wrap gap-2 w-full">
+                                            <a
+                                                href={task?.routes?.task_show}
+                                                data-native="true"
+                                                className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                            >
+                                                Open Task
+                                            </a>
+                                            {task.can_start && !isInProgress ? (
+                                                <form method="POST" action={task?.routes?.task_start} data-native="true" className="flex-1">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <input type="hidden" name="_method" value="PATCH" />
+                                                    <button
+                                                        type="submit"
+                                                        className="w-full py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 text-xs font-bold text-amber-700 hover:bg-amber-100 transition active:scale-95"
+                                                    >
+                                                        In Progress
+                                                    </button>
+                                                </form>
+                                            ) : null}
+                                            {task.can_complete && !isCompleted ? (
+                                                <form method="POST" action={task?.routes?.task_update} data-native="true" className="flex-1">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <input type="hidden" name="_method" value="PATCH" />
+                                                    <input type="hidden" name="status" value="completed" />
+                                                    <button
+                                                        type="submit"
+                                                        className="w-full py-2 px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition active:scale-95"
+                                                    >
+                                                        Complete
+                                                    </button>
+                                                </form>
+                                            ) : null}
+                                        </div>
+                                    }
+                                >
+                                    {task.description ? <div className="text-xs text-slate-500">{task.description}</div> : null}
+                                </MobileCard>
+                            );
+                        }}
+                    />
                 </div>
 
                 {pagination?.last_page > 1 ? (

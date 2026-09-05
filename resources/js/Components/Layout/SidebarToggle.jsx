@@ -22,17 +22,17 @@ export default function SidebarToggle({ onToggleMobile }) {
             type="button"
             id="sidebarToggle"
             onClick={handleToggle}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/90 bg-white text-slate-600 shadow-sm transition-all hover:border-teal-300 hover:bg-slate-50 hover:text-teal-600 active:scale-95 cursor-pointer flex-shrink-0"
+            className="mobile-sidebar-toggle inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/90 bg-white text-slate-800 shadow-sm transition-all hover:border-teal-300 hover:bg-slate-50 hover:text-teal-600 active:scale-95 cursor-pointer flex-shrink-0"
             aria-label="Toggle sidebar"
             title="Toggle sidebar"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
+                className="h-5 w-5 text-slate-800"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
             >

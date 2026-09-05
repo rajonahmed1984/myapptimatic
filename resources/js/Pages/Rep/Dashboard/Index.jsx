@@ -1,6 +1,5 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
-import DailyCalendarWidget from '@/Components/DailyCalendarWidget';
 
 export default function Index({
     rep = {},
@@ -55,10 +54,6 @@ export default function Index({
                         <div className="text-xs uppercase tracking-[0.2em] text-sky-800 font-semibold">Paid this month</div>
                         <div className="mt-2 text-2xl font-bold text-sky-950">{Number(paid_this_month || 0).toFixed(2)}</div>
                     </div>
-                </div>
-
-                <div>
-                    <DailyCalendarWidget />
                 </div>
 
                 {tasks_widget?.show ? (

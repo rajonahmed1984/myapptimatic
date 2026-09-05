@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Index({
     daily_logs = [],
@@ -29,45 +31,47 @@ export default function Index({
                     </div>
                 ) : null}
 
-                <div className="mt-4 overflow-x-auto">
-                    <table className="min-w-full text-sm text-slate-700">
-                        <thead>
-                            <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                                <th className="py-2">Date</th>
-                                <th className="py-2">Sessions</th>
-                                <th className="py-2">First Start</th>
-                                <th className="py-2">Last Activity</th>
-                                <th className="py-2 text-right">Active Time</th>
-                                <th className="py-2 text-right">Required</th>
-                                <th className="py-2 text-right">Coverage</th>
-                                <th className="py-2 text-right">Est. Salary</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {daily_logs.length === 0 ? (
-                                <tr><td colSpan={8} className="py-3 text-center text-slate-500">No work logs yet.</td></tr>
-                            ) : daily_logs.map((log, index) => (
-                                <React.Fragment key={`${log.work_date_display}-${index}`}>
-                                    <tr className="border-b border-slate-100">
-                                        <td className="py-2">{log.work_date_display}</td>
-                                        <td className="py-2">{log.sessions_count}</td>
-                                        <td className="py-2">{log.first_started_at}</td>
-                                        <td className="py-2">{log.last_activity_at}</td>
-                                        <td className="py-2 text-right">{log.active_time_label}</td>
-                                        <td className="py-2 text-right">{log.required_time_label}</td>
-                                        <td className="py-2 text-right">{log.coverage_percent}%</td>
-                                        <td className="py-2 text-right">{log.currency} {Number(log.estimated_amount || 0).toFixed(2)}</td>
-                                    </tr>
-                                    {index === daily_logs.length - 1 ? (
-                                        <tr className="border-t border-slate-300 bg-slate-50/70">
-                                            <td colSpan={7} className="py-2 text-right font-semibold text-slate-800">Est. Salary Subtotal (This Page)</td>
-                                            <td className="py-2 text-right font-semibold text-slate-900">{subtotal_currency} {Number(subtotal_estimated || 0).toFixed(2)}</td>
-                                        </tr>
-                                    ) : null}
-                                </React.Fragment>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="mt-4">
+                    <DataTable
+                        rows={daily_logs}
+                        rowKey={(log, index) => `${log.work_date_display}-${index}`}
+                        emptyMessage="No work logs yet."
+                        columns={[
+                            { key: 'date', header: 'Date', render: (log) => log.work_date_display },
+                            { key: 'sessions', header: 'Sessions', render: (log) => log.sessions_count },
+                            { key: 'first_start', header: 'First Start', render: (log) => log.first_started_at },
+                            { key: 'last_activity', header: 'Last Activity', render: (log) => log.last_activity_at },
+                            { key: 'active_time', header: 'Active Time', headerClassName: 'text-right', cellClassName: 'text-right', render: (log) => log.active_time_label },
+                            { key: 'required', header: 'Required', headerClassName: 'text-right', cellClassName: 'text-right', render: (log) => log.required_time_label },
+                            { key: 'coverage', header: 'Coverage', headerClassName: 'text-right', cellClassName: 'text-right', render: (log) => `${log.coverage_percent}%` },
+                            {
+                                key: 'estimated',
+                                header: 'Est. Salary',
+                                headerClassName: 'text-right',
+                                cellClassName: 'text-right',
+                                render: (log) => `${log.currency} ${Number(log.estimated_amount || 0).toFixed(2)}`,
+                            },
+                        ]}
+                        renderMobileCard={(log) => (
+                            <MobileCard
+                                title={log.work_date_display}
+                                subtitle={`Sessions: ${log.sessions_count} · ${log.first_started_at || '--'} to ${log.last_activity_at || '--'}`}
+                                metrics={[
+                                    { label: 'Active Time', value: log.active_time_label },
+                                    { label: 'Required', value: log.required_time_label },
+                                    { label: 'Coverage', value: `${log.coverage_percent}%` },
+                                    { label: 'Est. Salary', value: `${log.currency} ${Number(log.estimated_amount || 0).toFixed(2)}` },
+                                ]}
+                            />
+                        )}
+                    />
+
+                    {daily_logs.length > 0 ? (
+                        <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-300 bg-slate-50/70 px-4 py-2.5 text-sm">
+                            <span className="font-semibold text-slate-800">Est. Salary Subtotal (This Page)</span>
+                            <span className="font-semibold text-slate-900">{subtotal_currency} {Number(subtotal_estimated || 0).toFixed(2)}</span>
+                        </div>
+                    ) : null}
                 </div>
 
                 {pagination?.last_page > 1 ? (

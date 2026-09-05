@@ -333,11 +333,8 @@ export default function TaskChat({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex items-center justify-between">
-                <a href={routes?.back || '#'} data-native="true" className="text-sm font-semibold text-teal-600 hover:text-teal-700">
-                    Back
-                </a>
-                <div className="text-xs text-slate-500">{project?.name || '--'} | {task?.title || 'Task'}</div>
+            <div className="mb-4 flex items-center justify-between">
+                <div className="text-xs text-slate-500 font-medium">{project?.name || '--'} | {task?.title || 'Task'}</div>
             </div>
 
             <div className="card p-5">

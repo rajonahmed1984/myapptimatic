@@ -506,16 +506,6 @@ export default function ProjectChat({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-4">
-                <a
-                    href={routes?.back || '#'}
-                    data-native="true"
-                    className="inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                >
-                    Back
-                </a>
-            </div>
-
             <div className="h-[calc(100dvh-9rem)] min-h-[30rem] w-full max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:h-[calc(100dvh-10rem)]">
                 <div className="grid h-full min-w-0 lg:grid-cols-[minmax(0,1fr)_19rem]">
                     <section className="flex h-full min-h-0 min-w-0 flex-col">

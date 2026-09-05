@@ -61,6 +61,7 @@ Route::middleware([
     ->prefix('sales')
     ->name('rep.')
     ->group(function () {
+        Route::get('/', fn () => redirect()->route('rep.dashboard'));
         Route::get('/dashboard', SalesRepDashboardController::class)->middleware(HandleInertiaRequests::class)->name('dashboard');
         Route::get('/tasks', [SalesRepTasksController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('tasks.index');
         Route::get('/chats', [SalesRepChatController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('chats.index');
@@ -186,3 +187,11 @@ Route::middleware([
             ->name('projects.tasks.chat.store');
         Route::get('/projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
     });
+
+Route::redirect('/rep', '/sales/dashboard');
+Route::get('/rep/{path?}', function (\Illuminate\Http\Request $request, $path = null) {
+    $target = '/sales' . ($path ? '/' . $path : '');
+    $query = $request->getQueryString();
+    return redirect($query ? $target . '?' . $query : $target);
+})->where('path', '.*');
+

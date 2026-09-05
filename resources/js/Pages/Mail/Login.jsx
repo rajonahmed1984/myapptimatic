@@ -50,9 +50,9 @@ export default function Login({
         <>
             <Head title={pageTitle} />
 
-            <div className="min-h-[75vh] flex items-center justify-center px-4 py-8">
+            <div className="flex items-center justify-center py-2 md:py-6">
                 <div className="w-full max-w-md">
-                    <div className="card p-6 md:p-8 shadow-lg border border-slate-200/80 bg-white rounded-2xl">
+                    <div className="card p-4 sm:p-6 md:p-8 shadow-lg border border-slate-200/80 bg-white rounded-2xl">
                         <div className="mb-6 text-center">
                             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-white shadow-md">
                                 <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
