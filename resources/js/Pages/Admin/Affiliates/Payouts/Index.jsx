@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import DataTable from '../../../../Components/Table/DataTable';
+import MobileCard from '../../../../Components/Mobile/MobileCard';
 
 const statusBadgeClass = (status) => {
     if (status === 'completed') {
@@ -70,50 +72,49 @@ export default function Index({
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[900px]">
-                                <thead className="border-b border-slate-300 text-left text-xs uppercase tracking-wider text-slate-500">
-                                    <tr>
-                                        <th className="pb-3 font-semibold">Payout #</th>
-                                        <th className="pb-3 font-semibold">Affiliate</th>
-                                        <th className="pb-3 font-semibold">Amount</th>
-                                        <th className="pb-3 font-semibold">Status</th>
-                                        <th className="pb-3 font-semibold">Created</th>
-                                        <th className="pb-3 font-semibold">Completed</th>
-                                        <th className="pb-3 font-semibold">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 text-sm">
-                                    {payouts.map((payout) => (
-                                        <tr key={payout.id}>
-                                            <td className="py-4 font-semibold text-slate-900">{payout.payout_number}</td>
-                                            <td className="py-4">{payout.affiliate_name}</td>
-                                            <td className="py-4">{payout.amount_display}</td>
-                                            <td className="py-4">
-                                                <span
-                                                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(
-                                                        payout.status,
-                                                    )}`}
-                                                >
-                                                    {payout.status_label}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 text-slate-600">{payout.created_at_display}</td>
-                                            <td className="py-4 text-slate-600">{payout.completed_at_display}</td>
-                                            <td className="py-4">
-                                                <a
-                                                    href={payout?.routes?.show}
-                                                    data-native="true"
-                                                    className="font-semibold text-teal-600 hover:text-teal-500"
-                                                >
-                                                    View
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <DataTable
+                            rows={payouts}
+                            columns={[
+                                { key: 'number', header: 'Payout #', cellClassName: 'font-semibold text-slate-900', render: (payout) => payout.payout_number },
+                                { key: 'affiliate', header: 'Affiliate', render: (payout) => payout.affiliate_name },
+                                { key: 'amount', header: 'Amount', render: (payout) => payout.amount_display },
+                                {
+                                    key: 'status',
+                                    header: 'Status',
+                                    render: (payout) => <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(payout.status)}`}>{payout.status_label}</span>,
+                                },
+                                { key: 'created', header: 'Created', cellClassName: 'text-slate-600', render: (payout) => payout.created_at_display },
+                                { key: 'completed', header: 'Completed', cellClassName: 'text-slate-600', render: (payout) => payout.completed_at_display },
+                                {
+                                    key: 'action',
+                                    header: 'Action',
+                                    render: (payout) => <a href={payout?.routes?.show} data-native="true" className="font-semibold text-teal-600 hover:text-teal-500">View</a>,
+                                },
+                            ]}
+                            renderMobileCard={(payout) => (
+                                <MobileCard
+                                    title={payout.payout_number}
+                                    subtitle={payout.affiliate_name}
+                                    badge={payout.status_label}
+                                    badgeColor={statusBadgeClass(payout.status)}
+                                    metrics={[
+                                        { label: 'Amount', value: payout.amount_display },
+                                        { label: 'Created', value: payout.created_at_display },
+                                    ]}
+                                    actions={
+                                        <a
+                                            href={payout?.routes?.show}
+                                            data-native="true"
+                                            className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                        >
+                                            View
+                                        </a>
+                                    }
+                                >
+                                    {payout.completed_at_display ? <div className="text-xs text-slate-500">Completed: {payout.completed_at_display}</div> : null}
+                                </MobileCard>
+                            )}
+                        />
 
                         {pagination?.has_pages ? (
                             <div className="mt-6 flex items-center justify-end gap-2 text-sm">

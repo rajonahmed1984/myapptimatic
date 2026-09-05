@@ -53,11 +53,14 @@ export default function DataTable({
                             ) : (
                                 rows.map((row, index) => (
                                     <tr key={rowKey(row, index)} className="border-b border-slate-100 transition hover:bg-slate-50/60">
-                                        {columns.map((col) => (
-                                            <td key={col.key} className={`px-4 py-3 whitespace-nowrap ${col.cellClassName || ''}`}>
-                                                {col.render(row)}
-                                            </td>
-                                        ))}
+                                        {columns.map((col) => {
+                                            const cellClass = typeof col.cellClassName === 'function' ? col.cellClassName(row) : (col.cellClassName || '');
+                                            return (
+                                                <td key={col.key} className={`px-4 py-3 whitespace-nowrap ${cellClass}`}>
+                                                    {col.render(row)}
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                 ))
                             )}

@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Index({ projects = [], pagination = {} }) {
     return (
@@ -13,44 +15,52 @@ export default function Index({ projects = [], pagination = {} }) {
             </div>
 
             <div className="card p-6">
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[640px] text-left text-sm text-slate-700">
-                            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                                <tr>
-                                    <th className="w-20 px-4 py-3">ID</th>
-                                    <th className="px-4 py-3">Project</th>
-                                    <th className="px-4 py-3">Tasks</th>
-                                    <th className="px-4 py-3">Subtasks</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {projects.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">No projects assigned.</td>
-                                    </tr>
-                                ) : projects.map((project) => (
-                                    <tr key={project.id} className="border-t border-slate-100 hover:bg-slate-50/70">
-                                        <td className="px-4 py-3 font-semibold text-slate-900">#{project.id}</td>
-                                        <td className="px-4 py-3">
-                                            <a href={project?.routes?.show} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">{project.name}</a>
-                                        </td>
-                                        <td className="px-4 py-3 text-xs text-slate-600">{project.tasks_count} total / {project.completed_tasks_count} completed</td>
-                                        <td className="px-4 py-3 text-xs text-slate-600">{project.subtasks_count} total / {project.completed_subtasks_count} completed</td>
-                                        <td className="px-4 py-3">
-                                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{project.status_label}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <a href={project?.routes?.show} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">View</a>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <DataTable
+                    rows={projects}
+                    emptyMessage="No projects assigned."
+                    columns={[
+                        { key: 'id', header: 'ID', cellClassName: 'font-semibold text-slate-900', render: (project) => `#${project.id}` },
+                        {
+                            key: 'project',
+                            header: 'Project',
+                            render: (project) => <a href={project?.routes?.show} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">{project.name}</a>,
+                        },
+                        { key: 'tasks', header: 'Tasks', cellClassName: 'text-xs text-slate-600', render: (project) => `${project.tasks_count} total / ${project.completed_tasks_count} completed` },
+                        { key: 'subtasks', header: 'Subtasks', cellClassName: 'text-xs text-slate-600', render: (project) => `${project.subtasks_count} total / ${project.completed_subtasks_count} completed` },
+                        {
+                            key: 'status',
+                            header: 'Status',
+                            render: (project) => <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{project.status_label}</span>,
+                        },
+                        {
+                            key: 'actions',
+                            header: 'Actions',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (project) => <a href={project?.routes?.show} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">View</a>,
+                        },
+                    ]}
+                    renderMobileCard={(project) => (
+                        <MobileCard
+                            title={<a href={project?.routes?.show} data-native="true" className="hover:text-teal-600">{project.name}</a>}
+                            subtitle={`#${project.id}`}
+                            badge={project.status_label}
+                            metrics={[
+                                { label: 'Tasks', value: `${project.completed_tasks_count}/${project.tasks_count}` },
+                                { label: 'Subtasks', value: `${project.completed_subtasks_count}/${project.subtasks_count}` },
+                            ]}
+                            actions={
+                                <a
+                                    href={project?.routes?.show}
+                                    data-native="true"
+                                    className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                >
+                                    View
+                                </a>
+                            }
+                        />
+                    )}
+                />
 
                 {pagination?.last_page > 1 ? (
                     <div className="mt-4 flex items-center justify-between text-xs">

@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DataTable from '../../../../Components/Table/DataTable';
+import MobileCard from '../../../../Components/Mobile/MobileCard';
 
 export default function Index({ pageTitle = 'Leave Types', types = [], pagination = {}, editingType = null, routes = {} }) {
     const { props } = usePage();
@@ -48,45 +50,56 @@ export default function Index({ pageTitle = 'Leave Types', types = [], paginatio
                 </div>
 
                 <div className="card p-6 lg:col-span-3">
-                    <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white/80">
-                        <table className="min-w-full text-sm text-slate-700">
-                            <thead>
-                                <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                                    <th className="px-3 py-2">Name</th>
-                                    <th className="px-3 py-2">Code</th>
-                                    <th className="px-3 py-2">Paid</th>
-                                    <th className="px-3 py-2">Default</th>
-                                    <th className="px-3 py-2 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {types.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-3 py-4 text-center text-slate-500">No leave types yet.</td>
-                                    </tr>
-                                ) : (
-                                    types.map((type) => (
-                                        <tr key={type.id} className="border-b border-slate-100">
-                                            <td className="px-3 py-2">{type.name}</td>
-                                            <td className="px-3 py-2">{type.code}</td>
-                                            <td className="px-3 py-2">{type.is_paid ? 'Paid' : 'Unpaid'}</td>
-                                            <td className="px-3 py-2">{type.default_allocation ?? 'inf'}</td>
-                                            <td className="px-3 py-2">
-                                                <div className="flex items-center justify-end gap-3">
-                                                    <a href={type.routes?.edit} data-native="true" className="text-xs font-semibold text-slate-700 hover:text-slate-900">Edit</a>
-                                                    <form method="POST" action={type.routes?.destroy} data-native="true" onSubmit={(e) => !window.confirm(`Delete leave type ${type.name}?`) && e.preventDefault()}>
-                                                        <input type="hidden" name="_token" value={csrf} />
-                                                        <input type="hidden" name="_method" value="DELETE" />
-                                                        <button type="submit" className="text-xs font-semibold text-rose-600 hover:text-rose-500">Delete</button>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable
+                        rows={types}
+                        emptyMessage="No leave types yet."
+                        columns={[
+                            { key: 'name', header: 'Name', render: (type) => type.name },
+                            { key: 'code', header: 'Code', render: (type) => type.code },
+                            { key: 'paid', header: 'Paid', render: (type) => (type.is_paid ? 'Paid' : 'Unpaid') },
+                            { key: 'default', header: 'Default', render: (type) => type.default_allocation ?? 'inf' },
+                            {
+                                key: 'actions',
+                                header: 'Actions',
+                                headerClassName: 'text-right',
+                                render: (type) => (
+                                    <div className="flex items-center justify-end gap-3">
+                                        <a href={type.routes?.edit} data-native="true" className="text-xs font-semibold text-slate-700 hover:text-slate-900">Edit</a>
+                                        <form method="POST" action={type.routes?.destroy} data-native="true" onSubmit={(e) => !window.confirm(`Delete leave type ${type.name}?`) && e.preventDefault()}>
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <input type="hidden" name="_method" value="DELETE" />
+                                            <button type="submit" className="text-xs font-semibold text-rose-600 hover:text-rose-500">Delete</button>
+                                        </form>
+                                    </div>
+                                ),
+                            },
+                        ]}
+                        renderMobileCard={(type) => (
+                            <MobileCard
+                                title={type.name}
+                                subtitle={type.code}
+                                badge={type.is_paid ? 'Paid' : 'Unpaid'}
+                                badgeColor={type.is_paid ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}
+                                metrics={[{ label: 'Default Days', value: type.default_allocation ?? 'inf' }]}
+                                actions={
+                                    <>
+                                        <a
+                                            href={type.routes?.edit}
+                                            data-native="true"
+                                            className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                        >
+                                            Edit
+                                        </a>
+                                        <form method="POST" action={type.routes?.destroy} data-native="true" onSubmit={(e) => !window.confirm(`Delete leave type ${type.name}?`) && e.preventDefault()}>
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <input type="hidden" name="_method" value="DELETE" />
+                                            <button type="submit" className="py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition active:scale-95">Delete</button>
+                                        </form>
+                                    </>
+                                }
+                            />
+                        )}
+                    />
 
                     {pagination?.has_pages ? (
                         <div className="mt-4 flex items-center justify-end gap-2 text-sm">

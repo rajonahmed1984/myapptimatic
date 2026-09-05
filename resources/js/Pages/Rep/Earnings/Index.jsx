@@ -1,6 +1,16 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
+
+const statusClass = (label) => {
+    const key = String(label || '').toLowerCase();
+    if (key.includes('paid')) return 'bg-emerald-100 text-emerald-700';
+    if (key.includes('pending')) return 'bg-amber-100 text-amber-700';
+    if (key.includes('cancel') || key.includes('reject')) return 'bg-rose-100 text-rose-700';
+    return 'bg-slate-100 text-slate-600';
+};
 
 export default function Index({ earnings = [], status = '', status_options = [], assigned_projects = [], pagination = {}, routes = {} }) {
     const filterFormRef = React.useRef(null);
@@ -61,35 +71,34 @@ export default function Index({ earnings = [], status = '', status_options = [],
                 ) : null}
 
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
-                    <div className="mt-3 overflow-x-auto">
-                        <table className="min-w-full text-left text-sm">
-                            <thead>
-                                <tr className="text-xs uppercase text-slate-500">
-                                    <th className="px-2 py-2">ID</th>
-                                    <th className="px-2 py-2">Source</th>
-                                    <th className="px-2 py-2">Customer</th>
-                                    <th className="px-2 py-2">Paid amount</th>
-                                    <th className="px-2 py-2">Commission</th>
-                                    <th className="px-2 py-2">Status</th>
-                                    <th className="px-2 py-2">Earned</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {earnings.length === 0 ? (
-                                    <tr><td colSpan={7} className="px-2 py-3 text-slate-500">No earnings found.</td></tr>
-                                ) : earnings.map((earning) => (
-                                    <tr key={earning.id} className="border-t border-slate-200">
-                                        <td className="px-2 py-2">#{earning.id}</td>
-                                        <td className="px-2 py-2">{earning.source_type}{earning.source_label ? ` (${earning.source_label})` : ''}</td>
-                                        <td className="px-2 py-2">{earning.customer_name}</td>
-                                        <td className="px-2 py-2">{Number(earning.paid_amount || 0).toFixed(2)} {earning.currency}</td>
-                                        <td className="px-2 py-2">{Number(earning.commission_amount || 0).toFixed(2)} {earning.currency}</td>
-                                        <td className="px-2 py-2">{earning.status_label}</td>
-                                        <td className="px-2 py-2">{earning.earned_at_display}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="mt-3">
+                        <DataTable
+                            rows={earnings}
+                            emptyMessage="No earnings found."
+                            columns={[
+                                { key: 'id', header: 'ID', render: (earning) => `#${earning.id}` },
+                                { key: 'source', header: 'Source', render: (earning) => `${earning.source_type}${earning.source_label ? ` (${earning.source_label})` : ''}` },
+                                { key: 'customer', header: 'Customer', render: (earning) => earning.customer_name },
+                                { key: 'paid_amount', header: 'Paid amount', render: (earning) => `${Number(earning.paid_amount || 0).toFixed(2)} ${earning.currency}` },
+                                { key: 'commission', header: 'Commission', render: (earning) => `${Number(earning.commission_amount || 0).toFixed(2)} ${earning.currency}` },
+                                { key: 'status', header: 'Status', render: (earning) => earning.status_label },
+                                { key: 'earned', header: 'Earned', render: (earning) => earning.earned_at_display },
+                            ]}
+                            renderMobileCard={(earning) => (
+                                <MobileCard
+                                    title={`${earning.source_type}${earning.source_label ? ` (${earning.source_label})` : ''}`}
+                                    subtitle={earning.customer_name}
+                                    badge={earning.status_label}
+                                    badgeColor={statusClass(earning.status_label)}
+                                    metrics={[
+                                        { label: 'Commission', value: `${Number(earning.commission_amount || 0).toFixed(2)} ${earning.currency}` },
+                                        { label: 'Paid amount', value: `${Number(earning.paid_amount || 0).toFixed(2)} ${earning.currency}` },
+                                    ]}
+                                >
+                                    <div className="text-xs text-slate-500">Earned: {earning.earned_at_display}</div>
+                                </MobileCard>
+                            )}
+                        />
                     </div>
 
                     {pagination?.last_page > 1 ? (

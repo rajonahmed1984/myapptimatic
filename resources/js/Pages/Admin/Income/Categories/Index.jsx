@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import DataTable from '../../../../Components/Table/DataTable';
+import MobileCard from '../../../../Components/Mobile/MobileCard';
 
 const statusClass = (status) => {
     if (status === 'active') {
@@ -111,61 +113,74 @@ export default function Index({
                             {errors.category}
                         </div>
                     ) : null}
-                    <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80">
-                        <table className="min-w-full text-sm text-slate-700">
-                            <thead>
-                                <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                    <th className="px-3 py-2">Name</th>
-                                    <th className="px-3 py-2">Status</th>
-                                    <th className="px-3 py-2">Description</th>
-                                    <th className="px-3 py-2 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {categories.length > 0 ? (
-                                    categories.map((category) => (
-                                        <tr key={category.id} className="border-b border-slate-100">
-                                            <td className="px-3 py-2 font-semibold text-slate-900">{category.name}</td>
-                                            <td className="px-3 py-2">
-                                                <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusClass(category.status)}`}>
-                                                    {category.status_label}
-                                                </span>
-                                            </td>
-                                            <td className="px-3 py-2 text-slate-500">{category.description}</td>
-                                            <td className="px-3 py-2 text-right">
-                                                <div className="flex justify-end gap-3 text-xs font-semibold">
-                                                    <a href={category?.routes?.edit} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                                        Edit
-                                                    </a>
-                                                    <form
-                                                        method="POST"
-                                                        action={category?.routes?.destroy}
-                                                        data-native="true"
-                                                        data-delete-confirm
-                                                        data-confirm-name={category.name}
-                                                        data-confirm-title={`Delete category ${category.name}?`}
-                                                        data-confirm-description="This will permanently delete the income category."
-                                                    >
-                                                        <input type="hidden" name="_token" value={csrfToken} />
-                                                        <input type="hidden" name="_method" value="DELETE" />
-                                                        <button type="submit" className="text-rose-600 hover:text-rose-500">
-                                                            Delete
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={4} className="px-3 py-4 text-center text-slate-500">
-                                            No categories yet.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable
+                        rows={categories}
+                        emptyMessage="No categories yet."
+                        columns={[
+                            { key: 'name', header: 'Name', cellClassName: 'font-semibold text-slate-900', render: (category) => category.name },
+                            {
+                                key: 'status',
+                                header: 'Status',
+                                render: (category) => <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusClass(category.status)}`}>{category.status_label}</span>,
+                            },
+                            { key: 'description', header: 'Description', cellClassName: 'text-slate-500', render: (category) => category.description },
+                            {
+                                key: 'actions',
+                                header: 'Actions',
+                                headerClassName: 'text-right',
+                                render: (category) => (
+                                    <div className="flex justify-end gap-3 text-xs font-semibold">
+                                        <a href={category?.routes?.edit} data-native="true" className="text-teal-600 hover:text-teal-500">Edit</a>
+                                        <form
+                                            method="POST"
+                                            action={category?.routes?.destroy}
+                                            data-native="true"
+                                            data-delete-confirm
+                                            data-confirm-name={category.name}
+                                            data-confirm-title={`Delete category ${category.name}?`}
+                                            data-confirm-description="This will permanently delete the income category."
+                                        >
+                                            <input type="hidden" name="_token" value={csrfToken} />
+                                            <input type="hidden" name="_method" value="DELETE" />
+                                            <button type="submit" className="text-rose-600 hover:text-rose-500">Delete</button>
+                                        </form>
+                                    </div>
+                                ),
+                            },
+                        ]}
+                        renderMobileCard={(category) => (
+                            <MobileCard
+                                title={category.name}
+                                subtitle={category.description}
+                                badge={category.status_label}
+                                badgeColor={statusClass(category.status)}
+                                actions={
+                                    <>
+                                        <a
+                                            href={category?.routes?.edit}
+                                            data-native="true"
+                                            className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                        >
+                                            Edit
+                                        </a>
+                                        <form
+                                            method="POST"
+                                            action={category?.routes?.destroy}
+                                            data-native="true"
+                                            data-delete-confirm
+                                            data-confirm-name={category.name}
+                                            data-confirm-title={`Delete category ${category.name}?`}
+                                            data-confirm-description="This will permanently delete the income category."
+                                        >
+                                            <input type="hidden" name="_token" value={csrfToken} />
+                                            <input type="hidden" name="_method" value="DELETE" />
+                                            <button type="submit" className="py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition active:scale-95">Delete</button>
+                                        </form>
+                                    </>
+                                }
+                            />
+                        )}
+                    />
                 </div>
             </div>
         </>

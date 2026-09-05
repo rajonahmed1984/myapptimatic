@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const xTransferStatusClass = (status) => {
     if (status === 'pending') return 'bg-amber-100 text-amber-700';
@@ -21,40 +23,34 @@ export default function Index({ pageTitle = 'Incoming Transfers', transfers = []
                 </div>
             </div>
 
-            <div className="card overflow-x-auto p-0">
-                <table className="w-full min-w-[700px] text-left text-sm">
-                    <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
-                        <tr>
-                            <th className="px-4 py-3">Item</th>
-                            <th className="px-4 py-3">From</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Requested</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {transfers.length === 0 ? (
-                            <tr>
-                                <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                                    No incoming transfers.
-                                </td>
-                            </tr>
-                        ) : (
-                            transfers.map((transfer) => (
-                                <tr key={transfer.id} className="border-b border-slate-100">
-                                    <td className="px-4 py-3 text-slate-800">{transfer.project_name}</td>
-                                    <td className="px-4 py-3 text-slate-600">{transfer.from_customer_name}</td>
-                                    <td className="px-4 py-3">
-                                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${xTransferStatusClass(transfer.status)}`}>
-                                            {transfer.status_label}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500">{transfer.created_at}</td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <DataTable
+                rows={transfers}
+                emptyMessage="No incoming transfers."
+                columns={[
+                    { key: 'item', header: 'Item', cellClassName: 'text-slate-800', render: (transfer) => transfer.project_name },
+                    { key: 'from', header: 'From', cellClassName: 'text-slate-600', render: (transfer) => transfer.from_customer_name },
+                    {
+                        key: 'status',
+                        header: 'Status',
+                        render: (transfer) => (
+                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${xTransferStatusClass(transfer.status)}`}>
+                                {transfer.status_label}
+                            </span>
+                        ),
+                    },
+                    { key: 'requested', header: 'Requested', cellClassName: 'text-slate-500', render: (transfer) => transfer.created_at },
+                ]}
+                renderMobileCard={(transfer) => (
+                    <MobileCard
+                        title={transfer.project_name}
+                        subtitle={`From: ${transfer.from_customer_name}`}
+                        badge={transfer.status_label}
+                        badgeColor={xTransferStatusClass(transfer.status)}
+                    >
+                        <div className="text-xs text-slate-500">Requested: {transfer.created_at}</div>
+                    </MobileCard>
+                )}
+            />
         </>
     );
 }

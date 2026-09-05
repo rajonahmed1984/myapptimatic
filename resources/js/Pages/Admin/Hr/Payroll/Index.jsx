@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import DataTable from '../../../../Components/Table/DataTable';
+import MobileCard from '../../../../Components/Mobile/MobileCard';
 
 export default function Index({
     pageTitle = 'Payroll',
@@ -76,61 +78,110 @@ export default function Index({
                     </form>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm text-slate-700">
-                        <thead>
-                            <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                                <th className="py-2 px-3">ID</th>
-                                <th className="py-2 px-3">Period</th>
-                                <th className="py-2 px-3">Dates</th>
-                                <th className="py-2 px-3">Status</th>
-                                <th className="py-2 px-3">Items</th>
-                                <th className="py-2 px-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {periods.length === 0 ? (
-                                <tr><td colSpan={6} className="py-3 px-3 text-center text-slate-500">No payroll periods.</td></tr>
-                            ) : periods.map((period) => (
-                                <tr key={period.id} className="border-b border-slate-100">
-                                    <td className="py-2 px-3">{period.id}</td>
-                                    <td className="py-2 px-3">{period.period_key}</td>
-                                    <td className="py-2 px-3">{period.start_date} - {period.end_date}</td>
-                                    <td className="py-2 px-3">
-                                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${period.status === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                            {period.status.charAt(0).toUpperCase() + period.status.slice(1)}
-                                        </span>
-                                    </td>
-                                    <td className="py-2 px-3">
-                                        <div>Total: {period.items_count}</div>
-                                        <div className="text-xs text-slate-500">To Pay: {period.approved_items_count} | Paid: {period.paid_items_count}</div>
-                                    </td>
-                                    <td className="py-2 px-3 text-right space-x-2">
-                                        <a href={period.routes.show} data-native="true" className="text-xs text-slate-700 hover:underline">View</a>
-                                        <a href={period.routes.export} data-native="true" className="text-xs text-slate-700 hover:underline">Export CSV</a>
-                                        {period.is_draft ? (
-                                            <>
-                                                <a href={period.routes.edit} data-native="true" className="text-xs text-slate-700 hover:underline">Edit</a>
-                                                <form method="POST" action={period.routes.destroy} data-native="true" className="inline">
-                                                    <input type="hidden" name="_token" value={token} />
-                                                    <input type="hidden" name="_method" value="DELETE" />
-                                                    <button type="submit" className="text-xs text-rose-700 hover:underline">Delete</button>
-                                                </form>
-                                            </>
-                                        ) : null}
-                                        {period.is_draft && period.month_closed ? (
-                                            <form method="POST" action={period.routes.finalize} data-native="true" className="inline">
+                <DataTable
+                    rows={periods}
+                    emptyMessage="No payroll periods."
+                    columns={[
+                        { key: 'id', header: 'ID', render: (period) => period.id },
+                        { key: 'period', header: 'Period', render: (period) => period.period_key },
+                        { key: 'dates', header: 'Dates', render: (period) => `${period.start_date} - ${period.end_date}` },
+                        {
+                            key: 'status',
+                            header: 'Status',
+                            render: (period) => (
+                                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${period.status === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                    {period.status.charAt(0).toUpperCase() + period.status.slice(1)}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'items',
+                            header: 'Items',
+                            render: (period) => (
+                                <>
+                                    <div>Total: {period.items_count}</div>
+                                    <div className="text-xs text-slate-500">To Pay: {period.approved_items_count} | Paid: {period.paid_items_count}</div>
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'actions',
+                            header: 'Actions',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right space-x-2',
+                            render: (period) => (
+                                <>
+                                    <a href={period.routes.show} data-native="true" className="text-xs text-slate-700 hover:underline">View</a>{' '}
+                                    <a href={period.routes.export} data-native="true" className="text-xs text-slate-700 hover:underline">Export CSV</a>
+                                    {period.is_draft ? (
+                                        <>
+                                            {' '}<a href={period.routes.edit} data-native="true" className="text-xs text-slate-700 hover:underline">Edit</a>
+                                            <form method="POST" action={period.routes.destroy} data-native="true" className="inline">
                                                 <input type="hidden" name="_token" value={token} />
-                                                <button className="text-xs text-emerald-700 hover:underline">Finalize</button>
+                                                <input type="hidden" name="_method" value="DELETE" />
+                                                <button type="submit" className="text-xs text-rose-700 hover:underline">Delete</button>
                                             </form>
-                                        ) : null}
-                                        {period.is_draft && !period.month_closed ? <span className="text-xs text-amber-700">Month not closed</span> : null}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                        </>
+                                    ) : null}
+                                    {period.is_draft && period.month_closed ? (
+                                        <form method="POST" action={period.routes.finalize} data-native="true" className="inline">
+                                            <input type="hidden" name="_token" value={token} />
+                                            <button className="text-xs text-emerald-700 hover:underline">Finalize</button>
+                                        </form>
+                                    ) : null}
+                                    {period.is_draft && !period.month_closed ? <span className="text-xs text-amber-700">Month not closed</span> : null}
+                                </>
+                            ),
+                        },
+                    ]}
+                    renderMobileCard={(period) => (
+                        <MobileCard
+                            title={period.period_key}
+                            subtitle={`${period.start_date} - ${period.end_date}`}
+                            badge={period.status.charAt(0).toUpperCase() + period.status.slice(1)}
+                            badgeColor={period.status === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}
+                            metrics={[
+                                { label: 'Total Items', value: period.items_count },
+                                { label: 'To Pay / Paid', value: `${period.approved_items_count} / ${period.paid_items_count}` },
+                            ]}
+                            actions={
+                                <div className="flex flex-wrap gap-2 w-full">
+                                    <a
+                                        href={period.routes.show}
+                                        data-native="true"
+                                        className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                    >
+                                        View
+                                    </a>
+                                    <a
+                                        href={period.routes.export}
+                                        data-native="true"
+                                        className="flex-1 text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                    >
+                                        Export CSV
+                                    </a>
+                                    {period.is_draft ? (
+                                        <a
+                                            href={period.routes.edit}
+                                            data-native="true"
+                                            className="flex-1 text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                        >
+                                            Edit
+                                        </a>
+                                    ) : null}
+                                    {period.is_draft && period.month_closed ? (
+                                        <form method="POST" action={period.routes.finalize} data-native="true" className="flex-1">
+                                            <input type="hidden" name="_token" value={token} />
+                                            <button className="w-full py-2 px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition active:scale-95">Finalize</button>
+                                        </form>
+                                    ) : null}
+                                </div>
+                            }
+                        >
+                            {period.is_draft && !period.month_closed ? <div className="text-xs text-amber-700">Month not closed</div> : null}
+                        </MobileCard>
+                    )}
+                />
 
                 {pagination?.has_pages ? (
                     <div className="mt-4 flex items-center justify-between gap-2 text-sm">

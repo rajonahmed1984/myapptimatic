@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusClass = (status) => {
     if (status === 'approved') {
@@ -83,82 +85,103 @@ export default function Index({
                 {payment_proofs.length === 0 ? (
                     <div className="card p-6 text-sm text-slate-500">No manual payment submissions found.</div>
                 ) : (
-                    <div className="card overflow-x-auto">
-                        <table className="w-full min-w-[900px] text-left text-sm">
-                            <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
-                                <tr>
-                                    <th className="px-4 py-3">Invoice</th>
-                                    <th className="px-4 py-3">Customer</th>
-                                    <th className="px-4 py-3">Gateway</th>
-                                    <th className="px-4 py-3">Amount</th>
-                                    <th className="px-4 py-3">Reference</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3">Submitted</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {payment_proofs.map((proof) => (
-                                    <tr key={proof.id} className="border-b border-slate-100">
-                                        <td className="px-4 py-3 font-medium text-slate-900">
-                                            {proof.invoice_url ? (
-                                                <a href={proof.invoice_url} data-native="true" className="hover:text-teal-600">
-                                                    {proof.invoice_number}
+                    <div className="card overflow-hidden">
+                        <DataTable
+                            rows={payment_proofs}
+                            columns={[
+                                {
+                                    key: 'invoice',
+                                    header: 'Invoice',
+                                    cellClassName: 'font-medium text-slate-900',
+                                    render: (proof) => (
+                                        proof.invoice_url ? (
+                                            <a href={proof.invoice_url} data-native="true" className="hover:text-teal-600">{proof.invoice_number}</a>
+                                        ) : <span>{proof.invoice_number}</span>
+                                    ),
+                                },
+                                { key: 'customer', header: 'Customer', cellClassName: 'text-slate-600', render: (proof) => proof.customer_name },
+                                { key: 'gateway', header: 'Gateway', cellClassName: 'text-slate-600', render: (proof) => proof.gateway_name },
+                                { key: 'amount', header: 'Amount', cellClassName: 'text-slate-700', render: (proof) => proof.amount_display },
+                                { key: 'reference', header: 'Reference', cellClassName: 'text-slate-500', render: (proof) => proof.reference },
+                                {
+                                    key: 'status',
+                                    header: 'Status',
+                                    render: (proof) => <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(proof.status)}`}>{proof.status_label}</span>,
+                                },
+                                { key: 'submitted', header: 'Submitted', cellClassName: 'text-slate-500', render: (proof) => proof.submitted_at_display },
+                                {
+                                    key: 'actions',
+                                    header: 'Actions',
+                                    headerClassName: 'text-right',
+                                    cellClassName: 'text-right',
+                                    render: (proof) => (
+                                        <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+                                            {proof.has_receipt ? (
+                                                <a href={proof?.routes?.receipt} target="_blank" rel="noopener" className="rounded-full border border-slate-300 px-3 py-1 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">View receipt</a>
+                                            ) : null}
+                                            {proof.can_review ? (
+                                                <>
+                                                    <form method="POST" action={proof?.routes?.approve} data-native="true">
+                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                        <button type="submit" className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">Approve</button>
+                                                    </form>
+                                                    <form method="POST" action={proof?.routes?.reject} data-native="true">
+                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                        <button type="submit" className="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300">Reject</button>
+                                                    </form>
+                                                </>
+                                            ) : proof.reviewer_name ? (
+                                                <span className="text-xs text-slate-400">Reviewed by {proof.reviewer_name}</span>
+                                            ) : null}
+                                        </div>
+                                    ),
+                                },
+                            ]}
+                            renderMobileCard={(proof) => (
+                                <MobileCard
+                                    title={proof.invoice_url ? (
+                                        <a href={proof.invoice_url} data-native="true" className="hover:text-teal-600">{proof.invoice_number}</a>
+                                    ) : proof.invoice_number}
+                                    subtitle={`${proof.customer_name} · ${proof.gateway_name}`}
+                                    badge={proof.status_label}
+                                    badgeColor={statusClass(proof.status)}
+                                    metrics={[
+                                        { label: 'Amount', value: proof.amount_display },
+                                        { label: 'Submitted', value: proof.submitted_at_display },
+                                    ]}
+                                    actions={
+                                        <div className="flex flex-wrap gap-2 w-full">
+                                            {proof.has_receipt ? (
+                                                <a
+                                                    href={proof?.routes?.receipt}
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    className="flex-1 text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                                >
+                                                    View receipt
                                                 </a>
-                                            ) : (
-                                                <span>{proof.invoice_number}</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-600">{proof.customer_name}</td>
-                                        <td className="px-4 py-3 text-slate-600">{proof.gateway_name}</td>
-                                        <td className="px-4 py-3 text-slate-700">{proof.amount_display}</td>
-                                        <td className="px-4 py-3 text-slate-500">{proof.reference}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(proof.status)}`}>
-                                                {proof.status_label}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-500">{proof.submitted_at_display}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
-                                                {proof.has_receipt ? (
-                                                    <a
-                                                        href={proof?.routes?.receipt}
-                                                        target="_blank"
-                                                        rel="noopener"
-                                                        className="rounded-full border border-slate-300 px-3 py-1 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
-                                                    >
-                                                        View receipt
-                                                    </a>
-                                                ) : null}
-
-                                                {proof.can_review ? (
-                                                    <>
-                                                        <form method="POST" action={proof?.routes?.approve} data-native="true">
-                                                            <input type="hidden" name="_token" value={csrfToken} />
-                                                            <button type="submit" className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">
-                                                                Approve
-                                                            </button>
-                                                        </form>
-                                                        <form method="POST" action={proof?.routes?.reject} data-native="true">
-                                                            <input type="hidden" name="_token" value={csrfToken} />
-                                                            <button
-                                                                type="submit"
-                                                                className="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:border-rose-300"
-                                                            >
-                                                                Reject
-                                                            </button>
-                                                        </form>
-                                                    </>
-                                                ) : proof.reviewer_name ? (
-                                                    <span className="text-xs text-slate-400">Reviewed by {proof.reviewer_name}</span>
-                                                ) : null}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                            ) : null}
+                                            {proof.can_review ? (
+                                                <>
+                                                    <form method="POST" action={proof?.routes?.approve} data-native="true" className="flex-1">
+                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                        <button type="submit" className="w-full py-2 px-3 rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition active:scale-95">Approve</button>
+                                                    </form>
+                                                    <form method="POST" action={proof?.routes?.reject} data-native="true" className="flex-1">
+                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                        <button type="submit" className="w-full py-2 px-3 rounded-xl border border-rose-200 bg-rose-50 text-xs font-bold text-rose-600 hover:bg-rose-100 transition active:scale-95">Reject</button>
+                                                    </form>
+                                                </>
+                                            ) : proof.reviewer_name ? (
+                                                <span className="text-xs text-slate-400">Reviewed by {proof.reviewer_name}</span>
+                                            ) : null}
+                                        </div>
+                                    }
+                                >
+                                    {proof.reference ? <div className="text-xs text-slate-500">Ref: {proof.reference}</div> : null}
+                                </MobileCard>
+                            )}
+                        />
                     </div>
                 )}
             </div>

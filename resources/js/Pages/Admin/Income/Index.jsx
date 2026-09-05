@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Index({
     pageTitle = 'Income list',
@@ -62,63 +64,75 @@ export default function Index({
 
             <div id="incomeTable">
                 <div className="overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80 px-3 py-3">
-                            <table className="min-w-full text-left text-sm text-slate-700">
-                                <thead>
-                                    <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                        <th className="px-3 py-2 whitespace-nowrap">ID</th>
-                                        <th className="px-3 py-2 whitespace-nowrap">Date</th>
-                                        <th className="px-3 py-2">Title & Ref</th>
-                                        <th className="px-3 py-2">Category</th>
-                                        <th className="px-3 py-2">Customer / Project</th>
-                                        <th className="px-3 py-2">Amount</th>
-                                        <th className="px-3 py-2">Attachment</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {incomes.length > 0 ? (
-                                        incomes.map((income) => (
-                                            <tr key={income.key || `${income.title}-${income.income_date_display}-${income.amount_display}`} className="border-t border-slate-100">
-                                                <td className="px-3 py-2 whitespace-nowrap font-semibold text-slate-700">
-                                                    {income.id_display}
-                                                </td>
-                                                <td className="px-3 py-2 whitespace-nowrap">{income.income_date_display}</td>
-                                                <td className="px-3 py-2">
-                                                    <div className="font-semibold text-slate-900">{income.title}</div>
-                                                    {income.invoice_number && income.source_label === 'System' ? (
-                                                        <div className="text-xs font-semibold text-teal-600">
-                                                            Invoice #{income.invoice_number}
-                                                        </div>
-                                                    ) : null}
-                                                </td>
-                                                <td className="px-3 py-2">{income.category_name}</td>
-                                                <td className="px-3 py-2">
-                                                    <div className="font-medium text-slate-800">{income.customer_name}</div>
-                                                    <div className="text-xs text-slate-500">{income.project_name}</div>
-                                                </td>
-                                                <td className="px-3 py-2 font-semibold text-slate-900">{income.amount_display}</td>
-                                                <td className="px-3 py-2">
-                                                    {income.attachment_url ? (
-                                                        <a href={income.attachment_url} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">
-                                                            View
-                                                        </a>
-                                                    ) : (
-                                                        <span className="text-xs text-slate-400">--</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={7} className="px-3 py-4 text-center text-slate-500">
-                                                No income found.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div className="mt-4">
+                        <DataTable
+                            rows={incomes}
+                            rowKey={(income) => income.key || `${income.title}-${income.income_date_display}-${income.amount_display}`}
+                            emptyMessage="No income found."
+                            columns={[
+                                { key: 'id', header: 'ID', cellClassName: 'font-semibold text-slate-700', render: (income) => income.id_display },
+                                { key: 'date', header: 'Date', render: (income) => income.income_date_display },
+                                {
+                                    key: 'title',
+                                    header: 'Title & Ref',
+                                    render: (income) => (
+                                        <>
+                                            <div className="font-semibold text-slate-900">{income.title}</div>
+                                            {income.invoice_number && income.source_label === 'System' ? (
+                                                <div className="text-xs font-semibold text-teal-600">Invoice #{income.invoice_number}</div>
+                                            ) : null}
+                                        </>
+                                    ),
+                                },
+                                { key: 'category', header: 'Category', render: (income) => income.category_name },
+                                {
+                                    key: 'customer',
+                                    header: 'Customer / Project',
+                                    render: (income) => (
+                                        <>
+                                            <div className="font-medium text-slate-800">{income.customer_name}</div>
+                                            <div className="text-xs text-slate-500">{income.project_name}</div>
+                                        </>
+                                    ),
+                                },
+                                { key: 'amount', header: 'Amount', cellClassName: 'font-semibold text-slate-900', render: (income) => income.amount_display },
+                                {
+                                    key: 'attachment',
+                                    header: 'Attachment',
+                                    render: (income) => (
+                                        income.attachment_url ? (
+                                            <a href={income.attachment_url} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">View</a>
+                                        ) : <span className="text-xs text-slate-400">--</span>
+                                    ),
+                                },
+                            ]}
+                            renderMobileCard={(income) => (
+                                <MobileCard
+                                    title={income.title}
+                                    subtitle={`${income.category_name}${income.customer_name ? ` · ${income.customer_name}` : ''}`}
+                                    metrics={[
+                                        { label: 'Amount', value: income.amount_display },
+                                        { label: 'Date', value: income.income_date_display },
+                                    ]}
+                                    actions={
+                                        income.attachment_url ? (
+                                            <a
+                                                href={income.attachment_url}
+                                                data-native="true"
+                                                className="flex-1 text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                            >
+                                                View Attachment
+                                            </a>
+                                        ) : null
+                                    }
+                                >
+                                    {income.invoice_number && income.source_label === 'System' ? (
+                                        <div className="text-xs font-semibold text-teal-600">Invoice #{income.invoice_number}</div>
+                                    ) : null}
+                                    {income.project_name ? <div className="text-xs text-slate-500">Project: {income.project_name}</div> : null}
+                                </MobileCard>
+                            )}
+                        />
 
                         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
                             {pagination_links.map((link, index) =>

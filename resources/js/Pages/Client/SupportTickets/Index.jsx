@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Index({ tickets = [], routes = {} }) {
     return (
@@ -17,50 +19,58 @@ export default function Index({ tickets = [], routes = {} }) {
                 </a>
             </div>
 
-            <div className="card overflow-hidden">
-                <table className="w-full text-left text-sm">
-                    <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
-                        <tr>
-                            <th className="px-4 py-3">Ticket</th>
-                            <th className="px-4 py-3">Subject</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Last Reply</th>
-                            <th className="px-4 py-3" />
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {tickets.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
-                                    No tickets yet.
-                                </td>
-                            </tr>
-                        ) : (
-                            tickets.map((ticket) => (
-                                <tr key={ticket.id} className="border-b border-slate-100">
-                                    <td className="px-4 py-3 font-medium text-slate-900">
-                                        <a href={ticket.routes.show} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                            {ticket.number}
-                                        </a>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-700">{ticket.subject}</td>
-                                    <td className="px-4 py-3">
-                                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ticket.status_classes}`}>{ticket.status_label}</span>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500">
-                                        <DateTimeText value={ticket.last_reply_at_display} mode="datetime" />
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <a href={ticket.routes.show} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                            View
-                                        </a>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <DataTable
+                rows={tickets}
+                emptyMessage="No tickets yet."
+                columns={[
+                    {
+                        key: 'ticket',
+                        header: 'Ticket',
+                        cellClassName: 'font-medium text-slate-900',
+                        render: (ticket) => <a href={ticket.routes.show} data-native="true" className="text-teal-600 hover:text-teal-500">{ticket.number}</a>,
+                    },
+                    { key: 'subject', header: 'Subject', cellClassName: 'text-slate-700', render: (ticket) => ticket.subject },
+                    {
+                        key: 'status',
+                        header: 'Status',
+                        render: (ticket) => <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ticket.status_classes}`}>{ticket.status_label}</span>,
+                    },
+                    {
+                        key: 'last_reply',
+                        header: 'Last Reply',
+                        cellClassName: 'text-slate-500',
+                        render: (ticket) => <DateTimeText value={ticket.last_reply_at_display} mode="datetime" />,
+                    },
+                    {
+                        key: 'actions',
+                        header: '',
+                        headerClassName: 'text-right',
+                        cellClassName: 'text-right',
+                        render: (ticket) => <a href={ticket.routes.show} data-native="true" className="text-teal-600 hover:text-teal-500">View</a>,
+                    },
+                ]}
+                renderMobileCard={(ticket) => (
+                    <MobileCard
+                        title={ticket.subject}
+                        subtitle={ticket.number}
+                        badge={ticket.status_label}
+                        badgeColor={ticket.status_classes}
+                        actions={
+                            <a
+                                href={ticket.routes.show}
+                                data-native="true"
+                                className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                            >
+                                View
+                            </a>
+                        }
+                    >
+                        <div className="text-xs text-slate-500">
+                            Last reply: <DateTimeText value={ticket.last_reply_at_display} mode="datetime" />
+                        </div>
+                    </MobileCard>
+                )}
+            />
         </>
     );
 }

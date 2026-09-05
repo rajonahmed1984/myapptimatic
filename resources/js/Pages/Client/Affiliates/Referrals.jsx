@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Referrals({ referrals = [], pagination = {}, routes = {} }) {
     return (
@@ -17,26 +19,22 @@ export default function Referrals({ referrals = [], pagination = {}, routes = {}
                     </a>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                        <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
-                            <tr>
-                                <th className="px-3 py-2">Customer</th>
-                                <th className="px-3 py-2">Status</th>
-                                <th className="px-3 py-2">Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {referrals.map((referral) => (
-                                <tr key={referral.id} className="border-t border-slate-100">
-                                    <td className="px-3 py-2">{referral.customer_name}</td>
-                                    <td className="px-3 py-2">{referral.status_label}</td>
-                                    <td className="px-3 py-2">{referral.created_at_display}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <DataTable
+                    rows={referrals}
+                    columns={[
+                        { key: 'customer', header: 'Customer', render: (referral) => referral.customer_name },
+                        { key: 'status', header: 'Status', render: (referral) => referral.status_label },
+                        { key: 'date', header: 'Date', render: (referral) => referral.created_at_display },
+                    ]}
+                    renderMobileCard={(referral) => (
+                        <MobileCard
+                            title={referral.customer_name}
+                            badge={referral.status_label}
+                        >
+                            <div className="text-xs text-slate-500">Referred: {referral.created_at_display}</div>
+                        </MobileCard>
+                    )}
+                />
 
                 {pagination.last_page > 1 ? (
                     <div className="mt-4 flex items-center gap-2 text-xs">

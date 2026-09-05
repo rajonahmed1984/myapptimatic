@@ -1,5 +1,15 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
+
+const statusClass = (label) => {
+    const key = String(label || '').toLowerCase();
+    if (key.includes('paid')) return 'bg-emerald-100 text-emerald-700';
+    if (key.includes('pending')) return 'bg-amber-100 text-amber-700';
+    if (key.includes('cancel') || key.includes('reject')) return 'bg-rose-100 text-rose-700';
+    return 'bg-slate-100 text-slate-600';
+};
 
 export default function Index({ payouts = [], pagination = {}, routes = {} }) {
     return (
@@ -17,33 +27,31 @@ export default function Index({ payouts = [], pagination = {}, routes = {} }) {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
-                    <div className="mt-3 overflow-x-auto">
-                        <table className="min-w-full text-left text-sm">
-                            <thead>
-                                <tr className="text-xs uppercase text-slate-500">
-                                    <th className="px-2 py-2">ID</th>
-                                    <th className="px-2 py-2">Type</th>
-                                    <th className="px-2 py-2">Amount</th>
-                                    <th className="px-2 py-2">Status</th>
-                                    <th className="px-2 py-2">Method</th>
-                                    <th className="px-2 py-2">Paid at</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {payouts.length === 0 ? (
-                                    <tr><td colSpan={6} className="px-2 py-3 text-slate-500">No payouts yet.</td></tr>
-                                ) : payouts.map((payout) => (
-                                    <tr key={payout.id} className="border-t border-slate-200">
-                                        <td className="px-2 py-2">#{payout.id}</td>
-                                        <td className="px-2 py-2">{payout.type_label}</td>
-                                        <td className="px-2 py-2">{Number(payout.total_amount || 0).toFixed(2)} {payout.currency}</td>
-                                        <td className="px-2 py-2">{payout.status_label}</td>
-                                        <td className="px-2 py-2">{payout.payout_method}</td>
-                                        <td className="px-2 py-2">{payout.paid_at_display}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="mt-3">
+                        <DataTable
+                            rows={payouts}
+                            emptyMessage="No payouts yet."
+                            columns={[
+                                { key: 'id', header: 'ID', render: (payout) => `#${payout.id}` },
+                                { key: 'type', header: 'Type', render: (payout) => payout.type_label },
+                                { key: 'amount', header: 'Amount', render: (payout) => `${Number(payout.total_amount || 0).toFixed(2)} ${payout.currency}` },
+                                { key: 'status', header: 'Status', render: (payout) => payout.status_label },
+                                { key: 'method', header: 'Method', render: (payout) => payout.payout_method },
+                                { key: 'paid_at', header: 'Paid at', render: (payout) => payout.paid_at_display },
+                            ]}
+                            renderMobileCard={(payout) => (
+                                <MobileCard
+                                    title={`#${payout.id} · ${payout.type_label}`}
+                                    subtitle={payout.payout_method}
+                                    badge={payout.status_label}
+                                    badgeColor={statusClass(payout.status_label)}
+                                    metrics={[
+                                        { label: 'Amount', value: `${Number(payout.total_amount || 0).toFixed(2)} ${payout.currency}` },
+                                        { label: 'Paid at', value: payout.paid_at_display || '--' },
+                                    ]}
+                                />
+                            )}
+                        />
                     </div>
 
                     {pagination?.last_page > 1 ? (

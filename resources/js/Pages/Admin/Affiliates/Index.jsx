@@ -2,6 +2,8 @@ import React from 'react';
 import { Head, router } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusBadgeClass = (status) => {
     if (status === 'active') {
@@ -111,57 +113,62 @@ export default function Index({
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[980px]">
-                                <thead className="border-b border-slate-300 text-left text-xs uppercase tracking-wider text-slate-500">
-                                    <tr>
-                                        <th className="pb-3 font-semibold">Affiliate</th>
-                                        <th className="pb-3 font-semibold">Code</th>
-                                        <th className="pb-3 font-semibold">Status</th>
-                                        <th className="pb-3 font-semibold">Commission</th>
-                                        <th className="pb-3 font-semibold">Balance</th>
-                                        <th className="pb-3 font-semibold">Referrals</th>
-                                        <th className="pb-3 font-semibold">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 text-sm">
-                                    {affiliates.map((affiliate) => (
-                                        <tr key={affiliate.id} className="hover:bg-slate-50">
-                                            <td className="py-4">
-                                                <div className="font-semibold text-slate-900">{affiliate.customer_name}</div>
-                                                <div className="text-xs text-slate-500">{affiliate.customer_email}</div>
-                                            </td>
-                                            <td className="py-4">
-                                                <code className="rounded bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">
-                                                    {affiliate.affiliate_code}
-                                                </code>
-                                            </td>
-                                            <td className="py-4">
-                                                <span
-                                                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(
-                                                        affiliate.status,
-                                                    )}`}
-                                                >
-                                                    {affiliate.status_label}
-                                                </span>
-                                            </td>
-                                            <td className="py-4">{affiliate.commission_display}</td>
-                                            <td className="py-4 font-semibold">{affiliate.balance_display}</td>
-                                            <td className="py-4">{affiliate.referrals_display}</td>
-                                            <td className="py-4">
-                                                <a
-                                                    href={affiliate?.routes?.show}
-                                                    data-native="true"
-                                                    className="font-semibold text-teal-600 hover:text-teal-500"
-                                                >
-                                                    View
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <DataTable
+                            rows={affiliates}
+                            columns={[
+                                {
+                                    key: 'affiliate',
+                                    header: 'Affiliate',
+                                    render: (affiliate) => (
+                                        <>
+                                            <div className="font-semibold text-slate-900">{affiliate.customer_name}</div>
+                                            <div className="text-xs text-slate-500">{affiliate.customer_email}</div>
+                                        </>
+                                    ),
+                                },
+                                {
+                                    key: 'code',
+                                    header: 'Code',
+                                    render: (affiliate) => <code className="rounded bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">{affiliate.affiliate_code}</code>,
+                                },
+                                {
+                                    key: 'status',
+                                    header: 'Status',
+                                    render: (affiliate) => <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(affiliate.status)}`}>{affiliate.status_label}</span>,
+                                },
+                                { key: 'commission', header: 'Commission', render: (affiliate) => affiliate.commission_display },
+                                { key: 'balance', header: 'Balance', cellClassName: 'font-semibold', render: (affiliate) => affiliate.balance_display },
+                                { key: 'referrals', header: 'Referrals', render: (affiliate) => affiliate.referrals_display },
+                                {
+                                    key: 'actions',
+                                    header: 'Actions',
+                                    render: (affiliate) => <a href={affiliate?.routes?.show} data-native="true" className="font-semibold text-teal-600 hover:text-teal-500">View</a>,
+                                },
+                            ]}
+                            renderMobileCard={(affiliate) => (
+                                <MobileCard
+                                    title={affiliate.customer_name}
+                                    subtitle={affiliate.customer_email}
+                                    badge={affiliate.status_label}
+                                    badgeColor={statusBadgeClass(affiliate.status)}
+                                    metrics={[
+                                        { label: 'Balance', value: affiliate.balance_display },
+                                        { label: 'Referrals', value: affiliate.referrals_display },
+                                    ]}
+                                    actions={
+                                        <a
+                                            href={affiliate?.routes?.show}
+                                            data-native="true"
+                                            className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                        >
+                                            View
+                                        </a>
+                                    }
+                                >
+                                    <div className="text-xs text-slate-500">Code: {affiliate.affiliate_code} · Commission: {affiliate.commission_display}</div>
+                                </MobileCard>
+                            )}
+                        />
 
                         {pagination?.has_pages ? (
                             <div className="mt-6 flex items-center justify-end gap-2 text-sm">

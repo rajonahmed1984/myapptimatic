@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Commissions({ commissions = [], pagination = {}, routes = {} }) {
     return (
@@ -17,32 +19,28 @@ export default function Commissions({ commissions = [], pagination = {}, routes 
                     </a>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                        <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
-                            <tr>
-                                <th className="px-3 py-2">Description</th>
-                                <th className="px-3 py-2">Invoice</th>
-                                <th className="px-3 py-2">Order</th>
-                                <th className="px-3 py-2">Amount</th>
-                                <th className="px-3 py-2">Status</th>
-                                <th className="px-3 py-2">Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {commissions.map((commission) => (
-                                <tr key={commission.id} className="border-t border-slate-100">
-                                    <td className="px-3 py-2">{commission.description || '--'}</td>
-                                    <td className="px-3 py-2">{commission.invoice_label}</td>
-                                    <td className="px-3 py-2">{commission.order_label}</td>
-                                    <td className="px-3 py-2">${Number(commission.amount || 0).toFixed(2)}</td>
-                                    <td className="px-3 py-2">{commission.status_label}</td>
-                                    <td className="px-3 py-2">{commission.created_at_display}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <DataTable
+                    rows={commissions}
+                    columns={[
+                        { key: 'description', header: 'Description', render: (commission) => commission.description || '--' },
+                        { key: 'invoice', header: 'Invoice', render: (commission) => commission.invoice_label },
+                        { key: 'order', header: 'Order', render: (commission) => commission.order_label },
+                        { key: 'amount', header: 'Amount', render: (commission) => `$${Number(commission.amount || 0).toFixed(2)}` },
+                        { key: 'status', header: 'Status', render: (commission) => commission.status_label },
+                        { key: 'date', header: 'Date', render: (commission) => commission.created_at_display },
+                    ]}
+                    renderMobileCard={(commission) => (
+                        <MobileCard
+                            title={commission.description || `${commission.invoice_label} · ${commission.order_label}`}
+                            subtitle={`${commission.invoice_label} · ${commission.order_label}`}
+                            badge={commission.status_label}
+                            metrics={[
+                                { label: 'Amount', value: `$${Number(commission.amount || 0).toFixed(2)}` },
+                                { label: 'Date', value: commission.created_at_display },
+                            ]}
+                        />
+                    )}
+                />
 
                 {pagination.last_page > 1 ? (
                     <div className="mt-4 flex items-center gap-2 text-xs">

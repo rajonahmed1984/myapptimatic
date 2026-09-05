@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import DataTable from '../../../../Components/Table/DataTable';
+import MobileCard from '../../../../Components/Mobile/MobileCard';
 
 const statusBadgeClass = (status) => {
     if (status === 'paid') {
@@ -137,71 +139,93 @@ export default function Index({
                             </div>
                         </form>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[900px]">
-                                <thead className="border-b border-slate-300 text-left text-xs uppercase tracking-wider text-slate-500">
-                                    <tr>
-                                        <th className="pb-3 font-semibold">Select</th>
-                                        <th className="pb-3 font-semibold">Date</th>
-                                        <th className="pb-3 font-semibold">Affiliate</th>
-                                        <th className="pb-3 font-semibold">Description</th>
-                                        <th className="pb-3 font-semibold">Amount</th>
-                                        <th className="pb-3 font-semibold">Status</th>
-                                        <th className="pb-3 font-semibold">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 text-sm">
-                                    {commissions.map((commission) => (
-                                        <tr key={commission.id}>
-                                            <td className="py-4">
-                                                {commission.can_decide ? (
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedIds.includes(commission.id)}
-                                                        onChange={() => toggleId(commission.id)}
-                                                    />
-                                                ) : null}
-                                            </td>
-                                            <td className="py-4 text-slate-600">{commission.date_display}</td>
-                                            <td className="py-4">
-                                                <div className="font-semibold">{commission.affiliate_name}</div>
-                                                <code className="text-xs text-slate-500">{commission.affiliate_code}</code>
-                                            </td>
-                                            <td className="py-4">{commission.description}</td>
-                                            <td className="py-4 font-semibold">{commission.amount_display}</td>
-                                            <td className="py-4">
-                                                <span
-                                                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(
-                                                        commission.status,
-                                                    )}`}
-                                                >
-                                                    {commission.status_label}
-                                                </span>
-                                            </td>
-                                            <td className="py-4">
-                                                {commission.can_decide ? (
-                                                    <>
-                                                        <form method="POST" action={commission?.routes?.approve} data-native="true" className="inline">
-                                                            <input type="hidden" name="_token" value={csrfToken} />
-                                                            <button type="submit" className="text-teal-600 hover:text-teal-500">
-                                                                Approve
-                                                            </button>
-                                                        </form>
-                                                        <span className="mx-2 text-slate-300">|</span>
-                                                        <form method="POST" action={commission?.routes?.reject} data-native="true" className="inline">
-                                                            <input type="hidden" name="_token" value={csrfToken} />
-                                                            <button type="submit" className="text-rose-600 hover:text-rose-500">
-                                                                Reject
-                                                            </button>
-                                                        </form>
-                                                    </>
-                                                ) : null}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <DataTable
+                            rows={commissions}
+                            columns={[
+                                {
+                                    key: 'select',
+                                    header: 'Select',
+                                    render: (commission) => (
+                                        commission.can_decide ? (
+                                            <input type="checkbox" checked={selectedIds.includes(commission.id)} onChange={() => toggleId(commission.id)} />
+                                        ) : null
+                                    ),
+                                },
+                                { key: 'date', header: 'Date', cellClassName: 'text-slate-600', render: (commission) => commission.date_display },
+                                {
+                                    key: 'affiliate',
+                                    header: 'Affiliate',
+                                    render: (commission) => (
+                                        <>
+                                            <div className="font-semibold">{commission.affiliate_name}</div>
+                                            <code className="text-xs text-slate-500">{commission.affiliate_code}</code>
+                                        </>
+                                    ),
+                                },
+                                { key: 'description', header: 'Description', render: (commission) => commission.description },
+                                { key: 'amount', header: 'Amount', cellClassName: 'font-semibold', render: (commission) => commission.amount_display },
+                                {
+                                    key: 'status',
+                                    header: 'Status',
+                                    render: (commission) => <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(commission.status)}`}>{commission.status_label}</span>,
+                                },
+                                {
+                                    key: 'actions',
+                                    header: 'Actions',
+                                    render: (commission) => (
+                                        commission.can_decide ? (
+                                            <>
+                                                <form method="POST" action={commission?.routes?.approve} data-native="true" className="inline">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <button type="submit" className="text-teal-600 hover:text-teal-500">Approve</button>
+                                                </form>
+                                                <span className="mx-2 text-slate-300">|</span>
+                                                <form method="POST" action={commission?.routes?.reject} data-native="true" className="inline">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <button type="submit" className="text-rose-600 hover:text-rose-500">Reject</button>
+                                                </form>
+                                            </>
+                                        ) : null
+                                    ),
+                                },
+                            ]}
+                            renderMobileCard={(commission) => (
+                                <MobileCard
+                                    avatar={commission.can_decide ? (
+                                        <input
+                                            type="checkbox"
+                                            className="h-5 w-5"
+                                            checked={selectedIds.includes(commission.id)}
+                                            onChange={() => toggleId(commission.id)}
+                                        />
+                                    ) : null}
+                                    title={commission.affiliate_name}
+                                    subtitle={commission.description}
+                                    badge={commission.status_label}
+                                    badgeColor={statusBadgeClass(commission.status)}
+                                    metrics={[
+                                        { label: 'Amount', value: commission.amount_display },
+                                        { label: 'Date', value: commission.date_display },
+                                    ]}
+                                    actions={
+                                        commission.can_decide ? (
+                                            <>
+                                                <form method="POST" action={commission?.routes?.approve} data-native="true" className="flex-1">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <button type="submit" className="w-full py-2 px-3 rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition active:scale-95">Approve</button>
+                                                </form>
+                                                <form method="POST" action={commission?.routes?.reject} data-native="true" className="flex-1">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <button type="submit" className="w-full py-2 px-3 rounded-xl border border-rose-200 bg-rose-50 text-xs font-bold text-rose-600 hover:bg-rose-100 transition active:scale-95">Reject</button>
+                                                </form>
+                                            </>
+                                        ) : null
+                                    }
+                                >
+                                    <code className="text-xs text-slate-500">{commission.affiliate_code}</code>
+                                </MobileCard>
+                            )}
+                        />
 
                         {pagination?.has_pages ? (
                             <div className="mt-6 flex items-center justify-end gap-2 text-sm">

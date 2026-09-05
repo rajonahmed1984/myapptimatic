@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Payouts({ payouts = [], pagination = {}, routes = {} }) {
     return (
@@ -17,32 +19,30 @@ export default function Payouts({ payouts = [], pagination = {}, routes = {} }) 
                     </a>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                        <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
-                            <tr>
-                                <th className="px-3 py-2">Payout #</th>
-                                <th className="px-3 py-2">Amount</th>
-                                <th className="px-3 py-2">Status</th>
-                                <th className="px-3 py-2">Method</th>
-                                <th className="px-3 py-2">Processed</th>
-                                <th className="px-3 py-2">Completed</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {payouts.map((payout) => (
-                                <tr key={payout.id} className="border-t border-slate-100">
-                                    <td className="px-3 py-2">{payout.payout_number || '--'}</td>
-                                    <td className="px-3 py-2">${Number(payout.amount || 0).toFixed(2)}</td>
-                                    <td className="px-3 py-2">{payout.status_label}</td>
-                                    <td className="px-3 py-2">{payout.payment_method || '--'}</td>
-                                    <td className="px-3 py-2">{payout.processed_at_display}</td>
-                                    <td className="px-3 py-2">{payout.completed_at_display}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <DataTable
+                    rows={payouts}
+                    columns={[
+                        { key: 'number', header: 'Payout #', render: (payout) => payout.payout_number || '--' },
+                        { key: 'amount', header: 'Amount', render: (payout) => `$${Number(payout.amount || 0).toFixed(2)}` },
+                        { key: 'status', header: 'Status', render: (payout) => payout.status_label },
+                        { key: 'method', header: 'Method', render: (payout) => payout.payment_method || '--' },
+                        { key: 'processed', header: 'Processed', render: (payout) => payout.processed_at_display },
+                        { key: 'completed', header: 'Completed', render: (payout) => payout.completed_at_display },
+                    ]}
+                    renderMobileCard={(payout) => (
+                        <MobileCard
+                            title={payout.payout_number || `Payout #${payout.id}`}
+                            subtitle={payout.payment_method || '--'}
+                            badge={payout.status_label}
+                            metrics={[
+                                { label: 'Amount', value: `$${Number(payout.amount || 0).toFixed(2)}` },
+                                { label: 'Processed', value: payout.processed_at_display || '--' },
+                            ]}
+                        >
+                            {payout.completed_at_display ? <div className="text-xs text-slate-500">Completed: {payout.completed_at_display}</div> : null}
+                        </MobileCard>
+                    )}
+                />
 
                 {pagination.last_page > 1 ? (
                     <div className="mt-4 flex items-center gap-2 text-xs">

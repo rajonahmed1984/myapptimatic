@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const query = (base, status) => {
     if (!status || status === 'all') return base;
@@ -47,45 +49,72 @@ export default function Index({ tickets = [], status = '', status_counts = {}, p
                 </div>
             </div>
 
-            <div className="card mt-6 overflow-x-auto">
-                <table className="w-full min-w-[800px] text-left text-sm">
-                    <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
-                        <tr>
-                            <th className="px-4 py-3">SL</th>
-                            <th className="px-4 py-3">Ticket</th>
-                            <th className="px-4 py-3">Subject</th>
-                            <th className="px-4 py-3">Customer</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Last Reply</th>
-                            <th className="px-4 py-3 text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {tickets.length === 0 ? (
-                            <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">No support tickets yet.</td></tr>
-                        ) : tickets.map((ticket) => (
-                            <tr key={ticket.id} className="border-b border-slate-100">
-                                <td className="px-4 py-3 text-slate-500">{ticket.serial}</td>
-                                <td className="px-4 py-3 font-medium text-slate-900">{ticket.ticket_no}</td>
-                                <td className="px-4 py-3 text-slate-700">{ticket.subject}</td>
-                                <td className="px-4 py-3 text-slate-500">{ticket.customer_name}</td>
-                                <td className="px-4 py-3"><span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">{ticket.status_label}</span></td>
-                                <td className="px-4 py-3 text-slate-500">{ticket.last_reply_at_display}</td>
-                                <td className="px-4 py-3 text-right">
-                                    <div className="flex items-center justify-end gap-3">
-                                        <a href={`${ticket?.routes?.show}#replies`} data-native="true" className="text-teal-600 hover:text-teal-500">Reply</a>
-                                        <a href={ticket?.routes?.show} data-native="true" className="text-slate-600 hover:text-slate-500">View</a>
-                                        <form method="POST" action={ticket?.routes?.destroy} data-native="true" onSubmit={(e) => { if (!window.confirm(`Delete ticket ${ticket.ticket_no}?`)) e.preventDefault(); }}>
-                                            <input type="hidden" name="_token" value={csrfToken} />
-                                            <input type="hidden" name="_method" value="DELETE" />
-                                            <button type="submit" className="text-rose-600 hover:text-rose-500">Delete</button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className="card mt-6">
+                <DataTable
+                    rows={tickets}
+                    emptyMessage="No support tickets yet."
+                    columns={[
+                        { key: 'sl', header: 'SL', cellClassName: 'text-slate-500', render: (ticket) => ticket.serial },
+                        { key: 'ticket', header: 'Ticket', cellClassName: 'font-medium text-slate-900', render: (ticket) => ticket.ticket_no },
+                        { key: 'subject', header: 'Subject', cellClassName: 'text-slate-700', render: (ticket) => ticket.subject },
+                        { key: 'customer', header: 'Customer', cellClassName: 'text-slate-500', render: (ticket) => ticket.customer_name },
+                        {
+                            key: 'status',
+                            header: 'Status',
+                            render: (ticket) => <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">{ticket.status_label}</span>,
+                        },
+                        { key: 'last_reply', header: 'Last Reply', cellClassName: 'text-slate-500', render: (ticket) => ticket.last_reply_at_display },
+                        {
+                            key: 'actions',
+                            header: 'Action',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (ticket) => (
+                                <div className="flex items-center justify-end gap-3">
+                                    <a href={`${ticket?.routes?.show}#replies`} data-native="true" className="text-teal-600 hover:text-teal-500">Reply</a>
+                                    <a href={ticket?.routes?.show} data-native="true" className="text-slate-600 hover:text-slate-500">View</a>
+                                    <form method="POST" action={ticket?.routes?.destroy} data-native="true" onSubmit={(e) => { if (!window.confirm(`Delete ticket ${ticket.ticket_no}?`)) e.preventDefault(); }}>
+                                        <input type="hidden" name="_token" value={csrfToken} />
+                                        <input type="hidden" name="_method" value="DELETE" />
+                                        <button type="submit" className="text-rose-600 hover:text-rose-500">Delete</button>
+                                    </form>
+                                </div>
+                            ),
+                        },
+                    ]}
+                    renderMobileCard={(ticket) => (
+                        <MobileCard
+                            title={ticket.subject}
+                            subtitle={`${ticket.ticket_no} · ${ticket.customer_name}`}
+                            badge={ticket.status_label}
+                            actions={
+                                <>
+                                    <a
+                                        href={`${ticket?.routes?.show}#replies`}
+                                        data-native="true"
+                                        className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                    >
+                                        Reply
+                                    </a>
+                                    <a
+                                        href={ticket?.routes?.show}
+                                        data-native="true"
+                                        className="py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                    >
+                                        View
+                                    </a>
+                                    <form method="POST" action={ticket?.routes?.destroy} data-native="true" onSubmit={(e) => { if (!window.confirm(`Delete ticket ${ticket.ticket_no}?`)) e.preventDefault(); }}>
+                                        <input type="hidden" name="_token" value={csrfToken} />
+                                        <input type="hidden" name="_method" value="DELETE" />
+                                        <button type="submit" className="py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition active:scale-95">Delete</button>
+                                    </form>
+                                </>
+                            }
+                        >
+                            <div className="text-xs text-slate-500">Last reply: {ticket.last_reply_at_display}</div>
+                        </MobileCard>
+                    )}
+                />
             </div>
 
             {pagination?.last_page > 1 ? (

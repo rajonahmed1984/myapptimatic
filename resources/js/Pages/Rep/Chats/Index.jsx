@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Index({ projects = [], pagination = {}, routes = {} }) {
     return (
@@ -15,33 +17,57 @@ export default function Index({ projects = [], pagination = {}, routes = {} }) {
                     <a href={routes?.projects_index} data-native="true" className="text-xs font-semibold text-slate-500 hover:text-teal-600">Projects</a>
                 </div>
 
-                <div className="mt-6 overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                        <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
-                            <tr>
-                                <th className="px-4 py-3">Project</th>
-                                <th className="px-4 py-3">Status</th>
-                                <th className="px-4 py-3">Unread</th>
-                                <th className="px-4 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {projects.length === 0 ? (
-                                <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">No projects available.</td></tr>
-                            ) : projects.map((project) => (
-                                <tr key={project.id}>
-                                    <td className="px-4 py-3"><div className="font-semibold text-slate-900">{project.name}</div><div className="text-xs text-slate-500">#{project.id}</div></td>
-                                    <td className="px-4 py-3 text-slate-600">{project.status_label}</td>
-                                    <td className="px-4 py-3">
-                                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${Number(project.unread_count || 0) > 0 ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                                            {project.unread_count || 0}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right"><a href={project?.routes?.chat} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">Open Chat</a></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="mt-6">
+                    <DataTable
+                        rows={projects}
+                        emptyMessage="No projects available."
+                        columns={[
+                            {
+                                key: 'project',
+                                header: 'Project',
+                                render: (project) => (
+                                    <>
+                                        <div className="font-semibold text-slate-900">{project.name}</div>
+                                        <div className="text-xs text-slate-500">#{project.id}</div>
+                                    </>
+                                ),
+                            },
+                            { key: 'status', header: 'Status', cellClassName: 'text-slate-600', render: (project) => project.status_label },
+                            {
+                                key: 'unread',
+                                header: 'Unread',
+                                render: (project) => (
+                                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${Number(project.unread_count || 0) > 0 ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+                                        {project.unread_count || 0}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'actions',
+                                header: 'Actions',
+                                headerClassName: 'text-right',
+                                cellClassName: 'text-right',
+                                render: (project) => <a href={project?.routes?.chat} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">Open Chat</a>,
+                            },
+                        ]}
+                        renderMobileCard={(project) => (
+                            <MobileCard
+                                title={project.name}
+                                subtitle={`#${project.id} · ${project.status_label}`}
+                                badge={Number(project.unread_count || 0) > 0 ? `${project.unread_count} unread` : null}
+                                badgeColor={Number(project.unread_count || 0) > 0 ? 'bg-amber-100 text-amber-800' : undefined}
+                                actions={
+                                    <a
+                                        href={project?.routes?.chat}
+                                        data-native="true"
+                                        className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                    >
+                                        Open Chat
+                                    </a>
+                                }
+                            />
+                        )}
+                    />
                 </div>
 
                 {pagination?.last_page > 1 ? (

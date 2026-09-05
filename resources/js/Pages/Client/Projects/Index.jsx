@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Index({ projects = [], pagination = {} }) {
     return (
@@ -13,7 +14,61 @@ export default function Index({ projects = [], pagination = {} }) {
             </div>
 
             <div className="card p-6">
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                {/* Mobile Cards List (<md) */}
+                <div className="md:hidden space-y-3">
+                    {projects.length === 0 ? (
+                        <div className="p-6 text-center text-sm text-slate-500">No projects found.</div>
+                    ) : (
+                        projects.map((project) => (
+                            <MobileCard
+                                key={project.id}
+                                title={<a href={project.routes.show} data-native="true" className="hover:text-teal-600">{project.name}</a>}
+                                subtitle={`#${project.id}`}
+                                badge={project.status_label}
+                                metrics={[{ label: 'Amount', value: project.amount_label }]}
+                                actions={
+                                    <a
+                                        href={project.routes.show}
+                                        data-native="true"
+                                        className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                    >
+                                        View
+                                    </a>
+                                }
+                            >
+                                {project.maintenances.length > 0 ? (
+                                    <div className="mt-1 space-y-1.5">
+                                        {project.maintenances.map((maintenance) => (
+                                            <div key={maintenance.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5 text-xs">
+                                                <div className="min-w-0">
+                                                    <div className="truncate font-semibold text-slate-800">{maintenance.title}</div>
+                                                    <div className="text-slate-500">{maintenance.billing_cycle_label}</div>
+                                                </div>
+                                                <div className="shrink-0 text-right">
+                                                    <span
+                                                        className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                                                            maintenance.status === 'active'
+                                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                                                : maintenance.status === 'paused'
+                                                                  ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                                                  : 'border-slate-200 bg-slate-50 text-slate-600'
+                                                        }`}
+                                                    >
+                                                        {maintenance.status_label}
+                                                    </span>
+                                                    <div className="mt-0.5 font-semibold text-teal-600">{maintenance.amount_label}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : null}
+                            </MobileCard>
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop Table (>=md) */}
+                <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[640px] text-left text-sm text-slate-700">
                             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">

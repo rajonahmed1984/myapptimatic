@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const BTN = {
     secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
@@ -26,62 +28,69 @@ export default function Index({ pageTitle = 'Ownership Transfers', transfers = [
                 <div className="text-2xl font-semibold text-slate-900">Ownership Transfers</div>
             </div>
 
-            <div className="card overflow-x-auto p-0">
-                <table className="w-full min-w-[900px] text-left text-sm">
-                    <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
-                        <tr>
-                            <th className="px-4 py-3">Item</th>
-                            <th className="px-4 py-3">From</th>
-                            <th className="px-4 py-3">To</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Scheduled For</th>
-                            <th className="px-4 py-3">Created</th>
-                            <th className="px-4 py-3 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {transfers.length === 0 ? (
-                            <tr>
-                                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
-                                    No ownership transfers yet.
-                                </td>
-                            </tr>
-                        ) : (
-                            transfers.map((transfer) => (
-                                <tr key={transfer.id} className="border-b border-slate-100">
-                                    <td className="px-4 py-3 text-slate-800">{transfer.project_name}</td>
-                                    <td className="px-4 py-3 text-slate-600">{transfer.from_customer_name}</td>
-                                    <td className="px-4 py-3 text-slate-600">{transfer.to_customer_name}</td>
-                                    <td className="px-4 py-3">
-                                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${xTransferStatusClass(transfer.status)}`}>
-                                            {transfer.status_label}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500">{transfer.scheduled_for}</td>
-                                    <td className="px-4 py-3 text-slate-500">{transfer.created_at}</td>
-                                    <td className="px-4 py-3 text-right">
-                                        {transfer.can_cancel ? (
-                                            <form action={transfer.routes?.cancel} method="POST" data-native="true">
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <button
-                                                    type="submit"
-                                                    className={BTN.danger}
-                                                    onClick={(e) => {
-                                                        if (!confirm('Cancel this ownership transfer?')) {
-                                                            e.preventDefault();
-                                                        }
-                                                    }}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </form>
-                                        ) : null}
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+            <div className="card overflow-hidden p-0">
+                <DataTable
+                    rows={transfers}
+                    emptyMessage="No ownership transfers yet."
+                    columns={[
+                        { key: 'item', header: 'Item', cellClassName: 'text-slate-800', render: (transfer) => transfer.project_name },
+                        { key: 'from', header: 'From', cellClassName: 'text-slate-600', render: (transfer) => transfer.from_customer_name },
+                        { key: 'to', header: 'To', cellClassName: 'text-slate-600', render: (transfer) => transfer.to_customer_name },
+                        {
+                            key: 'status',
+                            header: 'Status',
+                            render: (transfer) => <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${xTransferStatusClass(transfer.status)}`}>{transfer.status_label}</span>,
+                        },
+                        { key: 'scheduled', header: 'Scheduled For', cellClassName: 'text-slate-500', render: (transfer) => transfer.scheduled_for },
+                        { key: 'created', header: 'Created', cellClassName: 'text-slate-500', render: (transfer) => transfer.created_at },
+                        {
+                            key: 'actions',
+                            header: 'Actions',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (transfer) => (
+                                transfer.can_cancel ? (
+                                    <form action={transfer.routes?.cancel} method="POST" data-native="true">
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button
+                                            type="submit"
+                                            className={BTN.danger}
+                                            onClick={(e) => { if (!confirm('Cancel this ownership transfer?')) e.preventDefault(); }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </form>
+                                ) : null
+                            ),
+                        },
+                    ]}
+                    renderMobileCard={(transfer) => (
+                        <MobileCard
+                            title={transfer.project_name}
+                            subtitle={`${transfer.from_customer_name} → ${transfer.to_customer_name}`}
+                            badge={transfer.status_label}
+                            badgeColor={xTransferStatusClass(transfer.status)}
+                            metrics={[
+                                { label: 'Scheduled For', value: transfer.scheduled_for || '--' },
+                                { label: 'Created', value: transfer.created_at },
+                            ]}
+                            actions={
+                                transfer.can_cancel ? (
+                                    <form action={transfer.routes?.cancel} method="POST" data-native="true" className="flex-1">
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button
+                                            type="submit"
+                                            className="w-full py-2 px-3 rounded-xl bg-rose-600 text-xs font-bold text-white shadow-sm hover:bg-rose-500 transition active:scale-95"
+                                            onClick={(e) => { if (!confirm('Cancel this ownership transfer?')) e.preventDefault(); }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </form>
+                                ) : null
+                            }
+                        />
+                    )}
+                />
 
                 {pagination?.has_pages ? (
                     <div className="flex items-center justify-end gap-2 p-4 text-sm">

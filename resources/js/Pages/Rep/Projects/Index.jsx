@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Index({ projects = [], pagination = {} }) {
     const commissionTotal = projects.reduce((sum, project) => sum + Number(project?.commission_amount || 0), 0);
@@ -17,48 +19,75 @@ export default function Index({ projects = [], pagination = {} }) {
             </div>
 
             <div className="card p-6">
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[640px] text-left text-sm text-slate-700">
-                            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                                <tr>
-                                    <th className="w-20 px-4 py-3">ID</th>
-                                    <th className="px-4 py-3">Project</th>
-                                    <th className="px-4 py-3">Customer</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3">Commission</th>
-                                    <th className="px-4 py-3">Taken Commission</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {projects.length === 0 ? (
-                                    <tr><td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-500">No projects assigned.</td></tr>
-                                ) : projects.map((project) => (
-                                    <tr key={project.id} className="border-t border-slate-100 hover:bg-slate-50/70">
-                                        <td className="px-4 py-3 font-semibold text-slate-900">#{project.id}</td>
-                                        <td className="px-4 py-3"><a href={project?.routes?.show} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">{project.name}</a></td>
-                                        <td className="px-4 py-3">{project.customer_name}</td>
-                                        <td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{project.status_label}</span></td>
-                                        <td className="px-4 py-3 text-sm text-slate-600">{project.commission_amount !== null ? `${Number(project.commission_amount).toFixed(2)} ${project.currency}` : '--'}</td>
-                                        <td className="px-4 py-3 text-sm text-slate-600">{`${Number(project.taken_commission_amount || 0).toFixed(2)} ${project.currency}`}</td>
-                                        <td className="px-4 py-3 text-right"><a href={project?.routes?.show} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">View</a></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            {projects.length > 0 ? (
-                                <tfoot>
-                                    <tr className="border-t-2 border-slate-200 bg-slate-50">
-                                        <td colSpan={4} className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Totals</td>
-                                        <td className="px-4 py-3 text-sm font-semibold text-slate-800">{`${commissionTotal.toFixed(2)} ${displayCurrency}`}</td>
-                                        <td className="px-4 py-3 text-sm font-semibold text-slate-800">{`${takenTotal.toFixed(2)} ${displayCurrency}`}</td>
-                                        <td className="px-4 py-3" />
-                                    </tr>
-                                </tfoot>
-                            ) : null}
-                        </table>
+                <DataTable
+                    rows={projects}
+                    emptyMessage="No projects assigned."
+                    columns={[
+                        { key: 'id', header: 'ID', cellClassName: 'font-semibold text-slate-900', render: (project) => `#${project.id}` },
+                        {
+                            key: 'project',
+                            header: 'Project',
+                            render: (project) => (
+                                <a href={project?.routes?.show} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">{project.name}</a>
+                            ),
+                        },
+                        { key: 'customer', header: 'Customer', render: (project) => project.customer_name },
+                        {
+                            key: 'status',
+                            header: 'Status',
+                            render: (project) => <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{project.status_label}</span>,
+                        },
+                        {
+                            key: 'commission',
+                            header: 'Commission',
+                            cellClassName: 'text-sm text-slate-600',
+                            render: (project) => project.commission_amount !== null ? `${Number(project.commission_amount).toFixed(2)} ${project.currency}` : '--',
+                        },
+                        {
+                            key: 'taken_commission',
+                            header: 'Taken Commission',
+                            cellClassName: 'text-sm text-slate-600',
+                            render: (project) => `${Number(project.taken_commission_amount || 0).toFixed(2)} ${project.currency}`,
+                        },
+                        {
+                            key: 'actions',
+                            header: 'Actions',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (project) => <a href={project?.routes?.show} data-native="true" className="text-sm font-semibold text-teal-700 hover:text-teal-600">View</a>,
+                        },
+                    ]}
+                    renderMobileCard={(project) => (
+                        <MobileCard
+                            title={
+                                <a href={project?.routes?.show} data-native="true" className="hover:text-teal-600">{project.name}</a>
+                            }
+                            subtitle={`#${project.id} · ${project.customer_name}`}
+                            badge={project.status_label}
+                            metrics={[
+                                { label: 'Commission', value: project.commission_amount !== null ? `${Number(project.commission_amount).toFixed(2)} ${project.currency}` : '--' },
+                                { label: 'Taken', value: `${Number(project.taken_commission_amount || 0).toFixed(2)} ${project.currency}` },
+                            ]}
+                            actions={
+                                <a
+                                    href={project?.routes?.show}
+                                    data-native="true"
+                                    className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                >
+                                    View
+                                </a>
+                            }
+                        />
+                    )}
+                />
+
+                {projects.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-300 bg-slate-50/70 px-4 py-2.5 text-sm">
+                        <span className="font-semibold text-slate-800">Totals</span>
+                        <span className="text-slate-700">Commission: <strong className="text-slate-900">{commissionTotal.toFixed(2)} {displayCurrency}</strong></span>
+                        <span className="text-slate-700">Taken: <strong className="text-slate-900">{takenTotal.toFixed(2)} {displayCurrency}</strong></span>
                     </div>
-                </div>
+                ) : null}
 
                 {pagination?.last_page > 1 ? (
                     <div className="mt-4 flex items-center justify-between text-xs">

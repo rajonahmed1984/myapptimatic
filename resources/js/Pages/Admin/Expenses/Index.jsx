@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Index({
     pageTitle = 'Expenses',
@@ -69,61 +71,62 @@ export default function Index({
 
             <div id="expensesTable">
                 <div className="overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80 px-3 py-3">
-                            <table className="min-w-full whitespace-nowrap text-left text-sm text-slate-700">
-                                <thead>
-                                    <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                        <th className="px-3 py-2 whitespace-nowrap">ID</th>
-                                        <th className="px-3 py-2 whitespace-nowrap">Date</th>
-                                        <th className="px-3 py-2">Title & Ref</th>
-                                        <th className="px-3 py-2">Category</th>
-                                        <th className="px-3 py-2">Amount</th>
-                                        <th className="px-3 py-2">Attachment</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {expenses.length > 0 ? (
-                                        expenses.map((expense) => (
-                                            <tr key={expense.key || `${expense.invoice_no}-${expense.expense_date_display}-${expense.title}`} className="border-t border-slate-100">
-                                                <td className="px-3 py-2 whitespace-nowrap font-semibold text-slate-700">
-                                                    {expense.id_display}
-                                                </td>
-                                                <td className="px-3 py-2 whitespace-nowrap">{expense.expense_date_display}</td>
-                                                <td className="px-3 py-2">
-                                                    <div className="font-semibold text-slate-900">{expense.title}</div>
-                                                    {expense.invoice_number ? (
-                                                        <div className="text-xs font-semibold text-teal-600">
-                                                            Invoice #{expense.invoice_number}
-                                                        </div>
-                                                    ) : null}
-                                                    {expense.notes ? (
-                                                        <div className="text-xs text-slate-500">{expense.notes}</div>
-                                                    ) : null}
-                                                </td>
-                                                <td className="px-3 py-2">{expense.category_name}</td>
-                                                <td className="px-3 py-2 font-semibold text-slate-900">{expense.amount_display}</td>
-                                                <td className="px-3 py-2">
-                                                    {expense.attachment_url ? (
-                                                        <a href={expense.attachment_url} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">
-                                                            View
-                                                        </a>
-                                                    ) : (
-                                                        <span className="text-xs text-slate-400">--</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={6} className="px-3 py-4 text-center text-slate-500">
-                                                No expenses found.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div className="mt-4">
+                        <DataTable
+                            rows={expenses}
+                            rowKey={(expense) => expense.key || `${expense.invoice_no}-${expense.expense_date_display}-${expense.title}`}
+                            emptyMessage="No expenses found."
+                            columns={[
+                                { key: 'id', header: 'ID', cellClassName: 'font-semibold text-slate-700', render: (expense) => expense.id_display },
+                                { key: 'date', header: 'Date', render: (expense) => expense.expense_date_display },
+                                {
+                                    key: 'title',
+                                    header: 'Title & Ref',
+                                    render: (expense) => (
+                                        <>
+                                            <div className="font-semibold text-slate-900">{expense.title}</div>
+                                            {expense.invoice_number ? <div className="text-xs font-semibold text-teal-600">Invoice #{expense.invoice_number}</div> : null}
+                                            {expense.notes ? <div className="text-xs text-slate-500">{expense.notes}</div> : null}
+                                        </>
+                                    ),
+                                },
+                                { key: 'category', header: 'Category', render: (expense) => expense.category_name },
+                                { key: 'amount', header: 'Amount', cellClassName: 'font-semibold text-slate-900', render: (expense) => expense.amount_display },
+                                {
+                                    key: 'attachment',
+                                    header: 'Attachment',
+                                    render: (expense) => (
+                                        expense.attachment_url ? (
+                                            <a href={expense.attachment_url} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">View</a>
+                                        ) : <span className="text-xs text-slate-400">--</span>
+                                    ),
+                                },
+                            ]}
+                            renderMobileCard={(expense) => (
+                                <MobileCard
+                                    title={expense.title}
+                                    subtitle={expense.category_name}
+                                    metrics={[
+                                        { label: 'Amount', value: expense.amount_display },
+                                        { label: 'Date', value: expense.expense_date_display },
+                                    ]}
+                                    actions={
+                                        expense.attachment_url ? (
+                                            <a
+                                                href={expense.attachment_url}
+                                                data-native="true"
+                                                className="flex-1 text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                            >
+                                                View Attachment
+                                            </a>
+                                        ) : null
+                                    }
+                                >
+                                    {expense.invoice_number ? <div className="text-xs font-semibold text-teal-600">Invoice #{expense.invoice_number}</div> : null}
+                                    {expense.notes ? <div className="text-xs text-slate-500">{expense.notes}</div> : null}
+                                </MobileCard>
+                            )}
+                        />
 
                         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
                             {pagination_links.map((link, index) =>

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusClass = (status) => {
     const map = {
@@ -101,103 +103,130 @@ export default function Index({ status_filter = '', search = '', status_counts =
                     </form>
                 </div>
 
-                <div className="mt-6 overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                        <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
-                            <tr>
-                                <th className="px-4 py-3">Task ID</th>
-                                <th className="px-4 py-3">Created</th>
-                                <th className="px-4 py-3">Project Task</th>
-                                <th className="px-4 py-3">Status</th>
-                                <th className="px-4 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {tasks.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
-                                        No tasks found.
-                                    </td>
-                                </tr>
-                            ) : (
-                                tasks.map((task) => {
+                <div className="mt-6">
+                    <DataTable
+                        rows={tasks}
+                        emptyMessage="No tasks found."
+                        columns={[
+                            { key: 'id', header: 'Task ID', cellClassName: 'font-semibold text-slate-600', render: (task) => task.id ?? '--' },
+                            {
+                                key: 'created',
+                                header: 'Created',
+                                cellClassName: 'text-slate-500',
+                                render: (task) => (
+                                    <>
+                                        <div>{task.created_date}</div>
+                                        <div className="text-xs text-slate-400">{task.created_time}</div>
+                                    </>
+                                ),
+                            },
+                            {
+                                key: 'task',
+                                header: 'Project Task',
+                                render: (task) => (
+                                    <>
+                                        <div className="font-semibold text-slate-900">
+                                            {task.project ? (
+                                                <a href={task.project.routes.task_show} data-native="true" className="text-teal-600 hover:text-teal-500">{task.title}</a>
+                                            ) : task.title}
+                                        </div>
+                                        {task.description ? <div className="mt-1 text-xs text-slate-500">{task.description}</div> : null}
+                                        {task.project ? (
+                                            <a href={task.project.routes.show} data-native="true" className="text-xs text-slate-500 hover:text-teal-600">{task.project.name}</a>
+                                        ) : null}
+                                    </>
+                                ),
+                            },
+                            {
+                                key: 'status',
+                                header: 'Status',
+                                render: (task) => (
+                                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${statusClass(task.status)}`}>
+                                        {task.status_label}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'actions',
+                                header: 'Actions',
+                                headerClassName: 'text-right',
+                                cellClassName: 'text-right',
+                                render: (task) => {
                                     const isInProgress = task.status === 'in_progress';
                                     const isCompleted = task.status === 'completed' || task.status === 'done';
-
                                     return (
-                                        <tr key={task.id} className="align-top">
-                                            <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-600">{task.id ?? '--'}</td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-slate-500">
-                                                <div>{task.created_date}</div>
-                                                <div className="text-xs text-slate-400">{task.created_time}</div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="font-semibold text-slate-900">
-                                                    {task.project ? (
-                                                        <a href={task.project.routes.task_show} data-native="true" className="text-teal-600 hover:text-teal-500">
-                                                            {task.title}
-                                                        </a>
-                                                    ) : (
-                                                        task.title
-                                                    )}
-                                                </div>
-                                                {task.description ? <div className="mt-1 text-xs text-slate-500">{task.description}</div> : null}
-                                                {task.project ? (
-                                                    <a href={task.project.routes.show} data-native="true" className="text-xs text-slate-500 hover:text-teal-600">
-                                                        {task.project.name}
-                                                    </a>
-                                                ) : null}
-                                            </td>
-                                            <td className="whitespace-nowrap px-4 py-3">
-                                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${statusClass(task.status)}`}>
-                                                    {task.status_label}
-                                                </span>
-                                            </td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-right">
-                                                <div className="flex flex-col items-end gap-2 text-xs font-semibold">
-                                                    {task.project ? (
-                                                        <a
-                                                            href={task.project.routes.task_show}
-                                                            data-native="true"
-                                                            className="whitespace-nowrap rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300"
-                                                        >
-                                                            Open Task
-                                                        </a>
-                                                    ) : null}
-                                                    {task.can_start && task.project && status_filter !== 'in_progress' && !isInProgress && !isCompleted ? (
-                                                        <form method="POST" action={task.project.routes.task_update} data-native="true">
-                                                            <input type="hidden" name="_token" value={csrfToken} />
-                                                            <input type="hidden" name="_method" value="PATCH" />
-                                                            <input type="hidden" name="status" value="in_progress" />
-                                                            <button
-                                                                type="submit"
-                                                                className="whitespace-nowrap rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300"
-                                                            >
-                                                                Inprogress
-                                                            </button>
-                                                        </form>
-                                                    ) : null}
-                                                    {task.can_complete && task.project && status_filter !== 'completed' && !isCompleted ? (
-                                                        <form method="POST" action={task.project.routes.task_update} data-native="true">
-                                                            <input type="hidden" name="_token" value={csrfToken} />
-                                                            <input type="hidden" name="_method" value="PATCH" />
-                                                            <input type="hidden" name="status" value="completed" />
-                                                            <button
-                                                                type="submit"
-                                                                className="whitespace-nowrap rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300"
-                                                            >
-                                                                Complete
-                                                            </button>
-                                                        </form>
-                                                    ) : null}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        <div className="flex flex-col items-end gap-2 text-xs font-semibold">
+                                            {task.project ? (
+                                                <a href={task.project.routes.task_show} data-native="true" className="whitespace-nowrap rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300">Open Task</a>
+                                            ) : null}
+                                            {task.can_start && task.project && status_filter !== 'in_progress' && !isInProgress && !isCompleted ? (
+                                                <form method="POST" action={task.project.routes.task_update} data-native="true">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <input type="hidden" name="_method" value="PATCH" />
+                                                    <input type="hidden" name="status" value="in_progress" />
+                                                    <button type="submit" className="whitespace-nowrap rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300">Inprogress</button>
+                                                </form>
+                                            ) : null}
+                                            {task.can_complete && task.project && status_filter !== 'completed' && !isCompleted ? (
+                                                <form method="POST" action={task.project.routes.task_update} data-native="true">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <input type="hidden" name="_method" value="PATCH" />
+                                                    <input type="hidden" name="status" value="completed" />
+                                                    <button type="submit" className="whitespace-nowrap rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:border-emerald-300">Complete</button>
+                                                </form>
+                                            ) : null}
+                                        </div>
                                     );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                                },
+                            },
+                        ]}
+                        renderMobileCard={(task) => {
+                            const isInProgress = task.status === 'in_progress';
+                            const isCompleted = task.status === 'completed' || task.status === 'done';
+                            return (
+                                <MobileCard
+                                    title={task.project ? (
+                                        <a href={task.project.routes.task_show} data-native="true" className="hover:text-teal-600">{task.title}</a>
+                                    ) : task.title}
+                                    subtitle={task.project ? task.project.name : null}
+                                    badge={task.status_label}
+                                    badgeColor={statusClass(task.status)}
+                                    metrics={[{ label: 'Created', value: task.created_date || '--' }, { label: 'ID', value: task.id ?? '--' }]}
+                                    actions={
+                                        <div className="flex flex-wrap gap-2 w-full">
+                                            {task.project ? (
+                                                <a
+                                                    href={task.project.routes.task_show}
+                                                    data-native="true"
+                                                    className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                                >
+                                                    Open Task
+                                                </a>
+                                            ) : null}
+                                            {task.can_start && task.project && status_filter !== 'in_progress' && !isInProgress && !isCompleted ? (
+                                                <form method="POST" action={task.project.routes.task_update} data-native="true" className="flex-1">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <input type="hidden" name="_method" value="PATCH" />
+                                                    <input type="hidden" name="status" value="in_progress" />
+                                                    <button type="submit" className="w-full py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 text-xs font-bold text-amber-700 hover:bg-amber-100 transition active:scale-95">Inprogress</button>
+                                                </form>
+                                            ) : null}
+                                            {task.can_complete && task.project && status_filter !== 'completed' && !isCompleted ? (
+                                                <form method="POST" action={task.project.routes.task_update} data-native="true" className="flex-1">
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <input type="hidden" name="_method" value="PATCH" />
+                                                    <input type="hidden" name="status" value="completed" />
+                                                    <button type="submit" className="w-full py-2 px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition active:scale-95">Complete</button>
+                                                </form>
+                                            ) : null}
+                                        </div>
+                                    }
+                                >
+                                    {task.description ? <div className="text-xs text-slate-500">{task.description}</div> : null}
+                                </MobileCard>
+                            );
+                        }}
+                    />
                 </div>
 
                 {pagination.last_page > 1 ? (
