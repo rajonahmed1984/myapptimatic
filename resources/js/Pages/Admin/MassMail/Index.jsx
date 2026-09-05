@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 export default function Index({
     campaigns = {},
     counts = {},
@@ -185,72 +187,57 @@ export default function Index({
                     <div className="section-label mb-2">Campaign Logs</div>
                     <div className="text-xl font-bold text-slate-900 mb-4">Past Mass Mailings</div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500">
-                                    <th className="pb-3">Subject</th>
-                                    <th className="pb-3">Target</th>
-                                    <th className="pb-3 text-center">Progress / Sent</th>
-                                    <th className="pb-3 text-center">Status</th>
-                                    <th className="pb-3">Created By</th>
-                                    <th className="pb-3">Date Dispatched</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {campaignList.length > 0 ? (
-                                    campaignList.map((campaign) => {
-                                        const progressPercent = campaign.total_recipients > 0
-                                            ? Math.round((campaign.sent_count / campaign.total_recipients) * 100)
-                                            : 0;
-
-                                        return (
-                                            <tr key={campaign.id} className="hover:bg-slate-50/50">
-                                                <td className="py-3.5 font-semibold text-slate-900 max-w-xs truncate" title={campaign.subject}>
-                                                    {campaign.subject}
-                                                </td>
-                                                <td className="py-3.5 capitalize text-slate-600">
-                                                    {campaign.target_status}
-                                                </td>
-                                                <td className="py-3.5 text-center">
-                                                    <div className="flex flex-col items-center">
-                                                        <span className="text-xs font-semibold text-slate-700">
-                                                            {campaign.sent_count} / {campaign.total_recipients} ({progressPercent}%)
-                                                        </span>
-                                                        <div className="mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
-                                                            <div
-                                                                className={`h-full rounded-full transition-all ${
-                                                                    campaign.status === 'completed' ? 'bg-emerald-500' : 'bg-teal-500'
-                                                                }`}
-                                                                style={{ width: `${progressPercent}%` }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-3.5 text-center">
-                                                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${getStatusBadge(campaign.status)}`}>
-                                                        {campaign.status}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3.5 text-slate-600">
-                                                    {campaign.creator_name}
-                                                </td>
-                                                <td className="py-3.5 text-xs text-slate-500">
-                                                    {campaign.created_at_display}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                ) : (
-                                    <tr>
-                                        <td colSpan={6} className="py-8 text-center text-slate-500">
-                                            No mass mail campaigns launched yet.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable
+                        rows={campaignList}
+                        emptyMessage="No mass mail campaigns launched yet."
+                        columns={[
+                            { key: 'subject', header: 'Subject', cellClassName: 'font-semibold text-slate-900 max-w-xs truncate', render: (campaign) => campaign.subject },
+                            { key: 'target', header: 'Target', cellClassName: 'capitalize text-slate-600', render: (campaign) => campaign.target_status },
+                            {
+                                key: 'progress',
+                                header: 'Progress / Sent',
+                                headerClassName: 'text-center',
+                                cellClassName: 'text-center',
+                                render: (campaign) => {
+                                    const progressPercent = campaign.total_recipients > 0 ? Math.round((campaign.sent_count / campaign.total_recipients) * 100) : 0;
+                                    return (
+                                        <div className="flex flex-col items-center">
+                                            <span className="text-xs font-semibold text-slate-700">{campaign.sent_count} / {campaign.total_recipients} ({progressPercent}%)</span>
+                                            <div className="mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
+                                                <div className={`h-full rounded-full transition-all ${campaign.status === 'completed' ? 'bg-emerald-500' : 'bg-teal-500'}`} style={{ width: `${progressPercent}%` }} />
+                                            </div>
+                                        </div>
+                                    );
+                                },
+                            },
+                            {
+                                key: 'status',
+                                header: 'Status',
+                                headerClassName: 'text-center',
+                                cellClassName: 'text-center',
+                                render: (campaign) => <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${getStatusBadge(campaign.status)}`}>{campaign.status}</span>,
+                            },
+                            { key: 'creator', header: 'Created By', cellClassName: 'text-slate-600', render: (campaign) => campaign.creator_name },
+                            { key: 'date', header: 'Date Dispatched', cellClassName: 'text-xs text-slate-500', render: (campaign) => campaign.created_at_display },
+                        ]}
+                        renderMobileCard={(campaign) => {
+                            const progressPercent = campaign.total_recipients > 0 ? Math.round((campaign.sent_count / campaign.total_recipients) * 100) : 0;
+                            return (
+                                <MobileCard
+                                    title={campaign.subject}
+                                    subtitle={`Target: ${campaign.target_status} · by ${campaign.creator_name}`}
+                                    badge={campaign.status}
+                                    badgeColor={getStatusBadge(campaign.status)}
+                                    metrics={[{ label: 'Sent', value: `${campaign.sent_count} / ${campaign.total_recipients} (${progressPercent}%)` }]}
+                                >
+                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div className={`h-full rounded-full transition-all ${campaign.status === 'completed' ? 'bg-emerald-500' : 'bg-teal-500'}`} style={{ width: `${progressPercent}%` }} />
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-500">Dispatched: {campaign.created_at_display}</div>
+                                </MobileCard>
+                            );
+                        }}
+                    />
 
                     {campaigns?.links?.length > 3 && (
                         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">

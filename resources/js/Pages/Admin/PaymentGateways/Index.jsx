@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusClass = (active) =>
     active ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200';
@@ -30,73 +32,70 @@ export default function Index({ pageTitle = 'Payment Gateways', gateways = [], r
                 )}
             </div>
 
-            <div className="card overflow-x-auto">
-                <table className="w-full min-w-[1100px] text-left text-sm">
-                    <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
-                        <tr>
-                            <th className="px-4 py-3">Gateway</th>
-                            <th className="px-4 py-3">Tk In</th>
-                            <th className="px-4 py-3">Tk Out</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {gateways.length > 0 ? (
-                            gateways.map((gateway) => (
-                                <tr key={gateway.id} className="border-b border-slate-100">
-                                    <td className="px-4 py-3 align-top">
-                                        <div className="font-semibold text-slate-900">{gateway.name}</div>
-                                        <div className="mt-1 text-xs text-slate-500">
-                                            {gateway.details_display || '--'}
-                                        </div>
-                                    </td>
-                                    <td className="whitespace-nowrap px-4 py-3 align-top font-medium text-emerald-700">
-                                        {gateway.financial_summary?.tk_in_display || '0.00'}
-                                    </td>
-                                    <td className="px-4 py-3 align-top">
-                                        <div className="whitespace-nowrap font-medium text-rose-700">
-                                            {gateway.financial_summary?.tk_out_display || '0.00'}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span
-                                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(
-                                                gateway.is_active,
-                                            )}`}
-                                        >
-                                            {gateway.is_active ? 'Active' : 'Inactive'}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <a
-                                            href={gateway?.routes?.view || gateway?.routes?.edit}
-                                            data-native="true"
-                                            className="text-slate-600 hover:text-slate-500"
-                                        >
-                                            View
-                                        </a>
-                                        <span className="mx-2 text-slate-300">|</span>
-                                        <a
-                                            href={gateway?.routes?.edit}
-                                            data-native="true"
-                                            className="text-teal-600 hover:text-teal-500"
-                                        >
-                                            Edit
-                                        </a>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
-                                    No gateways found.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <DataTable
+                rows={gateways}
+                emptyMessage="No gateways found."
+                columns={[
+                    {
+                        key: 'gateway',
+                        header: 'Gateway',
+                        render: (gateway) => (
+                            <>
+                                <div className="font-semibold text-slate-900">{gateway.name}</div>
+                                <div className="mt-1 text-xs text-slate-500">{gateway.details_display || '--'}</div>
+                            </>
+                        ),
+                    },
+                    { key: 'tk_in', header: 'Tk In', cellClassName: 'font-medium text-emerald-700', render: (gateway) => gateway.financial_summary?.tk_in_display || '0.00' },
+                    { key: 'tk_out', header: 'Tk Out', cellClassName: 'font-medium text-rose-700', render: (gateway) => gateway.financial_summary?.tk_out_display || '0.00' },
+                    {
+                        key: 'status',
+                        header: 'Status',
+                        render: (gateway) => <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(gateway.is_active)}`}>{gateway.is_active ? 'Active' : 'Inactive'}</span>,
+                    },
+                    {
+                        key: 'action',
+                        header: 'Action',
+                        render: (gateway) => (
+                            <>
+                                <a href={gateway?.routes?.view || gateway?.routes?.edit} data-native="true" className="text-slate-600 hover:text-slate-500">View</a>
+                                <span className="mx-2 text-slate-300">|</span>
+                                <a href={gateway?.routes?.edit} data-native="true" className="text-teal-600 hover:text-teal-500">Edit</a>
+                            </>
+                        ),
+                    },
+                ]}
+                renderMobileCard={(gateway) => (
+                    <MobileCard
+                        title={gateway.name}
+                        subtitle={gateway.details_display}
+                        badge={gateway.is_active ? 'Active' : 'Inactive'}
+                        badgeColor={statusClass(gateway.is_active)}
+                        metrics={[
+                            { label: 'Tk In', value: gateway.financial_summary?.tk_in_display || '0.00', tone: 'text-emerald-700' },
+                            { label: 'Tk Out', value: gateway.financial_summary?.tk_out_display || '0.00', tone: 'text-rose-700' },
+                        ]}
+                        actions={
+                            <>
+                                <a
+                                    href={gateway?.routes?.view || gateway?.routes?.edit}
+                                    data-native="true"
+                                    className="flex-1 text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                >
+                                    View
+                                </a>
+                                <a
+                                    href={gateway?.routes?.edit}
+                                    data-native="true"
+                                    className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                >
+                                    Edit
+                                </a>
+                            </>
+                        }
+                    />
+                )}
+            />
         </>
     );
 }

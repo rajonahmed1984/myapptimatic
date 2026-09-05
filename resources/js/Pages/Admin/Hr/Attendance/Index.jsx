@@ -124,52 +124,69 @@ export default function Index({
                     <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />
                     <input type="hidden" name="date" value={selectedDate} />
 
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm text-slate-700">
-                            <thead>
-                                <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                                    <th className="py-2 px-3">Employee</th>
-                                    <th className="py-2 px-3">Department</th>
-                                    <th className="py-2 px-3">Designation</th>
-                                    <th className="py-2 px-3">Status</th>
-                                    <th className="py-2 px-3">Note</th>
-                                    <th className="py-2 px-3">Recorded By</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {employees.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="py-3 px-3 text-center text-slate-500">No active full-time employees found.</td>
-                                    </tr>
-                                ) : employees.map((employee, index) => (
-                                    <tr key={employee.id} className="border-b border-slate-100">
-                                        <td className="py-2 px-3">
-                                            <div className="font-semibold text-slate-900">{employee.name}</div>
-                                            <div className="text-xs text-slate-500">{employee.email}</div>
-                                            <input type="hidden" name={`records[${index}][employee_id]`} value={employee.id} />
-                                        </td>
-                                        <td className="py-2 px-3">{employee.department}</td>
-                                        <td className="py-2 px-3">{employee.designation}</td>
-                                        <td className="py-2 px-3">
+                    {/* One row per employee, responsive via CSS only (stacked card on mobile,
+                        table-like grid on desktop) — never duplicate the named inputs, or
+                        browsers submit both hidden and visible copies together. */}
+                    {employees.length === 0 ? (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 py-6 text-center text-sm text-slate-500">No active full-time employees found.</div>
+                    ) : (
+                        <div className="space-y-3 md:space-y-0 md:rounded-xl md:border md:border-slate-200 md:divide-y md:divide-slate-100">
+                            <div className="hidden md:grid md:grid-cols-[2fr_1fr_1fr_1.4fr_1.6fr_1.4fr] md:gap-3 md:bg-slate-50 md:px-3 md:py-2 md:text-xs md:font-semibold md:uppercase md:tracking-[0.2em] md:text-slate-500">
+                                <div>Employee</div>
+                                <div>Department</div>
+                                <div>Designation</div>
+                                <div>Status</div>
+                                <div>Note</div>
+                                <div>Recorded By</div>
+                            </div>
+
+                            {employees.map((employee, index) => (
+                                <div
+                                    key={employee.id}
+                                    className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm md:rounded-none md:border-0 md:border-b md:border-slate-100 md:bg-transparent md:p-3 md:shadow-none md:grid md:grid-cols-[2fr_1fr_1fr_1.4fr_1.6fr_1.4fr] md:items-center md:gap-3 last:md:border-b-0"
+                                >
+                                    <input type="hidden" name={`records[${index}][employee_id]`} value={employee.id} />
+
+                                    <div>
+                                        <div className="font-semibold text-slate-900">{employee.name}</div>
+                                        <div className="text-xs text-slate-500">{employee.email}</div>
+                                        <div className="mt-1 text-xs text-slate-500 md:hidden">{employee.designation}{employee.department ? ` · ${employee.department}` : ''}</div>
+                                    </div>
+
+                                    <div className="hidden md:block text-sm text-slate-700">{employee.department}</div>
+                                    <div className="hidden md:block text-sm text-slate-700">{employee.designation}</div>
+
+                                    <div className="mt-3 md:mt-0">
+                                        <label className="text-[10px] uppercase tracking-[0.18em] text-slate-400 md:hidden">Status</label>
+                                        <div className="mt-1 md:mt-0">
                                             <SearchableSelect
                                                 name={`records[${index}][status]`}
                                                 defaultValue={String(employee.status || '')}
                                                 options={attendanceStatusOptions}
                                                 placeholder="Not set"
                                             />
-                                        </td>
-                                        <td className="py-2 px-3">
-                                            <input type="text" name={`records[${index}][note]`} defaultValue={employee.note || ''} placeholder="Optional note" className="w-full rounded-full border border-slate-300 bg-white px-3 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
-                                        </td>
-                                        <td className="py-2 px-3 text-xs text-slate-500">
-                                            {employee.recorder_name ? employee.recorder_name : isPaidHoliday && employee.status === 'present' ? 'Paid holiday (System)' : '--'}
-                                            {employee.updated_at ? <div>{employee.updated_at}</div> : null}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-2.5 md:mt-0">
+                                        <label className="text-[10px] uppercase tracking-[0.18em] text-slate-400 md:hidden">Note</label>
+                                        <input
+                                            type="text"
+                                            name={`records[${index}][note]`}
+                                            defaultValue={employee.note || ''}
+                                            placeholder="Optional note"
+                                            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-600 md:mt-0 md:h-8 md:rounded-full md:px-3 md:py-1.5 md:text-xs"
+                                        />
+                                    </div>
+
+                                    <div className="mt-2.5 text-[11px] text-slate-400 md:mt-0 md:text-xs md:text-slate-500">
+                                        {employee.recorder_name ? employee.recorder_name : isPaidHoliday && employee.status === 'present' ? 'Paid holiday (System)' : '--'}
+                                        {employee.updated_at ? <div>{employee.updated_at}</div> : null}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {employees.length > 0 ? (
                         <div className="mt-4 flex justify-end">

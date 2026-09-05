@@ -2,6 +2,9 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { formatDate } from '@/utils/datetime';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
+import MobileStickyAction from '../../../Components/Mobile/MobileStickyAction';
 
 function formatCurrency(code, amount) {
     const value = Number.parseFloat(amount ?? 0);
@@ -151,128 +154,154 @@ export default function Create({
                     </a>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                        <thead className="text-left text-xs uppercase tracking-[0.18em] text-slate-400">
-                            <tr>
-                                <th className="pb-2 pr-3 font-medium">ID</th>
-                                <th className="pb-2 pr-3 font-medium">Date</th>
-                                <th className="pb-2 pr-3 font-medium">Title / Category</th>
-                                <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">Amount / Paid</th>
-                                <th className="pb-2 pr-3 text-center font-medium">Status</th>
-                                <th className="pb-2 pr-3 font-medium">Invoice</th>
-                                <th className="pb-2 text-right font-medium">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-700">
-                            {oneTimeExpenses.length === 0 ? (
-                                <tr>
-                                    <td colSpan={7} className="py-6 text-center text-sm text-slate-500">
-                                        No one-time expenses yet.
-                                    </td>
-                                </tr>
+                <DataTable
+                    rows={oneTimeExpenses}
+                    emptyMessage="No one-time expenses yet."
+                    columns={[
+                        { key: 'id', header: 'ID', cellClassName: 'font-semibold text-slate-900', render: (item) => `#${item.id}` },
+                        { key: 'date', header: 'Date', render: (item) => item.date_label || '--' },
+                        {
+                            key: 'title',
+                            header: 'Title / Category',
+                            render: (item) => (
+                                <>
+                                    <div className="font-medium text-slate-900">{item.title}</div>
+                                    <div className="mt-1 text-xs text-slate-500">{item.category_name || '--'}</div>
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'amount',
+                            header: 'Amount / Paid',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (item) => (
+                                <>
+                                    <div className="font-semibold text-slate-900">{formatCurrency(currencyCode, item.amount)}</div>
+                                    <div className="mt-1 text-xs text-slate-500">Paid: {formatCurrency(currencyCode, item.invoice?.paid ?? 0)}</div>
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'status',
+                            header: 'Status',
+                            headerClassName: 'text-center',
+                            cellClassName: 'text-center',
+                            render: (item) => <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${item.invoice?.payment_status_class || 'bg-slate-100 text-slate-500'}`}>{item.invoice?.payment_status || 'Due'}</span>,
+                        },
+                        {
+                            key: 'invoice',
+                            header: 'Invoice',
+                            render: (item) => (
+                                item.invoice ? (
+                                    <>
+                                        <div className="font-semibold text-slate-900">{item.invoice.invoice_no}</div>
+                                        {item.invoice.is_partial ? (
+                                            <div className="mt-1 text-[11px] text-slate-500">Paid: {formatCurrency(currencyCode, item.invoice.paid)} | Left: {formatCurrency(currencyCode, item.invoice.remaining)}</div>
+                                        ) : item.invoice.is_paid ? (
+                                            <div className="mt-1 text-[11px] text-slate-400">Settled in full</div>
+                                        ) : (
+                                            <div className="mt-1 text-[11px] text-slate-500">Unpaid</div>
+                                        )}
+                                    </>
+                                ) : <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">Not generated</span>
+                            ),
+                        },
+                        {
+                            key: 'actions',
+                            header: 'Actions',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (item) => (
+                                <div className="flex flex-wrap justify-end gap-2 text-xs font-semibold">
+                                    {item.invoice ? (
+                                        item.invoice.is_paid ? null : (
+                                            <button type="button" onClick={() => openPayment(item)} className="text-xs font-semibold text-teal-600 hover:text-teal-500">Add payment</button>
+                                        )
+                                    ) : (
+                                        <form method="POST" action={item.routes?.generate_invoice} data-native="true">
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <input type="hidden" name="source_type" value="expense" />
+                                            <input type="hidden" name="source_id" value={item.id} />
+                                            <button type="submit" className="text-xs font-semibold text-teal-600 hover:text-teal-500">Generate invoice</button>
+                                        </form>
+                                    )}
+                                    <a href={item.routes?.edit} data-native="true" className="text-xs font-semibold text-slate-600 hover:text-teal-600">Edit</a>
+                                    <form
+                                        method="POST"
+                                        action={item.routes?.destroy}
+                                        data-native="true"
+                                        onSubmit={(event) => { if (!window.confirm('Delete this one-time expense?')) event.preventDefault(); }}
+                                    >
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <input type="hidden" name="_method" value="DELETE" />
+                                        <button type="submit" className="text-xs font-semibold text-rose-600 hover:text-rose-500">Delete</button>
+                                    </form>
+                                </div>
+                            ),
+                        },
+                    ]}
+                    renderMobileCard={(item) => (
+                        <MobileCard
+                            title={item.title}
+                            subtitle={item.category_name}
+                            badge={item.invoice?.payment_status || 'Due'}
+                            badgeColor={item.invoice?.payment_status_class}
+                            metrics={[
+                                { label: 'Amount', value: formatCurrency(currencyCode, item.amount) },
+                                { label: 'Paid', value: formatCurrency(currencyCode, item.invoice?.paid ?? 0) },
+                            ]}
+                            actions={
+                                <div className="flex flex-wrap gap-2 w-full">
+                                    {item.invoice ? (
+                                        item.invoice.is_paid ? null : (
+                                            <button
+                                                type="button"
+                                                onClick={() => openPayment(item)}
+                                                className="flex-1 py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                            >
+                                                Add payment
+                                            </button>
+                                        )
+                                    ) : (
+                                        <form method="POST" action={item.routes?.generate_invoice} data-native="true" className="flex-1">
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <input type="hidden" name="source_type" value="expense" />
+                                            <input type="hidden" name="source_id" value={item.id} />
+                                            <button type="submit" className="w-full py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95">Generate invoice</button>
+                                        </form>
+                                    )}
+                                    <a
+                                        href={item.routes?.edit}
+                                        data-native="true"
+                                        className="flex-1 text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                    >
+                                        Edit
+                                    </a>
+                                    <form
+                                        method="POST"
+                                        action={item.routes?.destroy}
+                                        data-native="true"
+                                        onSubmit={(event) => { if (!window.confirm('Delete this one-time expense?')) event.preventDefault(); }}
+                                    >
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <input type="hidden" name="_method" value="DELETE" />
+                                        <button type="submit" className="py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition active:scale-95">Delete</button>
+                                    </form>
+                                </div>
+                            }
+                        >
+                            {item.invoice ? (
+                                <div className="text-xs text-slate-500">
+                                    Invoice {item.invoice.invoice_no}
+                                    {item.invoice.is_partial ? ` · Left: ${formatCurrency(currencyCode, item.invoice.remaining)}` : item.invoice.is_paid ? ' · Settled in full' : ' · Unpaid'}
+                                </div>
                             ) : (
-                                oneTimeExpenses.map((item) => (
-                                    <tr key={item.id}>
-                                        <td className="whitespace-nowrap py-2 pr-3 font-semibold text-slate-900">#{item.id}</td>
-                                        <td className="whitespace-nowrap py-2 pr-3">{item.date_label || '--'}</td>
-                                        <td className="py-2 pr-3">
-                                            <div className="font-medium text-slate-900">{item.title}</div>
-                                            <div className="mt-1 text-xs text-slate-500">{item.category_name || '--'}</div>
-                                        </td>
-                                        <td className="whitespace-nowrap py-2 pr-3 text-right">
-                                            <div className="font-semibold text-slate-900">
-                                                {formatCurrency(currencyCode, item.amount)}
-                                            </div>
-                                            <div className="mt-1 text-xs text-slate-500">
-                                                Paid: {formatCurrency(currencyCode, item.invoice?.paid ?? 0)}
-                                            </div>
-                                        </td>
-                                        <td className="py-2 pr-3 text-center">
-                                            <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${item.invoice?.payment_status_class || 'bg-slate-100 text-slate-500'}`}>
-                                                {item.invoice?.payment_status || 'Due'}
-                                            </span>
-                                        </td>
-                                        <td className="py-2 pr-3">
-                                            {item.invoice ? (
-                                                <>
-                                                    <div className="font-semibold text-slate-900">{item.invoice.invoice_no}</div>
-                                                    {item.invoice.is_partial ? (
-                                                        <div className="mt-1 text-[11px] text-slate-500">
-                                                            Paid: {formatCurrency(currencyCode, item.invoice.paid)} | Left:{' '}
-                                                            {formatCurrency(currencyCode, item.invoice.remaining)}
-                                                        </div>
-                                                    ) : item.invoice.is_paid ? (
-                                                        <div className="mt-1 text-[11px] text-slate-400">Settled in full</div>
-                                                    ) : (
-                                                        <div className="mt-1 text-[11px] text-slate-500">Unpaid</div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">Not generated</span>
-                                            )}
-                                        </td>
-                                        <td className="py-2 text-right">
-                                            <div className="flex flex-wrap justify-end gap-2 text-xs font-semibold">
-                                                {item.invoice ? (
-                                                    item.invoice.is_paid ? null : (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => openPayment(item)}
-                                                            className="text-xs font-semibold text-teal-600 hover:text-teal-500"
-                                                        >
-                                                            Add payment
-                                                        </button>
-                                                    )
-                                                ) : (
-                                                    <form method="POST" action={item.routes?.generate_invoice} data-native="true">
-                                                        <input type="hidden" name="_token" value={csrf} />
-                                                        <input type="hidden" name="source_type" value="expense" />
-                                                        <input type="hidden" name="source_id" value={item.id} />
-                                                        <button
-                                                            type="submit"
-                                                            className="text-xs font-semibold text-teal-600 hover:text-teal-500"
-                                                        >
-                                                            Generate invoice
-                                                        </button>
-                                                    </form>
-                                                )}
-
-                                                <a
-                                                    href={item.routes?.edit}
-                                                    data-native="true"
-                                                    className="text-xs font-semibold text-slate-600 hover:text-teal-600"
-                                                >
-                                                    Edit
-                                                </a>
-
-                                                <form
-                                                    method="POST"
-                                                    action={item.routes?.destroy}
-                                                    data-native="true"
-                                                    onSubmit={(event) => {
-                                                        if (!window.confirm('Delete this one-time expense?')) {
-                                                            event.preventDefault();
-                                                        }
-                                                    }}
-                                                >
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <input type="hidden" name="_method" value="DELETE" />
-                                                    <button
-                                                        type="submit"
-                                                        className="text-xs font-semibold text-rose-600 hover:text-rose-500"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                <div className="text-xs text-slate-500">Invoice not generated</div>
                             )}
-                        </tbody>
-                    </table>
-                </div>
+                        </MobileCard>
+                    )}
+                />
 
                 {pagination_links.length > 0 ? (
                     <div className="mt-6 flex flex-wrap items-center justify-end gap-2 text-sm">
@@ -302,8 +331,8 @@ export default function Create({
             </div>
 
             <div className={`fixed inset-0 z-50 ${showAddModal ? '' : 'hidden'}`}>
-                <div className="absolute inset-0 bg-slate-900/50" onClick={() => setShowAddModal(false)} />
-                <div className="relative mx-auto mt-16 w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                <div className="absolute inset-0 bg-slate-900/50 md:block" onClick={() => setShowAddModal(false)} />
+                <div className="relative flex h-full w-full flex-col overflow-y-auto bg-white p-5 pb-28 shadow-2xl md:mx-auto md:mt-16 md:h-auto md:max-w-3xl md:rounded-2xl md:border md:border-slate-200 md:p-6 md:pb-6">
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <div className="section-label">Add Expense</div>
@@ -318,7 +347,7 @@ export default function Create({
                         </button>
                     </div>
 
-                    <form method="POST" action={routes?.store} encType="multipart/form-data" className="mt-5 space-y-4 text-sm" data-native="true">
+                    <form id="createExpenseForm" method="POST" action={routes?.store} encType="multipart/form-data" className="mt-5 space-y-4 text-sm" data-native="true">
                         <input type="hidden" name="_token" value={csrf} />
                         <div className="grid gap-3 md:grid-cols-2">
                             <div>
@@ -401,18 +430,24 @@ export default function Create({
                             <span className="text-xs text-slate-600">Generate expense invoice</span>
                         </div>
 
-                        <div className="flex justify-end">
+                        <div className="hidden justify-end md:flex">
                             <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
                                 Save Expense
                             </button>
                         </div>
                     </form>
+
+                    <MobileStickyAction className="md:hidden">
+                        <button type="submit" form="createExpenseForm" className="w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white active:scale-[0.99] transition">
+                            Save Expense
+                        </button>
+                    </MobileStickyAction>
                 </div>
             </div>
 
             <div className={`fixed inset-0 z-50 ${paymentModal.open ? '' : 'hidden'}`}>
                 <div className="absolute inset-0 bg-slate-900/50" onClick={closePayment} />
-                <div className="relative mx-auto mt-16 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                <div className="relative flex h-full w-full flex-col overflow-y-auto bg-white p-5 pb-28 shadow-2xl md:mx-auto md:mt-16 md:h-auto md:max-w-lg md:rounded-2xl md:border md:border-slate-200 md:p-6 md:pb-6">
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <div className="section-label">Record Payment</div>
@@ -431,7 +466,7 @@ export default function Create({
                         </button>
                     </div>
 
-                    <form method="POST" action={paymentModal.action} className="mt-5 grid gap-4 md:grid-cols-2" data-native="true">
+                    <form id="recordPaymentForm" method="POST" action={paymentModal.action} className="mt-5 grid gap-4 md:grid-cols-2" data-native="true">
                         <input type="hidden" name="_token" value={csrf} />
                         <div>
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Payment Method</label>
@@ -504,7 +539,7 @@ export default function Create({
                                 placeholder="Optional note"
                             />
                         </div>
-                        <div className="flex items-center justify-end gap-3 pt-2 md:col-span-2">
+                        <div className="hidden items-center justify-end gap-3 pt-2 md:col-span-2 md:flex">
                             <button
                                 type="button"
                                 onClick={closePayment}
@@ -517,6 +552,15 @@ export default function Create({
                             </button>
                         </div>
                     </form>
+
+                    <MobileStickyAction className="md:hidden">
+                        <button type="button" onClick={closePayment} className="flex-1 rounded-xl border border-slate-300 py-3 text-sm font-semibold text-slate-700 active:scale-[0.99] transition">
+                            Cancel
+                        </button>
+                        <button type="submit" form="recordPaymentForm" className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white active:scale-[0.99] transition">
+                            Confirm Payment
+                        </button>
+                    </MobileStickyAction>
                 </div>
             </div>
         </>

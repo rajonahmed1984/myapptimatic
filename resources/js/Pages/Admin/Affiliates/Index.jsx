@@ -4,6 +4,7 @@ import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import SearchableSelect from '../../../Components/SearchableSelect';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import FilterSheet from '../../../Components/Mobile/FilterSheet';
 
 const statusBadgeClass = (status) => {
     if (status === 'active') {
@@ -76,7 +77,36 @@ export default function Index({
             </div>
 
             <div className="card p-6">
-                <form method="GET" action={routes?.index} className="mb-6 flex flex-wrap gap-4" onSubmit={handleFilterSubmit}>
+                {/* Mobile (<md): compact search + a Filters button opens status in a sheet */}
+                <div className="mb-6 flex items-center gap-2 md:hidden">
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="Search by name, email, or code..."
+                        className="ui-input flex-1"
+                    />
+                    <FilterSheet
+                        title="Filter Affiliates"
+                        activeCount={statusFilter ? 1 : 0}
+                        onApply={() => handleFilterSubmit({ preventDefault() {} })}
+                        onClear={hasFilters ? () => { setStatusFilter(''); setSearchTerm(''); } : undefined}
+                    >
+                        <div>
+                            <label className="text-xs text-slate-500">Status</label>
+                            <div className="mt-1">
+                                <SearchableSelect
+                                    value={statusFilter}
+                                    onChange={(nextValue) => setStatusFilter(String(nextValue || ''))}
+                                    options={statusOptions}
+                                    placeholder="All statuses"
+                                />
+                            </div>
+                        </div>
+                    </FilterSheet>
+                </div>
+
+                <form method="GET" action={routes?.index} className="mb-6 hidden flex-wrap gap-4 md:flex" onSubmit={handleFilterSubmit}>
                     <input
                         type="text"
                         name="search"

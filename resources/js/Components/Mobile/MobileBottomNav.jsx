@@ -54,8 +54,9 @@ export default function MobileBottomNav({ items = [], className = '' }) {
                                 key={item.label || idx}
                                 type="button"
                                 onClick={item.onClick}
-                                className="w-full flex items-center justify-center focus:outline-none active:scale-95 transition-transform"
+                                className="w-full flex items-center justify-center rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-1 motion-reduce:transition-none motion-reduce:active:scale-100"
                                 aria-label={item.label}
+                                aria-current={isActive ? 'page' : undefined}
                             >
                                 {content}
                             </button>
@@ -67,8 +68,9 @@ export default function MobileBottomNav({ items = [], className = '' }) {
                             key={item.label || idx}
                             href={item.href}
                             data-native="true"
-                            className="w-full flex items-center justify-center focus:outline-none active:scale-95 transition-transform"
+                            className="w-full flex items-center justify-center rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-1 motion-reduce:transition-none motion-reduce:active:scale-100"
                             aria-label={item.label}
+                            aria-current={isActive ? 'page' : undefined}
                         >
                             {content}
                         </a>

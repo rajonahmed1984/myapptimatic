@@ -268,29 +268,29 @@ export default function Show({ pageTitle = 'Order', order = {}, plan_options = [
                                         </div>
                                     </div>
                                 </form>
-                                <div className="mt-4 flex flex-wrap items-center gap-3">
+                                <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                                     <button
                                         type="submit"
                                         form="approve-order-form"
-                                        className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500"
+                                        className="w-full rounded-full bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-500 active:scale-[0.99] sm:w-auto sm:py-2"
                                     >
                                         Approve Order
                                     </button>
-                                    <form action={routes?.cancel} method="POST" data-native="true" className="inline-flex">
+                                    <form action={routes?.cancel} method="POST" data-native="true" className="w-full sm:inline-flex sm:w-auto">
                                         <input type="hidden" name="_token" value={csrf} />
                                         <button
                                             type="submit"
-                                            className="rounded-full border border-rose-300 bg-white px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                                            className="w-full rounded-full border border-rose-300 bg-white px-4 py-2.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 active:scale-[0.99] sm:w-auto sm:py-2"
                                         >
                                             Cancel Order
                                         </button>
                                     </form>
-                                    <form action={routes?.destroy} method="POST" data-native="true" className="inline-flex">
+                                    <form action={routes?.destroy} method="POST" data-native="true" className="w-full sm:inline-flex sm:w-auto">
                                         <input type="hidden" name="_token" value={csrf} />
                                         <input type="hidden" name="_method" value="DELETE" />
                                         <button
                                             type="submit"
-                                            className="rounded-full border border-rose-300 bg-white px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                                            className="w-full rounded-full border border-rose-300 bg-white px-4 py-2.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 active:scale-[0.99] sm:w-auto sm:py-2"
                                         >
                                             Delete Order
                                         </button>

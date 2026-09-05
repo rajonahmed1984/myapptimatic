@@ -6,6 +6,7 @@ import ImpersonationBanner from '../Layout/ImpersonationBanner';
 import MobileTopBar, { isInnerPagePath } from './MobileTopBar';
 import MobileBottomNav from './MobileBottomNav';
 import MobileBottomSheet from './MobileBottomSheet';
+import PullToRefresh from './PullToRefresh';
 
 function HeaderStat({ href, count, label, tone }) {
     const value = Number(count || 0);
@@ -75,11 +76,13 @@ export default function MobileAppShell({
 
     return (
         <div className="min-h-screen flex flex-col md:flex-row bg-dashboard">
-            {/* Mobile Overlay */}
+            {/* Mobile Overlay — must sit above the sticky mobile top bar (z-30) and
+                bottom nav (z-40) so both are dimmed/covered while the drawer is open,
+                and the drawer itself (z-50) must beat all of them. */}
             <div
                 id={`${portalKey}SidebarOverlay`}
                 onClick={() => setMobileOpen(false)}
-                className={`fixed inset-0 z-20 bg-slate-900/60 transition-opacity duration-200 md:hidden ${
+                className={`fixed inset-0 z-[45] bg-slate-900/60 transition-opacity duration-200 md:hidden ${
                     mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 }`}
             />
@@ -87,7 +90,7 @@ export default function MobileAppShell({
             {/* Sidebar */}
             <aside
                 id={`${portalKey}Sidebar`}
-                className={`sidebar fixed inset-y-0 left-0 z-30 flex w-72 max-w-[90vw] flex-shrink-0 flex-col px-6 py-7 overflow-y-auto max-h-screen transform transition-transform duration-200 ease-in-out md:w-64 md:max-w-none md:translate-x-0 md:sticky md:top-0 ${
+                className={`sidebar fixed inset-y-0 left-0 z-50 flex w-72 max-w-[90vw] flex-shrink-0 flex-col px-6 py-7 overflow-y-auto max-h-screen transform transition-transform duration-200 ease-in-out md:w-64 md:max-w-none md:translate-x-0 md:sticky md:top-0 ${
                     mobileOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
             >
@@ -188,17 +191,19 @@ export default function MobileAppShell({
                 </header>
 
                 <main id="main-content" className="w-full px-3 sm:px-4 md:px-6 py-4 md:py-10 pb-safe-nav md:pb-10 fade-in">
-                    {flash?.error && (
-                        <div className="mb-4 md:mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                            {flash.error}
-                        </div>
-                    )}
-                    {flash?.status && (
-                        <div className="mb-4 md:mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
-                            {flash.status}
-                        </div>
-                    )}
-                    {children}
+                    <PullToRefresh>
+                        {flash?.error && (
+                            <div className="mb-4 md:mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                                {flash.error}
+                            </div>
+                        )}
+                        {flash?.status && (
+                            <div className="mb-4 md:mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-700">
+                                {flash.status}
+                            </div>
+                        )}
+                        {children}
+                    </PullToRefresh>
                 </main>
             </div>
 

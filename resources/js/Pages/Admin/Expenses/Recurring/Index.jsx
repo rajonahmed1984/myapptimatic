@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { formatDate } from '@/utils/datetime';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import DataTable from '../../../../Components/Table/DataTable';
+import MobileCard from '../../../../Components/Mobile/MobileCard';
+import RowActionSheet from '../../../../Components/Mobile/RowActionSheet';
 
 const statusClass = (status) => {
     if (status === 'active') {
@@ -139,144 +142,147 @@ export default function Index({
             </div>
 
             <div className="overflow-hidden">
-                <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white/80 px-3 py-3">
-                    <table className="min-w-full text-sm text-slate-700">
-                        <thead>
-                            <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                                <th className="px-3 py-2">ID</th>
-                                <th className="px-3 py-2">Description</th>
-                                <th className="px-3 py-2 whitespace-nowrap">Amount / Advance / Due</th>
-                                <th className="px-3 py-2">Next due</th>
-                                <th className="px-3 py-2">Status</th>
-                                <th className="px-3 py-2 text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {hasRows ? (
-                                recurringExpenses.data.map((recurring) => (
-                                    <tr key={recurring.id} className="border-b border-slate-100">
-                                        <td className="px-3 py-2 font-semibold text-slate-900">{recurring.id}</td>
-                                        <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-900">
-                                            <a
-                                                href={recurring.routes?.show}
-                                                data-native="true"
-                                                className="hover:text-teal-600"
-                                            >
-                                                {recurring.title}
-                                            </a>
-                                            <div className="mt-1 text-xs font-normal text-slate-500">
-                                                Every {recurring.recurrence_interval}{' '}
-                                                {recurring.recurrence_type === 'yearly' ? 'year(s)' : 'month(s)'}
-                                            </div>
-                                            <div className="mt-1 text-xs font-normal text-slate-500">
-                                                Category: {recurring.category_name || '--'}
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <div className="whitespace-nowrap text-xs font-semibold text-sky-700">
-                                                Amount: {formatCurrency(recurring.amount, currency?.symbol, currency?.code)}
-                                            </div>
-                                            <div className="mt-1 whitespace-nowrap text-xs font-semibold text-emerald-700">
-                                                Advance: {formatCurrency(recurring.advance_amount, currency?.symbol, currency?.code)}
-                                            </div>
-                                            <div className="mt-1 whitespace-nowrap text-xs font-semibold text-rose-700">
-                                                Due: {formatCurrency(recurring.due_amount, currency?.symbol, currency?.code)}
-                                            </div>
-                                        </td>
-                                        <td className="whitespace-nowrap px-3 py-2">{recurring.next_due_display || '--'}</td>
-                                        <td className="px-3 py-2">
-                                            <span
-                                                className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusClass(recurring.status)}`}
-                                            >
-                                                {String(recurring.status || '').charAt(0).toUpperCase() + String(recurring.status || '').slice(1)}
-                                            </span>
-                                        </td>
-                                        <td className="px-3 py-2 text-right has-dropdown">
-                                            <div className="relative inline-flex justify-end text-left" onClick={(event) => event.stopPropagation()}>
+                <div className="rounded-2xl border border-slate-300 bg-white/80 px-3 py-3 md:overflow-x-auto">
+                    <DataTable
+                        rows={hasRows ? recurringExpenses.data : []}
+                        emptyMessage="No recurring expenses yet."
+                        columns={[
+                            { key: 'id', header: 'ID', cellClassName: 'font-semibold text-slate-900', render: (recurring) => recurring.id },
+                            {
+                                key: 'description',
+                                header: 'Description',
+                                cellClassName: 'whitespace-nowrap font-semibold text-slate-900',
+                                render: (recurring) => (
+                                    <>
+                                        <a href={recurring.routes?.show} data-native="true" className="hover:text-teal-600">{recurring.title}</a>
+                                        <div className="mt-1 text-xs font-normal text-slate-500">Every {recurring.recurrence_interval} {recurring.recurrence_type === 'yearly' ? 'year(s)' : 'month(s)'}</div>
+                                        <div className="mt-1 text-xs font-normal text-slate-500">Category: {recurring.category_name || '--'}</div>
+                                    </>
+                                ),
+                            },
+                            {
+                                key: 'amount',
+                                header: 'Amount / Advance / Due',
+                                render: (recurring) => (
+                                    <>
+                                        <div className="whitespace-nowrap text-xs font-semibold text-sky-700">Amount: {formatCurrency(recurring.amount, currency?.symbol, currency?.code)}</div>
+                                        <div className="mt-1 whitespace-nowrap text-xs font-semibold text-emerald-700">Advance: {formatCurrency(recurring.advance_amount, currency?.symbol, currency?.code)}</div>
+                                        <div className="mt-1 whitespace-nowrap text-xs font-semibold text-rose-700">Due: {formatCurrency(recurring.due_amount, currency?.symbol, currency?.code)}</div>
+                                    </>
+                                ),
+                            },
+                            { key: 'next_due', header: 'Next due', cellClassName: 'whitespace-nowrap', render: (recurring) => recurring.next_due_display || '--' },
+                            {
+                                key: 'status',
+                                header: 'Status',
+                                render: (recurring) => (
+                                    <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusClass(recurring.status)}`}>
+                                        {String(recurring.status || '').charAt(0).toUpperCase() + String(recurring.status || '').slice(1)}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'actions',
+                                header: 'Actions',
+                                headerClassName: 'text-end',
+                                cellClassName: 'text-right has-dropdown',
+                                render: (recurring) => (
+                                    <div className="relative inline-flex justify-end text-left" onClick={(event) => event.stopPropagation()}>
+                                        <button
+                                            type="button"
+                                            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
+                                            onClick={() => setOpenActionId((current) => (current === recurring.id ? null : recurring.id))}
+                                        >
+                                            Actions
+                                            <span className="text-[10px] text-slate-400">{openActionId === recurring.id ? actionOpenIcon : actionClosedIcon}</span>
+                                        </button>
+
+                                        {openActionId === recurring.id ? (
+                                            <div className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                                                <a href={recurring.routes?.show} data-native="true" className="block px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-teal-600">View</a>
+                                                <a href={recurring.routes?.edit} data-native="true" className="block px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-teal-600">Edit</a>
+                                                <form
+                                                    method="POST"
+                                                    action={recurring.routes?.destroy}
+                                                    data-native="true"
+                                                    onSubmit={(event) => { if (!window.confirm(`Delete recurring expense "${recurring.title}"?`)) event.preventDefault(); }}
+                                                >
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <input type="hidden" name="_method" value="DELETE" />
+                                                    <button type="submit" className="block w-full px-4 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50">Delete</button>
+                                                </form>
+                                                <div className="my-1 border-t border-dashed border-slate-300" />
                                                 <button
                                                     type="button"
-                                                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                                    onClick={() =>
-                                                        setOpenActionId((current) => (current === recurring.id ? null : recurring.id))
-                                                    }
+                                                    className="block w-full px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                                    onClick={() => {
+                                                        setOpenActionId(null);
+                                                        setAdvanceModal({
+                                                            open: true,
+                                                            action: recurring.routes?.advance_store || '',
+                                                            title: recurring.title || 'Recurring Expense',
+                                                            currentAdvance: Number(recurring.advance_amount ?? 0).toFixed(2),
+                                                        });
+                                                    }}
                                                 >
-                                                    Actions
-                                                    <span className="text-[10px] text-slate-400">{openActionId === recurring.id ? actionOpenIcon : actionClosedIcon}</span>
+                                                    Advance
                                                 </button>
-
-                                                {openActionId === recurring.id ? (
-                                                    <div className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-                                                        <a
-                                                            href={recurring.routes?.show}
-                                                            data-native="true"
-                                                            className="block px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-teal-600"
-                                                        >
-                                                            View
-                                                        </a>
-                                                        <a
-                                                            href={recurring.routes?.edit}
-                                                            data-native="true"
-                                                            className="block px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-teal-600"
-                                                        >
-                                                            Edit
-                                                        </a>
-                                                        <form
-                                                            method="POST"
-                                                            action={recurring.routes?.destroy}
-                                                            data-native="true"
-                                                            onSubmit={(event) => {
-                                                                if (!window.confirm(`Delete recurring expense "${recurring.title}"?`)) {
-                                                                    event.preventDefault();
-                                                                }
-                                                            }}
-                                                        >
-                                                            <input type="hidden" name="_token" value={csrfToken} />
-                                                            <input type="hidden" name="_method" value="DELETE" />
-                                                            <button
-                                                                type="submit"
-                                                                className="block w-full px-4 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50"
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </form>
-                                                        <div className="my-1 border-t border-dashed border-slate-300" />
-                                                        <button
-                                                            type="button"
-                                                            className="block w-full px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                                                            onClick={() => {
-                                                                setOpenActionId(null);
-                                                                setAdvanceModal({
-                                                                    open: true,
-                                                                    action: recurring.routes?.advance_store || '',
-                                                                    title: recurring.title || 'Recurring Expense',
-                                                                    currentAdvance: Number(recurring.advance_amount ?? 0).toFixed(2),
-                                                                });
-                                                            }}
-                                                        >
-                                                            Advance
-                                                        </button>
-                                                        <a
-                                                            href={recurring.routes?.show}
-                                                            data-native="true"
-                                                            className="block px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                                                        >
-                                                            Payment
-                                                        </a>
-                                                    </div>
-                                                ) : null}
+                                                <a href={recurring.routes?.show} data-native="true" className="block px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50">Payment</a>
                                             </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={6} className="px-3 py-4 text-center text-slate-500">
-                                        No recurring expenses yet.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                        ) : null}
+                                    </div>
+                                ),
+                            },
+                        ]}
+                        renderMobileCard={(recurring) => (
+                            <MobileCard
+                                title={<a href={recurring.routes?.show} data-native="true" className="hover:text-teal-600">{recurring.title}</a>}
+                                subtitle={`Every ${recurring.recurrence_interval} ${recurring.recurrence_type === 'yearly' ? 'year(s)' : 'month(s)'} · ${recurring.category_name || '--'}`}
+                                badge={String(recurring.status || '').charAt(0).toUpperCase() + String(recurring.status || '').slice(1)}
+                                badgeColor={statusClass(recurring.status)}
+                                metrics={[
+                                    { label: 'Amount', value: formatCurrency(recurring.amount, currency?.symbol, currency?.code) },
+                                    { label: 'Due', value: formatCurrency(recurring.due_amount, currency?.symbol, currency?.code), tone: 'text-rose-700' },
+                                ]}
+                                actions={
+                                    <>
+                                        <a
+                                            href={recurring.routes?.show}
+                                            data-native="true"
+                                            className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                        >
+                                            View
+                                        </a>
+                                        <RowActionSheet
+                                            title={recurring.title}
+                                            actions={[
+                                                { label: 'Edit', href: recurring.routes?.edit },
+                                                {
+                                                    label: 'Record Advance',
+                                                    onClick: () => setAdvanceModal({
+                                                        open: true,
+                                                        action: recurring.routes?.advance_store || '',
+                                                        title: recurring.title || 'Recurring Expense',
+                                                        currentAdvance: Number(recurring.advance_amount ?? 0).toFixed(2),
+                                                    }),
+                                                },
+                                                { label: 'Payment', href: recurring.routes?.show },
+                                                {
+                                                    label: 'Delete',
+                                                    tone: 'danger',
+                                                    confirm: `Delete recurring expense "${recurring.title}"?`,
+                                                    form: { action: recurring.routes?.destroy, method: 'DELETE', token: csrfToken },
+                                                },
+                                            ]}
+                                        />
+                                    </>
+                                }
+                            >
+                                <div className="text-xs text-emerald-700">Advance: {formatCurrency(recurring.advance_amount, currency?.symbol, currency?.code)}</div>
+                                <div className="text-xs text-slate-500">Next due: {recurring.next_due_display || '--'}</div>
+                            </MobileCard>
+                        )}
+                    />
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">

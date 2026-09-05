@@ -1,6 +1,8 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import DataTable from '../../../Components/Table/DataTable';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const BTN = {
     primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
@@ -271,141 +273,149 @@ export default function Index({
             </div>
 
             <div id="licensesTable">
-                <div className="card overflow-x-auto">
-                    <table className="w-full min-w-[760px] text-left text-xs md:text-sm">
-                        <thead className="border-b border-slate-300 text-[11px] uppercase tracking-[0.14em] text-slate-500 md:text-xs md:tracking-[0.25em]">
-                            <tr>
-                                <th className="w-14 px-2 py-2.5 md:px-4 md:py-3">ID</th>
-                                <th className="w-44 px-2 py-2.5 md:w-56 md:px-4 md:py-3">Customer &amp; Product</th>
-                                <th className="px-2 py-2.5 md:px-4 md:py-3">License &amp; URL</th>
-                                <th className="w-56 px-2 py-2.5 md:w-72 md:px-4 md:py-3">True verification</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {licenses.length > 0 ? (
-                                licenses.map((license) => {
-                                    const keyIndicator = licenseKeyIndicator(license);
-                                    const domainIndicator = urlIndicator(license);
+                <DataTable
+                    rows={licenses}
+                    emptyMessage="No licenses yet."
+                    columns={[
+                        { key: 'id', header: 'ID', cellClassName: 'text-slate-500', render: (license) => license.id },
+                        {
+                            key: 'customer',
+                            header: 'Customer & Product',
+                            render: (license) => (
+                                <>
+                                    {license.customer_url ? (
+                                        <a href={license.customer_url} data-native="true" className="block max-w-[220px] truncate text-teal-600 hover:text-teal-500 lg:max-w-[260px]">{license.customer_name}</a>
+                                    ) : <span className="text-slate-500">--</span>}
+                                    {license.customer_company_name ? <div className="mt-0.5 max-w-[230px] truncate text-xs font-medium text-slate-600 lg:max-w-[270px]">{license.customer_company_name}</div> : null}
+                                    {license.is_blocked ? <div className="mt-1 text-xs text-rose-600">Access blocked</div> : null}
+                                    <div className="mt-1 max-w-[230px] truncate text-xs text-slate-500 lg:max-w-[270px]">{license.product_name} - {license.plan_name}</div>
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'license',
+                            header: 'License & URL',
+                            cellClassName: 'font-mono text-xs text-teal-700',
+                            render: (license) => {
+                                const keyIndicator = licenseKeyIndicator(license);
+                                const domainIndicator = urlIndicator(license);
+                                return (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${keyIndicator.className}`} title={keyIndicator.title} aria-label={keyIndicator.title}>
+                                                {renderStatusIcon(keyIndicator.type)}
+                                            </span>
+                                            <span className="inline-block max-w-xs truncate align-middle lg:max-w-sm">{license.license_key}</span>
+                                            <button type="button" onClick={() => copyLicense(license.license_key)} className="text-slate-400 transition-colors hover:text-teal-600" title="Copy license key" aria-label="Copy license key">
+                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-slate-900">
+                                            <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${domainIndicator.className}`} title={domainIndicator.title} aria-label={domainIndicator.title}>
+                                                {renderStatusIcon(domainIndicator.type)}
+                                            </span>
+                                            <span className="inline-block max-w-xs truncate align-middle lg:max-w-sm">{license.domain}</span>
+                                            {license.can_sync ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => syncLicense(license)}
+                                                    disabled={Boolean(syncingIds[license.id])}
+                                                    className={`transition-colors ${syncingIds[license.id] ? 'cursor-not-allowed text-slate-300' : 'text-slate-400 hover:text-teal-600'}`}
+                                                    title="Sync license"
+                                                    aria-label="Sync license"
+                                                >
+                                                    <svg className={`h-4 w-4 ${syncingIds[license.id] ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M21 12a9 9 0 0 1-15.5 6.36L3 16" />
+                                                        <path d="M3 12a9 9 0 0 1 15.5-6.36L21 8" />
+                                                        <polyline points="3 21 3 16 8 16" />
+                                                        <polyline points="16 8 21 8 21 3" />
+                                                    </svg>
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                );
+                            },
+                        },
+                        {
+                            key: 'verification',
+                            header: 'True verification',
+                            render: (license) => (
+                                <>
+                                    <div className={`license-verification-badges inline-flex flex-wrap items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${license.verification_class}`}>
+                                        {license.verification_label}
+                                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${licenseStatusClass(license.license_status)}`}>{license.license_status}</span>
+                                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${license.sync_class}`}>{license.sync_label}</span>
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-500">
+                                        {license.verification_hint}
+                                        <span className="ml-2 inline">{license.sync_time_display}</span>
+                                    </div>
+                                </>
+                            ),
+                        },
+                    ]}
+                    renderMobileCard={(license) => {
+                        const keyIndicator = licenseKeyIndicator(license);
+                        const domainIndicator = urlIndicator(license);
+                        return (
+                            <MobileCard
+                                title={license.customer_url ? (
+                                    <a href={license.customer_url} data-native="true" className="hover:text-teal-600">{license.customer_name}</a>
+                                ) : (license.customer_name || '--')}
+                                subtitle={`${license.product_name} - ${license.plan_name}`}
+                                badge={license.license_status}
+                                badgeColor={licenseStatusClass(license.license_status)}
+                            >
+                                {license.customer_company_name ? <div className="text-xs font-medium text-slate-600">{license.customer_company_name}</div> : null}
+                                {license.is_blocked ? <div className="text-xs text-rose-600">Access blocked</div> : null}
 
-                                    return (
-                                        <tr key={license.id} className="border-b border-slate-100 align-top">
-                                            <td className="px-2 py-2.5 text-slate-500 md:px-4 md:py-3">{license.id}</td>
-                                            <td className="px-2 py-2.5 md:px-4 md:py-3">
-                                                {license.customer_url ? (
-                                                    <a href={license.customer_url} data-native="true" className="block max-w-[160px] truncate text-teal-600 hover:text-teal-500 md:max-w-[220px] lg:max-w-[260px]">
-                                                        {license.customer_name}
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-slate-500">--</span>
-                                                )}
-                                                {license.customer_company_name ? (
-                                                    <div className="mt-0.5 max-w-[170px] truncate text-xs font-medium text-slate-600 md:max-w-[230px] lg:max-w-[270px]">
-                                                        {license.customer_company_name}
-                                                    </div>
-                                                ) : null}
-                                                {license.is_blocked ? <div className="mt-1 text-xs text-rose-600">Access blocked</div> : null}
-                                                <div className="mt-1 max-w-[170px] truncate text-xs text-slate-500 md:max-w-[230px] lg:max-w-[270px]">
-                                                    {license.product_name} - {license.plan_name}
-                                                </div>
-                                            </td>
-                                            <td className="px-2 py-2.5 font-mono text-xs text-teal-700 md:px-4 md:py-3">
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <span
-                                                            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${keyIndicator.className}`}
-                                                            title={keyIndicator.title}
-                                                            aria-label={keyIndicator.title}
-                                                        >
-                                                            {renderStatusIcon(keyIndicator.type)}
-                                                        </span>
-                                                        <span className="inline-block max-w-[240px] truncate align-middle md:max-w-xs lg:max-w-sm">{license.license_key}</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                copyLicense(license.license_key);
-                                                            }}
-                                                            className="text-slate-400 transition-colors hover:text-teal-600"
-                                                            title="Copy license key"
-                                                        >
-                                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    strokeWidth="2"
-                                                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                                                />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-slate-900">
-                                                        <span
-                                                            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${domainIndicator.className}`}
-                                                            title={domainIndicator.title}
-                                                            aria-label={domainIndicator.title}
-                                                        >
-                                                            {renderStatusIcon(domainIndicator.type)}
-                                                        </span>
-                                                        <span className="inline-block max-w-[240px] truncate align-middle md:max-w-xs lg:max-w-sm">{license.domain}</span>
-                                                        {license.can_sync ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    syncLicense(license);
-                                                                }}
-                                                                disabled={Boolean(syncingIds[license.id])}
-                                                                className={`transition-colors ${
-                                                                    syncingIds[license.id] ? 'cursor-not-allowed text-slate-300' : 'text-slate-400 hover:text-teal-600'
-                                                                }`}
-                                                                title="Sync license"
-                                                                aria-label="Sync license"
-                                                            >
-                                                                <svg
-                                                                    className={`h-4 w-4 ${syncingIds[license.id] ? 'animate-spin' : ''}`}
-                                                                    viewBox="0 0 24 24"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    strokeWidth="2"
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                >
-                                                                    <path d="M21 12a9 9 0 0 1-15.5 6.36L3 16" />
-                                                                    <path d="M3 12a9 9 0 0 1 15.5-6.36L21 8" />
-                                                                    <polyline points="3 21 3 16 8 16" />
-                                                                    <polyline points="16 8 21 8 21 3" />
-                                                                </svg>
-                                                            </button>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="license-verification-cell px-2 py-2.5 md:px-4 md:py-3">
-                                                <div className={`license-verification-badges inline-flex flex-wrap items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold md:px-3 md:text-xs ${license.verification_class}`}>
-                                                    {license.verification_label}
-                                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold md:px-2.5 md:py-1 md:text-xs ${licenseStatusClass(license.license_status)}`}>
-                                                        {license.license_status}
-                                                    </span>
-                                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold md:px-2.5 md:py-1 md:text-xs ${license.sync_class}`}>
-                                                        {license.sync_label}
-                                                    </span>
-                                                </div>
-                                                <div className="license-verification-info mt-1 text-xs text-slate-500">
-                                                    {license.verification_hint}
-                                                    <span className="block md:ml-2 md:inline">{license.sync_time_display}</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            ) : (
-                                <tr>
-                                    <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                                        No licenses yet.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                <div className="mt-2 flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5">
+                                    <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${keyIndicator.className}`} title={keyIndicator.title} aria-label={keyIndicator.title}>
+                                        {renderStatusIcon(keyIndicator.type)}
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-teal-700">{license.license_key}</span>
+                                    <button type="button" onClick={() => copyLicense(license.license_key)} className="flex h-11 w-11 shrink-0 items-center justify-center -my-3 -mr-1.5 text-slate-400 hover:text-teal-600" title="Copy license key" aria-label="Copy license key">
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5">
+                                    <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${domainIndicator.className}`} title={domainIndicator.title} aria-label={domainIndicator.title}>
+                                        {renderStatusIcon(domainIndicator.type)}
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate text-xs text-slate-900">{license.domain}</span>
+                                    {license.can_sync ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => syncLicense(license)}
+                                            disabled={Boolean(syncingIds[license.id])}
+                                            className={`flex h-11 w-11 shrink-0 items-center justify-center -my-3 -mr-1.5 transition-colors ${syncingIds[license.id] ? 'cursor-not-allowed text-slate-300' : 'text-slate-400 hover:text-teal-600'}`}
+                                            title="Sync license"
+                                            aria-label="Sync license"
+                                        >
+                                            <svg className={`h-4 w-4 ${syncingIds[license.id] ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 12a9 9 0 0 1-15.5 6.36L3 16" />
+                                                <path d="M3 12a9 9 0 0 1 15.5-6.36L21 8" />
+                                                <polyline points="3 21 3 16 8 16" />
+                                                <polyline points="16 8 21 8 21 3" />
+                                            </svg>
+                                        </button>
+                                    ) : null}
+                                </div>
+
+                                <div className={`mt-2 inline-flex flex-wrap items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${license.verification_class}`}>
+                                    {license.verification_label}
+                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${license.sync_class}`}>{license.sync_label}</span>
+                                </div>
+                                <div className="mt-1 text-xs text-slate-500">{license.verification_hint} · {license.sync_time_display}</div>
+                            </MobileCard>
+                        );
+                    }}
+                />
 
                 {pagination?.has_pages ? (
                     <div className="mt-4 flex items-center justify-end gap-2 text-sm">

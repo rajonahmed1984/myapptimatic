@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusClass = (status) => {
     switch (status) {
@@ -262,7 +263,68 @@ export default function Index({ pageTitle = 'MyBuilding', product = null, rows =
                 <Stat label="Flats sold" value={summary.flats ?? 0} />
             </div>
 
-            <div className="card overflow-x-auto">
+            {/* Mobile Cards List (<md) */}
+            <div className="md:hidden space-y-3">
+                {rows.length === 0 ? (
+                    <div className="card p-6 text-center text-sm text-slate-500">No MyBuilding licences yet.</div>
+                ) : (
+                    rows.map((row) => {
+                        const p = row.provision;
+                        const open = openLicense === row.license_id;
+
+                        return (
+                            <MobileCard
+                                key={row.license_id}
+                                title={row.customer || '—'}
+                                subtitle={row.plan || row.license_key}
+                                badge={p?.status || 'not ordered'}
+                                badgeColor={statusClass(p?.status)}
+                                metrics={[
+                                    { label: 'Building', value: p?.building_name || 'not set' },
+                                    { label: 'Size', value: p ? `${p.total_floors}×${p.flats_per_floor} (${p.contracted_flats})` : '--' },
+                                ]}
+                                actions={
+                                    <div className="flex flex-wrap gap-2 w-full">
+                                        {!p?.status || p.status !== 'provisioned' ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setOpenLicense(open ? null : row.license_id)}
+                                                className="flex-1 py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                                            >
+                                                {open ? 'Close' : (p ? 'Edit' : 'Set up')}
+                                            </button>
+                                        ) : null}
+                                        {p && p.status !== 'provisioned' && config.secret_configured && (
+                                            <button
+                                                type="button"
+                                                onClick={() => provisionNow(p.id)}
+                                                className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition active:scale-95"
+                                            >
+                                                {p.status === 'failed' ? 'Retry' : 'Provision'}
+                                            </button>
+                                        )}
+                                    </div>
+                                }
+                            >
+                                {p?.last_error ? <div className="text-xs text-rose-600">{p.last_error}</div> : null}
+                                {p?.registration_code ? <div className="text-xs text-slate-500">code: {p.registration_code}</div> : null}
+                                {open ? (
+                                    <div className="mt-3">
+                                        <ProvisionForm
+                                            row={row}
+                                            defaultInstallUrl={config.default_install_url}
+                                            onDone={() => setOpenLicense(null)}
+                                        />
+                                    </div>
+                                ) : null}
+                            </MobileCard>
+                        );
+                    })
+                )}
+            </div>
+
+            {/* Desktop Table (>=md) */}
+            <div className="hidden md:block card overflow-x-auto">
                 <table className="w-full min-w-[900px] text-left text-sm">
                     <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>

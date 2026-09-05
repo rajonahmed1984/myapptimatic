@@ -1,15 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
-
-const CHART_FRAME = {
-    width: 1120,
-    height: 300,
-    padLeft: 54,
-    padRight: 54,
-    padTop: 20,
-    padBottom: 34,
-    rows: 4,
-};
+import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from 'recharts';
 
 const CHART_SERIES = {
     new_orders: {
@@ -114,86 +105,6 @@ function asNumberList(values, expectedLength = null) {
     }
 
     return [...list, ...new Array(expectedLength - list.length).fill(0)];
-}
-
-function buildChartPoints(values, maxValue, width, height, padLeft, padRight, padTop, padBottom) {
-    const list = asNumberList(values);
-    if (list.length === 0) {
-        return [];
-    }
-
-    const left = padLeft;
-    const right = width - padRight;
-    const top = padTop;
-    const bottom = height - padBottom;
-    const innerWidth = Math.max(1, right - left);
-    const innerHeight = Math.max(1, bottom - top);
-    const safeMax = Math.max(1, Number(maxValue || 0));
-
-    if (list.length === 1) {
-        const value = Number(list[0] || 0);
-        const y = top + (1 - value / safeMax) * innerHeight;
-        const x = left + innerWidth / 2;
-        return [{ x, y, value, index: 0 }];
-    }
-
-    return list.map((value, index) => {
-        const ratio = index / (list.length - 1);
-        const x = left + ratio * innerWidth;
-        const y = top + (1 - Number(value || 0) / safeMax) * innerHeight;
-        return { x, y, value: Number(value || 0), index };
-    });
-}
-
-function pointsPath(points) {
-    if (!Array.isArray(points) || points.length === 0) {
-        return '';
-    }
-
-    return points
-        .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
-        .join(' ');
-}
-
-function pointsAreaPath(points, baseY) {
-    if (!Array.isArray(points) || points.length === 0) {
-        return '';
-    }
-
-    const linePath = pointsPath(points);
-    const first = points[0];
-    const last = points[points.length - 1];
-
-    return `${linePath} L${last.x.toFixed(2)} ${baseY.toFixed(2)} L${first.x.toFixed(2)} ${baseY.toFixed(2)} Z`;
-}
-
-function yTicks(maxValue, count) {
-    const safeMax = Math.max(1, Number(maxValue || 0));
-    return Array.from({ length: count + 1 }, (_, idx) => {
-        const ratio = (count - idx) / count;
-        return safeMax * ratio;
-    });
-}
-
-function xTickIndexes(total, maxTicks = 9) {
-    if (total <= 0) {
-        return [];
-    }
-
-    if (total <= maxTicks) {
-        return Array.from({ length: total }, (_, idx) => idx);
-    }
-
-    const step = Math.max(1, Math.floor((total - 1) / (maxTicks - 1)));
-    const ticks = [];
-    for (let idx = 0; idx < total; idx += step) {
-        ticks.push(idx);
-    }
-    if (ticks[ticks.length - 1] !== total - 1) {
-        ticks.push(total - 1);
-    }
-
-    return ticks;
 }
 
 function normalizeSparkSeries(rawSeries, fallbackValue = 0) {
@@ -319,12 +230,13 @@ export default function Dashboard({
         income: true,
         expense: true,
     });
-    const [hoveredIndex, setHoveredIndex] = useState(null);
-
     const activeMetrics = periodMetrics?.[period] || { new_orders: 0, active_orders: 0, income: 0, expense: 0, hosting_income: 0 };
     const activeSeries = periodSeries?.[period] || { labels: [], new_orders: [], active_orders: [], income: [], expense: [] };
     const recentClients = Array.isArray(clientActivity?.recentClients) ? clientActivity.recentClients : [];
-    const chartModel = useMemo(() => {
+
+    // Recharts wants one row per point rather than a parallel-array-per-series
+    // shape, so the period series are pivoted into { label, new_orders, ... }.
+    const chartData = useMemo(() => {
         const labels = Array.isArray(activeSeries?.labels) ? activeSeries.labels : [];
         const seriesLength = labels.length;
         const newOrders = asNumberList(activeSeries?.new_orders, seriesLength);
@@ -332,68 +244,13 @@ export default function Dashboard({
         const income = asNumberList(activeSeries?.income, seriesLength);
         const expense = asNumberList(activeSeries?.expense, seriesLength);
 
-        const leftMax = Math.max(1, ...newOrders, ...activeOrders);
-        const rightMax = Math.max(1, ...income, ...expense);
-        const baseY = CHART_FRAME.height - CHART_FRAME.padBottom;
-
-        const points = {
-            new_orders: buildChartPoints(
-                newOrders,
-                leftMax,
-                CHART_FRAME.width,
-                CHART_FRAME.height,
-                CHART_FRAME.padLeft,
-                CHART_FRAME.padRight,
-                CHART_FRAME.padTop,
-                CHART_FRAME.padBottom
-            ),
-            active_orders: buildChartPoints(
-                activeOrders,
-                leftMax,
-                CHART_FRAME.width,
-                CHART_FRAME.height,
-                CHART_FRAME.padLeft,
-                CHART_FRAME.padRight,
-                CHART_FRAME.padTop,
-                CHART_FRAME.padBottom
-            ),
-            income: buildChartPoints(
-                income,
-                rightMax,
-                CHART_FRAME.width,
-                CHART_FRAME.height,
-                CHART_FRAME.padLeft,
-                CHART_FRAME.padRight,
-                CHART_FRAME.padTop,
-                CHART_FRAME.padBottom
-            ),
-            expense: buildChartPoints(
-                expense,
-                rightMax,
-                CHART_FRAME.width,
-                CHART_FRAME.height,
-                CHART_FRAME.padLeft,
-                CHART_FRAME.padRight,
-                CHART_FRAME.padTop,
-                CHART_FRAME.padBottom
-            ),
-        };
-
-        return {
-            labels,
-            seriesLength,
-            newOrders,
-            activeOrders,
-            income,
-            expense,
-            leftMax,
-            rightMax,
-            leftTicks: yTicks(leftMax, CHART_FRAME.rows),
-            rightTicks: yTicks(rightMax, CHART_FRAME.rows),
-            xTickIndexes: xTickIndexes(seriesLength),
-            points,
-            baseY,
-        };
+        return labels.map((label, index) => ({
+            label,
+            new_orders: newOrders[index] ?? 0,
+            active_orders: activeOrders[index] ?? 0,
+            income: income[index] ?? 0,
+            expense: expense[index] ?? 0,
+        }));
     }, [activeSeries]);
 
     const automationCards = useMemo(() => {
@@ -427,58 +284,7 @@ export default function Dashboard({
         }));
     };
 
-    const hasChartData = chartModel.seriesLength > 0;
-
-    const hoverRegions = useMemo(() => {
-        const points = Array.isArray(chartModel.points?.income) ? chartModel.points.income : [];
-        if (points.length === 0) {
-            return [];
-        }
-
-        return points.map((point, index) => {
-            const prevX = points[index - 1]?.x ?? CHART_FRAME.padLeft;
-            const nextX = points[index + 1]?.x ?? (CHART_FRAME.width - CHART_FRAME.padRight);
-            const leftEdge = index === 0 ? CHART_FRAME.padLeft : (prevX + point.x) / 2;
-            const rightEdge = index === points.length - 1 ? (CHART_FRAME.width - CHART_FRAME.padRight) : (point.x + nextX) / 2;
-
-            return {
-                index,
-                x: leftEdge,
-                width: Math.max(1, rightEdge - leftEdge),
-            };
-        });
-    }, [chartModel.points]);
-
-    const hoverDetails = useMemo(() => {
-        if (hoveredIndex === null || hoveredIndex < 0 || hoveredIndex >= chartModel.seriesLength) {
-            return null;
-        }
-
-        const incomePoint = chartModel.points.income?.[hoveredIndex];
-        if (!incomePoint) {
-            return null;
-        }
-
-        const xPct = (incomePoint.x / CHART_FRAME.width) * 100;
-        const yPct = (incomePoint.y / CHART_FRAME.height) * 100;
-
-        return {
-            label: chartModel.labels?.[hoveredIndex] || '--',
-            newOrders: Number(chartModel.newOrders?.[hoveredIndex] || 0),
-            activeOrders: Number(chartModel.activeOrders?.[hoveredIndex] || 0),
-            income: Number(chartModel.income?.[hoveredIndex] || 0),
-            expense: Number(chartModel.expense?.[hoveredIndex] || 0),
-            xPct: Math.max(12, Math.min(88, xPct)),
-            yPct: Math.max(8, Math.min(62, yPct - 6)),
-            pointX: incomePoint.x,
-        };
-    }, [hoveredIndex, chartModel]);
-
-    useEffect(() => {
-        if (hoveredIndex !== null && hoveredIndex >= chartModel.seriesLength) {
-            setHoveredIndex(null);
-        }
-    }, [hoveredIndex, chartModel.seriesLength]);
+    const hasChartData = chartData.length > 0;
 
     return (
         <>
@@ -656,191 +462,42 @@ export default function Dashboard({
                             No chart data available for this period.
                         </div>
                     ) : (
-                        <div className="relative rounded-xl border border-slate-200 bg-white">
-                            <svg
-                                viewBox={`0 0 ${CHART_FRAME.width} ${CHART_FRAME.height}`}
-                                className="h-[260px] w-full sm:h-[300px]"
-                                onMouseLeave={() => setHoveredIndex(null)}
-                            >
-                                <defs>
-                                    <linearGradient id="incomeFillGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stopColor={CHART_SERIES.income.fill} />
-                                        <stop offset="100%" stopColor="rgba(16, 185, 129, 0.02)" />
-                                    </linearGradient>
-                                </defs>
-
-                                {Array.from({ length: CHART_FRAME.rows + 1 }, (_, row) => {
-                                    const ratio = row / CHART_FRAME.rows;
-                                    const y = CHART_FRAME.padTop + ratio * (CHART_FRAME.height - CHART_FRAME.padTop - CHART_FRAME.padBottom);
-                                    return (
-                                        <line
-                                            key={`grid-${row}`}
-                                            x1={CHART_FRAME.padLeft}
-                                            y1={y}
-                                            x2={CHART_FRAME.width - CHART_FRAME.padRight}
-                                            y2={y}
-                                            stroke="#e2e8f0"
-                                            strokeWidth="1"
-                                        />
-                                    );
-                                })}
-
-                                {chartModel.xTickIndexes.map((index) => {
-                                    const point = chartModel.points.income[index];
-                                    if (!point) {
-                                        return null;
-                                    }
-                                    return (
-                                        <line
-                                            key={`v-${index}`}
-                                            x1={point.x}
-                                            y1={CHART_FRAME.padTop}
-                                            x2={point.x}
-                                            y2={chartModel.baseY}
-                                            stroke="#f1f5f9"
-                                            strokeDasharray="4 4"
-                                        />
-                                    );
-                                })}
-
-                                {chartModel.leftTicks.map((value, index) => {
-                                    const ratio = index / CHART_FRAME.rows;
-                                    const y = CHART_FRAME.padTop + ratio * (CHART_FRAME.height - CHART_FRAME.padTop - CHART_FRAME.padBottom);
-                                    return (
-                                        <text key={`left-tick-${index}`} x={CHART_FRAME.padLeft - 10} y={y + 4} textAnchor="end" fontSize="11" fill="#64748b">
-                                            {Math.round(value)}
-                                        </text>
-                                    );
-                                })}
-
-                                {chartModel.rightTicks.map((value, index) => {
-                                    const ratio = index / CHART_FRAME.rows;
-                                    const y = CHART_FRAME.padTop + ratio * (CHART_FRAME.height - CHART_FRAME.padTop - CHART_FRAME.padBottom);
-                                    return (
-                                        <text key={`right-tick-${index}`} x={CHART_FRAME.width - CHART_FRAME.padRight + 10} y={y + 4} textAnchor="start" fontSize="11" fill="#64748b">
-                                            {Math.round(value)}
-                                        </text>
-                                    );
-                                })}
-
-                                <text x={CHART_FRAME.padLeft - 30} y={CHART_FRAME.padTop - 4} textAnchor="start" fontSize="12" fill="#334155">
-                                    Orders
-                                </text>
-                                <text x={CHART_FRAME.width - CHART_FRAME.padRight + 8} y={CHART_FRAME.padTop - 4} textAnchor="start" fontSize="12" fill="#334155">
-                                    Amount
-                                </text>
-
-                                {hoverDetails ? (
-                                    <line
-                                        x1={hoverDetails.pointX}
-                                        y1={CHART_FRAME.padTop}
-                                        x2={hoverDetails.pointX}
-                                        y2={chartModel.baseY}
-                                        stroke="#0f172a"
-                                        strokeOpacity="0.15"
-                                        strokeDasharray="3 4"
+                        <div className="rounded-xl border border-slate-200 bg-white p-2 pt-4">
+                            <ResponsiveContainer width="100%" height={280}>
+                                <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: -8, bottom: 4 }}>
+                                    <defs>
+                                        <linearGradient id="incomeFillGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" stopColor={CHART_SERIES.income.fill} />
+                                            <stop offset="100%" stopColor="rgba(16, 185, 129, 0.02)" />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" vertical={false} />
+                                    <XAxis
+                                        dataKey="label"
+                                        tick={{ fontSize: 11, fill: '#64748b' }}
+                                        angle={-35}
+                                        textAnchor="end"
+                                        height={48}
+                                        interval="preserveStartEnd"
                                     />
-                                ) : null}
+                                    <YAxis yAxisId="orders" tick={{ fontSize: 11, fill: '#64748b' }} width={36} allowDecimals={false} label={{ value: 'Orders', angle: -90, position: 'insideLeft', fontSize: 12, fill: '#334155' }} />
+                                    <YAxis yAxisId="amount" orientation="right" tick={{ fontSize: 11, fill: '#64748b' }} width={48} label={{ value: 'Amount', angle: 90, position: 'insideRight', fontSize: 12, fill: '#334155' }} />
+                                    <RechartsTooltip content={<DashboardChartTooltip currency={currency} />} />
 
-                                {seriesVisible.income ? (
-                                    <>
-                                        <path d={pointsAreaPath(chartModel.points.income, chartModel.baseY)} fill="url(#incomeFillGradient)" stroke="none" />
-                                        <path d={pointsPath(chartModel.points.income)} fill="none" stroke={CHART_SERIES.income.stroke} strokeWidth="2.5" />
-                                        {chartModel.points.income.map((point, idx) => (
-                                            <circle key={`income-dot-${idx}`} cx={point.x} cy={point.y} r="3" fill={CHART_SERIES.income.pointFill} stroke={CHART_SERIES.income.pointStroke} strokeWidth="1.2">
-                                                <title>{`${chartModel.labels[idx]} | Income: ${money(currency, point.value)}`}</title>
-                                            </circle>
-                                        ))}
-                                    </>
-                                ) : null}
-
-                                {seriesVisible.expense ? (
-                                    <>
-                                        <path d={pointsPath(chartModel.points.expense)} fill="none" stroke={CHART_SERIES.expense.stroke} strokeWidth="2.2" />
-                                        {chartModel.points.expense.map((point, idx) => (
-                                            <circle key={`expense-dot-${idx}`} cx={point.x} cy={point.y} r="2.8" fill={CHART_SERIES.expense.pointFill} stroke={CHART_SERIES.expense.pointStroke} strokeWidth="1.1">
-                                                <title>{`${chartModel.labels[idx]} | Expense: ${money(currency, point.value)}`}</title>
-                                            </circle>
-                                        ))}
-                                    </>
-                                ) : null}
-
-                                {seriesVisible.new_orders ? (
-                                    <>
-                                        <path d={pointsPath(chartModel.points.new_orders)} fill="none" stroke={CHART_SERIES.new_orders.stroke} strokeWidth="2" />
-                                        {chartModel.points.new_orders.map((point, idx) => (
-                                            <circle key={`new-dot-${idx}`} cx={point.x} cy={point.y} r="2.5" fill={CHART_SERIES.new_orders.pointFill} stroke={CHART_SERIES.new_orders.pointStroke} strokeWidth="1">
-                                                <title>{`${chartModel.labels[idx]} | New Orders: ${point.value}`}</title>
-                                            </circle>
-                                        ))}
-                                    </>
-                                ) : null}
-
-                                {seriesVisible.active_orders ? (
-                                    <>
-                                        <path d={pointsPath(chartModel.points.active_orders)} fill="none" stroke={CHART_SERIES.active_orders.stroke} strokeWidth="2" />
-                                        {chartModel.points.active_orders.map((point, idx) => (
-                                            <circle key={`active-dot-${idx}`} cx={point.x} cy={point.y} r="2.5" fill={CHART_SERIES.active_orders.pointFill} stroke={CHART_SERIES.active_orders.pointStroke} strokeWidth="1">
-                                                <title>{`${chartModel.labels[idx]} | Active Orders: ${point.value}`}</title>
-                                            </circle>
-                                        ))}
-                                    </>
-                                ) : null}
-
-                                {hoverRegions.map((region) => (
-                                    <rect
-                                        key={`hover-zone-${region.index}`}
-                                        x={region.x}
-                                        y={CHART_FRAME.padTop}
-                                        width={region.width}
-                                        height={chartModel.baseY - CHART_FRAME.padTop}
-                                        fill="transparent"
-                                        onMouseEnter={() => setHoveredIndex(region.index)}
-                                        onMouseMove={() => setHoveredIndex(region.index)}
-                                        onClick={() => setHoveredIndex(region.index)}
-                                    />
-                                ))}
-
-                                {chartModel.xTickIndexes.map((index) => {
-                                    const point = chartModel.points.income[index];
-                                    if (!point) {
-                                        return null;
-                                    }
-                                    return (
-                                        <text
-                                            key={`x-label-${index}`}
-                                            x={point.x}
-                                            y={CHART_FRAME.height - 12}
-                                            textAnchor="end"
-                                            transform={`rotate(-35 ${point.x} ${CHART_FRAME.height - 12})`}
-                                            fontSize="11"
-                                            fill="#64748b"
-                                        >
-                                            {chartModel.labels[index]}
-                                        </text>
-                                    );
-                                })}
-                            </svg>
-
-                            {hoverDetails ? (
-                                <div
-                                    className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-2xl bg-slate-900 px-3 py-2 text-xs text-white shadow-xl"
-                                    style={{ left: `${hoverDetails.xPct}%`, top: `${hoverDetails.yPct}%` }}
-                                >
-                                    <div className="text-[11px] font-semibold text-slate-200">{hoverDetails.label}</div>
-                                    <div className="mt-1 flex items-center gap-2">
-                                        <span className="h-2 w-2 rounded-sm bg-emerald-400" />
-                                        <span>Income: {money(currency, hoverDetails.income)}</span>
-                                    </div>
-                                    <div className="mt-1 flex items-center gap-2">
-                                        <span className="h-2 w-2 rounded-sm bg-orange-400" />
-                                        <span>Expense: {money(currency, hoverDetails.expense)}</span>
-                                    </div>
-                                    <div className="mt-1 text-[11px] text-slate-300">
-                                        New: {metricValue(hoverDetails.newOrders)} | Active: {metricValue(hoverDetails.activeOrders)}
-                                    </div>
-                                </div>
-                            ) : null}
+                                    {seriesVisible.income ? (
+                                        <Area yAxisId="amount" type="monotone" dataKey="income" name="Income" stroke={CHART_SERIES.income.stroke} fill="url(#incomeFillGradient)" strokeWidth={2.5} dot={{ r: 3, fill: CHART_SERIES.income.pointFill, stroke: CHART_SERIES.income.pointStroke, strokeWidth: 1.2 }} activeDot={{ r: 4 }} isAnimationActive={false} />
+                                    ) : null}
+                                    {seriesVisible.expense ? (
+                                        <Line yAxisId="amount" type="monotone" dataKey="expense" name="Expense" stroke={CHART_SERIES.expense.stroke} strokeWidth={2.2} dot={{ r: 2.8, fill: CHART_SERIES.expense.pointFill, stroke: CHART_SERIES.expense.pointStroke, strokeWidth: 1.1 }} isAnimationActive={false} />
+                                    ) : null}
+                                    {seriesVisible.new_orders ? (
+                                        <Line yAxisId="orders" type="monotone" dataKey="new_orders" name="New Orders" stroke={CHART_SERIES.new_orders.stroke} strokeWidth={2} dot={{ r: 2.5, fill: CHART_SERIES.new_orders.pointFill, stroke: CHART_SERIES.new_orders.pointStroke, strokeWidth: 1 }} isAnimationActive={false} />
+                                    ) : null}
+                                    {seriesVisible.active_orders ? (
+                                        <Line yAxisId="orders" type="monotone" dataKey="active_orders" name="Activated Orders" stroke={CHART_SERIES.active_orders.stroke} strokeWidth={2} dot={{ r: 2.5, fill: CHART_SERIES.active_orders.pointFill, stroke: CHART_SERIES.active_orders.pointStroke, strokeWidth: 1 }} isAnimationActive={false} />
+                                    ) : null}
+                                </ComposedChart>
+                            </ResponsiveContainer>
                         </div>
                     )}
                 </div>
@@ -954,6 +611,28 @@ export default function Dashboard({
 }
 
 Dashboard.title = 'Admin Dashboard';
+
+const CURRENCY_CHART_KEYS = new Set(['income', 'expense']);
+
+function DashboardChartTooltip({ active, payload, label, currency }) {
+    if (!active || !Array.isArray(payload) || payload.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="rounded-2xl bg-slate-900 px-3 py-2 text-xs text-white shadow-xl">
+            <div className="text-[11px] font-semibold text-slate-200">{label}</div>
+            {payload.map((entry) => (
+                <div key={entry.dataKey} className="mt-1 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-sm" style={{ background: entry.color }} />
+                    <span>
+                        {entry.name}: {CURRENCY_CHART_KEYS.has(entry.dataKey) ? money(currency, entry.value) : metricValue(entry.value)}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 function MetricLink({
     href,
