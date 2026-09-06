@@ -470,7 +470,7 @@ export default function Review({
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-2.5 max-h-[420px] overflow-y-auto p-1 pr-2">
+                                            <div className="space-y-2.5 p-1 pr-2">
                                                 {floorPlan.map((count, index) => {
                                                     const label = getFloorLabel(index);
                                                     const isGf = hasGroundFloor && index === 0;
@@ -653,97 +653,99 @@ export default function Review({
                         )}
                     </div>
 
-                    {/* Right Column: Sticky Summary & Checkout */}
-                    <div className="card p-6 border border-slate-200 bg-white rounded-2xl shadow-xs lg:sticky lg:top-6">
-                        <h2 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-3 mb-4">
-                            Order Summary
-                        </h2>
+                    {/* Right Column: Summary & Checkout, held in the middle of the screen */}
+                    <div className="lg:sticky lg:top-0 lg:flex lg:h-screen lg:items-center lg:py-6">
+                        <div className="card w-full p-6 border border-slate-200 bg-white rounded-2xl shadow-xs lg:max-h-full lg:overflow-y-auto">
+                            <h2 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-3 mb-4">
+                                Order Summary
+                            </h2>
 
-                        <div className="space-y-3 text-sm text-slate-600">
-                            <div className="flex items-center justify-between">
-                                <span>Product</span>
-                                <span className="font-semibold text-slate-900">{plan.product_name}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span>Plan</span>
-                                <span className="font-semibold text-slate-900">{plan.name}</span>
-                            </div>
-
-                            {isMybuilding && (
-                                <>
-                                    <div className="flex items-center justify-between">
-                                        <span>Rate per Flat</span>
-                                        <span className="font-semibold text-teal-700">
-                                            {currency} {flatRate.toFixed(2)} / flat
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Building Scope</span>
-                                        <span className="font-semibold text-slate-900">
-                                            {building.total_floors} Floors, {totalFlats} Flats
-                                        </span>
-                                    </div>
-                                    <div className="rounded-xl bg-teal-50/60 p-3 border border-teal-100 text-xs text-teal-900 space-y-1">
-                                        <div className="flex items-center justify-between">
-                                            <span>Monthly Base Rate:</span>
-                                            <span className="font-semibold">{totalFlats} × {currency} {flatRate.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between font-bold text-teal-800">
-                                            <span>Monthly Recurring Bill:</span>
-                                            <span>{currency} {(totalFlats * flatRate).toFixed(2)}/mo</span>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                                <span>Billing Period</span>
-                                <span className="text-xs font-semibold text-slate-700">{start_date_display} &rarr; {period_end_display}</span>
-                            </div>
-
-                            {showProration && cycleDays ? (
-                                <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
-                                    Prorated for {periodDays}/{cycleDays} days remaining this month
-                                </div>
-                            ) : null}
-
-                            <div className="border-t border-slate-200 pt-3 mt-3">
+                            <div className="space-y-3 text-sm text-slate-600">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-base font-medium text-slate-900">Total Due Today</span>
-                                    <span className="text-2xl font-bold text-teal-700">
-                                        {currency} {dynamicSubtotal.toFixed(2)}
-                                    </span>
+                                    <span>Product</span>
+                                    <span className="font-semibold text-slate-900">{plan.product_name}</span>
                                 </div>
-                                <p className="mt-1 text-[11px] text-slate-400">
-                                    Includes calculated recurring flat rates for this billing cycle.
+                                <div className="flex items-center justify-between">
+                                    <span>Plan</span>
+                                    <span className="font-semibold text-slate-900">{plan.name}</span>
+                                </div>
+
+                                {isMybuilding && (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <span>Rate per Flat</span>
+                                            <span className="font-semibold text-teal-700">
+                                                {currency} {flatRate.toFixed(2)} / flat
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span>Building Scope</span>
+                                            <span className="font-semibold text-slate-900">
+                                                {building.total_floors} Floors, {totalFlats} Flats
+                                            </span>
+                                        </div>
+                                        <div className="rounded-xl bg-teal-50/60 p-3 border border-teal-100 text-xs text-teal-900 space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <span>Monthly Base Rate:</span>
+                                                <span className="font-semibold">{totalFlats} × {currency} {flatRate.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between font-bold text-teal-800">
+                                                <span>Monthly Recurring Bill:</span>
+                                                <span>{currency} {(totalFlats * flatRate).toFixed(2)}/mo</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                                    <span>Billing Period</span>
+                                    <span className="text-xs font-semibold text-slate-700">{start_date_display} &rarr; {period_end_display}</span>
+                                </div>
+
+                                {showProration && cycleDays ? (
+                                    <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
+                                        Prorated for {periodDays}/{cycleDays} days remaining this month
+                                    </div>
+                                ) : null}
+
+                                <div className="border-t border-slate-200 pt-3 mt-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-base font-medium text-slate-900">Total Due Today</span>
+                                        <span className="text-2xl font-bold text-teal-700">
+                                            {currency} {dynamicSubtotal.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1 text-[11px] text-slate-400">
+                                        Includes calculated recurring flat rates for this billing cycle.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 space-y-3">
+                                {/* If MyBuilding and not on step 3, show next step button; if step 3 (or standard product), submit form */}
+                                {isMybuilding && currentStep === 1 ? (
+                                    <button
+                                        type="button"
+                                        onClick={goToReview}
+                                        className="w-full rounded-xl bg-teal-600 py-3 text-sm font-semibold text-white shadow-md hover:bg-teal-700 active:scale-[0.99] transition flex items-center justify-center gap-2"
+                                    >
+                                        <span>Continue to Review</span>
+                                        &rarr;
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="submit"
+                                        className="w-full rounded-xl bg-teal-600 py-3 text-sm font-semibold text-white shadow-md hover:bg-teal-700 active:scale-[0.99] transition flex items-center justify-center gap-2"
+                                    >
+                                        <span>Confirm Order &amp; Proceed to Payment</span>
+                                        &rarr;
+                                    </button>
+                                )}
+
+                                <p className="text-center text-[11px] text-slate-400">
+                                    Payment gateways (bKash, SSLCommerz, Cards) available on the next step.
                                 </p>
                             </div>
-                        </div>
-
-                        <div className="mt-6 space-y-3">
-                            {/* If MyBuilding and not on step 3, show next step button; if step 3 (or standard product), submit form */}
-                            {isMybuilding && currentStep === 1 ? (
-                                <button
-                                    type="button"
-                                    onClick={goToReview}
-                                    className="w-full rounded-xl bg-teal-600 py-3 text-sm font-semibold text-white shadow-md hover:bg-teal-700 active:scale-[0.99] transition flex items-center justify-center gap-2"
-                                >
-                                    <span>Continue to Review</span>
-                                    &rarr;
-                                </button>
-                            ) : (
-                                <button
-                                    type="submit"
-                                    className="w-full rounded-xl bg-teal-600 py-3 text-sm font-semibold text-white shadow-md hover:bg-teal-700 active:scale-[0.99] transition flex items-center justify-center gap-2"
-                                >
-                                    <span>Confirm Order &amp; Proceed to Payment</span>
-                                    &rarr;
-                                </button>
-                            )}
-
-                            <p className="text-center text-[11px] text-slate-400">
-                                Payment gateways (bKash, SSLCommerz, Cards) available on the next step.
-                            </p>
                         </div>
                     </div>
                 </div>
