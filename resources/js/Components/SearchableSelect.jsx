@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ErrorMessage from './Form/ErrorMessage';
 
 const DEFAULT_DEBOUNCE_MS = 250;
@@ -60,6 +61,7 @@ export default function SearchableSelect({
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [panelPlacement, setPanelPlacement] = useState('bottom');
+    const [panelStyle, setPanelStyle] = useState(null);
     const [remoteOptions, setRemoteOptions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -110,7 +112,11 @@ export default function SearchableSelect({
         }
 
         const handleClickOutside = (event) => {
-            if (!containerRef.current?.contains(event.target)) {
+            // The panel is portalled to the body, so it is outside the container.
+            if (
+                !containerRef.current?.contains(event.target)
+                && !panelRef.current?.contains(event.target)
+            ) {
                 setIsOpen(false);
                 setHighlightedIndex(-1);
             }
@@ -182,8 +188,16 @@ export default function SearchableSelect({
             const viewportHeight = window.innerHeight;
             const roomBelow = viewportHeight - triggerRect.bottom;
             const roomAbove = triggerRect.top;
+            const placement = roomBelow >= panelHeight || roomBelow >= roomAbove ? 'bottom' : 'top';
 
-            setPanelPlacement(roomBelow >= panelHeight || roomBelow >= roomAbove ? 'bottom' : 'top');
+            setPanelPlacement(placement);
+            setPanelStyle({
+                left: triggerRect.left,
+                width: triggerRect.width,
+                ...(placement === 'bottom'
+                    ? { top: triggerRect.bottom + 4 }
+                    : { bottom: viewportHeight - triggerRect.top + 4 }),
+            });
         };
 
         updatePlacement();
@@ -193,20 +207,26 @@ export default function SearchableSelect({
         return () => {
             window.removeEventListener('resize', updatePlacement);
             window.removeEventListener('scroll', updatePlacement, true);
+            setPanelStyle(null);
         };
     }, [isOpen]);
+
+    // The panel only mounts once its position is known, so focus waits for that
+    // rather than for the open flag alone. A boolean keeps this from re-running
+    // every time scrolling recomputes the coordinates.
+    const isPanelPositioned = panelStyle !== null;
 
     useEffect(() => {
         if (!isOpen) {
             return;
         }
 
-        if (!isSearchEnabled) {
+        if (!isSearchEnabled || !isPanelPositioned) {
             return;
         }
 
         searchInputRef.current?.focus();
-    }, [isOpen, isSearchEnabled]);
+    }, [isOpen, isSearchEnabled, isPanelPositioned]);
 
     const filteredOptions = useMemo(() => {
         const sourceOptions = typeof loadOptions === 'function' ? remoteOptions : normalizedOptions;
@@ -390,12 +410,12 @@ export default function SearchableSelect({
                 </svg>
             </button>
 
-            {isOpen ? (
+            {isOpen && panelStyle ? createPortal(
                 <div
                     ref={panelRef}
+                    style={{ position: 'fixed', ...panelStyle }}
                     className={[
-                        'absolute z-40 w-full rounded-2xl border border-slate-200 bg-white shadow-lg',
-                        panelPlacement === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1',
+                        'z-[1000] rounded-2xl border border-slate-200 bg-white shadow-lg',
                         panelClassName,
                     ]
                         .filter(Boolean)
@@ -462,7 +482,8 @@ export default function SearchableSelect({
                             <li className="px-3 py-1.5 text-xs text-slate-500">{noResultsLabel}</li>
                         )}
                     </ul>
-                </div>
+                </div>,
+                document.body,
             ) : null}
 
             <ErrorMessage message={error} />
