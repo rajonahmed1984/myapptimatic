@@ -37,7 +37,7 @@ class MyBuildingProvisioner
             return true;
         }
 
-        if (!$this->configured()) {
+        if (! $this->configured()) {
             $this->fail($provision, 'MYBUILDING_PROVISION_SECRET is not configured on this server.');
 
             return false;
@@ -53,9 +53,17 @@ class MyBuildingProvisioner
             'password' => Str::password(14, true, true, false),
             'building_name' => $provision->building_name,
             'building_address' => $provision->building_address,
-            'district_id' => $provision->district_id,
-            'city_id' => $provision->city_id,
-            'area_id' => $provision->area_id,
+            // Ids are only meaningful when an admin picked them from the
+            // installation's own list; a customer order carries slugs and
+            // names instead, which the installation resolves (or creates).
+            'district_id' => $provision->district_slug ? null : $provision->district_id,
+            'district_slug' => $provision->district_slug,
+            'district_name' => $provision->district_name,
+            'city_id' => $provision->city_slug ? null : $provision->city_id,
+            'city_slug' => $provision->city_slug,
+            'city_name' => $provision->city_name,
+            'area_id' => $provision->area_name ? null : $provision->area_id,
+            'area_name' => $provision->area_name,
             'license_key' => $provision->license?->license_key,
             'total_floors' => $provision->total_floors,
             'flats_per_floor' => $provision->flats_per_floor,
@@ -65,35 +73,35 @@ class MyBuildingProvisioner
 
         $body = json_encode(array_filter($payload, fn ($v) => $v !== null), JSON_UNESCAPED_SLASHES);
         $timestamp = (string) time();
-        $signature = hash_hmac('sha256', $timestamp . '.' . $body, $this->secret());
+        $signature = hash_hmac('sha256', $timestamp.'.'.$body, $this->secret());
 
-        $url = rtrim($provision->install_url, '/') . '/api/v1/external/register-building';
+        $url = rtrim($provision->install_url, '/').'/api/v1/external/register-building';
 
         $provision->increment('attempts');
 
         try {
             $response = Http::withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                    'X-Apptimatic-Timestamp' => $timestamp,
-                    'X-Apptimatic-Signature' => $signature,
-                ])
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+                'X-Apptimatic-Timestamp' => $timestamp,
+                'X-Apptimatic-Signature' => $signature,
+            ])
                 ->timeout((int) config('mybuilding.timeout', 20))
                 ->withBody($body, 'application/json')
                 ->post($url);
         } catch (Throwable $exception) {
-            $this->fail($provision, 'Could not reach the installation: ' . $exception->getMessage());
+            $this->fail($provision, 'Could not reach the installation: '.$exception->getMessage());
 
             return false;
         }
 
         if ($response->failed()) {
-            $message = $response->json('message') ?? ('HTTP ' . $response->status());
+            $message = $response->json('message') ?? ('HTTP '.$response->status());
 
             // Validation errors carry the useful detail.
             $errors = $response->json('errors');
             if (is_array($errors)) {
-                $message .= ' - ' . collect($errors)->flatten()->implode(' ');
+                $message .= ' - '.collect($errors)->flatten()->implode(' ');
             }
 
             $this->fail($provision, $message);
@@ -130,33 +138,33 @@ class MyBuildingProvisioner
      */
     public function locations(string $installUrl): array
     {
-        if (!$this->configured()) {
+        if (! $this->configured()) {
             return ['ok' => false, 'districts' => [], 'error' => 'Provisioning secret is not configured.'];
         }
 
-        $body = json_encode(new \stdClass());
+        $body = json_encode(new \stdClass);
         $timestamp = (string) time();
-        $signature = hash_hmac('sha256', $timestamp . '.' . $body, $this->secret());
+        $signature = hash_hmac('sha256', $timestamp.'.'.$body, $this->secret());
 
         try {
             $response = Http::withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                    'X-Apptimatic-Timestamp' => $timestamp,
-                    'X-Apptimatic-Signature' => $signature,
-                ])
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+                'X-Apptimatic-Timestamp' => $timestamp,
+                'X-Apptimatic-Signature' => $signature,
+            ])
                 ->timeout((int) config('mybuilding.timeout', 20))
                 ->withBody($body, 'application/json')
-                ->post(rtrim($installUrl, '/') . '/api/v1/external/locations');
+                ->post(rtrim($installUrl, '/').'/api/v1/external/locations');
         } catch (Throwable $exception) {
-            return ['ok' => false, 'districts' => [], 'error' => 'Could not reach the installation: ' . $exception->getMessage()];
+            return ['ok' => false, 'districts' => [], 'error' => 'Could not reach the installation: '.$exception->getMessage()];
         }
 
         if ($response->failed()) {
             return [
                 'ok' => false,
                 'districts' => [],
-                'error' => $response->json('message') ?? ('HTTP ' . $response->status()),
+                'error' => $response->json('message') ?? ('HTTP '.$response->status()),
             ];
         }
 

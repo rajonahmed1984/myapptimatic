@@ -90,7 +90,7 @@ class SubscriptionController extends Controller
             )
             : null;
 
-        $subscription = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $startDate, $periodEnd, $nextInvoiceAt, $baseAmount, $salesRepId, $commissionAmount, $request, $plan) {
+        $subscription = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $startDate, $periodEnd, $nextInvoiceAt, $salesRepId, $commissionAmount, $request, $plan) {
             $subscription = Subscription::create([
                 'customer_id' => $data['customer_id'],
                 'plan_id' => $data['plan_id'],
@@ -131,6 +131,11 @@ class SubscriptionController extends Controller
                     'district_id' => $request->filled('district_id') ? (int) $request->input('district_id') : null,
                     'city_id' => $request->filled('city_id') ? (int) $request->input('city_id') : null,
                     'area_id' => $request->filled('area_id') ? (int) $request->input('area_id') : null,
+                    'district_slug' => null,
+                    'district_name' => null,
+                    'city_slug' => null,
+                    'city_name' => null,
+                    'area_name' => null,
                     'install_url' => (string) ($request->input('install_url') ?: config('mybuilding.default_install_url') ?: ''),
                     'owner_name' => $customer?->name ?: 'Owner',
                     'owner_email' => $customer?->email ?: 'owner@example.com',
@@ -482,6 +487,11 @@ class SubscriptionController extends Controller
                             'district_id' => $request->filled('district_id') ? (int) $request->input('district_id') : null,
                             'city_id' => $request->filled('city_id') ? (int) $request->input('city_id') : null,
                             'area_id' => $request->filled('area_id') ? (int) $request->input('area_id') : null,
+                            'district_slug' => null,
+                            'district_name' => null,
+                            'city_slug' => null,
+                            'city_name' => null,
+                            'area_name' => null,
                             'install_url' => (string) ($request->input('install_url') ?: config('mybuilding.default_install_url') ?: ''),
                             'owner_name' => $customer?->name ?: 'Owner',
                             'owner_email' => $customer?->email ?: 'owner@example.com',
@@ -539,7 +549,7 @@ class SubscriptionController extends Controller
             ->withSum([
                 'invoices as open_invoices_total' => function ($query) {
                     $query->whereIn('status', ['unpaid', 'overdue']);
-                }
+                },
             ], 'total')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -621,7 +631,7 @@ class SubscriptionController extends Controller
                     'next_invoice_display' => $subscription->next_invoice_at?->format($dateFormat) ?? '--',
                     'open_invoices_count' => (int) ($subscription->open_invoices_count ?? 0),
                     'overdue_invoices_count' => (int) ($subscription->overdue_invoices_count ?? 0),
-                    'open_invoices_total_display' => $subscription->open_invoices_total !== null && (float)$subscription->open_invoices_total > 0
+                    'open_invoices_total_display' => $subscription->open_invoices_total !== null && (float) $subscription->open_invoices_total > 0
                         ? trim((string) (($planCurrency ? $planCurrency.' ' : '').number_format((float) $subscription->open_invoices_total, 2)))
                         : null,
                     'routes' => [
@@ -693,7 +703,7 @@ class SubscriptionController extends Controller
             'pageTitle' => $isEdit ? 'Edit Subscription' : 'Add Subscription',
             'is_edit' => $isEdit,
             'provision' => $provision,
-            'secret_configured' => !empty(config('mybuilding.provision_secret')),
+            'secret_configured' => ! empty(config('mybuilding.provision_secret')),
             'customers' => $customers->map(fn (Customer $customer) => [
                 'id' => $customer->id,
                 'name' => (string) $customer->name,
@@ -902,5 +912,4 @@ class SubscriptionController extends Controller
 
         return round(($baseAmount * $percent) / 100, 2);
     }
-
 }

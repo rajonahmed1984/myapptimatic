@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import SearchableSelect from '../../../Components/SearchableSelect';
 
 export default function Review({
     plan = {},
@@ -22,7 +23,8 @@ export default function Review({
     const initialPerFloor = Math.max(1, Number(initialBuilding.flats_per_floor) || 4);
     const initialHasGf = initialBuilding.has_ground_floor !== undefined ? Boolean(initialBuilding.has_ground_floor) : true;
 
-    // Step state for MyBuilding wizard: 1 = Building Info, 2 = Floor-wise flats, 3 = Review & Confirm
+    // Step state for MyBuilding wizard: 1 = Building, location and floor-wise
+    // flats, 2 = Review & Confirm.
     const [currentStep, setCurrentStep] = useState(1);
     const [validationError, setValidationError] = useState('');
 
@@ -33,9 +35,9 @@ export default function Review({
         building_address: initialBuilding.building_address || '',
         total_floors: initialFloors,
         flats_per_floor: initialPerFloor,
-        district_id: initialBuilding.district_id || '',
-        city_id: initialBuilding.city_id || '',
-        area_id: initialBuilding.area_id || '',
+        district_id: initialBuilding.district_id ? String(initialBuilding.district_id) : '',
+        city_id: initialBuilding.city_id ? String(initialBuilding.city_id) : '',
+        area_name: initialBuilding.area_name || '',
     });
 
     const [floorPlan, setFloorPlan] = useState(() => {
@@ -101,9 +103,14 @@ export default function Review({
         () => districts.find((d) => String(d.id) === String(building.district_id))?.cities || [],
         [districts, building.district_id]
     );
-    const areas = useMemo(
-        () => cities.find((c) => String(c.id) === String(building.city_id))?.areas || [],
-        [cities, building.city_id]
+
+    const districtOptions = useMemo(
+        () => districts.map((d) => ({ label: d.name, value: String(d.id) })),
+        [districts]
+    );
+    const cityOptions = useMemo(
+        () => cities.map((c) => ({ label: c.name, value: String(c.id) })),
+        [cities]
     );
 
     const totalFlats = useMemo(() => {
@@ -129,7 +136,7 @@ export default function Review({
     const { csrf_token: csrfToken } = usePage().props;
 
     // Step Navigation Handlers
-    const goToStep2 = () => {
+    const goToReview = () => {
         if (!building.building_name.trim()) {
             setValidationError('Please enter a building name to continue.');
             return;
@@ -138,22 +145,16 @@ export default function Review({
             setValidationError('Please enter at least 1 floor.');
             return;
         }
-        if (districts.length > 0 && (!building.district_id || !building.city_id || !building.area_id)) {
-            setValidationError('Please select District, City, and Area for your building.');
+        if (districts.length > 0 && (!building.district_id || !building.city_id)) {
+            setValidationError('Please select the District and City for your building.');
             return;
         }
-        setValidationError('');
-        setCurrentStep(2);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const goToStep3 = () => {
         if (totalFlats < 1) {
             setValidationError('Please allocate at least 1 flat across the floors.');
             return;
         }
         setValidationError('');
-        setCurrentStep(3);
+        setCurrentStep(2);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -167,7 +168,7 @@ export default function Review({
 
     const selectedDistrictName = districts.find((d) => String(d.id) === String(building.district_id))?.name || '';
     const selectedCityName = cities.find((c) => String(c.id) === String(building.city_id))?.name || '';
-    const selectedAreaName = areas.find((a) => String(a.id) === String(building.area_id))?.name || '';
+    const selectedAreaName = building.area_name.trim();
 
     return (
         <>
@@ -199,72 +200,37 @@ export default function Review({
                             className={`flex items-center gap-2.5 cursor-pointer ${
                                 currentStep === 1
                                     ? 'text-teal-600 font-bold'
-                                    : currentStep > 1
-                                    ? 'text-slate-800 font-semibold'
-                                    : 'text-slate-400 font-medium'
+                                    : 'text-slate-800 font-semibold'
                             }`}
                         >
                             <span
                                 className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition ${
                                     currentStep === 1
                                         ? 'bg-teal-600 text-white shadow-xs'
-                                        : currentStep > 1
-                                        ? 'bg-teal-100 text-teal-800'
-                                        : 'bg-slate-100 text-slate-500'
+                                        : 'bg-teal-100 text-teal-800'
                                 }`}
                             >
                                 {currentStep > 1 ? '✓' : '1'}
                             </span>
-                            <span className="text-xs sm:text-sm">Building &amp; Floors</span>
+                            <span className="text-xs sm:text-sm">Building, Location &amp; Flats</span>
                         </div>
 
                         <div className={`h-0.5 flex-1 mx-2 sm:mx-4 transition ${currentStep >= 2 ? 'bg-teal-500' : 'bg-slate-200'}`} />
 
                         {/* Step 2 */}
                         <div
-                            onClick={() => goToStep(2)}
                             className={`flex items-center gap-2.5 ${
-                                currentStep >= 2 ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
-                            } ${
-                                currentStep === 2
-                                    ? 'text-teal-600 font-bold'
-                                    : currentStep > 2
-                                    ? 'text-slate-800 font-semibold'
-                                    : 'text-slate-400 font-medium'
+                                currentStep === 2 ? 'text-teal-600 font-bold' : 'text-slate-400 font-medium'
                             }`}
                         >
                             <span
                                 className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition ${
                                     currentStep === 2
                                         ? 'bg-teal-600 text-white shadow-xs'
-                                        : currentStep > 2
-                                        ? 'bg-teal-100 text-teal-800'
                                         : 'bg-slate-100 text-slate-500'
                                 }`}
                             >
-                                {currentStep > 2 ? '✓' : '2'}
-                            </span>
-                            <span className="text-xs sm:text-sm">Floor-wise Flats</span>
-                        </div>
-
-                        <div className={`h-0.5 flex-1 mx-2 sm:mx-4 transition ${currentStep >= 3 ? 'bg-teal-500' : 'bg-slate-200'}`} />
-
-                        {/* Step 3 */}
-                        <div
-                            className={`flex items-center gap-2.5 ${
-                                currentStep === 3
-                                    ? 'text-teal-600 font-bold'
-                                    : 'text-slate-400 font-medium'
-                            }`}
-                        >
-                            <span
-                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition ${
-                                    currentStep === 3
-                                        ? 'bg-teal-600 text-white shadow-xs'
-                                        : 'bg-slate-100 text-slate-500'
-                                }`}
-                            >
-                                3
+                                2
                             </span>
                             <span className="text-xs sm:text-sm">Review &amp; Checkout</span>
                         </div>
@@ -374,63 +340,56 @@ export default function Review({
                                                     <label className="block text-sm font-medium text-slate-700 mb-1">
                                                         District <span className="text-rose-500">*</span>
                                                     </label>
-                                                    <select
+                                                    <SearchableSelect
                                                         name="district_id"
-                                                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                                        options={districtOptions}
                                                         value={building.district_id}
-                                                        onChange={(e) => setBuilding({ ...building, district_id: e.target.value, city_id: '', area_id: '' })}
-                                                    >
-                                                        <option value="">Select District</option>
-                                                        {districts.map((d) => (
-                                                            <option key={d.id} value={d.id}>{d.name}</option>
-                                                        ))}
-                                                    </select>
+                                                        onChange={(next) =>
+                                                            setBuilding({ ...building, district_id: String(next ?? ''), city_id: '' })
+                                                        }
+                                                        placeholder="Select District"
+                                                        searchPlaceholder="Search district..."
+                                                    />
                                                 </div>
 
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                                                        City <span className="text-rose-500">*</span>
+                                                        City / Upazila <span className="text-rose-500">*</span>
                                                     </label>
-                                                    <select
+                                                    <SearchableSelect
                                                         name="city_id"
-                                                        disabled={cities.length === 0}
-                                                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 bg-white disabled:bg-slate-100 disabled:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                                        options={cityOptions}
                                                         value={building.city_id}
-                                                        onChange={(e) => setBuilding({ ...building, city_id: e.target.value, area_id: '' })}
-                                                    >
-                                                        <option value="">{cities.length === 0 ? 'Select district first' : 'Select City'}</option>
-                                                        {cities.map((c) => (
-                                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                                        ))}
-                                                    </select>
+                                                        onChange={(next) => setBuilding({ ...building, city_id: String(next ?? '') })}
+                                                        disabled={cityOptions.length === 0}
+                                                        placeholder={cityOptions.length === 0 ? 'Select district first' : 'Select City / Upazila'}
+                                                        searchPlaceholder="Search city..."
+                                                    />
                                                 </div>
 
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                                                        Area <span className="text-rose-500">*</span>
+                                                        Area / Mohalla
                                                     </label>
-                                                    <select
-                                                        name="area_id"
-                                                        disabled={areas.length === 0}
-                                                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 bg-white disabled:bg-slate-100 disabled:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
-                                                        value={building.area_id}
-                                                        onChange={(e) => setBuilding({ ...building, area_id: e.target.value })}
-                                                    >
-                                                        <option value="">{areas.length === 0 ? 'Select city first' : 'Select Area'}</option>
-                                                        {areas.map((a) => (
-                                                            <option key={a.id} value={a.id}>{a.name}</option>
-                                                        ))}
-                                                    </select>
+                                                    <input
+                                                        type="text"
+                                                        name="area_name"
+                                                        maxLength={150}
+                                                        placeholder="e.g. Bashundhara R/A, Block C"
+                                                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                                        value={building.area_name}
+                                                        onChange={(e) => setBuilding({ ...building, area_name: e.target.value })}
+                                                    />
                                                 </div>
                                             </div>
                                         ) : (
                                             <p className="text-xs text-amber-700 bg-amber-50 rounded-xl p-3 border border-amber-200">
-                                                Location records will be synchronized from the central system during initial setup.
+                                                Location list is unavailable right now. Please enter the full address in the field above.
                                             </p>
                                         )}
                                     </div>
 
-                                    {/* Floor Count Setup */}
+                                    {/* Floor Count Setup + Floor-wise Flat Allocation */}
                                     <div className="card p-6 border border-slate-200 bg-white shadow-xs rounded-2xl">
                                         <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
                                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-600 font-bold text-sm">
@@ -438,7 +397,7 @@ export default function Review({
                                             </div>
                                             <div>
                                                 <h2 className="text-base font-semibold text-slate-900">Building Floor Structure</h2>
-                                                <p className="text-xs text-slate-500">Specify total floors. Next step lets you configure flats per floor.</p>
+                                                <p className="text-xs text-slate-500">Enter the total floors, then set how many flats each floor has.</p>
                                             </div>
                                         </div>
 
@@ -481,140 +440,110 @@ export default function Review({
                                             </div>
                                         </div>
 
+                                        {/* Floor-wise flat counts, generated from Total Floors */}
+                                        <div className="mt-6 border-t border-slate-100 pt-5">
+                                            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                                <div>
+                                                    <h3 className="text-sm font-semibold text-slate-900">Flats on each floor</h3>
+                                                    <p className="text-xs text-slate-500">
+                                                        Billing is calculated from the total of these numbers.
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-2.5 border border-slate-200">
+                                                    <span className="text-xs font-semibold text-slate-700">Quick set:</span>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max="26"
+                                                        className="w-14 rounded-lg border border-slate-300 px-2 py-1 text-center text-xs font-bold bg-white"
+                                                        value={quickFlats}
+                                                        onChange={(e) => setQuickFlats(e.target.value)}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={applyQuickFlatsToAll}
+                                                        className="rounded-lg bg-slate-800 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-700 transition"
+                                                    >
+                                                        Apply to all
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2.5 max-h-[420px] overflow-y-auto p-1 pr-2">
+                                                {floorPlan.map((count, index) => {
+                                                    const label = getFloorLabel(index);
+                                                    const isGf = hasGroundFloor && index === 0;
+
+                                                    return (
+                                                        <div
+                                                            key={index}
+                                                            className={`flex items-center justify-between rounded-xl border px-4 py-3 shadow-2xs transition ${
+                                                                isGf ? 'border-teal-200 bg-teal-50/40' : 'border-slate-200 bg-white hover:bg-slate-50/60'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <span
+                                                                    className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${
+                                                                        isGf ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-700'
+                                                                    }`}
+                                                                >
+                                                                    {isGf ? 'GF' : hasGroundFloor ? index : index + 1}
+                                                                </span>
+                                                                <div>
+                                                                    <span className="text-sm font-semibold text-slate-800">
+                                                                        {label}
+                                                                    </span>
+                                                                    {isGf ? (
+                                                                        <span className="ml-2 inline-block rounded-md bg-teal-100 px-1.5 py-0.2 text-[10px] font-bold text-teal-800">
+                                                                            Ground Level
+                                                                        </span>
+                                                                    ) : null}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="number"
+                                                                    name={`floor_plan[${index}]`}
+                                                                    min="0"
+                                                                    max="26"
+                                                                    className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-bold text-slate-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                                                    value={count}
+                                                                    onChange={(e) => updateFloorCount(index, e.target.value)}
+                                                                />
+                                                                <span className="text-xs text-slate-500 font-medium">flats</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* Dynamic Total Summary Card */}
+                                            <div className="mt-5 rounded-2xl bg-teal-50/70 p-4 border border-teal-200 flex flex-wrap items-center justify-between gap-4">
+                                                <div>
+                                                    <span className="text-xs font-semibold uppercase tracking-wider text-teal-800">
+                                                        Live Allocation Summary
+                                                    </span>
+                                                    <div className="mt-1 text-sm font-medium text-teal-950">
+                                                        <strong>{building.total_floors} Floors</strong> configured &rarr;{' '}
+                                                        <span className="text-base font-bold text-teal-700">{totalFlats} Total Flats</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-xs text-teal-700">Estimated Monthly Bill</span>
+                                                    <div className="text-xl font-black text-teal-800">
+                                                        {currency} {(totalFlats * flatRate).toFixed(2)}
+                                                        <span className="text-xs font-normal text-teal-600"> / mo</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <div className="mt-6 flex justify-end">
                                             <button
                                                 type="button"
-                                                onClick={goToStep2}
-                                                className="rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 active:scale-[0.99] transition flex items-center gap-2"
-                                            >
-                                                <span>Next: Configure Floors &amp; Flats</span>
-                                                &rarr;
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* STEP 2: Floor-wise Flat Allocation ("next e gele") */}
-                                <div className={currentStep === 2 ? 'space-y-6' : 'hidden'}>
-                                    <div className="card p-6 border border-slate-200 bg-white shadow-xs rounded-2xl">
-                                        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-bold text-teal-700">
-                                                        Step 2
-                                                    </span>
-                                                    <h2 className="text-lg font-semibold text-slate-900">
-                                                        Floor-wise Flat Allocation
-                                                    </h2>
-                                                </div>
-                                                <p className="mt-1 text-xs text-slate-500">
-                                                    Building: <strong>{building.building_name || 'My Building'}</strong> ({building.total_floors} Floors). Enter flat count on each floor.
-                                                </p>
-                                            </div>
-
-                                            {/* Quick fill helper */}
-                                            <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-2.5 border border-slate-200">
-                                                <span className="text-xs font-semibold text-slate-700">Quick set:</span>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="26"
-                                                    className="w-14 rounded-lg border border-slate-300 px-2 py-1 text-center text-xs font-bold bg-white"
-                                                    value={quickFlats}
-                                                    onChange={(e) => setQuickFlats(e.target.value)}
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={applyQuickFlatsToAll}
-                                                    className="rounded-lg bg-slate-800 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-700 transition"
-                                                >
-                                                    Apply to all
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Floor-wise Inputs List */}
-                                        <div className="space-y-2.5 max-h-[480px] overflow-y-auto p-1 pr-2">
-                                            {floorPlan.map((count, index) => {
-                                                const label = getFloorLabel(index);
-                                                const isGf = hasGroundFloor && index === 0;
-
-                                                return (
-                                                    <div
-                                                        key={index}
-                                                        className={`flex items-center justify-between rounded-xl border px-4 py-3 shadow-2xs transition ${
-                                                            isGf ? 'border-teal-200 bg-teal-50/40' : 'border-slate-200 bg-white hover:bg-slate-50/60'
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <span
-                                                                className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${
-                                                                    isGf ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-700'
-                                                                }`}
-                                                            >
-                                                                {isGf ? 'GF' : hasGroundFloor ? index : index + 1}
-                                                            </span>
-                                                            <div>
-                                                                <span className="text-sm font-semibold text-slate-800">
-                                                                    {label}
-                                                                </span>
-                                                                {isGf ? (
-                                                                    <span className="ml-2 inline-block rounded-md bg-teal-100 px-1.5 py-0.2 text-[10px] font-bold text-teal-800">
-                                                                        Ground Level
-                                                                    </span>
-                                                                ) : null}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center gap-2">
-                                                            <input
-                                                                type="number"
-                                                                name={`floor_plan[${index}]`}
-                                                                min="0"
-                                                                max="26"
-                                                                className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-bold text-slate-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
-                                                                value={count}
-                                                                onChange={(e) => updateFloorCount(index, e.target.value)}
-                                                            />
-                                                            <span className="text-xs text-slate-500 font-medium">flats</span>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-
-                                        {/* Dynamic Total Summary Card */}
-                                        <div className="mt-5 rounded-2xl bg-teal-50/70 p-4 border border-teal-200 flex flex-wrap items-center justify-between gap-4">
-                                            <div>
-                                                <span className="text-xs font-semibold uppercase tracking-wider text-teal-800">
-                                                    Live Allocation Summary
-                                                </span>
-                                                <div className="mt-1 text-sm font-medium text-teal-950">
-                                                    <strong>{building.total_floors} Floors</strong> configured &rarr;{' '}
-                                                    <span className="text-base font-bold text-teal-700">{totalFlats} Total Flats</span>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="text-xs text-teal-700">Estimated Monthly Bill</span>
-                                                <div className="text-xl font-black text-teal-800">
-                                                    {currency} {(totalFlats * flatRate).toFixed(2)}
-                                                    <span className="text-xs font-normal text-teal-600"> / mo</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-6 flex items-center justify-between gap-4">
-                                            <button
-                                                type="button"
-                                                onClick={() => goToStep(1)}
-                                                className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
-                                            >
-                                                &larr; Back to Building Info
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                onClick={goToStep3}
+                                                onClick={goToReview}
                                                 className="rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 active:scale-[0.99] transition flex items-center gap-2"
                                             >
                                                 <span>Next: Review &amp; Checkout</span>
@@ -624,12 +553,12 @@ export default function Review({
                                     </div>
                                 </div>
 
-                                {/* STEP 3: Review & Confirmation */}
-                                <div className={currentStep === 3 ? 'space-y-6' : 'hidden'}>
+                                {/* STEP 2: Review & Confirmation */}
+                                <div className={currentStep === 2 ? 'space-y-6' : 'hidden'}>
                                     <div className="card p-6 border border-slate-200 bg-white shadow-xs rounded-2xl">
                                         <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
                                             <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-bold text-teal-700">
-                                                Step 3
+                                                Step 2
                                             </span>
                                             <h2 className="text-base font-semibold text-slate-900">Review Building &amp; Plan Configuration</h2>
                                         </div>
@@ -685,10 +614,10 @@ export default function Review({
                                         <div className="mt-6 flex items-center justify-between pt-4 border-t border-slate-100">
                                             <button
                                                 type="button"
-                                                onClick={() => goToStep(2)}
+                                                onClick={() => goToStep(1)}
                                                 className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
                                             >
-                                                &larr; Back to Floors &amp; Flats
+                                                &larr; Back to Building Setup
                                             </button>
                                         </div>
                                     </div>
@@ -796,16 +725,7 @@ export default function Review({
                             {isMybuilding && currentStep === 1 ? (
                                 <button
                                     type="button"
-                                    onClick={goToStep2}
-                                    className="w-full rounded-xl bg-teal-600 py-3 text-sm font-semibold text-white shadow-md hover:bg-teal-700 active:scale-[0.99] transition flex items-center justify-center gap-2"
-                                >
-                                    <span>Continue to Floor Setup</span>
-                                    &rarr;
-                                </button>
-                            ) : isMybuilding && currentStep === 2 ? (
-                                <button
-                                    type="button"
-                                    onClick={goToStep3}
+                                    onClick={goToReview}
                                     className="w-full rounded-xl bg-teal-600 py-3 text-sm font-semibold text-white shadow-md hover:bg-teal-700 active:scale-[0.99] transition flex items-center justify-center gap-2"
                                 >
                                     <span>Continue to Review</span>

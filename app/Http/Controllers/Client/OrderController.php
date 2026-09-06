@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Models\City;
+use App\Models\District;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\License;
@@ -16,7 +18,7 @@ use App\Services\AdminNotificationService;
 use App\Services\BillingService;
 use App\Services\ClientNotificationService;
 use App\Services\InvoiceVatService;
-use App\Services\MyBuildingProvisioner;
+use App\Support\BangladeshLocations;
 use App\Support\Currency;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
@@ -28,10 +30,6 @@ use Inertia\Response as InertiaResponse;
 
 class OrderController extends Controller
 {
-    public function __construct(private readonly ?MyBuildingProvisioner $provisioner = null)
-    {
-    }
-
     public function index(Request $request): InertiaResponse
     {
         $customer = $request->user()->customer;
@@ -86,9 +84,9 @@ class OrderController extends Controller
             'flats_per_floor' => ['nullable', 'integer', 'min:1', 'max:26'],
             'floor_plan' => ['nullable', 'array', 'max:200'],
             'floor_plan.*' => ['integer', 'min:0', 'max:26'],
-            'district_id' => ['nullable', 'integer'],
-            'city_id' => ['nullable', 'integer'],
-            'area_id' => ['nullable', 'integer'],
+            'district_id' => ['nullable', 'integer', 'exists:districts,id'],
+            'city_id' => ['nullable', 'integer', 'exists:cities,id'],
+            'area_name' => ['nullable', 'string', 'max:150'],
         ]);
 
         $customer = $request->user()->customer;
@@ -143,14 +141,9 @@ class OrderController extends Controller
         $dueDays = 0;
         $dateFormat = config('app.date_format', 'd-m-Y');
 
-        $locations = [];
-        if ($isMybuilding && $this->provisioner) {
-            $installUrl = (string) (config('mybuilding.default_install_url') ?: 'http://127.0.0.1:8000');
-            $locationData = $this->provisioner->locations($installUrl);
-            if (!empty($locationData['ok']) && !empty($locationData['districts'])) {
-                $locations = $locationData['districts'];
-            }
-        }
+        // Districts and cities come from this app's own tables, so the screen
+        // never waits on (or is emptied by) an unreachable installation.
+        $locations = $isMybuilding ? BangladeshLocations::tree() : [];
 
         return Inertia::render('Client/Orders/Review', [
             'has_customer' => (bool) $customer,
@@ -179,7 +172,7 @@ class OrderController extends Controller
                 'floor_plan' => $floorPlan,
                 'district_id' => isset($data['district_id']) && $data['district_id'] !== '' ? (int) $data['district_id'] : null,
                 'city_id' => isset($data['city_id']) && $data['city_id'] !== '' ? (int) $data['city_id'] : null,
-                'area_id' => isset($data['area_id']) && $data['area_id'] !== '' ? (int) $data['area_id'] : null,
+                'area_name' => $data['area_name'] ?? '',
             ],
             'currency' => $currency,
             'start_date_display' => $startDate->format($dateFormat),
@@ -215,9 +208,9 @@ class OrderController extends Controller
             'flats_per_floor' => ['nullable', 'integer', 'min:1', 'max:26'],
             'floor_plan' => ['nullable', 'array', 'max:200'],
             'floor_plan.*' => ['integer', 'min:0', 'max:26'],
-            'district_id' => ['nullable', 'integer'],
-            'city_id' => ['nullable', 'integer'],
-            'area_id' => ['nullable', 'integer'],
+            'district_id' => ['nullable', 'integer', 'exists:districts,id'],
+            'city_id' => ['nullable', 'integer', 'exists:cities,id'],
+            'area_name' => ['nullable', 'string', 'max:150'],
         ]);
 
         $customer = $request->user()->customer;
@@ -261,6 +254,16 @@ class OrderController extends Controller
             ? ($rawAddress !== '' ? "Holding/No: {$buildingNumber}, {$rawAddress}" : "Holding/No: {$buildingNumber}")
             : ($rawAddress !== '' ? $rawAddress : null);
 
+        // Resolved here so the provision records the district/city by slug and
+        // name; the installation has its own ids and matches on those instead.
+        $district = $request->filled('district_id')
+            ? District::query()->find((int) $request->input('district_id'))
+            : null;
+        $city = $request->filled('city_id')
+            ? City::query()->where('district_id', $district?->id)->find((int) $request->input('city_id'))
+            : null;
+        $areaName = trim((string) $request->input('area_name', ''));
+
         $startDate = Carbon::today();
         $periodEnd = $plan->interval === 'monthly'
             ? $startDate->copy()->endOfMonth()
@@ -281,7 +284,10 @@ class OrderController extends Controller
             $contractedFlats,
             $unitPrice,
             $baseRecurringAmount,
-            $buildingAddress
+            $buildingAddress,
+            $district,
+            $city,
+            $areaName
         ) {
             $nextInvoiceAt = $this->nextInvoiceAt($plan->interval, $periodEnd);
             $subscription = Subscription::create([
@@ -383,9 +389,13 @@ class OrderController extends Controller
                         'flats_per_floor' => $perFloor,
                         'floor_plan' => $floorPlan,
                         'contracted_flats' => $contractedFlats,
-                        'district_id' => $request->filled('district_id') ? (int) $request->input('district_id') : null,
-                        'city_id' => $request->filled('city_id') ? (int) $request->input('city_id') : null,
-                        'area_id' => $request->filled('area_id') ? (int) $request->input('area_id') : null,
+                        'district_id' => $district?->id,
+                        'district_slug' => $district?->slug,
+                        'district_name' => $district?->name,
+                        'city_id' => $city?->id,
+                        'city_slug' => $city?->slug,
+                        'city_name' => $city?->name,
+                        'area_name' => $areaName ?: null,
                         'install_url' => (string) (config('mybuilding.default_install_url') ?: ''),
                         'owner_name' => $customer->name,
                         'owner_email' => $customer->email,
@@ -416,8 +426,6 @@ class OrderController extends Controller
                 'invoice_id' => $order->invoice_id,
             ], $request->user()?->id, $request->ip());
         }
-
-
 
         if ($invoice) {
             return redirect()->route('client.invoices.pay', $invoice)

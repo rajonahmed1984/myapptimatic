@@ -12,7 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MyBuildingProvision extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PROVISIONED = 'provisioned';
+
     public const STATUS_FAILED = 'failed';
 
     protected $table = 'mybuilding_provisions';
@@ -29,8 +31,13 @@ class MyBuildingProvision extends Model
         'contracted_flats',
         'install_url',
         'district_id',
+        'district_slug',
+        'district_name',
         'city_id',
+        'city_slug',
+        'city_name',
         'area_id',
+        'area_name',
         'owner_name',
         'owner_email',
         'owner_phone',

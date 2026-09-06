@@ -19,9 +19,7 @@ use Inertia\Response as InertiaResponse;
  */
 class MyBuildingController extends Controller
 {
-    public function __construct(private readonly MyBuildingProvisioner $provisioner)
-    {
-    }
+    public function __construct(private readonly MyBuildingProvisioner $provisioner) {}
 
     public function index(Request $request): InertiaResponse
     {
@@ -32,7 +30,7 @@ class MyBuildingController extends Controller
         $licenses = License::query()
             ->with(['subscription.customer', 'subscription.plan', 'domains'])
             ->when($product, fn ($q) => $q->where('product_id', $product->id))
-            ->when(!$product, fn ($q) => $q->whereRaw('1 = 0'))
+            ->when(! $product, fn ($q) => $q->whereRaw('1 = 0'))
             ->latest('id')
             ->get();
 
@@ -139,6 +137,11 @@ class MyBuildingController extends Controller
             'district_id' => $data['district_id'] ?? null,
             'city_id' => $data['city_id'] ?? null,
             'area_id' => $data['area_id'] ?? null,
+            'district_slug' => null,
+            'district_name' => null,
+            'city_slug' => null,
+            'city_name' => null,
+            'area_name' => null,
             'owner_name' => $data['owner_name'],
             'owner_email' => $data['owner_email'],
             'owner_phone' => $data['owner_phone'],
