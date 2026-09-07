@@ -469,7 +469,7 @@ class SubscriptionController extends Controller
             ]);
 
             if ($plan->isPerFlat()) {
-                $license = $subscription->licenses()->first();
+                $license = $subscription->licenses()->orderBy('id')->first();
                 if (! $license && $subscription->plan?->product_id) {
                     $license = $subscription->licenses()->create([
                         'product_id' => $subscription->plan->product_id,
@@ -659,6 +659,28 @@ class SubscriptionController extends Controller
         ];
     }
 
+    /**
+     * The building record behind this subscription.
+     *
+     * Every writer keys the provision on the licence, so the read has to as
+     * well. Matching on the customer as well used to hand back an older
+     * building belonging to one of their other licences, which made an edit
+     * saved here look as though it had never been saved at all.
+     */
+    private function provisionFor(Subscription $subscription): ?MyBuildingProvision
+    {
+        $licenseIds = $subscription->licenses->pluck('id');
+
+        if ($licenseIds->isEmpty()) {
+            return null;
+        }
+
+        return MyBuildingProvision::query()
+            ->whereIn('license_id', $licenseIds)
+            ->orderBy('license_id')
+            ->first();
+    }
+
     private function formInertiaProps(
         ?Subscription $subscription,
         Collection $customers,
@@ -680,11 +702,7 @@ class SubscriptionController extends Controller
 
         $provision = null;
         if ($subscription) {
-            $licenseIds = $subscription->licenses->pluck('id');
-            $provisionModel = MyBuildingProvision::query()
-                ->whereIn('license_id', $licenseIds)
-                ->orWhere('customer_id', $subscription->customer_id)
-                ->first();
+            $provisionModel = $this->provisionFor($subscription);
 
             if ($provisionModel) {
                 $provision = [
