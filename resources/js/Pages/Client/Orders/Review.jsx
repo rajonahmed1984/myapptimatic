@@ -103,6 +103,10 @@ export default function Review({
         () => districts.find((d) => String(d.id) === String(building.district_id))?.cities || [],
         [districts, building.district_id]
     );
+    const areas = useMemo(
+        () => cities.find((c) => String(c.id) === String(building.city_id))?.areas || [],
+        [cities, building.city_id]
+    );
 
     const districtOptions = useMemo(
         () => districts.map((d) => ({ label: d.name, value: String(d.id) })),
@@ -111,6 +115,10 @@ export default function Review({
     const cityOptions = useMemo(
         () => cities.map((c) => ({ label: c.name, value: String(c.id) })),
         [cities]
+    );
+    const areaOptions = useMemo(
+        () => areas.map((a) => ({ label: a.name, value: a.name })),
+        [areas]
     );
 
     const totalFlats = useMemo(() => {
@@ -345,7 +353,7 @@ export default function Review({
                                                         options={districtOptions}
                                                         value={building.district_id}
                                                         onChange={(next) =>
-                                                            setBuilding({ ...building, district_id: String(next ?? ''), city_id: '' })
+                                                            setBuilding({ ...building, district_id: String(next ?? ''), city_id: '', area_name: '' })
                                                         }
                                                         placeholder="Select District"
                                                         searchPlaceholder="Search district..."
@@ -360,7 +368,7 @@ export default function Review({
                                                         name="city_id"
                                                         options={cityOptions}
                                                         value={building.city_id}
-                                                        onChange={(next) => setBuilding({ ...building, city_id: String(next ?? '') })}
+                                                        onChange={(next) => setBuilding({ ...building, city_id: String(next ?? ''), area_name: '' })}
                                                         disabled={cityOptions.length === 0}
                                                         placeholder={cityOptions.length === 0 ? 'Select district first' : 'Select City / Upazila'}
                                                         searchPlaceholder="Search city..."
@@ -371,15 +379,26 @@ export default function Review({
                                                     <label className="block text-sm font-medium text-slate-700 mb-1">
                                                         Area / Mohalla
                                                     </label>
-                                                    <input
-                                                        type="text"
-                                                        name="area_name"
-                                                        maxLength={150}
-                                                        placeholder="e.g. Bashundhara R/A, Block C"
-                                                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
-                                                        value={building.area_name}
-                                                        onChange={(e) => setBuilding({ ...building, area_name: e.target.value })}
-                                                    />
+                                                    {areaOptions.length > 0 ? (
+                                                        <SearchableSelect
+                                                            name="area_name"
+                                                            options={areaOptions}
+                                                            value={building.area_name}
+                                                            onChange={(next) => setBuilding({ ...building, area_name: String(next ?? '') })}
+                                                            placeholder="Select area (e.g. West Agargaon)"
+                                                            searchPlaceholder="Search area (e.g. West Agargaon)..."
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            name="area_name"
+                                                            maxLength={150}
+                                                            placeholder="e.g. West Agargaon"
+                                                            className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                                            value={building.area_name}
+                                                            onChange={(e) => setBuilding({ ...building, area_name: e.target.value })}
+                                                        />
+                                                    )}
                                                 </div>
                                             </div>
                                         ) : (

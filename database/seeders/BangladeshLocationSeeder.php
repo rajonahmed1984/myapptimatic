@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Area;
 use App\Models\City;
 use App\Models\District;
 use App\Support\BangladeshLocations;
@@ -9,7 +10,7 @@ use Illuminate\Database\Seeder;
 use RuntimeException;
 
 /**
- * Loads the bundled district/upazila list. Safe to re-run: rows are matched on
+ * Loads the bundled district/upazila/area list. Safe to re-run: rows are matched on
  * slug, so ids stay stable for provisions that already reference them.
  */
 class BangladeshLocationSeeder extends Seeder
@@ -28,6 +29,9 @@ class BangladeshLocationSeeder extends Seeder
             throw new RuntimeException("Location dataset is not valid JSON: {$path}");
         }
 
+        // Clean misplaced cities under Dhaka that are now areas
+        City::whereIn('slug', ['gulshan', 'banani', 'dhanmondi', 'uttara'])->delete();
+
         foreach ($districts as $row) {
             $district = District::updateOrCreate(
                 ['slug' => $row['slug']],
@@ -38,23 +42,35 @@ class BangladeshLocationSeeder extends Seeder
                 ]
             );
 
-            foreach ($row['cities'] ?? [] as $city) {
-                City::updateOrCreate(
-                    ['district_id' => $district->id, 'slug' => $city['slug']],
+            foreach ($row['cities'] ?? [] as $cityRow) {
+                $city = City::updateOrCreate(
+                    ['district_id' => $district->id, 'slug' => $cityRow['slug']],
                     [
-                        'name' => $city['name'],
-                        'bn_name' => $city['bn_name'] ?? null,
+                        'name' => $cityRow['name'],
+                        'bn_name' => $cityRow['bn_name'] ?? null,
                     ]
                 );
+
+                foreach ($cityRow['areas'] ?? [] as $areaRow) {
+                    Area::updateOrCreate(
+                        ['city_id' => $city->id, 'slug' => $areaRow['slug']],
+                        [
+                            'district_id' => $district->id,
+                            'name' => $areaRow['name'],
+                            'bn_name' => $areaRow['bn_name'] ?? null,
+                        ]
+                    );
+                }
             }
         }
 
         BangladeshLocations::forget();
 
         $this->command?->info(sprintf(
-            'Seeded %d districts and %d cities.',
+            'Seeded %d districts, %d cities, and %d areas.',
             District::count(),
-            City::count()
+            City::count(),
+            Area::count()
         ));
     }
 }
