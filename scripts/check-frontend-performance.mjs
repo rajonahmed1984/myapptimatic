@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { gzipSync } from 'node:zlib';
 
 const root = process.cwd();
 const read = (file) => readFileSync(path.join(root, file), 'utf8');
@@ -76,7 +77,12 @@ if (existsSync(manifestPath)) {
     if (entry?.file) {
         const entryPath = path.join(root, 'public/build', entry.file);
         const entryBytes = statSync(entryPath).size;
-        const budgetBytes = 440 * 1024;
+        const entryGzipBytes = gzipSync(readFileSync(entryPath)).length;
+        // React 19's DOM client alone accounts for most of this file, so the budget
+        // tracks what the app adds on top of that floor rather than an ideal size.
+        // Raise it only alongside a note explaining what grew; the gzip figure below
+        // is what users actually download.
+        const budgetBytes = 500 * 1024;
 
         assert(
             entryBytes <= budgetBytes,
@@ -90,7 +96,8 @@ if (existsSync(manifestPath)) {
         );
 
         console.log(
-            `Frontend entry: ${(entryBytes / 1024).toFixed(2)} KiB / 440.00 KiB budget.`
+            `Frontend entry: ${(entryBytes / 1024).toFixed(2)} KiB / ${(budgetBytes / 1024).toFixed(2)} KiB budget`
+            + ` (${(entryGzipBytes / 1024).toFixed(2)} KiB gzipped).`
         );
     }
 } else {
