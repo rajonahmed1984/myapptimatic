@@ -15,10 +15,10 @@ return new class extends Migration
     {
         Schema::create('districts', function (Blueprint $table) {
             $table->id();
-            $table->string('slug')->unique();
-            $table->string('name');
-            $table->string('bn_name')->nullable();
-            $table->string('division')->nullable();
+            $table->string('slug', 100)->unique();
+            $table->string('name', 150);
+            $table->string('bn_name', 150)->nullable();
+            $table->string('division', 100)->nullable();
             $table->timestamps();
 
             $table->index('name');
@@ -27,9 +27,9 @@ return new class extends Migration
         Schema::create('cities', function (Blueprint $table) {
             $table->id();
             $table->foreignId('district_id')->constrained()->cascadeOnDelete();
-            $table->string('slug');
-            $table->string('name');
-            $table->string('bn_name')->nullable();
+            $table->string('slug', 100);
+            $table->string('name', 150);
+            $table->string('bn_name', 150)->nullable();
             $table->timestamps();
 
             $table->unique(['district_id', 'slug']);

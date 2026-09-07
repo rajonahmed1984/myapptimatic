@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::dropIfExists('areas');
+
         Schema::create('areas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('district_id')->constrained()->cascadeOnDelete();
             $table->foreignId('city_id')->constrained()->cascadeOnDelete();
-            $table->string('slug');
-            $table->string('name');
-            $table->string('bn_name')->nullable();
+            $table->string('slug', 100);
+            $table->string('name', 150);
+            $table->string('bn_name', 150)->nullable();
             $table->timestamps();
 
             $table->index(['city_id', 'slug']);
