@@ -15,8 +15,8 @@ return new class extends Migration
 
         Schema::create('areas', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('district_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('city_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('district_id')->index();
+            $table->foreignId('city_id')->index();
             $table->string('slug', 100);
             $table->string('name', 150);
             $table->string('bn_name', 150)->nullable();
