@@ -114,7 +114,7 @@ class MyBuildingController extends Controller
             'owner_phone' => ['required', 'string', 'max:32'],
         ]);
 
-        $license = License::with('subscription.customer')->findOrFail($data['license_id']);
+        $license = License::with(['subscription.customer', 'subscription.plan.product'])->findOrFail($data['license_id']);
 
         $provision = MyBuildingProvision::firstOrNew(['license_id' => $license->id]);
 
@@ -151,7 +151,27 @@ class MyBuildingController extends Controller
         $provision->contracted_flats = $provision->calculatedFlats();
         $provision->save();
 
+        $this->syncPerFlatSubscriptionAmount($license, $provision->contracted_flats);
+
         return back()->with('status', 'Building details saved. You can now provision it.');
+    }
+
+    /**
+     * The building's real flat count drives the money on a per-flat plan,
+     * so the subscription amount follows it whenever the plan changes here.
+     */
+    private function syncPerFlatSubscriptionAmount(License $license, int $contractedFlats): void
+    {
+        $subscription = $license->subscription;
+        $plan = $subscription?->plan;
+
+        if (! $subscription || ! $plan || ! $plan->isPerFlat()) {
+            return;
+        }
+
+        $subscription->forceFill([
+            'subscription_amount' => round(max(0, $contractedFlats) * (float) $plan->price, 2),
+        ])->save();
     }
 
     /**

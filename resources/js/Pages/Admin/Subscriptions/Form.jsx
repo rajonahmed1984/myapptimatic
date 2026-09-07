@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
 
@@ -340,6 +340,29 @@ export default function Form({
         return formatAmount(initialPlan.price);
     });
 
+    // Per-flat plans are priced strictly as flats x rate, so the amount field
+    // follows the flat count instead of whatever was stored earlier.
+    const perFlatAmount = useMemo(() => {
+        if (!isPerFlat || !selectedPlan) {
+            return null;
+        }
+
+        const flatsNum = Number(contractedFlats);
+        const rate = Number(selectedPlan.price);
+
+        if (!Number.isFinite(flatsNum) || flatsNum < 0 || !Number.isFinite(rate)) {
+            return null;
+        }
+
+        return (flatsNum * rate).toFixed(2);
+    }, [isPerFlat, selectedPlan, contractedFlats]);
+
+    useEffect(() => {
+        if (perFlatAmount !== null && perFlatAmount !== subscriptionAmount) {
+            setSubscriptionAmount(perFlatAmount);
+        }
+    }, [perFlatAmount, subscriptionAmount]);
+
     const handleContractedFlatsChange = (val) => {
         setContractedFlats(val);
         if (isPerFlat && selectedPlan && Number(selectedPlan.price) > 0) {
@@ -430,13 +453,14 @@ export default function Form({
                                 name="subscription_amount"
                                 value={subscriptionAmount}
                                 onChange={(event) => setSubscriptionAmount(event.target.value)}
-                                className={inputTokenClass}
+                                readOnly={isPerFlat}
+                                className={`${inputTokenClass}${isPerFlat ? ' cursor-not-allowed bg-slate-100 text-slate-600' : ''}`}
                                 placeholder="0.00"
                             />
                             <p className="mt-1 text-xs text-slate-500">
                                 {isPerFlat ? (
                                     <span className="font-medium text-cyan-700">
-                                        Calculated from {contractedFlats || 0} flats &times; {selectedPlan?.currency || 'BDT'} {formatAmount(selectedPlan?.price || 50)} / flat
+                                        Locked to {contractedFlats || 0} flats &times; {selectedPlan?.currency || 'BDT'} {formatAmount(selectedPlan?.price || 50)} / flat. Change the flat count to update it.
                                     </span>
                                 ) : (
                                     <>
@@ -580,7 +604,7 @@ export default function Form({
                                     </span>
                                     <span className="text-slate-400">=</span>
                                     <span className="rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1 font-bold text-white shadow-sm">
-                                        {selectedPlan?.currency || 'BDT'} {(Number(contractedFlats || 0) * Number(selectedPlan?.price || 50)).toFixed(2)} / month
+                                        {selectedPlan?.currency || 'BDT'} {perFlatAmount ?? (Number(contractedFlats || 0) * Number(selectedPlan?.price || 50)).toFixed(2)} / month
                                     </span>
                                 </div>
                                 <span className="text-xs text-slate-400">

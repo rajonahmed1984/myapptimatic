@@ -74,6 +74,11 @@ class SubscriptionController extends Controller
         ]);
 
         $plan = Plan::findOrFail($data['plan_id']);
+
+        if ($plan->isPerFlat()) {
+            $data['subscription_amount'] = $this->perFlatSubscriptionAmount($plan, $data['contracted_flats'] ?? null);
+        }
+
         $startDate = Carbon::parse($data['start_date']);
         $periodEnd = $plan->interval === 'monthly'
             ? $startDate->copy()->endOfMonth()
@@ -430,6 +435,11 @@ class SubscriptionController extends Controller
         ]);
 
         $plan = Plan::findOrFail($data['plan_id']);
+
+        if ($plan->isPerFlat()) {
+            $data['subscription_amount'] = $this->perFlatSubscriptionAmount($plan, $data['contracted_flats'] ?? null);
+        }
+
         $baseAmount = array_key_exists('subscription_amount', $data) && $data['subscription_amount'] !== null
             ? (float) $data['subscription_amount']
             : (float) $plan->price;
@@ -897,6 +907,17 @@ class SubscriptionController extends Controller
                     ];
                 })->all(),
         ];
+    }
+
+    /**
+     * Per-flat plans are always priced as contracted flats x plan rate,
+     * so the posted amount never drifts away from the flat count.
+     */
+    protected function perFlatSubscriptionAmount(Plan $plan, $contractedFlats): float
+    {
+        $flats = (int) ($contractedFlats ?: 40);
+
+        return round(max(0, $flats) * (float) $plan->price, 2);
     }
 
     private function resolveCommissionAmount(mixed $commissionPercent, float $baseAmount): ?float
