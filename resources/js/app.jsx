@@ -4,6 +4,7 @@ import { createInertiaApp, router as inertiaRouter, usePage } from '@inertiajs/r
 import { formatDate, parseDate } from './utils/datetime';
 import { enhanceEasyDateInputsInDocument } from './utils/easyDateEnhancer';
 import { getBreadcrumb, getPageTitle } from './utils/pageTitle';
+import { installCsrfTokenRefresh } from './csrf';
 
 const DISPLAY_DATE_PLACEHOLDER = 'DD-MM-YYYY';
 const DEFAULT_APP_NAME = 'MyApptimatic';
@@ -148,6 +149,10 @@ const enableInertiaNavigationBridge = () => {
 if (typeof window !== 'undefined') {
     window.__inertiaRouter = inertiaRouter;
     enableInertiaNavigationBridge();
+    // Keeps <meta name="csrf-token"> in step with the live session so a tab that
+    // was asleep for hours does not post a retired token and get bounced to the
+    // login screen with "Session expired".
+    installCsrfTokenRefresh();
 }
 
 const normalizeDisplayDateValue = (value) => {

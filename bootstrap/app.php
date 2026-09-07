@@ -14,6 +14,7 @@ use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -177,53 +178,78 @@ return Application::configure(basePath: dirname(__DIR__))
             );
         });
 
-        $exceptions->render(function (TokenMismatchException $exception, Request $request) use ($logCsrfMismatch) {
-            $logCsrfMismatch($request, TokenMismatchException::class);
+        // A 419 has two very different causes and they deserve different
+        // answers. If nobody was logged in (the classic case: a login page left
+        // open on a phone until its token was swept) there is no session to
+        // lose, so send them back to the same form with a fresh token instead
+        // of accusing them of an expired session. Only a request that really
+        // was authenticated gets torn down and told to log in again.
+        $renderCsrfFailure = function (Request $request) {
+            $wasAuthenticated = Portal::anyGuardCheck();
+            $portal = Portal::fromRequest($request);
+            $loginUrl = Portal::portalLoginUrl($portal);
+
+            $message = $wasAuthenticated
+                ? 'Session expired. Please log in again.'
+                : 'Your form had expired for security. Please try again.';
 
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Session expired. Please log in again.'], 419);
+                return response()->json([
+                    'message' => $message,
+                    'csrf_token' => csrf_token(),
+                    'authenticated' => $wasAuthenticated,
+                ], 419);
             }
 
-            if ($request->hasSession()) {
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
+            if ($wasAuthenticated) {
+                if ($request->hasSession()) {
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                }
+
+                foreach (Portal::guards() as $guard) {
+                    Auth::guard($guard)->logout();
+                }
+
+                $target = $loginUrl;
+            } else {
+                // Keep the guest session, just hand out a usable token so the
+                // very next submit from the reloaded form goes through.
+                if ($request->hasSession()) {
+                    $request->session()->regenerateToken();
+                }
+
+                $target = $request->isMethod('GET')
+                    ? $request->fullUrl()
+                    : (url()->previous() ?: $loginUrl);
             }
 
-            foreach (Portal::guards() as $guard) {
-                Auth::guard($guard)->logout();
+            // Inertia cannot follow a plain 302 to a full HTML page; without
+            // this it throws its "not a valid Inertia response" modal instead
+            // of showing the login screen.
+            if ($request->header('X-Inertia')) {
+                return Inertia::location($target);
             }
-
-            $portal = Portal::fromRequest($request);
 
             return redirect()
-                ->to(Portal::portalLoginUrl($portal))
-                ->with('status', 'Session expired. Please log in again.');
+                ->to($target)
+                ->with('status', $message)
+                ->withInput($request->except(['_token', 'password', 'password_confirmation']));
+        };
+
+        $exceptions->render(function (TokenMismatchException $exception, Request $request) use ($logCsrfMismatch, $renderCsrfFailure) {
+            $logCsrfMismatch($request, TokenMismatchException::class);
+
+            return $renderCsrfFailure($request);
         });
 
-        $exceptions->render(function (HttpExceptionInterface $exception, Request $request) use ($logCsrfMismatch) {
+        $exceptions->render(function (HttpExceptionInterface $exception, Request $request) use ($logCsrfMismatch, $renderCsrfFailure) {
             if ($exception->getStatusCode() !== 419) {
                 return null;
             }
 
             $logCsrfMismatch($request, $exception::class);
 
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Session expired. Please log in again.'], 419);
-            }
-
-            if ($request->hasSession()) {
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-            }
-
-            foreach (Portal::guards() as $guard) {
-                Auth::guard($guard)->logout();
-            }
-
-            $portal = Portal::fromRequest($request);
-
-            return redirect()
-                ->to(Portal::portalLoginUrl($portal))
-                ->with('status', 'Session expired. Please log in again.');
+            return $renderCsrfFailure($request);
         });
     })->create();

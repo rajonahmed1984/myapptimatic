@@ -103,6 +103,19 @@ use Inertia\Inertia;
 
 Route::redirect('/', '/login')->name('products.public.home');
 
+// Hands the browser a CSRF token bound to the *current* session. Long-lived
+// mobile tabs keep a token in memory that the server may have already retired
+// (idle session swept, or a login regenerated it); posting that stale token is
+// what produced the constant "Session expired" bounce. The client refreshes
+// from here whenever a tab wakes up, so the next POST carries a live token.
+Route::get('/csrf-token', function () {
+    return response()->json([
+        'token' => csrf_token(),
+        'authenticated' => \App\Support\AuthFresh\Portal::anyGuardCheck(),
+        'lifetime' => (int) config('session.lifetime'),
+    ]);
+})->middleware('nocache')->name('csrf.token');
+
 Route::get('/__ui/react-sandbox', function () {
     abort_unless(UiFeature::enabled(UiFeature::REACT_SANDBOX), 404);
 

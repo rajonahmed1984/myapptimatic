@@ -3,6 +3,7 @@
 namespace App\Support\AuthFresh;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class Portal
 {
@@ -131,6 +132,22 @@ class Portal
         );
 
         return array_values(array_unique($guards));
+    }
+
+    /**
+     * True when any portal guard still has an authenticated session. The CSRF
+     * refresh endpoint reports this so a woken-up tab can tell "my token went
+     * stale" apart from "I am actually logged out".
+     */
+    public static function anyGuardCheck(): bool
+    {
+        foreach (self::guards() as $guard) {
+            if (Auth::guard($guard)->check()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function fromPath(?string $path): string
