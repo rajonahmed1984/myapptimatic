@@ -29,3 +29,8 @@ yarn-error.log
 public.zip
 junit.xml
 junit-*.xml
+
+# Android signing keys — never commit these
+*.jks
+*.keystore
+/android/keystore.properties

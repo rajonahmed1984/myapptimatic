@@ -11,9 +11,23 @@
         "ci:local": "composer test && npm run check:react-standard && npm run check:no-native-select && npm run build && npm run check:frontend-performance",
         "lint:php": "php vendor/bin/pint --test --dirty",
         "test:php": "php artisan test",
-        "ci": "npm run check:react-standard && npm run check:no-native-select && npm run build && npm run check:frontend-performance"
+        "ci": "npm run check:react-standard && npm run check:no-native-select && npm run build && npm run check:frontend-performance",
+        "mobile:config": "node scripts/mobile-config.mjs",
+        "mobile:sync": "npm run mobile:config && cap sync",
+        "mobile:android": "npm run mobile:sync && cap open android",
+        "mobile:ios": "npm run mobile:sync && cap open ios",
+        "mobile:run:android": "npm run mobile:sync && cap run android",
+        "mobile:run:ios": "npm run mobile:sync && cap run ios"
     },
     "dependencies": {
+        "@capacitor/app": "^8.1.1",
+        "@capacitor/browser": "^8.0.4",
+        "@capacitor/core": "^8.5.1",
+        "@capacitor/device": "^8.0.3",
+        "@capacitor/keyboard": "^8.0.5",
+        "@capacitor/network": "^8.0.1",
+        "@capacitor/splash-screen": "^8.0.2",
+        "@capacitor/status-bar": "^8.0.3",
         "@inertiajs/react": "^2.3.15",
         "flatpickr": "^4.6.13",
         "intl-tel-input": "^25.15.1",
@@ -22,6 +36,9 @@
         "recharts": "^3.10.1"
     },
     "devDependencies": {
+        "@capacitor/android": "^8.5.1",
+        "@capacitor/cli": "^8.5.1",
+        "@capacitor/ios": "^8.5.1",
         "@vitejs/plugin-react": "^5.1.4",
         "autoprefixer": "^10.4.24",
         "axios": "^1.6.4",

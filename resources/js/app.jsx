@@ -149,6 +149,13 @@ const enableInertiaNavigationBridge = () => {
 if (typeof window !== 'undefined') {
     window.__inertiaRouter = inertiaRouter;
     enableInertiaNavigationBridge();
+    // Capacitor injects its bridge before this bundle runs, so the native shell
+    // helpers stay in a lazily loaded chunk that browsers never download.
+    if (window.Capacitor?.isNativePlatform?.()) {
+        import('./native')
+            .then((module) => module.initNativeShell())
+            .catch(() => {});
+    }
     // Keeps <meta name="csrf-token"> in step with the live session so a tab that
     // was asleep for hours does not post a retired token and get bounced to the
     // login screen with "Session expired".
