@@ -1,13 +1,18 @@
 {
-  "appId": "com.myapptimatic.app",
+  "appId": "com.apptimatic.app",
   "appName": "MyApptimatic",
   "webDir": "mobile/www",
   "server": {
-    "url": "https://app.myapptimatic.com",
+    "url": "https://my.apptimatic.com",
     "androidScheme": "https",
     "iosScheme": "https",
     "cleartext": false,
-    "errorPath": "index.html"
+    "errorPath": "index.html",
+    "allowNavigation": [
+      "*.sslcommerz.com",
+      "*.bka.sh",
+      "*.paypal.com"
+    ]
   },
   "android": {
     "allowMixedContent": false,

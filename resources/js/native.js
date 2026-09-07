@@ -15,6 +15,11 @@ import { Keyboard } from '@capacitor/keyboard';
 
 const ROOT_PATHS = new Set(['/', '/login', '/admin', '/client', '/employee', '/rep', '/sales', '/support']);
 
+// Checkout hands the user to a payment gateway and then redirects back. Those
+// hosts have to stay inside the WebView, so keep this list in step with
+// server.allowNavigation in capacitor.config.json.
+const IN_APP_HOST_SUFFIXES = ['.sslcommerz.com', '.bka.sh', '.paypal.com'];
+
 const quietly = async (task) => {
     try {
         await task();
@@ -66,9 +71,14 @@ const bindHardwareBackButton = () => quietly(async () => {
     });
 });
 
-const isExternalUrl = (url) => {
+const staysInWebView = (parsed) => (
+    parsed.origin === window.location.origin
+    || IN_APP_HOST_SUFFIXES.some((suffix) => parsed.hostname.endsWith(suffix))
+);
+
+const opensInSystemBrowser = (url) => {
     try {
-        return new URL(url, window.location.origin).origin !== window.location.origin;
+        return !staysInWebView(new URL(url, window.location.origin));
     } catch (error) {
         return false;
     }
@@ -92,7 +102,7 @@ const bindExternalLinks = () => {
             return;
         }
 
-        if (!isExternalUrl(anchor.href)) {
+        if (!opensInSystemBrowser(anchor.href)) {
             return;
         }
 

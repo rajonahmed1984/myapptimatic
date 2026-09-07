@@ -37,15 +37,38 @@ $isNativeApp = str_contains((string) $request->userAgent(), 'MyApptimaticApp');
 Everything is driven from `.env`:
 
 ```
-MOBILE_SERVER_URL=https://app.myapptimatic.com
-MOBILE_APP_ID=com.myapptimatic.app
+MOBILE_SERVER_URL=https://my.apptimatic.com
+MOBILE_APP_ID=com.apptimatic.app
 MOBILE_APP_NAME=MyApptimatic
 ```
+
+`MOBILE_APP_ID` is permanent once the app is published: Google Play and the App
+Store both key a listing to it and neither lets you change it afterwards. Change
+it now if `com.apptimatic.app` is not what you want, then delete `android/` and
+`ios/` and re-run `npx cap add android` / `npx cap add ios` — `cap sync` alone
+does not rewrite the native package name.
 
 `npm run mobile:config` writes those values into `capacitor.config.json`. It runs
 automatically before every sync. Plain `http://` URLs automatically enable
 cleartext traffic so a device can hit `php artisan serve` over the LAN; release
 builds must use `https://`.
+
+## Payment gateways
+
+Checkout sends the user to bKash, SSLCommerz or PayPal and the gateway then
+redirects back. A WebView locked to one origin would refuse those navigations and
+strand the payment in the system browser, where the return URL can no longer
+reach the Laravel session, so the gateway hosts are allow-listed in two places:
+
+- `server.allowNavigation` in `capacitor.config.json` — lets the native WebView
+  follow the redirect
+- `IN_APP_HOST_SUFFIXES` in `resources/js/native.js` — stops the external-link
+  handler from bouncing those same links out to the system browser
+
+Currently allow-listed: `*.sslcommerz.com`, `*.bka.sh`, `*.paypal.com`. **Adding a
+new gateway means adding its host to both lists**, then `npm run mobile:sync`.
+Test a real checkout on a device before every release; this is the flow most
+likely to break silently.
 
 ## Commands
 

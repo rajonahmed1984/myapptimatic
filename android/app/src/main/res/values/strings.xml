@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">MyApptimatic</string>
     <string name="title_activity_main">MyApptimatic</string>
-    <string name="package_name">com.myapptimatic.app</string>
-    <string name="custom_url_scheme">com.myapptimatic.app</string>
+    <string name="package_name">com.apptimatic.app</string>
+    <string name="custom_url_scheme">com.apptimatic.app</string>
 </resources>

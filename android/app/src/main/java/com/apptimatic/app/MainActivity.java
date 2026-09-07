@@ -1,4 +1,4 @@
-package com.myapptimatic.app;
+package com.apptimatic.app;
 
 import com.getcapacitor.BridgeActivity;
 
