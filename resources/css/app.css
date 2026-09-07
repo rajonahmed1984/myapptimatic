@@ -184,12 +184,12 @@ body.bg-dashboard {
 
 @layer components {
     .ui-input {
-        @apply w-full text-xs px-4 py-1.5 h-8 rounded-[10px] border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
+        @apply w-full text-xs px-4 py-1.5 h-9 rounded-[10px] border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
         border-radius: 10px !important;
     }
 
     .ui-select {
-        @apply w-full text-left text-xs pl-4 pr-10 py-1.5 h-8 rounded-[10px] border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
+        @apply w-full text-left text-xs pl-4 pr-10 py-1.5 h-9 rounded-[10px] border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600;
         border-radius: 10px !important;
     }
 
@@ -199,15 +199,15 @@ body.bg-dashboard {
     }
 
     .ui-btn-primary {
-        @apply bg-teal-600 rounded-full text-xs px-3 py-1.5 text-white font-semibold hover:bg-teal-500;
+        @apply inline-flex items-center justify-center bg-teal-600 rounded-[10px] text-xs px-4 h-9 text-white font-semibold hover:bg-teal-500 shadow-sm transition-colors;
     }
 
     .ui-btn-secondary {
-        @apply border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600;
+        @apply inline-flex items-center justify-center border border-slate-300 bg-white rounded-[10px] text-xs px-4 h-9 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600 hover:bg-slate-50 shadow-sm transition-colors;
     }
 
     .ui-btn-danger {
-        @apply bg-red-600 rounded-full text-xs px-3 py-1.5 text-white font-semibold hover:bg-red-500;
+        @apply inline-flex items-center justify-center bg-red-600 rounded-[10px] text-xs px-4 h-9 text-white font-semibold hover:bg-red-500 shadow-sm transition-colors;
     }
 
     .table-action-link {

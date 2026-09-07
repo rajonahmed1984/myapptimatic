@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import PasswordInput from '../../../Components/Form/PasswordInput';
 
 const on = (v) => v === true || v === 1 || v === '1' || v === 'true';
 
@@ -220,13 +221,13 @@ export default function Edit({
                                             <input name="recaptcha_site_key" defaultValue={settings.recaptcha_site_key || ''} className="ui-input mt-2" />
                                         </Field>
                                         <Field label="Secret key" name="recaptcha_secret_key" errors={errors}>
-                                            <input name="recaptcha_secret_key" type="password" defaultValue={settings.recaptcha_secret_key || ''} className="ui-input mt-2" />
+                                            <PasswordInput name="recaptcha_secret_key" defaultValue={settings.recaptcha_secret_key || ''} wrapperClassName="mt-2" />
                                         </Field>
                                         <Field label="Project ID" name="recaptcha_project_id" errors={errors}>
                                             <input name="recaptcha_project_id" defaultValue={settings.recaptcha_project_id || ''} className="ui-input mt-2" />
                                         </Field>
                                         <Field label="API key" name="recaptcha_api_key" errors={errors}>
-                                            <input name="recaptcha_api_key" type="password" defaultValue={settings.recaptcha_api_key || ''} className="ui-input mt-2" />
+                                            <PasswordInput name="recaptcha_api_key" defaultValue={settings.recaptcha_api_key || ''} wrapperClassName="mt-2" />
                                         </Field>
                                         <Field label="Score threshold" name="recaptcha_score_threshold" errors={errors}>
                                             <input name="recaptcha_score_threshold" type="number" step="0.01" min="0" max="1" defaultValue={settings.recaptcha_score_threshold || ''} className="ui-input mt-2" />

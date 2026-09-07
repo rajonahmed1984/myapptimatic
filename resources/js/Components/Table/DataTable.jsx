@@ -16,11 +16,23 @@ export default function DataTable({
     renderMobileCard,
     emptyMessage = 'Nothing to show yet.',
     className = '',
+    header = null,
+    footer = null,
+    mobileFooter = null,
 }) {
     return (
         <>
             {/* Mobile Cards List (<md) */}
             <div className="md:hidden space-y-3">
+                {header ? (
+                    typeof header === 'string' ? (
+                        <div className="px-1 text-xs uppercase font-bold text-slate-500">
+                            {header}
+                        </div>
+                    ) : (
+                        header
+                    )
+                ) : null}
                 {rows.length === 0 ? (
                     <div className="card p-6 text-center text-sm text-slate-500">{emptyMessage}</div>
                 ) : (
@@ -28,10 +40,22 @@ export default function DataTable({
                         <React.Fragment key={rowKey(row, index)}>{renderMobileCard(row)}</React.Fragment>
                     ))
                 )}
+                {mobileFooter && rows.length > 0 ? (
+                    typeof mobileFooter === 'function' ? mobileFooter() : mobileFooter
+                ) : null}
             </div>
 
             {/* Desktop Table (>=md) */}
             <div className={`hidden md:block card overflow-hidden ${className}`}>
+                {header ? (
+                    typeof header === 'string' ? (
+                        <div className="px-4 py-3 border-b border-slate-200 text-xs uppercase font-bold text-slate-500">
+                            {header}
+                        </div>
+                    ) : (
+                        header
+                    )
+                ) : null}
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-left text-sm">
                         <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
@@ -65,6 +89,15 @@ export default function DataTable({
                                 ))
                             )}
                         </tbody>
+                        {footer && rows.length > 0 ? (
+                            React.isValidElement(footer) && footer.type === 'tfoot' ? (
+                                footer
+                            ) : (
+                                <tfoot className="border-t-2 border-slate-200 bg-slate-50/80 font-semibold text-slate-800">
+                                    {typeof footer === 'function' ? footer({ columns, rows }) : footer}
+                                </tfoot>
+                            )
+                        ) : null}
                     </table>
                 </div>
             </div>

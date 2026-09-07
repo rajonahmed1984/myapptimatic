@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import SearchableSelect from '../../Components/SearchableSelect';
+import PasswordInput from '../../Components/Form/PasswordInput';
 
 export default function Login({
     pageTitle = 'Email Login',
@@ -95,8 +96,7 @@ export default function Login({
 
                             <label className="block space-y-1">
                                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Password</span>
-                                <input
-                                    type="password"
+                                <PasswordInput
                                     value={data.password}
                                     onChange={(event) => setData('password', event.target.value)}
                                     className="w-full rounded-[10px] border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 outline-none ring-0 transition focus:border-teal-500 focus:ring-1 focus:ring-teal-500"

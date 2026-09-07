@@ -3,6 +3,7 @@ import { Head, usePage, router } from '@inertiajs/react';
 import DatePickerField from '../../../Components/DatePickerField';
 import SearchableSelect from '../../../Components/SearchableSelect';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
+import PasswordInput from '../../../Components/Form/PasswordInput';
 
 const statusClass = (status) => {
     const key = String(status || '').toLowerCase();
@@ -509,22 +510,20 @@ export default function Show({
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">New Password</label>
-                                <input
+                                <PasswordInput
                                     name="client_password"
-                                    type="password"
                                     autoComplete="new-password"
-                                    className="ui-input mt-2"
+                                    wrapperClassName="mt-2"
                                 />
                                 <p className="mt-1 text-xs text-slate-500">Leave blank if you do not want to change password.</p>
                                 {errors?.client_password ? <p className="mt-1 text-xs text-rose-500">{errors.client_password}</p> : null}
                             </div>
                             <div>
                                 <label className="text-sm text-slate-600">Confirm Password</label>
-                                <input
+                                <PasswordInput
                                     name="client_password_confirmation"
-                                    type="password"
                                     autoComplete="new-password"
-                                    className="ui-input mt-2"
+                                    wrapperClassName="mt-2"
                                 />
                             </div>
                             <div>
@@ -646,8 +645,8 @@ export default function Show({
                             </div>
                             <div><label className="text-slate-600">Name</label><input name="name" defaultValue={projectUserDefaults?.name || ''} className="ui-input mt-2" required /></div>
                             <div><label className="text-slate-600">Email</label><input name="email" type="email" defaultValue={projectUserDefaults?.email || ''} className="ui-input mt-2" required /></div>
-                            <div><label className="text-slate-600">Password</label><input name="password" type="password" className="ui-input mt-2" required /></div>
-                            <div><label className="text-slate-600">Confirm Password</label><input name="password_confirmation" type="password" className="ui-input mt-2" required /></div>
+                            <div><label className="text-slate-600">Password</label><PasswordInput name="password" wrapperClassName="mt-2" required /></div>
+                            <div><label className="text-slate-600">Confirm Password</label><PasswordInput name="password_confirmation" wrapperClassName="mt-2" required /></div>
                             <div className="md:col-span-2 flex justify-end"><button type="submit" className="ui-btn-primary">Create project login</button></div>
                         </form>
 
@@ -689,11 +688,11 @@ export default function Show({
                                         </div>
                                         <div>
                                             <label className="font-medium text-slate-700">New Password (optional)</label>
-                                            <input name="password" type="password" className="ui-input mt-1" placeholder="Leave blank to keep current password" />
+                                            <PasswordInput name="password" wrapperClassName="mt-1" placeholder="Leave blank to keep current password" />
                                         </div>
                                         <div>
                                             <label className="font-medium text-slate-700">Confirm New Password</label>
-                                            <input name="password_confirmation" type="password" className="ui-input mt-1" />
+                                            <PasswordInput name="password_confirmation" wrapperClassName="mt-1" />
                                         </div>
                                         <div className="flex justify-end gap-3 pt-2">
                                             <button type="button" onClick={() => setEditingProjectUser(null)} className="ui-btn-secondary">Cancel</button>

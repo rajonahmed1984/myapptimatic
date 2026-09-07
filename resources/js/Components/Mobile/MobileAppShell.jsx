@@ -55,6 +55,7 @@ export default function MobileAppShell({
     moreSections = [],
     moreTitle = 'Menu & Features',
     moreDescription = null,
+    mainClassName = null,
     children,
 }) {
     const page = usePage();
@@ -190,7 +191,7 @@ export default function MobileAppShell({
                     <ImpersonationBanner />
                 </header>
 
-                <main id="main-content" className="w-full px-3 sm:px-4 md:px-6 py-4 md:py-10 pb-safe-nav md:pb-10 fade-in">
+                <main id="main-content" className={mainClassName || "w-full px-3 sm:px-4 md:px-6 py-4 md:py-6 pb-safe-nav md:pb-10 fade-in"}>
                     <PullToRefresh>
                         {flash?.error && (
                             <div className="mb-4 md:mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import PasswordInput from '../../../Components/Form/PasswordInput';
 
 const initials = (name = '') =>
     String(name)
@@ -130,7 +131,7 @@ export default function Form({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">{is_edit ? 'New Password' : 'Password'}</label>
-                                <input name="user_password" type="password" className="ui-input mt-1" autoComplete="new-password" />
+                                <PasswordInput name="user_password" wrapperClassName="mt-1" autoComplete="new-password" />
                                 {errors?.user_password ? <p className="mt-1 text-xs text-rose-600">{errors.user_password}</p> : null}
                                 <p className="mt-1 text-xs text-slate-500">
                                     {is_edit ? 'Leave blank to keep the current password.' : 'Set a password to create sales portal login.'}
@@ -138,7 +139,7 @@ export default function Form({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Retype Password</label>
-                                <input name="user_password_confirmation" type="password" className="ui-input mt-1" autoComplete="new-password" />
+                                <PasswordInput name="user_password_confirmation" wrapperClassName="mt-1" autoComplete="new-password" />
                             </div>
                         </div>
 

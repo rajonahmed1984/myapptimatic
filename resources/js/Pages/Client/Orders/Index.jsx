@@ -6,33 +6,25 @@ export default function Index({ has_customer = false, products = [], currency = 
         <>
             <Head title="Order Services" />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Order Services</h1>
-                    <p className="mt-1 text-sm text-slate-500">Choose a plan and generate an invoice instantly.</p>
-                </div>
-                <a href={routes.dashboard} data-native="true" className="text-sm text-slate-500 hover:text-teal-600">
-                    Back to dashboard
-                </a>
-            </div>
-
             {!has_customer ? (
-                <div className="card p-6 text-sm text-slate-600">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 text-sm text-slate-600">
                     Your account is not linked to a customer profile yet. Please contact support.
                 </div>
             ) : products.length === 0 ? (
-                <div className="card p-6 text-sm text-slate-600">No active products are available right now. Please check back later.</div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 text-sm text-slate-600">No active products are available right now. Please check back later.</div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {products.map((product) => (
-                        <div key={product.id} className="card p-6">
-                            <div className="section-label">Product</div>
-                            <div className="mt-2 text-xl font-semibold text-slate-900">{product.name}</div>
-                            {product.description ? <p className="mt-2 text-sm text-slate-500">{product.description}</p> : null}
+                        <div key={product.id} className="space-y-4">
+                            <div>
+                                <div className="section-label">Product</div>
+                                <div className="mt-1 text-xl font-semibold text-slate-900">{product.name}</div>
+                                {product.description ? <p className="mt-1 text-sm text-slate-500">{product.description}</p> : null}
+                            </div>
 
-                            <div className="mt-5 grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-4 md:grid-cols-2">
                                 {product.plans.map((plan) => (
-                                    <div key={plan.id} className="card-muted p-4">
+                                    <div key={plan.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-teal-200 transition-colors">
                                         <div className="flex items-start justify-between gap-4">
                                             <div>
                                                 <div className="flex items-center gap-2">

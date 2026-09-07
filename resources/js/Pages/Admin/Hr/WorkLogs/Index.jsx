@@ -78,8 +78,8 @@ export default function Index({
                         />
                     </div>
                     <div className="md:col-span-2 flex items-end gap-2">
-                        <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Apply filter</button>
-                        <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Reset</a>
+                        <button type="submit" className="inline-flex items-center justify-center rounded-[10px] bg-emerald-600 px-4 h-9 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-500 shadow-sm transition-colors whitespace-nowrap">Apply filter</button>
+                        <a href={routes?.index} data-native="true" className="inline-flex items-center justify-center rounded-[10px] border border-slate-300 bg-white px-4 h-9 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors whitespace-nowrap">Reset</a>
                     </div>
                 </form>
             </div>

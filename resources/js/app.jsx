@@ -4,7 +4,7 @@ import { createInertiaApp, router as inertiaRouter, usePage } from '@inertiajs/r
 import { formatDate, parseDate } from './utils/datetime';
 import { enhanceEasyDateInputsInDocument } from './utils/easyDateEnhancer';
 import { getBreadcrumb, getPageTitle } from './utils/pageTitle';
-import { installCsrfTokenRefresh } from './csrf';
+import { installCsrfTokenRefresh, refreshCsrfToken } from './csrf';
 
 const DISPLAY_DATE_PLACEHOLDER = 'DD-MM-YYYY';
 const DEFAULT_APP_NAME = 'MyApptimatic';
@@ -160,6 +160,18 @@ if (typeof window !== 'undefined') {
     // was asleep for hours does not post a retired token and get bounced to the
     // login screen with "Session expired".
     installCsrfTokenRefresh();
+
+    inertiaRouter.on('invalid', (event) => {
+        const response = event?.detail?.response;
+        if (response?.status === 419) {
+            event.preventDefault();
+            refreshCsrfToken({ force: true }).then(() => {
+                window.location.reload();
+            }).catch(() => {
+                window.location.reload();
+            });
+        }
+    });
 }
 
 const normalizeDisplayDateValue = (value) => {

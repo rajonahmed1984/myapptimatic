@@ -110,38 +110,37 @@ export default function Show({
             </div>
 
             <div className="space-y-6">
-                <div className="card p-6">
-                    <div className="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Dates</div>
-                            <div className="mt-2">Start: {project?.start_date_display}<br />Expected end: {project?.expected_end_date_display}<br />Due: {project?.due_date_display}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Status</div>
-                            <div className="mt-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{project?.status_label}</span></div>
-                            {initial_invoice ? <div className="mt-2 text-xs text-slate-500">Initial invoice: {initial_invoice.label} ({initial_invoice.status_label})</div> : null}
-                        </div>
+                <div className="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Dates</div>
+                        <div className="mt-2">Start: {project?.start_date_display}<br />Expected end: {project?.expected_end_date_display}<br />Due: {project?.due_date_display}</div>
                     </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Status</div>
+                        <div className="mt-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{project?.status_label}</span></div>
+                        {initial_invoice ? <div className="mt-2 text-xs text-slate-500">Initial invoice: {initial_invoice.label} ({initial_invoice.status_label})</div> : null}
+                    </div>
+                </div>
 
-                    {permissions?.can_create_task ? (
-                        <div className="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
-                            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Add Task</div>
-                            <form method="POST" action={routes?.task_store} className="mt-4 grid gap-3 md:grid-cols-6" encType="multipart/form-data" data-native="true">
-                                <input type="hidden" name="_token" value={csrfToken} />
-                                <div className="md:col-span-4"><label className="text-xs text-slate-500">Title</label><input name="title" required className="ui-input mt-1" /></div>
-                                <div className="md:col-span-2"><label className="text-xs text-slate-500">Task type</label><SearchableSelect name="task_type" className="mt-1" defaultValue={String(taskTypeSelectOptions[0]?.value || '')} options={taskTypeSelectOptions} placeholder="Select task type" required /></div>
-                                <div className="md:col-span-6"><label className="text-xs text-slate-500">Description</label><input name="description" className="ui-input mt-1" /></div>
-                                <div className="md:col-span-2"><label className="text-xs text-slate-500">Start date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" required className="ui-input mt-1" /></div>
-                                <div className="md:col-span-2"><label className="text-xs text-slate-500">Due date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="due_date" required className="ui-input mt-1" /></div>
-                                <div className="md:col-span-2"><label className="text-xs text-slate-500">Priority</label><SearchableSelect name="priority" className="mt-1" defaultValue={String(prioritySelectOptions[0]?.value || '')} options={prioritySelectOptions} placeholder="Select priority" /></div>
-                                <div className="md:col-span-2"><label className="text-xs text-slate-500">Attachment</label><input type="file" name="attachment" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" className="mt-1 w-full text-xs text-slate-600" /></div>
-                                <div className="flex items-center gap-2"><input type="hidden" name="customer_visible" value="0" /><input type="checkbox" name="customer_visible" value="1" /><span className="text-xs text-slate-600">Customer visible</span></div>
-                                <div className="md:col-span-6 flex justify-end"><button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Add task</button></div>
-                            </form>
-                        </div>
-                    ) : null}
+                {permissions?.can_create_task ? (
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Add Task</div>
+                        <form method="POST" action={routes?.task_store} className="mt-4 grid gap-3 md:grid-cols-6" encType="multipart/form-data" data-native="true">
+                            <input type="hidden" name="_token" value={csrfToken} />
+                            <div className="md:col-span-4"><label className="text-xs text-slate-500">Title</label><input name="title" required className="ui-input mt-1" /></div>
+                            <div className="md:col-span-2"><label className="text-xs text-slate-500">Task type</label><SearchableSelect name="task_type" className="mt-1" defaultValue={String(taskTypeSelectOptions[0]?.value || '')} options={taskTypeSelectOptions} placeholder="Select task type" required /></div>
+                            <div className="md:col-span-6"><label className="text-xs text-slate-500">Description</label><input name="description" className="ui-input mt-1" /></div>
+                            <div className="md:col-span-2"><label className="text-xs text-slate-500">Start date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="start_date" required className="ui-input mt-1" /></div>
+                            <div className="md:col-span-2"><label className="text-xs text-slate-500">Due date</label><input type="text" placeholder="DD-MM-YYYY" inputMode="numeric" name="due_date" required className="ui-input mt-1" /></div>
+                            <div className="md:col-span-2"><label className="text-xs text-slate-500">Priority</label><SearchableSelect name="priority" className="mt-1" defaultValue={String(prioritySelectOptions[0]?.value || '')} options={prioritySelectOptions} placeholder="Select priority" /></div>
+                            <div className="md:col-span-2"><label className="text-xs text-slate-500">Attachment</label><input type="file" name="attachment" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx" className="mt-1 w-full text-xs text-slate-600" /></div>
+                            <div className="flex items-center gap-2"><input type="hidden" name="customer_visible" value="0" /><input type="checkbox" name="customer_visible" value="1" /><span className="text-xs text-slate-600">Customer visible</span></div>
+                            <div className="md:col-span-6 flex justify-end"><button type="submit" className="inline-flex items-center justify-center rounded-[10px] bg-slate-900 px-4 h-9 text-xs font-semibold text-white hover:bg-slate-800 shadow-sm transition-colors">Add task</button></div>
+                        </form>
+                    </div>
+                ) : null}
 
-                    <div className="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-700">
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Tasks</div>
@@ -338,7 +337,6 @@ export default function Show({
                             </div>
                         )}
                     </div>
-                </div>
             </div>
         </>
     );

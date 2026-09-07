@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import mediaUrl from '../../../../utils/mediaUrl';
 import useObjectUrlPreview from '../../../../hooks/useObjectUrlPreview';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import PasswordInput from '../../../../Components/Form/PasswordInput';
 
 export default function FormPage({
     mode = 'create',
@@ -213,11 +214,15 @@ export default function FormPage({
     );
 }
 
-function Input({ label, ...props }) {
+function Input({ label, type, ...props }) {
     return (
         <div>
             <label className="text-xs text-slate-500">{label}</label>
-            <input {...props} className="mt-1 ui-input" />
+            {type === 'password' ? (
+                <PasswordInput {...props} wrapperClassName="mt-1" />
+            ) : (
+                <input {...props} type={type} className="mt-1 ui-input" />
+            )}
         </div>
     );
 }

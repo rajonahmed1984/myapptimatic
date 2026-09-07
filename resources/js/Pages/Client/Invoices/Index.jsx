@@ -22,16 +22,6 @@ export default function Index({
         <>
             <Head title={title} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
-                    <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
-                </div>
-                <a href={routes?.dashboard} data-native="true" className="text-sm text-slate-500 hover:text-teal-600">
-                    Back to dashboard
-                </a>
-            </div>
-
             <div className="mb-4 flex gap-2 overflow-x-auto hide-scrollbar momentum-scroll pb-1">
                 {tabs.map((tab) => {
                     if (!tab.href) {

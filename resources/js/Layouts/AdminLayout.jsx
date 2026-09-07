@@ -59,7 +59,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
         {
             label: 'Home',
             href: '/employee/dashboard',
-            active: isActiveRoute(currentUrl, ['/employee/dashboard', '/employee']),
+            active: urlPath === '/employee' || isActiveRoute(currentUrl, '/employee/dashboard'),
             icon: HomeIcon,
         },
         {
@@ -154,7 +154,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
             items: [
                 { label: 'HR Dashboard', href: '/admin/hr/dashboard' },
                 { label: 'Employees', href: '/admin/hr/employees' },
-                { label: 'Work Logs', href: '/admin/hr/timesheets' },
+                { label: 'Work Logs', href: '/admin/hr/work-logs' },
                 { label: 'Leave Requests', href: '/admin/hr/leave-requests', badge: adminStats?.pending_leave_requests },
                 { label: 'Attendance', href: '/admin/hr/attendance' },
                 { label: 'Payroll', href: '/admin/hr/payroll' },
@@ -185,7 +185,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
         {
             title: 'Time & Attendance',
             items: [
-                { label: 'Work Logs', href: '/employee/timesheets' },
+                { label: 'Work Logs', href: '/employee/work-logs' },
                 { label: 'Leave Requests', href: '/employee/leave-requests' },
                 { label: 'Attendance', href: '/employee/attendance' },
             ],
@@ -366,7 +366,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
                 <NavLink href="/admin/users/activity-summary" active={currentUrl === '/admin/users/activity-summary'}>
                     Activity Summary
                 </NavLink>
-                <NavLink href="/admin/hr/timesheets" active={isActiveRoute(currentUrl, '/admin/hr/timesheets*')}>
+                <NavLink href="/admin/hr/work-logs" active={isActiveRoute(currentUrl, ['/admin/hr/work-logs*', '/admin/hr/timesheets*'])}>
                     Work Logs
                 </NavLink>
                 <NavLink href="/admin/hr/leave-types" active={isActiveRoute(currentUrl, '/admin/hr/leave-types*')}>
@@ -490,7 +490,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
         /* Employee Navigation */
         <>
             <div>
-                <NavLink href="/employee/dashboard" active={isActiveRoute(currentUrl, ['/employee/dashboard', '/employee'])}>
+                <NavLink href="/employee/dashboard" active={urlPath === '/employee' || isActiveRoute(currentUrl, '/employee/dashboard')}>
                     Dashboard
                 </NavLink>
             </div>
@@ -527,7 +527,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
                     <a href="/employee/apptimatic-email/inbox?folder=spam" data-native="true" className="block py-1 text-slate-300 hover:text-white">Spam</a>
                 </NavMenu>
                 {isEmployeeWorkSessionEligible && (
-                    <NavLink href="/employee/timesheets" active={isActiveRoute(currentUrl, '/employee/timesheets*')}>
+                    <NavLink href="/employee/work-logs" active={isActiveRoute(currentUrl, ['/employee/work-logs*', '/employee/timesheets*'])}>
                         Work Logs
                     </NavLink>
                 )}

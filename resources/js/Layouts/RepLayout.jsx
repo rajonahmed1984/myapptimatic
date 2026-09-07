@@ -68,7 +68,7 @@ export default function RepLayout({ children, title, pageHeading }) {
                 <NavLink href="/sales/projects" active={isActiveRoute(currentUrl, '/sales/projects*')}>
                     My Projects
                 </NavLink>
-                {canViewTasks && (
+                {canViewTasks !== false && (
                     <NavLink
                         href="/sales/tasks"
                         active={isActiveRoute(currentUrl, '/sales/tasks*')}

@@ -36,7 +36,7 @@ export default function Index({ status_filter = '', search = '', status_counts =
         <>
             <Head title="Tasks" />
 
-            <div id="tasksIndex" className="card p-6">
+            <div id="tasksIndex" className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <div className="section-label">Tasks</div>

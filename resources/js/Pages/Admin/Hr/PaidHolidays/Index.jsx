@@ -32,8 +32,8 @@ export default function Index({
                             <label htmlFor="paidHolidayMonth" className="text-xs uppercase tracking-[0.2em] text-slate-500">Month</label>
                             <input id="paidHolidayMonth" type="month" name="month" defaultValue={selectedMonth} className="ui-input mt-1 w-40" />
                         </div>
-                        <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Load</button>
-                        <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600">Current month</a>
+                        <button type="submit" className="inline-flex items-center justify-center rounded-[10px] bg-emerald-600 px-4 h-9 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-500 shadow-sm transition-colors whitespace-nowrap">Load</button>
+                        <a href={routes?.index} data-native="true" className="inline-flex items-center justify-center rounded-[10px] border border-slate-300 bg-white px-4 h-9 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors whitespace-nowrap">Current month</a>
                     </form>
 
                     <form method="POST" action={routes?.store} data-native="true" className="flex flex-wrap items-end gap-2 flex-1 justify-end">
@@ -41,8 +41,8 @@ export default function Index({
                         <div>
                             <label className="text-xs uppercase tracking-[0.2em] text-slate-500 block mb-1">Add Paid Holiday</label>
                             <div className="flex flex-wrap gap-2 items-center">
-                                <input type="date" name="start_date" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" required />
-                                <input type="date" name="end_date" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" placeholder="End date" />
+                                <input type="date" name="start_date" className="rounded-[10px] border border-slate-300 bg-white px-4 py-1.5 h-9 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" required />
+                                <input type="date" name="end_date" className="rounded-[10px] border border-slate-300 bg-white px-4 py-1.5 h-9 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" placeholder="End date" />
                                 <SearchableSelect
                                     name="name"
                                     defaultValue=""
@@ -51,8 +51,8 @@ export default function Index({
                                     placeholder="Select holiday type"
                                     required
                                 />
-                                <input name="note" placeholder="Optional note" className="rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600 w-32" />
-                                <button className="rounded-full bg-emerald-600 px-4 py-1.5 h-8 text-xs font-semibold text-white hover:bg-emerald-500">Save holiday</button>
+                                <input name="note" placeholder="Optional note" className="rounded-[10px] border border-slate-300 bg-white px-4 py-1.5 h-9 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600 w-32" />
+                                <button className="inline-flex items-center justify-center rounded-[10px] bg-emerald-600 px-4 h-9 text-xs font-semibold text-white hover:bg-emerald-500 shadow-sm transition-colors whitespace-nowrap">Save holiday</button>
                             </div>
                             <div className="text-[10px] text-slate-500 mt-1 text-right">
                                 For one day, use only start date. For a range, every date from start to end is saved.

@@ -71,6 +71,9 @@ class DashboardController extends Controller
                 ->limit(4)
                 ->get()
             : collect();
+        $licenseCount = $customer
+            ? $customer->licenses()->count()
+            : 0;
         $domainCount = $customer
             ? LicenseDomain::query()
                 ->where('status', 'active')
@@ -158,6 +161,7 @@ class DashboardController extends Controller
             })->values()->all(),
             'serviceCount' => $subscriptions->count(),
             'projectCount' => $projectCount,
+            'licenseCount' => $licenseCount,
             'domainCount' => $domainCount,
             'ticketOpenCount' => $ticketOpenCount,
             'openInvoiceCount' => $openInvoiceCount,
@@ -222,6 +226,8 @@ class DashboardController extends Controller
                 'projects_index' => route('client.projects.index'),
                 'support_index' => route('client.support-tickets.index'),
                 'invoices_index' => route('client.invoices.index'),
+                'domains_index' => route('client.domains.index'),
+                'services_index' => route('client.services.index'),
             ],
         ]);
     }

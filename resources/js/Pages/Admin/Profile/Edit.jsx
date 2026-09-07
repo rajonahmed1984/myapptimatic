@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
+import PasswordInput from '../../../Components/Form/PasswordInput';
 
 const initials = (name = '') =>
     String(name)
@@ -55,7 +56,7 @@ export default function Edit({ pageTitle = 'Profile', form = {} }) {
 
                         <div>
                             <label className="text-sm text-slate-600">Current password</label>
-                            <input name="current_password" type="password" className="ui-input mt-2" />
+                            <PasswordInput name="current_password" wrapperClassName="mt-2" />
                             {errors?.current_password ? <p className="mt-1 text-xs text-rose-600">{errors.current_password}</p> : null}
                         </div>
                     </div>
@@ -63,15 +64,14 @@ export default function Edit({ pageTitle = 'Profile', form = {} }) {
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="text-sm text-slate-600">New password</label>
-                            <input name="password" type="password" className="ui-input mt-2" />
+                            <PasswordInput name="password" wrapperClassName="mt-2" />
                             {errors?.password ? <p className="mt-1 text-xs text-rose-600">{errors.password}</p> : null}
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Confirm new password</label>
-                            <input
+                            <PasswordInput
                                 name="password_confirmation"
-                                type="password"
-                                className="ui-input mt-2"
+                                wrapperClassName="mt-2"
                             />
                         </div>
                         <div className="flex items-center gap-4">

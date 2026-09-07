@@ -3,72 +3,83 @@ import { Head } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
+const getStatusClass = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (s.includes('complete') || s.includes('done')) {
+        return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    }
+    if (s.includes('ongoing') || s.includes('progress') || s.includes('pending') || s.includes('active')) {
+        return 'border-amber-200 bg-amber-50 text-amber-700';
+    }
+    if (s.includes('cancel') || s.includes('reject')) {
+        return 'border-rose-200 bg-rose-50 text-rose-700';
+    }
+    return 'border-slate-200 bg-slate-100 text-slate-700';
+};
+
 export default function Index({ projects = [], pagination = {}, routes = {} }) {
     return (
         <>
             <Head title="Chat" />
 
-            <div className="card p-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <div className="section-label">Chat</div>
-                        <div className="text-sm text-slate-500">Select a project to open chat.</div>
-                    </div>
-                    <a href={routes?.projects_index} data-native="true" className="text-xs font-semibold text-slate-500 hover:text-teal-600">Projects</a>
-                </div>
-
-                <div className="mt-6">
-                    <DataTable
-                        rows={projects}
-                        emptyMessage="No projects available."
-                        columns={[
-                            {
-                                key: 'project',
-                                header: 'Project',
-                                render: (project) => (
-                                    <>
-                                        <div className="font-semibold text-slate-900">{project.name}</div>
-                                        <div className="text-xs text-slate-500">#{project.id}</div>
-                                    </>
-                                ),
-                            },
-                            { key: 'status', header: 'Status', cellClassName: 'text-slate-600', render: (project) => project.status_label },
-                            {
-                                key: 'unread',
-                                header: 'Unread',
-                                render: (project) => (
-                                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${Number(project.unread_count || 0) > 0 ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                                        {project.unread_count || 0}
-                                    </span>
-                                ),
-                            },
-                            {
-                                key: 'actions',
-                                header: 'Actions',
-                                headerClassName: 'text-right',
-                                cellClassName: 'text-right',
-                                render: (project) => <a href={project?.routes?.chat} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">Open Chat</a>,
-                            },
-                        ]}
-                        renderMobileCard={(project) => (
-                            <MobileCard
-                                title={project.name}
-                                subtitle={`#${project.id} · ${project.status_label}`}
-                                badge={Number(project.unread_count || 0) > 0 ? `${project.unread_count} unread` : null}
-                                badgeColor={Number(project.unread_count || 0) > 0 ? 'bg-amber-100 text-amber-800' : undefined}
-                                actions={
-                                    <a
-                                        href={project?.routes?.chat}
-                                        data-native="true"
-                                        className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
-                                    >
-                                        Open Chat
-                                    </a>
-                                }
-                            />
-                        )}
-                    />
-                </div>
+            <DataTable
+                    rows={projects}
+                    emptyMessage="No projects available."
+                    columns={[
+                        {
+                            key: 'project',
+                            header: 'Project',
+                            render: (project) => (
+                                <>
+                                    <div className="font-semibold text-slate-900">{project.name}</div>
+                                    <div className="text-xs text-slate-500">#{project.id}</div>
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'status',
+                            header: 'Status',
+                            render: (project) => (
+                                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusClass(project.status_label)}`}>
+                                    {project.status_label}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'unread',
+                            header: 'Unread',
+                            render: (project) => (
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${Number(project.unread_count || 0) > 0 ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+                                    {project.unread_count || 0}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'actions',
+                            header: 'Actions',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (project) => <a href={project?.routes?.chat} data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-500">Open Chat</a>,
+                        },
+                    ]}
+                    renderMobileCard={(project) => (
+                        <MobileCard
+                            title={project.name}
+                            subtitle={`#${project.id}`}
+                            badge={Number(project.unread_count || 0) > 0 ? `${project.unread_count} unread` : project.status_label}
+                            badgeColor={Number(project.unread_count || 0) > 0 ? 'bg-amber-100 text-amber-800 border-amber-300' : getStatusClass(project.status_label)}
+                            actions={
+                                <a
+                                    href={project?.routes?.chat}
+                                    data-native="true"
+                                    className="flex-1 text-center py-2 px-3 rounded-xl bg-teal-600 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition active:scale-95"
+                                >
+                                    Open Chat
+                                </a>
+                            }
+                        />
+                    )}
+                />
 
                 {pagination?.last_page > 1 ? (
                     <div className="mt-4 flex items-center justify-between text-xs">
@@ -79,7 +90,6 @@ export default function Index({ projects = [], pagination = {}, routes = {} }) {
                         </div>
                     </div>
                 ) : null}
-            </div>
         </>
     );
 }

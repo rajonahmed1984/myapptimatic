@@ -215,6 +215,7 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                                         required
                                         autoComplete="new-password"
                                         error={errors?.password}
+                                        disablePasswordToggle
                                         onChange={(event) => setPassword(event.target.value)}
                                         inputClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full pr-12"
                                     />
@@ -239,6 +240,7 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                                         required
                                         autoComplete="new-password"
                                         error={errors?.password_confirmation}
+                                        disablePasswordToggle
                                         onChange={(event) => setPasswordConfirmation(event.target.value)}
                                         inputClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full pr-12"
                                     />

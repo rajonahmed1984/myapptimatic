@@ -5,6 +5,7 @@ import InputField from '../../Components/Form/InputField';
 import RecaptchaField from '../../Components/Form/RecaptchaField';
 import SubmitButton from '../../Components/Form/SubmitButton';
 import GuestAuthLayout from '../../Layouts/GuestAuthLayout';
+import { refreshCsrfToken } from '../../csrf';
 
 // SVGs
 const EmailIcon = ({ className = "w-5 h-5" }) => (
@@ -31,6 +32,15 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
     const isClientPortal = portal === 'web';
     const [showEmailForm, setShowEmailForm] = React.useState(!isClientPortal || hasErrors || hasPrefilledEmail);
     const [socialNotice, setSocialNotice] = React.useState(flash?.social_error || null);
+    const [activeToken, setActiveToken] = React.useState(csrfToken || '');
+
+    React.useEffect(() => {
+        refreshCsrfToken({ force: true }).then((fresh) => {
+            if (fresh) {
+                setActiveToken(fresh);
+            }
+        });
+    }, []);
 
     React.useEffect(() => {
         if (flash?.social_error) {
@@ -116,7 +126,7 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
                                 </div>
 
                                 <form className="space-y-4 text-left" method="POST" action={routes?.submit || '/login'} data-native="true">
-                                    <input type="hidden" name="_token" value={csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                                    <input type="hidden" name="_token" value={activeToken || csrfToken || (typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.content : '') || ''} />
                                     {form?.redirect ? <input type="hidden" name="redirect" value={form.redirect} /> : null}
 
                                     <InputField

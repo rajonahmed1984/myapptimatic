@@ -14,6 +14,23 @@ const statusClass = (status) => {
     return 'bg-slate-100 text-slate-600';
 };
 
+const getProjectStatusClass = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (s.includes('complete') || s.includes('done')) {
+        return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    }
+    if (s.includes('ongoing') || s.includes('progress') || s.includes('pending') || s.includes('active')) {
+        return 'border-amber-200 bg-amber-50 text-amber-700';
+    }
+    if (s.includes('hold') || s.includes('paused') || s.includes('wait')) {
+        return 'border-orange-200 bg-orange-50 text-orange-700';
+    }
+    if (s.includes('cancel') || s.includes('reject') || s.includes('block')) {
+        return 'border-rose-200 bg-rose-50 text-rose-700';
+    }
+    return 'border-slate-200 bg-slate-100 text-slate-700';
+};
+
 export default function Index({
     employee = null,
     project_stats = {},
@@ -34,7 +51,6 @@ export default function Index({
         is_active: false,
     });
     const [busy, setBusy] = useState(false);
-    const [isProfileInfoOpen, setIsProfileInfoOpen] = useState(false);
 
     useEffect(() => {
         if (!work_session?.eligible || !work_session?.routes?.summary) return;
@@ -114,46 +130,6 @@ export default function Index({
             <Head title="Employee Dashboard" />
 
             <div className="space-y-6">
-                <div className="card p-4 sm:p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <div className="section-label">Welcome</div>
-                            <div className="text-xl sm:text-2xl font-semibold text-slate-900">{employee?.name || 'Employee'}</div>
-                            <div className="text-xs sm:text-sm text-slate-500">Access your work logs, leave requests, payroll, and projects.</div>
-                            <button
-                                type="button"
-                                onClick={() => setIsProfileInfoOpen(!isProfileInfoOpen)}
-                                className="md:hidden mt-2 inline-flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 cursor-pointer"
-                            >
-                                <span>{isProfileInfoOpen ? 'Hide Profile Details' : 'View Profile Details'}</span>
-                                <svg className={`w-3.5 h-3.5 transform transition-transform duration-200 ${isProfileInfoOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                        </div>
-                        <form method="POST" action={routes?.logout} data-native="true">
-                            <input type="hidden" name="_token" value={csrfToken} />
-                            <button type="submit" className="rounded-full border border-slate-200 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-600 transition">
-                                Logout
-                            </button>
-                        </form>
-                    </div>
-
-                    <div className={`mt-4 sm:mt-5 grid gap-2.5 sm:gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 sm:p-4 text-xs sm:text-sm text-slate-700 md:grid-cols-2 ${isProfileInfoOpen ? 'block' : 'hidden md:grid'}`}>
-                        <div><span className="font-semibold text-slate-900">Employee ID:</span> {employee?.id || '--'}</div>
-                        <div><span className="font-semibold text-slate-900">Email:</span> {employee?.email || '--'}</div>
-                        <div><span className="font-semibold text-slate-900">Phone:</span> {employee?.phone || '--'}</div>
-                        <div><span className="font-semibold text-slate-900">Status:</span> {employee?.status || '--'}</div>
-                        <div><span className="font-semibold text-slate-900">Department:</span> {employee?.department || '--'}</div>
-                        <div><span className="font-semibold text-slate-900">Designation:</span> {employee?.designation || '--'}</div>
-                        <div><span className="font-semibold text-slate-900">Manager:</span> {employee?.manager_name || '--'}</div>
-                        <div><span className="font-semibold text-slate-900">Employment Type:</span> {employee?.employment_type || '--'}</div>
-                        <div><span className="font-semibold text-slate-900">Work Mode:</span> {employee?.work_mode || '--'}</div>
-                        <div><span className="font-semibold text-slate-900">Join Date:</span> {employee?.join_date_display || '--'}</div>
-                        <div className="md:col-span-2"><span className="font-semibold text-slate-900">Address:</span> {employee?.address || '--'}</div>
-                    </div>
-                </div>
-
                 {work_session?.eligible ? (
                     <div className="card p-4 sm:p-6 border-2 border-teal-500/20 shadow-sm">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -302,7 +278,7 @@ export default function Index({
                                 >
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="font-semibold text-sm text-slate-900 truncate">{project.name}</div>
-                                        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
+                                        <span className={`shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${getProjectStatusClass(project.status_label)}`}>
                                             {project.status_label}
                                         </span>
                                     </div>
@@ -334,7 +310,11 @@ export default function Index({
                                         <td className="px-4 py-3">
                                             <a href={project?.routes?.show} data-native="true" className="font-semibold text-slate-900 hover:text-teal-600">{project.name}</a>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-600">{project.status_label}</td>
+                                        <td className="px-4 py-3">
+                                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getProjectStatusClass(project.status_label)}`}>
+                                                {project.status_label}
+                                            </span>
+                                        </td>
                                         <td className="px-4 py-3 text-slate-600">{project.tasks_count}</td>
                                         <td className="px-4 py-3 text-slate-600">{project.due_date_display}</td>
                                     </tr>

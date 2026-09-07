@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import mediaUrl from '../../../utils/mediaUrl';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
+import PasswordInput from '../../../Components/Form/PasswordInput';
 
 const initialsFor = (value) => {
     const parts = String(value || '')
@@ -83,18 +84,17 @@ export default function Edit({ user = {}, form = {}, routes = {} }) {
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="text-sm text-slate-600">Current password</label>
-                            <input name="current_password" type="password" className="ui-input mt-2" />
+                            <PasswordInput name="current_password" wrapperClassName="mt-2" />
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">New password</label>
-                            <input name="password" type="password" className="ui-input mt-2" />
+                            <PasswordInput name="password" wrapperClassName="mt-2" />
                         </div>
                         <div>
                             <label className="text-sm text-slate-600">Confirm new password</label>
-                            <input
+                            <PasswordInput
                                 name="password_confirmation"
-                                type="password"
-                                className="ui-input mt-2"
+                                wrapperClassName="mt-2"
                             />
                         </div>
                     </div>

@@ -57,19 +57,8 @@ export default function Index({ status_filter = '', search = '', status_counts =
         <>
             <Head title="Tasks" />
 
-            <div className="card p-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <div className="section-label">Tasks</div>
-                        <div className="text-sm text-slate-500">All tasks you are allowed to see.</div>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs font-semibold">
-                        <a href={routes?.projects_index} data-native="true" className="text-slate-500 hover:text-teal-600">Projects</a>
-                        <a href={routes?.index} data-native="true" className="text-teal-600 hover:text-teal-500">Reset</a>
-                    </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-2 text-xs">
                         {filters.map((filter) => {
                             const active = status_filter === filter.key || (!status_filter && filter.key === '');
@@ -101,8 +90,7 @@ export default function Index({ status_filter = '', search = '', status_counts =
                     </form>
                 </div>
 
-                <div className="mt-6">
-                    <DataTable
+                <DataTable
                         rows={tasks}
                         emptyMessage="No tasks found."
                         columns={[
@@ -235,10 +223,9 @@ export default function Index({ status_filter = '', search = '', status_counts =
                             );
                         }}
                     />
-                </div>
 
                 {pagination?.last_page > 1 ? (
-                    <div className="mt-4 flex items-center justify-between text-xs">
+                    <div className="mt-4 flex items-center justify-between text-xs px-2">
                         <span className="text-slate-500">Showing {pagination.from || 0}-{pagination.to || 0} of {pagination.total || 0}</span>
                         <div className="flex items-center gap-2">
                             {pagination.prev_page_url ? <a href={pagination.prev_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">Previous</a> : null}

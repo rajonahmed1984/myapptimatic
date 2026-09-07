@@ -48,14 +48,45 @@ class DashboardController extends Controller
         $showTasksWidget = $taskQueryService->canViewTasks($user);
         $tasksWidget = $showTasksWidget ? $taskQueryService->dashboardTasksForUser($user) : null;
 
+        $projects = \App\Models\Project::query()
+            ->whereHas('salesRepresentatives', fn ($q) => $q->where('sales_representatives.id', $rep->id))
+            ->withCount([
+                'tasks as total_tasks_count',
+                'tasks as done_tasks_count' => fn ($q) => $q->whereIn('status', ['completed', 'done']),
+            ])
+            ->latest()
+            ->limit(5)
+            ->get();
+        $projectCount = \App\Models\Project::query()
+            ->whereHas('salesRepresentatives', fn ($q) => $q->where('sales_representatives.id', $rep->id))
+            ->count();
+
+        $currency = $user->currency ?? config('app.currency', 'BDT');
+
         return Inertia::render('Rep/Dashboard/Index', [
             'rep' => [
                 'id' => $rep->id,
                 'name' => $rep->name,
+                'email' => $rep->email,
             ],
+            'currency' => $currency,
             'balance' => $balance,
             'earned_this_month' => (float) $earnedThisMonth,
             'paid_this_month' => (float) $paidThisMonth,
+            'project_count' => $projectCount,
+            'projects' => $projects->map(function (\App\Models\Project $project) {
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'status' => $project->status,
+                    'status_label' => ucfirst((string) $project->status),
+                    'total_tasks_count' => (int) $project->total_tasks_count,
+                    'done_tasks_count' => (int) $project->done_tasks_count,
+                    'routes' => [
+                        'show' => route('rep.projects.show', $project),
+                    ],
+                ];
+            })->values()->all(),
             'recent_earnings' => $recentEarnings->map(function (CommissionEarning $earning) {
                 return [
                     'id' => $earning->id,
@@ -82,6 +113,7 @@ class DashboardController extends Controller
                     return [
                         'id' => $task->id,
                         'title' => $task->title,
+                        'status' => $task->status,
                         'project_name' => $task->project?->name,
                         'routes' => [
                             'show' => $task->project ? route('rep.projects.tasks.show', [$task->project, $task]) : null,
@@ -92,6 +124,7 @@ class DashboardController extends Controller
                     return [
                         'id' => $task->id,
                         'title' => $task->title,
+                        'status' => $task->status,
                         'project_name' => $task->project?->name,
                         'routes' => [
                             'show' => $task->project ? route('rep.projects.tasks.show', [$task->project, $task]) : null,
@@ -103,6 +136,9 @@ class DashboardController extends Controller
                 'dashboard' => route('rep.dashboard'),
                 'earnings' => route('rep.earnings.index'),
                 'payouts' => route('rep.payouts.index'),
+                'projects' => route('rep.projects.index'),
+                'tasks' => route('rep.tasks.index'),
+                'chats' => route('rep.chats.index'),
             ],
         ]);
     }

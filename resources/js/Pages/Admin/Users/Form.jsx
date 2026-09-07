@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import PasswordInput from '../../../Components/Form/PasswordInput';
 
 const initials = (name = '') =>
     String(name)
@@ -80,22 +81,20 @@ export default function Form({
                         <label className="text-sm text-slate-600">
                             {is_edit ? 'Password (leave blank to keep)' : 'Password'}
                         </label>
-                        <input
+                        <PasswordInput
                             name="password"
-                            type="password"
                             required={!is_edit}
-                            className="ui-input mt-2"
+                            wrapperClassName="mt-2"
                         />
                         {errors?.password ? <p className="mt-1 text-xs text-rose-600">{errors.password}</p> : null}
                     </div>
 
                     <div>
                         <label className="text-sm text-slate-600">Confirm Password</label>
-                        <input
+                        <PasswordInput
                             name="password_confirmation"
-                            type="password"
                             required={!is_edit}
-                            className="ui-input mt-2"
+                            wrapperClassName="mt-2"
                         />
                     </div>
 

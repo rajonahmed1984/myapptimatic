@@ -19,7 +19,9 @@ export const isActiveRoute = (currentUrl, patterns) => {
     });
 };
 
-export function NavLink({ href, active, badge, badgeColor = 'bg-amber-100 text-amber-900', children }) {
+export function NavLink({ href, active, badge, badgeColor = 'bg-amber-100 text-amber-900', showZero = false, children }) {
+    const hasBadge = badge !== undefined && badge !== null && (showZero ? true : (typeof badge === 'number' ? badge > 0 : (isNaN(Number(badge)) ? String(badge).trim().length > 0 : Number(badge) > 0)));
+
     return (
         <a
             href={href}
@@ -28,7 +30,7 @@ export function NavLink({ href, active, badge, badgeColor = 'bg-amber-100 text-a
         >
             <span className="h-2 w-2 rounded-full bg-current flex-shrink-0" />
             <span className="truncate">{children}</span>
-            {badge !== undefined && badge !== null && Number(badge) > 0 && (
+            {hasBadge && (
                 <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${badgeColor}`}>
                     {badge}
                 </span>

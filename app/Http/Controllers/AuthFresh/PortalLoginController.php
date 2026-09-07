@@ -27,9 +27,7 @@ class PortalLoginController extends Controller
         $guard = Portal::guard($portal);
         $authGuard = Auth::guard($guard);
         if ($authGuard->check()) {
-            if (! $this->isSessionBackedAuthentication($request, $authGuard)) {
-                $authGuard->logout();
-            } elseif ($this->shouldRedirectForPortal($portal, $authGuard->user())) {
+            if ($this->shouldRedirectForPortal($portal, $authGuard->user())) {
                 return redirect($this->loginService->defaultRedirectUrlFor($portal, $authGuard->user()));
             }
         }
@@ -120,10 +118,6 @@ class PortalLoginController extends Controller
             if ($sessionKey !== '' && ! $request->session()->has($sessionKey)) {
                 return false;
             }
-        }
-
-        if (method_exists($guard, 'viaRemember') && $guard->viaRemember()) {
-            return false;
         }
 
         return true;

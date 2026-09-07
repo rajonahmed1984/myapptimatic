@@ -7,13 +7,7 @@ export default function Index({ projects = [], pagination = {} }) {
         <>
             <Head title="Projects" />
 
-            <div className="mb-6">
-                <div className="section-label">Projects</div>
-                <div className="text-2xl font-semibold text-slate-900">Your projects</div>
-                <div className="text-sm text-slate-500">Projects associated with your account.</div>
-            </div>
-
-            <div className="card p-6">
+            <div className="space-y-4">
                 {/* Mobile Cards List (<md) */}
                 <div className="md:hidden space-y-3">
                     {projects.length === 0 ? (

@@ -95,16 +95,17 @@ export default function ClientLayout({ children, title, pageHeading }) {
         {
             title: 'Services & Billing',
             items: [
-                { label: 'Services', href: '/client/services', icon: <ServicesIcon /> },
-                { label: 'Licenses', href: '/client/licenses', icon: <LicensesIcon /> },
-                { label: 'My Orders', href: '/client/orders', icon: <OrdersIcon /> },
+                { label: 'My Services', href: '/client/services', icon: <ServicesIcon /> },
+                { label: 'My Licenses', href: '/client/licenses', icon: <LicensesIcon /> },
+                { label: 'Order New Services', href: '/client/orders', icon: <OrdersIcon /> },
             ],
         },
         {
             title: 'Support & Account',
             items: [
                 { label: 'Support Tickets', href: '/client/support-tickets', icon: <SupportIcon /> },
-                ...(canViewTasks ? [{ label: 'Tasks', href: '/client/tasks', icon: <TasksIcon /> }] : []),
+                ...(canViewTasks !== false ? [{ label: 'Tasks', href: '/client/tasks', icon: <TasksIcon />, badge: clientStats?.task_badge }] : []),
+                { label: 'Chat', href: '/client/chats', icon: <ChatIcon className="w-4 h-4" />, badge: clientStats?.unread_chat },
                 { label: 'Profile', href: '/client/profile', icon: <ProfileIcon /> },
             ],
         },
@@ -125,7 +126,7 @@ export default function ClientLayout({ children, title, pageHeading }) {
                 <NavLink href="/client/projects" active={isActiveRoute(currentUrl, '/client/projects*')}>
                     Projects
                 </NavLink>
-                {canViewTasks && (
+                {canViewTasks !== false && (
                     <NavLink
                         href="/client/tasks"
                         active={isActiveRoute(currentUrl, '/client/tasks*')}
@@ -144,10 +145,10 @@ export default function ClientLayout({ children, title, pageHeading }) {
                     Chat
                 </NavLink>
                 <NavLink href="/client/services" active={isActiveRoute(currentUrl, '/client/services*')}>
-                    Services
+                    My Services
                 </NavLink>
                 <NavLink href="/client/licenses" active={isActiveRoute(currentUrl, '/client/licenses*')}>
-                    Licenses
+                    My Licenses
                 </NavLink>
             </div>
 
@@ -156,7 +157,7 @@ export default function ClientLayout({ children, title, pageHeading }) {
                     Orders & Requests
                 </div>
                 <NavLink href="/client/orders" active={isActiveRoute(currentUrl, '/client/orders*')}>
-                    My Orders
+                    Order New Services
                 </NavLink>
             </div>
 
@@ -170,7 +171,7 @@ export default function ClientLayout({ children, title, pageHeading }) {
                     badge={clientStats?.unpaid_invoices}
                     badgeColor="bg-teal-100 text-teal-700"
                 >
-                    Invoices
+                    My Invoices
                 </NavLink>
             </div>
 

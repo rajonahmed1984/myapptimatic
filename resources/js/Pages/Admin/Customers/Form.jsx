@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
+import PasswordInput from '../../../Components/Form/PasswordInput';
 
 export default function Form({
     pageTitle = 'Customer',
@@ -192,19 +193,17 @@ export default function Form({
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">New Password</label>
-                                    <input
+                                    <PasswordInput
                                         name="user_password"
-                                        type="password"
-                                        className="ui-input mt-2"
+                                        wrapperClassName="mt-2"
                                     />
                                     {errors?.user_password ? <p className="mt-1 text-xs text-rose-500">{errors.user_password}</p> : null}
                                 </div>
                                 <div>
                                     <label className="text-sm text-slate-600">Confirm Password</label>
-                                    <input
+                                    <PasswordInput
                                         name="user_password_confirmation"
-                                        type="password"
-                                        className="ui-input mt-2"
+                                        wrapperClassName="mt-2"
                                     />
                                 </div>
                                 <div>

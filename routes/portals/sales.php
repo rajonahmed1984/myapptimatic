@@ -20,6 +20,7 @@ Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':sales
     ->prefix('sales')
     ->name('sales.')
     ->group(function () {
+        Route::get('/', fn () => redirect()->route('sales.login'))->name('home');
         Route::get('/login', [PortalLoginController::class, 'show'])
             ->middleware(HandleInertiaRequests::class)
             ->defaults('portal', 'sales')
@@ -61,7 +62,6 @@ Route::middleware([
     ->prefix('sales')
     ->name('rep.')
     ->group(function () {
-        Route::get('/', fn () => redirect()->route('rep.dashboard'));
         Route::get('/dashboard', SalesRepDashboardController::class)->middleware(HandleInertiaRequests::class)->name('dashboard');
         Route::get('/tasks', [SalesRepTasksController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('tasks.index');
         Route::get('/chats', [SalesRepChatController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('chats.index');

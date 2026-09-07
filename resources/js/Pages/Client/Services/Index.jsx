@@ -8,16 +8,6 @@ export default function Index({ has_customer = false, subscriptions = [], routes
         <>
             <Head title="Services" />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Services</h1>
-                    <p className="mt-1 text-sm text-slate-500">Review active services and billing cycle details.</p>
-                </div>
-                <a href={routes.dashboard} data-native="true" className="text-sm text-slate-500 hover:text-teal-600">
-                    Back to dashboard
-                </a>
-            </div>
-
             {!has_customer ? (
                 <div className="card p-6 text-sm text-slate-600">
                     Your account is not linked to a customer profile yet. Please contact support.

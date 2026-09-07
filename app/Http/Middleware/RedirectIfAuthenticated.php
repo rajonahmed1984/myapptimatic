@@ -24,17 +24,6 @@ class RedirectIfAuthenticated extends Middleware
                 continue;
             }
 
-            // Ignore remember-only / stale auth states on guest routes.
-            if (! $this->isSessionBacked($request, $authGuard)) {
-                $this->trace($request, $guard, 'stale_or_remember_logout');
-
-                if (method_exists($authGuard, 'logout')) {
-                    $authGuard->logout();
-                }
-
-                continue;
-            }
-
             if (! $this->shouldRedirectForPortal($request, $guard, $authGuard->user())) {
                 $this->trace($request, $guard, 'skip_redirect_portal_mismatch');
 
@@ -49,25 +38,6 @@ class RedirectIfAuthenticated extends Middleware
         return $next($request);
     }
 
-    private function isSessionBacked(Request $request, StatefulGuard $guard): bool
-    {
-        if (! $request->hasSession()) {
-            return false;
-        }
-
-        if (method_exists($guard, 'getName')) {
-            $sessionKey = (string) $guard->getName();
-            if ($sessionKey !== '' && ! $request->session()->has($sessionKey)) {
-                return false;
-            }
-        }
-
-        if (method_exists($guard, 'viaRemember') && $guard->viaRemember()) {
-            return false;
-        }
-
-        return true;
-    }
 
     private function shouldRedirectForPortal(Request $request, ?string $guard, mixed $user): bool
     {
