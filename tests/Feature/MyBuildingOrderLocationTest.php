@@ -150,4 +150,15 @@ class MyBuildingOrderLocationTest extends TestCase
         $this->assertNull($provision->city_id);
         $this->assertNull($provision->city_slug);
     }
+
+    public function test_tree_auto_seeds_when_districts_table_is_empty(): void
+    {
+        BangladeshLocations::forget();
+        $this->assertSame(0, District::count());
+
+        $tree = BangladeshLocations::tree();
+        $this->assertNotEmpty($tree);
+        $this->assertGreaterThan(0, District::count());
+    }
 }
+

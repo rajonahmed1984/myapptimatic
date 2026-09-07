@@ -19,38 +19,74 @@ class BangladeshLocations
      */
     public static function tree(): array
     {
-        return Cache::rememberForever(self::CACHE_KEY, function () {
-            return District::query()
+        $cached = Cache::get(self::CACHE_KEY);
+        if (is_array($cached) && ! empty($cached)) {
+            return $cached;
+        }
+
+        // If the database has no districts yet, attempt to auto-seed them
+        if (District::query()->count() === 0) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                    '--class' => \Database\Seeders\BangladeshLocationSeeder::class,
+                    '--force' => true,
+                ]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('BangladeshLocations auto-seed error: ' . $e->getMessage());
+            }
+        }
+
+        try {
+            $districts = District::query()
                 ->with([
                     'cities' => fn ($query) => $query->orderBy('name')->with(['areas' => fn ($q) => $q->orderBy('name')]),
                 ])
                 ->orderByRaw("CASE WHEN slug = 'dhaka' THEN 0 ELSE 1 END")
                 ->orderBy('name')
-                ->get()
-                ->map(fn (District $district) => [
-                    'id' => $district->id,
-                    'slug' => $district->slug,
-                    'name' => $district->name,
-                    'cities' => $district->cities
-                        ->map(fn ($city) => [
-                            'id' => $city->id,
-                            'slug' => $city->slug,
-                            'name' => $city->name,
-                            'areas' => $city->areas
+                ->get();
+        } catch (\Throwable) {
+            // Fallback if areas table has not been migrated yet
+            $districts = District::query()
+                ->with([
+                    'cities' => fn ($query) => $query->orderBy('name'),
+                ])
+                ->orderByRaw("CASE WHEN slug = 'dhaka' THEN 0 ELSE 1 END")
+                ->orderBy('name')
+                ->get();
+        }
+
+        $tree = $districts
+            ->map(fn (District $district) => [
+                'id' => $district->id,
+                'slug' => $district->slug,
+                'name' => $district->name,
+                'cities' => $district->cities
+                    ->map(fn ($city) => [
+                        'id' => $city->id,
+                        'slug' => $city->slug,
+                        'name' => $city->name,
+                        'areas' => isset($city->areas)
+                            ? $city->areas
                                 ->map(fn ($area) => [
                                     'id' => $area->id,
                                     'slug' => $area->slug,
                                     'name' => $area->name,
                                 ])
                                 ->values()
-                                ->all(),
-                        ])
-                        ->values()
-                        ->all(),
-                ])
-                ->values()
-                ->all();
-        });
+                                ->all()
+                            : [],
+                    ])
+                    ->values()
+                    ->all(),
+            ])
+            ->values()
+            ->all();
+
+        if (! empty($tree)) {
+            Cache::forever(self::CACHE_KEY, $tree);
+        }
+
+        return $tree;
     }
 
     public static function forget(): void
