@@ -8,7 +8,6 @@
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { Dialog } from '@capacitor/dialog';
 import { Network } from '@capacitor/network';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -78,41 +77,89 @@ const visit = (url) => {
     window.location.replace(url);
 };
 
-// Native confirm with our own button labels; an older installed shell without
-// the Dialog plugin still gets the WebView's native confirm box.
-const confirmExit = async () => {
-    const message = 'Are you sure you want to close the app?';
+// Branded exit confirmation. Plain DOM with its own styles so it works on any
+// page (Inertia or legacy) without depending on React or Tailwind's class scan.
+const EXIT_MODAL_STYLES = `
+.mya-exit{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(15,23,42,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transition:opacity .18s ease}
+.mya-exit.is-open{opacity:1}
+.mya-exit__card{width:100%;max-width:340px;background:#fff;border-radius:24px;padding:28px 20px 20px;text-align:center;box-shadow:0 24px 60px rgba(15,23,42,.25);transform:translateY(12px) scale(.96);transition:transform .2s cubic-bezier(.2,.8,.2,1);font-family:inherit}
+.mya-exit.is-open .mya-exit__card{transform:none}
+.mya-exit__icon{width:56px;height:56px;margin:0 auto 16px;border-radius:999px;display:grid;place-items:center;background:#eeedfa;color:#302B87;box-shadow:0 0 0 6px rgba(48,43,135,.08)}
+.mya-exit__title{margin:0;font-size:18px;font-weight:700;color:#0f172a}
+.mya-exit__text{margin:8px 0 0;font-size:13px;line-height:1.55;color:#64748b}
+.mya-exit__actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:22px}
+.mya-exit__btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:46px;padding:6px 10px;border-radius:14px;font-size:14px;font-weight:600;line-height:1.25;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:inherit}
+.mya-exit__btn svg{flex:none}
+@media (max-width:350px){.mya-exit{padding:16px}.mya-exit__card{padding:24px 14px 14px}.mya-exit__btn{font-size:13px;padding:6px}}
+.mya-exit__btn:active{transform:scale(.97)}
+.mya-exit__btn--stay{background:#fff;border:1px solid #e2e8f0;color:#0f172a}
+.mya-exit__btn--leave{background:linear-gradient(135deg,#302B87,#4338ca);border:0;color:#fff;box-shadow:0 8px 18px rgba(48,43,135,.3)}
+`;
 
-    try {
-        const { value } = await Dialog.confirm({
-            title: 'Exit app',
-            message,
-            okButtonTitle: 'Exit',
-            cancelButtonTitle: 'Cancel',
-        });
+const exitIcon = (size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
 
-        return value;
-    } catch (error) {
-        return window.confirm(message);
-    }
-};
+let exitModal = null;
 
-let exitPromptOpen = false;
-
-const promptExit = async () => {
-    if (exitPromptOpen) {
+const closeExitModal = () => {
+    if (!exitModal) {
         return;
     }
 
-    exitPromptOpen = true;
+    const modal = exitModal;
+    exitModal = null;
+    modal.classList.remove('is-open');
+    window.setTimeout(() => modal.remove(), 180);
+};
 
-    try {
-        if (await confirmExit()) {
-            await quietly(() => CapacitorApp.exitApp());
-        }
-    } finally {
-        exitPromptOpen = false;
+const openExitModal = () => {
+    if (exitModal) {
+        return;
     }
+
+    if (!document.getElementById('mya-exit-styles')) {
+        const style = document.createElement('style');
+        style.id = 'mya-exit-styles';
+        style.textContent = EXIT_MODAL_STYLES;
+        document.head.appendChild(style);
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'mya-exit';
+    modal.setAttribute('role', 'alertdialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'mya-exit-title');
+    modal.innerHTML = `
+        <div class="mya-exit__card">
+            <div class="mya-exit__icon">${exitIcon(24)}</div>
+            <h2 class="mya-exit__title" id="mya-exit-title">অ্যাপ বন্ধ করতে চান?</h2>
+            <p class="mya-exit__text">Are you sure you want to exit MyApptimatic?<br>আপনি কি নিশ্চিত যে MyApptimatic অ্যাপ থেকে বের হতে চান?</p>
+            <div class="mya-exit__actions">
+                <button type="button" class="mya-exit__btn mya-exit__btn--stay" data-exit-action="stay">না, থাকুন (Stay)</button>
+                <button type="button" class="mya-exit__btn mya-exit__btn--leave" data-exit-action="leave">${exitIcon(16)}বের হন (Exit)</button>
+            </div>
+        </div>`;
+
+    modal.addEventListener('click', (event) => {
+        const action = event.target instanceof Element
+            ? event.target.closest('[data-exit-action]')?.getAttribute('data-exit-action')
+            : null;
+
+        if (action === 'leave') {
+            closeExitModal();
+            quietly(() => CapacitorApp.exitApp());
+            return;
+        }
+
+        // "Stay" or a tap on the dimmed backdrop keeps the user in the app.
+        if (action === 'stay' || event.target === modal) {
+            closeExitModal();
+        }
+    });
+
+    document.body.appendChild(modal);
+    exitModal = modal;
+    window.requestAnimationFrame(() => modal.classList.add('is-open'));
+    modal.querySelector('[data-exit-action="stay"]')?.focus();
 };
 
 // Android hardware back: inner pages step back through history one screen at a
@@ -121,8 +168,14 @@ const bindHardwareBackButton = () => quietly(async () => {
     await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
         const { pathname } = window.location;
 
+        // Back while the exit prompt is showing means "stay".
+        if (exitModal) {
+            closeExitModal();
+            return;
+        }
+
         if (isHomePath(pathname)) {
-            promptExit();
+            openExitModal();
             return;
         }
 
