@@ -1,6 +1,11 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
+
+const TH = 'px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wide text-slate-400';
+const TD = 'px-4 py-3 text-sm text-slate-700';
+const LINK = 'font-medium text-teal-700 hover:text-teal-600';
+const BTN = 'inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50';
 
 export default function Show({
     pageTitle = 'Project',
@@ -15,374 +20,469 @@ export default function Show({
 }) {
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
-
-    const canInvoiceRemaining = useMemo(() => {
-        const line = project?.financials?.remaining_budget_invoiceable_display || '';
-        const parts = String(line).split(' ');
-        const amount = Number((parts[1] || '0').replace(/,/g, ''));
-        return amount > 0;
-    }, [project?.financials?.remaining_budget_invoiceable_display]);
+    const financials = project?.financials || {};
+    const invoiceable = Number(financials.remaining_budget_invoiceable || 0);
+    const overheads = project?.overheads || [];
+    const maintenances = project?.maintenances || [];
+    const employees = project?.team?.employees || [];
+    const salesReps = project?.team?.sales_reps || [];
 
     return (
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="text-2xl font-semibold text-slate-900">{project?.name}</div>
-                    <div className="text-sm text-slate-500">Status: {project?.status_label}</div>
+            {/* Header */}
+            <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                    <a href={routes?.index} data-native="true" className="text-xs font-medium text-slate-400 hover:text-slate-600">
+                        ← All projects
+                    </a>
+                    <h1 className="mt-1 text-2xl font-semibold text-slate-900">{project?.name}</h1>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+                        <StatusBadge status={project?.status} label={project?.status_label} />
+                        <span>#{project?.id}</span>
+                        <Dot />
+                        <span>{project?.type_label}</span>
+                        <Dot />
+                        <span>{project?.customer?.name}</span>
+                        {project?.dates?.due && project.dates.due !== '--' ? (
+                            <>
+                                <Dot />
+                                <span>Due {project.dates.due}</span>
+                            </>
+                        ) : null}
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <a href={routes?.index} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
-                        Back
-                    </a>
-                    <a href={routes?.invoices} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
-                        All Invoices
-                    </a>
-                    <a href={routes?.tasks} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
-                        Tasks
-                    </a>
-                    <a href={routes?.chat} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <a href={routes?.tasks} data-native="true" className={BTN}>Tasks</a>
+                    <a href={routes?.chat} data-native="true" className={BTN}>
                         Chat
-                        <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                            {project?.project_chat_unread_count ?? 0}
-                        </span>
+                        {(project?.project_chat_unread_count ?? 0) > 0 ? (
+                            <span className="rounded-full bg-teal-600 px-1.5 text-[10px] font-semibold leading-4 text-white">
+                                {project.project_chat_unread_count}
+                            </span>
+                        ) : null}
                     </a>
+                    <a href={routes?.invoices} data-native="true" className={BTN}>Invoices</a>
+                    <a href={routes?.edit} data-native="true" className={BTN}>Edit</a>
                     {project?.can_mark_complete ? (
                         <form method="POST" action={routes?.complete} data-native="true" onSubmit={(e) => !window.confirm('Mark this project as complete?') && e.preventDefault()}>
                             <input type="hidden" name="_token" value={csrf} />
-                            <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">
-                                Project Complete
+                            <button type="submit" className="rounded-full bg-teal-600 px-3.5 py-1.5 text-xs font-semibold text-white">
+                                Mark complete
                             </button>
                         </form>
                     ) : null}
-                    <a href={routes?.edit} data-native="true" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
-                        Edit
-                    </a>
-                    <form method="POST" action={routes?.destroy} data-native="true" onSubmit={(e) => !window.confirm(`Delete project ${project?.name}?`) && e.preventDefault()}>
-                        <input type="hidden" name="_token" value={csrf} />
-                        <input type="hidden" name="_method" value="DELETE" />
-                        <button type="submit" className="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600">
-                            Delete
-                        </button>
-                    </form>
                 </div>
             </div>
 
-            <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard label="Total Tasks" value={taskStats?.total ?? 0} />
-                <StatCard label="In Progress" value={taskStats?.in_progress ?? 0} />
-                <StatCard label="Completed" value={taskStats?.completed ?? 0} />
-                <StatCard label="Unread" value={taskStats?.unread ?? 0} />
+            {/* Task stats */}
+            <div className="card mb-6 grid grid-cols-2 divide-slate-100 sm:grid-cols-4 sm:divide-x">
+                <Stat label="Total tasks" value={taskStats?.total ?? 0} />
+                <Stat label="In progress" value={taskStats?.in_progress ?? 0} />
+                <Stat label="Completed" value={taskStats?.completed ?? 0} />
+                <Stat label="Unread messages" value={taskStats?.unread ?? 0} />
             </div>
 
-
-            <div className="card space-y-6 p-6">
-                <InfoBlock title="Project Info">
-                    <div className="grid gap-4 md:grid-cols-3 text-sm text-slate-700">
-                        <Pane title="Overview">{project?.type_label}<br />Project ID: {project?.id}<br />Status: {project?.status_label}</Pane>
-                        <Pane title="Dates">Start: {project?.dates?.start}<br />Expected end: {project?.dates?.expected_end}<br />Due: {project?.dates?.due}</Pane>
-                        <Pane title="Description">{project?.description}</Pane>
-                    </div>
-                </InfoBlock>
-
-                <InfoBlock title="People">
-                    <div className="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
-                        <Pane title="Customer">{project?.customer?.name}<br />Client ID: {project?.customer?.id ?? '--'}</Pane>
-                        <Pane title="Team">Employees: {(project?.team?.employees || []).join(', ') || '--'}<br />Sales reps: {(project?.team?.sales_reps || []).join(', ') || '--'}</Pane>
-                    </div>
-                </InfoBlock>
-
-                <InfoBlock title="Documents">
-                    <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
-                        {project?.files?.contract ? <div>Contract: <a href={project.files.contract.url} className="text-teal-700 hover:text-teal-600">{project.files.contract.name}</a></div> : <div className="text-xs text-slate-500">No contract uploaded.</div>}
-                        {project?.files?.proposal ? <div className="mt-2">Proposal: <a href={project.files.proposal.url} className="text-teal-700 hover:text-teal-600">{project.files.proposal.name}</a></div> : <div className="mt-2 text-xs text-slate-500">No proposal uploaded.</div>}
-                    </div>
-                </InfoBlock>
-
-                <InfoBlock title="Budget & Currency">
-                    <div className="grid gap-4 md:grid-cols-2 text-sm text-slate-700">
-                        <Pane title="Budget Summary">
-                            Total budget: {project?.financials?.total_budget_display}<br />
-                            Overhead total: {project?.financials?.overhead_total_display}<br />
-                            Budget with overhead: {project?.financials?.budget_with_overhead_display}<br />
-                            Initial payment: {project?.financials?.initial_payment_display}<br />
-                            Paid payment: {project?.financials?.paid_payment_display}<br />
-                            Remaining budget: {project?.financials?.remaining_budget_display}<br />
-                            Budget (legacy): {project?.financials?.budget_amount_display}<br />
-                            Currency: {project?.currency}<br />
-                            Employee salary total: {project?.financials?.employee_salary_total_display}<br />
-                            Sales rep total: {project?.financials?.sales_rep_total_display}<br />
-                            Profit: {project?.financials?.profit_display}
-                        </Pane>
-                        <Pane title="Initial Invoice">
-                            {initialInvoice ? (
-                                <>
-                                    Number: <a href={initialInvoice.show_route} className="text-teal-700 hover:text-teal-600">{initialInvoice.number_display}</a><br />
-                                    Amount: {initialInvoice.total_display}<br />
-                                    Status: {initialInvoice.status_label}
-                                </>
-                            ) : (
-                                <span className="text-xs text-slate-500">No initial invoice linked.</span>
-                            )}
-                        </Pane>
-                    </div>
-                    <div className="mt-3 text-xs text-slate-500">
-                        {project?.financials?.remaining_budget_line}<br />
-                        {project?.financials?.profit_line}
-                    </div>
-                </InfoBlock>
-
-                <InfoBlock title="Overhead fees" action={<a href={routes?.overheads_index} data-native="true" className="text-xs font-semibold text-teal-600">Manage overheads</a>}>
-                    <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
-                        {project?.overheads?.length === 0 ? (
-                            <div className="text-xs text-slate-500">No overhead line items added.</div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full text-left text-sm">
-                                    <thead>
-                                        <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                            <th className="px-3 py-2">Invoice</th>
-                                            <th className="px-3 py-2">Details</th>
-                                            <th className="px-3 py-2">Amount</th>
-                                            <th className="px-3 py-2">Date</th>
-                                            <th className="px-3 py-2">Status</th>
-                                            <th className="px-3 py-2">View</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {project.overheads.map((overhead) => (
-                                            <tr key={overhead.id} className="border-t border-slate-100">
-                                                <td className="px-3 py-2">{overhead.invoice_show_route ? <a href={overhead.invoice_show_route} className="text-teal-700 hover:text-teal-600">{overhead.invoice_number}</a> : '--'}</td>
-                                                <td className="px-3 py-2">{overhead.details}</td>
-                                                <td className="px-3 py-2">{overhead.amount_display}</td>
-                                                <td className="px-3 py-2">{overhead.date}</td>
-                                                <td className="px-3 py-2">{overhead.status_label}</td>
-                                                <td className="px-3 py-2">{overhead.invoice_show_route ? <a href={overhead.invoice_show_route} className="text-xs font-semibold text-slate-700">View</a> : '--'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        <form method="POST" action={routes?.overheads_store} data-native="true" className="mt-4 grid gap-3 md:grid-cols-3">
-                            <input type="hidden" name="_token" value={csrf} />
-                            <div className="md:col-span-2">
-                                <label className="text-xs text-slate-500">Details</label>
-                                <input name="short_details" required className="ui-input mt-1" placeholder="Feature fee or description" />
-                            </div>
-                            <div>
-                                <label className="text-xs text-slate-500">Amount</label>
-                                <input name="amount" required type="number" step="0.01" min="0" className="ui-input mt-1" />
-                            </div>
-                            <div className="md:col-span-3 flex justify-end">
-                                <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Add overhead fee</button>
-                            </div>
-                        </form>
-                    </div>
-                </InfoBlock>
-
-                <InfoBlock title="Remaining budget invoices">
-                    <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700 space-y-4">
-                        <div className="text-xs text-slate-500">Remaining: {project?.financials?.remaining_budget_invoiceable_display}</div>
-                        {remainingBudgetInvoices.length === 0 ? <div className="text-xs text-slate-500">No invoices generated from the remaining budget yet.</div> : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full text-left text-sm">
-                                    <thead>
-                                        <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                            <th className="px-3 py-2">Invoice</th><th className="px-3 py-2">Amount</th><th className="px-3 py-2">Issue</th><th className="px-3 py-2">Due</th><th className="px-3 py-2">Paid at</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {remainingBudgetInvoices.map((invoice) => (
-                                            <tr key={invoice.id} className="border-t border-slate-100">
-                                                <td className="px-3 py-2"><a href={invoice.show_route} className="text-teal-700 hover:text-teal-600">{invoice.number_display}</a></td>
-                                                <td className="px-3 py-2">
-                                                    <div>{invoice.invoiced_amount_display || invoice.total_display}</div>
-                                                    {invoice.remaining_amount_display ? <div className="text-[11px] text-slate-500">Remaining: {invoice.remaining_amount_display}</div> : null}
-                                                </td>
-                                                <td className="px-3 py-2">{invoice.issue_date}</td>
-                                                <td className="px-3 py-2">{invoice.due_date}</td>
-                                                <td className="px-3 py-2">{invoice.paid_at}</td>
-                                                <td className="px-3 py-2">{invoice.status_label}</td>
-                                                <td className="px-3 py-2 text-right"><a href={invoice.show_route} className="text-xs font-semibold text-slate-700">View</a></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        <div className="border-t border-slate-100 pt-4">
-                            {canInvoiceRemaining ? (
-                                <form method="POST" action={routes?.invoice_remaining} data-native="true" className="space-y-3 text-xs text-slate-500">
-                                    <input type="hidden" name="_token" value={csrf} />
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Amount</label>
-                                        <input name="amount" type="number" step="0.01" min="0.01" className="ui-input mt-1" />
-                                    </div>
-                                    <div className="flex justify-end">
-                                        <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Invoice remaining budget</button>
-                                    </div>
-                                </form>
-                            ) : <p className="text-[10px] text-slate-500">Remaining budget must be positive before you can generate an additional invoice.</p>}
+            <div className="grid gap-6 lg:grid-cols-3">
+                {/* Main column */}
+                <div className="space-y-6 lg:col-span-2">
+                    <Card title="Budget">
+                        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-100 bg-slate-100 md:grid-cols-4">
+                            <Metric label="Total budget" value={financials.budget_with_overhead_display} hint="incl. overheads" />
+                            <Metric label="Paid" value={financials.paid_payment_display} tone="emerald" />
+                            <Metric label="Remaining" value={financials.remaining_budget_display} hint="not yet paid" />
+                            <Metric label="Available to invoice" value={financials.remaining_budget_invoiceable_display} tone={invoiceable > 0 ? 'teal' : undefined} />
                         </div>
-                    </div>
-                </InfoBlock>
 
-                <InfoBlock title="Maintenance" action={<a href={routes?.maintenance_create} data-native="true" className="rounded-full border border-teal-200 px-3 py-1 text-xs font-semibold text-teal-700">Add maintenance</a>}>
-                    <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
-                        {project?.maintenances?.length === 0 ? <div className="text-xs text-slate-500">No maintenance plans for this project.</div> : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full text-left text-sm">
-                                    <thead>
-                                        <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                            <th className="px-3 py-2">Title</th><th className="px-3 py-2">Cycle</th><th className="px-3 py-2">Next Billing</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Auto</th><th className="px-3 py-2">Amount</th><th className="px-3 py-2">Invoices</th><th className="px-3 py-2">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {project.maintenances.map((maintenance) => (
-                                            <tr key={maintenance.id} className="border-t border-slate-100">
-                                                <td className="px-3 py-2">{maintenance.title}</td>
-                                                <td className="px-3 py-2">{maintenance.cycle}</td>
-                                                <td className="px-3 py-2">{maintenance.next_billing_date}</td>
-                                                <td className="px-3 py-2">{maintenance.status}</td>
-                                                <td className="px-3 py-2">{maintenance.auto_invoice ? 'Yes' : 'No'}</td>
-                                                <td className="px-3 py-2">{maintenance.amount_display}</td>
-                                                <td className="px-3 py-2"><a href={maintenance.invoices_route} className="text-xs font-semibold text-slate-700">{maintenance.invoices_count}</a></td>
-                                                <td className="px-3 py-2"><a href={maintenance.edit_route} className="text-xs font-semibold text-teal-700">Edit</a></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                </InfoBlock>
+                        <dl className="mt-5 grid gap-x-8 sm:grid-cols-2">
+                            <Row label="Base budget" value={financials.total_budget_display} />
+                            <Row label="Overheads" value={financials.overhead_total_display} />
+                            <Row label="Initial payment" value={financials.initial_payment_display} />
+                            <Row label="Invoiced, awaiting payment" value={financials.outstanding_invoiced_display} />
+                            {financials.has_uninvoiced_overheads ? (
+                                <Row label="Overheads not yet invoiced" value={financials.uninvoiced_overheads_display} />
+                            ) : null}
+                            <Row label="Employee cost" value={financials.employee_salary_total_display} />
+                            <Row label="Sales rep payout" value={financials.sales_rep_total_display} />
+                            {financials.budget_amount_display && financials.budget_amount_display !== '--' ? (
+                                <Row label="Budget (legacy)" value={financials.budget_amount_display} />
+                            ) : null}
+                            <Row
+                                label="Profit"
+                                value={<span className={financials.profitable === false ? 'text-rose-600' : 'text-emerald-600'}>{financials.profit_display}</span>}
+                            />
+                        </dl>
+                    </Card>
 
-                <InfoBlock title="Tasks">
-                    <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
-                        {tasks.length === 0 ? (
-                            <div className="text-xs text-slate-500">No tasks found.</div>
+                    <Card
+                        title="Remaining budget invoices"
+                        subtitle={`Available to invoice: ${financials.remaining_budget_invoiceable_display ?? '--'}`}
+                        flush
+                    >
+                        {remainingBudgetInvoices.length === 0 ? (
+                            <Empty>No invoices generated from the remaining budget yet.</Empty>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full text-left text-sm">
-                                    <thead>
-                                        <tr className="text-xs uppercase tracking-[0.2em] text-slate-500"><th className="px-3 py-2">Task ID</th><th className="px-3 py-2">Created</th><th className="px-3 py-2">Task</th><th className="px-3 py-2">Created By</th><th className="px-3 py-2">Status</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        {tasks.map((task) => (
-                                            <tr key={task.id} className="border-t border-slate-100">
-                                                <td className="px-3 py-2 font-semibold text-slate-700">{task.id ?? '--'}</td>
-                                                <td className="px-3 py-2">{task.created_at}</td>
-                                                <td className="px-3 py-2"><a href={task.route} className="text-teal-600 hover:text-teal-500">{task.title}</a></td>
-                                                <td className="px-3 py-2">{task.creator_name}</td>
-                                                <td className="px-3 py-2">{task.status_label}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <Table head={['Invoice', 'Amount', 'Issued', 'Due', 'Paid', 'Status']}>
+                                {remainingBudgetInvoices.map((invoice) => (
+                                    <tr key={invoice.id} className="border-t border-slate-100">
+                                        <td className={TD}><a href={invoice.show_route} className={LINK}>{invoice.number_display}</a></td>
+                                        <td className={TD}>
+                                            <div className="font-medium text-slate-900">{invoice.invoiced_amount_display || invoice.total_display}</div>
+                                            {invoice.remaining_amount_display ? <div className="text-[11px] text-slate-400">Left after: {invoice.remaining_amount_display}</div> : null}
+                                        </td>
+                                        <td className={TD}>{invoice.issue_date}</td>
+                                        <td className={TD}>{invoice.due_date}</td>
+                                        <td className={TD}>{invoice.paid_at}</td>
+                                        <td className={TD}><StatusBadge status={invoice.status} label={invoice.status_label} /></td>
+                                    </tr>
+                                ))}
+                            </Table>
+                        )}
+
+                        <div className="border-t border-slate-100 px-5 py-4">
+                            {invoiceable > 0 ? (
+                                <form method="POST" action={routes?.invoice_remaining} data-native="true" className="flex flex-wrap items-end gap-3">
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <label className="min-w-[12rem] flex-1">
+                                        <span className="text-xs text-slate-500">New invoice amount ({project?.currency})</span>
+                                        <input name="amount" type="number" step="0.01" min="0.01" max={invoiceable} required placeholder={String(invoiceable)} className="ui-input mt-1" />
+                                    </label>
+                                    <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Create invoice</button>
+                                </form>
+                            ) : (
+                                <p className="text-xs text-slate-500">Nothing left to invoice — the full budget is already paid or invoiced.</p>
+                            )}
+                        </div>
+                    </Card>
+
+                    <Card
+                        title="Overhead fees"
+                        action={<a href={routes?.overheads_index} data-native="true" className="text-xs font-semibold text-teal-700 hover:text-teal-600">Manage</a>}
+                        flush
+                    >
+                        {overheads.length === 0 ? (
+                            <Empty>No overhead line items added.</Empty>
+                        ) : (
+                            <Table head={['Details', 'Amount', 'Date', 'Invoice', 'Status']}>
+                                {overheads.map((overhead) => (
+                                    <tr key={overhead.id} className="border-t border-slate-100">
+                                        <td className={TD}>{overhead.details}</td>
+                                        <td className={`${TD} font-medium text-slate-900`}>{overhead.amount_display}</td>
+                                        <td className={TD}>{overhead.date}</td>
+                                        <td className={TD}>{overhead.invoice_show_route ? <a href={overhead.invoice_show_route} className={LINK}>{overhead.invoice_number}</a> : <span className="text-slate-400">—</span>}</td>
+                                        <td className={TD}><StatusBadge status={overhead.status_label} label={overhead.status_label} /></td>
+                                    </tr>
+                                ))}
+                            </Table>
+                        )}
+
+                        <form method="POST" action={routes?.overheads_store} data-native="true" className="flex flex-wrap items-end gap-3 border-t border-slate-100 px-5 py-4">
+                            <input type="hidden" name="_token" value={csrf} />
+                            <label className="min-w-[12rem] flex-[2]">
+                                <span className="text-xs text-slate-500">Details</span>
+                                <input name="short_details" required className="ui-input mt-1" placeholder="Feature fee or description" />
+                            </label>
+                            <label className="min-w-[8rem] flex-1">
+                                <span className="text-xs text-slate-500">Amount</span>
+                                <input name="amount" required type="number" step="0.01" min="0" className="ui-input mt-1" />
+                            </label>
+                            <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Add fee</button>
+                        </form>
+                    </Card>
+
+                    <Card
+                        title="Recent tasks"
+                        action={<a href={routes?.tasks} data-native="true" className="text-xs font-semibold text-teal-700 hover:text-teal-600">View all</a>}
+                        flush
+                    >
+                        {tasks.length === 0 ? (
+                            <Empty>No tasks yet.</Empty>
+                        ) : (
+                            <Table head={['Task', 'Created by', 'Created', 'Status']}>
+                                {tasks.map((task) => (
+                                    <tr key={task.id} className="border-t border-slate-100">
+                                        <td className={TD}>
+                                            <a href={task.route} className={LINK}>{task.title}</a>
+                                            <div className="text-[11px] text-slate-400">#{task.id}</div>
+                                        </td>
+                                        <td className={TD}>{task.creator_name}</td>
+                                        <td className={`${TD} whitespace-nowrap`}>{task.created_at}</td>
+                                        <td className={TD}><StatusBadge status={task.status} label={task.status_label} /></td>
+                                    </tr>
+                                ))}
+                            </Table>
                         )}
 
                         {tasksPagination?.has_pages ? (
-                            <div className="mt-4 flex items-center justify-end gap-2 text-sm">
-                                {tasksPagination.previous_url ? <a href={tasksPagination.previous_url} data-native="true" className="rounded-full border border-slate-300 px-3 py-1 text-slate-700">Previous</a> : <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>}
-                                {tasksPagination.next_url ? <a href={tasksPagination.next_url} data-native="true" className="rounded-full border border-slate-300 px-3 py-1 text-slate-700">Next</a> : <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>}
+                            <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3 text-xs">
+                                <PageLink href={tasksPagination.previous_url}>Previous</PageLink>
+                                <PageLink href={tasksPagination.next_url}>Next</PageLink>
                             </div>
                         ) : null}
-                    </div>
-                </InfoBlock>
+                    </Card>
 
-                {project?.notes ? (
-                    <div className="rounded-2xl border border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
-                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Notes</div>
-                        <div className="mt-2 whitespace-pre-wrap">{project.notes}</div>
-                    </div>
-                ) : null}
+                    <Card
+                        title="Maintenance"
+                        action={<a href={routes?.maintenance_create} data-native="true" className="text-xs font-semibold text-teal-700 hover:text-teal-600">Add plan</a>}
+                        flush
+                    >
+                        {maintenances.length === 0 ? (
+                            <Empty>No maintenance plans for this project.</Empty>
+                        ) : (
+                            <Table head={['Plan', 'Amount', 'Next billing', 'Status', 'Invoices', '']}>
+                                {maintenances.map((maintenance) => (
+                                    <tr key={maintenance.id} className="border-t border-slate-100">
+                                        <td className={TD}>
+                                            <div className="font-medium text-slate-900">{maintenance.title}</div>
+                                            <div className="text-[11px] text-slate-400">{maintenance.cycle} · Auto invoice {maintenance.auto_invoice ? 'on' : 'off'}</div>
+                                        </td>
+                                        <td className={TD}>{maintenance.amount_display}</td>
+                                        <td className={TD}>{maintenance.next_billing_date}</td>
+                                        <td className={TD}><StatusBadge status={maintenance.status} label={maintenance.status} /></td>
+                                        <td className={TD}><a href={maintenance.invoices_route} className={LINK}>{maintenance.invoices_count}</a></td>
+                                        <td className={`${TD} text-right`}><a href={maintenance.edit_route} className="text-xs font-semibold text-slate-500 hover:text-slate-800">Edit</a></td>
+                                    </tr>
+                                ))}
+                            </Table>
+                        )}
+                    </Card>
+                </div>
 
-                <div className="rounded-2xl border border-slate-300 bg-white/80 p-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Transfer Ownership</div>
-                    {project?.transfer_eligible ? (
-                        <form action={routes?.transfer_store} method="POST" data-native="true" className="mt-3 space-y-3">
+                {/* Sidebar */}
+                <div className="space-y-6">
+                    <Card title="Details">
+                        <dl>
+                            <Row label="Customer" value={project?.customer?.name} />
+                            <Row label="Client ID" value={project?.customer?.id ?? '--'} />
+                            <Row label="Currency" value={project?.currency} />
+                            <Row label="Start" value={project?.dates?.start} />
+                            <Row label="Expected end" value={project?.dates?.expected_end} />
+                            <Row label="Due" value={project?.dates?.due} />
+                        </dl>
+                    </Card>
+
+                    <Card title="Team">
+                        <TeamList label="Employees" people={employees} />
+                        <div className="mt-4"><TeamList label="Sales reps" people={salesReps} /></div>
+                    </Card>
+
+                    <Card title="Initial invoice">
+                        {initialInvoice ? (
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <a href={initialInvoice.show_route} className={LINK}>{initialInvoice.number_display}</a>
+                                    <div className="text-sm text-slate-900">{initialInvoice.total_display}</div>
+                                </div>
+                                <StatusBadge status={initialInvoice.status} label={initialInvoice.status_label} />
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-400">No initial invoice linked.</p>
+                        )}
+                    </Card>
+
+                    <Card title="Documents">
+                        <div className="space-y-2 text-sm">
+                            <DocLink label="Contract" file={project?.files?.contract} />
+                            <DocLink label="Proposal" file={project?.files?.proposal} />
+                        </div>
+                    </Card>
+
+                    <Card title="Description">
+                        <p className="whitespace-pre-wrap text-sm text-slate-600">{project?.description}</p>
+                        {project?.notes ? (
+                            <div className="mt-4 border-t border-slate-100 pt-4">
+                                <div className="mb-1 text-xs font-medium text-slate-400">Notes</div>
+                                <p className="whitespace-pre-wrap text-sm text-slate-600">{project.notes}</p>
+                            </div>
+                        ) : null}
+                    </Card>
+
+                    <details className="card group p-5">
+                        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-slate-900">
+                            Transfer ownership
+                            <span className="text-slate-400 transition group-open:rotate-180">⌄</span>
+                        </summary>
+                        {project?.transfer_eligible ? (
+                            <form action={routes?.transfer_store} method="POST" data-native="true" className="mt-4 space-y-3">
+                                <input type="hidden" name="_token" value={csrf} />
+                                <div>
+                                    <label className="mb-1 block text-xs text-slate-500">Receiving customer</label>
+                                    <SearchableSelect
+                                        name="to_customer_id"
+                                        placeholder="Choose a client..."
+                                        options={transferCustomers.map((c) => ({ value: String(c.id), label: c.name }))}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs text-slate-500">Schedule for (optional)</label>
+                                    <input type="datetime-local" name="scheduled_for" className="ui-input" />
+                                    <p className="mt-1 text-[11px] text-slate-400">Leave blank to execute as soon as the receiver accepts.</p>
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs text-slate-500">Reason (optional)</label>
+                                    <textarea name="reason" rows={2} className="w-full rounded-[10px] border border-slate-300 px-3 py-2 text-xs" />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                                    onClick={(e) => {
+                                        if (!confirm('Send this project ownership transfer invite? The receiving customer will need to accept it.')) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                >
+                                    Send transfer invite
+                                </button>
+                            </form>
+                        ) : (
+                            <p className="mt-3 text-sm text-slate-500">{project?.transfer_ineligible_reason || 'This project is not eligible for transfer.'}</p>
+                        )}
+                    </details>
+
+                    <div className="rounded-2xl border border-rose-100 p-5">
+                        <div className="text-sm font-semibold text-slate-900">Delete project</div>
+                        <p className="mt-1 text-xs text-slate-500">Permanently removes this project and its data.</p>
+                        <form method="POST" action={routes?.destroy} data-native="true" className="mt-3" onSubmit={(e) => !window.confirm(`Delete project ${project?.name}?`) && e.preventDefault()}>
                             <input type="hidden" name="_token" value={csrf} />
-                            <div>
-                                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                                    Receiving Customer
-                                </label>
-                                <SearchableSelect
-                                    name="to_customer_id"
-                                    placeholder="Choose a client..."
-                                    options={transferCustomers.map((c) => ({ value: String(c.id), label: c.name }))}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                                    Schedule For (optional)
-                                </label>
-                                <input
-                                    type="datetime-local"
-                                    name="scheduled_for"
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                                />
-                                <p className="mt-1 text-xs text-slate-400">Leave blank to execute as soon as the receiver accepts.</p>
-                            </div>
-                            <div>
-                                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                                    Reason (optional)
-                                </label>
-                                <textarea name="reason" rows={2} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                            </div>
-                            <button
-                                type="submit"
-                                className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                                onClick={(e) => {
-                                    if (!confirm('Send this project ownership transfer invite? The receiving customer will need to accept it.')) {
-                                        e.preventDefault();
-                                    }
-                                }}
-                            >
-                                Send Transfer Invite
+                            <input type="hidden" name="_method" value="DELETE" />
+                            <button type="submit" className="rounded-full border border-rose-200 px-4 py-1.5 text-xs font-semibold text-rose-600">
+                                Delete
                             </button>
                         </form>
-                    ) : (
-                        <p className="mt-2 text-sm text-slate-500">{project?.transfer_ineligible_reason || 'This project is not eligible for transfer.'}</p>
-                    )}
+                    </div>
                 </div>
             </div>
         </>
     );
 }
 
-function StatCard({ value, label }) {
+function Card({ title, subtitle = null, action = null, flush = false, children }) {
     return (
-        <div className="rounded-2xl border border-slate-300 bg-white/80 p-4">
-            <div className="text-2xl font-semibold text-slate-900">{value}</div>
-            <div className="text-xs uppercase tracking-[0.25em] text-slate-500">{label}</div>
-        </div>
-    );
-}
-
-function InfoBlock({ title, action = null, children }) {
-    return (
-        <div>
-            <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</div>
+        <section className="card overflow-hidden">
+            <div className="flex items-center justify-between gap-3 px-5 pt-5">
+                <div>
+                    <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+                    {subtitle ? <div className="mt-0.5 text-xs text-slate-500">{subtitle}</div> : null}
+                </div>
                 {action}
             </div>
-            {children}
-        </div>
+            <div className={flush ? 'mt-4' : 'p-5 pt-4'}>{children}</div>
+        </section>
     );
 }
 
-function Pane({ title, children }) {
+function Stat({ label, value }) {
     return (
-        <div className="rounded-2xl border border-slate-300 bg-white/80 p-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</div>
-            <div className="mt-2 text-xs text-slate-600">{children}</div>
+        <div className="px-5 py-4">
+            <div className="text-xl font-semibold text-slate-900">{value}</div>
+            <div className="text-xs text-slate-500">{label}</div>
         </div>
     );
 }
 
+function Metric({ label, value, hint = null, tone }) {
+    const color = tone === 'emerald' ? 'text-emerald-600' : tone === 'teal' ? 'text-teal-700' : 'text-slate-900';
+
+    return (
+        <div className="bg-white px-4 py-3">
+            <div className="text-xs text-slate-500">{label}</div>
+            <div className={`mt-1 text-base font-semibold ${color}`}>{value ?? '--'}</div>
+            {hint ? <div className="text-[11px] text-slate-400">{hint}</div> : null}
+        </div>
+    );
+}
+
+function Row({ label, value }) {
+    return (
+        <div className="flex items-baseline justify-between gap-4 border-b border-slate-100 py-2 last:border-0">
+            <dt className="text-xs text-slate-500">{label}</dt>
+            <dd className="text-right text-sm font-medium text-slate-800">{value ?? '--'}</dd>
+        </div>
+    );
+}
+
+function Table({ head, children }) {
+    return (
+        <div className="overflow-x-auto">
+            <table className="min-w-full">
+                <thead className="bg-slate-50/70">
+                    <tr>{head.map((h, i) => <th key={i} className={TH}>{h}</th>)}</tr>
+                </thead>
+                <tbody>{children}</tbody>
+            </table>
+        </div>
+    );
+}
+
+function Empty({ children }) {
+    return <div className="px-5 pb-5 text-sm text-slate-400">{children}</div>;
+}
+
+function Dot() {
+    return <span className="text-slate-300">•</span>;
+}
+
+function StatusBadge({ status, label }) {
+    const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
+    const tones = {
+        emerald: ['paid', 'complete', 'completed', 'done', 'active'],
+        amber: ['unpaid', 'pending', 'open', 'todo', 'on_hold', 'not_invoiced', 'paused'],
+        sky: ['ongoing', 'in_progress', 'inprogress'],
+        rose: ['overdue', 'cancelled', 'canceled', 'blocked', 'inactive'],
+    };
+    const tone = Object.keys(tones).find((t) => tones[t].includes(key)) || 'slate';
+    const classes = {
+        emerald: 'bg-emerald-50 text-emerald-700',
+        amber: 'bg-amber-50 text-amber-700',
+        sky: 'bg-sky-50 text-sky-700',
+        rose: 'bg-rose-50 text-rose-700',
+        slate: 'bg-slate-100 text-slate-600',
+    }[tone];
+
+    return (
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${classes}`}>
+            {label || status || '--'}
+        </span>
+    );
+}
+
+function TeamList({ label, people }) {
+    return (
+        <div>
+            <div className="mb-2 text-xs text-slate-500">{label}</div>
+            {people.length === 0 ? (
+                <div className="text-sm text-slate-400">None assigned</div>
+            ) : (
+                <div className="flex flex-wrap gap-1.5">
+                    {people.map((name, i) => (
+                        <span key={i} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">{name}</span>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function DocLink({ label, file }) {
+    return (
+        <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-slate-500">{label}</span>
+            {file ? (
+                <a href={file.url} className={`${LINK} truncate text-sm`}>{file.name}</a>
+            ) : (
+                <span className="text-sm text-slate-400">Not uploaded</span>
+            )}
+        </div>
+    );
+}
+
+function PageLink({ href, children }) {
+    return href ? (
+        <a href={href} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 hover:bg-slate-50">{children}</a>
+    ) : (
+        <span className="rounded-full border border-slate-100 px-3 py-1 text-slate-300">{children}</span>
+    );
+}

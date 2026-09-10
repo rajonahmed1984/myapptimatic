@@ -1462,6 +1462,11 @@ class ProjectController extends Controller
                 'paid_payment_display' => sprintf('%s %s', $project->currency, number_format($paidPayment, 2)),
                 'remaining_budget_display' => sprintf('%s %s', $project->currency, number_format($remainingBudget, 2)),
                 'remaining_budget_invoiceable_display' => sprintf('%s %s', $project->currency, number_format($remainingBudgetInvoiceable, 2)),
+                'remaining_budget_invoiceable' => round($remainingBudgetInvoiceable, 2),
+                'outstanding_invoiced_display' => sprintf('%s %s', $project->currency, number_format((float) ($financials['outstanding_invoiced'] ?? 0), 2)),
+                'uninvoiced_overheads_display' => sprintf('%s %s', $project->currency, number_format((float) ($financials['uninvoiced_overheads'] ?? 0), 2)),
+                'has_uninvoiced_overheads' => (float) ($financials['uninvoiced_overheads'] ?? 0) > 0,
+                'profitable' => $profit >= 0,
                 'budget_amount_display' => $project->budget_amount !== null ? sprintf('%s %s', $project->currency, number_format((float) $project->budget_amount, 2)) : '--',
                 'employee_salary_total_display' => sprintf('%s %s', $project->currency, number_format($employeeSalaryTotal, 2)),
                 'sales_rep_total_display' => sprintf('%s %s', $project->currency, number_format($salesRepTotal, 2)),
@@ -2177,16 +2182,26 @@ PROMPT;
         $employeeSalaryTotal = (float) ($project->contract_amount ?? $project->contract_employee_total_earned ?? 0);
         $payoutsTotal = $salesRepTotal + $employeeSalaryTotal;
         $initialPayment = (float) ($project->initial_payment_amount ?? 0);
-        $paidPayment = (float) $project->invoices()
-            ->whereIn('type', ['project_initial_payment', 'project_remaining_budget'])
-            ->where('status', 'paid')
-            ->sum('total');
-        $pendingRemainingBudgetInvoiced = (float) $project->invoices()
-            ->where('type', 'project_remaining_budget')
-            ->whereIn('status', ['unpaid', 'overdue'])
-            ->sum('total');
+
+        // Every invoice that bills part of the budget (initial payment, remaining
+        // budget, overhead fees). Subtotals are used because the budget is
+        // pre-VAT; summing `total` let VAT eat into the remaining amount.
+        $billedByStatus = $project->invoices()
+            ->whereIn('type', ['project_initial_payment', 'project_remaining_budget', 'project_overhead'])
+            ->selectRaw('status, SUM(subtotal) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+        $paidPayment = (float) ($billedByStatus['paid'] ?? 0);
+        $outstandingInvoiced = (float) ($billedByStatus['unpaid'] ?? 0) + (float) ($billedByStatus['overdue'] ?? 0);
+
+        // Overhead line items not yet on an invoice are billed through the
+        // overhead flow, so they must not be offered as remaining budget too.
+        $uninvoicedOverheads = (float) $project->overheads
+            ->whereNull('invoice_id')
+            ->sum(fn ($overhead) => (float) ($overhead->amount ?? 0));
+
         $remainingBudget = $budgetWithOverhead - $paidPayment;
-        $remainingBudgetInvoiceable = max(0, $remainingBudget - $pendingRemainingBudgetInvoiced);
+        $remainingBudgetInvoiceable = max(0, $remainingBudget - $outstandingInvoiced - $uninvoicedOverheads);
         $profit = $budgetWithOverhead - $salesRepTotal - $employeeSalaryTotal;
 
         return [
@@ -2199,7 +2214,8 @@ PROMPT;
             'sales_rep_total' => $salesRepTotal,
             'payouts_total' => $payoutsTotal,
             'remaining_budget' => $remainingBudget,
-            'pending_remaining_budget_invoiced' => $pendingRemainingBudgetInvoiced,
+            'outstanding_invoiced' => $outstandingInvoiced,
+            'uninvoiced_overheads' => $uninvoicedOverheads,
             'remaining_budget_invoiceable' => $remainingBudgetInvoiceable,
             'profit' => $profit,
             'profitable' => $profit >= 0,

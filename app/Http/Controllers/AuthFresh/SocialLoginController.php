@@ -230,6 +230,7 @@ class SocialLoginController extends Controller
         Auth::guard($guard)->login($user);
 
         $request->session()->regenerate();
+        $request->session()->forget('impersonator_id');
         Portal::setPortal($request, $portal);
 
         return redirect()->intended($this->loginService->defaultRedirectUrlFor($portal, $user));

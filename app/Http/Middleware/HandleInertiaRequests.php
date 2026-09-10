@@ -36,6 +36,14 @@ class HandleInertiaRequests extends Middleware
         // an empty array every time, which is why no sidebar badge appeared.
         $headerStats = app(HeaderStatsService::class);
 
+        // A leftover impersonator_id (e.g. the admin signed in again without
+        // pressing "Return to Admin") must not flag the admin's own session.
+        $impersonatorId = $request->session()->get('impersonator_id');
+        if ($impersonatorId && $user && (int) $impersonatorId === (int) $user->id) {
+            $request->session()->forget('impersonator_id');
+            $impersonatorId = null;
+        }
+
         $avatarUrl = null;
         if ($user) {
             $avatarPath = $user->employee?->photo_path ?? $user->avatar_path;
@@ -75,7 +83,7 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
                 'portal' => $portal,
                 'guard' => Portal::guard($portal),
-                'is_impersonating' => $request->session()->has('impersonator_id'),
+                'is_impersonating' => (bool) $impersonatorId,
             ],
             'stats' => [
                 'admin' => $headerStats->admin($request),

@@ -89,6 +89,8 @@ class LoginService
         }
 
         $request->session()->regenerate();
+        // A real sign-in ends any impersonation still recorded in this session.
+        $request->session()->forget('impersonator_id');
         Portal::setPortal($request, $portal);
         RateLimiter::clear(self::limiterKey($request, $portal, $credentials['email']));
 
