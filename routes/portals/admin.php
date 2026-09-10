@@ -776,6 +776,9 @@ Route::middleware([
     Route::delete('accounting/{entry}', [AdminAccountingController::class, 'destroy'])->name('accounting.destroy');
     Route::get('settings', [SettingController::class, 'edit'])->name('settings.edit');
     Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
+    Route::post('settings/sms-test', [SettingController::class, 'sendTestSms'])
+        ->middleware('throttle:10,1')
+        ->name('settings.sms-test');
 
     Route::middleware('admin.role:master_admin,sub_admin,admin')
         ->prefix('mass-mail')

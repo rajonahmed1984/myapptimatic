@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\EmailTemplate;
 use App\Models\Setting;
 use App\Models\Plan;
+use App\Services\Sms\SmsService;
 use App\Support\Branding;
 use App\Support\DateTimeFormat;
+use App\Support\SystemLogger;
 use App\Support\UrlResolver;
 use App\Support\TaskSettings;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
@@ -22,9 +25,9 @@ use DateTimeZone;
 
 class SettingController extends Controller
 {
-    public function edit(Request $request): InertiaResponse
+    public function edit(Request $request, SmsService $sms): InertiaResponse
     {
-        $tabs = ['general', 'invoices', 'automation', 'billing', 'tasks', 'email-templates'];
+        $tabs = ['general', 'invoices', 'automation', 'billing', 'sms', 'tasks', 'email-templates'];
         $activeTab = $request->query('tab', 'general');
         if (! in_array($activeTab, $tabs, true)) {
             $activeTab = 'general';
@@ -120,6 +123,15 @@ class SettingController extends Controller
             'task_custom_type_label' => Setting::getValue('task_custom_type_label'),
             'task_upload_max_mb' => (int) Setting::getValue('task_upload_max_mb', 10),
             'task_customer_visible_default' => (int) Setting::getValue('task_customer_visible_default', 0),
+            'sms_enabled' => (int) $sms->enabled(),
+            'sms_api_url' => Setting::getValue('sms_api_url', config('sms.api_url')),
+            'sms_customer_id' => Setting::getValue('sms_customer_id', config('sms.customer_id')),
+            'sms_api_key' => Setting::getValue('sms_api_key', config('sms.api_key')),
+            'sms_whitelisted_ip' => Setting::getValue('sms_whitelisted_ip', config('sms.whitelisted_ip')),
+            'sms_invoice_created_enabled' => (int) $sms->invoiceCreatedEnabled(),
+            'sms_invoice_paid_enabled' => (int) $sms->invoicePaidEnabled(),
+            'sms_invoice_created_template' => $sms->invoiceCreatedTemplate(),
+            'sms_invoice_paid_template' => $sms->invoicePaidTemplate(),
         ];
 
         foreach (array_keys($settings) as $key) {
@@ -164,6 +176,7 @@ class SettingController extends Controller
             'routes' => [
                 'edit' => route('admin.settings.edit'),
                 'update' => route('admin.settings.update'),
+                'sms_test' => route('admin.settings.sms-test'),
             ],
         ]);
     }
@@ -229,6 +242,15 @@ class SettingController extends Controller
             'task_custom_type_label' => ['nullable', 'string', 'max:50'],
             'task_upload_max_mb' => ['required', 'integer', 'min:1', 'max:100'],
             'task_customer_visible_default' => ['nullable', 'boolean'],
+            'sms_enabled' => ['nullable', 'boolean'],
+            'sms_api_url' => ['nullable', 'url', 'max:255', 'required_if:sms_enabled,1'],
+            'sms_customer_id' => ['nullable', 'string', 'max:100', 'required_if:sms_enabled,1'],
+            'sms_api_key' => ['nullable', 'string', 'max:255', 'required_if:sms_enabled,1'],
+            'sms_whitelisted_ip' => ['nullable', 'ip'],
+            'sms_invoice_created_enabled' => ['nullable', 'boolean'],
+            'sms_invoice_paid_enabled' => ['nullable', 'boolean'],
+            'sms_invoice_created_template' => ['nullable', 'string', 'max:1000'],
+            'sms_invoice_paid_template' => ['nullable', 'string', 'max:1000'],
             'templates' => ['nullable', 'array'],
             'templates.*.from_email' => ['nullable', 'email', 'max:255'],
             'templates.*.subject' => ['nullable', 'string', 'max:255'],
@@ -306,6 +328,15 @@ class SettingController extends Controller
         Setting::setValue('task_custom_type_label', $data['task_custom_type_label'] ?? '');
         Setting::setValue('task_upload_max_mb', (int) $data['task_upload_max_mb']);
         Setting::setValue('task_customer_visible_default', $request->boolean('task_customer_visible_default') ? '1' : '0');
+        Setting::setValue('sms_enabled', $request->boolean('sms_enabled') ? '1' : '0');
+        Setting::setValue('sms_api_url', trim((string) ($data['sms_api_url'] ?? '')) ?: (string) config('sms.api_url'));
+        Setting::setValue('sms_customer_id', trim((string) ($data['sms_customer_id'] ?? '')));
+        Setting::setValue('sms_api_key', trim((string) ($data['sms_api_key'] ?? '')));
+        Setting::setValue('sms_whitelisted_ip', trim((string) ($data['sms_whitelisted_ip'] ?? '')));
+        Setting::setValue('sms_invoice_created_enabled', $request->boolean('sms_invoice_created_enabled') ? '1' : '0');
+        Setting::setValue('sms_invoice_paid_enabled', $request->boolean('sms_invoice_paid_enabled') ? '1' : '0');
+        Setting::setValue('sms_invoice_created_template', trim((string) ($data['sms_invoice_created_template'] ?? '')));
+        Setting::setValue('sms_invoice_paid_template', trim((string) ($data['sms_invoice_paid_template'] ?? '')));
 
         if (Schema::hasTable('email_templates') && ! empty($data['templates']) && is_array($data['templates'])) {
             $templateUpdates = $data['templates'];
@@ -337,7 +368,7 @@ class SettingController extends Controller
             }
         }
 
-        $tabs = ['general', 'invoices', 'automation', 'billing', 'tasks', 'email-templates'];
+        $tabs = ['general', 'invoices', 'automation', 'billing', 'sms', 'tasks', 'email-templates'];
         $activeTab = $request->input('active_tab', 'general');
         if (! in_array($activeTab, $tabs, true)) {
             $activeTab = 'general';
@@ -345,5 +376,25 @@ class SettingController extends Controller
 
         return redirect()->route('admin.settings.edit', ['tab' => $activeTab])
             ->with('status', 'Settings updated.');
+    }
+
+    public function sendTestSms(Request $request, SmsService $sms): JsonResponse
+    {
+        $data = $request->validate([
+            'mobile' => ['required', 'string', 'max:30'],
+            'message' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $companyName = (string) Setting::getValue('company_name', config('app.name'));
+        $message = trim((string) ($data['message'] ?? '')) ?: "Test SMS from {$companyName}. Your SMS gateway is working.";
+
+        $result = $sms->send($data['mobile'], $message);
+
+        SystemLogger::write('module', $result['success'] ? 'Test SMS sent.' : 'Test SMS failed.', [
+            'mobile' => $result['mobile'],
+            'gateway_message' => $result['message'],
+        ], level: $result['success'] ? 'info' : 'error');
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 }

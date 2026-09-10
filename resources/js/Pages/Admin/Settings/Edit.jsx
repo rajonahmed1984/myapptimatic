@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
 import PasswordInput from '../../../Components/Form/PasswordInput';
+import axios from '../../../http-client';
 
 const on = (v) => v === true || v === 1 || v === '1' || v === 'true';
 
@@ -10,6 +11,7 @@ const TAB_CONFIG = [
     { key: 'invoices', label: 'Invoices', hint: 'Invoice core values and payment instructions.' },
     { key: 'automation', label: 'Automation', hint: 'Cron actions and support automation.' },
     { key: 'billing', label: 'Billing', hint: 'Reminder, fees, cancellation and licensing rules.' },
+    { key: 'sms', label: 'SMS', hint: 'SMS gateway and invoice SMS notifications.' },
     { key: 'tasks', label: 'Tasks', hint: 'Task workflow defaults and upload limits.' },
     { key: 'email-templates', label: 'Email Templates', hint: 'Outgoing email message templates.' },
 ];
@@ -48,6 +50,69 @@ const Field = ({ label, name, errors, children }) => (
         <InputError errors={errors} name={name} />
     </div>
 );
+
+const SMS_PLACEHOLDERS = ['{{client_name}}', '{{company_name}}', '{{invoice_number}}', '{{invoice_total}}', '{{invoice_due_date}}', '{{payment_url}}', '{{invoice_url}}'];
+
+// Lives inside the settings form, so it posts on its own (no form fields named)
+// and uses the gateway values that are already saved.
+const SmsTest = ({ url }) => {
+    const [mobile, setMobile] = useState('');
+    const [sending, setSending] = useState(false);
+    const [result, setResult] = useState(null);
+
+    const send = async () => {
+        if (!url || mobile.trim() === '' || sending) {
+            return;
+        }
+
+        setSending(true);
+        setResult(null);
+
+        try {
+            const { data } = await axios.post(url, { mobile: mobile.trim() });
+            setResult({ success: true, message: data?.message || 'SMS sent.' });
+        } catch (error) {
+            const data = error?.response?.data || {};
+            const message = data.message || data.errors?.mobile?.[0] || 'Could not send the test SMS.';
+            setResult({ success: false, message });
+        } finally {
+            setSending(false);
+        }
+    };
+
+    return (
+        <div>
+            <div className="flex flex-wrap gap-3">
+                <input
+                    type="tel"
+                    value={mobile}
+                    onChange={(event) => setMobile(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            send();
+                        }
+                    }}
+                    placeholder="01XXXXXXXXX"
+                    className="ui-input min-w-0 flex-1"
+                />
+                <button
+                    type="button"
+                    onClick={send}
+                    disabled={sending || mobile.trim() === ''}
+                    className="rounded-full border border-teal-500 px-5 py-2 text-sm font-semibold text-teal-600 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    {sending ? 'Sending...' : 'Send test SMS'}
+                </button>
+            </div>
+            {result ? (
+                <div className={`mt-2 text-xs ${result.success ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {result.success ? 'Sent: ' : 'Failed: '}{result.message}
+                </div>
+            ) : null}
+        </div>
+    );
+};
 
 export default function Edit({
     pageTitle = 'Settings',
@@ -330,6 +395,64 @@ export default function Edit({
                                 <Check name="auto_bind_domains" checked={settings.auto_bind_domains} label="Auto bind domains on first check" />
                                 <div><label className="text-sm text-slate-600">License first notice days</label><Num name="license_expiry_first_notice_days" value={settings.license_expiry_first_notice_days} errors={errors} /></div>
                                 <div><label className="text-sm text-slate-600">License second notice days</label><Num name="license_expiry_second_notice_days" value={settings.license_expiry_second_notice_days} errors={errors} /></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className={tab === 'sms' ? 'space-y-6' : 'hidden'}>
+                        <div className="grid gap-6 lg:grid-cols-2">
+                            <div className="card p-6">
+                                <div className="section-label">SMS Gateway</div>
+                                <div className="mt-4 grid gap-4">
+                                    <Check name="sms_enabled" checked={settings.sms_enabled} label="Enable SMS notifications" />
+                                    <Field label="API URL" name="sms_api_url" errors={errors}>
+                                        <input name="sms_api_url" type="url" defaultValue={settings.sms_api_url || ''} placeholder="https://www.24bulksmsbd.com/api/smsSendApi" className="ui-input mt-2" />
+                                    </Field>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <Field label="Customer ID" name="sms_customer_id" errors={errors}>
+                                            <input name="sms_customer_id" defaultValue={settings.sms_customer_id || ''} className="ui-input mt-2" />
+                                        </Field>
+                                        <Field label="API key" name="sms_api_key" errors={errors}>
+                                            <PasswordInput name="sms_api_key" defaultValue={settings.sms_api_key || ''} wrapperClassName="mt-2" autoComplete="off" />
+                                        </Field>
+                                    </div>
+                                    <Field label="Whitelisted server IP" name="sms_whitelisted_ip" errors={errors}>
+                                        <input name="sms_whitelisted_ip" defaultValue={settings.sms_whitelisted_ip || ''} placeholder="172.96.191.68" className="ui-input mt-2" />
+                                        <div className="mt-1 text-xs text-slate-400">For reference only. The gateway rejects requests from any other server IP.</div>
+                                    </Field>
+                                </div>
+                            </div>
+
+                            <div className="card p-6">
+                                <div className="section-label">Test SMS</div>
+                                <div className="mt-4 space-y-3">
+                                    <p className="text-sm text-slate-500">Save the gateway settings first, then send a test message to a Bangladeshi mobile number.</p>
+                                    <SmsTest url={routes?.sms_test} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card p-6">
+                            <div className="section-label">Invoice SMS</div>
+                            <p className="mt-2 text-sm text-slate-500">
+                                Sent to the customer's phone number. Placeholders:{' '}
+                                {SMS_PLACEHOLDERS.map((item) => (
+                                    <code key={item} className="mr-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">{item}</code>
+                                ))}
+                            </p>
+                            <div className="mt-4 grid gap-6 md:grid-cols-2">
+                                <div className="space-y-3">
+                                    <Check name="sms_invoice_created_enabled" checked={settings.sms_invoice_created_enabled} label="Send SMS when an invoice is created (payment reminder)" />
+                                    <Field label="Invoice created message" name="sms_invoice_created_template" errors={errors}>
+                                        <textarea name="sms_invoice_created_template" rows={4} defaultValue={settings.sms_invoice_created_template || ''} className="ui-input mt-2" />
+                                    </Field>
+                                </div>
+                                <div className="space-y-3">
+                                    <Check name="sms_invoice_paid_enabled" checked={settings.sms_invoice_paid_enabled} label="Send SMS when an invoice is paid (payment confirmation)" />
+                                    <Field label="Invoice paid message" name="sms_invoice_paid_template" errors={errors}>
+                                        <textarea name="sms_invoice_paid_template" rows={4} defaultValue={settings.sms_invoice_paid_template || ''} className="ui-input mt-2" />
+                                    </Field>
+                                </div>
                             </div>
                         </div>
                     </section>
