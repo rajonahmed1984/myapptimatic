@@ -25,7 +25,7 @@ class SuspendPastDueLicenses extends Command
      *
      * @var string
      */
-    protected $description = 'Automatically suspend active licenses that are 3+ days past due';
+    protected $description = 'Automatically suspend active licenses that are past due';
 
     /**
      * Execute the console command.
@@ -66,7 +66,7 @@ class SuspendPastDueLicenses extends Command
             $suspendedCount++;
         }
 
-        // Condition 2: At 11:59 PM on the third day of the month, suspend
+        // Condition 2: On the 5th day of the month onwards, suspend
         // active licenses that still have an outstanding invoice due by today.
         $licensesByInvoices = ($this->option('expiry-only') || ! LicenseInvoiceGrace::hasEnded()) ? collect() : License::query()
             ->where('status', 'active')

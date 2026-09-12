@@ -61,4 +61,22 @@ class SystemLogUiParityTest extends TestCase
             ->get(route('admin.logs.activity'))
             ->assertForbidden();
     }
+
+    #[Test]
+    public function admin_logs_root_and_sms_routes_are_accessible(): void
+    {
+        $admin = User::factory()->create([
+            'role' => Role::MASTER_ADMIN,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/logs')
+            ->assertOk()
+            ->assertSee('Admin\\/Logs\\/Index', false);
+
+        $this->actingAs($admin)
+            ->get(route('admin.logs.sms'))
+            ->assertOk()
+            ->assertSee('Admin\\/Logs\\/Index', false);
+    }
 }

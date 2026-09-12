@@ -390,7 +390,7 @@ class SettingController extends Controller
 
         $result = $sms->send($data['mobile'], $message);
 
-        SystemLogger::write('module', $result['success'] ? 'Test SMS sent.' : 'Test SMS failed.', [
+        SystemLogger::write('sms', $result['success'] ? 'Test SMS sent.' : 'Test SMS failed.', [
             'mobile' => $result['mobile'],
             'gateway_message' => $result['message'],
         ], level: $result['success'] ? 'info' : 'error');

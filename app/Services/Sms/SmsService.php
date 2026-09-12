@@ -173,13 +173,13 @@ class SmsService
         ];
 
         if (! $this->isConfigured()) {
-            SystemLogger::write('module', 'Invoice SMS skipped: gateway not configured.', $context, level: 'warning');
+            SystemLogger::write('sms', 'Invoice SMS skipped: gateway not configured.', $context, level: 'warning');
 
             return;
         }
 
         if (! $customer || $this->normalizeMobile($customer->phone) === null) {
-            SystemLogger::write('module', 'Invoice SMS skipped: customer has no valid mobile number.', $context + [
+            SystemLogger::write('sms', 'Invoice SMS skipped: customer has no valid mobile number.', $context + [
                 'phone' => $customer?->phone,
             ], level: 'warning');
 
@@ -189,7 +189,7 @@ class SmsService
         $result = $this->send((string) $customer->phone, $this->renderInvoiceMessage($invoice, $template));
 
         SystemLogger::write(
-            'module',
+            'sms',
             $result['success'] ? 'Invoice SMS sent.' : 'Invoice SMS failed.',
             $context + [
                 'mobile' => $result['mobile'],

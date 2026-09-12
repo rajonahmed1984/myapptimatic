@@ -787,6 +787,10 @@ Route::middleware([
             Route::get('/', [\App\Http\Controllers\Admin\MassMailController::class, 'index'])->name('index');
             Route::post('/send', [\App\Http\Controllers\Admin\MassMailController::class, 'store'])->name('store');
         });
+    Route::get('logs', [SystemLogController::class, 'index'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('logs.index')
+        ->defaults('type', 'activity');
     Route::get('logs/activity', [SystemLogController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('logs.activity')
@@ -803,6 +807,10 @@ Route::middleware([
         ->middleware(HandleInertiaRequests::class)
         ->name('logs.email')
         ->defaults('type', 'email');
+    Route::get('logs/sms', [SystemLogController::class, 'index'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('logs.sms')
+        ->defaults('type', 'sms');
     Route::get('logs/ticket-mail-import', [SystemLogController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
         ->name('logs.ticket-mail-import')

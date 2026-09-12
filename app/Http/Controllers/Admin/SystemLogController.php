@@ -15,8 +15,9 @@ use Illuminate\Support\Facades\Cache;
 
 class SystemLogController extends Controller
 {
-    public function index(Request $request, string $type): InertiaResponse
+    public function index(Request $request, ?string $type = 'activity'): InertiaResponse
     {
+        $type = $type ?: 'activity';
         $types = $this->logTypes();
 
         if (! isset($types[$type])) {
@@ -95,6 +96,11 @@ class SystemLogController extends Controller
                 'label' => 'Email Message Log',
                 'category' => 'email',
                 'route' => 'admin.logs.email',
+            ],
+            'sms' => [
+                'label' => 'SMS Log',
+                'category' => 'sms',
+                'route' => 'admin.logs.sms',
             ],
             'ticket-mail-import' => [
                 'label' => 'Ticket Mail Import Log',

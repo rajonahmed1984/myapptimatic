@@ -13,7 +13,7 @@ class LicenseInvoiceGrace
         $timezone = (string) (Setting::getValue('time_zone', config('app.timezone', 'UTC')) ?: 'UTC');
         $localNow = $now ? $now->copy()->timezone($timezone) : Carbon::now($timezone);
 
-        return $localNow->copy()->startOfMonth()->day(3)->setTime(23, 59);
+        return $localNow->copy()->startOfMonth()->day(5)->setTime(0, 0);
     }
 
     public static function hasEnded(?CarbonInterface $now = null): bool

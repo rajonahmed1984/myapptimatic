@@ -29,10 +29,10 @@ class LicenseAutoSuspendOverrideAutomationTest extends TestCase
     }
 
     #[Test]
-    public function due_invoice_keeps_license_active_until_third_day_at_1159_pm(): void
+    public function due_invoice_keeps_license_active_until_fifth_day_at_midnight(): void
     {
         Setting::setValue('time_zone', 'Asia/Dhaka');
-        Carbon::setTestNow(Carbon::parse('2026-07-03 23:58:00', 'Asia/Dhaka'));
+        Carbon::setTestNow(Carbon::parse('2026-07-04 23:59:00', 'Asia/Dhaka'));
         [$customer, $subscription] = $this->createSubscriptionSetup();
         $license = License::create([
             'subscription_id' => $subscription->id,
@@ -59,7 +59,7 @@ class LicenseAutoSuspendOverrideAutomationTest extends TestCase
         $this->artisan('licenses:suspend-past-due --invoice-only')->assertSuccessful();
         $this->assertSame('active', $license->fresh()->status);
 
-        Carbon::setTestNow(Carbon::parse('2026-07-03 23:59:00', 'Asia/Dhaka'));
+        Carbon::setTestNow(Carbon::parse('2026-07-05 00:00:00', 'Asia/Dhaka'));
         $this->artisan('licenses:suspend-past-due --invoice-only')->assertSuccessful();
         $this->assertSame('suspended', $license->fresh()->status);
     }

@@ -103,7 +103,7 @@ $licenseExpirySuspend = Schedule::command('licenses:suspend-past-due --expiry-on
 CronActivityLogger::track($licenseExpirySuspend, 'licenses:suspend-past-due --expiry-only');
 
 $licenseInvoiceSuspend = Schedule::command('licenses:suspend-past-due --invoice-only')
-    ->monthlyOn(3, '23:55')
+    ->monthlyOn(5, '00:00')
     ->timezone($automationTimezone)
     ->withoutOverlapping();
 CronActivityLogger::track($licenseInvoiceSuspend, 'licenses:suspend-past-due --invoice-only');

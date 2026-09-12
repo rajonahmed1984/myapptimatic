@@ -402,7 +402,12 @@ export default function Edit({
                     <section className={tab === 'sms' ? 'space-y-6' : 'hidden'}>
                         <div className="grid gap-6 lg:grid-cols-2">
                             <div className="card p-6">
-                                <div className="section-label">SMS Gateway</div>
+                                <div className="flex items-center justify-between">
+                                    <div className="section-label">SMS Gateway</div>
+                                    <a href="/admin/logs/sms" data-native="true" className="text-xs font-semibold text-teal-600 hover:text-teal-700">
+                                        View SMS Logs &rarr;
+                                    </a>
+                                </div>
                                 <div className="mt-4 grid gap-4">
                                     <Check name="sms_enabled" checked={settings.sms_enabled} label="Enable SMS notifications" />
                                     <Field label="API URL" name="sms_api_url" errors={errors}>
