@@ -127,18 +127,14 @@ $pendingPayments = Schedule::call(function () {
 })->everyFiveMinutes()->name('process-pending-payments');
 CronActivityLogger::track($pendingPayments, 'process-pending-payments');
 
-// License verification checks
+// License verification checks (daily at midnight 12:00 AM)
 $verifyLicenses = Schedule::call(function () {
     // Verify active licenses
     \App\Models\License::where('status', 'active')
-        ->where(function ($query) {
-            $query->whereNull('last_verified_at')
-                ->orWhere('last_verified_at', '<=', now()->subHours(1));
-        })
         ->chunk(100, function ($licenses) {
             foreach ($licenses as $license) {
                 \App\Jobs\SyncLicenseJob::dispatch($license->id, null);
             }
         });
-})->everyFiveMinutes()->name('verify-licenses')->withoutOverlapping();
+})->dailyAt('00:00')->timezone($automationTimezone)->name('verify-licenses')->withoutOverlapping();
 CronActivityLogger::track($verifyLicenses, 'verify-licenses');

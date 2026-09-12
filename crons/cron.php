@@ -9,6 +9,7 @@
  * - Late fees
  * - Suspensions/Terminations
  * - Reminders and notifications
+ * - License verification
  * 
  * cPanel Schedule: 0 0 * * *
  * Command: /usr/local/bin/ea-php82 /home/apptimatic/my.apptimatic.com/crons/cron.php

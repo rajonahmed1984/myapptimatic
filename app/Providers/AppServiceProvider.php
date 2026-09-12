@@ -431,12 +431,19 @@ class AppServiceProvider extends ServiceProvider
                 try {
                     $requestId = $event->context['request_id'] ?? '';
                     $reason = $event->reason;
-                    app(MailSender::class)->sendRaw(
-                        MailCategory::BILLING,
-                        $to,
-                        "License {$license->id} blocked during verification. Reason: {$reason}. Request ID: {$requestId}",
-                        'License blocked alert'
-                    );
+
+                    // Throttle email alerts to at most once per day per license/reason
+                    $alertCacheKey = "license_blocked_alert_{$license->id}_{$reason}_" . date('Ymd');
+                    if (! Cache::has($alertCacheKey)) {
+                        Cache::put($alertCacheKey, true, now()->endOfDay());
+
+                        app(MailSender::class)->sendRaw(
+                            MailCategory::BILLING,
+                            $to,
+                            "License {$license->id} blocked during verification. Reason: {$reason}. Request ID: {$requestId}",
+                            'License blocked alert'
+                        );
+                    }
                 } catch (\Throwable) {
                     // swallow mail errors
                 }

@@ -5,7 +5,6 @@
  * 
  * Handles time-sensitive tasks:
  * - Payment processing
- * - License verification
  * - Email queue processing
  * - System monitoring
  * 

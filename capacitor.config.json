@@ -2,6 +2,7 @@
   "appId": "com.apptimatic.app",
   "appName": "MyApptimatic",
   "webDir": "mobile/www",
+  "backgroundColor": "#302B87",
   "server": {
     "url": "https://my.apptimatic.com",
     "androidScheme": "https",
@@ -17,18 +18,18 @@
   "android": {
     "allowMixedContent": false,
     "webContentsDebuggingEnabled": true,
-    "backgroundColor": "#f8fafc",
+    "backgroundColor": "#302B87",
     "appendUserAgent": "MyApptimaticApp"
   },
   "ios": {
     "contentInset": "always",
-    "backgroundColor": "#f8fafc",
+    "backgroundColor": "#302B87",
     "limitsNavigationsToAppBoundDomains": false,
     "appendUserAgent": "MyApptimaticApp"
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 1200,
+      "launchShowDuration": 3500,
       "launchAutoHide": true,
       "backgroundColor": "#302B87",
       "androidScaleType": "CENTER_CROP",

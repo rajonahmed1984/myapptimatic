@@ -62,7 +62,14 @@ const applyStatusBar = () => quietly(async () => {
     }
 });
 
-const hideSplashScreen = () => quietly(() => SplashScreen.hide());
+const hideSplashScreen = () => quietly(async () => {
+    try {
+        if (window.NativeSplashBridge && typeof window.NativeSplashBridge.hideSplash === 'function') {
+            window.NativeSplashBridge.hideSplash();
+        }
+    } catch (e) {}
+    await SplashScreen.hide();
+});
 
 const isHomePath = (pathname) => HOME_PATH.test(pathname);
 
