@@ -27,12 +27,31 @@ class CurrencySelectionTest extends TestCase
             'company_name' => 'Test Company',
             'phone' => '1234567890',
             'currency' => 'BDT',
-            'accepttos' => '1',
         ]);
 
         $this->assertAuthenticated();
         $user = User::where('email', 'test@example.com')->first();
         $this->assertEquals('BDT', $user->currency);
+        $response->assertRedirect();
+    }
+
+    /**
+     * Test user can register without accepttos field.
+     */
+    public function test_user_can_register_without_accepttos_field()
+    {
+        $response = $this->post(route('register.store'), [
+            'name' => 'No Terms Check User',
+            'email' => 'noterms@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'company_name' => 'No Terms Company',
+            'phone' => '1234567890',
+            'currency' => 'BDT',
+        ]);
+
+        $this->assertAuthenticated();
+        $this->assertDatabaseHas('users', ['email' => 'noterms@example.com']);
         $response->assertRedirect();
     }
 
@@ -47,7 +66,6 @@ class CurrencySelectionTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'currency' => 'USD',
-            'accepttos' => '1',
         ]);
 
         $this->assertAuthenticated();
@@ -65,7 +83,6 @@ class CurrencySelectionTest extends TestCase
             'email' => 'test.default@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-            'accepttos' => '1',
         ]);
 
         $this->assertAuthenticated();
@@ -146,7 +163,7 @@ class CurrencySelectionTest extends TestCase
     public function test_converter_only_allows_bdt_and_usd()
     {
         $this->fakeRates(110.0);
-        $converter = new CurrencyService();
+        $converter = new CurrencyService;
 
         // Valid conversions
         $this->assertIsFloat($converter->convert(100, 'BDT', 'USD'));
@@ -163,7 +180,7 @@ class CurrencySelectionTest extends TestCase
      */
     public function test_converter_rejects_invalid_source_currency()
     {
-        $converter = new CurrencyService();
+        $converter = new CurrencyService;
         $this->expectException(\InvalidArgumentException::class);
         $converter->convert(100, 'EUR', 'USD');
     }
@@ -173,7 +190,7 @@ class CurrencySelectionTest extends TestCase
      */
     public function test_converter_rejects_invalid_target_currency()
     {
-        $converter = new CurrencyService();
+        $converter = new CurrencyService;
         $this->expectException(\InvalidArgumentException::class);
         $converter->convert(100, 'BDT', 'GBP');
     }
@@ -184,7 +201,7 @@ class CurrencySelectionTest extends TestCase
     public function test_conversion_rates()
     {
         $this->fakeRates(100.0);
-        $converter = new CurrencyService();
+        $converter = new CurrencyService;
 
         // Test BDT to USD
         $result = $converter->convert(1, 'BDT', 'USD');
@@ -205,7 +222,7 @@ class CurrencySelectionTest extends TestCase
     public function test_converter_get_rate()
     {
         $this->fakeRates(120.0);
-        $converter = new CurrencyService();
+        $converter = new CurrencyService;
 
         $rate = $converter->getRate('BDT', 'USD');
         $this->assertEqualsWithDelta(1 / 120, $rate, 0.0001);
@@ -220,7 +237,7 @@ class CurrencySelectionTest extends TestCase
     public function test_converter_uses_cached_rate()
     {
         $this->fakeRates(130.0);
-        $converter = new CurrencyService();
+        $converter = new CurrencyService;
 
         $converter->convert(10, 'USD', 'BDT');
         $converter->convert(20, 'USD', 'BDT');

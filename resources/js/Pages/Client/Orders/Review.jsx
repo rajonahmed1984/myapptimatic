@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
 
@@ -48,26 +48,75 @@ export default function Review({
     });
 
     const [quickFlats, setQuickFlats] = useState(initialPerFloor);
+    const [isCustomArea, setIsCustomArea] = useState(false);
 
     const handleTotalFloorsChange = (newFloorsCount) => {
-        const n = Math.max(1, Math.min(200, Number(newFloorsCount) || 1));
+        if (newFloorsCount === '') {
+            setBuilding((prev) => ({ ...prev, total_floors: '' }));
+            return;
+        }
+        const parsed = parseInt(newFloorsCount, 10);
+        if (isNaN(parsed)) {
+            setBuilding((prev) => ({ ...prev, total_floors: '' }));
+            return;
+        }
+        const n = Math.max(0, Math.min(200, parsed));
         setBuilding((prev) => ({ ...prev, total_floors: n }));
-        setFloorPlan((prev) => {
-            const next = [...prev];
-            if (n > next.length) {
-                const fillVal = Math.max(0, Number(quickFlats) || 4);
-                while (next.length < n) {
-                    next.push(fillVal);
+        if (n >= 1) {
+            setFloorPlan((prev) => {
+                const next = [...prev];
+                if (n > next.length) {
+                    const fillVal = Math.max(0, Number(quickFlats) || 4);
+                    while (next.length < n) {
+                        next.push(fillVal);
+                    }
+                } else if (n < next.length) {
+                    next.length = n;
                 }
-            } else if (n < next.length) {
-                next.length = n;
-            }
-            return next;
-        });
+                return next;
+            });
+        }
+    };
+
+    const handleTotalFloorsBlur = () => {
+        const num = Number(building.total_floors);
+        if (!building.total_floors || isNaN(num) || num < 1) {
+            const fallback = Math.max(1, floorPlan.length || 1);
+            setBuilding((prev) => ({ ...prev, total_floors: fallback }));
+            setFloorPlan((prev) => {
+                const next = [...prev];
+                if (fallback > next.length) {
+                    const fillVal = Math.max(0, Number(quickFlats) || 4);
+                    while (next.length < fallback) {
+                        next.push(fillVal);
+                    }
+                } else if (fallback < next.length) {
+                    next.length = fallback;
+                }
+                return next;
+            });
+        }
     };
 
     const updateFloorCount = (index, value) => {
-        const val = Math.max(0, Math.min(26, Number(value) || 0));
+        if (value === '') {
+            setFloorPlan((prev) => {
+                const next = [...prev];
+                next[index] = '';
+                return next;
+            });
+            return;
+        }
+        const parsed = parseInt(value, 10);
+        if (isNaN(parsed)) {
+            setFloorPlan((prev) => {
+                const next = [...prev];
+                next[index] = '';
+                return next;
+            });
+            return;
+        }
+        const val = Math.max(0, Math.min(26, parsed));
         setFloorPlan((prev) => {
             const next = [...prev];
             next[index] = val;
@@ -75,10 +124,41 @@ export default function Review({
         });
     };
 
+    const handleFloorCountBlur = (index) => {
+        setFloorPlan((prev) => {
+            const next = [...prev];
+            if (next[index] === '' || isNaN(Number(next[index]))) {
+                next[index] = 0;
+            }
+            return next;
+        });
+    };
+
+    const handleQuickFlatsChange = (value) => {
+        if (value === '') {
+            setQuickFlats('');
+            return;
+        }
+        const parsed = parseInt(value, 10);
+        if (isNaN(parsed)) {
+            setQuickFlats('');
+            return;
+        }
+        setQuickFlats(Math.max(0, Math.min(26, parsed)));
+    };
+
+    const handleQuickFlatsBlur = () => {
+        if (quickFlats === '' || isNaN(Number(quickFlats))) {
+            setQuickFlats(4);
+        }
+    };
+
     const applyQuickFlatsToAll = () => {
         const val = Math.max(0, Math.min(26, Number(quickFlats) || 0));
-        setFloorPlan(Array.from({ length: building.total_floors }, () => val));
+        const floors = Math.max(1, Number(building.total_floors) || floorPlan.length || 1);
+        setFloorPlan(Array.from({ length: floors }, () => val));
         setBuilding((prev) => ({ ...prev, flats_per_floor: val }));
+        setQuickFlats(val);
     };
 
     const getFloorLabel = (index) => {
@@ -121,6 +201,23 @@ export default function Review({
         [areas]
     );
 
+    const areaSelectOptions = useMemo(() => {
+        if (areaOptions.length === 0) return [];
+        return [
+            ...areaOptions,
+            { label: '✏️ + Other / Type custom Area...', value: '__custom_area__' },
+        ];
+    }, [areaOptions]);
+
+    useEffect(() => {
+        if (building.area_name && areaOptions.length > 0) {
+            const exists = areaOptions.some((opt) => opt.value === building.area_name);
+            if (!exists) {
+                setIsCustomArea(true);
+            }
+        }
+    }, [areaOptions]);
+
     const totalFlats = useMemo(() => {
         if (!isMybuilding) {
             return 1;
@@ -149,7 +246,8 @@ export default function Review({
             setValidationError('Please enter a building name to continue.');
             return;
         }
-        if (!building.total_floors || Number(building.total_floors) < 1) {
+        const floorCount = Number(building.total_floors);
+        if (!building.total_floors || isNaN(floorCount) || floorCount < 1) {
             setValidationError('Please enter at least 1 floor.');
             return;
         }
@@ -157,10 +255,18 @@ export default function Review({
             setValidationError('Please select the District and City for your building.');
             return;
         }
-        if (totalFlats < 1) {
+        const sanitizedFloorPlan = floorPlan.map((c) => Math.max(0, Number(c) || 0));
+        setFloorPlan(sanitizedFloorPlan);
+        const sumFlats = sanitizedFloorPlan.reduce((acc, curr) => acc + curr, 0);
+        if (sumFlats < 1) {
             setValidationError('Please allocate at least 1 flat across the floors.');
             return;
         }
+        setBuilding((prev) => ({
+            ...prev,
+            total_floors: floorCount,
+            area_name: prev.area_name.trim(),
+        }));
         setValidationError('');
         setCurrentStep(2);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -265,7 +371,7 @@ export default function Review({
 
                 {/* Hidden state for fields when not active, ensuring all fields are submitted via POST */}
                 <input type="hidden" name="has_ground_floor" value={hasGroundFloor ? '1' : '0'} />
-                <input type="hidden" name="flats_per_floor" value={Math.round(totalFlats / building.total_floors) || 1} />
+                <input type="hidden" name="flats_per_floor" value={Math.round(totalFlats / (Number(building.total_floors) || floorPlan.length || 1)) || 1} />
 
                 <div className="grid gap-6 lg:grid-cols-3 items-start">
                     {/* Main Left Area */}
@@ -352,9 +458,10 @@ export default function Review({
                                                         name="district_id"
                                                         options={districtOptions}
                                                         value={building.district_id}
-                                                        onChange={(next) =>
-                                                            setBuilding({ ...building, district_id: String(next ?? ''), city_id: '', area_name: '' })
-                                                        }
+                                                        onChange={(next) => {
+                                                            setBuilding({ ...building, district_id: String(next ?? ''), city_id: '', area_name: '' });
+                                                            setIsCustomArea(false);
+                                                        }}
                                                         placeholder="Select District"
                                                         searchPlaceholder="Search district..."
                                                     />
@@ -368,7 +475,10 @@ export default function Review({
                                                         name="city_id"
                                                         options={cityOptions}
                                                         value={building.city_id}
-                                                        onChange={(next) => setBuilding({ ...building, city_id: String(next ?? ''), area_name: '' })}
+                                                        onChange={(next) => {
+                                                            setBuilding({ ...building, city_id: String(next ?? ''), area_name: '' });
+                                                            setIsCustomArea(false);
+                                                        }}
                                                         disabled={cityOptions.length === 0}
                                                         placeholder={cityOptions.length === 0 ? 'Select district first' : 'Select City / Upazila'}
                                                         searchPlaceholder="Search city..."
@@ -376,28 +486,72 @@ export default function Review({
                                                 </div>
 
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                                                        Area / Mohalla
-                                                    </label>
-                                                    {areaOptions.length > 0 ? (
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <label className="block text-sm font-medium text-slate-700">
+                                                            Area / Mohalla
+                                                        </label>
+                                                        {areaOptions.length > 0 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const nextMode = !isCustomArea;
+                                                                    setIsCustomArea(nextMode);
+                                                                    if (!nextMode && !areaOptions.some((o) => o.value === building.area_name)) {
+                                                                        setBuilding((prev) => ({ ...prev, area_name: '' }));
+                                                                    }
+                                                                }}
+                                                                className="text-xs font-semibold text-teal-600 hover:text-teal-700 hover:underline transition"
+                                                            >
+                                                                {isCustomArea ? '← Select from list' : '+ Type custom area'}
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {areaOptions.length > 0 && !isCustomArea ? (
                                                         <SearchableSelect
                                                             name="area_name"
-                                                            options={areaOptions}
+                                                            options={areaSelectOptions}
                                                             value={building.area_name}
-                                                            onChange={(next) => setBuilding({ ...building, area_name: String(next ?? '') })}
-                                                            placeholder="Select area (e.g. West Agargaon)"
+                                                            onChange={(next) => {
+                                                                const selected = String(next ?? '');
+                                                                if (selected === '__custom_area__') {
+                                                                    setIsCustomArea(true);
+                                                                    setBuilding((prev) => ({ ...prev, area_name: '' }));
+                                                                } else {
+                                                                    setBuilding((prev) => ({ ...prev, area_name: selected }));
+                                                                }
+                                                            }}
+                                                            placeholder="Select area or click + Type custom"
                                                             searchPlaceholder="Search area (e.g. West Agargaon)..."
                                                         />
                                                     ) : (
-                                                        <input
-                                                            type="text"
-                                                            name="area_name"
-                                                            maxLength={150}
-                                                            placeholder="e.g. West Agargaon"
-                                                            className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
-                                                            value={building.area_name}
-                                                            onChange={(e) => setBuilding({ ...building, area_name: e.target.value })}
-                                                        />
+                                                        <div className="space-y-1">
+                                                            <input
+                                                                type="text"
+                                                                name="area_name"
+                                                                maxLength={150}
+                                                                placeholder={areaOptions.length > 0 ? 'Type custom area / mohalla (e.g. Shewrapara Block D)' : 'e.g. West Agargaon'}
+                                                                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 bg-white"
+                                                                value={building.area_name}
+                                                                onChange={(e) => setBuilding((prev) => ({ ...prev, area_name: e.target.value }))}
+                                                                autoFocus={isCustomArea}
+                                                            />
+                                                            {areaOptions.length > 0 && isCustomArea && (
+                                                                <div className="flex items-center justify-between px-1 text-[11px] text-slate-500">
+                                                                    <span>Custom area or mohalla</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setIsCustomArea(false);
+                                                                            setBuilding((prev) => ({ ...prev, area_name: '' }));
+                                                                        }}
+                                                                        className="text-teal-600 font-medium hover:underline"
+                                                                    >
+                                                                        ← Choose from predefined list
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -433,6 +587,7 @@ export default function Review({
                                                     className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-base font-bold text-slate-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
                                                     value={building.total_floors}
                                                     onChange={(e) => handleTotalFloorsChange(e.target.value)}
+                                                    onBlur={handleTotalFloorsBlur}
                                                 />
                                                 <span className="mt-1 block text-xs text-slate-500">
                                                     e.g. 10 floors for GF + Floors 1 to 9
@@ -473,11 +628,12 @@ export default function Review({
                                                     <span className="text-xs font-semibold text-slate-700">Quick set:</span>
                                                     <input
                                                         type="number"
-                                                        min="1"
+                                                        min="0"
                                                         max="26"
                                                         className="w-14 rounded-lg border border-slate-300 px-2 py-1 text-center text-xs font-bold bg-white"
                                                         value={quickFlats}
-                                                        onChange={(e) => setQuickFlats(e.target.value)}
+                                                        onChange={(e) => handleQuickFlatsChange(e.target.value)}
+                                                        onBlur={handleQuickFlatsBlur}
                                                     />
                                                     <button
                                                         type="button"
@@ -530,6 +686,7 @@ export default function Review({
                                                                     className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-bold text-slate-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
                                                                     value={count}
                                                                     onChange={(e) => updateFloorCount(index, e.target.value)}
+                                                                    onBlur={() => handleFloorCountBlur(index)}
                                                                 />
                                                                 <span className="text-xs text-slate-500 font-medium">flats</span>
                                                             </div>
@@ -545,7 +702,7 @@ export default function Review({
                                                         Live Allocation Summary
                                                     </span>
                                                     <div className="mt-1 text-sm font-medium text-teal-950">
-                                                        <strong>{building.total_floors} Floors</strong> configured &rarr;{' '}
+                                                        <strong>{building.total_floors || floorPlan.length || 1} Floors</strong> configured &rarr;{' '}
                                                         <span className="text-base font-bold text-teal-700">{totalFlats} Total Flats</span>
                                                     </div>
                                                 </div>
@@ -600,7 +757,7 @@ export default function Review({
                                                         {[selectedAreaName, selectedCityName, selectedDistrictName].filter(Boolean).join(', ') || 'Not specified'}
                                                     </div>
                                                     <div className="mt-2 text-xs text-slate-500">
-                                                        Total Floors: <strong>{building.total_floors}</strong> · Ground Floor: <strong>{hasGroundFloor ? 'Included' : 'No'}</strong>
+                                                        Total Floors: <strong>{building.total_floors || floorPlan.length || 1}</strong> · Ground Floor: <strong>{hasGroundFloor ? 'Included' : 'No'}</strong>
                                                     </div>
                                                 </div>
                                             </div>
@@ -623,7 +780,7 @@ export default function Review({
                                                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 shadow-2xs"
                                                         >
                                                             <span className="font-semibold text-slate-900">{getFloorLabel(index)}:</span>
-                                                            <span className="font-bold text-teal-700">{count} flats</span>
+                                                            <span className="font-bold text-teal-700">{Number(count) || 0} flats</span>
                                                         </span>
                                                     ))}
                                                 </div>
@@ -700,7 +857,7 @@ export default function Review({
                                         <div className="flex items-center justify-between">
                                             <span>Building Scope</span>
                                             <span className="font-semibold text-slate-900">
-                                                {building.total_floors} Floors, {totalFlats} Flats
+                                                {building.total_floors || floorPlan.length || 1} Floors, {totalFlats} Flats
                                             </span>
                                         </div>
                                         <div className="rounded-xl bg-teal-50/60 p-3 border border-teal-100 text-xs text-teal-900 space-y-1">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Models\Area;
 use App\Models\City;
 use App\Models\District;
 use App\Models\Invoice;
@@ -263,6 +264,23 @@ class OrderController extends Controller
             ? City::query()->where('district_id', $district?->id)->find((int) $request->input('city_id'))
             : null;
         $areaName = trim((string) $request->input('area_name', ''));
+        if ($areaName !== '' && $district && $city) {
+            try {
+                Area::firstOrCreate(
+                    [
+                        'district_id' => $district->id,
+                        'city_id' => $city->id,
+                        'name' => $areaName,
+                    ],
+                    [
+                        'slug' => \Illuminate\Support\Str::slug($areaName) ?: 'area-'.time(),
+                    ]
+                );
+                BangladeshLocations::forget();
+            } catch (\Throwable) {
+                // Gracefully ignore if areas table is unavailable or constraint collision
+            }
+        }
 
         $startDate = Carbon::today();
         $periodEnd = $plan->interval === 'monthly'

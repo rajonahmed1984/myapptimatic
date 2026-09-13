@@ -375,4 +375,183 @@ class AdminSubscriptionBuildingProvisionTest extends TestCase
                 ->where('provision.install_url', 'https://mybuildingbd.com')
             );
     }
+
+    public function test_approving_building_order_auto_provisions_building_in_mybuilding(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'https://app.mybuilding.com/api/v1/external/register-building' => \Illuminate\Support\Facades\Http::response([
+                'status' => 'success',
+                'data' => [
+                    'building_id' => 99,
+                    'client_account_id' => 101,
+                    'registration_code' => 'REG-999',
+                    'flats_created' => 40,
+                ],
+            ], 200),
+        ]);
+
+        config(['mybuilding.provision_secret' => 'test-secret-key']);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = Product::create(['name' => 'MyBuilding', 'slug' => 'mybuilding', 'is_active' => true]);
+        $plan = Plan::create([
+            'product_id' => $product->id,
+            'name' => 'Building & Flat-wise Plan',
+            'slug' => 'building-flat-wise',
+            'interval' => 'monthly',
+            'price' => 50.00,
+            'pricing_model' => 'per_flat',
+            'is_active' => true,
+        ]);
+        $customer = Customer::create([
+            'name' => 'Auto Building Owner',
+            'company_name' => 'Sunrise Tower',
+            'email' => 'owner@sunrisetower.com',
+            'status' => 'active',
+        ]);
+
+        $subscription = Subscription::create([
+            'customer_id' => $customer->id,
+            'plan_id' => $plan->id,
+            'subscription_amount' => 2000.00,
+            'status' => 'pending',
+            'start_date' => now()->toDateString(),
+            'current_period_start' => now()->toDateString(),
+            'current_period_end' => now()->addMonth()->toDateString(),
+            'next_invoice_at' => now()->addMonth()->toDateString(),
+        ]);
+
+        $license = License::create([
+            'subscription_id' => $subscription->id,
+            'product_id' => $product->id,
+            'license_key' => 'AUTOKEY123456789012345678901234',
+            'status' => 'pending',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+
+        $order = \App\Models\Order::create([
+            'order_number' => \App\Models\Order::nextNumber(),
+            'customer_id' => $customer->id,
+            'product_id' => $product->id,
+            'plan_id' => $plan->id,
+            'subscription_id' => $subscription->id,
+            'status' => 'pending',
+        ]);
+
+        $provision = MyBuildingProvision::create([
+            'license_id' => $license->id,
+            'order_id' => $order->id,
+            'customer_id' => $customer->id,
+            'building_name' => 'Sunrise Tower',
+            'building_address' => 'Mirpur-10, Dhaka',
+            'total_floors' => 10,
+            'flats_per_floor' => 4,
+            'contracted_flats' => 40,
+            'install_url' => 'https://app.mybuilding.com',
+            'owner_name' => 'Owner',
+            'owner_email' => 'owner@sunrisetower.com',
+            'owner_phone' => '01711111111',
+            'status' => MyBuildingProvision::STATUS_PENDING,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.orders.approve', $order), [
+            'license_key' => 'AUTOKEY123456789012345678901234',
+            'license_url' => 'https://app.mybuilding.com',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertEquals('accepted', $order->fresh()->status);
+        $this->assertEquals('active', $subscription->fresh()->status);
+
+        $freshProvision = $provision->fresh();
+        $this->assertEquals(MyBuildingProvision::STATUS_PROVISIONED, $freshProvision->status);
+        $this->assertEquals(99, $freshProvision->remote_building_id);
+        $this->assertEquals('REG-999', $freshProvision->registration_code);
+        $this->assertNotNull($freshProvision->provisioned_at);
+
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            return str_contains($request->url(), '/api/v1/external/register-building')
+                && $request['building_name'] === 'Sunrise Tower'
+                && $request['license_key'] === 'AUTOKEY123456789012345678901234';
+        });
+    }
+
+    public function test_approving_order_without_pre_existing_provision_auto_creates_and_provisions(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'https://demo.mybuilding.com/api/v1/external/register-building' => \Illuminate\Support\Facades\Http::response([
+                'status' => 'success',
+                'data' => [
+                    'building_id' => 120,
+                    'client_account_id' => 130,
+                    'registration_code' => 'REG-AUTO-CREATED',
+                    'flats_created' => 40,
+                ],
+            ], 200),
+        ]);
+
+        config(['mybuilding.provision_secret' => 'test-secret-key']);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = Product::create(['name' => 'MyBuilding', 'slug' => 'mybuilding', 'is_active' => true]);
+        $plan = Plan::create([
+            'product_id' => $product->id,
+            'name' => 'Building & Flat-wise Plan 2',
+            'slug' => 'building-flat-wise-2',
+            'interval' => 'monthly',
+            'price' => 50.00,
+            'pricing_model' => 'per_flat',
+            'is_active' => true,
+        ]);
+        $customer = Customer::create([
+            'name' => 'Auto Provision Customer',
+            'company_name' => 'Crescent Plaza',
+            'email' => 'crescent@example.com',
+            'status' => 'active',
+        ]);
+
+        $subscription = Subscription::create([
+            'customer_id' => $customer->id,
+            'plan_id' => $plan->id,
+            'subscription_amount' => 2000.00,
+            'status' => 'pending',
+            'start_date' => now()->toDateString(),
+            'current_period_start' => now()->toDateString(),
+            'current_period_end' => now()->addMonth()->toDateString(),
+            'next_invoice_at' => now()->addMonth()->toDateString(),
+        ]);
+
+        $license = License::create([
+            'subscription_id' => $subscription->id,
+            'product_id' => $product->id,
+            'license_key' => 'AUTOCREATEKEY123456789012345678',
+            'status' => 'pending',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+
+        $order = \App\Models\Order::create([
+            'order_number' => \App\Models\Order::nextNumber(),
+            'customer_id' => $customer->id,
+            'product_id' => $product->id,
+            'plan_id' => $plan->id,
+            'subscription_id' => $subscription->id,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.orders.approve', $order), [
+            'license_key' => 'AUTOCREATEKEY123456789012345678',
+            'license_url' => 'https://demo.mybuilding.com',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertEquals('accepted', $order->fresh()->status);
+
+        $provision = MyBuildingProvision::where('license_id', $license->id)->first();
+        $this->assertNotNull($provision);
+        $this->assertEquals(MyBuildingProvision::STATUS_PROVISIONED, $provision->status);
+        $this->assertEquals(120, $provision->remote_building_id);
+        $this->assertEquals('REG-AUTO-CREATED', $provision->registration_code);
+    }
 }

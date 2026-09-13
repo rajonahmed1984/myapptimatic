@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProvisionMyBuildingJob;
 use App\Models\License;
 use App\Models\LicenseDomain;
-use App\Jobs\ProvisionMyBuildingJob;
-use App\Models\Order;
 use App\Models\MyBuildingProvision;
+use App\Models\Order;
 use App\Models\Plan;
 use App\Services\AdminNotificationService;
 use App\Services\BillingService;
@@ -44,17 +44,17 @@ class OrderController extends Controller
         if ($search !== '') {
             $ordersQuery->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function ($cq) use ($search) {
-                      $cq->where('name', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('plan', function ($pq) use ($search) {
-                      $pq->where('name', 'like', "%{$search}%")
-                         ->orWhereHas('product', function ($prodq) use ($search) {
-                             $prodq->where('name', 'like', "%{$search}%");
-                         });
-                  });
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('customer', function ($cq) use ($search) {
+                        $cq->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('plan', function ($pq) use ($search) {
+                        $pq->where('name', 'like', "%{$search}%")
+                            ->orWhereHas('product', function ($prodq) use ($search) {
+                                $prodq->where('name', 'like', "%{$search}%");
+                            });
+                    });
             });
         }
 
@@ -191,13 +191,20 @@ class OrderController extends Controller
     /**
      * Hand a MyBuilding order over to the customer's installation.
      *
-     * @return string|null  a warning to surface, or null when nothing to do
+     * @return string|null a warning to surface, or null when nothing to do
      */
     private function provisionMyBuilding(Order $order, License $license, string $licenseUrl): ?string
     {
-        $slug = $license->product?->slug ?? $order->product?->slug;
+        $plan = $order->plan ?? $order->subscription?->plan ?? $license->subscription?->plan;
+        $slug = $license->product?->slug
+            ?? $order->product?->slug
+            ?? $plan?->product?->slug;
 
-        if ($slug !== config('mybuilding.product_slug')) {
+        $isMyBuilding = ($slug === config('mybuilding.product_slug'))
+            || ($plan && $plan->isPerFlat())
+            || ($plan && $plan->pricing_model === 'per_flat');
+
+        if (! $isMyBuilding) {
             return null;
         }
 
@@ -205,13 +212,41 @@ class OrderController extends Controller
             ->orWhere('order_id', $order->id)
             ->first();
 
-        if (!$provision) {
-            return 'This is a MyBuilding order but no building details were captured. '
-                . 'Add them on the MyBuilding page, then provision it.';
+        if (! $provision && $order->subscription) {
+            $licenseIds = $order->subscription->licenses()->pluck('id');
+            if ($licenseIds->isNotEmpty()) {
+                $provision = MyBuildingProvision::whereIn('license_id', $licenseIds)->first();
+            }
+        }
+
+        if (! $provision) {
+            $customer = $order->customer ?? $order->subscription?->customer;
+            $totalFloors = 10;
+            $contractedFlats = 40;
+            $flatsPerFloor = (int) ceil($contractedFlats / max(1, $totalFloors));
+
+            $provision = MyBuildingProvision::create([
+                'license_id' => $license->id,
+                'order_id' => $order->id,
+                'customer_id' => $customer?->id,
+                'building_name' => $customer?->company_name ?: ($customer?->name ?: 'Building'),
+                'building_address' => $customer?->address,
+                'total_floors' => $totalFloors,
+                'flats_per_floor' => $flatsPerFloor,
+                'contracted_flats' => $contractedFlats,
+                'install_url' => $this->installUrlFrom($licenseUrl) ?: (string) (config('mybuilding.default_install_url') ?: ''),
+                'owner_name' => $customer?->name ?: 'Owner',
+                'owner_email' => $customer?->email ?: 'owner@example.com',
+                'owner_phone' => $customer?->phone ?: '',
+                'status' => MyBuildingProvision::STATUS_PENDING,
+            ]);
         }
 
         // The approved domain is where the building has to be created.
         $installUrl = $provision->install_url ?: $this->installUrlFrom($licenseUrl);
+        if (empty($installUrl) || $installUrl === 'http://' || $installUrl === 'https://') {
+            $installUrl = $this->installUrlFrom($licenseUrl) ?: (string) (config('mybuilding.default_install_url') ?: '');
+        }
 
         $provision->forceFill([
             'license_id' => $license->id,
@@ -220,13 +255,27 @@ class OrderController extends Controller
             'install_url' => $installUrl,
         ])->save();
 
-        if (!app(MyBuildingProvisioner::class)->configured()) {
+        /** @var MyBuildingProvisioner $provisioner */
+        $provisioner = app(MyBuildingProvisioner::class);
+
+        if (! $provisioner->configured()) {
             return 'Order accepted, but MYBUILDING_PROVISION_SECRET is not configured, so the building was not created.';
         }
 
-        // Queued: accepting an order must not wait on the customer's server,
-        // and a brief outage there retries itself.
-        ProvisionMyBuildingJob::dispatch($provision->id);
+        // Provision immediately so the building and account are created in MyBuilding as soon as order is accepted
+        $provision->setRelation('license', $license);
+        $provision->loadMissing(['customer']);
+
+        $provisioned = $provisioner->provision($provision);
+
+        if (! $provisioned) {
+            // Queue retry as a fallback if immediate remote call failed
+            ProvisionMyBuildingJob::dispatch($provision->id);
+
+            return 'Order accepted, but building provisioning could not be completed immediately: '
+                .($provision->fresh()->last_error ?? 'Remote server error')
+                .'. You can retry provisioning from the subscription or MyBuilding page.';
+        }
 
         return null;
     }
@@ -247,7 +296,7 @@ class OrderController extends Controller
             ? 'http'
             : 'https';
 
-        return $scheme . '://' . $host;
+        return $scheme.'://'.$host;
     }
 
     public function cancel(Order $order, AdminNotificationService $adminNotifications): RedirectResponse

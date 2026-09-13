@@ -320,7 +320,11 @@ export default function Form({
     });
 
     const [installUrl, setInstallUrl] = useState(() => {
-        return String(fields?.install_url || provision?.install_url || 'https://app.mybuilding.com');
+        const raw = fields?.install_url || provision?.install_url;
+        if (!raw || raw === 'https://app.mybuilding.com') {
+            return 'https://mybuildingbd.com';
+        }
+        return String(raw);
     });
 
     const [isProvisioning, setIsProvisioning] = useState(false);
@@ -685,7 +689,7 @@ export default function Form({
                                         value={installUrl}
                                         onChange={(e) => setInstallUrl(e.target.value)}
                                         className={inputTokenClass}
-                                        placeholder="https://app.mybuilding.com"
+                                        placeholder="https://mybuildingbd.com"
                                     />
                                     {errors?.install_url && <p className="mt-1 text-xs text-rose-600">{errors.install_url}</p>}
                                 </div>

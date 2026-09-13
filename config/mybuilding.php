@@ -15,7 +15,7 @@ return [
     /*
     | Default installation URL offered when creating a provision record.
     */
-    'default_install_url' => env('MYBUILDING_DEFAULT_INSTALL_URL', ''),
+    'default_install_url' => env('MYBUILDING_DEFAULT_INSTALL_URL', 'https://mybuildingbd.com'),
 
     'timeout' => (int) env('MYBUILDING_TIMEOUT', 20),
 ];

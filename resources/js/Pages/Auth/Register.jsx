@@ -16,7 +16,6 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
     const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
     const [password, setPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
-    const [tosError, setTosError] = useState('');
 
     const passwordMatchMessage = useMemo(() => {
         if (!passwordConfirmation) {
@@ -152,19 +151,6 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                             method="POST"
                             action={routes.submit}
                             data-native="true"
-                            onSubmit={(event) => {
-                                const formElement = event.currentTarget;
-                                const checkbox = formElement.querySelector('input[name="accepttos"]');
-                                if (checkbox) {
-                                    const isChecked = checkbox instanceof HTMLInputElement ? checkbox.checked : false;
-                                    if (!isChecked) {
-                                        event.preventDefault();
-                                        setTosError('Please accept the Terms of Service to continue registration.');
-                                        return;
-                                    }
-                                }
-                                setTosError('');
-                            }}
                         >
                             <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content || ''} />
                             {form?.redirect ? <input type="hidden" name="redirect" value={form.redirect} /> : null}

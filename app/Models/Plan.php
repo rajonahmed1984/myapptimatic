@@ -29,7 +29,7 @@ class Plan extends Model
     public function isPerFlat(): bool
     {
         return $this->pricing_model === 'per_flat'
-            || ($this->relationLoaded('product') && $this->product?->slug === config('mybuilding.product_slug'));
+            || ($this->product?->slug === config('mybuilding.product_slug'));
     }
 
     public function product(): BelongsTo

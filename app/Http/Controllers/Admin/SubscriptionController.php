@@ -155,6 +155,14 @@ class SubscriptionController extends Controller
             app(BillingService::class)->generateInvoiceForSubscription($subscription, Carbon::today());
         }
 
+        if ($subscription->status === 'active' && $plan->isPerFlat()) {
+            $provisionModel = $this->provisionFor($subscription);
+            if ($provisionModel && ! $provisionModel->isProvisioned() && app(MyBuildingProvisioner::class)->configured()) {
+                $provisionModel->loadMissing(['license', 'customer']);
+                app(MyBuildingProvisioner::class)->provision($provisionModel);
+            }
+        }
+
         if (AjaxResponse::ajaxFromRequest($request)) {
             return AjaxResponse::ajaxRedirect(route('admin.subscriptions.edit', $subscription), 'Subscription created.');
         }
@@ -716,7 +724,7 @@ class SubscriptionController extends Controller
                     'remote_building_id' => $provisionModel->remote_building_id,
                     'registration_code' => $provisionModel->registration_code,
                     'last_error' => $provisionModel->last_error,
-                    'install_url' => $provisionModel->install_url,
+                    'install_url' => ! empty($provisionModel->install_url) ? $provisionModel->install_url : (config('mybuilding.default_install_url') ?: 'https://mybuildingbd.com'),
                     'district_id' => $provisionModel->district_id,
                     'city_id' => $provisionModel->city_id,
                     'area_id' => $provisionModel->area_id,
@@ -768,7 +776,7 @@ class SubscriptionController extends Controller
                     'building_address' => (string) old('building_address', (string) ($provision['building_address'] ?? ($subscription?->customer?->address ?: ''))),
                     'total_floors' => (string) old('total_floors', (string) ($provision['total_floors'] ?? 10)),
                     'contracted_flats' => (string) old('contracted_flats', (string) ($provision['contracted_flats'] ?? ($effectiveSubscriptionAmount > 0 && ($subscription?->plan?->price ?? 0) > 0 ? (int) round($effectiveSubscriptionAmount / (float) $subscription->plan->price) : 40))),
-                    'install_url' => (string) old('install_url', (string) ($provision['install_url'] ?? config('mybuilding.default_install_url') ?? '')),
+                    'install_url' => (string) old('install_url', (string) (! empty($provision['install_url']) ? $provision['install_url'] : (config('mybuilding.default_install_url') ?: 'https://mybuildingbd.com'))),
                     'status' => (string) old('status', (string) ($subscription?->status ?? 'active')),
                     'start_date' => (string) old('start_date', (string) ($subscription?->start_date?->format('d-m-Y') ?? now()->format('d-m-Y'))),
                     'current_period_start' => (string) old('current_period_start', (string) ($subscription?->current_period_start?->format('d-m-Y') ?? '')),

@@ -117,6 +117,11 @@ class MyBuildingOrderLocationTest extends TestCase
         $this->assertSame('Cumilla Sadar', $provision->city_name);
         $this->assertSame('Kandirpar', $provision->area_name);
         $this->assertSame(10, $provision->contracted_flats);
+        $this->assertDatabaseHas('areas', [
+            'district_id' => $district->id,
+            'city_id' => $city->id,
+            'name' => 'Kandirpar',
+        ]);
     }
 
     public function test_city_from_another_district_is_not_recorded(): void
@@ -161,4 +166,3 @@ class MyBuildingOrderLocationTest extends TestCase
         $this->assertGreaterThan(0, District::count());
     }
 }
-

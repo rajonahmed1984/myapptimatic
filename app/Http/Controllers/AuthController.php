@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Role;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\ClientNotificationService;
-use App\Support\Currency;
-use App\Enums\Role;
 use App\Services\RecaptchaService;
+use App\Support\Currency;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +30,6 @@ class AuthController extends Controller
                 'phone' => old('phone', ''),
                 'address' => old('address', ''),
                 'currency' => old('currency', 'BDT'),
-                'accepttos' => (bool) old('accepttos', false),
                 'redirect' => $redirect,
             ],
             'routes' => [
@@ -58,9 +57,6 @@ class AuthController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
             'currency' => ['nullable', Rule::in(Currency::allowed())],
-            'accepttos' => ['accepted'],
-        ], [
-            'accepttos.accepted' => 'Please accept the Terms of Service to continue registration.',
         ]);
 
         $currency = strtoupper((string) ($data['currency'] ?? Currency::DEFAULT));
@@ -78,7 +74,7 @@ class AuthController extends Controller
         if ($phoneNumber !== '') {
             $phone = str_starts_with($phoneNumber, '+')
                 ? $phoneNumber
-                : ($phoneCountry . ltrim($phoneNumber, '0'));
+                : ($phoneCountry.ltrim($phoneNumber, '0'));
         }
 
         $customer = Customer::create([

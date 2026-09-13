@@ -26,20 +26,17 @@ class ProvisionMyBuildingJob implements ShouldQueue
     /** 1 min, 5 min, 15 min, 1 hour. */
     public array $backoff = [60, 300, 900, 3600];
 
-    public function __construct(public int $provisionId)
-    {
-        $this->onQueue('provisioning');
-    }
+    public function __construct(public int $provisionId) {}
 
     public function handle(MyBuildingProvisioner $provisioner): void
     {
         $provision = MyBuildingProvision::with(['license', 'customer'])->find($this->provisionId);
 
-        if (!$provision || $provision->isProvisioned()) {
+        if (! $provision || $provision->isProvisioned()) {
             return;
         }
 
-        if (!$provisioner->configured()) {
+        if (! $provisioner->configured()) {
             // Nothing to retry against; the admin page reports the missing secret.
             $this->fail(new \RuntimeException('MYBUILDING_PROVISION_SECRET is not configured.'));
 
@@ -64,10 +61,10 @@ class ProvisionMyBuildingJob implements ShouldQueue
     {
         $provision = MyBuildingProvision::find($this->provisionId);
 
-        if ($provision && !$provision->isProvisioned()) {
+        if ($provision && ! $provision->isProvisioned()) {
             $provision->forceFill([
                 'status' => MyBuildingProvision::STATUS_FAILED,
-                'last_error' => 'Gave up after ' . $this->tries . ' attempts: ' . $exception->getMessage(),
+                'last_error' => 'Gave up after '.$this->tries.' attempts: '.$exception->getMessage(),
             ])->save();
         }
     }
