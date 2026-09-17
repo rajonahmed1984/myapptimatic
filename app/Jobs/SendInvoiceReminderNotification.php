@@ -30,6 +30,12 @@ class SendInvoiceReminderNotification implements ShouldQueue
             return;
         }
 
+        // Email failures retry this job; queue the SMS only on the first
+        // attempt so a retry does not text the customer again.
+        if ($this->attempts() === 1) {
+            SendInvoiceSmsNotification::dispatch($invoice->id, SendInvoiceSmsNotification::EVENT_REMINDER);
+        }
+
         $adminNotifications->sendInvoiceReminder($invoice, $this->templateKey);
         $clientNotifications->sendInvoiceReminder($invoice, $this->templateKey);
     }

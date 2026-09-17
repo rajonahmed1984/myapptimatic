@@ -101,7 +101,7 @@ export default function Index({
                                             <DateTimeText value={log.created_at_display} mode="datetime" />
                                         </td>
                                         <td className="px-4 py-3 text-slate-700">{log.user_name}</td>
-                                        <td className="px-4 py-3 text-slate-500">{log.ip_address}</td>
+                                        <td className="px-4 py-3 text-slate-500">{log.ip_address || '—'}</td>
                                         <td className="px-4 py-3">
                                             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${levelClasses(log.level)}`}>
                                                 {log.level_label}

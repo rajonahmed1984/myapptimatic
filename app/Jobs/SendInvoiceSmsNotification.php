@@ -18,6 +18,8 @@ class SendInvoiceSmsNotification implements ShouldQueue
 
     public const EVENT_PAID = 'paid';
 
+    public const EVENT_REMINDER = 'reminder';
+
     // A retry after a timeout could deliver the same SMS twice, and the
     // customer pays for neither — one attempt, failures land in the system log.
     public int $tries = 1;
@@ -42,6 +44,7 @@ class SendInvoiceSmsNotification implements ShouldQueue
         match ($this->event) {
             self::EVENT_CREATED => $sms->sendInvoiceCreated($invoice),
             self::EVENT_PAID => $sms->sendInvoicePaid($invoice),
+            self::EVENT_REMINDER => $sms->sendInvoiceReminder($invoice),
             default => null,
         };
     }

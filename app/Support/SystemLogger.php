@@ -27,7 +27,8 @@ class SystemLogger
             $userId = auth()->id();
         }
 
-        if ($ipAddress === null && app()->bound('request')) {
+        // Cron and queue jobs have no client; request()->ip() there is a fake 127.0.0.1.
+        if ($ipAddress === null && ! app()->runningInConsole() && app()->bound('request')) {
             $ipAddress = request()->ip();
         }
 

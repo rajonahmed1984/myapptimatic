@@ -130,8 +130,10 @@ class SettingController extends Controller
             'sms_whitelisted_ip' => Setting::getValue('sms_whitelisted_ip', config('sms.whitelisted_ip')),
             'sms_invoice_created_enabled' => (int) $sms->invoiceCreatedEnabled(),
             'sms_invoice_paid_enabled' => (int) $sms->invoicePaidEnabled(),
+            'sms_invoice_reminder_enabled' => (int) $sms->invoiceReminderEnabled(),
             'sms_invoice_created_template' => $sms->invoiceCreatedTemplate(),
             'sms_invoice_paid_template' => $sms->invoicePaidTemplate(),
+            'sms_invoice_reminder_template' => $sms->invoiceReminderTemplate(),
         ];
 
         foreach (array_keys($settings) as $key) {
@@ -249,8 +251,10 @@ class SettingController extends Controller
             'sms_whitelisted_ip' => ['nullable', 'ip'],
             'sms_invoice_created_enabled' => ['nullable', 'boolean'],
             'sms_invoice_paid_enabled' => ['nullable', 'boolean'],
+            'sms_invoice_reminder_enabled' => ['nullable', 'boolean'],
             'sms_invoice_created_template' => ['nullable', 'string', 'max:1000'],
             'sms_invoice_paid_template' => ['nullable', 'string', 'max:1000'],
+            'sms_invoice_reminder_template' => ['nullable', 'string', 'max:1000'],
             'templates' => ['nullable', 'array'],
             'templates.*.from_email' => ['nullable', 'email', 'max:255'],
             'templates.*.subject' => ['nullable', 'string', 'max:255'],
@@ -335,8 +339,10 @@ class SettingController extends Controller
         Setting::setValue('sms_whitelisted_ip', trim((string) ($data['sms_whitelisted_ip'] ?? '')));
         Setting::setValue('sms_invoice_created_enabled', $request->boolean('sms_invoice_created_enabled') ? '1' : '0');
         Setting::setValue('sms_invoice_paid_enabled', $request->boolean('sms_invoice_paid_enabled') ? '1' : '0');
+        Setting::setValue('sms_invoice_reminder_enabled', $request->boolean('sms_invoice_reminder_enabled') ? '1' : '0');
         Setting::setValue('sms_invoice_created_template', trim((string) ($data['sms_invoice_created_template'] ?? '')));
         Setting::setValue('sms_invoice_paid_template', trim((string) ($data['sms_invoice_paid_template'] ?? '')));
+        Setting::setValue('sms_invoice_reminder_template', trim((string) ($data['sms_invoice_reminder_template'] ?? '')));
 
         if (Schema::hasTable('email_templates') && ! empty($data['templates']) && is_array($data['templates'])) {
             $templateUpdates = $data['templates'];

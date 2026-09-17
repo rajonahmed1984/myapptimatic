@@ -20,6 +20,8 @@ class SmsService
 
     public const DEFAULT_INVOICE_PAID_TEMPLATE = 'Dear {{client_name}}, we have received your payment of {{invoice_total}} for invoice #{{invoice_number}}. Thank you! - {{company_name}}';
 
+    public const DEFAULT_INVOICE_REMINDER_TEMPLATE = 'Dear {{client_name}}, reminder: invoice #{{invoice_number}} of {{invoice_total}} is unpaid. Due date: {{invoice_due_date}}. Pay: {{payment_url}} - {{company_name}}';
+
     public function enabled(): bool
     {
         return (bool) (int) Setting::getValue('sms_enabled', config('sms.enabled') ? '1' : '0');
@@ -40,6 +42,11 @@ class SmsService
         return (bool) (int) Setting::getValue('sms_invoice_paid_enabled', '1');
     }
 
+    public function invoiceReminderEnabled(): bool
+    {
+        return (bool) (int) Setting::getValue('sms_invoice_reminder_enabled', '1');
+    }
+
     public function invoiceCreatedTemplate(): string
     {
         $template = trim((string) Setting::getValue('sms_invoice_created_template', ''));
@@ -52,6 +59,13 @@ class SmsService
         $template = trim((string) Setting::getValue('sms_invoice_paid_template', ''));
 
         return $template !== '' ? $template : self::DEFAULT_INVOICE_PAID_TEMPLATE;
+    }
+
+    public function invoiceReminderTemplate(): string
+    {
+        $template = trim((string) Setting::getValue('sms_invoice_reminder_template', ''));
+
+        return $template !== '' ? $template : self::DEFAULT_INVOICE_REMINDER_TEMPLATE;
     }
 
     public function sendInvoiceCreated(Invoice $invoice): void
@@ -78,6 +92,20 @@ class SmsService
         }
 
         $this->sendForInvoice($invoice, $this->invoicePaidTemplate(), 'invoice_paid');
+    }
+
+    public function sendInvoiceReminder(Invoice $invoice): void
+    {
+        if (! $this->enabled() || ! $this->invoiceReminderEnabled()) {
+            return;
+        }
+
+        // The reminder may sit in the queue while the customer pays.
+        if (! in_array((string) $invoice->status, ['unpaid', 'overdue'], true) || (float) $invoice->total <= 0) {
+            return;
+        }
+
+        $this->sendForInvoice($invoice, $this->invoiceReminderTemplate(), 'invoice_reminder');
     }
 
     /**

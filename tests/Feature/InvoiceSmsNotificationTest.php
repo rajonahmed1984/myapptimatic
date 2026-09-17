@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Jobs\SendInvoiceReminderNotification;
+use App\Jobs\SendInvoiceSmsNotification;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Setting;
@@ -67,6 +69,25 @@ class InvoiceSmsNotificationTest extends TestCase
     }
 
     #[Test]
+    public function invoice_reminder_sends_sms_and_skips_paid_invoices(): void
+    {
+        $this->configureGateway(['sms_invoice_created_enabled' => '0', 'sms_invoice_paid_enabled' => '0']);
+        $customer = Customer::create(['name' => 'Salma', 'phone' => '01912345678']);
+        $invoice = $this->createInvoice($customer, 'overdue');
+
+        SendInvoiceReminderNotification::dispatch($invoice->id, 'invoice_overdue_first_notice');
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn (HttpRequest $request) => $request['mobile_no'] === '8801912345678'
+            && str_contains($request['message'], 'reminder: invoice #'.$invoice->number));
+
+        $invoice->update(['status' => 'paid', 'paid_at' => now()]);
+        SendInvoiceSmsNotification::dispatch($invoice->id, SendInvoiceSmsNotification::EVENT_REMINDER);
+
+        Http::assertSentCount(1);
+    }
+
+    #[Test]
     public function no_sms_when_disabled_or_phone_missing(): void
     {
         $this->configureGateway(['sms_enabled' => '0']);
@@ -127,6 +148,7 @@ class InvoiceSmsNotificationTest extends TestCase
             'sms_api_key' => 'test-key',
             'sms_invoice_created_enabled' => '1',
             'sms_invoice_paid_enabled' => '1',
+            'sms_invoice_reminder_enabled' => '1',
         ], $overrides);
 
         foreach ($values as $key => $value) {

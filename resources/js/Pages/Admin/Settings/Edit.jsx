@@ -458,6 +458,12 @@ export default function Edit({
                                         <textarea name="sms_invoice_paid_template" rows={4} defaultValue={settings.sms_invoice_paid_template || ''} className="ui-input mt-2" />
                                     </Field>
                                 </div>
+                                <div className="space-y-3">
+                                    <Check name="sms_invoice_reminder_enabled" checked={settings.sms_invoice_reminder_enabled} label="Send SMS with invoice reminders (before due date and overdue notices)" />
+                                    <Field label="Invoice reminder message" name="sms_invoice_reminder_template" errors={errors}>
+                                        <textarea name="sms_invoice_reminder_template" rows={4} defaultValue={settings.sms_invoice_reminder_template || ''} className="ui-input mt-2" />
+                                    </Field>
+                                </div>
                             </div>
                         </div>
                     </section>
