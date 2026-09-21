@@ -19,11 +19,14 @@ export default function DataTable({
     header = null,
     footer = null,
     mobileFooter = null,
+    // false when the caller already wraps the list in its own card (e.g. with
+    // a toolbar and pagination), so the table does not draw a second one.
+    framed = true,
 }) {
     return (
         <>
             {/* Mobile Cards List (<md) */}
-            <div className="md:hidden space-y-3">
+            <div className={`md:hidden space-y-3 ${framed ? '' : 'p-3'}`}>
                 {header ? (
                     typeof header === 'string' ? (
                         <div className="px-1 text-xs uppercase font-bold text-slate-500">
@@ -46,7 +49,7 @@ export default function DataTable({
             </div>
 
             {/* Desktop Table (>=md) */}
-            <div className={`hidden md:block card overflow-hidden ${className}`}>
+            <div className={`hidden md:block ${framed ? 'card overflow-hidden' : ''} ${className}`}>
                 {header ? (
                     typeof header === 'string' ? (
                         <div className="px-4 py-3 border-b border-slate-200 text-xs uppercase font-bold text-slate-500">

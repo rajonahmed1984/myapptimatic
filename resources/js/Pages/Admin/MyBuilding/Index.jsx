@@ -369,6 +369,11 @@ export default function Index({ pageTitle = 'MyBuilding', product = null, rows =
                                                 <>
                                                     {p.total_floors} floors &times; {p.flats_per_floor}
                                                     <div className="text-xs text-slate-500">{p.contracted_flats} flats</div>
+                                                    {p.active_flats !== null && p.active_flats !== undefined ? (
+                                                        <div className="text-xs text-slate-500">
+                                                            {p.active_flats} active of {p.total_flats ?? p.contracted_flats} in app
+                                                        </div>
+                                                    ) : null}
                                                 </>
                                             ) : '—'}
                                         </td>
@@ -378,6 +383,9 @@ export default function Index({ pageTitle = 'MyBuilding', product = null, rows =
                                             </span>
                                             {p?.provisioned_at && (
                                                 <div className="text-xs text-slate-500">{p.provisioned_at}</div>
+                                            )}
+                                            {p?.last_synced_at && (
+                                                <div className="text-xs text-slate-500">synced {p.last_synced_at}</div>
                                             )}
                                             {p?.last_error && (
                                                 <div className="mt-1 max-w-xs text-xs text-rose-600">{p.last_error}</div>

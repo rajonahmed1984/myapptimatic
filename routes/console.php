@@ -102,8 +102,11 @@ $licenseExpirySuspend = Schedule::command('licenses:suspend-past-due --expiry-on
     ->withoutOverlapping();
 CronActivityLogger::track($licenseExpirySuspend, 'licenses:suspend-past-due --expiry-only');
 
+// Daily rather than only on the 5th: the command itself waits for the monthly
+// grace cutoff, and an invoice that falls due later in the month (or a run
+// missed on the 5th) must still suspend the licence instead of waiting a month.
 $licenseInvoiceSuspend = Schedule::command('licenses:suspend-past-due --invoice-only')
-    ->monthlyOn(5, '00:00')
+    ->dailyAt($automationTime)
     ->timezone($automationTimezone)
     ->withoutOverlapping();
 CronActivityLogger::track($licenseInvoiceSuspend, 'licenses:suspend-past-due --invoice-only');

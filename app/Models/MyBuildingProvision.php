@@ -29,6 +29,9 @@ class MyBuildingProvision extends Model
         'flats_per_floor',
         'floor_plan',
         'contracted_flats',
+        'total_flats',
+        'active_flats',
+        'inactive_floors',
         'install_url',
         'district_id',
         'district_slug',
@@ -45,6 +48,8 @@ class MyBuildingProvision extends Model
         'attempts',
         'last_error',
         'provisioned_at',
+        'last_synced_at',
+        'last_sync_action',
         'remote_building_id',
         'remote_client_account_id',
         'registration_code',
@@ -55,8 +60,12 @@ class MyBuildingProvision extends Model
         'total_floors' => 'integer',
         'flats_per_floor' => 'integer',
         'contracted_flats' => 'integer',
+        'total_flats' => 'integer',
+        'active_flats' => 'integer',
+        'inactive_floors' => 'array',
         'attempts' => 'integer',
         'provisioned_at' => 'datetime',
+        'last_synced_at' => 'datetime',
     ];
 
     public function license(): BelongsTo

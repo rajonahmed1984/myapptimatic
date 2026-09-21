@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\License;
 use App\Models\MyBuildingProvision;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -173,6 +174,26 @@ class MyBuildingProvisioner
             'districts' => $response->json('data.districts') ?? [],
             'error' => null,
         ];
+    }
+
+    /**
+     * The building's real flat count drives the money on a per-flat plan,
+     * so the subscription amount follows it whenever the building changes.
+     */
+    public function syncPerFlatSubscriptionAmount(License $license, int $contractedFlats): void
+    {
+        $license->loadMissing('subscription.plan.product');
+
+        $subscription = $license->subscription;
+        $plan = $subscription?->plan;
+
+        if (! $subscription || ! $plan || ! $plan->isPerFlat()) {
+            return;
+        }
+
+        $subscription->forceFill([
+            'subscription_amount' => round(max(0, $contractedFlats) * (float) $plan->price, 2),
+        ])->save();
     }
 
     private function fail(MyBuildingProvision $provision, string $message): void

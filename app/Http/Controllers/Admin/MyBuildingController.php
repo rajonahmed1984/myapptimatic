@@ -60,6 +60,9 @@ class MyBuildingController extends Controller
                     'flats_per_floor' => $p->flats_per_floor,
                     'floor_plan' => $p->floor_plan,
                     'contracted_flats' => $p->contracted_flats,
+                    'total_flats' => $p->total_flats,
+                    'active_flats' => $p->active_flats,
+                    'last_synced_at' => $p->last_synced_at?->toDateTimeString(),
                     'install_url' => $p->install_url,
                     'owner_name' => $p->owner_name,
                     'owner_email' => $p->owner_email,
@@ -151,27 +154,9 @@ class MyBuildingController extends Controller
         $provision->contracted_flats = $provision->calculatedFlats();
         $provision->save();
 
-        $this->syncPerFlatSubscriptionAmount($license, $provision->contracted_flats);
+        $this->provisioner->syncPerFlatSubscriptionAmount($license, $provision->contracted_flats);
 
         return back()->with('status', 'Building details saved. You can now provision it.');
-    }
-
-    /**
-     * The building's real flat count drives the money on a per-flat plan,
-     * so the subscription amount follows it whenever the plan changes here.
-     */
-    private function syncPerFlatSubscriptionAmount(License $license, int $contractedFlats): void
-    {
-        $subscription = $license->subscription;
-        $plan = $subscription?->plan;
-
-        if (! $subscription || ! $plan || ! $plan->isPerFlat()) {
-            return;
-        }
-
-        $subscription->forceFill([
-            'subscription_amount' => round(max(0, $contractedFlats) * (float) $plan->price, 2),
-        ])->save();
     }
 
     /**

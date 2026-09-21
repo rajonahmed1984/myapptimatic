@@ -74,6 +74,37 @@ class Project extends Model
                 $project->maintenances()->delete();
             }
         });
+
+        // A sales rep's commission lives and dies with the project: cancel or
+        // delete it and the unpaid earnings are reversed, reopen or restore it
+        // and they come back.
+        static::updated(function (Project $project): void {
+            if (! $project->wasChanged('status')) {
+                return;
+            }
+
+            $commissions = app(\App\Services\CommissionService::class);
+
+            if ($project->status === 'cancel') {
+                $commissions->reverseProjectEarnings($project, 'project_cancelled');
+            } elseif ($project->getOriginal('status') === 'cancel') {
+                $commissions->restoreProjectEarnings($project, 'project_reopened');
+            }
+        });
+
+        static::deleted(function (Project $project): void {
+            if (! $project->isForceDeleting()) {
+                app(\App\Services\CommissionService::class)->reverseProjectEarnings($project, 'project_deleted');
+            }
+        });
+
+        static::forceDeleting(function (Project $project): void {
+            app(\App\Services\CommissionService::class)->reverseProjectEarnings($project, 'project_deleted');
+        });
+
+        static::restored(function (Project $project): void {
+            app(\App\Services\CommissionService::class)->restoreProjectEarnings($project, 'project_restored');
+        });
     }
 
     public function customer(): BelongsTo

@@ -176,6 +176,13 @@ class CommissionService
             }
         }
 
+        // A cancelled or deleted project earns its reps nothing.
+        if ($this->projectIsVoid($project)) {
+            $this->reverseProjectEarnings($project, $project->trashed() ? 'project_deleted' : 'project_cancelled');
+
+            return;
+        }
+
         $existing = CommissionEarning::query()
             ->where('source_type', 'project')
             ->where('source_id', $project->id)
@@ -212,12 +219,19 @@ class CommissionService
                 continue;
             }
 
-            if (in_array($earning->status, ['paid', 'reversed'], true)) {
+            if ($earning->status === 'paid') {
+                continue;
+            }
+
+            // Only an earning reversed because the project was voided comes
+            // back with the project; any other reversal stands.
+            if ($earning->status === 'reversed' && ! $this->wasReversedWithProject($earning)) {
                 continue;
             }
 
             $previousStatus = $earning->status;
             $payload['earned_at'] = $earning->earned_at ?? $now;
+            $payload['reversed_at'] = null;
             if ($earning->status === 'payable' && $targetStatus !== 'payable') {
                 $payload['status'] = 'payable';
                 $payload['payable_at'] = $earning->payable_at ?? $now;
@@ -273,6 +287,8 @@ class CommissionService
             ->join('projects', 'project_sales_representative.project_id', '=', 'projects.id')
             ->whereIn('project_sales_representative.sales_representative_id', $repIds)
             ->where('project_sales_representative.amount', '>', 0)
+            ->whereNull('projects.deleted_at')
+            ->where('projects.status', '!=', 'cancel')
             ->select([
                 'project_sales_representative.project_id',
                 'project_sales_representative.sales_representative_id',
@@ -323,6 +339,105 @@ class CommissionService
 
             $this->logStatusChange($earning, null, $status, 'project_assignment_backfill');
         }
+    }
+
+    /**
+    * A project that is cancelled or deleted takes its reps' commission with
+    * it. Earnings already paid out, or locked into a payout, are left alone:
+    * that money has moved, and undoing it is a payout reversal.
+    */
+    public function reverseProjectEarnings(Project $project, string $reason = 'project_cancelled'): int
+    {
+        return DB::transaction(function () use ($project, $reason) {
+            $now = Carbon::now();
+
+            $earnings = CommissionEarning::query()
+                ->where('source_type', 'project')
+                ->where('source_id', $project->id)
+                ->whereIn('status', ['pending', 'earned', 'payable'])
+                ->whereNull('commission_payout_id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($earnings as $earning) {
+                $previousStatus = $earning->status;
+                $earning->update([
+                    'status' => 'reversed',
+                    'reversed_at' => $now,
+                    'metadata' => array_merge((array) ($earning->metadata ?? []), [
+                        'reversal_reason' => $reason,
+                        'reversed_from_status' => $previousStatus,
+                    ]),
+                ]);
+                $this->logStatusChange($earning, $previousStatus, 'reversed', $reason);
+            }
+
+            return $earnings->count();
+        });
+    }
+
+    /**
+    * Undo reverseProjectEarnings when the project is reopened or restored.
+    */
+    public function restoreProjectEarnings(Project $project, string $reason = 'project_reopened'): int
+    {
+        if ($this->projectIsVoid($project)) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($project, $reason) {
+            $now = Carbon::now();
+            $targetStatus = $project->status === 'complete' ? 'payable' : 'earned';
+
+            $assignedRepIds = DB::table('project_sales_representative')
+                ->where('project_id', $project->id)
+                ->where('amount', '>', 0)
+                ->pluck('sales_representative_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if ($assignedRepIds === []) {
+                return 0;
+            }
+
+            $earnings = CommissionEarning::query()
+                ->where('source_type', 'project')
+                ->where('source_id', $project->id)
+                ->where('status', 'reversed')
+                ->whereIn('sales_representative_id', $assignedRepIds)
+                ->lockForUpdate()
+                ->get()
+                ->filter(fn (CommissionEarning $earning) => $this->wasReversedWithProject($earning));
+
+            foreach ($earnings as $earning) {
+                $metadata = (array) ($earning->metadata ?? []);
+                unset($metadata['reversal_reason'], $metadata['reversed_from_status']);
+
+                $earning->update([
+                    'status' => $targetStatus,
+                    'reversed_at' => null,
+                    'payable_at' => $targetStatus === 'payable' ? ($earning->payable_at ?? $now) : $earning->payable_at,
+                    'metadata' => $metadata ?: null,
+                ]);
+                $this->logStatusChange($earning, 'reversed', $targetStatus, $reason);
+            }
+
+            return $earnings->count();
+        });
+    }
+
+    private function projectIsVoid(Project $project): bool
+    {
+        return $project->status === 'cancel' || $project->trashed();
+    }
+
+    private function wasReversedWithProject(CommissionEarning $earning): bool
+    {
+        return in_array(
+            ((array) ($earning->metadata ?? []))['reversal_reason'] ?? null,
+            ['project_cancelled', 'project_deleted'],
+            true
+        );
     }
 
     /**

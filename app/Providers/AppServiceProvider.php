@@ -59,6 +59,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->loadRouteHelpers();
         $this->app->singleton(\App\Services\CommissionService::class);
+        // One instance per process so every change made while handling a
+        // request is collected and pushed to MyBuilding once, at the end.
+        $this->app->singleton(\App\Services\MyBuildingLicenseSync::class);
         // Scoped so the Inertia middleware and the Blade composer share one
         // instance (and therefore one set of badge queries) per request.
         $this->app->scoped(HeaderStatsService::class);
@@ -77,6 +80,15 @@ class AppServiceProvider extends ServiceProvider
         $this->registerAutomationEventListeners();
         ProjectTask::observe(ProjectTaskObserver::class);
         Invoice::observe(InvoiceObserver::class);
+        foreach ([
+            \App\Models\License::class,
+            \App\Models\Subscription::class,
+            \App\Models\Customer::class,
+            Invoice::class,
+            \App\Models\AccountingEntry::class,
+        ] as $model) {
+            $model::observe(\App\Observers\MyBuildingLicenseSyncObserver::class);
+        }
 
         try {
             $portalUrl = UrlResolver::portalUrl();

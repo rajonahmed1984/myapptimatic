@@ -74,6 +74,10 @@ class CustomerController extends Controller
                 $query->where('status', 'active');
             }])
             ->latest()
+            // Customers created in the same second (imports, seeding) tie on
+            // created_at; without a unique tiebreaker MySQL may return the
+            // same row on two pages and skip another.
+            ->orderByDesc('id')
             ->paginate(30)
             ->withQueryString();
 
@@ -1285,6 +1289,12 @@ class CustomerController extends Controller
                 'has_pages' => $customers->hasPages(),
                 'current_page' => $customers->currentPage(),
                 'last_page' => $customers->lastPage(),
+                'per_page' => $customers->perPage(),
+                'total' => $customers->total(),
+                'from' => $customers->firstItem(),
+                'to' => $customers->lastItem(),
+                'path' => route('admin.customers.index'),
+                'query' => array_filter(['search' => $search], fn ($value) => $value !== ''),
                 'previous_url' => $customers->previousPageUrl(),
                 'next_url' => $customers->nextPageUrl(),
             ],
